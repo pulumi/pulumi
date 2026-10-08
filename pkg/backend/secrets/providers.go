@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -27,24 +28,33 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
-// DefaultProvider is the default DefaultProvider to use when deserializing deployments.
-var DefaultProvider secrets.Provider = &secretsProvider{}
+// DefaultProvider is the default DefaultProvider to use when deserializing deployments. Its service
+// secrets managers authenticate with the process's credential helper session.
+var DefaultProvider = NewProvider(auth.DefaultSession())
+
+// NewProvider returns a provider whose service secrets managers use the token and headers the
+// session's credential helper supplies for their backend. A nil session means no helper.
+func NewProvider(session *auth.Session) secrets.Provider {
+	return &secretsProvider{session: session}
+}
 
 // secretsProvider implements the secrets.ManagerProviderFactory interface. Essentially
 // it is the global location where new secrets managers can be registered for use when
 // decrypting checkpoints.
-type secretsProvider struct{}
+type secretsProvider struct {
+	session *auth.Session
+}
 
 // OfType returns a secrets manager for the given secrets type. Returns an error
 // if the type is unknown or the state is invalid.
-func (secretsProvider) OfType(ctx context.Context, ty string, state json.RawMessage) (secrets.Manager, error) {
+func (p secretsProvider) OfType(ctx context.Context, ty string, state json.RawMessage) (secrets.Manager, error) {
 	var sm secrets.Manager
 	var err error
 	switch ty {
 	case passphrase.Type:
 		sm, err = passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
 	case service.Type:
-		sm, err = service.NewServiceSecretsManagerFromState(ctx, state)
+		sm, err = service.NewServiceSecretsManagerFromState(ctx, p.session, state)
 	case cloud.Type:
 		sm, err = cloud.NewCloudSecretsManagerFromState(state)
 	default:
@@ -117,7 +127,7 @@ func (s NamedStackProvider) OfType(ctx context.Context, ty string, state json.Ra
 	case passphrase.Type:
 		sm, err = passphrase.NewStackPromptingPassphraseSecretsManagerFromState(state, s.StackName)
 	case service.Type:
-		sm, err = service.NewServiceSecretsManagerFromState(ctx, state)
+		sm, err = service.NewServiceSecretsManagerFromState(ctx, auth.DefaultSession(), state)
 	case cloud.Type:
 		sm, err = cloud.NewCloudSecretsManagerFromState(state)
 	default:

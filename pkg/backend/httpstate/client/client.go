@@ -41,6 +41,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"go.opentelemetry.io/otel"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -237,6 +238,7 @@ type Client struct {
 	diag       diag.Sink
 	insecure   bool
 	restClient restClient
+	httpAuth   *auth.HTTPAuth
 
 	// If true, do not probe the backend with GET /api/capabilities and assume no capabilities.
 	DisableCapabilityProbing bool
@@ -276,6 +278,18 @@ func (pc *Client) Insecure() bool {
 func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 	pc.restClient = &defaultRESTClient{
 		client: newDefaultHTTPClient(httpClient, pc.apiURL),
+	}
+	return pc.WithHTTPAuth(pc.httpAuth)
+}
+
+// WithHTTPAuth adds a credential helper's token and headers to this client's requests.
+// A nil httpAuth leaves the client unchanged.
+func (pc *Client) WithHTTPAuth(httpAuth *auth.HTTPAuth) *Client {
+	pc.httpAuth = httpAuth
+	if rest, ok := pc.restClient.(*defaultRESTClient); ok {
+		if client, ok := rest.client.(*defaultHTTPClient); ok {
+			client.auth = httpAuth
+		}
 	}
 	return pc
 }
@@ -449,8 +463,7 @@ func leadingZeroBits(b []byte) int {
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
 func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj any) error {
-	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken,
-		httpCallOptions{})
+	return pc.restCallWithOptions(ctx, method, path, queryObj, reqObj, respObj, httpCallOptions{})
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
@@ -459,6 +472,7 @@ func (pc *Client) restCallWithOptions(
 	ctx context.Context, method, path string, queryObj, reqObj,
 	respObj any, opts httpCallOptions,
 ) error {
+	opts.HelperToken = pc.httpAuth.AccessToken() != ""
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
 }
 
@@ -2955,7 +2969,7 @@ func (pc *Client) StreamNeoTaskEvents(
 	ctx context.Context, orgName, taskID, lastEventID string,
 ) (<-chan NeoStreamEvent, error) {
 	streamURL := pc.apiURL + fmt.Sprintf("/api/preview/agents/%s/tasks/%s/events/stream", orgName, taskID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, streamURL, nil)
+	req, err := http.NewRequestWithContext(auth.WithHelperAuth(ctx), http.MethodGet, streamURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating Neo event stream request: %w", err)
 	}
@@ -3082,7 +3096,7 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, err
 		return "", fmt.Errorf("fetching credentials: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(auth.WithHelperAuth(ctx), http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
 	}

@@ -17,11 +17,14 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -64,7 +67,20 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 	if err != nil {
 		projectURL = ""
 	}
-	backendURL := httpstate.ValueOrDefaultURL(esc.ws, projectURL)
+	// A credential helper supplies the backend's credentials, and may select the backend when nothing
+	// else has. A project's backend is not used here, but still keeps the helper from selecting one.
+	session := esc.session
+	if session == nil {
+		session = auth.NewSessionWithHelperFunc(nil)
+	}
+	prepare := session.PrepareBackend
+	if projectURL == "" && env.APIURL.Value() == "" && !esc.projectSelectsBackend() {
+		prepare = session.PrepareBackendWithFallback
+	}
+	backendURL, err := prepare(ctx, httpstate.ValueOrDefaultURL(esc.ws, projectURL))
+	if err != nil {
+		return fmt.Errorf("preparing backend: %w", err)
+	}
 
 	// Read the stored account for the backend from Pulumi's shared credentials.
 	var acct *Account
@@ -81,7 +97,8 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 		acct = &Account{Account: a, BackendURL: backendURL}
 	}
 
-	if acct == nil {
+	loggedIn := acct == nil
+	if loggedIn {
 		nAccount, err := esc.login.Login(
 			ctx,
 			backendURL,
@@ -99,6 +116,7 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 		acct = &Account{
 			Account: nAccount.Account,
 		}
+		esc.account = Account{Account: nAccount.Account, BackendURL: backendURL}
 	}
 
 	acct.BackendURL = backendURL
@@ -106,23 +124,34 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 		return err
 	}
 
-	ok, err := esc.getCachedCredentials(ctx, acct.BackendURL, acct.Insecure)
-	if err != nil {
-		return fmt.Errorf("getting credentials: %w", err)
-	}
-	if !ok {
-		return fmt.Errorf("no credentials, please run `%v login` to log in", esc.command)
+	// Logging in just returned the credentials in use; a stored account still has to be validated.
+	if !loggedIn {
+		ok, err := esc.getCachedCredentials(ctx, acct.BackendURL, acct.Insecure)
+		if err != nil {
+			return fmt.Errorf("getting credentials: %w", err)
+		}
+		if !ok {
+			return fmt.Errorf("no credentials, please run `%v login` to log in", esc.command)
+		}
 	}
 
-	esc.client = esc.newClient(esc.userAgent, acct.BackendURL, acct.AccessToken, acct.Insecure)
+	if httpAuth := session.HTTPAuth(backendURL); httpAuth != nil {
+		esc.client = client.NewWithHTTPAuth(esc.userAgent, backendURL, esc.account.AccessToken, acct.Insecure, httpAuth)
+	} else {
+		esc.client = esc.newClient(esc.userAgent, acct.BackendURL, esc.account.AccessToken, acct.Insecure)
+	}
 
-	defaultOrg, err := esc.lookupDefaultOrg(ctx, backendURL, acct.Username)
+	// The logged-in identity can differ from the stored account's when a helper supplies the token.
+	defaultOrg, err := esc.lookupDefaultOrg(ctx, backendURL, esc.account.Username)
 	if err != nil {
 		return fmt.Errorf("looking up org to default to: %w", err)
 	} else if defaultOrg != "" {
 		esc.account.DefaultOrg = defaultOrg
 	}
 
+	if backendURL == session.SelectedBackend() {
+		return auth.SaveCurrentBackend(backendURL)
+	}
 	return nil
 }
 
@@ -140,4 +169,14 @@ func (esc *escCommand) getCachedCredentials(ctx context.Context, backendURL stri
 		BackendURL: backendURL,
 	}
 	return true, nil
+}
+
+// projectSelectsBackend reports whether the project in the working directory names a backend.
+func (esc *escCommand) projectSelectsBackend() bool {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return false
+	}
+	project, _, err := esc.ws.ReadProject(cwd)
+	return err == nil && project.Backend != nil && project.Backend.URL != ""
 }

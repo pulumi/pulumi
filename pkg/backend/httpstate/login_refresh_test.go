@@ -445,7 +445,7 @@ func TestGetAccountDetailsInstallsRefreshWrapperWhenRefreshTokenSupplied(t *test
 
 	var gotAT, gotRT string
 	var gotExpiresAt time.Time
-	username, _, _, err := getAccountDetails(t.Context(), server.URL, false,
+	username, _, _, err := getAccountDetails(t.Context(), nil, server.URL, false,
 		"stale-access", "the-refresh",
 		func(at string, expiresAt time.Time, rt string) error {
 			gotAT, gotRT, gotExpiresAt = at, rt, expiresAt

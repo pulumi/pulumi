@@ -37,6 +37,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -183,6 +184,10 @@ type refreshable interface {
 }
 
 type httpCallOptions struct {
+	// HelperToken reports that a credential helper's token authenticates the request, although the
+	// token is only added to it by the transport.
+	HelperToken bool
+
 	// RetryPolicy defines the policy for retrying requests by httpClient.Do.
 	//
 	// By default, only GET requests are retried.
@@ -396,6 +401,8 @@ type defaultHTTPClient struct {
 	client *http.Client
 	// apiHost is the host of the Pulumi Cloud API. Only requests to this host carry the trace context.
 	apiHost string
+	// auth adds a credential helper's token and headers, if the helper supplied any.
+	auth *auth.HTTPAuth
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
@@ -430,6 +437,7 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 	}
 	tracingClient := *c.client
 	tracingClient.Transport = &tracingTransport{base: transport, apiHost: c.apiHost}
+	tracingClient.Transport = c.auth.Transport(tracingClient.Transport)
 
 	// Wait 1s before retrying on failure. Then increase by 2x until the
 	// maximum delay is reached. Stop after maxRetryCount requests have
@@ -555,7 +563,7 @@ func pulumiAPICall(ctx context.Context,
 	}
 
 	// Provide a better error if using an authenticated call without having logged in first.
-	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && creds == "" {
+	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && creds == "" && !opts.HelperToken {
 		return "", nil, backenderr.ErrLoginRequired
 	}
 
@@ -690,6 +698,10 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 			}
 		}
 	}
+
+	// A backend API call carries the credential helper's token and headers. The call and its retry
+	// after a token refresh share one helper refresh.
+	ctx = auth.WithHelperAuth(ctx)
 
 	// Make API call. If the access token can refresh itself and the server rejects it with
 	// LoginRequiredError, refresh once and retry — this lets agent CLIs survive routine access-token

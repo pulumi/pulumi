@@ -21,10 +21,12 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	pulumi_workspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -444,4 +446,95 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, username, esc.account.DefaultOrg)
 	})
+}
+
+func TestCredentialHelperSelection(t *testing.T) {
+	for _, tt := range []struct {
+		name           string
+		projectBackend string
+		wantSelected   string
+		wantBackend    string
+	}{
+		{name: "nothing selected", wantBackend: "https://helper.example.com"},
+		{
+			name: "project backend", projectBackend: "s3://project-state",
+			wantSelected: "https://api.pulumi.com", wantBackend: "https://api.pulumi.com",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Setenv("PULUMI_API", "")
+			var requests []credentialhelper.Request
+			session := auth.NewSessionWithHelperFunc(func(
+				_ context.Context, request credentialhelper.Request,
+			) (*credentialhelper.Response, error) {
+				requests = append(requests, request)
+				if request.SelectedBackendURL != "" {
+					return nil, nil
+				}
+				return &credentialhelper.Response{BackendURL: "https://helper.example.com"}, nil
+			})
+			esc := &escCommand{
+				command: "esc",
+				login:   &provisioningLoginManager{},
+				session: session,
+				newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+					return &testPulumiClient{}
+				},
+				ws: &pkgWorkspace.MockContext{
+					ReadProjectF: func(string) (*pulumi_workspace.Project, string, error) {
+						project := &pulumi_workspace.Project{}
+						if tt.projectBackend != "" {
+							project.Backend = &pulumi_workspace.ProjectBackend{URL: tt.projectBackend}
+						}
+						return project, "", nil
+					},
+				},
+			}
+
+			require.NoError(t, esc.getCachedClient(t.Context()))
+			require.Len(t, requests, 1)
+			assert.Equal(t, tt.wantSelected, requests[0].SelectedBackendURL)
+			assert.Equal(t, tt.wantBackend, esc.account.BackendURL)
+			credentials, err := pulumi_workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			if tt.projectBackend == "" {
+				assert.Equal(t, tt.wantBackend, credentials.Current)
+			} else {
+				assert.Empty(t, credentials.Current)
+			}
+		})
+	}
+}
+
+type helperIdentityLoginManager struct{ provisioningLoginManager }
+
+func (*helperIdentityLoginManager) Current(
+	ctx context.Context, cloudURL string, insecure, setCurrent bool,
+) (*auth.Credentials, error) {
+	return &auth.Credentials{
+		BackendURL: cloudURL, Account: pulumi_workspace.Account{Username: "helper-user"},
+	}, nil
+}
+
+func TestDefaultOrgUsesAuthenticatedIdentity(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_DEFAULT_ORGANIZATION", "")
+	esc := &escCommand{
+		command: "esc",
+		login:   &helperIdentityLoginManager{},
+		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
+			return &testPulumiClient{}
+		},
+		ws: mockWorkspace(pulumi_workspace.Credentials{
+			Current: "https://api.pulumi.com",
+			Accounts: map[string]pulumi_workspace.Account{
+				"https://api.pulumi.com": {AccessToken: "stored-token", Username: "stored-user"},
+			},
+		}),
+	}
+	t.Setenv("PULUMI_BACKEND_URL", "https://api.pulumi.com")
+
+	require.NoError(t, esc.getCachedClient(t.Context()))
+	assert.Equal(t, "helper-user", esc.account.DefaultOrg)
 }

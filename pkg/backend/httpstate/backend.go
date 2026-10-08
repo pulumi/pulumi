@@ -267,10 +267,12 @@ func NewWithCredentials(
 		tokenInfo := *account.TokenInformation
 		account.TokenInformation = &tokenInfo
 	}
-	apiToken := account.AccessToken
 	logging.AddGlobalSecretFilter([]string{account.AccessToken, account.RefreshToken}, "[credential]")
+	// A helper token replaces the account token on every request and is refreshed by httpAuth.
+	httpAuth := credentials.HTTPAuth
+	apiToken := account.AccessToken
 
-	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
+	apiClient := client.NewClient(cloudURL, apiToken, insecure, d).WithHTTPAuth(httpAuth)
 	apiClient.WithRefresh(account.RefreshToken, func(at string, expiresAt time.Time, rt string) error {
 		account.SetCredentials(at, expiresAt, rt)
 		logging.AddGlobalSecretFilter([]string{account.AccessToken, account.RefreshToken}, "[credential]")
@@ -279,7 +281,7 @@ func NewWithCredentials(
 		}
 		return nil
 	})
-	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
+	escClient := esc_client.NewWithHTTPAuth(client.UserAgent(), cloudURL, apiToken, insecure, httpAuth)
 
 	org := env.DefaultOrg.Value()
 	if org == "" {
@@ -386,6 +388,7 @@ func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account,
 // loginWithBrowser uses a web browser to log into the cloud and returns its credentials.
 func loginWithBrowser(
 	ctx context.Context,
+	httpAuth *auth.HTTPAuth,
 	cloudURL string,
 	insecure bool,
 	command string,
@@ -466,7 +469,7 @@ func loginWithBrowser(
 
 	accessToken := <-c
 
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, "", nil)
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, httpAuth, cloudURL, insecure, accessToken, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -530,13 +533,59 @@ func NewLoginManager() LoginManager {
 	return newLoginManager()
 }
 
+// NewLoginManagerWithSession returns a LoginManager that authenticates with the token and headers the
+// session's credential helper supplies, when it supplies any. A nil session means no helper.
+func NewLoginManagerWithSession(session *auth.Session) LoginManager {
+	return defaultLoginManager{session: session}
+}
+
 // newLoginManager creates a new LoginManager for handling logins. It is a variable instead of a regular
 // function so it can be set to a different implementation at runtime, if necessary.
 var newLoginManager = func() LoginManager {
 	return defaultLoginManager{}
 }
 
-type defaultLoginManager struct{}
+type defaultLoginManager struct {
+	// session supplies a credential helper's token and headers. Nil means no helper.
+	session *auth.Session
+}
+
+func (m defaultLoginManager) httpAuth(cloudURL string) *auth.HTTPAuth {
+	if m.session == nil {
+		return nil
+	}
+	return m.session.HTTPAuth(cloudURL)
+}
+
+// attachHTTPAuth completes credentials with the helper's token and headers for their backend.
+func (m defaultLoginManager) attachHTTPAuth(credentials *auth.Credentials) {
+	if credentials != nil {
+		credentials.HTTPAuth = m.httpAuth(credentials.BackendURL)
+	}
+}
+
+// saveHelperBackend stores how to connect to a backend whose token comes from a helper, so that later
+// commands connect the same way. The helper's token, headers and identity are not stored.
+func saveHelperBackend(cloudURL string, insecure, setCurrent bool) error {
+	if setCurrent {
+		if err := auth.SaveCurrentBackend(cloudURL); err != nil {
+			return err
+		}
+	}
+	account, err := workspace.GetAccount(cloudURL)
+	if err != nil {
+		// Unreadable credentials only matter when there is a setting to keep.
+		if insecure {
+			return err
+		}
+		return nil
+	}
+	if account.Insecure == insecure {
+		return nil
+	}
+	account.Insecure = insecure
+	return workspace.StoreAccount(cloudURL, account, false)
+}
 
 // validateStoredAccount checks whether a stored account can still authenticate, refreshing cached
 // user and token metadata when needed. An account that carries a refresh token but a stale (or
@@ -544,6 +593,7 @@ type defaultLoginManager struct{}
 // the local account is updated to reflect any rotation, and the caller persists the result.
 func validateStoredAccount(
 	ctx context.Context,
+	httpAuth *auth.HTTPAuth,
 	cloudURL string,
 	insecure bool,
 	account workspace.Account,
@@ -567,7 +617,7 @@ func validateStoredAccount(
 		// So we need to check periodically if it is still valid.
 		// We do this every hour by fetching the account details again using the backend access token.
 		fetchedUser, fetchedOrgs, fetchedTokenInfo, err := getAccountDetails(
-			ctx, cloudURL, insecure, account.AccessToken, account.RefreshToken,
+			ctx, httpAuth, cloudURL, insecure, account.AccessToken, account.RefreshToken,
 			func(at string, expiresAt time.Time, rt string) error {
 				account.SetCredentials(at, expiresAt, rt)
 				return nil
@@ -610,12 +660,32 @@ func (m defaultLoginManager) Current(
 	cloudURL string,
 	insecure bool,
 	setCurrent bool,
-) (*auth.Credentials, error) {
+) (credentials *auth.Credentials, err error) {
+	defer func() { m.attachHTTPAuth(credentials) }()
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
 	accessToken := env.AccessToken.Value()
+
+	httpAuth := m.httpAuth(cloudURL)
+	if httpAuth.AccessToken() != "" {
+		// The helper's token authenticates the backend. The identity it belongs to stays in memory.
+		username, organizations, tokenInfo, err := getAccountDetails(ctx, httpAuth, cloudURL, insecure, "", "", nil)
+		if err != nil {
+			return nil, err
+		}
+		if err := saveHelperBackend(cloudURL, insecure, setCurrent); err != nil {
+			return nil, err
+		}
+		return &auth.Credentials{
+			BackendURL: cloudURL,
+			Account: workspace.Account{
+				Username: username, Organizations: organizations, TokenInformation: tokenInfo,
+				LastValidatedAt: time.Now(), Insecure: insecure,
+			},
+		}, nil
+	}
 
 	// If we have a saved access token, and it is valid, and it
 	// either matches PULUMI_ACCESS_TOKEN or PULUMI_ACCESS_TOKEN
@@ -636,7 +706,7 @@ func (m defaultLoginManager) Current(
 		(accessToken == "" || existingAccount.AccessToken == accessToken) {
 		var valid bool
 		logging.V(7).Infof("Validating stored credentials for %q", cloudURL)
-		existingAccount, valid, err = validateStoredAccount(ctx, cloudURL, insecure, existingAccount)
+		existingAccount, valid, err = validateStoredAccount(ctx, httpAuth, cloudURL, insecure, existingAccount)
 		if err != nil {
 			return nil, err
 		}
@@ -672,7 +742,7 @@ func (m defaultLoginManager) Current(
 	_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", env.AccessToken.Var().Name())
 	contract.IgnoreError(err)
 
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, "", nil)
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, httpAuth, cloudURL, insecure, accessToken, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -699,6 +769,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	agentName string,
 	defaultCredsErr error,
 ) (*auth.Credentials, error) {
+	httpAuth := m.httpAuth(cloudURL)
 	now := time.Now()
 	if deleted, err := workspace.DeleteExpiredAgentCredentials(now); err != nil {
 		return nil, err
@@ -713,7 +784,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	if agentAccount.HasCredential() {
 		var valid bool
 		logging.V(7).Infof("Found shared agent credentials for %q; validating", cloudURL)
-		agentAccount, valid, err = validateStoredAccount(ctx, cloudURL, insecure, agentAccount)
+		agentAccount, valid, err = validateStoredAccount(ctx, httpAuth, cloudURL, insecure, agentAccount)
 		if err != nil {
 			return nil, err
 		}
@@ -763,7 +834,8 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
-	signup, err := client.NewClient(cloudURL, "", insecure, cmdutil.Diag()).SignupAgent(
+	signup, err := client.NewClient(cloudURL, "", insecure, cmdutil.Diag()).
+		WithHTTPAuth(httpAuth).SignupAgent(
 		ctx,
 		agentdetect.Metadata{
 			Name:  agentName,
@@ -777,7 +849,8 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		return nil, fmt.Errorf("creating agent Pulumi account: could not construct claim URL for cloud URL %q", cloudURL)
 	}
 
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, signup.AccessToken, "", nil)
+	username, organizations, tokenInfo, err := getAccountDetails(
+		ctx, httpAuth, cloudURL, insecure, signup.AccessToken, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -819,7 +892,8 @@ func (m defaultLoginManager) Login(
 	welcome func(display.Options),
 	setCurrent bool,
 	opts display.Options,
-) (*auth.Credentials, error) {
+) (credentials *auth.Credentials, err error) {
+	defer func() { m.attachHTTPAuth(credentials) }()
 	current, err := m.Current(ctx, cloudURL, insecure, setCurrent)
 	if err != nil {
 		return nil, err
@@ -829,6 +903,7 @@ func (m defaultLoginManager) Login(
 	}
 
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
+	httpAuth := m.httpAuth(cloudURL)
 	var accessToken string
 	accountLink := client.CloudConsoleURL(cloudURL, "user", "settings", "tokens")
 
@@ -880,7 +955,7 @@ func (m defaultLoginManager) Login(
 		}
 
 		if accessToken == "" {
-			return loginWithBrowser(ctx, cloudURL, insecure, command, welcome, setCurrent, opts)
+			return loginWithBrowser(ctx, httpAuth, cloudURL, insecure, command, welcome, setCurrent, opts)
 		}
 
 		// Welcome the user since this was an interactive login.
@@ -889,7 +964,7 @@ func (m defaultLoginManager) Login(
 		}
 	}
 
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, "", nil)
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, httpAuth, cloudURL, insecure, accessToken, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -923,7 +998,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 		return nil, err
 	}
 
-	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken, "", nil)
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, nil, cloudURL, insecure, accessToken, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2791,13 +2866,15 @@ func isExpectedTokenFormat(token string) bool {
 // receives the refreshed (access, refresh) pair so the caller can persist them.
 func getAccountDetails(
 	ctx context.Context,
+	httpAuth *auth.HTTPAuth,
 	cloudURL string,
 	insecure bool,
 	accessToken, refreshToken string,
 	onRefresh func(accessToken string, accessTokenExpiresAt time.Time, refreshToken string) error,
 ) (string, []string, *workspace.TokenInformation, error) {
 	apiClient := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).
-		WithRefresh(refreshToken, onRefresh)
+		WithRefresh(refreshToken, onRefresh).
+		WithHTTPAuth(httpAuth)
 	username, organizations, tokenInfo, err := apiClient.GetPulumiAccountDetails(ctx)
 	if errors.Is(err, backenderr.LoginRequiredError{}) {
 		return "", nil, nil, ErrUnauthorized

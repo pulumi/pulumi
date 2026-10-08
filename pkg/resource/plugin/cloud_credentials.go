@@ -15,8 +15,7 @@
 package plugin
 
 import (
-	"strings"
-
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -25,13 +24,16 @@ import (
 // plugins launched with this context, so trusted providers can reach the cloud on the user's
 // behalf. It returns nil for non-cloud logins and when logged out, so plugins only ever receive
 // credentials they can actually use.
-func pulumiCloudCredentialEnv(store env.Env, project *workspace.Project) map[string]string {
+func pulumiCloudCredentialEnv(session *auth.Session, store env.Env, project *workspace.Project) map[string]string {
 	url := currentCloudURL(store, project)
-	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "http://") {
+	if !auth.IsHTTPBackend(url) {
 		return nil
 	}
 
 	token := store.GetString(env.AccessToken)
+	if token == "" && session != nil {
+		token = session.HTTPAuth(url).AccessToken()
+	}
 	if token == "" {
 		if account, _, err := workspace.GetAccountWithAgentFallback(url); err == nil {
 			token = account.AccessToken

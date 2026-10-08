@@ -23,13 +23,16 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 var validateAgentClaim = func(ctx context.Context, cloudURL, claimToken string) (bool, error) {
-	return client.NewClient(cloudURL, "", false, nil).ValidateAgentClaim(ctx, claimToken)
+	return client.NewClient(cloudURL, "", false, nil).
+		WithHTTPAuth(cmdBackend.DefaultLoginManager.Session().HTTPAuth(cloudURL)).
+		ValidateAgentClaim(ctx, claimToken)
 }
 
 // revalidatedClaim brings a persisted claim-unavailable marker up to date:

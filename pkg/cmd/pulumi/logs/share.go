@@ -251,7 +251,8 @@ func createEncryptionSessionFromAPI(
 	}
 	insecure := pkgWorkspace.GetCloudInsecure(ws, cloudURL)
 
-	apiClient := client.NewClient(cloudURL, "" /*apiToken*/, insecure, cmdutil.Diag())
+	apiClient := client.NewClient(cloudURL, "" /*apiToken*/, insecure, cmdutil.Diag()).
+		WithHTTPAuth(cmdBackend.DefaultLoginManager.Session().HTTPAuth(cloudURL))
 	resp, err := apiClient.CreateLogEncryptionSession(ctx, apitype.LogEncryptionSessionInitRequest{
 		SessionKeyType: apitype.SessionKeyTypePlogV1,
 	})
