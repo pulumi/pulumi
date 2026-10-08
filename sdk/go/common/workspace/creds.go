@@ -253,14 +253,31 @@ type TokenInformation struct {
 	ExpiresAt    *time.Time `json:"expiresAt,omitempty"`    // The time when this token expires.
 }
 
-// Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
-// a map from the backend URL to the associated account.
+// Credentials holds the saved accounts, selected backend, and global credential helper configuration.
 type Credentials struct {
-	Current  string             `json:"current,omitempty"`  // the currently selected key.
-	Accounts map[string]Account `json:"accounts,omitempty"` // a map of backend URLs to account info.
+	Version          int                `json:"version,omitempty"`          // zero denotes the legacy unversioned format.
+	Current          string             `json:"current,omitempty"`          // the currently selected key.
+	Accounts         map[string]Account `json:"accounts,omitempty"`         // a map of backend URLs to account info.
+	CredentialHelper *CredentialHelper  `json:"credentialHelper,omitempty"` // configuration shared across backends.
+}
+
+// CredentialHelper stores the resolved executable path and literal arguments of a credential helper.
+type CredentialHelper struct {
+	Path string   `json:"path"`
+	Args []string `json:"args,omitempty"`
+}
+
+func (c Credentials) validateVersion() error {
+	if c.Version != 0 && c.Version != 1 {
+		return fmt.Errorf("unsupported credentials file version %d; upgrade the Pulumi CLI to read this file", c.Version)
+	}
+	return nil
 }
 
 func (c Credentials) MarshalJSON() ([]byte, error) {
+	if err := c.validateVersion(); err != nil {
+		return nil, err
+	}
 	// To maintain backwards compatibility with CLIs v3.265.0 and earlier, we add back the
 	// "accessTokens" map, as derived from Accounts.
 
@@ -269,13 +286,17 @@ func (c Credentials) MarshalJSON() ([]byte, error) {
 		accessTokens[key] = account.AccessToken
 	}
 	return json.Marshal(struct {
-		Current      string             `json:"current,omitempty"`
-		AccessTokens map[string]string  `json:"accessTokens,omitempty"`
-		Accounts     map[string]Account `json:"accounts,omitempty"`
+		Version          int                `json:"version"`
+		Current          string             `json:"current,omitempty"`
+		AccessTokens     map[string]string  `json:"accessTokens,omitempty"`
+		Accounts         map[string]Account `json:"accounts,omitempty"`
+		CredentialHelper *CredentialHelper  `json:"credentialHelper,omitempty"`
 	}{
-		Current:      c.Current,
-		AccessTokens: accessTokens,
-		Accounts:     c.Accounts,
+		Version:          1,
+		Current:          c.Current,
+		AccessTokens:     accessTokens,
+		Accounts:         c.Accounts,
+		CredentialHelper: c.CredentialHelper,
 	})
 }
 
@@ -366,6 +387,9 @@ func readCredentialsFile(credsFile string) (Credentials, error) {
 		return Credentials{}, fmt.Errorf("failed to read Pulumi credentials file. Please fix "+
 			"or delete invalid credentials file: '%s': %w", credsFile, err)
 	}
+	if err := creds.validateVersion(); err != nil {
+		return Credentials{}, fmt.Errorf("reading '%s': %w", credsFile, err)
+	}
 
 	secrets := slice.Prealloc[string](2 * len(creds.Accounts))
 	for _, account := range creds.Accounts {
@@ -455,7 +479,10 @@ func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
 // Agent credentials go through here too — all agent processes share one OS
 // user and one key.
 func writeCredentialsFile(credsFile string, creds Credentials) error {
-	if len(creds.Accounts) == 0 {
+	if err := creds.validateVersion(); err != nil {
+		return err
+	}
+	if len(creds.Accounts) == 0 && creds.Current == "" && creds.CredentialHelper == nil {
 		err := os.Remove(credsFile)
 		if err != nil && !os.IsNotExist(err) {
 			return err

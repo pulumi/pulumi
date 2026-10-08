@@ -291,6 +291,7 @@ func TestCredentialsMarshalJSON(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, `{
+    "version": 1,
     "current": "https://api.example.com",
     "accessTokens": {
         "file://~": "",
@@ -315,7 +316,7 @@ func TestCredentialsMarshalJSONWithoutAccounts(t *testing.T) {
 	raw, err := json.Marshal(Credentials{Current: "https://api.example.com"})
 	require.NoError(t, err)
 
-	assert.Equal(t, `{"current":"https://api.example.com"}`, string(raw))
+	assert.Equal(t, `{"version":1,"current":"https://api.example.com"}`, string(raw))
 }
 
 //nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
@@ -887,4 +888,77 @@ func TestAgentCredentialsRepairInsecurePermissions(t *testing.T) {
 	info, err := os.Stat(agentPulumiDir)
 	require.NoError(t, err)
 	assert.Equal(t, fs.FileMode(0o700), info.Mode().Perm())
+}
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestCredentialsWithoutAccounts(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		creds Credentials
+		keep  bool
+	}{
+		{name: "current backend", creds: Credentials{Current: "s3://state"}, keep: true},
+		{name: "helper", creds: Credentials{CredentialHelper: &CredentialHelper{Path: "helper"}}, keep: true},
+		{name: "version alone", creds: Credentials{Version: 1}},
+		{name: "empty"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := ptesting.IsolateCredentials(t).Home
+			require.NoError(t, StoreCredentials(testCreds()))
+			require.NoError(t, StoreCredentials(tt.creds))
+			if !tt.keep {
+				assert.NoFileExists(t, filepath.Join(dir, "credentials.json"))
+				return
+			}
+			assert.FileExists(t, filepath.Join(dir, "credentials.json"))
+			loaded, err := GetStoredCredentials()
+			require.NoError(t, err)
+			want := tt.creds
+			want.Version = 1
+			assert.Equal(t, want, loaded)
+		})
+	}
+}
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestCredentialsLegacyVersion(t *testing.T) {
+	dir := ptesting.IsolateCredentials(t).Home
+	path := filepath.Join(dir, "credentials.json")
+	raw := []byte(`{
+		"current":"https://api.example.com",
+		"accounts":{"https://api.example.com":{"accessToken":"old-token"}}
+	}`)
+	require.NoError(t, os.WriteFile(path, raw, 0o600))
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Zero(t, creds.Version)
+	afterRead, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, raw, afterRead)
+	require.NoError(t, StoreAccount("s3://state", Account{}, false))
+	creds, err = GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, 1, creds.Version)
+	assert.Equal(t, "https://api.example.com", creds.Current)
+	assert.Equal(t, "old-token", creds.Accounts[creds.Current].AccessToken)
+	assert.Contains(t, creds.Accounts, "s3://state")
+}
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestCredentialsUnsupportedVersion(t *testing.T) {
+	dir := ptesting.IsolateCredentials(t).Home
+	path := filepath.Join(dir, "credentials.json")
+	raw := []byte(`{"version":2,"credentialHelper":{"path":"future-format"}}`)
+	require.NoError(t, os.WriteFile(path, raw, 0o600))
+	_, err := GetStoredCredentials()
+	require.ErrorContains(t, err, "unsupported credentials file version 2")
+	err = StoreAccount("https://api.example.com", Account{AccessToken: "token"}, true)
+	require.ErrorContains(t, err, "unsupported credentials file version 2")
+	err = StoreCredentials(Credentials{Version: 2})
+	require.ErrorContains(t, err, "unsupported credentials file version 2")
+	_, err = json.Marshal(Credentials{Version: 2})
+	require.ErrorContains(t, err, "unsupported credentials file version 2")
+	after, err := os.ReadFile(path)
+	require.NoError(t, err)
+	assert.Equal(t, raw, after)
 }
