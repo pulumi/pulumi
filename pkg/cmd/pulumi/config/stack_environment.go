@@ -438,9 +438,9 @@ func printStackConfigPreview(
 		return nil
 	}
 	if len(previous) == 0 {
-		fmt.Fprintln(w, colorizeHeadline(color, "Configuration for this run (the stack has no previous update):"))
+		fmt.Fprintln(w, colorizeHeadline(color, "ESC configuration for this run (the stack has no previous update):"))
 	} else {
-		fmt.Fprintln(w, colorizeHeadline(color, "Configuration changes since the stack's last update:"))
+		fmt.Fprintln(w, colorizeHeadline(color, "ESC configuration changes since the stack's last update:"))
 	}
 	for _, line := range lines {
 		fmt.Fprintf(w, "    %s\n", colorizeDiffLine(color, line))

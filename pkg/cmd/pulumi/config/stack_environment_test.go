@@ -229,7 +229,7 @@ func TestAttachStackEnvironment(t *testing.T) {
 		assert.Equal(t, "anonymous", cfg.Environment.Value.(map[string]esc.Value)["test:source"].Value)
 
 		// The resolved configuration is compared with what the last update ran with.
-		assert.Contains(t, out.String(), "Configuration changes since the stack's last update:")
+		assert.Contains(t, out.String(), "ESC configuration changes since the stack's last update:")
 		assert.Contains(t, out.String(), "- test:removed: gone")
 		assert.Contains(t, out.String(), "~ test:source: old -> anonymous (from import project/base)")
 	})
