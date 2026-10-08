@@ -351,6 +351,9 @@ type StackEnvironmentSync struct {
 	Opened *esc.Environment
 	// Diagnostics carries the errors that stopped the definition from being published or opened.
 	Diagnostics apitype.EnvironmentDiagnostics
+	// ConfigSources names, for each `pulumiConfig` entry an imported environment defines, that
+	// environment as "project/name". Entries the stack's own definition sets are absent. Dry run only.
+	ConfigSources map[string]string
 }
 
 // StackEnvironmentSecret is a value encrypted with the key of the environment managed by a stack.

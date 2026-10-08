@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -87,7 +88,7 @@ func TestPrintStackEnvironmentPreview(t *testing.T) {
 	t.Parallel()
 
 	var out bytes.Buffer
-	printStackEnvironmentPreview(&out, &backend.StackEnvironmentSync{
+	printStackEnvironmentPreview(&out, colors.Never, &backend.StackEnvironmentSync{
 		Environment:       "payments/prod",
 		Revision:          3,
 		Changed:           true,
@@ -97,7 +98,8 @@ func TestPrintStackEnvironmentPreview(t *testing.T) {
 		"    ~ values.pulumiConfig.payments:instanceCount: 3 -> 6\n\n", out.String())
 
 	out.Reset()
-	printStackEnvironmentPreview(&out, &backend.StackEnvironmentSync{Environment: "payments/prod", Revision: 3}, nil)
+	printStackEnvironmentPreview(&out, colors.Never,
+		&backend.StackEnvironmentSync{Environment: "payments/prod", Revision: 3}, nil)
 	assert.Empty(t, out.String())
 }
 
@@ -217,7 +219,7 @@ func TestAttachStackEnvironment(t *testing.T) {
 
 		cfg, err := getStackConfigurationFromProjectStack(
 			t.Context(), h.stack, &project, sm, &h.projectStack, nil,
-			StackConfigurationOptions{EnvironmentMode: StackEnvironmentPreview, Stdout: &out})
+			StackConfigurationOptions{EnvironmentMode: StackEnvironmentPreview, Stdout: &out, Color: colors.Never})
 		require.NoError(t, err)
 		assert.Nil(t, cfg.SyncEnvironment)
 		assert.Equal(t, []backend.StackEnvironmentSyncOptions{{DryRun: true, Duration: stackEnvironmentOpenDuration}},
@@ -239,7 +241,7 @@ func TestAttachStackEnvironment(t *testing.T) {
 
 		cfg, err := getStackConfigurationFromProjectStack(
 			t.Context(), h.stack, &project, sm, &h.projectStack, nil,
-			StackConfigurationOptions{EnvironmentMode: StackEnvironmentSync, Stdout: &out})
+			StackConfigurationOptions{EnvironmentMode: StackEnvironmentSync, Stdout: &out, Color: colors.Never})
 		require.NoError(t, err)
 		require.NotNil(t, cfg.SyncEnvironment)
 		assert.Nil(t, h.published, "nothing is published until the operation is confirmed")
@@ -264,7 +266,7 @@ func TestAttachStackEnvironment(t *testing.T) {
 
 		cfg, err := getStackConfigurationFromProjectStack(
 			t.Context(), h.stack, &project, sm, &h.projectStack, nil,
-			StackConfigurationOptions{EnvironmentMode: StackEnvironmentPreview, Stdout: &out})
+			StackConfigurationOptions{EnvironmentMode: StackEnvironmentPreview, Stdout: &out, Color: colors.Never})
 		require.NoError(t, err)
 		assert.Equal(t, []backend.StackEnvironmentSyncOptions{{DryRun: true, Duration: stackEnvironmentOpenDuration}},
 			h.syncCalls, "one dry run serves both the open and the diff")
@@ -285,7 +287,7 @@ func TestAttachStackEnvironment(t *testing.T) {
 
 		cfg, err := getStackConfigurationFromProjectStack(
 			t.Context(), h.stack, &project, sm, &h.projectStack, []string{"a=b"},
-			StackConfigurationOptions{EnvironmentMode: StackEnvironmentSync, Stdout: &out})
+			StackConfigurationOptions{EnvironmentMode: StackEnvironmentSync, Stdout: &out, Color: colors.Never})
 		require.NoError(t, err)
 		assert.Nil(t, cfg.SyncEnvironment)
 		assert.Contains(t, out.String(), "--override-env is set, so environment project/stack is not synchronized")
@@ -369,5 +371,12 @@ func TestConfigValueSources(t *testing.T) {
 	assert.Equal(t, map[string]string{
 		"app:imported": "from import payments/secrets",
 		"app:shadowed": "from the stack configuration file",
-	}, configValueSources(env, "payments/prod", stackConfig))
+	}, configValueSources(env, "payments/prod", nil, stackConfig))
+
+	// Provenance reported by the service wins over traces.
+	assert.Equal(t, map[string]string{
+		"app:own":      "from import payments/shared",
+		"app:imported": "from import payments/secrets",
+		"app:shadowed": "from the stack configuration file",
+	}, configValueSources(env, "payments/prod", map[string]string{"app:own": "payments/shared"}, stackConfig))
 }

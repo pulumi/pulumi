@@ -47,6 +47,9 @@ type StackEnvironmentSyncResponse struct {
 	OpenSessionID string `json:"openSessionId,omitempty"`
 	// Diagnostics carries the errors that stopped the definition from being published or opened.
 	Diagnostics EnvironmentDiagnostics `json:"diagnostics,omitempty"`
+	// PulumiConfigSources names, for each `pulumiConfig` entry an imported environment defines, that
+	// environment as "project/name". Entries the stack's own definition sets are absent. Dry run only.
+	PulumiConfigSources map[string]string `json:"pulumiConfigSources,omitempty"`
 }
 
 // StackEnvironmentSecretRequest asks the service to encrypt a value with the key of the environment

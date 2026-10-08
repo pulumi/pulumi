@@ -35,8 +35,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -63,6 +65,35 @@ type StackConfigurationOptions struct {
 	EnvironmentMode StackEnvironmentMode
 	// Stdout receives the environment summary. Nil means os.Stdout.
 	Stdout io.Writer
+	// Color controls the colorization of the summary. Empty means the global setting.
+	Color colors.Colorization
+}
+
+func (opts StackConfigurationOptions) color() colors.Colorization {
+	if opts.Color != "" {
+		return opts.Color
+	}
+	return cmdutil.GetGlobalColorization()
+}
+
+// colorizeDiffLine colors a "+", "-" or "~" diff line the way resource diffs are colored.
+func colorizeDiffLine(color colors.Colorization, line string) string {
+	var spec string
+	switch {
+	case strings.HasPrefix(line, "+ "):
+		spec = colors.SpecCreate
+	case strings.HasPrefix(line, "- "):
+		spec = colors.SpecDelete
+	case strings.HasPrefix(line, "~ "):
+		spec = colors.SpecUpdate
+	default:
+		return line
+	}
+	return color.Colorize(spec + line + colors.Reset)
+}
+
+func colorizeHeadline(color colors.Colorization, text string) string {
+	return color.Colorize(colors.SpecHeadline + text + colors.Reset)
 }
 
 func (opts StackConfigurationOptions) stdout() io.Writer {
@@ -115,8 +146,9 @@ func attachStackEnvironment(
 	}
 
 	stdout := opts.stdout()
-	printStackEnvironmentPreview(stdout, preview, definition)
-	err := printStackConfigPreview(ctx, stdout, stack, project, workspaceStack, cfg.Environment, preview.Environment, sm)
+	color := opts.color()
+	printStackEnvironmentPreview(stdout, color, preview, definition)
+	err := printStackConfigPreview(ctx, stdout, color, stack, project, workspaceStack, cfg.Environment, preview, sm)
 	if err != nil {
 		// The resolved-config diff is advisory: the operation itself reports anything that is wrong.
 		slog.Debug("skipping the configuration diff", "err", err)
@@ -192,7 +224,12 @@ func syncStackEnvironment(
 
 // printStackEnvironmentPreview prints the changes `pulumi up` would publish to the stack's environment.
 // Nothing is printed when the published definition already matches.
-func printStackEnvironmentPreview(w io.Writer, preview *backend.StackEnvironmentSync, definition []byte) {
+func printStackEnvironmentPreview(
+	w io.Writer,
+	color colors.Colorization,
+	preview *backend.StackEnvironmentSync,
+	definition []byte,
+) {
 	if !preview.Created && !preview.Changed {
 		return
 	}
@@ -209,12 +246,14 @@ func printStackEnvironmentPreview(w io.Writer, preview *backend.StackEnvironment
 	}
 
 	if preview.Created {
-		fmt.Fprintf(w, "Environment %s will be created from the stack's definition:\n", preview.Environment)
+		fmt.Fprintln(w, colorizeHeadline(color,
+			fmt.Sprintf("Environment %s will be created from the stack's definition:", preview.Environment)))
 	} else {
-		fmt.Fprintf(w, "Environment %s will be updated (revision %d):\n", preview.Environment, preview.Revision)
+		fmt.Fprintln(w, colorizeHeadline(color,
+			fmt.Sprintf("Environment %s will be updated (revision %d):", preview.Environment, preview.Revision)))
 	}
 	for _, line := range diffEnvironmentDefinitions(current, proposed) {
-		fmt.Fprintf(w, "    %s\n", line)
+		fmt.Fprintf(w, "    %s\n", colorizeDiffLine(color, line))
 	}
 	fmt.Fprintln(w)
 }
@@ -349,11 +388,12 @@ func redactDefinitionSecrets(v any) any {
 func printStackConfigPreview(
 	ctx context.Context,
 	w io.Writer,
+	color colors.Colorization,
 	stack backend.Stack,
 	project *workspace.Project,
 	workspaceStack *workspace.ProjectStack,
 	env esc.Value,
-	environmentName string,
+	preview *backend.StackEnvironmentSync,
 	sm secrets.Manager,
 ) error {
 	if project == nil || sm == nil {
@@ -392,18 +432,18 @@ func printStackConfigPreview(
 		return fmt.Errorf("decrypting the proposed configuration: %w", err)
 	}
 
-	sources := configValueSources(env, environmentName, workspaceStack.Config)
+	sources := configValueSources(env, preview.Environment, preview.ConfigSources, workspaceStack.Config)
 	lines := diffStackConfig(previous, previousValues, proposed, proposedValues, sources)
 	if len(lines) == 0 {
 		return nil
 	}
 	if len(previous) == 0 {
-		fmt.Fprintln(w, "Configuration for this run (the stack has no previous update):")
+		fmt.Fprintln(w, colorizeHeadline(color, "Configuration for this run (the stack has no previous update):"))
 	} else {
-		fmt.Fprintln(w, "Configuration changes since the stack's last update:")
+		fmt.Fprintln(w, colorizeHeadline(color, "Configuration changes since the stack's last update:"))
 	}
 	for _, line := range lines {
-		fmt.Fprintf(w, "    %s\n", line)
+		fmt.Fprintf(w, "    %s\n", colorizeDiffLine(color, line))
 	}
 	fmt.Fprintln(w)
 	return nil
@@ -412,10 +452,23 @@ func printStackConfigPreview(
 // configValueSources reports, for each configuration key the proposed run resolves, where its value
 // comes from: "" when the stack's own environment definition sets it, the importing environment's
 // name when an import does, or the stack configuration file when its `config` block overrides it.
-func configValueSources(env esc.Value, environmentName string, stackConfig config.Map) map[string]string {
+// The service reports import provenance with the dry run; value traces, when the service kept them,
+// are the fallback.
+func configValueSources(
+	env esc.Value,
+	environmentName string,
+	serverSources map[string]string,
+	stackConfig config.Map,
+) map[string]string {
 	sources := map[string]string{}
+	for key, definedIn := range serverSources {
+		sources[key] = "from import " + definedIn
+	}
 	if entries, ok := env.Value.(map[string]esc.Value); ok {
 		for key, value := range entries {
+			if _, known := sources[key]; known {
+				continue
+			}
 			definedIn := value.Trace.Def.Environment
 			switch definedIn {
 			case "", environmentName, esc.AnonymousEnvironmentName:

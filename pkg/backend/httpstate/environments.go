@@ -121,6 +121,7 @@ func (b *cloudBackend) SyncStackEnvironment(
 		CurrentDefinition: []byte(resp.CurrentYaml),
 		OpenSessionID:     resp.OpenSessionID,
 		Diagnostics:       resp.Diagnostics,
+		ConfigSources:     resp.PulumiConfigSources,
 	}
 	if resp.OpenSessionID == "" || len(resp.Diagnostics) != 0 {
 		return res, nil
