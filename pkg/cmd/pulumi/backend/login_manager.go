@@ -80,11 +80,11 @@ func (f *lm) Current(
 
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 	lm := httpstate.NewLoginManager()
-	account, err := lm.Current(ctx, url, insecure, setCurrent)
-	if err != nil || account == nil {
+	credentials, err := lm.Current(ctx, url, insecure, setCurrent)
+	if err != nil || credentials == nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
+	return httpstate.NewWithCredentials(ctx, sink, *credentials, project, insecure)
 }
 
 func (f *lm) Login(
@@ -99,18 +99,17 @@ func (f *lm) Login(
 	}
 
 	lm := httpstate.NewLoginManager()
-	// Color is the only thing used by lm.Login, so we can just request a colors.Colorization and only fill that part of
-	// the display options in. It's hard to change Login itself because it's circularly depended on by esc.
+	// Color is the only display option used by lm.Login.
 	opts := display.Options{
 		Color: color,
 	}
 	consoleURL := client.CloudConsoleURL(httpstate.ValueOrDefaultURL(ws, url))
 	welcome := func(opts display.Options) { httpstate.WelcomeUser(opts, consoleURL) }
-	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", welcome, setCurrent, opts)
+	credentials, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", welcome, setCurrent, opts)
 	if err != nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
+	return httpstate.NewWithCredentials(ctx, sink, *credentials, project, insecure)
 }
 
 // LoginFromAuthContext logs in to a backend using the provided authentication context.
@@ -127,13 +126,13 @@ func (f *lm) LoginFromAuthContext(
 ) (backend.Backend, error) {
 	if authContext.GrantType == pkgauth.AuthContextGrantTypeTokenExchange {
 		lm := httpstate.NewLoginManager()
-		_, err := lm.LoginWithOIDCToken(
+		credentials, err := lm.LoginWithOIDCToken(
 			ctx, sink, url, insecure, authContext.Token, authContext.Organization, authContext.Scope,
 			authContext.Expiration, setCurrent)
 		if err != nil {
 			return nil, err
 		}
-		return httpstate.New(ctx, sink, url, project, insecure)
+		return httpstate.NewWithCredentials(ctx, sink, *credentials, project, insecure)
 	}
 	return nil, fmt.Errorf("unknown auth context grant type: %s", authContext.GrantType)
 }

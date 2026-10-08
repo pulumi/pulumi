@@ -126,7 +126,7 @@ func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "env-token", account.AccessToken)
+	assert.Equal(t, "env-token", account.Account.AccessToken)
 
 	defaultAccount, err := workspace.GetAccount(server.URL)
 	require.NoError(t, err)

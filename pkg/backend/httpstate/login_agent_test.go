@@ -144,7 +144,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "valid-agent-token", account.AccessToken)
+	assert.Equal(t, "valid-agent-token", account.Account.AccessToken)
 	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
 	assert.Equal(t, 0, signupCalls)
 
@@ -215,11 +215,11 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "agent-token", account.AccessToken)
+	assert.Equal(t, "agent-token", account.Account.AccessToken)
 	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
-	require.NotNil(t, account.TokenInformation)
-	require.NotNil(t, account.TokenInformation.ExpiresAt)
-	assert.True(t, account.TokenInformation.ExpiresAt.Equal(accessTokenValidUntil))
+	require.NotNil(t, account.Account.TokenInformation)
+	require.NotNil(t, account.Account.TokenInformation.ExpiresAt)
+	assert.True(t, account.Account.TokenInformation.ExpiresAt.Equal(accessTokenValidUntil))
 	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, signupMethods)
 
 	claim, err := workspace.GetAgentClaim()
@@ -276,8 +276,8 @@ func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "agent-access-token", account.AccessToken)
-	assert.Equal(t, "agent-refresh-token", account.RefreshToken,
+	assert.Equal(t, "agent-access-token", account.Account.AccessToken)
+	assert.Equal(t, "agent-refresh-token", account.Account.RefreshToken,
 		"signup-returned refresh token must be plumbed into the returned Account")
 
 	stored, err := workspace.GetAgentAccount(server.URL)
@@ -331,8 +331,8 @@ func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testi
 	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "agent-access-token", account.AccessToken)
-	assert.Empty(t, account.RefreshToken, "no refreshToken in response → none on the Account")
+	assert.Equal(t, "agent-access-token", account.Account.AccessToken)
+	assert.Empty(t, account.Account.RefreshToken, "no refreshToken in response → none on the Account")
 
 	stored, err := workspace.GetAgentAccount(server.URL)
 	require.NoError(t, err)
@@ -409,8 +409,8 @@ func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *test
 	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "new-access-token", account.AccessToken)
-	assert.Equal(t, "new-refresh-token", account.RefreshToken)
+	assert.Equal(t, "new-access-token", account.Account.AccessToken)
+	assert.Equal(t, "new-refresh-token", account.Account.RefreshToken)
 
 	stored, err := workspace.GetAgentAccount(server.URL)
 	require.NoError(t, err)
@@ -481,10 +481,10 @@ func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning
 	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "fresh-access-token", account.AccessToken,
+	assert.Equal(t, "fresh-access-token", account.Account.AccessToken,
 		"locally-expired agent access token must be refreshed in place, not resigned")
-	assert.Equal(t, "stored-refresh-token", account.RefreshToken)
-	assert.Equal(t, "agent-user", account.Username, "username should survive the refresh path")
+	assert.Equal(t, "stored-refresh-token", account.Account.RefreshToken)
+	assert.Equal(t, "agent-user", account.Account.Username, "username should survive the refresh path")
 	assert.Equal(t, 0, signupCalls, "signup must not be called when refresh succeeds")
 
 	stored, err := workspace.GetAgentAccount(server.URL)
@@ -621,7 +621,7 @@ func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 		display.Options{})
 	require.NoError(t, err)
 	require.NotNil(t, account)
-	assert.Equal(t, "agent-token", account.AccessToken)
+	assert.Equal(t, "agent-token", account.Account.AccessToken)
 	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, signupMethods)
 	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
 }
