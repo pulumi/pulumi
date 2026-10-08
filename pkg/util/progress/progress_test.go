@@ -26,6 +26,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vbauerster/mpb/v8"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
@@ -75,9 +76,10 @@ func readAndClose(r io.ReadCloser) error {
 	return errors.Join(err, r.Close())
 }
 
+// drain reads r to the end and closes it, failing the test if that hangs.
 func drain(t *testing.T, r io.ReadCloser) {
 	t.Helper()
-	require.NoError(t, readAndClose(r))
+	within(t, 5*time.Second, "reading and closing the bar", func() error { return readAndClose(r) })
 }
 
 // assertQuiet fails if anything is written to out over several refresh
@@ -109,7 +111,7 @@ func TestCloseWaitsForTheFinalFrame(t *testing.T) {
 	t.Parallel()
 
 	var out syncBuffer
-	g := &Group{out: &out, forceRefresh: true}
+	g := newGroup(&out, mpb.WithAutoRefresh())
 
 	drain(t, newBar(t, g, "Downloading provider aws"))
 
@@ -120,7 +122,7 @@ func TestOnlyTheLastBarWaits(t *testing.T) {
 	t.Parallel()
 
 	var out syncBuffer
-	g := &Group{out: &out, forceRefresh: true}
+	g := newGroup(&out, mpb.WithAutoRefresh())
 
 	first := newBar(t, g, "Downloading provider aws")
 	second := newBar(t, g, "Downloading provider random")
@@ -141,7 +143,7 @@ func TestBarsAfterADrainStillRender(t *testing.T) {
 	t.Parallel()
 
 	var out syncBuffer
-	g := &Group{out: &out, forceRefresh: true}
+	g := newGroup(&out, mpb.WithAutoRefresh())
 
 	drain(t, newBar(t, g, "Downloading provider aws"))
 	drain(t, newBar(t, g, "Unpacking provider aws"))
@@ -154,7 +156,7 @@ func TestCloseBeforeTheBarIsFull(t *testing.T) {
 	t.Parallel()
 
 	var out syncBuffer
-	g := &Group{out: &out, forceRefresh: true}
+	g := newGroup(&out, mpb.WithAutoRefresh())
 
 	r := newBar(t, g, "Downloading provider aws")
 	_, err := io.ReadFull(r, make([]byte, 128<<10))
@@ -170,11 +172,11 @@ func TestAnUnclosedBarDoesNotBlockOthers(t *testing.T) {
 	t.Parallel()
 
 	var out syncBuffer
-	g := &Group{out: &out, forceRefresh: true}
+	g := newGroup(&out, mpb.WithAutoRefresh())
 
 	leaked := newBar(t, g, "Downloading provider aws")
 	other := newBar(t, g, "Downloading provider random")
-	within(t, 5*time.Second, "closing the other bar", func() error { return readAndClose(other) })
+	drain(t, other)
 
 	g.mu.Lock()
 	renderer := g.p
@@ -191,7 +193,7 @@ func TestNewBarsDuringADrain(t *testing.T) {
 	t.Parallel()
 
 	var out syncBuffer
-	g := &Group{out: &out, forceRefresh: true}
+	g := newGroup(&out, mpb.WithAutoRefresh())
 
 	within(t, 30*time.Second, "overlapping bars", func() error {
 		var wg sync.WaitGroup

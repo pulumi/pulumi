@@ -50,30 +50,40 @@ func Stderr() *Group {
 // in place. Finished bars are printed once more in their final state and then
 // scroll away with the regular output.
 //
-// Closing the last active bar waits for the group to finish drawing before
-// returning, so output printed afterwards always lands below the bars.
+// Closing the last active bar waits for the group to finish drawing, so output
+// printed afterwards lands below this group's bars.
 type Group struct {
-	out io.Writer
+	out  io.Writer
+	opts []mpb.ContainerOption
 
-	// mu also covers shutting the renderer down, so a new bar can't start a
-	// second renderer while the previous one is still drawing.
+	// mu also covers shutting the renderer down.
 	mu     sync.Mutex
 	p      *mpb.Progress
 	active int
-
-	// forceRefresh redraws even when out isn't a terminal, which mpb otherwise
-	// skips. Tests set it to render into a buffer.
-	forceRefresh bool
 }
 
 func NewGroup(out io.Writer) *Group {
-	return &Group{out: out}
+	return newGroup(out)
+}
+
+// newGroup returns a Group whose renderers are created with the given options
+// in addition to the defaults.
+func newGroup(out io.Writer, opts ...mpb.ContainerOption) *Group {
+	return &Group{
+		out: out,
+		opts: append([]mpb.ContainerOption{
+			mpb.WithOutput(out),
+			mpb.WithRefreshRate(150 * time.Millisecond),
+			mpb.PopCompletedMode(),
+		}, opts...),
+	}
 }
 
 // Wrap attaches a progress bar to the given stream, coordinating with the
 // other bars in the group. When the size is unknown or the output is not
 // interactive, a plain message is printed instead. Closing the returned reader
-// finishes the bar; closing it more than once is safe.
+// finishes the bar; closing it more than once is safe. Closing the group's last
+// active bar blocks until the bars are fully drawn, and Wrap blocks meanwhile.
 func (g *Group) Wrap(
 	closer io.ReadCloser, size int64, message string, colorization colors.Colorization,
 ) io.ReadCloser {
@@ -90,15 +100,7 @@ func (g *Group) wrap(
 
 	g.mu.Lock()
 	if g.p == nil {
-		opts := []mpb.ContainerOption{
-			mpb.WithOutput(g.out),
-			mpb.WithRefreshRate(150 * time.Millisecond),
-			mpb.PopCompletedMode(),
-		}
-		if g.forceRefresh {
-			opts = append(opts, mpb.WithAutoRefresh())
-		}
-		g.p = mpb.New(opts...)
+		g.p = mpb.New(g.opts...)
 	}
 	p := g.p
 	g.active++
@@ -120,13 +122,7 @@ func (g *Group) wrap(
 }
 
 // release is called as each bar finishes. When the last active bar finishes,
-// it waits for the renderer to draw its final frame and stop. Otherwise the
-// renderer's next refresh can land after whatever the caller prints next and
-// redraw the finished bars below it.
-//
-// The wait holds mu: no bars are active by then and mpb never calls back into
-// the group, so it can't deadlock, and a new bar blocks until the old renderer
-// is done instead of drawing over it.
+// it waits for the renderer to draw its final frame and stop.
 func (g *Group) release() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
