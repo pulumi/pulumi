@@ -239,7 +239,6 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 					ctx, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext,
 				)
 			} else {
-				// `pulumi login` should only reuse existing agent credentials, never create a new agent account.
 				be, err = lm.Login(
 					httpstate.ContextWithoutAgentSignup(ctx), ws, cmdutil.Diag(), cloudURL, project,
 					true /* setCurrent */, insecure, displayOptions.Color,

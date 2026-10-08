@@ -689,3 +689,43 @@ func TestCurrentWithoutAgentSignupReusesExistingAgentCredentials(t *testing.T) {
 	assert.Equal(t, "valid-agent-token", account.AccessToken)
 	assert.Equal(t, 0, signupCalls)
 }
+
+//nolint:paralleltest // isolates credentials with t.Setenv
+func TestCurrentWithoutAgentSignupIgnoresRejectedAgentCredentials(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/user":
+			rw.WriteHeader(http.StatusUnauthorized)
+		case "/api/agents/signup":
+			signupCalls++
+			rw.WriteHeader(http.StatusInternalServerError)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	expiresAt := time.Now().Add(time.Hour)
+	err := workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken: "claimed-agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/abc123",
+		ValidUntil: time.Now().Add(time.Hour),
+		CloudURL:   server.URL,
+	})
+	require.NoError(t, err)
+
+	ctx := ContextWithoutAgentSignup(t.Context())
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
+	require.NoError(t, err)
+	assert.Nil(t, account)
+	assert.Equal(t, 0, signupCalls)
+}
