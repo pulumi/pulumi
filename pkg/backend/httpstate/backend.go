@@ -99,6 +99,19 @@ func agentCredentialUseFromContext(ctx context.Context) *agentCredentialUse {
 	return use
 }
 
+type skipAgentSignupContextKey struct{}
+
+// ContextWithoutAgentSignup returns a context in which agent mode never creates a new agent account,
+// for use by `pulumi login`.
+func ContextWithoutAgentSignup(ctx context.Context) context.Context {
+	return context.WithValue(ctx, skipAgentSignupContextKey{}, true)
+}
+
+func skipAgentSignup(ctx context.Context) bool {
+	skip, _ := ctx.Value(skipAgentSignupContextKey{}).(bool)
+	return skip
+}
+
 type commandNameContextKey struct{}
 
 // ContextWithCommandName returns a context carrying the full invoked CLI command path
@@ -677,6 +690,11 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 			MarkAgentCredentialsUsed(ctx, cloudURL)
 			return &agentAccount, nil
 		}
+		// `pulumi login` is how users recover from rejected agent credentials.
+		if skipAgentSignup(ctx) && !workspace.IsUndecryptableCredentials(defaultCredsErr) {
+			logging.V(7).Infof("Shared agent credentials for %q are not valid; ignoring them for this login", cloudURL)
+			return nil, nil
+		}
 		if expiresAt, tokenValid := workspace.AgentAccessTokenExpiresAt(agentAccount, now); tokenValid {
 			logging.V(7).Infof(
 				"Shared agent credentials for %q were rejected by the service but are locally valid until %s; "+
@@ -708,6 +726,11 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	// not be papered over with a fresh ephemeral agent identity.
 	if workspace.IsUndecryptableCredentials(defaultCredsErr) {
 		return nil, defaultCredsErr
+	}
+
+	if skipAgentSignup(ctx) {
+		logging.V(7).Infof("Agent signup disabled for this command; not creating a new agent account")
+		return nil, nil
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
@@ -778,6 +801,11 @@ func (m defaultLoginManager) Login(
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	var accessToken string
 	accountLink := client.CloudConsoleURL(cloudURL, "user", "settings", "tokens")
+
+	// Agents have no terminal to prompt in, but the browser flow needs no console input.
+	if !cmdutil.Interactive() && skipAgentSignup(ctx) && accountLink != "" && agentdetect.Detect(os.Getenv) != "" {
+		return loginWithBrowser(ctx, cloudURL, insecure, command, welcome, setCurrent, opts)
+	}
 
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
