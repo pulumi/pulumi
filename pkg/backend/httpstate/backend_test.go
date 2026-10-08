@@ -35,7 +35,6 @@ import (
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
-	uuid "github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1607,9 +1606,9 @@ func TestCreateAndStartUpdatePreviewsInADerivedCoherenceWindow(t *testing.T) {
 	t.Parallel()
 
 	window := "d333a711-4aa0-402f-be6d-72af9665fc37"
-	preview := previewCoherenceWindow(uuid.Must(uuid.FromString(window)))
+	preview := previewCoherenceWindow(window)
 	assert.NotEqual(t, window, preview)
-	assert.Equal(t, preview, previewCoherenceWindow(uuid.Must(uuid.FromString(window))))
+	assert.Equal(t, preview, previewCoherenceWindow(window))
 
 	cases := []struct {
 		name        string
@@ -1639,18 +1638,6 @@ func TestCreateAndStartUpdatePreviewsInADerivedCoherenceWindow(t *testing.T) {
 			assert.Equal(t, tc.want, fx.op.CoherenceWindow)
 		})
 	}
-}
-
-func TestCreateAndStartUpdateRejectsACoherenceWindowThatIsNotAUUID(t *testing.T) {
-	t.Parallel()
-
-	fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
-	fx.op.CoherenceWindow = "not-a-uuid"
-	fx.op.M = &backend.UpdateMetadata{}
-
-	stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
-	_, _, err := fx.backend.createAndStartUpdate(t.Context(), apitype.UpdateUpdate, stk, &fx.op, true)
-	require.EqualError(t, err, `coherence window "not-a-uuid" is not a UUID`)
 }
 
 func TestCreateAndStartUpdateRequiresCoherenceWindowCapability(t *testing.T) {
