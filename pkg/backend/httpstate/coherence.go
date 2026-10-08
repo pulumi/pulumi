@@ -39,6 +39,11 @@ func (b *cloudBackend) awaitStackOutputs(
 		readingUpdateID = *id
 	}
 
+	limit := b.stackOutputsWaitLimit
+	if limit == 0 {
+		limit = 30 * time.Minute
+	}
+	deadline := time.After(limit)
 	delay := 500 * time.Millisecond
 	for {
 		resp, err := b.client.GetStackOutputs(ctx, stackID, readingUpdateID)
@@ -49,6 +54,9 @@ func (b *cloudBackend) awaitStackOutputs(
 		select {
 		case <-ctx.Done():
 			return apitype.StackOutputsResponse{}, ctx.Err()
+		case <-deadline:
+			return apitype.StackOutputsResponse{}, fmt.Errorf(
+				"gave up waiting for %s to join the coherence window after %s", stackID, limit)
 		case <-time.After(delay):
 		}
 		delay = min(2*delay, 5*time.Second)

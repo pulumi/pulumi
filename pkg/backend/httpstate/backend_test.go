@@ -2225,6 +2225,19 @@ func TestGetSnapshotStackOutputs(t *testing.T) {
 		assert.Equal(t, int32(3), reads.Load())
 	})
 
+	t.Run("a read gives up after the wait limit", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				State: apitype.StackOutputsPending,
+			}))
+		})
+		b.stackOutputsWaitLimit = 50 * time.Millisecond
+
+		_, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.ErrorContains(t, err, "gave up waiting for owner/project/stack to join the coherence window")
+	})
+
 	t.Run("a cancelled read stops waiting", func(t *testing.T) {
 		t.Parallel()
 		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
