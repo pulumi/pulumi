@@ -30,6 +30,7 @@ import (
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
@@ -114,16 +115,17 @@ type summaryAbout struct {
 	// We use pointers here to allow the field to be nullable. When
 	// constructing, we either fill in a field or add an error. We still
 	// indicate that the field should be present when we serialize the struct.
-	Plugins       []pluginAbout            `json:"plugins"`
-	Host          *hostAbout               `json:"host"`
-	Backend       *backendAbout            `json:"backend"`
-	CurrentStack  *currentStackAbout       `json:"currentStack"`
-	CLI           *cliAbout                `json:"cliAbout"`
-	Runtime       *projectRuntimeAbout     `json:"runtime"`
-	Dependencies  []programDependencyAbout `json:"dependencies"`
-	ErrorMessages []string                 `json:"errors"`
-	Errors        []error                  `json:"-"`
-	LogMessage    string                   `json:"-"`
+	Plugins          []pluginAbout            `json:"plugins"`
+	Host             *hostAbout               `json:"host"`
+	Backend          *backendAbout            `json:"backend"`
+	CredentialHelper *credentialHelperAbout   `json:"credentialHelper,omitempty"`
+	CurrentStack     *currentStackAbout       `json:"currentStack"`
+	CLI              *cliAbout                `json:"cliAbout"`
+	Runtime          *projectRuntimeAbout     `json:"runtime"`
+	Dependencies     []programDependencyAbout `json:"dependencies"`
+	ErrorMessages    []string                 `json:"errors"`
+	Errors           []error                  `json:"-"`
+	LogMessage       string                   `json:"-"`
 }
 
 func getSummaryAbout(
@@ -142,6 +144,11 @@ func getSummaryAbout(
 		err = fmt.Errorf("%s: %w", message, err)
 		result.ErrorMessages = append(result.ErrorMessages, err.Error())
 		result.Errors = append(result.Errors, err)
+	}
+	if helper, err := lm.Session().Helper(); err != nil {
+		addError(err, "Failed to discover credential helper")
+	} else if helper != nil {
+		result.CredentialHelper = &credentialHelperAbout{Path: helper.Path, Source: helper.Source}
 	}
 
 	var host hostAbout
@@ -258,6 +265,10 @@ func (summary *summaryAbout) Print(w io.Writer) {
 	if summary.Backend != nil {
 		fmt.Fprintln(w, summary.Backend)
 	}
+	if summary.CredentialHelper != nil {
+		fmt.Fprintf(w, "Credential helper: %s\nHelper configuration source: %s\n\n",
+			summary.CredentialHelper.Path, summary.CredentialHelper.Source)
+	}
 	formatEnvironmentVariables(w, env.ConfiguredVariables())
 	if summary.Dependencies != nil {
 		fmt.Fprintln(w, formatProgramDependenciesAbout(summary.Dependencies))
@@ -266,6 +277,11 @@ func (summary *summaryAbout) Print(w io.Writer) {
 	for _, err := range summary.Errors {
 		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
+}
+
+type credentialHelperAbout struct {
+	Path   string                  `json:"path"`
+	Source credentialhelper.Source `json:"source"`
 }
 
 type pluginAbout struct {

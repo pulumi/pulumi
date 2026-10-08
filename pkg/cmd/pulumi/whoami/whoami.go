@@ -21,13 +21,16 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
@@ -39,17 +42,32 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 	output := outputflag.OutputFlag[whoAmIRenderFunc]{
 		RenderForTerminal: func(
 			w io.Writer, b backend.Backend, name string, orgs []string, tokenInfo *workspace.TokenInformation,
+			credentials func() credentialSource,
 		) error {
-			return renderWhoAmIText(w, b, name, orgs, tokenInfo, verbose)
+			if err := renderWhoAmIText(w, b, name, orgs, tokenInfo, verbose); err != nil {
+				return err
+			}
+			if verbose {
+				source := credentials()
+				if source.helperPath != "" {
+					fmt.Fprintf(w, "Credential helper: %s\n", source.helperPath)
+				}
+				fmt.Fprintf(w, "Access token source: %s\n", source.accessToken)
+			}
+			return nil
 		},
 		RenderJSON: func(
 			w io.Writer, b backend.Backend, name string, orgs []string, tokenInfo *workspace.TokenInformation,
+			credentials func() credentialSource,
 		) error {
+			source := credentials()
 			return ui.FprintJSON(w, whoAmIJSON{
-				User:             name,
-				Organizations:    orgs,
-				URL:              b.URL(),
-				TokenInformation: tokenInfo,
+				User:              name,
+				Organizations:     orgs,
+				URL:               b.URL(),
+				TokenInformation:  tokenInfo,
+				CredentialHelper:  source.helperPath,
+				AccessTokenSource: source.accessToken,
 			})
 		},
 	}
@@ -93,7 +111,15 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 				return err
 			}
 
-			return output.Get()(stdout, b, name, orgs, tokenInfo)
+			credentials := func() credentialSource {
+				session := lm.Session()
+				source := credentialSource{accessToken: accessTokenSource(session, state.BackendURLKey(b))}
+				if helper, err := session.Helper(); err == nil && helper != nil {
+					source.helperPath = helper.Path
+				}
+				return source
+			}
+			return output.Get()(stdout, b, name, orgs, tokenInfo, credentials)
 		},
 	}
 
@@ -111,7 +137,29 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 
 type whoAmIRenderFunc func(
 	w io.Writer, b backend.Backend, name string, orgs []string, tokenInfo *workspace.TokenInformation,
+	credentials func() credentialSource,
 ) error
+
+// credentialSource describes where the backend's credentials come from, without exposing them.
+type credentialSource struct {
+	// helperPath is the credential helper in use, if any.
+	helperPath  string
+	accessToken string
+}
+
+// accessTokenSource names where the backend's access token comes from, without exposing its value.
+func accessTokenSource(session *auth.Session, backendURL string) string {
+	switch {
+	case !auth.IsHTTPBackend(backendURL):
+		return "none"
+	case env.AccessToken.Value() != "":
+		return "PULUMI_ACCESS_TOKEN"
+	case session.HTTPAuth(backendURL).AccessToken() != "":
+		return "credential helper"
+	default:
+		return "account credentials"
+	}
+}
 
 func renderWhoAmIText(
 	w io.Writer, b backend.Backend, name string, orgs []string,
@@ -146,4 +194,7 @@ type whoAmIJSON struct {
 	Organizations    []string                    `json:"organizations,omitempty"`
 	URL              string                      `json:"url"`
 	TokenInformation *workspace.TokenInformation `json:"tokenInformation,omitempty"`
+	// CredentialHelper is the path of the credential helper in use, if any.
+	CredentialHelper  string `json:"credentialHelper,omitempty"`
+	AccessTokenSource string `json:"accessTokenSource,omitempty"`
 }
