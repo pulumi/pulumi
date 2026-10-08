@@ -29,11 +29,9 @@ import (
 )
 
 // ExtensionBorrowedTypeProvider models a base plugin whose extension packages
-// borrow a type from the base package rather than defining their own. The
-// extension schema therefore carries an external reference to the base type and
-// names the base package in Dependencies. An SDK generator has to turn that
-// dependency into a package reference, or the borrowed type does not resolve
-// and the generated SDK fails to build.
+// borrow a type from the base package instead of defining their own. The
+// extension schema carries an external reference to the base type and names the
+// base package in Dependencies.
 type ExtensionBorrowedTypeProvider struct {
 	plugin.UnimplementedProvider
 	mu               sync.Mutex
@@ -87,7 +85,6 @@ func (p *ExtensionBorrowedTypeProvider) Parameterize(
 	return plugin.ParameterizeResponse{Name: param.Name, Version: param.Version}, nil
 }
 
-// metadataToken is the type the extension borrows from the base package.
 const metadataToken = borrowedTypeBaseName + ":index:Metadata"
 
 func (p *ExtensionBorrowedTypeProvider) GetSchema(
@@ -144,7 +141,6 @@ func (p *ExtensionBorrowedTypeProvider) GetSchema(
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
-						// The borrowed type. Nothing in this package defines it.
 						"metadata": {TypeSpec: schema.TypeSpec{
 							Ref: fmt.Sprintf("/%s/v%s/schema.json#/types/%s",
 								borrowedTypeBaseName, borrowedTypeBaseVersion, metadataToken),

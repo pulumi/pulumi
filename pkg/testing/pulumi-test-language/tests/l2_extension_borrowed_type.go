@@ -34,8 +34,6 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					// Reading the borrowed type's field proves the generated SDK
-					// resolved a type it does not define.
 					AssertPropertyMapMember(l, stack.Outputs, "metadataName", resource.NewProperty("Widget"))
 				},
 			},
