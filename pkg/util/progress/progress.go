@@ -56,7 +56,10 @@ type Group struct {
 	out  io.Writer
 	opts []mpb.ContainerOption
 
-	// mu also covers shutting the renderer down.
+	// mu guards p and active, which change together: p is set exactly while
+	// bars are active, so a bar's renderer stays up until the bar is closed.
+	// It is held while the renderer shuts down, so a new bar can't start a
+	// second renderer while the old one is still drawing.
 	mu     sync.Mutex
 	p      *mpb.Progress
 	active int
