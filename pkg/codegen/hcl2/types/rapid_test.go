@@ -100,7 +100,9 @@ func TestEventualInvariants(t *testing.T) {
 		require.Equal(t, resolved, types.ResolveOutputs(resolved))
 		require.Equal(t, resolved, types.ResolvePromises(resolved))
 		require.False(t, contains(resolved, types.KindOutput), "%v holds an output", resolved)
+		require.False(t, types.ContainsOutputs(resolved), "%v holds an output", resolved)
 		require.False(t, contains(resolved, types.KindPromise), "%v holds a promise", resolved)
+		require.Equal(t, contains(a, types.KindOutput), types.ContainsOutputs(a), "%v", a)
 		require.Equal(t, types.Output(a), types.Output(types.Output(a)))
 		require.Equal(t, types.Output(a), types.Output(types.Promise(a)))
 

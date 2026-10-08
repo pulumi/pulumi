@@ -66,6 +66,11 @@ const (
 	fVar uint8 = 1 << iota
 	// fRec marks a type that contains a kindRec node.
 	fRec
+	// fOutput marks a type that contains an output at any depth.
+	fOutput
+
+	// fSpecial marks a type that is not a plain closed tree: it holds a placeholder or a recursive type.
+	fSpecial = fVar | fRec
 )
 
 // list is an interned cons list of types. The zero list is empty.
@@ -175,20 +180,25 @@ func mk(n node) Type {
 	case kindVar:
 		n.flags = fVar
 	case kindRec:
-		n.flags = fRec
+		n.flags = fRec | n.b.flags()&fOutput
+	case KindOutput:
+		n.flags = fOutput | n.a.flags()
 	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic, KindConst, KindEnum, KindList,
-		KindSet, KindMap, KindTuple, KindObject, KindUnion, KindOutput, KindPromise:
+		KindSet, KindMap, KindTuple, KindObject, KindUnion, KindPromise:
 		n.flags = n.a.flags() | n.b.flags()
 	}
 	return Type{unique.Make(n)}
 }
+
+// ContainsOutputs reports whether an output occurs at any depth of t.
+func ContainsOutputs(t Type) bool { return t.flags()&fOutput != 0 }
 
 // finish interns a constructor node over canonical children. A node that holds a placeholder stays as built until
 // the enclosing Recursive call canonicalizes it. A node that holds a recursive type is canonical unless it is the
 // unfolding of a state of one of its children's groups, in which case that state is the canonical form.
 func finish(n node) Type {
 	t := mk(n)
-	if t.flags() == fRec {
+	if t.flags()&fSpecial == fRec {
 		if s, ok := stateOf(n); ok {
 			return s
 		}

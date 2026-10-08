@@ -170,7 +170,7 @@ func (e *explorer) alloc(s state) int {
 
 func (e *explorer) explore(t Type) edge {
 	r := t.raw()
-	if r.flags == 0 {
+	if r.flags&fSpecial == 0 {
 		return edge{t: t, state: -1}
 	}
 	if r.kind == kindVar {
