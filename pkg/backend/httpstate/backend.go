@@ -2881,7 +2881,11 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	kind apitype.UpdateKind, deploymentID string, opts display.Options,
 ) error {
 	getUpdateID := func() (string, int, error) {
-		for range 10 {
+		for {
+			deployment, err := b.client.GetDeployment(ctx, stackID, deploymentID)
+			if err != nil {
+				return "", 0, err
+			}
 			updates, err := b.client.GetDeploymentUpdates(ctx, stackID, deploymentID)
 			if err != nil {
 				return "", 0, err
@@ -2890,9 +2894,24 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 				return updates[0].UpdateID, updates[0].Version, nil
 			}
 
-			time.Sleep(500 * time.Millisecond)
+			// Check the deployment status after, so finished deployments with updates can still be returned,
+			// but failed deployments without updates will error out. We call GetDeployment before GetDeploymentUpdates
+			// to avoid a race condition where the deployment is finished after trying to get the updates, but the
+			// updates were not yet created.
+			switch deployment.Status {
+			case "not-started", "accepted", "running":
+			case "failed":
+				return "", 0, errors.New("deployment failed")
+			default:
+				return "", 0, fmt.Errorf("could not find update associated with deployment %s", deploymentID)
+			}
+
+			select {
+			case <-ctx.Done():
+				return "", 0, ctx.Err()
+			case <-time.After(500 * time.Millisecond):
+			}
 		}
-		return "", 0, fmt.Errorf("could not find update associated with deployment %s", deploymentID)
 	}
 
 	updateID, version, err := getUpdateID()
