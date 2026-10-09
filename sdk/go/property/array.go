@@ -90,6 +90,26 @@ func NewArray(slice []Value) Array {
 	return Array{copyArray(slice)}
 }
 
+// HasComputed returns true if any [Value] in the Array, or any nested Value, is computed.
+func (a Array) HasComputed() bool {
+	for _, v := range a.arr {
+		if v.HasComputed() {
+			return true
+		}
+	}
+	return false
+}
+
+// HasSecrets returns true if any [Value] in the Array, or any nested Value, is secret.
+func (a Array) HasSecrets() bool {
+	for _, v := range a.arr {
+		if v.HasSecrets() {
+			return true
+		}
+	}
+	return false
+}
+
 func copyArray[T any](a []T) []T {
 	if len(a) == 0 {
 		return nil

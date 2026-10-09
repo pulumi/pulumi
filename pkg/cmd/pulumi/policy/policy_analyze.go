@@ -364,19 +364,19 @@ func newAnalyzeEvents(
 		"", events, done, opts, false)
 
 	return &analyzeEvents{
-			events: events,
-		}, func(result apitype.OperationResult) {
-			events <- engine.NewEvent(engine.SummaryEventPayload{
-				IsPreview:       false,
-				MaybeCorrupt:    false,
-				Duration:        0 * time.Second,
-				ResourceChanges: nil,
-				PolicyPacks:     policyPacks,
-				Result:          result,
-			})
-			close(events)
-			<-done
-		}, nil
+		events: events,
+	}, func(result apitype.OperationResult) {
+		events <- engine.NewEvent(engine.SummaryEventPayload{
+			IsPreview:       false,
+			MaybeCorrupt:    false,
+			Duration:        0 * time.Second,
+			ResourceChanges: nil,
+			PolicyPacks:     policyPacks,
+			Result:          result,
+		})
+		close(events)
+		<-done
+	}, nil
 }
 
 func policyPackVersions(ctx context.Context, analyzers []plugin.Analyzer) (map[string]string, error) {

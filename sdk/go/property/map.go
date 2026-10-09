@@ -121,6 +121,26 @@ func (m Map) Delete(keys ...string) Map {
 // NewMap creates a new map from m.
 func NewMap(m map[string]Value) Map { return Map{copyMapMaybeNil(m)} }
 
+// HasComputed returns true if any [Value] in the Map, or any nested Value, is computed.
+func (m Map) HasComputed() bool {
+	for _, v := range m.m {
+		if v.HasComputed() {
+			return true
+		}
+	}
+	return false
+}
+
+// HasSecrets returns true if any [Value] in the Map, or any nested Value, is secret.
+func (m Map) HasSecrets() bool {
+	for _, v := range m.m {
+		if v.HasSecrets() {
+			return true
+		}
+	}
+	return false
+}
+
 func copyMapMaybeNil(m map[string]Value) map[string]Value {
 	if len(m) == 0 {
 		return nil

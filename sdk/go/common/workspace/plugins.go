@@ -901,6 +901,13 @@ type checksumReader struct {
 
 func (reader *checksumReader) Read(p []byte) (int, error) {
 	n, err := reader.io.Read(p)
+
+	// A reader may return its final bytes together with io.EOF, as net/http does for bodies with a known
+	// length, so hash what was read before looking at the error.
+	m, hashErr := reader.hasher.Write(p[0:n])
+	contract.AssertNoErrorf(hashErr, "error hashing input")
+	contract.Assertf(m == n, "wrote %d bytes, expected %d", m, n)
+
 	if err != nil {
 		if err == io.EOF {
 			// Check the checksum matches
@@ -911,10 +918,6 @@ func (reader *checksumReader) Read(p []byte) (int, error) {
 		}
 		return n, err
 	}
-
-	m, err := reader.hasher.Write(p[0:n])
-	contract.AssertNoErrorf(err, "error hashing input")
-	contract.Assertf(m == n, "wrote %d bytes, expected %d", m, n)
 
 	return n, nil
 }

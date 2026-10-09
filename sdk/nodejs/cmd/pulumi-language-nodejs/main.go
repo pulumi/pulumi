@@ -1340,11 +1340,18 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 	if host.runtime != "bun" {
 		rawOpts := req.Info.Options.AsMap()
 		if _, hasPackagemanager := rawOpts["packagemanager"]; !hasPackagemanager {
+			choices := plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn", "bun")
+			for _, choice := range choices {
+				// Only recommend npm when it is installed, otherwise the display name carries a `[not found]` suffix.
+				if choice.StringValue == "npm" && choice.DisplayName == "npm" {
+					choice.DisplayName = "npm (recommended)"
+				}
+			}
 			prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 				Key:         "packagemanager",
 				Description: "The package manager to use for installing dependencies",
 				PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
-				Choices:     plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn", "bun"),
+				Choices:     choices,
 				Default: &pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue{
 					PromptType:  pulumirpc.RuntimeOptionPrompt_STRING,
 					StringValue: "npm",

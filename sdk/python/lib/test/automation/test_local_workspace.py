@@ -204,7 +204,7 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertIsNotNone(result.url)
 
     @pytest.mark.skipif(
-        "PULUMI_ACCESS_TOKEN" not in os.environ,
+        not os.getenv("PULUMI_ACCESS_TOKEN"),
         reason="the local backend does not support organizations",
     )
     def test_org_get_set_default_integration(self):
@@ -614,7 +614,7 @@ class TestLocalWorkspace(unittest.TestCase):
         # name in other tests.
 
     def test_tag_methods(self):
-        if os.getenv("PULUMI_ACCESS_TOKEN") is None:
+        if not os.getenv("PULUMI_ACCESS_TOKEN"):
             self.skipTest(
                 "Skipping test because tag methods are only supported in the cloud backend."
             )

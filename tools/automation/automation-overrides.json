@@ -137,7 +137,6 @@
         {
             "path": ["whoami"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "json": { "omit": true, "preset": true }
             }
@@ -230,12 +229,6 @@
         },
         {
             "path": ["insights"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["install"],
             "propagate": true,
             "exclude": true,
             "flags": {}
