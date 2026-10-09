@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestGetStackResourceOutputs(t *testing.T) {
@@ -123,4 +124,18 @@ func liveState(typ, name string, outs resource.PropertyMap) *pkgresource.State {
 	return &pkgresource.State{
 		Delete: false, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
 	}
+}
+
+func TestCurrentProjectContradictsWorkspace(t *testing.T) {
+	t.Parallel()
+
+	ref := &MockStackReference{StringV: "organization/old-name/dev", ProjectV: "old-name"}
+
+	err := CurrentProjectContradictsWorkspace(&workspace.Project{Name: "old-name"}, ref)
+	require.NoError(t, err)
+
+	err = CurrentProjectContradictsWorkspace(&workspace.Project{Name: "new-name"}, ref)
+	assert.EqualError(t, err,
+		`stack organization/old-name/dev belongs to project "old-name", `+
+			`but Pulumi.yaml declares project "new-name"`)
 }
