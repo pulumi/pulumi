@@ -136,6 +136,11 @@ func (p *ReadProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.R
 			Status: resource.StatusUnknown,
 		}, errors.New("lookup input is required and must be a string")
 	}
+	if lookup.StringValue() == "fail" {
+		return plugin.ReadResponse{
+			Status: resource.StatusUnknown,
+		}, errors.New("failed read")
+	}
 
 	readInputs := resource.FromResourcePropertyMap(resource.PropertyMap{
 		"lookup": lookup,
