@@ -26,9 +26,10 @@
         {
             "path": ["about"],
             "propagate": false,
-            "exclude": true,
             "flags": {
-                "color": { "preset": "never", "omit": false }
+                "color": { "preset": "never", "omit": false },
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
             }
         },
         {
