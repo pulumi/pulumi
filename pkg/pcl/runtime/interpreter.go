@@ -1865,19 +1865,22 @@ func (i *Interpreter) registerResourceWith(
 	if err != nil {
 		return cty.NilVal, err
 	}
-	if resp.GetResult() != pulumirpc.Result_SUCCESS {
-		// This resource failed to register but we might be running with --continue-on-error so mark this resource as
-		// poisoned so that any downstream resources that depend on it will also be marked as poisoned and skip
-		// registering while allowing the rest of the graph to continue registering.
-		return makePoisonValue(res.Name()), nil
+	// A failed registration (e.g. under --continue-on-error) is surfaced to the program as if every
+	// output of the resource were unknown, so references propagate as unknowns rather than halting the
+	// rest of the program at the first failed resource. Discard any echoed-back inputs from the
+	// response so references like `failing.value` resolve to Computed rather than the known input.
+	failed := resp.GetResult() != pulumirpc.Result_SUCCESS
+	var outputs property.Map
+	if failed {
+		outputs = property.NewMap(nil)
+	} else {
+		outputs, err = propertyrpc.Unmarshal(resp.Object)
+		if err != nil {
+			return cty.NilVal, err
+		}
 	}
 
-	outputs, err := propertyrpc.Unmarshal(resp.Object)
-	if err != nil {
-		return cty.NilVal, err
-	}
-
-	unknown := custom && !i.info.DryRun && resp.GetUnknown()
+	unknown := failed || (custom && !i.info.DryRun && resp.GetUnknown())
 
 	// During previews a created resource has no ID yet, and a skipped create never gets
 	// one; represent it as unknown rather than a known empty string so it can't be

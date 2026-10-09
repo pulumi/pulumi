@@ -1,0 +1,5 @@
+name: l2-failed-create-downstream-continue-on-error
+runtime:
+  name: nodejs
+  options:
+    typescript: false
