@@ -1,0 +1,4 @@
+component: cli/plugin
+kind: fix
+body: Shorten long git-based plugin cache directory names to avoid exceeding Windows path limits
+time: 2026-09-02T00:00:00Z
