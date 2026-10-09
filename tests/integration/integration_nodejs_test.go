@@ -3178,14 +3178,7 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 	//nolint:paralleltest // t.Parallel is called by integration.ProgramTest
 	for _, runtime := range []string{"yaml", "python", "nodejs-pnpm", "nodejs-npm"} {
 		t.Run(runtime, func(t *testing.T) {
-			// Each subtest needs its own PULUMI_HOME to avoid race conditions when
-			// multiple subtests concurrently download and install the same provider
-			// plugins.
-			// TODO[pulumi/pulumi#22784]: Make sure plugin installation can be run from multiple
-			// processes in parallel.
-			pulumiHome := t.TempDir()
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				PulumiHomeDir: pulumiHome,
 				PrepareProject: func(info *engine.Projinfo) error {
 					providerPath, err := filepath.Abs(filepath.Join(info.Root, "..", "provider"))
 					if err != nil {
@@ -3195,19 +3188,13 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
-					cmd.Env = append(os.Environ(),
-						"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false",
-						"PULUMI_HOME="+pulumiHome,
-					)
+					cmd.Env = append(os.Environ(), "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 					out, err := cmd.CombinedOutput()
 					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 
 					cmd = exec.Command("pulumi", "install")
 					cmd.Dir = info.Root
-					cmd.Env = append(os.Environ(),
-						"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false",
-						"PULUMI_HOME="+pulumiHome,
-					)
+					cmd.Env = append(os.Environ(), "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 					out, err = cmd.CombinedOutput()
 					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 

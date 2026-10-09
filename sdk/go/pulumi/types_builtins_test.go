@@ -17504,3 +17504,9 @@ func TestAnyOutputAsURNMapMapMapOutput(t *testing.T) {
 
 	assert.EqualValues(t, ev, av)
 }
+
+// An input type is also an input type of every type it implements.
+var _ AssetOrArchiveInput = ArchiveInput(nil)
+var _ AssetOrArchiveInput = AssetInput(nil)
+var _ StringInput = IDInput(nil)
+var _ StringInput = URNInput(nil)

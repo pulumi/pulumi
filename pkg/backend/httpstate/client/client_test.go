@@ -2257,3 +2257,33 @@ func TestGetStackOutputs(t *testing.T) {
 		SecretsProviders: &apitype.SecretsProvidersV1{Type: "b64"},
 	}, resp)
 }
+
+func TestBatchUpdatePolicyGroup(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).BatchUpdatePolicyGroup(t.Context(), "acme", "prod-policies",
+		[]apitype.UpdatePolicyGroupRequest{
+			{AddStack: &apitype.PulumiStackReference{Name: "prod", RoutingProject: "web"}},
+			{RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "tagging", VersionTag: "1.0.0"}},
+			{AddInsightsAccount: &apitype.InsightsAccountReference{Name: "prod-aws"}},
+		})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPatch, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies/batch", path)
+	assert.JSONEq(t, `[
+		{"addStack": {"name": "prod", "routingProject": "web"}},
+		{"removePolicyPack": {"name": "tagging", "versionTag": "1.0.0"}},
+		{"addInsightsAccount": {"name": "prod-aws"}}
+	]`, body)
+}

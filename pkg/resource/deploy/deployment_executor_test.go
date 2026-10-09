@@ -201,13 +201,11 @@ func makeStepsAndExecutor(states ...*pkgresource.State) (map[*pkgresource.State]
 		steps[state] = &RefreshStep{old: state, new: state}
 	}
 
-	ex := &deploymentExecutor{
-		deployment: &Deployment{
-			prev: &Snapshot{
-				Resources: states,
-			},
+	ex := newDeploymentExecutor(&Deployment{
+		prev: &Snapshot{
+			Resources: states,
 		},
-	}
+	})
 
 	return steps, ex
 }
@@ -416,7 +414,7 @@ func TestStateMigrationWaitsForAsyncPlanning(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	_, err = (&deploymentExecutor{deployment: deployment}).Execute(t.Context())
+	_, err = newDeploymentExecutor(deployment).Execute(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, int32(1), diffCalls.Load())
 	assert.Equal(t, int32(1), migrationCalls.Load())
@@ -425,18 +423,16 @@ func TestStateMigrationWaitsForAsyncPlanning(t *testing.T) {
 func TestSourceIteratorClose(t *testing.T) {
 	t.Parallel()
 	iter := &iterator{}
-	ex := &deploymentExecutor{
-		deployment: &Deployment{
-			source: &source{iter},
-			opts:   &Options{},
-			ctx: &plugin.Context{
-				Diag: &deploytest.NoopSink{},
-				Host: deploytest.NewPluginHost(nil, nil, nil),
-			},
-			newPlans: &resourcePlans{},
+	ex := newDeploymentExecutor(&Deployment{
+		source: &source{iter},
+		opts:   &Options{},
+		ctx: &plugin.Context{
+			Diag: &deploytest.NoopSink{},
+			Host: deploytest.NewPluginHost(nil, nil, nil),
 		},
-		stepGen: &stepGenerator{},
-	}
+		newPlans: &resourcePlans{},
+	})
+	ex.stepGen = &stepGenerator{}
 
 	_, err := ex.Execute(t.Context())
 	require.NoError(t, err)
@@ -447,18 +443,16 @@ func TestSourceIteratorClose(t *testing.T) {
 func TestSourceIteratorCloseWithoutWaitOnError(t *testing.T) {
 	t.Parallel()
 	iter := &iterator{returnError: true, closeCtxErr: make(chan error, 1)}
-	ex := &deploymentExecutor{
-		deployment: &Deployment{
-			source: &source{iter},
-			opts:   &Options{},
-			ctx: &plugin.Context{
-				Diag: &deploytest.NoopSink{},
-				Host: deploytest.NewPluginHost(nil, nil, nil),
-			},
-			newPlans: &resourcePlans{},
+	ex := newDeploymentExecutor(&Deployment{
+		source: &source{iter},
+		opts:   &Options{},
+		ctx: &plugin.Context{
+			Diag: &deploytest.NoopSink{},
+			Host: deploytest.NewPluginHost(nil, nil, nil),
 		},
-		stepGen: &stepGenerator{},
-	}
+		newPlans: &resourcePlans{},
+	})
+	ex.stepGen = &stepGenerator{}
 
 	_, err := ex.Execute(t.Context())
 	require.ErrorContains(t, err, "BAIL")

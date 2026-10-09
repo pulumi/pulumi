@@ -227,7 +227,6 @@ export class MockMonitor {
         );
         const response = new resproto.ExistsResourceResponse();
         response.setExists(exists);
-        response.setKnown(true);
         callback(null, response);
     }
 

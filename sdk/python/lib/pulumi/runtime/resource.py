@@ -1013,7 +1013,7 @@ def exists_resource(
             def do_rpc_call():
                 if monitor is None:
                     # If no monitor is available, report a known non-existent resource for testing.
-                    return resource_pb2.ExistsResourceResponse(exists=False, known=True)
+                    return resource_pb2.ExistsResourceResponse(exists=False)
 
                 try:
                     return monitor.ExistsResource(req)
@@ -1034,10 +1034,10 @@ def exists_resource(
             raise
 
         log.debug(
-            f"resource exists check successful: ty={ty}, exists={resp.exists}, known={resp.known}"
+            f"resource exists check successful: ty={ty}, exists={resp.exists}, unknown={resp.unknown}"
         )
         value_future.set_result(resp.exists)
-        known_future.set_result(resp.known)
+        known_future.set_result(not resp.unknown)
         secret_future.set_result(False)
 
     asyncio.ensure_future(_get_rpc_manager().do_rpc("exists resource", do_exists)())

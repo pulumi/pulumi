@@ -17,6 +17,7 @@ package host
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -198,6 +199,55 @@ func TestContextCloseGracefulShutdownBudget(t *testing.T) {
 	require.True(t, hasDeadline)
 	assert.Greater(t, gotBudget, 2*time.Second)
 	assert.LessOrEqual(t, gotBudget, 5*time.Second)
+}
+
+// TestContextCloseSlowCloseKeepsCancelBudget is a regression test for
+// https://github.com/pulumi/pulumi/issues/24917. A provider that is slow to exit must not use up
+// the Cancel budget of the other providers released with it, otherwise their Cancel fails and
+// Plugin.Close reports them as having exited prematurely.
+func TestContextCloseSlowCloseKeepsCancelBudget(t *testing.T) {
+	t.Parallel()
+
+	sink := diagtest.LogSink(t)
+	host := newHost(t, nil)
+
+	ctxB, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	require.NoError(t, err)
+
+	const n = 4
+	var mu sync.Mutex
+	var cancelErrs []error
+	allCancelled := make(chan struct{})
+	for i := range n {
+		prov := &plugin.MockProvider{
+			SignalCancellationF: func(cancelCtx context.Context) error {
+				mu.Lock()
+				defer mu.Unlock()
+				cancelErrs = append(cancelErrs, cancelCtx.Err())
+				if len(cancelErrs) == n {
+					close(allCancelled)
+				}
+				return nil
+			},
+			CloseF: func() error {
+				select {
+				case <-allCancelled:
+				case <-time.After(10 * time.Second):
+				}
+				return nil
+			},
+		}
+		host.resourcePlugins[prov] = &resourcePlugin{Plugin: prov, Name: fmt.Sprintf("p%d", i), ctx: ctxB}
+	}
+
+	require.NoError(t, ctxB.Close())
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, cancelErrs, n)
+	for _, err := range cancelErrs {
+		require.NoError(t, err)
+	}
 }
 
 type stubLanguageRuntime struct {

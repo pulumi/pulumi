@@ -16,6 +16,8 @@ package pcl
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -211,7 +213,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						mapType, elementType = model.ResolveOutputs(args[0].Type()), t.ElementType
 					case *model.ObjectType:
 						var unifiedType model.Type
-						for _, t := range t.Properties {
+						for _, t := range slices.SortedFunc(maps.Values(t.Properties), model.Compare) {
 							_, unifiedType = model.UnifyTypes(unifiedType, t)
 						}
 						mapType, elementType = model.ResolveOutputs(args[0].Type()), unifiedType
@@ -227,7 +229,11 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					argIsEventual = p || o
 				}
 
-				returnType := elementType
+				returnType, defaultType := elementType, elementType
+				if len(args) > 2 {
+					defaultType = args[2].Type()
+					returnType, _ = model.UnifyTypes(elementType, defaultType)
+				}
 				if argIsEventual {
 					returnType = model.NewOutputType(returnType)
 				}
@@ -244,7 +250,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						},
 						{
 							Name: "default",
-							Type: model.NewOptionalType(elementType),
+							Type: defaultType,
 						},
 					},
 					ReturnType: returnType,

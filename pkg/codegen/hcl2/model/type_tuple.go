@@ -151,7 +151,7 @@ type tupleElementUnifier struct {
 	conversionKind ConversionKind
 }
 
-func (u *tupleElementUnifier) unify(t *TupleType) {
+func (u *tupleElementUnifier) unify(t *TupleType, seen *cycleSet) {
 	if !u.any {
 		u.elementTypes, u.any, u.conversionKind = append([]Type(nil), t.ElementTypes...), true, SafeConversion
 	} else {
@@ -161,7 +161,7 @@ func (u *tupleElementUnifier) unify(t *TupleType) {
 		}
 
 		for i := 0; i < minimum; i++ {
-			element, ck := u.elementTypes[i].unify(t.ElementTypes[i])
+			element, ck := u.elementTypes[i].unify(t.ElementTypes[i], seen)
 			if ck < u.conversionKind {
 				u.conversionKind = ck
 			}
@@ -185,7 +185,7 @@ func (t *TupleType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *TupleType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *TupleType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *TupleType:
@@ -193,20 +193,28 @@ func (t *TupleType) conversionFrom(src Type, unifying bool, seen cycleSet) (Conv
 			// indices are unified and elements that are missing are treated as having type None.
 			if unifying {
 				var unifier tupleElementUnifier
-				unifier.unify(t)
-				unifier.unify(src)
+				unifier.unify(t, seen)
+				unifier.unify(src, seen)
 				contract.Assertf(unifier.conversionKind.Exists(), "cannot return nil diagnostics when there is no conversion")
 				return unifier.conversionKind, nil
 			}
 
-			if len(t.ElementTypes) != len(src.ElementTypes) {
+			if len(t.ElementTypes) < len(src.ElementTypes) {
 				return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{tuplesHaveDifferentLengths(t, src)} }
 			}
 
 			conversionKind := SafeConversion
 			var diags lazyDiagnostics
 			for i, dst := range t.ElementTypes {
-				if ck, why := dst.conversionFrom(src.ElementTypes[i], unifying, seen); ck < conversionKind {
+				var ck ConversionKind
+				var why lazyDiagnostics
+				if i < len(src.ElementTypes) {
+					ck, why = dst.conversionFrom(src.ElementTypes[i], unifying, seen)
+				} else if ck, _ = dst.conversionFrom(NoneType, unifying, seen); ck == NoConversion {
+					// A shorter source converts only if the elements it lacks are optional.
+					why = func() hcl.Diagnostics { return hcl.Diagnostics{tuplesHaveDifferentLengths(t, src)} }
+				}
+				if ck < conversionKind {
 					conversionKind, diags = ck, why
 					if conversionKind == NoConversion {
 						break
@@ -271,21 +279,21 @@ func (t *TupleType) string(seen map[Type]struct{}) string {
 	return s
 }
 
-func (t *TupleType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *TupleType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		switch other := other.(type) {
 		case *TupleType:
 			// When unifying, we will unify two tuples of different length to a new tuple, where elements with matching
 			// indices are unified and elements that are missing are treated as having type None.
 			var unifier tupleElementUnifier
-			unifier.unify(t)
-			unifier.unify(other)
+			unifier.unify(t, seen)
+			unifier.unify(other, seen)
 			return NewTupleType(unifier.elementTypes...), unifier.conversionKind
 		case *ListType:
 			// Prefer the list type, but unify the element type.
 			elementType, conversionKind := other.ElementType, SafeConversion
 			for _, t := range t.ElementTypes {
-				element, ck := elementType.unify(t)
+				element, ck := elementType.unify(t, seen)
 				if ck < conversionKind {
 					conversionKind = ck
 				}
@@ -296,7 +304,7 @@ func (t *TupleType) unify(other Type) (Type, ConversionKind) {
 			// Prefer the set type, but unify the element type.
 			elementType, conversionKind := other.ElementType, UnsafeConversion
 			for _, t := range t.ElementTypes {
-				element, ck := elementType.unify(t)
+				element, ck := elementType.unify(t, seen)
 				if ck < conversionKind {
 					conversionKind = ck
 				}
@@ -305,7 +313,7 @@ func (t *TupleType) unify(other Type) (Type, ConversionKind) {
 			return NewSetType(elementType), conversionKind
 		default:
 			// Otherwise, prefer the tuple type.
-			kind, _ := t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, seen)
 			return t, kind
 		}
 	})

@@ -82,36 +82,28 @@ type inputFlagValue struct {
 	expr  bool
 }
 
-func jsonifyPropertyValue(v resource.PropertyValue, showSecrets bool) (any, error) {
-	if !showSecrets && (v.IsSecret() || (v.IsOutput() && v.OutputValue().Secret)) {
+func jsonifyPropertyValue(v property.Value, showSecrets bool) (any, error) {
+	if !showSecrets && v.Secret() {
 		return "[secret]", nil
 	}
 
-	if v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known) {
+	if v.IsComputed() {
 		return "[unknown]", nil
 	}
 
-	if v.IsSecret() {
-		return jsonifyPropertyValue(v.SecretValue().Element, showSecrets)
-	}
-
-	if v.IsOutput() {
-		return jsonifyPropertyValue(v.OutputValue().Element, showSecrets)
-	}
-
 	if v.IsAsset() {
-		return v.AssetValue().Serialize(), nil
+		return v.AsAsset().Serialize(), nil
 	}
 
 	if v.IsArchive() {
-		return v.ArchiveValue().Serialize(), nil
+		return v.AsArchive().Serialize(), nil
 	}
 
 	if v.IsArray() {
-		arr := v.ArrayValue()
-		res := make([]any, len(arr))
-		for i := range arr {
-			ev, err := jsonifyPropertyValue(arr[i], showSecrets)
+		arr := v.AsArray()
+		res := make([]any, arr.Len())
+		for i, el := range arr.All {
+			ev, err := jsonifyPropertyValue(el, showSecrets)
 			if err != nil {
 				return nil, err
 			}
@@ -120,25 +112,35 @@ func jsonifyPropertyValue(v resource.PropertyValue, showSecrets bool) (any, erro
 		return res, nil
 	}
 
-	if v.IsObject() {
-		obj := v.ObjectValue()
-		res := make(map[string]any, len(obj))
-		for k, v := range obj {
+	if v.IsMap() {
+		obj := v.AsMap()
+		res := make(map[string]any, obj.Len())
+		for k, v := range obj.All {
 			ev, err := jsonifyPropertyValue(v, showSecrets)
 			if err != nil {
 				return nil, err
 			}
-			res[string(k)] = ev
+			res[k] = ev
 		}
 		return res, nil
 	}
 
-	return v.V, nil
+	switch {
+	case v.IsNull():
+		return nil, nil
+	case v.IsBool():
+		return v.AsBool(), nil
+	case v.IsNumber():
+		return v.AsNumber(), nil
+	case v.IsString():
+		return v.AsString(), nil
+	}
+	return nil, errors.New("unsupported property value kind")
 }
 
 // jsonifyProperty converts a Property to a JSON string for display purposes. This strips things like secrets and
 // outputs down to their underlying values.
-func jsonifyProperty(prop resource.PropertyValue, showSecrets bool) (string, error) {
+func jsonifyProperty(prop property.Value, showSecrets bool) (string, error) {
 	plain, err := jsonifyPropertyValue(prop, showSecrets)
 	if err != nil {
 		return "", err
@@ -154,83 +156,91 @@ func jsonifyProperty(prop resource.PropertyValue, showSecrets bool) (string, err
 // filterOutputs recursively filters the given property map to only include properties present in the schema. This is
 // used to filter out any "internal" keys the provider might return that aren't part of the declared outputs, which
 // would otherwise cause the JSON output to be noisy and potentially break consumers expecting a specific shape.
-func filterOutputs(props resource.PropertyMap, properties []*schema.Property) resource.PropertyMap {
-	filtered := resource.PropertyMap{}
-	for _, property := range properties {
-		key := resource.PropertyKey(property.Name)
-		if value, ok := props[key]; ok {
-			filtered[key] = filterOutput(value, property.Type)
+func filterOutputs(props property.Map, properties []*schema.Property) property.Map {
+	filtered := map[string]property.Value{}
+	for _, prop := range properties {
+		if value, ok := props.GetOk(prop.Name); ok {
+			filtered[prop.Name] = filterOutput(value, prop.Type)
 		}
 	}
-	return filtered
+	return property.NewMap(filtered)
 }
 
 func filterOutput(
-	prop resource.PropertyValue, typ schema.Type,
-) resource.PropertyValue {
+	prop property.Value, typ schema.Type,
+) property.Value {
 	if typ == nil {
 		return prop
 	}
 
 	if optTyp, ok := typ.(*schema.OptionalType); ok {
 		if prop.IsNull() {
-			return resource.NewNullProperty()
-		} else {
-			typ = optTyp.ElementType
+			return property.New(property.Null).WithSecret(prop.Secret())
 		}
+		typ = optTyp.ElementType
 	}
 
-	isSecret := prop.IsSecret()
-	if isSecret {
-		return resource.MakeSecret(filterOutput(prop.SecretValue().Element, typ))
-	}
+	isSecret := prop.Secret()
+	// Strip secrecy for recursive dispatch; reapply at the end.
+	bare := prop.WithSecret(false)
 
+	var out property.Value
 	switch t := typ.(type) {
 	case *schema.ObjectType:
-		if prop.IsObject() {
-			return resource.NewProperty(filterOutputs(prop.ObjectValue(), t.Properties))
+		if bare.IsMap() {
+			out = property.New(filterOutputs(bare.AsMap(), t.Properties))
+		} else {
+			out = bare
 		}
 	case *schema.ArrayType:
-		if prop.IsArray() {
-			arr := prop.ArrayValue()
-			filtered := make([]resource.PropertyValue, len(arr))
-			for i, el := range arr {
+		if bare.IsArray() {
+			arr := bare.AsArray()
+			filtered := make([]property.Value, arr.Len())
+			for i, el := range arr.All {
 				filtered[i] = filterOutput(el, t.ElementType)
 			}
-			return resource.NewProperty(filtered)
+			out = property.New(property.NewArray(filtered))
+		} else {
+			out = bare
 		}
 	case *schema.MapType:
-		if prop.IsObject() {
-			obj := prop.ObjectValue()
-			filtered := make(resource.PropertyMap, len(obj))
-			for k, v := range obj {
+		if bare.IsMap() {
+			obj := bare.AsMap()
+			filtered := map[string]property.Value{}
+			for k, v := range obj.All {
 				filtered[k] = filterOutput(v, t.ElementType)
 			}
-			return resource.NewProperty(filtered)
+			out = property.New(property.NewMap(filtered))
+		} else {
+			out = bare
 		}
 	case *schema.UnionType:
 		// Pick the first variant whose shape matches the runtime value. Discriminated unions would let us be more
 		// precise, but most cases here are simple kind-based dispatch.
+		out = bare
 		for _, elt := range t.ElementTypes {
-			if unionVariantMatches(prop, elt) {
-				return filterOutput(prop, elt)
+			if unionVariantMatches(bare, elt) {
+				out = filterOutput(bare, elt)
+				break
 			}
 		}
+	default:
+		out = bare
 	}
 
-	return prop
+	return out.WithSecret(isSecret)
 }
 
 // unionVariantMatches reports whether the schema type is structurally compatible with the runtime kind of prop.
 // Used to pick a union variant for output filtering.
-func unionVariantMatches(prop resource.PropertyValue, typ schema.Type) bool {
+func unionVariantMatches(prop property.Value, typ schema.Type) bool {
 	// TODO https://github.com/pulumi/pulumi/issues/23234: This needs to be smarter and handle Discriminator
 	if opt, ok := typ.(*schema.OptionalType); ok {
 		typ = opt.ElementType
 	}
 	switch typ.(type) {
 	case *schema.ObjectType, *schema.MapType:
-		return prop.IsObject()
+		return prop.IsMap()
 	case *schema.ArrayType:
 		return prop.IsArray()
 	}
@@ -242,20 +252,20 @@ func evaluatePCL(
 	filename, fileType string,
 	bind func(*hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics),
 	evalContext functionEvalContext,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	parser := hclsyntax.NewParser()
 	if err := parser.ParseFile(input, filename); err != nil {
-		return nil, fmt.Errorf("parse input: %w", err)
+		return property.Map{}, fmt.Errorf("parse input: %w", err)
 	}
 	if parser.Diagnostics.HasErrors() {
-		return nil, parser.Diagnostics
+		return property.Map{}, parser.Diagnostics
 	}
 	contract.Assertf(len(parser.Files) == 1, "Should be one PCL file")
 	file := parser.Files[0]
 
 	attrs, inputType, properties, diagnostics := bind(file)
 	if diagnostics.HasErrors() {
-		return nil, diagnostics
+		return property.Map{}, diagnostics
 	}
 
 	notSupported := func(what string) error {
@@ -290,12 +300,12 @@ func evaluatePCL(
 	result, poison, diags := ectx.EvaluateObject(attrs, inputType, properties)
 	if poison != nil {
 		// `pulumi do` is one-shot — there's no upstream resource graph to propagate poison through, so surface it.
-		return nil, fmt.Errorf("%s file references unknown resource %s", fileType, *poison)
+		return property.Map{}, fmt.Errorf("%s file references unknown resource %s", fileType, *poison)
 	}
 	if diags.HasErrors() {
-		return nil, diags
+		return property.Map{}, diags
 	}
-	return resource.ToResourcePropertyMap(result), nil
+	return result, nil
 }
 
 // parseFile reads an input file in the given format and returns it ready for evaluation. For non-PCL formats the source
@@ -409,13 +419,13 @@ func evaluateFile(
 	packageDescriptor *codegenrpc.GetSchemaRequest,
 	evalContext functionEvalContext,
 	inputFlags map[string]inputFlagValue,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	merged, filename, _, err := parseFile(
 		ctx, path, fileType, inputFormat, token,
 		loadConverter, loaderTarget, packageDescriptor, inputFlags, nil,
 	)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 	return evaluatePCL(bytes.NewReader(merged), filename, fileType, bind, evalContext)
 }
@@ -425,7 +435,7 @@ func evaluateFunctionFile(
 	loadConverter func(string) (plugin.Converter, error), loaderTarget string,
 	packageDescriptor *codegenrpc.GetSchemaRequest,
 	inputFlags map[string]inputFlagValue,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
 		attrs, inputType, diags := pcl.BindFunction(ctx, file, fn)
 		var properties []*schema.Property
@@ -446,7 +456,7 @@ func evaluateResourceFile(
 	packageDescriptor *codegenrpc.GetSchemaRequest,
 	inputFlags map[string]inputFlagValue,
 	bindOpts ...pcl.BindOption,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
 		attrs, inputType, diags := pcl.BindResource(ctx, file, res, bindOpts...)
 		return attrs, inputType, res.InputProperties, diags
@@ -673,27 +683,34 @@ func injectProviderOptionInPCL(source []byte, filename, name string) ([]byte, er
 	return file.Bytes(), nil
 }
 
-// propertyValueToPCLLiteral serializes a resource.PropertyValue into a PCL literal fragment
+// propertyValueToPCLLiteral serializes a property.Value into a PCL literal fragment
 // suitable for embedding as an attribute value (e.g. `"foo"`, `{ a = 1 }`). Only value-shaped
 // kinds are supported — computed/output/asset/archive/resource-reference values would need engine
 // support to encode, so they return an error naming the offending attribute.
-func propertyValueToPCLLiteral(name string, v resource.PropertyValue) (string, error) {
+func propertyValueToPCLLiteral(name string, v property.Value) (string, error) {
+	if v.Secret() {
+		lit, err := propertyValueToPCLLiteral(name, v.WithSecret(false))
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("secret(%s)", lit), nil
+	}
 	switch {
 	case v.IsNull():
 		return string(hclwrite.TokensForValue(cty.NullVal(cty.DynamicPseudoType)).Bytes()), nil
 	case v.IsBool():
-		return string(hclwrite.TokensForValue(cty.BoolVal(v.BoolValue())).Bytes()), nil
+		return string(hclwrite.TokensForValue(cty.BoolVal(v.AsBool())).Bytes()), nil
 	case v.IsNumber():
-		return string(hclwrite.TokensForValue(cty.NumberFloatVal(v.NumberValue())).Bytes()), nil
+		return string(hclwrite.TokensForValue(cty.NumberFloatVal(v.AsNumber())).Bytes()), nil
 	case v.IsString():
-		return string(hclwrite.TokensForValue(cty.StringVal(v.StringValue())).Bytes()), nil
+		return string(hclwrite.TokensForValue(cty.StringVal(v.AsString())).Bytes()), nil
 	case v.IsArray():
-		arr := v.ArrayValue()
-		if len(arr) == 0 {
+		arr := v.AsArray()
+		if arr.Len() == 0 {
 			return "[]", nil
 		}
-		elems := make([]string, len(arr))
-		for i, el := range arr {
+		elems := make([]string, arr.Len())
+		for i, el := range arr.All {
 			ev, err := propertyValueToPCLLiteral(name, el)
 			if err != nil {
 				return "", err
@@ -701,20 +718,20 @@ func propertyValueToPCLLiteral(name string, v resource.PropertyValue) (string, e
 			elems[i] = ev
 		}
 		return "[" + strings.Join(elems, ", ") + "]", nil
-	case v.IsObject():
-		obj := v.ObjectValue()
-		if len(obj) == 0 {
+	case v.IsMap():
+		obj := v.AsMap()
+		if obj.Len() == 0 {
 			return "{}", nil
 		}
-		keys := make([]string, 0, len(obj))
-		for k := range obj {
-			keys = append(keys, string(k))
+		keys := make([]string, 0, obj.Len())
+		for k := range obj.All {
+			keys = append(keys, k)
 		}
 		sort.Strings(keys)
 		lines := make([]string, 0, len(keys)+2)
 		lines = append(lines, "{")
 		for _, key := range keys {
-			val := obj[resource.PropertyKey(key)]
+			val := obj.Get(key)
 			fv, err := propertyValueToPCLLiteral(name+"."+key, val)
 			if err != nil {
 				return "", err
@@ -723,19 +740,13 @@ func propertyValueToPCLLiteral(name string, v resource.PropertyValue) (string, e
 		}
 		lines = append(lines, "}")
 		return strings.Join(lines, "\n"), nil
-	case v.IsSecret():
-		lit, err := propertyValueToPCLLiteral(name, v.SecretValue().Element)
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("secret(%s)", lit), nil
 	case v.IsAsset():
 		return "", fmt.Errorf("provider config attribute %q of type asset is not yet supported", name)
 	case v.IsArchive():
 		return "", fmt.Errorf("provider config attribute %q of type archive is not yet supported", name)
 	case v.IsResourceReference():
 		return "", fmt.Errorf("provider config attribute %q of type resource reference is not yet supported", name)
-	case v.IsComputed(), v.IsOutput():
+	case v.IsComputed():
 		return "", fmt.Errorf(
 			"provider config attribute %q has a computed/output value and cannot be materialized", name,
 		)
@@ -901,7 +912,8 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 	// Snapshot the eval context once so the two reads here (the stack-context guard below and the
 	// evaluateResourceFile call further down) see exactly the same view of the workspace.
 	ec := pc.evalContext()
-	var baseConfig resource.PropertyMap
+	var baseConfig property.Map
+	var hasBase bool
 	if pc.providerURN != "" {
 		if ec.ProjectName == "" || ec.Stack == "" {
 			return errors.New("--provider requires a stack context (a Pulumi project must be " +
@@ -912,6 +924,7 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 			return fmt.Errorf("--provider: %w", err)
 		}
 		baseConfig = base
+		hasBase = true
 	}
 
 	config, err := evaluateResourceFile(
@@ -925,10 +938,10 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 
 	// Merge: base from --provider gets overlaid by anything the user supplied via --provider-file
 	// or --input:* flags. A property absent from the overlay falls through to the base.
-	if baseConfig != nil {
-		merged := maps.Clone(baseConfig)
-		maps.Copy(merged, config)
-		config = merged
+	if hasBase {
+		merged := baseConfig.AsMap()
+		maps.Insert(merged, config.All)
+		config = property.NewMap(merged)
 	}
 
 	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+pc.spec.Name()), "")
@@ -945,7 +958,7 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 		Name:   &name,
 		Type:   &typ,
 		ID:     &id,
-		Inputs: resource.FromResourcePropertyMap(config),
+		Inputs: config,
 	})
 	if err != nil {
 		return fmt.Errorf("configure provider: %w", err)
@@ -960,7 +973,7 @@ func (pc *packageCommand) configureProvider(cmd *cobra.Command, ctx context.Cont
 // resource isn't a provider — better to fail loudly than silently configure with junk.
 func (pc *packageCommand) loadProviderInputsFromStack(
 	ctx context.Context, providerURN resource.URN,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	s, err := cmdStack.RequireStack(
 		ctx, pc.diagFwd, pc.ws, pc.lm,
 		"", /*stackName — use whatever is currently selected*/
@@ -968,14 +981,14 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 		"", /*configFile*/
 	)
 	if err != nil {
-		return nil, fmt.Errorf("load stack: %w", err)
+		return property.Map{}, fmt.Errorf("load stack: %w", err)
 	}
 	snap, err := s.Snapshot(ctx, backendSecrets.DefaultProvider)
 	if err != nil {
-		return nil, fmt.Errorf("load stack snapshot: %w", err)
+		return property.Map{}, fmt.Errorf("load stack snapshot: %w", err)
 	}
 	if snap == nil {
-		return nil, fmt.Errorf("stack has no snapshot yet; cannot resolve --provider %s", providerURN)
+		return property.Map{}, fmt.Errorf("stack has no snapshot yet; cannot resolve --provider %s", providerURN)
 	}
 	for _, res := range snap.Resources {
 		if res.URN != providerURN {
@@ -984,7 +997,7 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 		// Sanity-check: the URN must refer to a provider resource. Providers have a type token of
 		// the form "pulumi:providers:<pkg>"; anything else is almost certainly a user error.
 		if !strings.HasPrefix(string(res.Type), "pulumi:providers:") {
-			return nil, fmt.Errorf(
+			return property.Map{}, fmt.Errorf(
 				"resource %s is not a provider (type=%s); --provider must name a provider resource",
 				providerURN, res.Type,
 			)
@@ -994,15 +1007,14 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 		// authenticate against the wrong cloud. Reject early with a clear message.
 		expectedType := tokens.Type("pulumi:providers:" + pc.spec.Name())
 		if res.Type != expectedType {
-			return nil, fmt.Errorf(
+			return property.Map{}, fmt.Errorf(
 				"resource %s is a provider for a different package (type=%s); --provider must name a %s resource",
 				providerURN, res.Type, expectedType,
 			)
 		}
-		// Clone so we don't hand callers an aliasing pointer into the snapshot's state.
-		return maps.Clone(res.Inputs), nil
+		return resource.FromResourcePropertyMap(res.Inputs), nil
 	}
-	return nil, fmt.Errorf("no resource named %s in the current stack", providerURN)
+	return property.Map{}, fmt.Errorf("no resource named %s in the current stack", providerURN)
 }
 
 // requireYesIfNonInteractive returns ErrNonInteractiveRequiresYes when the user is not on a TTY (so a confirmation

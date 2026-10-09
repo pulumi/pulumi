@@ -303,7 +303,7 @@ class MockMonitor:
             and r.urn[len(prefix) :].split("::")[0].split("$")[-1] == request.type
             for r in self.resources.values()
         )
-        return resource_pb2.ExistsResourceResponse(exists=exists, known=True)
+        return resource_pb2.ExistsResourceResponse(exists=exists)
 
     def RegisterResource(self, request):
         urn = self.make_urn(request.parent, request.type, request.name)

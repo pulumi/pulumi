@@ -269,8 +269,8 @@ export namespace ExistsResourceRequest {
 export class ExistsResourceResponse extends jspb.Message { 
     getExists(): boolean;
     setExists(value: boolean): ExistsResourceResponse;
-    getKnown(): boolean;
-    setKnown(value: boolean): ExistsResourceResponse;
+    getUnknown(): boolean;
+    setUnknown(value: boolean): ExistsResourceResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ExistsResourceResponse.AsObject;
@@ -285,7 +285,7 @@ export class ExistsResourceResponse extends jspb.Message {
 export namespace ExistsResourceResponse {
     export type AsObject = {
         exists: boolean,
-        known: boolean,
+        unknown: boolean,
     }
 }
 

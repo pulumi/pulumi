@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Accept a tuple literal that holds an output where a function or property expects the input form of a tuple, such as `length([secret(x)])`
+time: 2026-09-24T14:38:54.653093+02:00

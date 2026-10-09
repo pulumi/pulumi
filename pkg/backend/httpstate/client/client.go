@@ -1577,14 +1577,14 @@ func (pc *Client) CreateUpdate(
 	}
 
 	return UpdateIdentifier{
-			StackIdentifier: stack,
-			UpdateKind:      kind,
-			UpdateID:        updateResponse.UpdateID,
-		}, CreateUpdateDetails{
-			Messages:                updateResponse.Messages,
-			RequiredPolicies:        updateResponse.RequiredPolicies,
-			IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
-		}, nil
+		StackIdentifier: stack,
+		UpdateKind:      kind,
+		UpdateID:        updateResponse.UpdateID,
+	}, CreateUpdateDetails{
+		Messages:                updateResponse.Messages,
+		RequiredPolicies:        updateResponse.RequiredPolicies,
+		IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
+	}, nil
 }
 
 // RenameStack renames the provided stack to have the new identifier.
@@ -1722,16 +1722,14 @@ func (pc *Client) GetPolicyGroup(
 	return resp, nil
 }
 
-// UpdatePolicyGroup issues a PATCH against the Policy Group endpoint. The
-// service's UpdatePolicyGroup endpoint accepts at most one mutation per
-// request (rename, add/remove stack, add/remove policy pack, add/remove
-// insights account), so callers performing multiple mutations must issue
-// multiple calls.
-func (pc *Client) UpdatePolicyGroup(
-	ctx context.Context, orgName, policyGroup string, req apitype.UpdatePolicyGroupRequest,
+// BatchUpdatePolicyGroup applies the given updates to a Policy Group in one
+// request. Each update carries one mutation: a rename, or the addition or
+// removal of one stack, Policy Pack, or Insights account.
+func (pc *Client) BatchUpdatePolicyGroup(
+	ctx context.Context, orgName, policyGroup string, reqs []apitype.UpdatePolicyGroupRequest,
 ) error {
 	if err := pc.restCall(
-		ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup), nil, req, nil,
+		ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup)+"/batch", nil, reqs, nil,
 	); err != nil {
 		return fmt.Errorf("updating policy group: %w", err)
 	}

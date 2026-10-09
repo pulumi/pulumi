@@ -645,15 +645,15 @@ func (x *ReadResourceResponse) GetUnknown() bool {
 // ExistsResourceRequest contains enough information to check whether a resource with a given ID exists.
 type ExistsResourceRequest struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
-	Type              string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`                                                                                                  // the type of the resource object.
-	Id                string                 `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`                                                                                                      // the ID of the resource to check.
-	Parent            string                 `protobuf:"bytes,4,opt,name=parent,proto3" json:"parent,omitempty"`                                                                                              // an optional parent URN that this child resource belongs to.
-	Properties        *structpb.Struct       `protobuf:"bytes,5,opt,name=properties,proto3" json:"properties,omitempty"`                                                                                      // optional state sufficient to uniquely identify the resource.
-	Provider          string                 `protobuf:"bytes,6,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                          // an optional reference to the provider to use for this check.
-	Version           string                 `protobuf:"bytes,7,opt,name=version,proto3" json:"version,omitempty"`                                                                                            // the version of the provider to use when servicing this request.
-	PluginDownloadURL string                 `protobuf:"bytes,10,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                       // the server url of the provider to use when servicing this request.
-	PluginChecksums   map[string][]byte      `protobuf:"bytes,11,rep,name=pluginChecksums,proto3" json:"pluginChecksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // a map of checksums of the provider to use when servicing this request.
-	PackageRef        string                 `protobuf:"bytes,12,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                     // a reference from RegisterPackageRequest.
+	Type              string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`                                                                                                 // the type of the resource object.
+	Id                string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`                                                                                                     // the ID of the resource to check.
+	Parent            string                 `protobuf:"bytes,3,opt,name=parent,proto3" json:"parent,omitempty"`                                                                                             // an optional parent URN that this child resource belongs to.
+	Properties        *structpb.Struct       `protobuf:"bytes,4,opt,name=properties,proto3" json:"properties,omitempty"`                                                                                     // optional state sufficient to uniquely identify the resource.
+	Provider          string                 `protobuf:"bytes,5,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                         // an optional reference to the provider to use for this check.
+	Version           string                 `protobuf:"bytes,6,opt,name=version,proto3" json:"version,omitempty"`                                                                                           // the version of the provider to use when servicing this request.
+	PluginDownloadURL string                 `protobuf:"bytes,7,opt,name=pluginDownloadURL,proto3" json:"pluginDownloadURL,omitempty"`                                                                       // the server url of the provider to use when servicing this request.
+	PluginChecksums   map[string][]byte      `protobuf:"bytes,8,rep,name=pluginChecksums,proto3" json:"pluginChecksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // a map of checksums of the provider to use when servicing this request.
+	PackageRef        string                 `protobuf:"bytes,9,opt,name=packageRef,proto3" json:"packageRef,omitempty"`                                                                                     // a reference from RegisterPackageRequest.
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -754,8 +754,8 @@ func (x *ExistsResourceRequest) GetPackageRef() string {
 // ExistsResourceResponse contains the result of checking whether a resource exists.
 type ExistsResourceResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Exists        bool                   `protobuf:"varint,1,opt,name=exists,proto3" json:"exists,omitempty"` // whether the resource exists; only meaningful when known is true.
-	Known         bool                   `protobuf:"varint,2,opt,name=known,proto3" json:"known,omitempty"`   // false if existence could not be determined, e.g. because the id is unknown during preview or the provider was configured with unknown values.
+	Exists        bool                   `protobuf:"varint,1,opt,name=exists,proto3" json:"exists,omitempty"`   // whether the resource exists; only meaningful when unknown is false.
+	Unknown       bool                   `protobuf:"varint,2,opt,name=unknown,proto3" json:"unknown,omitempty"` // true if existence could not be determined, e.g. because the id is unknown during preview or the provider was configured with unknown values.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -797,9 +797,9 @@ func (x *ExistsResourceResponse) GetExists() bool {
 	return false
 }
 
-func (x *ExistsResourceResponse) GetKnown() bool {
+func (x *ExistsResourceResponse) GetUnknown() bool {
 	if x != nil {
-		return x.Known
+		return x.Unknown
 	}
 	return false
 }
@@ -3561,29 +3561,27 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
 	"properties\x12)\n" +
 	"\x06result\x18\x03 \x01(\x0e2\x11.pulumirpc.ResultR\x06result\x12\x18\n" +
-	"\aunknown\x18\x04 \x01(\bR\aunknown\"\xc7\x03\n" +
+	"\aunknown\x18\x04 \x01(\bR\aunknown\"\xb5\x03\n" +
 	"\x15ExistsResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x0e\n" +
-	"\x02id\x18\x03 \x01(\tR\x02id\x12\x16\n" +
-	"\x06parent\x18\x04 \x01(\tR\x06parent\x127\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\x12\x16\n" +
+	"\x06parent\x18\x03 \x01(\tR\x06parent\x127\n" +
 	"\n" +
-	"properties\x18\x05 \x01(\v2\x17.google.protobuf.StructR\n" +
+	"properties\x18\x04 \x01(\v2\x17.google.protobuf.StructR\n" +
 	"properties\x12\x1a\n" +
-	"\bprovider\x18\x06 \x01(\tR\bprovider\x12\x18\n" +
-	"\aversion\x18\a \x01(\tR\aversion\x12,\n" +
-	"\x11pluginDownloadURL\x18\n" +
-	" \x01(\tR\x11pluginDownloadURL\x12_\n" +
-	"\x0fpluginChecksums\x18\v \x03(\v25.pulumirpc.ExistsResourceRequest.PluginChecksumsEntryR\x0fpluginChecksums\x12\x1e\n" +
+	"\bprovider\x18\x05 \x01(\tR\bprovider\x12\x18\n" +
+	"\aversion\x18\x06 \x01(\tR\aversion\x12,\n" +
+	"\x11pluginDownloadURL\x18\a \x01(\tR\x11pluginDownloadURL\x12_\n" +
+	"\x0fpluginChecksums\x18\b \x03(\v25.pulumirpc.ExistsResourceRequest.PluginChecksumsEntryR\x0fpluginChecksums\x12\x1e\n" +
 	"\n" +
-	"packageRef\x18\f \x01(\tR\n" +
+	"packageRef\x18\t \x01(\tR\n" +
 	"packageRef\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01J\x04\b\x02\x10\x03J\x04\b\b\x10\tJ\x04\b\t\x10\n" +
-	"\"F\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"J\n" +
 	"\x16ExistsResourceResponse\x12\x16\n" +
-	"\x06exists\x18\x01 \x01(\bR\x06exists\x12\x14\n" +
-	"\x05known\x18\x02 \x01(\bR\x05known\"\xdf\x16\n" +
+	"\x06exists\x18\x01 \x01(\bR\x06exists\x12\x18\n" +
+	"\aunknown\x18\x02 \x01(\bR\aunknown\"\xdf\x16\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
