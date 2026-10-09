@@ -255,8 +255,12 @@ type ProviderHandshakeRequest struct {
 	// `InvokeResponse.return`. Providers that opt in should set `accepts_outputs_in_invoke` on
 	// `ProviderHandshakeResponse`. Older engines never set this field.
 	AcceptsOutputsInInvoke bool `protobuf:"varint,13,opt,name=accepts_outputs_in_invoke,json=acceptsOutputsInInvoke,proto3" json:"accepts_outputs_in_invoke,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// If true the engine can send OutputValues nested in `ResourceCallRequest.args` and will accept OutputValues in
+	// `CallResponse.return`. Providers that opt in should set `accepts_outputs_in_call` on
+	// `ProviderHandshakeResponse`. Older engines never set this field.
+	AcceptsOutputsInCall bool `protobuf:"varint,14,opt,name=accepts_outputs_in_call,json=acceptsOutputsInCall,proto3" json:"accepts_outputs_in_call,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeRequest) Reset() {
@@ -380,6 +384,13 @@ func (x *ProviderHandshakeRequest) GetAcceptsOutputsInInvoke() bool {
 	return false
 }
 
+func (x *ProviderHandshakeRequest) GetAcceptsOutputsInCall() bool {
+	if x != nil {
+		return x.AcceptsOutputsInCall
+	}
+	return false
+}
+
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
 type ProviderHandshakeResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -405,8 +416,12 @@ type ProviderHandshakeResponse struct {
 	// OutputValues in `InvokeResponse.return`. Only meaningful when the engine advertised
 	// `accepts_outputs_in_invoke` on the handshake request.
 	AcceptsOutputsInInvoke bool `protobuf:"varint,7,opt,name=accepts_outputs_in_invoke,json=acceptsOutputsInInvoke,proto3" json:"accepts_outputs_in_invoke,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// True if and only if the provider accepts OutputValues nested in `ResourceCallRequest.args` and may return
+	// OutputValues in `CallResponse.return`. Only meaningful when the engine advertised
+	// `accepts_outputs_in_call` on the handshake request.
+	AcceptsOutputsInCall bool `protobuf:"varint,8,opt,name=accepts_outputs_in_call,json=acceptsOutputsInCall,proto3" json:"accepts_outputs_in_call,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ProviderHandshakeResponse) Reset() {
@@ -477,6 +492,13 @@ func (x *ProviderHandshakeResponse) GetAcceptsByteString() bool {
 func (x *ProviderHandshakeResponse) GetAcceptsOutputsInInvoke() bool {
 	if x != nil {
 		return x.AcceptsOutputsInInvoke
+	}
+	return false
+}
+
+func (x *ProviderHandshakeResponse) GetAcceptsOutputsInCall() bool {
+	if x != nil {
+		return x.AcceptsOutputsInCall
 	}
 	return false
 }
@@ -4343,7 +4365,7 @@ var File_pulumi_provider_proto protoreflect.FileDescriptor
 
 const file_pulumi_provider_proto_rawDesc = "" +
 	"\n" +
-	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x12pulumi/alias.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xf3\x05\n" +
+	"\x15pulumi/provider.proto\x12\tpulumirpc\x1a\x12pulumi/alias.proto\x1a\x13pulumi/plugin.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xaa\x06\n" +
 	"\x18ProviderHandshakeRequest\x12%\n" +
 	"\x0eengine_address\x18\x01 \x01(\tR\rengineAddress\x12*\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tH\x00R\rrootDirectory\x88\x01\x01\x120\n" +
@@ -4358,19 +4380,21 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	" \x01(\tH\x04R\x0eresolverTarget\x88\x01\x01\x12.\n" +
 	"\x13accepts_byte_string\x18\v \x01(\bR\x11acceptsByteString\x12:\n" +
 	"\x1asends_old_outputs_to_check\x18\f \x01(\bR\x16sendsOldOutputsToCheck\x129\n" +
-	"\x19accepts_outputs_in_invoke\x18\r \x01(\bR\x16acceptsOutputsInInvokeB\x11\n" +
+	"\x19accepts_outputs_in_invoke\x18\r \x01(\bR\x16acceptsOutputsInInvoke\x125\n" +
+	"\x17accepts_outputs_in_call\x18\x0e \x01(\bR\x14acceptsOutputsInCallB\x11\n" +
 	"\x0f_root_directoryB\x14\n" +
 	"\x12_program_directoryB\x10\n" +
 	"\x0e_mapper_targetB\x10\n" +
 	"\x0e_loader_targetB\x12\n" +
-	"\x10_resolver_target\"\xe7\x02\n" +
+	"\x10_resolver_target\"\x9e\x03\n" +
 	"\x19ProviderHandshakeResponse\x12%\n" +
 	"\x0eaccept_secrets\x18\x01 \x01(\bR\racceptSecrets\x12)\n" +
 	"\x10accept_resources\x18\x02 \x01(\bR\x0facceptResources\x12%\n" +
 	"\x0eaccept_outputs\x18\x03 \x01(\bR\racceptOutputs\x12J\n" +
 	"!supports_autonaming_configuration\x18\x04 \x01(\bR\x1fsupportsAutonamingConfiguration\x12.\n" +
 	"\x13accepts_byte_string\x18\x06 \x01(\bR\x11acceptsByteString\x129\n" +
-	"\x19accepts_outputs_in_invoke\x18\a \x01(\bR\x16acceptsOutputsInInvokeJ\x04\b\x05\x10\x06R\x14pulumi_version_range\"\xad\x02\n" +
+	"\x19accepts_outputs_in_invoke\x18\a \x01(\bR\x16acceptsOutputsInInvoke\x125\n" +
+	"\x17accepts_outputs_in_call\x18\b \x01(\bR\x14acceptsOutputsInCallJ\x04\b\x05\x10\x06R\x14pulumi_version_range\"\xad\x02\n" +
 	"\x13ParameterizeRequest\x12C\n" +
 	"\x04args\x18\x01 \x01(\v2-.pulumirpc.ParameterizeRequest.ParametersArgsH\x00R\x04args\x12F\n" +
 	"\x05value\x18\x02 \x01(\v2..pulumirpc.ParameterizeRequest.ParametersValueH\x00R\x05value\x1a$\n" +

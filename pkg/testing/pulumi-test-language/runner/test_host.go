@@ -371,6 +371,7 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 		AcceptsByteString:      true,
 		SendsOldOutputsToCheck: true,
 		AcceptsOutputsInInvoke: true,
+		AcceptsOutputsInCall:   true,
 	})
 	if err != nil && status.Code(err) != codes.Unimplemented {
 		contract.IgnoreClose(wrapper)

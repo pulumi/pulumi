@@ -48,6 +48,9 @@ type providerServer struct {
 
 	// True if the provider negotiated OutputValues on Invoke via Handshake (both sides opted in).
 	invokeOutputValues bool
+
+	// True if the provider negotiated OutputValues on Call via Handshake (both sides opted in).
+	callOutputValues bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
@@ -168,6 +171,7 @@ func (p *providerServer) Handshake(
 		AcceptsByteString:           req.AcceptsByteString,
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
+		AcceptsOutputsInCall:        req.AcceptsOutputsInCall,
 	})
 	if err != nil {
 		return nil, err
@@ -177,6 +181,7 @@ func (p *providerServer) Handshake(
 	p.acceptResources = res.AcceptResources
 	p.sendByteString = req.AcceptsByteString
 	p.invokeOutputValues = req.AcceptsOutputsInInvoke && res.AcceptsOutputsInInvoke
+	p.callOutputValues = req.AcceptsOutputsInCall && res.AcceptsOutputsInCall
 
 	return &pulumirpc.ProviderHandshakeResponse{
 		AcceptSecrets:                   res.AcceptSecrets,
@@ -187,6 +192,7 @@ func (p *providerServer) Handshake(
 		// provider, so it can shim support regardless of the provider's own answer.
 		AcceptsByteString:      true,
 		AcceptsOutputsInInvoke: res.AcceptsOutputsInInvoke,
+		AcceptsOutputsInCall:   res.AcceptsOutputsInCall,
 	}, nil
 }
 
@@ -1049,7 +1055,7 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 }
 
 func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
-	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", true /* keepOutputValues */))
+	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", p.callOutputValues))
 	if err != nil {
 		return nil, err
 	}
@@ -1095,7 +1101,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 	}
 
 	opts := p.marshalOptions("return")
-	opts.KeepOutputValues = req.AcceptsOutputValues
+	opts.KeepOutputValues = req.AcceptsOutputValues && p.callOutputValues
 	rpcResult, err := MarshalProperties(resource.ToResourcePropertyMap(result.Return), opts)
 	if err != nil {
 		return nil, err

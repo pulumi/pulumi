@@ -102,6 +102,8 @@ type EvalSourceOptions struct {
 	DisableOutputValues bool
 	// true to not advertise INVOKE_OUTPUT_VALUES on the monitor. Legacy SDKs / test knob for the fallback path.
 	DisableInvokeOutputValues bool
+	// true to not advertise CALL_OUTPUT_VALUES on the monitor. Legacy SDKs / test knob for the fallback path.
+	DisableCallOutputValues bool
 	// true if this deployment can safely execute and persist state migrations.
 	SupportsStateMigrations bool
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
@@ -991,6 +993,9 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	if !rm.opts.DisableInvokeOutputValues {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES)
 	}
+	if !rm.opts.DisableCallOutputValues {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES)
+	}
 	return features
 }
 
@@ -1403,6 +1408,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepByteString:   req.GetAcceptsByteString(),
+		KeepOutputValues: req.GetAcceptOutputValues(),
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {

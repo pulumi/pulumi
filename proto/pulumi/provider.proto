@@ -301,6 +301,11 @@ message ProviderHandshakeRequest {
     // `InvokeResponse.return`. Providers that opt in should set `accepts_outputs_in_invoke` on
     // `ProviderHandshakeResponse`. Older engines never set this field.
     bool accepts_outputs_in_invoke = 13;
+
+    // If true the engine can send OutputValues nested in `ResourceCallRequest.args` and will accept OutputValues in
+    // `CallResponse.return`. Providers that opt in should set `accepts_outputs_in_call` on
+    // `ProviderHandshakeResponse`. Older engines never set this field.
+    bool accepts_outputs_in_call = 14;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -337,6 +342,11 @@ message ProviderHandshakeResponse {
     // OutputValues in `InvokeResponse.return`. Only meaningful when the engine advertised
     // `accepts_outputs_in_invoke` on the handshake request.
     bool accepts_outputs_in_invoke = 7;
+
+    // True if and only if the provider accepts OutputValues nested in `ResourceCallRequest.args` and may return
+    // OutputValues in `CallResponse.return`. Only meaningful when the engine advertised
+    // `accepts_outputs_in_call` on the handshake request.
+    bool accepts_outputs_in_call = 8;
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A

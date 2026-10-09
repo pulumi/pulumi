@@ -52,6 +52,8 @@ export class ProviderHandshakeRequest extends jspb.Message {
     setSendsOldOutputsToCheck(value: boolean): ProviderHandshakeRequest;
     getAcceptsOutputsInInvoke(): boolean;
     setAcceptsOutputsInInvoke(value: boolean): ProviderHandshakeRequest;
+    getAcceptsOutputsInCall(): boolean;
+    setAcceptsOutputsInCall(value: boolean): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -78,6 +80,7 @@ export namespace ProviderHandshakeRequest {
         acceptsByteString: boolean,
         sendsOldOutputsToCheck: boolean,
         acceptsOutputsInInvoke: boolean,
+        acceptsOutputsInCall: boolean,
     }
 }
 
@@ -94,6 +97,8 @@ export class ProviderHandshakeResponse extends jspb.Message {
     setAcceptsByteString(value: boolean): ProviderHandshakeResponse;
     getAcceptsOutputsInInvoke(): boolean;
     setAcceptsOutputsInInvoke(value: boolean): ProviderHandshakeResponse;
+    getAcceptsOutputsInCall(): boolean;
+    setAcceptsOutputsInCall(value: boolean): ProviderHandshakeResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
@@ -113,6 +118,7 @@ export namespace ProviderHandshakeResponse {
         supportsAutonamingConfiguration: boolean,
         acceptsByteString: boolean,
         acceptsOutputsInInvoke: boolean,
+        acceptsOutputsInCall: boolean,
     }
 }
 
