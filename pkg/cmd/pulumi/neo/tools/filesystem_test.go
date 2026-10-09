@@ -887,6 +887,29 @@ func TestFilesystem_Grep_SkipsHiddenDirs(t *testing.T) {
 	assert.Contains(t, content, "Found 1 matches in 1 file(s)")
 }
 
+func TestFilesystem_Grep_SkipsSymlinkEscape(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	outside := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(outside, "passwd"), []byte("secret\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "inside.txt"), []byte("secret\n"), 0o600))
+	require.NoError(t, os.Symlink(filepath.Join(outside, "passwd"), filepath.Join(root, "escape.txt")))
+	require.NoError(t, os.Symlink(filepath.Join(root, "inside.txt"), filepath.Join(root, "alias.txt")))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	res, err := fs.Invoke(t.Context(), "grep",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"secret","path":%q}`, root)))
+	require.NoError(t, err)
+	content := res.(grepResult).Content
+	assert.Contains(t, content, "inside.txt")
+	assert.Contains(t, content, "alias.txt")
+	assert.NotContains(t, content, "escape.txt")
+	assert.Contains(t, content, "Found 2 matches in 2 file(s)")
+}
+
 func TestFilesystem_Grep_NoMatchesReturnsFriendlyText(t *testing.T) {
 	t.Parallel()
 
@@ -1063,4 +1086,25 @@ func TestFilesystem_ContentReplace_RejectsPathOutsideRoot(t *testing.T) {
 	_, err = fs.Invoke(t.Context(), "content_replace",
 		json.RawMessage(`{"pattern":"x","replacement":"y","path":"/etc"}`))
 	require.Error(t, err)
+}
+
+func TestFilesystem_ContentReplace_SkipsSymlinkEscape(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	outside := t.TempDir()
+	target := filepath.Join(outside, "profile")
+	require.NoError(t, os.WriteFile(target, []byte("old\n"), 0o600))
+	require.NoError(t, os.Symlink(target, filepath.Join(root, "escape.txt")))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	_, err = fs.Invoke(t.Context(), "content_replace",
+		json.RawMessage(fmt.Sprintf(`{"pattern":"old","replacement":"new","path":%q}`, root)))
+	require.Error(t, err)
+
+	got, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, "old\n", string(got))
 }
