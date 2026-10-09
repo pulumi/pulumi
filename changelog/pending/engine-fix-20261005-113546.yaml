@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Shut down plugins in parallel to avoid timeouts
-time: 2026-10-05T11:35:46.691120915+02:00

@@ -448,6 +448,49 @@ func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
 	assert.Equal(t, "pulumi.String(bucketName)", index.String())
 }
 
+// An ID output is a string input in Go, so string destinations take it as is. Other scalars parse it.
+func TestIntrinsicConvertIDOutputToScalarInput(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		to       model.Type
+		schemaTo schema.Type
+		expected string
+	}{
+		{model.StringType, schema.StringType, "resourceID"},
+		{model.BoolType, schema.BoolType, "resourceID.ToStringOutput().ApplyT(strconv.ParseBool).(pulumi.BoolOutput)"},
+		{model.IntType, schema.IntType, "resourceID.ToStringOutput().ApplyT(strconv.Atoi).(pulumi.IntOutput)"},
+		{
+			model.NumberType, schema.NumberType,
+			"resourceID.ToStringOutput().ApplyT(func(id string) (float64, error) {" +
+				" return strconv.ParseFloat(id, 64) }).(pulumi.Float64Output)",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.to.String(), func(t *testing.T) {
+			t.Parallel()
+
+			g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+			var index bytes.Buffer
+
+			inputType := model.NewUnionTypeAnnotated(
+				[]model.Type{c.to, model.NewOutputType(c.to)},
+				&schema.InputType{ElementType: c.schemaTo},
+			)
+			expr := pcl.NewConvertCall(
+				model.VariableReference(&model.Variable{
+					Name:         "resourceID",
+					VariableType: model.NewOutputType(model.IDType),
+				}),
+				inputType,
+			)
+
+			g.Fgenf(&index, "%v", expr)
+			assert.Equal(t, c.expected, index.String())
+		})
+	}
+}
+
 func TestTupleConsExpression(t *testing.T) {
 	t.Parallel()
 

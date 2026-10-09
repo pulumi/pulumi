@@ -259,6 +259,12 @@ func inputTypeImpl(t Type, seen map[Type]Type) Type {
 		src = NewMapType(inputTypeImpl(t.ElementType, seen))
 	case *ListType:
 		src = NewListType(inputTypeImpl(t.ElementType, seen))
+	case *TupleType:
+		elementTypes := make([]Type, len(t.ElementTypes))
+		for i, t := range t.ElementTypes {
+			elementTypes[i] = inputTypeImpl(t, seen)
+		}
+		src = NewTupleType(elementTypes...)
 	case *UnionType:
 		elementTypes := make([]Type, len(t.ElementTypes))
 		for i, t := range t.ElementTypes {

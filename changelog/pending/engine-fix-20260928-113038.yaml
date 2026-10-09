@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Fix snapshot integrity error when untargeted steps change dependencies in the program
-time: 2026-09-28T11:30:38.153719839+02:00

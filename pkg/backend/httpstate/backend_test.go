@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1662,6 +1663,8 @@ func TestShowDeploymentEventsResult(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 				var err error
 				switch req.URL.Path {
+				case "/api/stacks/org/proj/stack/deployments/deployment-id":
+					err = json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{ID: "deployment-id", Status: "running"})
 				case "/api/stacks/org/proj/stack/deployments/deployment-id/updates":
 					err = json.NewEncoder(rw).Encode([]apitype.GetDeploymentUpdatesUpdateInfo{
 						{UpdateID: "update-id", Version: 1},
@@ -1695,6 +1698,76 @@ func TestShowDeploymentEventsResult(t *testing.T) {
 				require.ErrorContains(t, err, tt.wantErr)
 			default:
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestShowDeploymentEventsWaitsForUpdate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		finalStatus string
+		updateAfter int
+		wantErr     string
+	}{
+		{name: "update appears late", finalStatus: "running", updateAfter: 12},
+		{name: "deployment failed", finalStatus: "failed", updateAfter: -1, wantErr: "deployment failed"},
+		{
+			name: "deployment succeeded", finalStatus: "succeeded", updateAfter: -1,
+			wantErr: "could not find update associated with deployment deployment-id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var polls atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				var err error
+				switch req.URL.Path {
+				case "/api/stacks/org/proj/stack/deployments/deployment-id":
+					status := "running"
+					if polls.Load() >= 2 {
+						status = tt.finalStatus
+					}
+					err = json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{ID: "deployment-id", Status: status})
+				case "/api/stacks/org/proj/stack/deployments/deployment-id/updates":
+					n := polls.Add(1)
+					updates := []apitype.GetDeploymentUpdatesUpdateInfo{}
+					if tt.updateAfter >= 0 && int(n) > tt.updateAfter {
+						updates = append(updates, apitype.GetDeploymentUpdatesUpdateInfo{UpdateID: "update-id", Version: 1})
+					}
+					err = json.NewEncoder(rw).Encode(updates)
+				case "/api/stacks/org/proj/stack/update/update-id/events":
+					err = json.NewEncoder(rw).Encode(apitype.GetUpdateEventsResponse{
+						Events: []apitype.EngineEvent{
+							{Sequence: 1, SummaryEvent: &apitype.SummaryEvent{Result: apitype.OperationResultSucceeded}},
+						},
+					})
+				default:
+					require.Failf(t, "unexpected request", "path %v", req.URL.Path)
+				}
+				require.NoError(t, err)
+			}))
+			t.Cleanup(server.Close)
+
+			b := &cloudBackend{client: client.NewClient(server.URL, "fake-token", true, nil)}
+			stackID := client.StackIdentifier{
+				Owner:   "org",
+				Project: "proj",
+				Stack:   tokens.MustParseStackName("stack"),
+			}
+			opts := display.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard}
+
+			err := b.showDeploymentEvents(t.Context(), stackID, apitype.UpdateUpdate, "deployment-id", opts)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				require.Greater(t, polls.Load(), int32(10))
+			} else {
+				require.EqualError(t, err, tt.wantErr)
 			}
 		})
 	}

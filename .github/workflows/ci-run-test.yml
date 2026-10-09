@@ -247,6 +247,19 @@ jobs:
         with:
           java-version: '11'
           distribution: 'temurin'
+      - name: Pin Maven 3.9.16 (pulumi-java plugin discovery breaks with Maven 3.10)
+        env:
+          MAVEN_VERSION: 3.9.16
+          MAVEN_DIR: ${{ runner.temp }}/maven
+        run: |
+          set -euo pipefail
+          mkdir -p "${MAVEN_DIR}"
+          cd "${MAVEN_DIR}"
+          curl -fsSL --retry 5 --retry-all-errors -o maven.tar.gz \
+            "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz"
+          tar xzf maven.tar.gz
+          echo "${MAVEN_DIR}/apache-maven-${MAVEN_VERSION}/bin" | tee -a "$GITHUB_PATH"
+          "${MAVEN_DIR}/apache-maven-${MAVEN_VERSION}/bin/mvn" --version
       - name: Setup Gradle
         uses: ./.github/actions/retry
         with:

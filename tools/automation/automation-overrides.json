@@ -43,7 +43,6 @@
         {
             "path": ["refresh"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -175,12 +174,6 @@
             "flags": {}
         },
         {
-            "path": ["convert"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["convert-trace"],
             "propagate": true,
             "exclude": true,
@@ -230,12 +223,6 @@
         },
         {
             "path": ["insights"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["install"],
             "propagate": true,
             "exclude": true,
             "flags": {}

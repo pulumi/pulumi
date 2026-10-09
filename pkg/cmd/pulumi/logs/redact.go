@@ -39,12 +39,24 @@ func redactSecretsInValue(v any) {
 	}
 }
 
-// isSecretValue returns true if the map represents a Pulumi secret value.
+// isSecretValue returns true if the map represents a Pulumi secret value. Secrets reach the log
+// in two shapes: a plain secret, and an output value whose secret flag is set.
 func isSecretValue(m map[string]any) bool {
 	sigVal, ok := m[resource.SigKey]
 	if !ok {
 		return false
 	}
 	sigStr, ok := sigVal.(string)
-	return ok && sigStr == resource.SecretSig
+	if !ok {
+		return false
+	}
+	switch sigStr {
+	case resource.SecretSig:
+		return true
+	case resource.OutputValueSig:
+		secret, ok := m["secret"].(bool)
+		return ok && secret
+	default:
+		return false
+	}
 }

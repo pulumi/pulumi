@@ -1,4 +1,0 @@
-component: cli/plugin
-kind: fix
-body: Fix plugin checksum verification rejecting valid downloads over HTTP/1.1 and ignoring data at the end of the archive
-time: 2026-10-05T16:48:04.000000+05:30

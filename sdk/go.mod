@@ -2,7 +2,7 @@ module github.com/pulumi/pulumi/sdk/v3
 
 go 1.26.6
 
-replace golang.org/x/text => golang.org/x/text v0.39.0
+replace golang.org/x/text => golang.org/x/text v0.41.0
 
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 
