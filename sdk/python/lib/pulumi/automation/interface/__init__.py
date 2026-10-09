@@ -145,7 +145,6 @@ class API:
         tracing: Optional[str] = None,
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
-        json: bool = False,
         stack: Optional[str] = None,
         transitive: bool = False,
         cwd: Optional[str] = None,
@@ -166,7 +165,6 @@ class API:
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param json: Emit output as JSON (alias for --output=json)
         :param stack: The name of the stack to get info on. Defaults to the current stack
         :param transitive: Include transitive dependencies
         :param cwd: Working directory to run the command in.
@@ -201,8 +199,6 @@ class API:
             __flags.extend(["--tracing-header", str(tracing_header)])
         if verbose is not None:
             __flags.extend(["--verbose", str(verbose)])
-        if json:
-            __flags.append("--json")
         if stack is not None:
             __flags.extend(["--stack", str(stack)])
         if transitive:

@@ -28,7 +28,8 @@
             "propagate": false,
             "flags": {
                 "color": { "preset": "never", "omit": false },
-                "output": { "omit": true, "preset": "json" }
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
             }
         },
         {

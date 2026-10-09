@@ -36,8 +36,6 @@ type Options struct {
 	DisableIntegrityChecking bool
 	// Show fully-qualified stack names
 	FullyQualifyStackNames bool
-	// Emit output as JSON (alias for --output=json)
-	Json bool
 	// Flow log settings to child processes (like plugins)
 	Logflow bool
 	// Log to stderr instead of to files
@@ -95,13 +93,6 @@ func DisableIntegrityChecking(v bool) Option {
 func FullyQualifyStackNames(v bool) Option {
 	return func(o *Options) {
 		o.FullyQualifyStackNames = v
-	}
-}
-
-// Json returns an Option that sets Json.
-func Json(v bool) Option {
-	return func(o *Options) {
-		o.Json = v
 	}
 }
 

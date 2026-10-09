@@ -69,10 +69,6 @@ func (a *API) About(
 		final = append(final, "--fully-qualify-stack-names")
 	}
 
-	if o.Json {
-		final = append(final, "--json")
-	}
-
 	if o.Logflow {
 		final = append(final, "--logflow")
 	}

@@ -176,10 +176,6 @@ export class API {
             __flags.push("--verbose", "" + options.verbose);
         }
 
-        if (options.json) {
-            __flags.push("--json");
-        }
-
         if (options.stack != null) {
             __flags.push("--stack", "" + options.stack);
         }
@@ -1091,8 +1087,6 @@ export interface PulumiAboutOptions extends BaseOptions {
     tracingHeader?: string;
     /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
     verbose?: number;
-    /** Emit output as JSON (alias for --output=json) */
-    json?: boolean;
     /** The name of the stack to get info on. Defaults to the current stack */
     stack?: string;
     /** Include transitive dependencies */
