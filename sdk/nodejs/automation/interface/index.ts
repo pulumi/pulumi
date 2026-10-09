@@ -113,6 +113,1087 @@ export class API {
         return this.__run(options, __final);
     }
 
+    configCopy(options: PulumiConfigCopyOptions, key?: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+        __final.push("copy");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.json) {
+            __flags.push("--json");
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        if (options.dest != null) {
+            __flags.push("--dest", "" + options.dest);
+        }
+
+        if (options.path) {
+            __flags.push("--path");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (key != null) {
+            __arguments.push("" + key);
+        }
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    configEnvAdd(options: PulumiConfigEnvAddOptions, ...environmentName: string[]): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+        __final.push("env");
+        __final.push("add");
+
+        const __flags: string[] = [];
+
+        __flags.push("--yes");
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.json) {
+            __flags.push("--json");
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        for (const __item of environmentName ?? []) {
+            __arguments.push("" + __item);
+        }
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    configEnvInit(options: PulumiConfigEnvInitOptions): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+        __final.push("env");
+        __final.push("init");
+
+        const __flags: string[] = [];
+
+        __flags.push("--yes");
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.json) {
+            __flags.push("--json");
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        if (options.env != null) {
+            __flags.push("--env", "" + options.env);
+        }
+
+        if (options.keepConfig) {
+            __flags.push("--keep-config");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    configEnvList(options: PulumiConfigEnvListOptions): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+        __final.push("env");
+        __final.push("list");
+
+        const __flags: string[] = [];
+
+        __flags.push("--output", "" + "json");
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    configEnvRemove(options: PulumiConfigEnvRemoveOptions, environmentName: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+        __final.push("env");
+        __final.push("remove");
+
+        const __flags: string[] = [];
+
+        __flags.push("--yes");
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.json) {
+            __flags.push("--json");
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        __arguments.push("" + environmentName);
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    configGet(options: PulumiConfigGetOptions, key: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+        __final.push("get");
+
+        const __flags: string[] = [];
+
+        __flags.push("--json");
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        if (options.path) {
+            __flags.push("--path");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        __arguments.push("" + key);
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    configRefresh(options: PulumiConfigRefreshOptions): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+        __final.push("refresh");
+
+        const __flags: string[] = [];
+
+        __flags.push("--force");
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.json) {
+            __flags.push("--json");
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    configRemove(options: PulumiConfigRemoveOptions, key: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+        __final.push("remove");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.json) {
+            __flags.push("--json");
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        if (options.path) {
+            __flags.push("--path");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        __arguments.push("" + key);
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    configRemoveAll(options: PulumiConfigRemoveAllOptions, ...key: string[]): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+        __final.push("remove-all");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.json) {
+            __flags.push("--json");
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        if (options.path) {
+            __flags.push("--path");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        for (const __item of key ?? []) {
+            __arguments.push("" + __item);
+        }
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    configSet(options: PulumiConfigSetOptions, key: string, value?: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+        __final.push("set");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.json) {
+            __flags.push("--json");
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        if (options.path) {
+            __flags.push("--path");
+        }
+
+        if (options.plaintext) {
+            __flags.push("--plaintext");
+        }
+
+        if (options.raw) {
+            __flags.push("--raw");
+        }
+
+        if (options.secret) {
+            __flags.push("--secret");
+        }
+
+        if (options.type != null) {
+            __flags.push("--type", "" + options.type);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        __arguments.push("" + key);
+        if (value != null) {
+            __arguments.push("" + value);
+        }
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    configSetAll(options: PulumiConfigSetAllOptions): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+        __final.push("set-all");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.json != null) {
+            __flags.push("--json", "" + options.json);
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        if (options.path) {
+            __flags.push("--path");
+        }
+
+        for (const __item of options.plaintext ?? []) {
+            if (__item != null) {
+                __flags.push("--plaintext", "" + __item);
+            }
+        }
+
+        for (const __item of options.secret ?? []) {
+            if (__item != null) {
+                __flags.push("--secret", "" + __item);
+            }
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    config(options: PulumiConfigOptions): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("config");
+
+        const __flags: string[] = [];
+
+        __flags.push("--json");
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.configFile != null) {
+            __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.open) {
+            __flags.push("--open");
+        }
+
+        if (options.showSecrets) {
+            __flags.push("--show-secrets");
+        }
+
+        if (options.stack != null) {
+            __flags.push("--stack", "" + options.stack);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
     convert(options: PulumiConvertOptions, ...arg: string[]): ReturnType<API["__run"]> {
         const __final: string[] = [];
         __final.push("convert");
@@ -1323,6 +2404,462 @@ export interface PulumiCancelOptions extends BaseOptions {
     verbose?: number;
     /** The name of the stack to operate on. Defaults to the current stack */
     stack?: string;
+}
+
+/** Options for the `pulumi config` command. */
+export interface PulumiConfigOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
+    open?: boolean;
+    /** Show secret values when listing config instead of displaying blinded values */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+}
+
+/** Options for the `pulumi config copy` command. */
+export interface PulumiConfigCopyOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Emit output as JSON */
+    json?: boolean;
+    /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
+    open?: boolean;
+    /** Show secret values when listing config instead of displaying blinded values */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+    /** The name of the new stack to copy the config to */
+    dest?: string;
+    /** The key contains a path to a property in a map or list to set */
+    path?: boolean;
+}
+
+/** Options for the `pulumi config env add` command. */
+export interface PulumiConfigEnvAddOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Emit output as JSON */
+    json?: boolean;
+    /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
+    open?: boolean;
+    /** Show secret values in plaintext instead of ciphertext */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+}
+
+/** Options for the `pulumi config env init` command. */
+export interface PulumiConfigEnvInitOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Emit output as JSON */
+    json?: boolean;
+    /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
+    open?: boolean;
+    /** Show secret values in plaintext instead of ciphertext */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+    /** The name of the environment to create. Defaults to "<project name>/<stack name>" */
+    env?: string;
+    /** Do not remove configuration values from the stack after creating the environment */
+    keepConfig?: boolean;
+}
+
+/** Options for the `pulumi config env list` command. */
+export interface PulumiConfigEnvListOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
+    open?: boolean;
+    /** Show secret values when listing config instead of displaying blinded values */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+}
+
+/** Options for the `pulumi config env remove` command. */
+export interface PulumiConfigEnvRemoveOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Emit output as JSON */
+    json?: boolean;
+    /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
+    open?: boolean;
+    /** Show secret values in plaintext instead of ciphertext */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+}
+
+/** Options for the `pulumi config get` command. */
+export interface PulumiConfigGetOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Open and resolve any environments listed in the stack configuration */
+    open?: boolean;
+    /** Show secret values when listing config instead of displaying blinded values */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+    /** The key contains a path to a property in a map or list to get */
+    path?: boolean;
+}
+
+/** Options for the `pulumi config refresh` command. */
+export interface PulumiConfigRefreshOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Emit output as JSON */
+    json?: boolean;
+    /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
+    open?: boolean;
+    /** Show secret values when listing config instead of displaying blinded values */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+}
+
+/** Options for the `pulumi config remove` command. */
+export interface PulumiConfigRemoveOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Emit output as JSON */
+    json?: boolean;
+    /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
+    open?: boolean;
+    /** Show secret values when listing config instead of displaying blinded values */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+    /** The key contains a path to a property in a map or list to remove */
+    path?: boolean;
+}
+
+/** Options for the `pulumi config remove-all` command. */
+export interface PulumiConfigRemoveAllOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Emit output as JSON */
+    json?: boolean;
+    /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
+    open?: boolean;
+    /** Show secret values when listing config instead of displaying blinded values */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+    /** Parse the keys as paths in a map or list rather than raw strings */
+    path?: boolean;
+}
+
+/** Options for the `pulumi config set` command. */
+export interface PulumiConfigSetOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Emit output as JSON */
+    json?: boolean;
+    /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
+    open?: boolean;
+    /** Show secret values when listing config instead of displaying blinded values */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+    /** The key contains a path to a property in a map or list to set */
+    path?: boolean;
+    /** Save the value as plaintext (unencrypted) */
+    plaintext?: boolean;
+    /** When setting the value through stdin, do not trim trailing newlines from the value */
+    raw?: boolean;
+    /** Encrypt the value instead of storing it in plaintext */
+    secret?: boolean;
+    /** Save the value as the given type.  Allowed values are string, bool, int, and float */
+    type?: string;
+}
+
+/** Options for the `pulumi config set-all` command. */
+export interface PulumiConfigSetAllOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Use the configuration values in the specified file rather than detecting the file name */
+    configFile?: string;
+    /** Read values from a JSON string in the format produced by 'pulumi config --json' */
+    json?: string;
+    /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
+    open?: boolean;
+    /** Show secret values when listing config instead of displaying blinded values */
+    showSecrets?: boolean;
+    /** The name of the stack to operate on. Defaults to the current stack */
+    stack?: string;
+    /** Parse the keys as paths in a map or list rather than raw strings */
+    path?: boolean;
+    /** Marks a value as plaintext (unencrypted) */
+    plaintext?: string[];
+    /** Marks a value as secret to be encrypted */
+    secret?: string[];
 }
 
 /** Options for the `pulumi convert` command. */
