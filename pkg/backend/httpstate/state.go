@@ -183,10 +183,11 @@ func (b *cloudBackend) completeUpdate(
 	tokenSource *tokenSource,
 	update client.UpdateIdentifier,
 	status apitype.UpdateStatus,
+	outputs *apitype.StackOutputsResponse,
 ) error {
 	defer tokenSource.Close()
 
-	return b.client.CompleteUpdate(ctx, update, status, tokenSource)
+	return b.client.CompleteUpdate(ctx, update, status, tokenSource, outputs)
 }
 
 func (b *cloudBackend) getSnapshot(ctx context.Context,
@@ -240,13 +241,26 @@ func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
 		if err != nil {
 			return property.Map{}, err
 		}
-		resp, err := b.client.GetStackOutputs(ctx, stackID)
+		var readingUpdateID string
+		if id := b.readingUpdateID.Load(); id != nil {
+			readingUpdateID = *id
+		}
+		resp, err := b.client.GetStackOutputs(ctx, stackID, readingUpdateID)
 		if err != nil {
 			return property.Map{}, err
 		}
 		outputs, err := stack.DecryptStackOutputs(ctx, resp.Outputs, resp.SecretsProviders, secretsProvider)
 		if err != nil {
 			return property.Map{}, err
+		}
+		if resp.Unknown {
+			for name, value := range outputs {
+				unknown := resource.MakeComputed(resource.NewProperty(""))
+				if value.IsSecret() {
+					unknown = resource.MakeSecret(unknown)
+				}
+				outputs[name] = unknown
+			}
 		}
 		return resource.FromResourcePropertyMap(outputs), nil
 	}

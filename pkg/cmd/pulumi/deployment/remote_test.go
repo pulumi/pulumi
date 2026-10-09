@@ -53,3 +53,15 @@ func TestParseEnv(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateUnsupportedRemoteFlagsRejectsCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateUnsupportedRemoteFlags(false, nil, false, "", false, nil, nil, "", false, false, false, false,
+		false, false, "default", nil, nil, nil, nil, false, "", "", false, "d333a711-4aa0-402f-be6d-72af9665fc37")
+	require.EqualError(t, err, "--coherence-window is not supported with --remote")
+
+	err = ValidateUnsupportedRemoteFlags(false, nil, false, "", false, nil, nil, "", false, false, false, false,
+		false, false, "default", nil, nil, nil, nil, false, "", "", false, "")
+	require.NoError(t, err)
+}
