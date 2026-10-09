@@ -1073,6 +1073,7 @@ class API:
         verbose: Optional[int] = None,
         clear_pending_creates: bool = False,
         client: Optional[str] = None,
+        coherence_window: Optional[str] = None,
         config: Optional[list[str]] = None,
         config_file: Optional[str] = None,
         config_path: bool = False,
@@ -1190,6 +1191,8 @@ class API:
             __flags.append("--clear-pending-creates")
         if client is not None:
             __flags.extend(["--client", str(client)])
+        if coherence_window is not None:
+            __flags.extend(["--coherence-window", str(coherence_window)])
         for __item in config or []:
             __flags.extend(["--config", str(__item)])
         if config_file is not None:

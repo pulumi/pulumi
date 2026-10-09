@@ -1016,6 +1016,10 @@ export class API {
             __flags.push("--client", "" + options.client);
         }
 
+        if (options.coherenceWindow != null) {
+            __flags.push("--coherence-window", "" + options.coherenceWindow);
+        }
+
         for (const __item of options.config ?? []) {
             if (__item != null) {
                 __flags.push("--config", "" + __item);
@@ -1716,6 +1720,7 @@ export interface PulumiRefreshOptions extends BaseOptions {
     clearPendingCreates?: boolean;
     /** The address of an existing language runtime host to connect to */
     client?: string;
+    coherenceWindow?: string;
     /** Config to use during the refresh and save to the stack config file */
     config?: string[];
     /** Use the configuration values in the specified file rather than detecting the file name */

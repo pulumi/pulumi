@@ -1178,6 +1178,10 @@ func (a *API) Refresh(
 		final = append(final, "--client", fmt.Sprint(o.Client))
 	}
 
+	if o.CoherenceWindow != "" {
+		final = append(final, "--coherence-window", fmt.Sprint(o.CoherenceWindow))
+	}
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
