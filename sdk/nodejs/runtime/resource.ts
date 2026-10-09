@@ -809,22 +809,17 @@ export function registerResource(
                         };
                     }
 
-                    // If the engine reported that the resource failed or was skipped, synthesize
-                    // an error so downstream outputs reject. This allows `pulumi.recover` to
-                    // intercept the failure.
+                    // If the engine reported that the resource failed, resolve all of its outputs as
+                    // unknown so the rest of the program can continue.
                     const resultFailed = resp.getResult() !== resproto.Result.SUCCESS;
-                    let effectiveErr = err;
-                    if (!effectiveErr && resultFailed) {
-                        effectiveErr = new Error(`resource ${name} [${t}] failed to register`);
-                    }
 
-                    resop.resolveURN(resp.getUrn(), effectiveErr);
+                    resop.resolveURN(resp.getUrn(), err);
 
                     // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
                     // undefined so that later parts of our system don't have to deal with values like 'null'.
                     if (resop.resolveID) {
                         const id = resp.getId() || undefined;
-                        resop.resolveID(id, id !== undefined, effectiveErr);
+                        resop.resolveID(id, id !== undefined, err);
                     }
 
                     const deps: Record<string, Resource[]> = {};
@@ -843,11 +838,11 @@ export function registerResource(
                         res,
                         t,
                         name,
-                        props,
-                        resp.getObject(),
+                        resultFailed ? {} : props,
+                        resultFailed ? undefined : resp.getObject(),
                         deps,
                         resop.resolvers,
-                        effectiveErr,
+                        err,
                         resultFailed || unknown,
                     );
                     done();
