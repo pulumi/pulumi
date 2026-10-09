@@ -42,11 +42,17 @@ func TestExamples(t *testing.T) {
 
 	e := types.Enum("E", int64(1), int64(2))
 	f := types.Enum("F", "a")
+	asset, archive := types.Opaque("Asset"), types.Opaque("Archive")
 	tests := []struct {
 		inputs []types.Type
 		want   types.Type
 	}{
 		{[]types.Type{types.Bool, types.Number}, types.Union(types.Bool, types.Number)},
+		{[]types.Type{asset, archive}, types.Union(asset, archive)},
+		{[]types.Type{asset, types.String}, types.Union(asset, types.String)},
+		{[]types.Type{asset, types.Const("Asset")}, types.Union(asset, types.Const("Asset"))},
+		{[]types.Type{asset, types.Output(asset)}, types.Output(asset)},
+		{[]types.Type{asset, types.Dynamic}, types.Dynamic},
 		{[]types.Type{types.String, types.Number}, types.String},
 		{[]types.Type{types.Int, types.Const(int64(1))}, types.Int},
 		{

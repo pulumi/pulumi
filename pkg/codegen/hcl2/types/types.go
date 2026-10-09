@@ -122,6 +122,7 @@ const (
 	KindUnion
 	KindOutput
 	KindPromise
+	KindOpaque
 
 	// kindVar is a placeholder or a reference to a state of a group. It never reaches callers.
 	kindVar Kind = 254
@@ -147,6 +148,7 @@ var kindNames = [...]string{
 	KindUnion:   "union",
 	KindOutput:  "output",
 	KindPromise: "promise",
+	KindOpaque:  "opaque",
 }
 
 // kindIdents holds the Go identifier of each kind: the Kind constant is "Kind" + ident, and the scalar value or
@@ -169,6 +171,7 @@ var kindIdents = [...]string{
 	KindUnion:   "Union",
 	KindOutput:  "Output",
 	KindPromise: "Promise",
+	KindOpaque:  "Opaque",
 }
 
 func (k Kind) String() string { return kindNames[k] }
@@ -197,7 +200,7 @@ func mk(n node) Type {
 	case KindOutput:
 		n.flags = fOutput | n.a.flags()
 	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic, KindConst, KindEnum, KindList,
-		KindSet, KindMap, KindTuple, KindObject, KindUnion, KindPromise:
+		KindSet, KindMap, KindTuple, KindObject, KindUnion, KindPromise, KindOpaque:
 		n.flags = n.a.flags() | n.b.flags()
 	}
 	return Type{nodeTable.intern(n)}
@@ -254,7 +257,7 @@ func (t Type) head() node {
 	case kindRec:
 		return t.info().head
 	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic, KindConst, KindEnum, KindList,
-		KindSet, KindMap, KindTuple, KindObject, KindUnion, KindOutput, KindPromise:
+		KindSet, KindMap, KindTuple, KindObject, KindUnion, KindOutput, KindPromise, KindOpaque:
 	}
 	return n
 }
@@ -318,6 +321,13 @@ func Enum[T LiteralValues](token string, values ...T) Type {
 		members[i] = Const(v)
 	}
 	return mk(node{kind: KindEnum, str: token, a: members[0].ConstBase(), b: cells(sortTypes(members), nil)})
+}
+
+// Opaque returns the nominal type with the given name. An opaque type has no structure: it converts only to itself,
+// and two opaque types are equal when their names are equal.
+func Opaque(name string) Type {
+	contract.Assertf(name != "", "an opaque type must have a name")
+	return mk(node{kind: KindOpaque, str: name})
 }
 
 // List returns list(t).
@@ -448,7 +458,8 @@ func resolve(t Type, m mode) Type {
 			properties[name] = resolve(v, m)
 		}
 		return Object(properties)
-	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic, KindConst, KindEnum, kindVar:
+	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic, KindConst, KindEnum, KindOpaque,
+		kindVar:
 		return t
 	}
 	panic("unreachable")
@@ -564,6 +575,9 @@ func (t Type) EnumValues() []Type {
 	return t.expect("EnumValues", KindEnum).b.values()
 }
 
+// OpaqueName returns the name of an opaque type.
+func (t Type) OpaqueName() string { return t.expect("OpaqueName", KindOpaque).str }
+
 // ConstBase returns the base type of a constant.
 func (t Type) ConstBase() Type { return t.expect("ConstBase", KindConst).a }
 
@@ -617,6 +631,8 @@ func (t Type) String() string {
 			properties = append(properties, name+" = "+v.String())
 		}
 		return "object({" + strings.Join(properties, ", ") + "})"
+	case KindOpaque:
+		return "opaque(" + n.str + ")"
 	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic:
 		return n.kind.String()
 	}
@@ -656,6 +672,8 @@ func (t Type) GoString() string {
 			properties = append(properties, strconv.Quote(name)+": "+v.GoString())
 		}
 		return "types.Object(map[string]types.Type{" + strings.Join(properties, ", ") + "})"
+	case KindOpaque:
+		return "types.Opaque(" + strconv.Quote(n.str) + ")"
 	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic:
 		return "types." + kindIdents[n.kind]
 	}

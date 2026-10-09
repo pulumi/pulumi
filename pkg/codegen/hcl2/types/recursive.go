@@ -228,7 +228,7 @@ func kidsOf(r node, f func(Type) edge) ([]edge, []string) {
 			}
 		}
 		return kids, names
-	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic, KindConst, KindEnum,
+	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic, KindConst, KindEnum, KindOpaque,
 		kindVar, kindRec:
 	}
 	panic(fmt.Sprintf("kind %d has no children", r.kind))
@@ -612,7 +612,7 @@ func construct(s state, kids []Type) Type {
 		n.b = cells(kids, s.names)
 	case KindUnion:
 		n.b = cells(sortTypes(kids), nil)
-	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic, KindConst, KindEnum,
+	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic, KindConst, KindEnum, KindOpaque,
 		kindVar, kindRec:
 		panic(fmt.Sprintf("kind %d is not a state", s.kind))
 	}

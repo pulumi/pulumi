@@ -60,6 +60,7 @@ func TestRules(t *testing.T) {
 	selfMap := rec(func(a types.Type) types.Type { return obj(map[string]types.Type{"k": types.Map(a)}) })
 	selfList := rec(types.List)
 	selfOrInt := rec(func(s types.Type) types.Type { return types.List(types.Union(s, types.Int)) })
+	asset, archive := types.Opaque("Asset"), types.Opaque("Archive")
 
 	tests := []struct {
 		dst, src types.Type
@@ -73,6 +74,19 @@ func TestRules(t *testing.T) {
 		{types.None, types.Dynamic, convert.Unsafe},
 		{types.None, types.String, convert.No},
 		{types.String, types.None, convert.No},
+
+		// Opaque types: C-Eq, C-Dyn, C-DynSrc, and the union and eventual rules apply; every other pair is C-No
+		{asset, asset, convert.Safe},
+		{asset, archive, convert.No},
+		{asset, types.String, convert.No},
+		{types.String, asset, convert.No},
+		{asset, types.Const("Asset"), convert.No},
+		{types.Dynamic, asset, convert.Safe},
+		{asset, types.Dynamic, convert.Unsafe},
+		{types.Union(asset, types.String), types.Bool, convert.Safe},
+		{types.Union(asset, types.Bool), archive, convert.No},
+		{types.Output(asset), asset, convert.Safe},
+		{asset, types.Output(asset), convert.No},
 
 		// Unions
 		{types.Union(types.Int, types.String), types.Union(types.Int, types.Bool), convert.Safe},

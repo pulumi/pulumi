@@ -194,7 +194,8 @@ func scalar(k types.Kind) bool {
 	case types.KindBool, types.KindInt, types.KindNumber, types.KindString, types.KindID:
 		return true
 	case types.KindNone, types.KindDynamic, types.KindConst, types.KindEnum, types.KindList, types.KindSet,
-		types.KindMap, types.KindTuple, types.KindObject, types.KindUnion, types.KindOutput, types.KindPromise:
+		types.KindMap, types.KindTuple, types.KindObject, types.KindUnion, types.KindOutput, types.KindPromise,
+		types.KindOpaque:
 	}
 	return false
 }

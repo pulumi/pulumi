@@ -46,6 +46,8 @@ func Compare(a, b Type) int {
 		return cmp.Or(Compare(na.a, nb.a), compareConstValues(na, nb))
 	case KindEnum:
 		return cmp.Or(strings.Compare(na.str, nb.str), Compare(na.a, nb.a), compareCells(na.b, nb.b))
+	case KindOpaque:
+		return strings.Compare(na.str, nb.str)
 	case KindList, KindSet, KindMap, KindOutput, KindPromise:
 		return Compare(na.a, nb.a)
 	case KindTuple, KindUnion, KindObject:

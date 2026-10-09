@@ -32,6 +32,7 @@ T ::= bool | int | number | string | id | dynamic | none
     | object({k₁: T₁, …, kₙ: Tₙ})   n ≥ 0, keys unique
     | union(T₁, …, Tₙ)              n ≥ 2, in normal form (§3)
     | output(T) | promise(T)
+    | opaque(name)
 ```
 
 ### 2.1 Scalars
@@ -39,6 +40,12 @@ T ::= bool | int | number | string | id | dynamic | none
 The five scalar types are `bool`, `int`, `number`, `string`, and `id`.
 `id` is the type of a resource ID. It converts like `string` (§4.4) and is a
 distinct type for equality.
+
+An opaque type `opaque(name)` is a nominal type with no structure. The binder
+uses it for schema token types, assets, archives, and resource references. Two
+opaque types are equal when their names are equal. No rule of §4.2 has a shape
+for an opaque type, so it converts only by C-Eq, C-Dyn, C-DynSrc, and the
+union and eventual rules; every other pair is C-No.
 
 ### 2.2 Constants and enums
 
@@ -270,7 +277,7 @@ nested eventuals of the result.
 The three classes partition the members of `M'` that are not `none` and not
 `dynamic`: the sequence class holds `list`, `set`, and `tuple`; the map class
 holds `map` and `object`; the scalar class holds the five scalars, constants,
-and enums. Each class merges to at most one member, except the scalar class,
+enums, and opaque types. Each class merges to at most one member, except the scalar class,
 which merges to its maximal members.
 
 ```
@@ -319,6 +326,8 @@ The order on the scalar class is:
 - the base `B` of an enum is above the enum;
 - an enum is above each constant whose value it contains;
 - two constants with different values are incomparable;
+- an opaque type is incomparable with every other member, so it always
+  survives;
 - `bool` and `number` are incomparable, and so are `bool` and `int`.
 
 ### 5.4 Examples

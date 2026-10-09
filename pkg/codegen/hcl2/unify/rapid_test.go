@@ -183,7 +183,7 @@ func containsFrom(t types.Type, seen map[types.Type]bool) bool {
 			}
 		}
 	case types.KindNone, types.KindBool, types.KindInt, types.KindNumber, types.KindString, types.KindID,
-		types.KindDynamic, types.KindConst, types.KindEnum:
+		types.KindDynamic, types.KindConst, types.KindEnum, types.KindOpaque:
 	}
 	return false
 }

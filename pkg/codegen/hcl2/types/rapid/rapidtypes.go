@@ -126,7 +126,7 @@ func leaf(t *rapid.T, vars []types.Type, guarded bool) types.Type {
 	if guarded && len(vars) > 0 && rapid.IntRange(0, 2).Draw(t, "placeholder") == 0 {
 		return rapid.SampledFrom(vars).Draw(t, "var")
 	}
-	switch rapid.IntRange(0, 8).Draw(t, "leaf") {
+	switch rapid.IntRange(0, 9).Draw(t, "leaf") {
 	case 0:
 		return types.None
 	case 1:
@@ -143,8 +143,10 @@ func leaf(t *rapid.T, vars []types.Type, guarded bool) types.Type {
 		return types.Dynamic
 	case 7:
 		return constant(t)
-	default:
+	case 8:
 		return enum(t)
+	default:
+		return opaque(t)
 	}
 }
 
@@ -163,6 +165,12 @@ func constant(t *rapid.T) types.Type {
 	default:
 		return types.Const(rapid.SampledFrom(strings).Draw(t, "string"))
 	}
+}
+
+var opaques = []string{"Asset", "pkg:index:Token"}
+
+func opaque(t *rapid.T) types.Type {
+	return types.Opaque(rapid.SampledFrom(opaques).Draw(t, "opaque"))
 }
 
 // enum draws one of two fixed enums, so that every enum with a given token has the same values.

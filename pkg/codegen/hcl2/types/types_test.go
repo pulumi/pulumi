@@ -118,6 +118,7 @@ func TestString(t *testing.T) {
 		{Union(None, String), "union(none, string)"},
 		{Object(map[string]Type{"b": Int, "a": String}), "object({a = string, b = int})"},
 		{Promise(Set(Map(Bool))), "promise(set(map(bool)))"},
+		{Opaque("Asset"), "opaque(Asset)"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
@@ -154,6 +155,7 @@ func TestGoString(t *testing.T) {
 			`types.Object(map[string]types.Type{"a": types.String, "b": types.Int})`,
 		},
 		{Promise(Set(Map(Bool))), "types.Promise(types.Set(types.Map(types.Bool)))"},
+		{Opaque("pkg:index:Token"), `types.Opaque("pkg:index:Token")`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
@@ -199,4 +201,20 @@ func TestAccessors(t *testing.T) {
 	assert.Equal(t, KindNone, Type{}.Kind())
 	assert.Equal(t, None, Type{})
 	assert.Panics(t, func() { Type{}.Element() })
+}
+
+func TestOpaque(t *testing.T) {
+	t.Parallel()
+
+	asset := Opaque("Asset")
+	assert.Equal(t, KindOpaque, asset.Kind())
+	assert.Equal(t, "Asset", asset.OpaqueName())
+	assert.Equal(t, asset, Opaque("Asset"))
+	assert.NotEqual(t, asset, Opaque("Archive"))
+	assert.NotEqual(t, asset, Enum("Asset", "Asset"))
+	assert.Negative(t, Compare(Opaque("Archive"), asset))
+	assert.Positive(t, Compare(asset, Promise(asset)))
+	assert.Equal(t, []Type{String, asset}, Union(asset, String).UnionValues())
+	assert.Panics(t, func() { Opaque("") })
+	assert.Panics(t, func() { String.OpaqueName() })
 }

@@ -265,7 +265,7 @@ func rebuild(t types.Type) types.Type {
 	case types.KindObject:
 		return types.Object(maps.Collect(t.ObjectValues()))
 	case types.KindNone, types.KindBool, types.KindInt, types.KindNumber, types.KindString, types.KindID,
-		types.KindDynamic, types.KindConst, types.KindEnum:
+		types.KindDynamic, types.KindConst, types.KindEnum, types.KindOpaque:
 	}
 	return t
 }
@@ -298,7 +298,7 @@ func containsFrom(t types.Type, kind types.Kind, seen map[types.Type]bool) bool 
 			}
 		}
 	case types.KindNone, types.KindBool, types.KindInt, types.KindNumber, types.KindString, types.KindID,
-		types.KindDynamic, types.KindConst, types.KindEnum:
+		types.KindDynamic, types.KindConst, types.KindEnum, types.KindOpaque:
 	}
 	return false
 }
