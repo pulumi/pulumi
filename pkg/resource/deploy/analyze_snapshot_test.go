@@ -15,6 +15,7 @@
 package deploy_test
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -561,4 +563,49 @@ func TestAnalyzeSnapshot_SummaryEventsEmitted(t *testing.T) {
 	require.Len(t, events.analyzeSumm, 1, "one analyze summary per resource×analyzer")
 	require.Len(t, events.remediateSumm, 1, "one remediate summary per resource×analyzer")
 	require.Len(t, events.stackSumm, 1, "one stack summary per analyzer")
+}
+
+// Exceptions match a stack-level violation at the root stack URN it's attributed to, and an excepted mandatory
+// violation doesn't count as a failure.
+func TestAnalyzeSnapshot_ExceptedViolations(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.URN("urn:pulumi:stack::project::pkg:index:MyResource::res")
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{makeTestResource(urn)}}
+	diagnostic := plugin.AnalyzeDiagnostic{
+		PolicyName:       "p",
+		PolicyPackName:   "test-pack",
+		EnforcementLevel: apitype.Mandatory,
+		Message:          "violates policy",
+	}
+	inner := &deploytest.Analyzer{
+		Info: plugin.AnalyzerInfo{Name: "test-pack"},
+		AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+			return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{diagnostic}}, nil
+		},
+		AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+			return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{diagnostic}}, nil
+		},
+	}
+	exceptions, _, err := resourceanalyzer.ParsePolicyExceptionsBlock(
+		json.RawMessage(`{"EXC-1": {"policies": ["p"], "stacks": ["project/stack"], "reason": "r"}}`), true)
+	require.NoError(t, err)
+
+	events := &recordingPolicyEvents{}
+	analyzer := resourceanalyzer.WithPolicyExceptions(inner, exceptions)
+	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	require.NoError(t, err)
+	assert.False(t, hasMandatory)
+
+	require.Len(t, events.violations, 2)
+	assert.Equal(t, urn, events.violationURNs[0])
+	assert.Equal(t, resource.RootStackType, events.violationURNs[1].QualifiedType())
+	for _, v := range events.violations {
+		assert.Equal(t, &apitype.PolicyEventException{ID: "EXC-1", Reason: "r"}, v.Exception)
+	}
+
+	// Without the exceptions, the same violations fail.
+	hasMandatory, err = deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{inner}, &recordingPolicyEvents{})
+	require.NoError(t, err)
+	assert.True(t, hasMandatory)
 }

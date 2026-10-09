@@ -94,14 +94,14 @@ func newPolicyEnableCmd() *cobra.Command {
 }
 
 func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, error) {
-	analyzerPolicyConfigMap, err := resourceanalyzer.LoadPolicyPackConfigFromFile(file)
+	configFile, _, err := resourceanalyzer.LoadPolicyPackConfigFromFile(file)
 	if err != nil {
 		return nil, err
 	}
 
 	// Convert type map[string]plugin.AnalyzerPolicyConfig to map[string]*json.RawMessage.
 	config := make(map[string]*json.RawMessage)
-	for k, v := range analyzerPolicyConfigMap {
+	for k, v := range configFile.Config {
 		raw, err := marshalAnalyzerPolicyConfig(v)
 		if err != nil {
 			return nil, err

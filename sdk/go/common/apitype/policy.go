@@ -99,6 +99,38 @@ type RequiredPolicy struct {
 
 	// ESC environment references to resolve for this policy pack.
 	Environments []string `json:"environments,omitempty"`
+
+	// The active policy exceptions for this Policy Pack, keyed by exception ID. Each value is a PolicyException.
+	Exceptions map[string]json.RawMessage `json:"exceptions,omitempty"`
+}
+
+// PolicyException excepts violations of the given policies on the given targets, so that they don't fail an operation.
+type PolicyException struct {
+	// The names of the policies within the Policy Pack that this exception applies to.
+	Policies []string `json:"policies,omitempty"`
+	// Qualified stack names, as "<project>/<stack>".
+	Stacks []string `json:"stacks,omitempty"`
+	// The resources the violation may be reported against.
+	Resources []PolicyExceptionResource `json:"resources,omitempty"`
+	// The justification for the exception.
+	Reason string `json:"reason"`
+}
+
+// PolicyExceptionResource selects the resources a policy exception applies to. A resource matches when it matches
+// every field that is set. URN is matched exactly; Type, Name and string property values are patterns in which `*`
+// matches any run of characters and everything else matches itself. A stack policy violation that isn't tied to a
+// resource is reported against the root stack resource.
+type PolicyExceptionResource struct {
+	// The resource's URN.
+	URN string `json:"urn,omitempty"`
+	// A pattern for the resource's type token, for example "aws:s3/bucket:Bucket".
+	Type string `json:"type,omitempty"`
+	// A pattern for the resource's logical name.
+	Name string `json:"name,omitempty"`
+	// Property paths (for example "bucket" or `tags["env"]`) mapped to the value each must have: a pattern for a
+	// string, or a number, boolean or null, or a list of these to accept any of them. Properties are the resource's
+	// inputs for a resource policy violation and its outputs for a stack policy violation.
+	Properties map[string]any `json:"properties,omitempty"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.

@@ -1,0 +1,4 @@
+component: engine
+kind: feat
+body: Support policy exceptions in policy pack config, so excepted violations don't fail the operation
+time: 2026-10-06T12:00:00Z

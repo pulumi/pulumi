@@ -117,6 +117,7 @@ func NewUpCmd() *cobra.Command {
 	var skipConfigValidation bool
 	var showConfig bool
 	var showPolicyRemediations bool
+	var showPolicyExceptions bool
 	var showReplacementSteps bool
 	var showSames bool
 	var showSecrets bool
@@ -661,6 +662,7 @@ func NewUpCmd() *cobra.Command {
 				Color:                  cmdutil.GetGlobalColorization(),
 				ShowConfig:             showConfig,
 				ShowPolicyRemediations: showPolicyRemediations,
+				ShowPolicyExceptions:   showPolicyExceptions,
 				ShowReplacementSteps:   showReplacementSteps,
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
@@ -687,9 +689,9 @@ func NewUpCmd() *cobra.Command {
 
 			if remoteArgs.Remote {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
-					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
-					showReads, suppressOutputs, secretsProvider, &targets, &excludes, replaces, targetReplaces,
-					targetDependents, planFilePath, configFile, runProgram)
+					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showPolicyExceptions,
+					showReplacementSteps, showSames, showReads, suppressOutputs, secretsProvider, &targets, &excludes,
+					replaces, targetReplaces, targetDependents, planFilePath, configFile, runProgram)
 				if err != nil {
 					return err
 				}
@@ -875,6 +877,10 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showPolicyRemediations, "show-policy-remediations", false,
 		"Show per-resource policy remediation details instead of a summary",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&showPolicyExceptions, "show-policy-exceptions", false,
+		"Show the exceptions and resources behind excepted policy violations instead of a summary",
 	)
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,

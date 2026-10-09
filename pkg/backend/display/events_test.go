@@ -118,3 +118,27 @@ func TestConvertJSONEventExhaustive(t *testing.T) {
 		})
 	}
 }
+
+func TestPolicyViolationExceptionRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	exception := &apitype.PolicyEventException{ID: "EXC-42", Reason: "Log target bucket"}
+	event := engine.NewEvent(engine.PolicyViolationEventPayload{
+		ResourceURN:      "urn:pulumi:stack::project::pkgA:index:typA::resA",
+		PolicyName:       "public-read",
+		EnforcementLevel: apitype.Mandatory,
+		Exception:        exception,
+	})
+
+	apiEvent, err := ConvertEngineEvent(event, false)
+	require.NoError(t, err)
+	assert.Equal(t, exception, apiEvent.PolicyEvent.Exception)
+
+	b, err := json.Marshal(apiEvent.PolicyEvent)
+	require.NoError(t, err)
+	assert.Contains(t, string(b), `"exception":{"id":"EXC-42","reason":"Log target bucket"}`)
+
+	back, err := ConvertJSONEvent(apiEvent)
+	require.NoError(t, err)
+	assert.Equal(t, exception, back.Payload().(engine.PolicyViolationEventPayload).Exception)
+}

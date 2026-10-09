@@ -345,6 +345,7 @@ func (a *analyzer) AnalyzeStack(ctx context.Context, resources []AnalyzerStackRe
 	if err != nil {
 		return AnalyzeResponse{}, fmt.Errorf("converting analysis results: %w", err)
 	}
+	AttributeStackDiagnostics(resources, diags)
 	return AnalyzeResponse{
 		Diagnostics:   diags,
 		NotApplicable: convertNotApplicable(resp.GetNotApplicable()),

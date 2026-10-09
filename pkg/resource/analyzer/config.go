@@ -28,23 +28,19 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
-// LoadPolicyPackConfigFromFile loads the JSON config from a file.
-func LoadPolicyPackConfigFromFile(file string) (map[string]plugin.AnalyzerPolicyConfig, error) {
-	b, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-	config, _, err := parsePolicyPackConfig(b)
-	return config, err
+// PolicyPackConfigFile is the content of a policy pack config file (--policy-pack-config).
+type PolicyPackConfigFile struct {
+	// Config is the policy config: every key that isn't reserved.
+	Config map[string]plugin.AnalyzerPolicyConfig
+	// Environments are the ESC environments named by the reserved "environments" key.
+	Environments []string
+	// Exceptions are the policy exceptions of the reserved "exceptions" key, or nil if there are none.
+	Exceptions *PolicyExceptions
 }
 
-// LoadPolicyPackConfigAndEnvironmentsFromFile loads policy pack config and
-// ESC environment references from a JSON config file. The "environments" key,
-// if present, is extracted and returned separately; the remaining keys are
-// parsed as policy config.
-func LoadPolicyPackConfigAndEnvironmentsFromFile(
-	file string,
-) (map[string]plugin.AnalyzerPolicyConfig, []string, error) {
+// LoadPolicyPackConfigFromFile loads a policy pack config file, separating the reserved keys from the policy
+// config and parsing its exceptions. It returns warnings about exceptions that are ignored.
+func LoadPolicyPackConfigFromFile(file string) (*PolicyPackConfigFile, []string, error) {
 	b, err := os.ReadFile(file)
 	if err != nil {
 		return nil, nil, err
@@ -90,12 +86,12 @@ func ParsePolicyPackConfigFromAPI(config map[string]*json.RawMessage) (map[strin
 	return result, nil
 }
 
-func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, []string, error) {
+func parsePolicyPackConfig(b []byte) (*PolicyPackConfigFile, []string, error) {
 	result := make(map[string]plugin.AnalyzerPolicyConfig)
 
 	// Gracefully allow empty content.
 	if strings.TrimSpace(string(b)) == "" {
-		return nil, nil, nil
+		return &PolicyPackConfigFile{}, nil, nil
 	}
 
 	config := make(map[string]any)
@@ -119,6 +115,22 @@ func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, []
 			environments = append(environments, s)
 		}
 		delete(config, "environments")
+	}
+
+	// Extract and parse policy exceptions if present.
+	var exceptions *PolicyExceptions
+	var warnings []string
+	if _, ok := config[policyExceptionsKey]; ok {
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(b, &raw); err != nil {
+			return nil, nil, err
+		}
+		var err error
+		exceptions, warnings, err = ParsePolicyExceptionsBlock(raw[policyExceptionsKey], true /*strict*/)
+		if err != nil {
+			return nil, nil, err
+		}
+		delete(config, policyExceptionsKey)
 	}
 
 	for k, v := range config {
@@ -154,7 +166,7 @@ func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, []
 			Properties:       properties,
 		}
 	}
-	return result, environments, nil
+	return &PolicyPackConfigFile{Config: result, Environments: environments, Exceptions: exceptions}, warnings, nil
 }
 
 // extractEnforcementLevel looks for "enforcementLevel" in the map, and if so, validates that it is a valid value, and

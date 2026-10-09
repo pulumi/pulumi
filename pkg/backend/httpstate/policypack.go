@@ -142,6 +142,10 @@ func (rp *cloudRequiredPolicy) storeKey() (atomicinstall.Store, string, error) {
 
 func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
 
+func (rp *cloudRequiredPolicy) Exceptions() map[string]json.RawMessage {
+	return rp.RequiredPolicy.Exceptions
+}
+
 // ResolveEnvironments opens any referenced ESC environments and returns resolved
 // config (from policyConfig) and environment variables. Returns nil if no environments are referenced.
 func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine.ResolvedPolicyEnvironment, error) {

@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -678,3 +679,83 @@ func (a *fakeAnalyzer) Configure(context.Context, map[string]plugin.AnalyzerPoli
 }
 func (a *fakeAnalyzer) Cancel(context.Context) error { return nil }
 func (a *fakeAnalyzer) Close() error                 { return nil }
+
+// exceptedAnalyzer returns a fake analyzer with a mandatory violation on the analyze snapshot's resource, and an
+// exception that matches it.
+func exceptedAnalyzer(t *testing.T) plugin.Analyzer {
+	t.Helper()
+	exceptions, warnings, err := resourceanalyzer.ParsePolicyExceptionsBlock(json.RawMessage(`{
+		"EXC-42": {
+			"policies": ["test-policy"],
+			"resources": [{"urn": "urn:pulumi:stack::project::pkg:index:MyResource::res"}],
+			"reason": "Needed for the CDN"
+		}
+	}`), true)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+	return resourceanalyzer.WithPolicyExceptions(&fakeAnalyzer{mandatory: true}, exceptions)
+}
+
+func TestPolicyAnalyzeCmd_ExceptedViolation(t *testing.T) {
+	t.Parallel()
+
+	run := func(args ...string) (string, error) {
+		be, stk := newMockBackendForAnalyze()
+		stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+			return makeAnalyzeSnapshot(), nil
+		}
+		ws, lm := newMockWsAndLm(be)
+		stdout, _, err := runAnalyzeCmd(t, ws, lm,
+			stubLoadAnalyzers([]plugin.Analyzer{exceptedAnalyzer(t)}),
+			append([]string{"--stack", "my-stack"}, args...)...)
+		return stdout, err
+	}
+
+	t.Run("collapsed", func(t *testing.T) {
+		t.Parallel()
+		stdout, err := run()
+		require.NoError(t, err)
+		assert.Equal(t, ""+
+			"    pulumi:pulumi:Stack project-stack  \n"+
+			"Policies:\n"+
+			"    ✅ test-pack@v\n"+
+			"        · test-policy  excepted for 1 resource\n\n"+
+			// The violation didn't block the analysis, so the summary is shown as usual.
+			"Resources:\n\n"+
+			"Duration: 0s\n\n", stdout)
+	})
+
+	t.Run("expanded", func(t *testing.T) {
+		t.Parallel()
+		stdout, err := run("--show-policy-exceptions")
+		require.NoError(t, err)
+		assert.Equal(t, ""+
+			"    pulumi:pulumi:Stack project-stack  \n"+
+			"Policies:\n"+
+			"    ✅ test-pack@v\n"+
+			"        · test-policy (mandatory)  excepted for 1 resource\n"+
+			"            EXC-42: Needed for the CDN\n"+
+			"              - pkg:index:MyResource: res\n\n"+
+			"Resources:\n\n"+
+			"Duration: 0s\n\n", stdout)
+	})
+
+	t.Run("diff", func(t *testing.T) {
+		t.Parallel()
+		stdout, err := run("--diff")
+		require.NoError(t, err)
+		assert.Empty(t, stdout)
+	})
+
+	t.Run("json", func(t *testing.T) {
+		t.Parallel()
+		stdout, err := run("--json")
+		require.NoError(t, err)
+		events := decodeEngineEventsJSON(t, stdout)
+		require.NotEmpty(t, events)
+		require.NotNil(t, events[0].PolicyEvent)
+		assert.Equal(t, "mandatory", events[0].PolicyEvent.EnforcementLevel)
+		assert.Equal(t, &apitype.PolicyEventException{ID: "EXC-42", Reason: "Needed for the CDN"},
+			events[0].PolicyEvent.Exception)
+	})
+}

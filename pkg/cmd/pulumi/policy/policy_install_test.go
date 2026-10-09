@@ -42,10 +42,11 @@ type mockRequiredPolicy struct {
 
 var _ engine.RequiredPolicy = (*mockRequiredPolicy)(nil)
 
-func (m *mockRequiredPolicy) Name() string                        { return m.name }
-func (m *mockRequiredPolicy) Version() string                     { return m.version }
-func (m *mockRequiredPolicy) Config() map[string]*json.RawMessage { return m.config }
-func (m *mockRequiredPolicy) LocalPath() (string, error)          { return "/path/to/" + m.name, nil }
+func (m *mockRequiredPolicy) Name() string                           { return m.name }
+func (m *mockRequiredPolicy) Version() string                        { return m.version }
+func (m *mockRequiredPolicy) Config() map[string]*json.RawMessage    { return m.config }
+func (m *mockRequiredPolicy) Exceptions() map[string]json.RawMessage { return nil }
+func (m *mockRequiredPolicy) LocalPath() (string, error)             { return "/path/to/" + m.name, nil }
 
 func (m *mockRequiredPolicy) EnsureInstalled(
 	*plugin.Context, func(io.ReadCloser, int64) io.ReadCloser, io.Writer,

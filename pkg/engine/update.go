@@ -208,6 +208,9 @@ type RequiredPolicy interface {
 	// ResolveEnvironments opens any referenced ESC environments and returns
 	// resolved config and environment variables. Returns nil, nil if no environments are referenced.
 	ResolveEnvironments(ctx context.Context) (*ResolvedPolicyEnvironment, error)
+	// Exceptions returns the PolicyPack's active policy exceptions, keyed by exception ID.
+	// Each value should be a apitype.PolicyException.
+	Exceptions() map[string]json.RawMessage
 }
 
 // LocalPolicyPack represents a set of local Policy Packs to apply during an update.
@@ -293,18 +296,23 @@ func LoadLocalPolicyPackAnalyzers(
 		if err != nil {
 			return nil, err
 		}
-		if !info.SupportsConfig {
-			if pack.Config != "" {
-				return nil, fmt.Errorf("policy pack %q at %q does not support config", info.Name, pack.Path)
+		var configFromFile map[string]plugin.AnalyzerPolicyConfig
+		if pack.Config != "" {
+			file, warnings, err := resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
+			if err != nil {
+				return nil, err
 			}
+			configFromFile = file.Config
+			warnings = append(warnings, file.Exceptions.UnknownPolicyWarnings(info.Name, info.Policies)...)
+			for _, w := range warnings {
+				plugctx.Diag.Warningf(diag.Message("", "%s"), w)
+			}
+			analyzer = resourceanalyzer.WithPolicyExceptions(analyzer, file.Exceptions)
+		}
+		if !info.SupportsConfig && len(configFromFile) > 0 {
+			// Exceptions apply to every pack, but other config needs the pack's support.
+			return nil, fmt.Errorf("policy pack %q at %q does not support config", info.Name, pack.Path)
 		} else {
-			var configFromFile map[string]plugin.AnalyzerPolicyConfig
-			if pack.Config != "" {
-				configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
-				if err != nil {
-					return nil, err
-				}
-			}
 			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
 				info.Policies, info.InitialConfig, configFromFile)
 			if err != nil {
@@ -845,6 +853,11 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 		analyzersMu     sync.Mutex
 		loadedAnalyzers []plugin.Analyzer
 	)
+	warn := func(warnings []string) {
+		for _, w := range warnings {
+			plugctx.Diag.Warningf(diag.Message("", "%s"), w)
+		}
+	}
 	addAnalyzer := func(a plugin.Analyzer) {
 		analyzersMu.Lock()
 		loadedAnalyzers = append(loadedAnalyzers, a)
@@ -897,6 +910,18 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
+			// Exceptions for a required pack come only from the service.
+			// Being careful here about future compatibility and warn when things look off.
+			// Disabled exceptions fail on the safe side - they don't waive violations.
+			exceptions, warnings, err := resourceanalyzer.ParsePolicyExceptions(policy.Exceptions(), false /*strict*/)
+			if err != nil {
+				errs <- err
+				return
+			}
+			warn(warnings)
+			warn(exceptions.UnknownPolicyWarnings(analyzerInfo.Name, analyzerInfo.Policies))
+			analyzer = resourceanalyzer.WithPolicyExceptions(analyzer, exceptions)
+
 			// Merge ESC policyConfig under API config (API config wins on conflict).
 			var escConfig map[string]*json.RawMessage
 			if resolved != nil {
@@ -944,16 +969,18 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			// Load config and ESC environment references from the config file.
+			// Load config, ESC environment references and exceptions from the config file.
 			var configFromFile map[string]plugin.AnalyzerPolicyConfig
 			var environments []string
+			var exceptions *resourceanalyzer.PolicyExceptions
 			if pack.Config != "" {
-				var loadErr error
-				configFromFile, environments, loadErr = resourceanalyzer.LoadPolicyPackConfigAndEnvironmentsFromFile(pack.Config)
+				file, warnings, loadErr := resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
 				if loadErr != nil {
 					errs <- loadErr
 					return
 				}
+				configFromFile, environments, exceptions = file.Config, file.Environments, file.Exceptions
+				warn(warnings)
 			}
 
 			// Resolve ESC environments if present.
@@ -1003,9 +1030,13 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			deployOpts.LocalPolicyPacks[i].Name = analyzerInfo.Name
 			deployOpts.LocalPolicyPacks[i].Version = analyzerInfo.Version
 
-			// Load config, reconcile & validate it, and pass it to the policy pack.
+			warn(exceptions.UnknownPolicyWarnings(analyzerInfo.Name, analyzerInfo.Policies))
+			analyzer = resourceanalyzer.WithPolicyExceptions(analyzer, exceptions)
+
+			// Load config, reconcile & validate it, and pass it to the policy pack. Exceptions apply to every
+			// pack, but other config needs the pack's support.
 			if !analyzerInfo.SupportsConfig {
-				if pack.Config != "" {
+				if len(configFromFile) > 0 {
 					errs <- fmt.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
 					return
 				}

@@ -108,6 +108,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackVersionTag: p.PolicyPackVersion,
 			EnforcementLevel:     string(p.EnforcementLevel),
 			Severity:             string(p.Severity),
+			Exception:            p.Exception,
 		}
 
 	case engine.PolicyRemediationEvent:
@@ -411,6 +412,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyPackVersion: p.PolicyPackVersion,
 			EnforcementLevel:  apitype.EnforcementLevel(p.EnforcementLevel),
 			Severity:          apitype.PolicySeverity(p.Severity),
+			Exception:         p.Exception,
 		})
 
 	case apiEvent.PolicyRemediationEvent != nil:

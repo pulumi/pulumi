@@ -114,6 +114,7 @@ type AnalyzeDiagnostic struct {
 	EnforcementLevel  apitype.EnforcementLevel
 	URN               resource.URN
 	Severity          apitype.PolicySeverity
+	Exception         *apitype.PolicyEventException
 }
 
 // AnalyzeResponse is the response from the Analyze method, containing violations.
@@ -254,4 +255,30 @@ type AnalyzerPolicyComplianceFramework struct {
 	Reference string
 	// The compliance framework specification.
 	Specification string
+}
+
+// AttributeStackDiagnostics sets the URN of each AnalyzeStack diagnostic to the resource it's reported against:
+// its own URN when that names one of the analyzed resources, and the default root stack URN of the analyzed
+// stack otherwise.
+// Analyzer implementations call this before returning from AnalyzeStack.
+func AttributeStackDiagnostics(resources []AnalyzerStackResource, diags []AnalyzeDiagnostic) {
+	if len(diags) == 0 {
+		return
+	}
+	inStack := make(map[resource.URN]bool, len(resources))
+	var root resource.URN
+	for _, r := range resources {
+		if !r.URN.IsValid() {
+			continue
+		}
+		inStack[r.URN] = true
+		if root == "" {
+			root = resource.DefaultRootStackURN(r.URN.Stack(), r.URN.Project())
+		}
+	}
+	for i := range diags {
+		if !inStack[diags[i].URN] {
+			diags[i].URN = root
+		}
+	}
 }

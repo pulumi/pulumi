@@ -54,7 +54,11 @@ func (a *Analyzer) AnalyzeStack(
 	ctx context.Context, resources []plugin.AnalyzerStackResource,
 ) (plugin.AnalyzeResponse, error) {
 	if a.AnalyzeStackF != nil {
-		return a.AnalyzeStackF(resources)
+		resp, err := a.AnalyzeStackF(resources)
+		if err == nil {
+			plugin.AttributeStackDiagnostics(resources, resp.Diagnostics)
+		}
+		return resp, err
 	}
 	return plugin.AnalyzeResponse{}, nil
 }
