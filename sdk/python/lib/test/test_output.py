@@ -479,6 +479,39 @@ class OutputRecoverTests(unittest.TestCase):
 
         test()
 
+    def test_recover_through_apply(self):
+        @pulumi_test
+        async def test():
+            recovered = (
+                self._faulted_output(Exception("boom"))
+                .apply(lambda v: v)
+                .recover(lambda _: 42)
+            )
+            self.assertEqual(await recovered.future(), 42)
+
+        test()
+
+    def test_recover_through_apply_after_program_exit(self):
+        recovered_values = []
+
+        @pulumi_test
+        async def test():
+            async def fail_later():
+                await asyncio.sleep(0.01)
+                raise Exception("boom")
+
+            ok_res: asyncio.Future = asyncio.Future()
+            ok_res.set_result(set())
+            ok_known: asyncio.Future = asyncio.Future()
+            ok_known.set_result(True)
+            faulted = Output(resources=ok_res, future=fail_later(), is_known=ok_known)
+            faulted.apply(lambda v: v).apply(lambda v: v).recover(lambda _: 42).apply(
+                recovered_values.append
+            )
+
+        test()
+        self.assertEqual(recovered_values, [42])
+
 
 class OutputAllTests(unittest.IsolatedAsyncioTestCase):
     @pulumi_test
