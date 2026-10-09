@@ -1,0 +1,9 @@
+name = "formal"
+defaultTargets = ["Formal"]
+
+[[lean_lib]]
+name = "Formal"
+
+[[lean_exe]]
+name = "corpus"
+root = "Corpus"
