@@ -146,7 +146,22 @@ type StackOutputsResponse struct {
 	// Unknown reports that the values in Outputs are placeholders to be treated as unknown: the
 	// coherence window reads the stack from a preview that failed before reporting them.
 	Unknown bool `json:"unknown,omitempty"`
+
+	// State is StackOutputsPending while the outputs are not known yet, in which case the response
+	// carries none and the request is repeated until it completes. An absent State is completed.
+	State StackOutputsState `json:"state,omitempty"`
 }
+
+// StackOutputsState reports whether a stack's outputs are known yet.
+type StackOutputsState string
+
+const (
+	// StackOutputsCompleted reports outputs that are in the response.
+	StackOutputsCompleted StackOutputsState = "completed"
+	// StackOutputsPending reports outputs that are not known yet, because a coherence window
+	// subgroup may still run an update of the stack the reading update must observe.
+	StackOutputsPending StackOutputsState = "pending"
+)
 
 // ImportStackRequest defines the request body for importing a Stack.
 type ImportStackRequest UntypedDeployment

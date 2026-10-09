@@ -221,6 +221,8 @@ type cloudBackend struct {
 	neoEnabledForCurrentProject *bool
 
 	readingUpdateID atomic.Pointer[string]
+
+	stackOutputsWaitLimit time.Duration
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
