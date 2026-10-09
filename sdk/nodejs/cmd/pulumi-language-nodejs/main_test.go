@@ -1018,29 +1018,78 @@ func TestNodeInstall(t *testing.T) {
 	require.Equal(t, "alias 20.1.2 default", commands[1])
 }
 
-func TestRuntimeOptionsPromptsRecommendsNpm(t *testing.T) {
-	t.Parallel()
-
-	host := &nodeLanguageHost{}
-	resp, err := host.RuntimeOptionsPrompts(t.Context(), &pulumirpc.RuntimeOptionsRequest{
-		Info: &pulumirpc.ProgramInfo{},
-	})
-	require.NoError(t, err)
-	require.Len(t, resp.Prompts, 1)
-	require.Equal(t, "packagemanager", resp.Prompts[0].Key)
-
-	expectedNpm := "npm (recommended)"
-	if _, err := exec.LookPath("npm"); err != nil {
-		expectedNpm = "npm [not found]"
+func TestRuntimeOptionsPromptsPackageManager(t *testing.T) {
+	tests := []struct {
+		name            string
+		installed       []string
+		expectedChoices map[string]string
+		expectedDefault string
+	}{
+		{
+			name:      "none installed",
+			installed: nil,
+			expectedChoices: map[string]string{
+				"npm": "npm [not found]", "pnpm": "pnpm [not found]", "yarn": "yarn [not found]", "bun": "bun [not found]",
+			},
+			expectedDefault: "npm",
+		},
+		{
+			name:            "only npm installed",
+			installed:       []string{"npm"},
+			expectedChoices: map[string]string{"npm": "npm"},
+			expectedDefault: "npm",
+		},
+		{
+			name:            "only pnpm installed",
+			installed:       []string{"pnpm"},
+			expectedChoices: map[string]string{"pnpm": "pnpm"},
+			expectedDefault: "pnpm",
+		},
+		{
+			name:      "npm and yarn installed",
+			installed: []string{"npm", "yarn"},
+			expectedChoices: map[string]string{
+				"npm": "npm (recommended)", "pnpm": "pnpm [not found]", "yarn": "yarn", "bun": "bun [not found]",
+			},
+			expectedDefault: "npm",
+		},
+		{
+			name:      "pnpm and bun installed",
+			installed: []string{"pnpm", "bun"},
+			expectedChoices: map[string]string{
+				"npm": "npm [not found]", "pnpm": "pnpm", "yarn": "yarn [not found]", "bun": "bun",
+			},
+			expectedDefault: "npm",
+		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			binDir := t.TempDir()
+			for _, pm := range tt.installed {
+				name := pm
+				if runtime.GOOS == "windows" {
+					name += ".bat"
+				}
+				//nolint:gosec // the file has to be executable to be found on PATH
+				require.NoError(t, os.WriteFile(filepath.Join(binDir, name), nil, 0o700))
+			}
+			t.Setenv("PATH", binDir)
 
-	displayNames := map[string]string{}
-	for _, choice := range resp.Prompts[0].Choices {
-		displayNames[choice.StringValue] = choice.DisplayName
-	}
-	require.Len(t, displayNames, 4)
-	require.Equal(t, expectedNpm, displayNames["npm"])
-	for _, pm := range []string{"pnpm", "yarn", "bun"} {
-		require.NotContains(t, displayNames[pm], "recommended")
+			host := &nodeLanguageHost{}
+			resp, err := host.RuntimeOptionsPrompts(t.Context(), &pulumirpc.RuntimeOptionsRequest{
+				Info: &pulumirpc.ProgramInfo{},
+			})
+			require.NoError(t, err)
+			require.Len(t, resp.Prompts, 1)
+			prompt := resp.Prompts[0]
+			require.Equal(t, "packagemanager", prompt.Key)
+
+			displayNames := map[string]string{}
+			for _, choice := range prompt.Choices {
+				displayNames[choice.StringValue] = choice.DisplayName
+			}
+			require.Equal(t, tt.expectedChoices, displayNames)
+			require.Equal(t, tt.expectedDefault, prompt.Default.StringValue)
+		})
 	}
 }

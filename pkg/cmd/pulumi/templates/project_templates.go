@@ -27,6 +27,7 @@ import (
 
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/transport"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v3"
 
@@ -295,11 +296,30 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 		return fmt.Errorf("getting template repo remotes: %w", err)
 	}
 	// If the repo exists and it doesn't have exactly one remote that matches our URL, wipe the templates directory.
-	if len(remotes) != 1 || remotes[0] == nil || !strings.Contains(remotes[0].String(), url) {
+	if len(remotes) != 1 || remotes[0] == nil || !remoteMatchesURL(remotes[0], url) {
 		return os.RemoveAll(templateDir)
 	}
 
 	return nil
+}
+
+func remoteMatchesURL(remote *git.Remote, url string) bool {
+	urls := remote.Config().URLs
+	return len(urls) == 1 && normalizeTemplateRepoURL(urls[0]) == normalizeTemplateRepoURL(url)
+}
+
+func normalizeTemplateRepoURL(rawurl string) string {
+	u, err := transport.ParseURL(rawurl)
+	if err != nil {
+		return rawurl
+	}
+	if u.Scheme == "file" {
+		if abs, err := filepath.Abs(u.Path); err == nil {
+			return abs
+		}
+	}
+	u.User = nil
+	return u.String()
 }
 
 // IsGitRepoTemplateURL returns true if templateNamePathOrURL is a git repository URL (https:// or ssh://).
