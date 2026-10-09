@@ -1341,10 +1341,12 @@ func (host *nodeLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 		rawOpts := req.Info.Options.AsMap()
 		if _, hasPackagemanager := rawOpts["packagemanager"]; !hasPackagemanager {
 			choices := plugin.MakeExecutablePromptChoices("npm", "pnpm", "yarn", "bun")
-			for _, choice := range choices {
-				// Only recommend npm when it is installed, otherwise the display name carries a `[not found]` suffix.
-				if choice.StringValue == "npm" && choice.DisplayName == "npm" {
-					choice.DisplayName = "npm (recommended)"
+			// Only recommend npm when it is installed.
+			if _, err := exec.LookPath("npm"); err == nil {
+				for _, choice := range choices {
+					if choice.StringValue == "npm" {
+						choice.DisplayName = "npm (recommended)"
+					}
 				}
 			}
 			prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
