@@ -1,0 +1,4 @@
+component: cli/new
+kind: improvement
+body: Use pip without prompting for a toolchain in `pulumi new` when neither Poetry nor uv is installed
+time: 2026-10-09T00:00:00Z
