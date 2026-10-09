@@ -130,6 +130,7 @@ class Resource(pulumi.CustomResource):
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
         __props__.__dict__["data"] = None
+        __props__.__dict__["optional_data"] = None
         __inst__ = Resource.__new__(Resource)
         return pulumi.runtime.exists_resource(__inst__, 'optional-primitive-ref:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
 

@@ -235,7 +235,11 @@ class Resource(pulumi.CustomResource):
         __props__ = ResourceArgs.__new__(ResourceArgs)
 
         __props__.__dict__["private"] = None
+        __props__.__dict__["private_array"] = None
         __props__.__dict__["private_data"] = None
+        __props__.__dict__["private_data_array"] = None
+        __props__.__dict__["private_data_map"] = None
+        __props__.__dict__["private_map"] = None
         __props__.__dict__["public"] = None
         __props__.__dict__["public_data"] = None
         __inst__ = Resource.__new__(Resource)

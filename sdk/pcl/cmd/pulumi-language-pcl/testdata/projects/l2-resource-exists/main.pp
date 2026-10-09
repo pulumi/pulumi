@@ -2,7 +2,7 @@ resource "res" "simple:index:Resource" {
     value = true
 }
 
-existsResult = resourceExists("simple:index:Resource", "checkExists", res.id)
+existsResult = resourceExists("simple:index:Resource", res.id)
 
 output "existsResult" {
     value = existsResult
