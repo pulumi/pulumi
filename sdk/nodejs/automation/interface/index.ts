@@ -398,7 +398,7 @@ export class API {
 
         const __flags: string[] = [];
 
-        __flags.push("--json");
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -458,10 +458,6 @@ export class API {
 
         if (options.stack != null) {
             __flags.push("--stack", "" + options.stack);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -1026,8 +1022,6 @@ export class API {
 
         const __flags: string[] = [];
 
-        __flags.push("--json");
-
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -1074,6 +1068,10 @@ export class API {
 
         if (options.configFile != null) {
             __flags.push("--config-file", "" + options.configFile);
+        }
+
+        if (options.json != null) {
+            __flags.push("--json", "" + options.json);
         }
 
         if (options.open) {
@@ -2590,8 +2588,6 @@ export interface PulumiConfigEnvListOptions extends BaseOptions {
     showSecrets?: boolean;
     /** The name of the stack to operate on. Defaults to the current stack */
     stack?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
 }
 
 /** Options for the `pulumi config env remove` command. */
@@ -2850,6 +2846,8 @@ export interface PulumiConfigSetAllOptions extends BaseOptions {
     verbose?: number;
     /** Use the configuration values in the specified file rather than detecting the file name */
     configFile?: string;
+    /** Read values from a JSON string in the format produced by 'pulumi config --json' */
+    json?: string;
     /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
     open?: boolean;
     /** Show secret values when listing config instead of displaying blinded values */

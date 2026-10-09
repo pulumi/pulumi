@@ -545,7 +545,7 @@ func (a *API) ConfigEnvList(
 
 	final := []string{"config", "env", "list"}
 
-	final = append(final, "--json")
+	final = append(final, "--output", "json")
 
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
@@ -581,10 +581,6 @@ func (a *API) ConfigEnvList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -1284,8 +1280,6 @@ func (a *API) ConfigSetAll(
 
 	final := []string{"config", "set-all"}
 
-	final = append(final, "--json")
-
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -1300,6 +1294,10 @@ func (a *API) ConfigSetAll(
 
 	if o.FullyQualifyStackNames {
 		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Json != "" {
+		final = append(final, "--json", fmt.Sprint(o.Json))
 	}
 
 	if o.Logflow {

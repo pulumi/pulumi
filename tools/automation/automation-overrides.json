@@ -108,17 +108,11 @@
             }
         },
         {
-            "path": ["config", "set-all"],
-            "propagate": false,
-            "flags": {
-                "json": { "omit": true, "preset": true }
-            }
-        },
-        {
             "path": ["config", "env", "list"],
             "propagate": false,
             "flags": {
-                "json": { "omit": true, "preset": true }
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
             }
         },
         {

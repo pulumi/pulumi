@@ -450,7 +450,6 @@ class API:
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -473,7 +472,6 @@ class API:
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values when listing config instead of displaying blinded values
         :param stack: The name of the stack to operate on. Defaults to the current stack
-        :param output: Output format. Supported values are: default and json
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -483,7 +481,7 @@ class API:
         __final.append("env")
         __final.append("list")
         __flags = []
-        __flags.append("--json")
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -514,8 +512,6 @@ class API:
             __flags.append("--show-secrets")
         if stack is not None:
             __flags.extend(["--stack", str(stack)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -1159,6 +1155,7 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         config_file: Optional[str] = None,
+        json: Optional[str] = None,
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
@@ -1184,6 +1181,7 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param config_file: Use the configuration values in the specified file rather than detecting the file name
+        :param json: Read values from a JSON string in the format produced by 'pulumi config --json'
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values when listing config instead of displaying blinded values
         :param stack: The name of the stack to operate on. Defaults to the current stack
@@ -1198,7 +1196,6 @@ class API:
         __final.append("config")
         __final.append("set-all")
         __flags = []
-        __flags.append("--json")
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -1223,6 +1220,8 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if config_file is not None:
             __flags.extend(["--config-file", str(config_file)])
+        if json is not None:
+            __flags.extend(["--json", str(json)])
         if open:
             __flags.append("--open")
         if show_secrets:
