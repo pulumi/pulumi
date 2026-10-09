@@ -113,6 +113,101 @@ export class API {
         return this.__run(options, __final);
     }
 
+    convert(options: PulumiConvertOptions, ...arg: string[]): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("convert");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.from != null) {
+            __flags.push("--from", "" + options.from);
+        }
+
+        if (options.generateOnly) {
+            __flags.push("--generate-only");
+        }
+
+        __flags.push("--language", "" + options.language);
+
+        for (const __item of options.mappings ?? []) {
+            if (__item != null) {
+                __flags.push("--mappings", "" + __item);
+            }
+        }
+
+        if (options.name != null) {
+            __flags.push("--name", "" + options.name);
+        }
+
+        if (options.out != null) {
+            __flags.push("--out", "" + options.out);
+        }
+
+        if (options.strict) {
+            __flags.push("--strict");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (arg != null) {
+            for (const __item of arg ?? []) {
+                __arguments.push("" + __item);
+            }
+        }
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
     import(options: PulumiImportOptions, ...arg: string[]): ReturnType<API["__run"]> {
         const __final: string[] = [];
         __final.push("import");
@@ -1017,6 +1112,46 @@ export interface PulumiCancelOptions extends BaseOptions {
     verbose?: number;
     /** The name of the stack to operate on. Defaults to the current stack */
     stack?: string;
+}
+
+/** Options for the `pulumi convert` command. */
+export interface PulumiConvertOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Which converter plugin to use to read the source program */
+    from?: string;
+    /** Generate the converted program(s) only; do not install dependencies */
+    generateOnly?: boolean;
+    /** Which language plugin to use to generate the Pulumi project */
+    language: string;
+    /** Any mapping files to use in the conversion */
+    mappings?: string[];
+    /** The name to use for the converted project; defaults to the directory of the source project */
+    name?: string;
+    /** The output directory to write the converted project to */
+    out?: string;
+    /** Fail the conversion on errors such as missing variables */
+    strict?: boolean;
 }
 
 /** Options for the `pulumi import` command. */
