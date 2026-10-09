@@ -60,6 +60,12 @@ func (AnotherResourceState) ElementType() reflect.Type {
 	return reflect.TypeOf((*anotherResourceState)(nil)).Elem()
 }
 
+// AnotherResourceExists checks whether an existing AnotherResource resource with the given ID exists.
+func AnotherResourceExists(ctx *pulumi.Context,
+	id pulumi.IDInput, state *AnotherResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("kebab-names:kebab-module:another-resource", id, state, opts...)
+}
+
 type anotherResourceArgs struct {
 	TheInput string `pulumi:"the-input"`
 }

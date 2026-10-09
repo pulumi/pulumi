@@ -63,6 +63,12 @@ func (SomeResourceState) ElementType() reflect.Type {
 	return reflect.TypeOf((*someResourceState)(nil)).Elem()
 }
 
+// SomeResourceExists checks whether an existing SomeResource resource with the given ID exists.
+func SomeResourceExists(ctx *pulumi.Context,
+	id pulumi.IDInput, state *SomeResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("kebab-names:kebab-module:some-resource", id, state, opts...)
+}
+
 type someResourceArgs struct {
 	Nested   NestedInput `pulumi:"nested"`
 	TheInput bool        `pulumi:"the-input"`

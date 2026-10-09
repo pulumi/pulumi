@@ -415,6 +415,13 @@ func (i *Interpreter) call(
 	return resp, err
 }
 
+func (i *Interpreter) existsResource(
+	ctx context.Context, req *pulumirpc.ExistsResourceRequest,
+) (*pulumirpc.ExistsResourceResponse, error) {
+	req.PackageRef = i.getPackageRefFromToken(req.Type)
+	return i.monitor.ExistsResource(ctx, req)
+}
+
 func (i *Interpreter) getResource(ctx context.Context, ref property.ResourceReference) (property.Map, error) {
 	args, err := structpb.NewStruct(map[string]any{
 		"urn": string(ref.URN),
@@ -497,6 +504,7 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		i.getResource,
 		i.invoke,
 		i.call,
+		i.existsResource,
 	)
 
 	// Probe the monitor for the INVOKE_OUTPUT_VALUES capability. Older monitors don't implement GetDeploymentInfo
@@ -574,6 +582,7 @@ func (i *Interpreter) RunEmbedded(
 		i.getResource,
 		i.invoke,
 		i.call,
+		i.existsResource,
 	)
 	for name, val := range scopeVars {
 		ctyVal, err := propertyValueToCty(ctx, i.getResource, val)
@@ -2159,6 +2168,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		i.getResource,
 		componentInterpreter.invoke,
 		componentInterpreter.call,
+		componentInterpreter.existsResource,
 	)
 
 	for k, v := range inputs.All {

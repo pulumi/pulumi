@@ -39,9 +39,10 @@ type EvalContext struct {
 	lookupResource func(context.Context, string) (*schema.Resource, error)
 	lookupFunction func(context.Context, string) (*schema.Function, error)
 
-	invoke      func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
-	call        func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
-	getResource func(context.Context, property.ResourceReference) (property.Map, error)
+	invoke         func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
+	call           func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
+	getResource    func(context.Context, property.ResourceReference) (property.Map, error)
+	existsResource func(context.Context, *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error)
 
 	// invokeOutputValues is true when the resource monitor advertised INVOKE_OUTPUT_VALUES. When set, invoke
 	// preserves OutputValues in args and trusts the per-value OutputValues on the response; otherwise it falls
@@ -61,6 +62,7 @@ func NewEvalContext(
 	getResource func(context.Context, property.ResourceReference) (property.Map, error),
 	invoke func(context.Context, *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error),
 	call func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error),
+	existsResource func(context.Context, *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error),
 ) *EvalContext {
 	ctx := &EvalContext{
 		workingDirectory: workingDirectory,
@@ -73,6 +75,7 @@ func NewEvalContext(
 		getResource:      getResource,
 		invoke:           invoke,
 		call:             call,
+		existsResource:   existsResource,
 		evalLock:         new(sync.Mutex),
 	}
 
@@ -98,6 +101,7 @@ func (ectx *EvalContext) NewChild() *EvalContext {
 		getResource:        ectx.getResource,
 		invoke:             ectx.invoke,
 		call:               ectx.call,
+		existsResource:     ectx.existsResource,
 		invokeOutputValues: ectx.invokeOutputValues,
 		evalLock:           ectx.evalLock,
 		evalContext:        child,

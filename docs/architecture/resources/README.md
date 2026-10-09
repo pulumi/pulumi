@@ -42,3 +42,34 @@ externally to Pulumi. These can e.g. be resources set up through
 OpenTofu, but as part of a Pulumi Program.  Pulumi doesn't manage the
 lifecycle of this type of resource itself, but rather defers to the
 provider to do so.
+
+## Resource Existence Checks
+
+Pulumi provides an `exists` method on custom resource types that
+checks whether a resource with a given ID currently exists in the
+provider. Unlike `get` (which reads and imports the resource into
+state), `exists` performs a read-only check and returns
+`Output<bool>` without registering the resource in the deployment
+state.
+
+The `exists` method is implemented using the provider's `Read` RPC.
+If `Read` returns output properties, the resource exists; if it
+returns nil outputs, the resource does not exist.
+
+### SDK Usage
+
+Each language SDK exposes `exists` as a static method on resource
+classes:
+
+- **Go**: `ResourceExists(ctx, name, id, state, opts...)`
+- **Node.js**: `Resource.exists(name, id, state?, opts?)`
+- **Python**: `Resource.exists(resource_name, id, opts=None, **state_kwargs)`
+
+### Engine Implementation
+
+The `ExistsResource` RPC is handled directly in the resource
+monitor without going through the step pipeline. It resolves the
+provider (including default provider registration if needed),
+calls `provider.Read()`, and returns a boolean result. No
+resources are registered in the deployment snapshot as a result of
+this call.

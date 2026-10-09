@@ -56,6 +56,12 @@ func (SubsetExampleState) ElementType() reflect.Type {
 	return reflect.TypeOf((*subsetExampleState)(nil)).Elem()
 }
 
+// SubsetExampleExists checks whether an existing SubsetExample resource with the given ID exists.
+func SubsetExampleExists(ctx *pulumi.Context,
+	id pulumi.IDInput, state *SubsetExampleState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("discriminated-union-many:index:SubsetExample", id, state, opts...)
+}
+
 type subsetExampleArgs struct {
 	UnionOf interface{} `pulumi:"unionOf"`
 }

@@ -1,0 +1,4 @@
+component: sdkgen
+kind: feat
+body: Add an `exists()` method to generated resources that checks whether a resource with a given ID exists without adopting it into the stack
+time: 2026-09-25T15:17:57.038856+02:00

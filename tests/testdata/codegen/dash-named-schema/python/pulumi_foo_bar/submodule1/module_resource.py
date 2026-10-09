@@ -112,6 +112,15 @@ class ModuleResource(pulumi.CustomResource):
         __props__.__dict__["thing"] = None
         return ModuleResource(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
+
+        __props__.__dict__["thing"] = None
+        __inst__ = ModuleResource.__new__(ModuleResource)
+        return pulumi.runtime.exists_resource(__inst__, 'foo-bar:submodule1:ModuleResource', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def thing(self) -> pulumi.Output[Optional['_root_outputs.TopLevel']]:

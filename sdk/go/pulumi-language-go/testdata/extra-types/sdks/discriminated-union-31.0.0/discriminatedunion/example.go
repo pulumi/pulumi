@@ -57,6 +57,12 @@ func (ExampleState) ElementType() reflect.Type {
 	return reflect.TypeOf((*exampleState)(nil)).Elem()
 }
 
+// ExampleExists checks whether an existing Example resource with the given ID exists.
+func ExampleExists(ctx *pulumi.Context,
+	id pulumi.IDInput, state *ExampleState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("discriminated-union:index:Example", id, state, opts...)
+}
+
 type exampleArgs struct {
 	ArrayOfUnionOf []interface{} `pulumi:"arrayOfUnionOf"`
 	UnionOf        interface{}   `pulumi:"unionOf"`
