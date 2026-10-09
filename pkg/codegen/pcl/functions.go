@@ -398,7 +398,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				Name: "errorMessage",
 				Type: model.StringType,
 			}},
-			ReturnType: model.DynamicType,
+			ReturnType: model.NewOutputType(model.DynamicType),
 		}),
 		// Returns either the single item in a list, none if the list is empty or errors.
 		"singleOrNone": model.NewFunction(model.GenericFunctionSignature(
