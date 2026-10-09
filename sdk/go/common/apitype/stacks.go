@@ -142,6 +142,10 @@ type StackOutputsResponse struct {
 	// SecretsProviders is the secrets provider for the secret values in Outputs.
 	// It is absent when the stack has no state.
 	SecretsProviders *SecretsProvidersV1 `json:"secretsProviders,omitempty"`
+
+	// Unknown reports that the values in Outputs are placeholders to be treated as unknown: the
+	// coherence window reads the stack from a preview that failed before reporting them.
+	Unknown bool `json:"unknown,omitempty"`
 }
 
 // ImportStackRequest defines the request body for importing a Stack.

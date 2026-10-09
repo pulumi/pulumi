@@ -352,6 +352,7 @@ type UpdateOperation struct {
 	SecretsProvider    secrets.Provider
 	StackConfiguration StackConfiguration
 	Scopes             CancellationScopeSource
+	CoherenceWindow    string
 }
 
 // StackConfiguration holds the configuration for a stack and it's associated decrypter.
