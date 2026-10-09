@@ -17,12 +17,10 @@ package tests
 import (
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,17 +32,8 @@ func init() {
 		},
 		Runs: []TestRun{
 			{
-				UpdateOptions: engine.UpdateOptions{
-					ContinueOnError: true,
-				},
-				AssertPreview: func(l *L, res AssertPreviewArgs) {
-					require.True(l, result.IsBail(res.Err), "expected a bail result on preview")
-					requireFailedCreateDiagnostic(l, res.Events, "Preview failed: failed create")
-				},
 				Assert: func(l *L, res AssertArgs) {
-					require.True(l, result.IsBail(res.Err), "expected a bail result")
-					requireFailedCreateDiagnostic(l, res.Events, "failed create")
-
+					require.NoError(l, res.Err, "expected update to succeed")
 					require.Len(l, res.Changes, 1, "expected 1 StepOp")
 					require.Equal(l, 3, res.Changes[deploy.OpCreate], "expected 3 Creates")
 					require.NotNil(l, res.Snap, "expected snapshot to be non-nil")
@@ -64,16 +53,4 @@ func init() {
 			},
 		},
 	}
-}
-
-func requireFailedCreateDiagnostic(l *L, events []engine.Event, message string) {
-	for _, evt := range events {
-		if d, ok := evt.Payload().(engine.DiagEventPayload); ok {
-			if d.Severity == "error" && d.URN.Name() == "failing" {
-				require.Contains(l, d.Message, message)
-				return
-			}
-		}
-	}
-	require.Fail(l, "expected to find error diagnostic for failing resource")
 }

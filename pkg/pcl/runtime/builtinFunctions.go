@@ -109,24 +109,22 @@ func recoverExpression(
 
 	valueClosure := customdecode.ExpressionClosureFromVal(args[0])
 	value, diags := valueClosure.Value()
+
+	var faultErr error
 	if diags.HasErrors() {
-		return cty.NilVal, errors.New(diags.Error())
-	}
-
-	pv, err := ctyToPropertyValue(value)
-	if err == nil {
-		return propertyValueToCty(context.TODO(), getResource, pv)
-	}
-
-	poison, ok := errors.AsType[*poisonError](err)
-	if !ok {
-		return cty.NilVal, err
+		faultErr = errors.New(diags.Error())
+	} else {
+		pv, err := ctyToPropertyValue(value)
+		if err == nil {
+			return propertyValueToCty(context.TODO(), getResource, pv)
+		}
+		faultErr = err
 	}
 
 	recoveryClosure := customdecode.ExpressionClosureFromVal(args[1])
 	childContext := recoveryClosure.EvalContext.NewChild()
 	childContext.Variables = map[string]cty.Value{
-		"error": cty.StringVal(poison.Error()),
+		"error": cty.StringVal(faultErr.Error()),
 	}
 	recoveryClosure = &customdecode.ExpressionClosure{
 		Expression:  recoveryClosure.Expression,

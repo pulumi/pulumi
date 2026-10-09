@@ -5,6 +5,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { FailArgs, FailResult, FailOutputArgs } from "./fail";
+export const fail: typeof import("./fail").fail = null as any;
+export const failOutput: typeof import("./fail").failOutput = null as any;
+utilities.lazyLoad(exports, ["fail","failOutput"], () => require("./fail"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;

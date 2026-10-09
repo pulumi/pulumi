@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Recover from failed function calls with `recover` in the PCL interpreter
+time: 2026-10-09T22:48:55.284208+02:00
