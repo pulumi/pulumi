@@ -354,8 +354,14 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 func (m *mockMonitor) ExistsResource(ctx context.Context, in *pulumirpc.ExistsResourceRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.ExistsResourceResponse, error) {
+	exists := false
+	m.resources.Range(func(key, value any) bool {
+		res := value.(resource.PropertyMap)
+		exists = string(resource.URN(key.(string)).Type()) == in.GetType() && res["id"].StringValue() == in.GetId()
+		return !exists
+	})
 	return &pulumirpc.ExistsResourceResponse{
-		Exists: false,
+		Exists: exists,
 	}, nil
 }
 

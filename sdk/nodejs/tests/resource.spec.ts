@@ -194,6 +194,18 @@ describe("CustomResource", () => {
         const custom = new MyCustomResource("custom", { provider: provider });
         assert.strictEqual(custom.__prov, undefined);
     });
+
+    it("checks whether a resource exists", async () => {
+        await new MyCustomResource("existing").id.promise();
+
+        const exists = runtime.existsResource("test:index:MyCustomResource", "existing_id");
+        assert.strictEqual(await exists.isKnown, true);
+        assert.strictEqual(await exists.promise(), true);
+
+        const missing = runtime.existsResource("test:index:MyCustomResource", "missing_id");
+        assert.strictEqual(await missing.isKnown, true);
+        assert.strictEqual(await missing.promise(), false);
+    });
 });
 
 interface MyCustomComponentResourceArgs {
