@@ -33,7 +33,8 @@ type Options struct {
 	// Clear all pending creates, dropping them from the state
 	ClearPendingCreates bool
 	// The address of an existing language runtime host to connect to
-	Client string
+	Client          string
+	CoherenceWindow string
 	// Colorize output. Choices are: always, never, raw, auto
 	Color string
 	// Config to use during the refresh and save to the stack config file
@@ -141,6 +142,13 @@ func ClearPendingCreates(v bool) Option {
 func Client(v string) Option {
 	return func(o *Options) {
 		o.Client = v
+	}
+}
+
+// CoherenceWindow returns an Option that sets CoherenceWindow.
+func CoherenceWindow(v string) Option {
+	return func(o *Options) {
+		o.CoherenceWindow = v
 	}
 }
 
