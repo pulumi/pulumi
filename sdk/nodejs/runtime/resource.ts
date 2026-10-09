@@ -439,6 +439,7 @@ export function readResource(
                             resp = {
                                 getUrn: () => mockurn,
                                 getProperties: () => req.getProperties(),
+                                getResult: () => 0,
                                 getUnknown: () => false,
                             };
                         }
@@ -447,6 +448,7 @@ export function readResource(
                         resp = {
                             getUrn: () => "",
                             getProperties: () => undefined,
+                            getResult: () => 0,
                             getUnknown: () => false,
                         };
                     }
@@ -454,10 +456,22 @@ export function readResource(
                     // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
                     resop.resolveURN(resp.getUrn(), err);
                     resop.resolveID!(resolvedID, resolvedID !== undefined, err);
-                    // A skipped read reports Unknown=true; resolve outputs as unknown so dependents
-                    // propagate unknowns instead of seeing empty values as real.
+                    // A skipped read reports Unknown=true and a failed read reports a non-success result;
+                    // resolve outputs as unknown in both cases so dependents propagate unknowns instead of
+                    // seeing empty values as real.
+                    const resultFailed = resp.getResult() !== resproto.Result.SUCCESS;
                     const unknown = !isDryRun() && resp.getUnknown();
-                    await resolveOutputs(res, t, name, props, resp.getProperties(), {}, resop.resolvers, err, unknown);
+                    await resolveOutputs(
+                        res,
+                        t,
+                        name,
+                        resultFailed ? {} : props,
+                        resultFailed ? undefined : resp.getProperties(),
+                        {},
+                        resop.resolvers,
+                        err,
+                        resultFailed || unknown,
+                    );
                     done();
                 });
             })

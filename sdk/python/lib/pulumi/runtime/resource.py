@@ -917,18 +917,20 @@ def read_resource(
         log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn, True, False, None)
         resolve_id(resolved_id, True, False, None)  # Read IDs are always known.
-        # A skipped read reports unknown=true; resolve outputs as unknown so dependents
-        # propagate unknowns instead of seeing empty values as real.
+        # A skipped read reports unknown=true and a failed read reports a non-success result;
+        # resolve outputs as unknown in both cases so dependents propagate unknowns instead of
+        # seeing empty values as real.
+        result_failed = resp.result != resource_pb2.Result.SUCCESS
         unknown = not settings.is_dry_run() and resp.unknown
         rpc.resolve_outputs(
             res,
-            resolver.serialized_props,
-            resp.properties,
+            struct_pb2.Struct() if result_failed else resolver.serialized_props,
+            struct_pb2.Struct() if result_failed else resp.properties,
             {},
             resolvers,
             custom,
             transform_using_type_metadata,
-            resolve_missing_as_unknown=unknown,
+            resolve_missing_as_unknown=result_failed or unknown,
         )
 
     asyncio.ensure_future(_get_rpc_manager().do_rpc("read resource", do_read)())

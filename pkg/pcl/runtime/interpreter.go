@@ -2000,9 +2000,17 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 		return err
 	}
 
-	outputs, err := propertyrpc.Unmarshal(resp.GetProperties())
-	if err != nil {
-		return err
+	// A failed read reports a non-success result; discard whatever came back so its outputs are
+	// unknown, just like a skipped read.
+	failed := resp.GetResult() != pulumirpc.Result_SUCCESS
+	var outputs property.Map
+	if failed {
+		outputs = property.NewMap(nil)
+	} else {
+		outputs, err = propertyrpc.Unmarshal(resp.GetProperties())
+		if err != nil {
+			return err
+		}
 	}
 
 	outputs = outputs.
@@ -2014,7 +2022,7 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 	if schemaResource != nil {
 		// A skipped read reports Unknown=true; treat outputs as unknown so dependents propagate
 		// unknowns instead of seeing empty values as real.
-		outputs = fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || resp.GetUnknown())
+		outputs = fillSchemaOutputs(outputs, schemaResource.Properties, i.info.DryRun || failed || resp.GetUnknown())
 	}
 
 	result := property.New(outputs).WithDependencies([]urn.URN{resource.URN(resp.GetUrn())})
