@@ -539,8 +539,6 @@ func TestRuntimeOptionsPromptsToolchainChoices(t *testing.T) {
 		}
 		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte{}, 0o755)) //nolint:gosec
 		t.Setenv("PATH", dir)
-		choices := toolchainChoices(t)
-		require.Len(t, choices, 3)
-		require.Equal(t, "pip", choices[0])
+		require.Equal(t, []string{"pip", "uv", "poetry [not found]"}, toolchainChoices(t))
 	})
 }
