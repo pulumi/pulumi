@@ -101,6 +101,12 @@ type stepGenerator struct {
 	// can't create any new resources.
 	skippedCreates map[resource.URN]bool
 
+	// Set of URNs whose step execution failed earlier in this deployment. Only populated when
+	// ContinueOnError is set; the deployment executor syncs this before each GenerateSteps call
+	// so that step generation can treat dependents (and resources referencing failed providers)
+	// as skipped rather than bailing out.
+	failedURNs map[resource.URN]bool
+
 	// the set of resources that need to be destroyed in this deployment after running other steps on them.
 	toDelete []*pkgresource.State
 
@@ -1017,6 +1023,27 @@ func (sg *stepGenerator) hasSkippedDependencies(new *pkgresource.State) (bool, e
 	return false, nil
 }
 
+// hasFailedProvider reports whether this resource's explicit provider failed earlier in this
+// deployment under ContinueOnError. Dependents of failed regular resources are handled later
+// by the executor's doesStepDependOn filter, which routes them through CreateStep.Skip /
+// UpdateStep.Skip so provider preview outputs are preserved. A failed explicit provider is
+// different because loadResourceProvider would otherwise bail with "unknown provider" before
+// any step is generated.
+func (sg *stepGenerator) hasFailedProvider(new *pkgresource.State) (bool, error) {
+	provider, _ := new.GetAllDependencies()
+	if provider == "" {
+		return false, nil
+	}
+	prov, err := sdkproviders.ParseReference(provider)
+	if err != nil {
+		return false, fmt.Errorf(
+			"could not parse provider reference %s for %s: %w",
+			provider, new.URN, err,
+		)
+	}
+	return sg.failedURNs[prov.URN()], nil
+}
+
 func (sg *stepGenerator) continueStepsFromExtension(
 	ctx context.Context, event ContinueExtensionEvent,
 ) ([]Step, bool, error) {
@@ -1116,6 +1143,23 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 		// All other resources are handled as normal but need to be tagged as 'toDelete' for after we
 		// create/update them. We can use the new inputs for these so that providers get fresh configuration.
 		sg.toDelete = append(sg.toDelete, new)
+	}
+
+	// If this resource's explicit provider failed earlier in this deployment under
+	// ContinueOnError, skip this resource rather than bailing when loadResourceProvider can't
+	// resolve the failed provider ref. Dependents of failed regular resources are handled
+	// later by the executor's doesStepDependOn filter so their skip can go through
+	// CreateStep.Skip / UpdateStep.Skip (preserving provider preview outputs).
+	failedProv, err := sg.hasFailedProvider(new)
+	if err != nil {
+		return nil, false, err
+	}
+	if failedProv {
+		sg.skippedCreates[urn] = true
+		if old != nil {
+			new.Outputs = old.Outputs
+		}
+		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
 	}
 
 	// Fetch the provider for this resource.
@@ -3746,6 +3790,7 @@ func newStepGenerator(
 		deletes:                   make(map[resource.URN]bool),
 		refreshes:                 make(map[resource.URN]bool),
 		skippedCreates:            make(map[resource.URN]bool),
+		failedURNs:                make(map[resource.URN]bool),
 		pendingDeletes:            make(map[*pkgresource.State]bool),
 		pendingUntargetedSameURNs: make(map[resource.URN]bool),
 		providers:                 make(map[resource.URN]*pkgresource.State),
