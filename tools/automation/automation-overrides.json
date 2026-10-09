@@ -27,7 +27,8 @@
             "path": ["about"],
             "propagate": false,
             "flags": {
-                "color": { "preset": "never", "omit": false }
+                "color": { "preset": "never", "omit": false },
+                "output": { "omit": true, "preset": "json" }
             }
         },
         {

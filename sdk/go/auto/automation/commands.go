@@ -55,6 +55,8 @@ func (a *API) About(
 		final = append(final, "--color", "never")
 	}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -85,10 +87,6 @@ func (a *API) About(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {

@@ -130,6 +130,7 @@ export class API {
         if (options.color == null) {
             __flags.push("--color", "" + "never");
         }
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -177,10 +178,6 @@ export class API {
 
         if (options.json) {
             __flags.push("--json");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.stack != null) {
@@ -1096,8 +1093,6 @@ export interface PulumiAboutOptions extends BaseOptions {
     verbose?: number;
     /** Emit output as JSON (alias for --output=json) */
     json?: boolean;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** The name of the stack to get info on. Defaults to the current stack */
     stack?: string;
     /** Include transitive dependencies */

@@ -146,7 +146,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         json: bool = False,
-        output: Optional[str] = None,
         stack: Optional[str] = None,
         transitive: bool = False,
         cwd: Optional[str] = None,
@@ -168,7 +167,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param json: Emit output as JSON (alias for --output=json)
-        :param output: Output format. Supported values are: default and json
         :param stack: The name of the stack to get info on. Defaults to the current stack
         :param transitive: Include transitive dependencies
         :param cwd: Working directory to run the command in.
@@ -180,6 +178,7 @@ class API:
         __flags = []
         if color is None:
             __flags.extend(["--color", "never"])
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -204,8 +203,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if json:
             __flags.append("--json")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if stack is not None:
             __flags.extend(["--stack", str(stack)])
         if transitive:
