@@ -388,6 +388,179 @@ func TestDoCmdFunctionInvokeFiltersNestedObjectsInCollections(t *testing.T) {
 	assert.Equal(t, expected, stdout.String())
 }
 
+// TestDoCmdFunctionInvokeFiltersDiscriminatedUnion asserts that filterOutput selects the matching element type of a
+// discriminated union whose variants pin the discriminator property to a constant, rather than always picking the
+// first object-shaped variant. The constant alone separates the variants by wire shape; the declared discriminator
+// is not consulted. Before the fix, a "Dog" result was filtered against "Cat"'s properties.
+func TestDoCmdFunctionInvokeFiltersDiscriminatedUnion(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := newTestWorkspace(t)
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Types: map[string]schema.ComplexTypeSpec{
+				"azure:index:Cat": {
+					ObjectTypeSpec: schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"kind": {TypeSpec: schema.TypeSpec{Type: "string"}, Const: "cat"},
+							"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"meow": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+				"azure:index:Dog": {
+					ObjectTypeSpec: schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"kind": {TypeSpec: schema.TypeSpec{Type: "string"}, Const: "dog"},
+							"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"bark": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					ReturnType: &schema.ReturnTypeSpec{
+						TypeSpec: &schema.TypeSpec{
+							OneOf: []schema.TypeSpec{
+								{Ref: "#/types/azure:index:Cat"},
+								{Ref: "#/types/azure:index:Dog"},
+							},
+							Discriminator: &schema.DiscriminatorSpec{
+								PropertyName: "kind",
+								Mapping: map[string]string{
+									"dog": "azure:index:Dog",
+									"cat": "azure:index:Cat",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					return plugin.InvokeResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"payload": property.New(map[string]property.Value{
+								"kind":  property.New("dog"),
+								"name":  property.New("Rex"),
+								"bark":  property.New("Woof"),
+								"extra": property.New("hidden"),
+							}),
+						}),
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+
+	cmd.SetArgs([]string{"azure:index:myFunction"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	expected := `{
+  "bark": "Woof",
+  "kind": "dog",
+  "name": "Rex"
+}
+`
+	assert.Equal(t, expected, stdout.String())
+}
+
+// TestDoCmdFunctionInvokeFiltersStructurallyDiscriminatedUnion asserts that filterOutput picks a union's matching
+// object variant by recursively checking each variant's required properties even when the union has no explicit
+// discriminator, as long as the variants can't share a wire value. Without this, a "Dog" result would be filtered
+// against "Cat" instead, since both are ObjectType and the old fallback only checked top-level object-ness.
+func TestDoCmdFunctionInvokeFiltersStructurallyDiscriminatedUnion(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := newTestWorkspace(t)
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Types: map[string]schema.ComplexTypeSpec{
+				"azure:index:Cat": {
+					ObjectTypeSpec: schema.ObjectTypeSpec{
+						Type:     "object",
+						Required: []string{"meow"},
+						Properties: map[string]schema.PropertySpec{
+							"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"meow": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+				"azure:index:Dog": {
+					ObjectTypeSpec: schema.ObjectTypeSpec{
+						Type:     "object",
+						Required: []string{"bark"},
+						Properties: map[string]schema.PropertySpec{
+							"name": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"bark": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					ReturnType: &schema.ReturnTypeSpec{
+						TypeSpec: &schema.TypeSpec{
+							OneOf: []schema.TypeSpec{
+								{Ref: "#/types/azure:index:Cat"},
+								{Ref: "#/types/azure:index:Dog"},
+							},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					return plugin.InvokeResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"payload": property.New(map[string]property.Value{
+								"name":  property.New("Rex"),
+								"bark":  property.New("Woof"),
+								"extra": property.New("hidden"),
+							}),
+						}),
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+
+	cmd.SetArgs([]string{"azure:index:myFunction"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	expected := `{
+  "bark": "Woof",
+  "name": "Rex"
+}
+`
+	assert.Equal(t, expected, stdout.String())
+}
+
 func TestDoCmdFunctionInvokeReturnType(t *testing.T) {
 	t.Parallel()
 
