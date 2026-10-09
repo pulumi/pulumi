@@ -300,7 +300,7 @@ func NewDestroyCmd() *cobra.Command {
 				}
 			}
 
-			refreshOption, err := getRefreshOption(proj, refresh)
+			refreshOption, err := GetRefreshOption(proj, refresh)
 			if err != nil {
 				return err
 			}
