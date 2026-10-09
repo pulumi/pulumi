@@ -284,8 +284,14 @@ class Output(Generic[T_co]):
 
         # The "run" coroutine actually runs the apply.
         async def run() -> "_OutputData[U]":
-            # Await this output's details.
-            data = await self._data
+            # Await this output's details. If it faulted, the derived output carries the fault,
+            # so stop tracking this one: the failure is reported (or recovered) downstream.
+            try:
+                data = await self._data
+            except Exception:
+                with SETTINGS.lock:
+                    SETTINGS.outputs.discard(self._data)
+                raise
             resources = data.resources
             is_known = data.is_known
             is_secret = data.is_secret
