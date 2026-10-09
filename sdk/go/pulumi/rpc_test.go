@@ -173,6 +173,61 @@ func (testInputs) ElementType() reflect.Type {
 	return reflect.TypeFor[test]()
 }
 
+type nullMapTest struct {
+	Values map[string]any    `pulumi:"values"`
+	Tags   map[string]string `pulumi:"tags"`
+}
+
+type nullMapTestInputs struct {
+	Values MapInput       `pulumi:"values"`
+	Tags   StringMapInput `pulumi:"tags"`
+}
+
+func (nullMapTestInputs) ElementType() reflect.Type {
+	return reflect.TypeOf(nullMapTest{})
+}
+
+func TestMarshalInputsPreservesExplicitNullMapEntries(t *testing.T) {
+	t.Parallel()
+
+	resolved, _, deps, err := marshalInputs(StringMap{
+		"keep":      String("value"),
+		"temporary": nil,
+	})
+	require.NoError(t, err)
+	require.Empty(t, deps)
+	assert.Equal(t, "value", resolved["keep"].StringValue())
+	require.Contains(t, resolved, resource.PropertyKey("temporary"))
+	assert.True(t, resolved["temporary"].IsNull())
+
+	resolved, _, deps, err = marshalInputs(nullMapTestInputs{
+		Values: Map{
+			"keep":      String("value"),
+			"nested":    Map{"inner": nil},
+			"temporary": nil,
+		},
+		Tags: StringMap{
+			"keep":      String("value"),
+			"temporary": nil,
+		},
+	})
+	require.NoError(t, err)
+	require.Empty(t, deps)
+
+	values := resolved["values"].ObjectValue()
+	assert.Equal(t, "value", values["keep"].StringValue())
+	require.Contains(t, values, resource.PropertyKey("temporary"))
+	assert.True(t, values["temporary"].IsNull())
+	nested := values["nested"].ObjectValue()
+	require.Contains(t, nested, resource.PropertyKey("inner"))
+	assert.True(t, nested["inner"].IsNull())
+
+	tags := resolved["tags"].ObjectValue()
+	assert.Equal(t, "value", tags["keep"].StringValue())
+	require.Contains(t, tags, resource.PropertyKey("temporary"))
+	assert.True(t, tags["temporary"].IsNull())
+}
+
 // TestMarshalRoundtrip ensures that marshaling a complex structure to and from its on-the-wire gRPC format succeeds.
 func TestMarshalRoundtrip(t *testing.T) {
 	t.Parallel()
