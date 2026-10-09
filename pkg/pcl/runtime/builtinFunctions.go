@@ -892,18 +892,28 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			},
 		},
 		Type: func(args []cty.Value) (cty.Type, error) {
-			entryType := func(valueType cty.Type) cty.Type {
-				return cty.Object(map[string]cty.Type{"key": cty.String, "value": valueType})
-			}
 			collection := args[0].Type()
+			keyType := cty.String
+			if collection.IsListType() || collection.IsTupleType() {
+				keyType = cty.Number
+			}
+			entryType := func(valueType cty.Type) cty.Type {
+				return cty.Object(map[string]cty.Type{"key": keyType, "value": valueType})
+			}
 			switch {
-			case collection.IsMapType():
+			case collection.IsMapType() || collection.IsListType():
 				return cty.List(entryType(collection.ElementType())), nil
-			case collection.IsObjectType():
-				attributes := collection.AttributeTypes()
-				types := make([]cty.Type, 0, len(attributes))
-				for _, k := range slices.Sorted(maps.Keys(attributes)) {
-					types = append(types, entryType(attributes[k]))
+			case collection.IsObjectType() || collection.IsTupleType():
+				var types []cty.Type
+				if collection.IsObjectType() {
+					attributes := collection.AttributeTypes()
+					for _, k := range slices.Sorted(maps.Keys(attributes)) {
+						types = append(types, entryType(attributes[k]))
+					}
+				} else {
+					for _, t := range collection.TupleElementTypes() {
+						types = append(types, entryType(t))
+					}
 				}
 				if len(types) == 0 {
 					return cty.List(entryType(cty.DynamicPseudoType)), nil
@@ -918,12 +928,12 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			return cty.NilType, fmt.Errorf("entries argument must be a collection, was %s", collection.FriendlyName())
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			valueMap := args[0].AsValueMap()
-			entries := make([]cty.Value, 0, len(valueMap))
-			for _, k := range slices.Sorted(maps.Keys(valueMap)) {
+			entries := make([]cty.Value, 0, args[0].LengthInt())
+			for it := args[0].ElementIterator(); it.Next(); {
+				key, value := it.Element()
 				entries = append(entries, cty.ObjectVal(map[string]cty.Value{
-					"key":   cty.StringVal(k),
-					"value": valueMap[k],
+					"key":   key,
+					"value": value,
 				}))
 			}
 			switch {
