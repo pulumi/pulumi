@@ -42,7 +42,6 @@
         {
             "path": ["refresh"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -169,12 +168,6 @@
         },
         {
             "path": ["console"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["convert"],
             "propagate": true,
             "exclude": true,
             "flags": {}

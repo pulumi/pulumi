@@ -20,9 +20,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -505,4 +507,38 @@ func TestListPulumiPackageInfos(t *testing.T) {
 			assert.Empty(t, infos)
 		})
 	}
+}
+
+func TestRuntimeOptionsPromptsToolchainChoices(t *testing.T) {
+	toolchainChoices := func(t *testing.T) []string {
+		host := &pythonLanguageHost{}
+		resp, err := host.RuntimeOptionsPrompts(t.Context(), &pulumirpc.RuntimeOptionsRequest{
+			Info: &pulumirpc.ProgramInfo{},
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Prompts, 1)
+		require.Equal(t, "toolchain", resp.Prompts[0].Key)
+		require.Equal(t, "pip", resp.Prompts[0].Default.StringValue)
+		names := make([]string, 0, len(resp.Prompts[0].Choices))
+		for _, choice := range resp.Prompts[0].Choices {
+			names = append(names, choice.DisplayName)
+		}
+		return names
+	}
+
+	t.Run("only pip when no other toolchain is found", func(t *testing.T) {
+		t.Setenv("PATH", t.TempDir())
+		require.Equal(t, []string{"pip"}, toolchainChoices(t))
+	})
+
+	t.Run("all toolchains when another one is found", func(t *testing.T) {
+		dir := t.TempDir()
+		name := "uv"
+		if runtime.GOOS == "windows" {
+			name = "uv.exe"
+		}
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte{}, 0o755)) //nolint:gosec
+		t.Setenv("PATH", dir)
+		require.Equal(t, []string{"pip", "uv", "poetry [not found]"}, toolchainChoices(t))
+	})
 }
