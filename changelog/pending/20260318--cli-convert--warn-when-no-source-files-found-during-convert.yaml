@@ -1,0 +1,4 @@
+changes:
+- type: improvement
+  scope: cli/convert
+  description: Warn when no source files are found during `pulumi convert`. Use `--strict` to make this an error.
