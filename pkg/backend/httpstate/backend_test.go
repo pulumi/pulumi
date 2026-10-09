@@ -1602,25 +1602,21 @@ func TestRunEngineActionCoherenceWindow(t *testing.T) {
 	}
 }
 
-func TestCreateAndStartUpdatePreviewsInADerivedCoherenceWindow(t *testing.T) {
+func TestCreateAndStartUpdateInACoherenceWindowSkipsThePreview(t *testing.T) {
 	t.Parallel()
-
-	window := "d333a711-4aa0-402f-be6d-72af9665fc37"
-	preview := previewCoherenceWindow(window)
-	assert.NotEqual(t, window, preview)
-	assert.Equal(t, preview, previewCoherenceWindow(window))
 
 	cases := []struct {
 		name        string
 		action      apitype.UpdateKind
 		dryRun      bool
 		previewOnly bool
-		want        string
+		refused     bool
 	}{
-		{"the preview of an update", apitype.UpdateUpdate, true, false, preview},
-		{"the update itself", apitype.UpdateUpdate, false, false, window},
-		{"a preview on its own", apitype.PreviewUpdate, true, false, window},
-		{"a preview-only refresh", apitype.RefreshUpdate, true, true, window},
+		{"the preview of an update", apitype.UpdateUpdate, true, false, true},
+		{"the preview of a refresh", apitype.RefreshUpdate, true, false, true},
+		{"the update itself", apitype.UpdateUpdate, false, false, false},
+		{"a preview on its own", apitype.PreviewUpdate, true, false, false},
+		{"a preview-only refresh", apitype.RefreshUpdate, true, true, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1629,13 +1625,17 @@ func TestCreateAndStartUpdatePreviewsInADerivedCoherenceWindow(t *testing.T) {
 			fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) {
 				return apitype.Capabilities{CoherenceWindowsVersion: 1, StackOutputs: true}, nil
 			})
-			fx.op.CoherenceWindow = window
+			fx.op.CoherenceWindow = "d333a711-4aa0-402f-be6d-72af9665fc37"
 			fx.op.Opts.PreviewOnly = tc.previewOnly
 			fx.op.M = &backend.UpdateMetadata{}
 
 			stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
-			_, _, _ = fx.backend.createAndStartUpdate(t.Context(), tc.action, stk, &fx.op, tc.dryRun)
-			assert.Equal(t, tc.want, fx.op.CoherenceWindow)
+			_, _, err := fx.backend.createAndStartUpdate(t.Context(), tc.action, stk, &fx.op, tc.dryRun)
+			if tc.refused {
+				require.ErrorContains(t, err, "pass --skip-preview")
+			} else if err != nil {
+				assert.NotContains(t, err.Error(), "pass --skip-preview")
+			}
 		})
 	}
 }

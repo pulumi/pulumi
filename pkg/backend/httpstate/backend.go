@@ -34,7 +34,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	uuid "github.com/gofrs/uuid"
 	"github.com/golang-jwt/jwt/v5"
 	opentracing "github.com/opentracing/opentracing-go"
 	fxs "github.com/pgavlin/fx/v2/slices"
@@ -1847,7 +1846,9 @@ func (b *cloudBackend) createAndStartUpdate(
 			return client.UpdateIdentifier{}, updateMetadata{}, err
 		}
 		if dryRun && action != apitype.PreviewUpdate && !op.Opts.PreviewOnly {
-			op.CoherenceWindow = previewCoherenceWindow(op.CoherenceWindow)
+			return client.UpdateIdentifier{}, updateMetadata{}, errors.New(
+				"an update in a coherence window runs without its preview: pass --skip-preview, " +
+					"and preview it in its own operation")
 		}
 	}
 
@@ -2112,14 +2113,6 @@ func permalinkForDisplay(ctx context.Context, cloudURL, permalink string) (strin
 	}
 	return "", ""
 }
-
-// previewCoherenceWindow is the window the preview an update makes before applying runs in: derived
-// from the update's own, so that the previews of one run read each other rather than its updates.
-func previewCoherenceWindow(window string) string {
-	return uuid.NewV5(previewCoherenceWindows, window).String()
-}
-
-var previewCoherenceWindows = uuid.Must(uuid.FromString("6ed952e7-290c-4088-a89d-e60ac37e98fb"))
 
 func checkCoherenceWindowSupport(caps apitype.Capabilities) error {
 	if !caps.StackOutputs {
