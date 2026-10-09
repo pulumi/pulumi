@@ -1626,7 +1626,10 @@ func (rm *resmon) ExistsResource(ctx context.Context,
 		return nil, fmt.Errorf("unknown provider '%v'", provider)
 	}
 
-	// Construct a synthetic URN for the provider Read call.
+	// The resource being checked has no logical identity, but the provider protocol's Read requires a URN and name, so
+	// we make them up. Providers use the URN's type to pick the resource and the URN itself to attribute log messages;
+	// the name is unused. Ideally Read would make the name optional and replace the URN with a "logging context" that
+	// says only where diagnostics should go.
 	parent, err := resource.ParseOptionalURN(req.GetParent())
 	if err != nil {
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
