@@ -20,7 +20,6 @@ import (
 	"maps"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -727,22 +726,14 @@ func (t *trie) walk(id, x int) int {
 	return n
 }
 
-// heights caches the height of each group.
-var heights sync.Map // map[list]int
-
-// height is one more than the greatest height of a group that the states of g refer to, so that a group is taller
-// than every group it reaches.
-func height(g list) int {
-	if h, ok := heights.Load(g); ok {
-		return h.(int)
-	}
+// groupHeight is one more than the greatest height of a group that the states of g refer to, so that a group is
+// taller than every group it reaches.
+func groupHeight(g list) int {
 	h := 0
 	for _, st := range g.values() {
 		h = max(h, heightOf(st))
 	}
-	h++
-	heights.Store(g, h)
-	return h
+	return h + 1
 }
 
 // heightOf is the height of the tallest group inside t, or 0 when t holds no recursive type.
@@ -750,7 +741,7 @@ func heightOf(t Type) int {
 	r := t.raw()
 	switch {
 	case r.kind == kindRec:
-		return height(r.b)
+		return t.info().height
 	case r.flags&fRec == 0:
 		return 0
 	}

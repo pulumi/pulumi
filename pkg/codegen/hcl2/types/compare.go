@@ -41,7 +41,7 @@ func Compare(a, b Type) int {
 		if na.b == nb.b {
 			return cmp.Compare(na.num, nb.num)
 		}
-		return cmp.Or(cmp.Compare(height(na.b), height(nb.b)), compareCells(na.b, nb.b), cmp.Compare(na.num, nb.num))
+		return cmp.Or(cmp.Compare(a.info().height, b.info().height), compareCells(na.b, nb.b), cmp.Compare(na.num, nb.num))
 	case KindConst:
 		return cmp.Or(Compare(na.a, nb.a), compareConstValues(na, nb))
 	case KindEnum:
@@ -64,7 +64,7 @@ func compareCells(a, b list) int {
 		return c
 	}
 	for a != (list{}) {
-		ca, cb := a.h.Value(), b.h.Value()
+		ca, cb := a.p, b.p
 		if c := cmp.Or(strings.Compare(ca.name, cb.name), Compare(ca.value, cb.value)); c != 0 {
 			return c
 		}

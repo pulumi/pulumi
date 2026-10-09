@@ -27,15 +27,28 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
-	"unique"
+	"sync/atomic"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Type is a PCL type. The zero Type is None.
 type Type struct {
-	h unique.Handle[node]
+	p *entry
+}
+
+// entry is the interned object behind a Type. Its identity is its node; the other fields are derived from the node
+// and live exactly as long as it does.
+type entry struct {
+	node
+	// rec holds the unfolding and height of a recursive type once they have been computed.
+	rec atomic.Pointer[recInfo]
+}
+
+// recInfo is the derived data of a recursive type.
+type recInfo struct {
+	head   node
+	height int
 }
 
 // node is the interned payload of a Type.
@@ -75,7 +88,7 @@ const (
 
 // list is an interned cons list of types. The zero list is empty.
 type list struct {
-	h unique.Handle[cell]
+	p *cell
 }
 
 type cell struct {
@@ -187,7 +200,7 @@ func mk(n node) Type {
 		KindSet, KindMap, KindTuple, KindObject, KindUnion, KindPromise:
 		n.flags = n.a.flags() | n.b.flags()
 	}
-	return Type{unique.Make(n)}
+	return Type{nodeTable.intern(n)}
 }
 
 // ContainsOutputs reports whether an output occurs at any depth of t.
@@ -210,7 +223,7 @@ func (t Type) flags() uint8 {
 	if t == None {
 		return 0
 	}
-	return t.h.Value().flags
+	return t.p.flags
 }
 
 // raw returns the node of t without unfolding a recursive type.
@@ -218,11 +231,18 @@ func (t Type) raw() node {
 	if t == None {
 		return node{kind: KindNone}
 	}
-	return t.h.Value()
+	return t.p.node
 }
 
-// heads caches the unfolding of each recursive type.
-var heads sync.Map // map[Type]node
+// info returns the derived data of a recursive type, computing it on first use.
+func (t Type) info() *recInfo {
+	if i := t.p.rec.Load(); i != nil {
+		return i
+	}
+	i := &recInfo{head: unfold(t.p.node), height: groupHeight(t.p.b)}
+	t.p.rec.Store(i)
+	return i
+}
 
 // head returns the node of t with a recursive type unfolded one level, so that its kind is a constructor and its
 // children are types.
@@ -232,12 +252,7 @@ func (t Type) head() node {
 	case kindVar:
 		contract.Failf("a placeholder has no type outside the Recursive call that created it")
 	case kindRec:
-		if h, ok := heads.Load(t); ok {
-			return h.(node)
-		}
-		h := unfold(n)
-		heads.Store(t, h)
-		return h
+		return t.info().head
 	case KindNone, KindBool, KindInt, KindNumber, KindString, KindID, KindDynamic, KindConst, KindEnum, KindList,
 		KindSet, KindMap, KindTuple, KindObject, KindUnion, KindOutput, KindPromise:
 	}
@@ -464,7 +479,7 @@ func cells(values []Type, names []string) list {
 		if names != nil {
 			c.name = names[i]
 		}
-		l = list{unique.Make(c)}
+		l = list{cellTable.intern(c)}
 	}
 	return l
 }
@@ -473,21 +488,21 @@ func (l list) flags() uint8 {
 	if l == (list{}) {
 		return 0
 	}
-	return l.h.Value().flags
+	return l.p.flags
 }
 
 func (l list) len() int {
 	if l == (list{}) {
 		return 0
 	}
-	return int(l.h.Value().n)
+	return int(l.p.n)
 }
 
 // items iterates over the names and values of l.
 func (l list) items() iter.Seq2[string, Type] {
 	return func(yield func(string, Type) bool) {
 		for l != (list{}) {
-			c := l.h.Value()
+			c := l.p
 			if !yield(c.name, c.value) {
 				return
 			}
