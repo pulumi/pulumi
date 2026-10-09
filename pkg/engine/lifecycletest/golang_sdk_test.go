@@ -77,7 +77,7 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -146,7 +146,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -349,7 +349,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -435,7 +435,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -460,7 +460,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil
