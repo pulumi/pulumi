@@ -202,29 +202,36 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
         if await_all_outstanding_tasks:
             while True:
                 with SETTINGS.lock:
-                    pending_outputs: list[asyncio.Task] = [
-                        task for task in SETTINGS.outputs if not task.done()
-                    ]
-                    if not pending_outputs:
-                        settled_outputs = list(SETTINGS.outputs)
-                        SETTINGS.outputs.clear()
+                    # the task may have been removed from the queue by the time we get to it, so we need to re-check if
+                    # its empty.
+                    if len(SETTINGS.outputs) == 0:
+                        break
+                    # Copy the outputs and clear so new outputs added while we wait are picked up on the next iteration.
+                    pending_outputs: list[asyncio.Task] = list(SETTINGS.outputs)
+                    SETTINGS.outputs.clear()
 
-                # Only raise once every output has settled, so that an output which is recovered
-                # downstream (e.g. by `Output.recover`) has stopped being tracked by then.
-                if not pending_outputs:
-                    for task in settled_outputs:
-                        try:
-                            await task
-                        except ResourceRegistrationFailed:
-                            # Outputs of a resource whose registration the engine reported as failed
-                            # are intentionally faulted. Users can consume the failure via
-                            # `Output.recover`; if they don't, we still shouldn't tear down the
-                            # program at exit — continue-on-error updates want other resources to
-                            # keep running.
-                            pass
-                    break
+                # Wait for a task to complete or be cancelled
+                done, not_done = await asyncio.wait(
+                    pending_outputs, return_when=asyncio.FIRST_COMPLETED
+                )
 
-                await asyncio.wait(pending_outputs, return_when=asyncio.FIRST_COMPLETED)
+                # Await the completed task so any exception is re-raised here.
+                for task in done:
+                    try:
+                        await task
+                    except ResourceRegistrationFailed:
+                        # Outputs of a resource whose registration the engine reported as failed
+                        # are intentionally faulted. Users can consume the failure via
+                        # `Output.recover`; if they don't, we still shouldn't tear down the
+                        # program at exit — continue-on-error updates want other resources to
+                        # keep running.
+                        pass
+
+                # Put unfinished tasks back for the next iteration.
+                if not_done:
+                    with SETTINGS.lock:
+                        for task in not_done:
+                            SETTINGS.outputs.add(task)
 
             log.debug("All outstanding outputs completed.")
 
