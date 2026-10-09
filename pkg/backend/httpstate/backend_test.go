@@ -2204,6 +2204,57 @@ func TestGetSnapshotStackOutputs(t *testing.T) {
 		assert.Equal(t, wantOutputs, outputs)
 	})
 
+	t.Run("waits while a coherence window subgroup may still update the stack", func(t *testing.T) {
+		t.Parallel()
+		var reads atomic.Int32
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			resp := apitype.StackOutputsResponse{State: apitype.StackOutputsPending}
+			if reads.Add(1) > 2 {
+				resp = apitype.StackOutputsResponse{
+					Outputs:          serializedOutputs,
+					SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+					State:            apitype.StackOutputsCompleted,
+				}
+			}
+			require.NoError(t, json.NewEncoder(w).Encode(resp))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+		assert.Equal(t, int32(3), reads.Load())
+	})
+
+	t.Run("a read gives up after the wait limit", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				State: apitype.StackOutputsPending,
+			}))
+		})
+		b.stackOutputsWaitLimit = 50 * time.Millisecond
+
+		_, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.ErrorContains(t, err, "gave up waiting for owner/project/stack to join the coherence window")
+	})
+
+	t.Run("a cancelled read stops waiting", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				State: apitype.StackOutputsPending,
+			}))
+		})
+
+		ctx, cancel := context.WithCancel(t.Context())
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			cancel()
+		}()
+		_, err := b.getSnapshotStackOutputs(ctx, secretsProvider, ref)
+		assert.ErrorIs(t, err, context.Canceled)
+	})
+
 	t.Run("reads during an update name the reading update", func(t *testing.T) {
 		t.Parallel()
 		var gotQuery string
