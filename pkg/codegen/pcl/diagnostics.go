@@ -20,7 +20,51 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
+
+func (opts bindOptions) traversalDiagnostics(diags hcl.Diagnostics) hcl.Diagnostics {
+	if !opts.skipResourceTypecheck && !opts.allowMissingProperties {
+		return diags
+	}
+
+	result := make(hcl.Diagnostics, len(diags))
+	for i, diag := range diags {
+		result[i] = diag
+		if diag.Severity == hcl.DiagError && isSchemaTraversalDiagnostic(diag) {
+			copy := *diag
+			copy.Severity = hcl.DiagWarning
+			result[i] = &copy
+		}
+	}
+	return result
+}
+
+func isSchemaTraversalDiagnostic(diag *hcl.Diagnostic) bool {
+	switch extra := diag.Extra.(type) {
+	case *model.ObjectTraversalDiagnostic:
+		typ, ok := model.GetObjectTypeAnnotation[schema.Type](extra.Receiver)
+		if !ok {
+			return false
+		}
+		switch typ.(type) {
+		case *schema.ObjectType, *schema.ResourceType:
+			return true
+		}
+	case *model.UnionTraversalDiagnostic:
+		foundError := false
+		for _, cause := range extra.Causes {
+			if cause.Severity == hcl.DiagError {
+				if !isSchemaTraversalDiagnostic(cause) {
+					return false
+				}
+				foundError = true
+			}
+		}
+		return foundError
+	}
+	return false
+}
 
 func errorf(subject hcl.Range, f string, args ...any) *hcl.Diagnostic {
 	return diagf(hcl.DiagError, subject, f, args...)
