@@ -1017,3 +1017,30 @@ func TestNodeInstall(t *testing.T) {
 	require.Equal(t, "use 20.1.2 --install-if-missing", commands[0])
 	require.Equal(t, "alias 20.1.2 default", commands[1])
 }
+
+func TestRuntimeOptionsPromptsRecommendsNpm(t *testing.T) {
+	t.Parallel()
+
+	host := &nodeLanguageHost{}
+	resp, err := host.RuntimeOptionsPrompts(t.Context(), &pulumirpc.RuntimeOptionsRequest{
+		Info: &pulumirpc.ProgramInfo{},
+	})
+	require.NoError(t, err)
+	require.Len(t, resp.Prompts, 1)
+	require.Equal(t, "packagemanager", resp.Prompts[0].Key)
+
+	expectedNpm := "npm (recommended)"
+	if _, err := exec.LookPath("npm"); err != nil {
+		expectedNpm = "npm [not found]"
+	}
+
+	displayNames := map[string]string{}
+	for _, choice := range resp.Prompts[0].Choices {
+		displayNames[choice.StringValue] = choice.DisplayName
+	}
+	require.Len(t, displayNames, 4)
+	require.Equal(t, expectedNpm, displayNames["npm"])
+	for _, pm := range []string{"pnpm", "yarn", "bun"} {
+		require.NotContains(t, displayNames[pm], "recommended")
+	}
+}

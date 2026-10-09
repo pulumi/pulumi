@@ -1,4 +1,0 @@
-component: engine
-kind: feat
-body: Negotiate OutputValues on Invoke so SDKs can pass dependency-carrying values in `args` and receive them in the response, and providers can process them, gated by a new `accepts_outputs_in_invoke` handshake capability
-time: 2026-09-30T12:00:00Z

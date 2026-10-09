@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TODO[pulumi/pulumi#54] This should be factored out behind an OperationsProvider RPC interface and versioned with the
@@ -63,7 +64,7 @@ func AWSOperationsProvider(
 
 	// If there is an explicit provider - instead use the configuration on that provider
 	if component.Provider != nil {
-		outputs := component.Provider.State.Outputs
+		outputs := resource.FromResourcePropertyMap(component.Provider.State.Outputs)
 		awsRegion = getPropertyMapStringValue(outputs, "region")
 		awsAccessKey = getPropertyMapStringValue(outputs, "accessKey")
 		awsSecretKey = getPropertyMapStringValue(outputs, "secretKey")
@@ -87,15 +88,15 @@ func AWSOperationsProvider(
 	return prov, nil
 }
 
-func getPropertyMapStringValue(m resource.PropertyMap, k resource.PropertyKey) string {
-	v, ok := m[k]
+func getPropertyMapStringValue(m property.Map, k string) string {
+	v, ok := m.GetOk(k)
 	if !ok {
 		return ""
 	}
 	if !v.IsString() {
 		return ""
 	}
-	return v.StringValue()
+	return v.AsString()
 }
 
 type awsOpsProvider struct {

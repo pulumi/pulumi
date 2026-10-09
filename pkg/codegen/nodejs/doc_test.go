@@ -91,20 +91,25 @@ func TestDocLinkGenerationForPulumiTypes(t *testing.T) {
 
 	pkg := getTestPackage(t)
 	d := DocLanguageHelper{}
-	t.Run("GenerateCustomResourceOptionsLink", func(t *testing.T) {
-		t.Parallel()
+	cases := []struct {
+		typeName string
+		expected string
+	}{
+		{"CustomResourceOptions", "/docs/reference/pkg/nodejs/pulumi/pulumi/interfaces/CustomResourceOptions.html"},
+		{"ComponentResourceOptions", "/docs/reference/pkg/nodejs/pulumi/pulumi/interfaces/ComponentResourceOptions.html"},
+		{"InvokeOptions", "/docs/reference/pkg/nodejs/pulumi/pulumi/interfaces/InvokeOptions.html"},
+		{"InvokeOutputOptions", "/docs/reference/pkg/nodejs/pulumi/pulumi/interfaces/InvokeOutputOptions.html"},
+		{"ID", "/docs/reference/pkg/nodejs/pulumi/pulumi/types/ID.html"},
+		{"CustomResourceOptions?", "/docs/reference/pkg/nodejs/pulumi/pulumi/interfaces/CustomResourceOptions.html"},
+		{"Unknown", "/docs/reference/pkg/nodejs/pulumi/pulumi/"},
+	}
+	for _, c := range cases {
+		t.Run(c.typeName, func(t *testing.T) {
+			t.Parallel()
 
-		expected := "/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions"
-		link := d.GetDocLinkForPulumiType(pkg, "CustomResourceOptions")
-		assert.Equal(t, expected, link)
-	})
-	t.Run("GenerateInvokeOptionsLink", func(t *testing.T) {
-		t.Parallel()
-
-		expected := "/docs/reference/pkg/nodejs/pulumi/pulumi/#InvokeOptions"
-		link := d.GetDocLinkForPulumiType(pkg, "InvokeOptions")
-		assert.Equal(t, expected, link)
-	})
+			assert.Equal(t, c.expected, d.GetDocLinkForPulumiType(pkg, c.typeName))
+		})
+	}
 }
 
 func TestGetDocLinkForResourceType(t *testing.T) {

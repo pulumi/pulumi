@@ -1105,14 +1105,14 @@ func TestImportPlanSuppliedOutputs(t *testing.T) {
 		Type:      "my:module:Component",
 		Name:      "comp",
 		Component: true,
-		Inputs:    componentInputs,
-		Outputs:   componentOutputs,
+		Inputs:    resource.FromResourcePropertyMap(componentInputs),
+		Outputs:   resource.FromResourcePropertyMap(componentOutputs),
 	}, {
 		Type:    "pkgA:m:typA",
 		Name:    "resB",
 		ID:      "imported-id",
-		Inputs:  suppliedInputs,
-		Outputs: suppliedOutputs,
+		Inputs:  resource.FromResourcePropertyMap(suppliedInputs),
+		Outputs: resource.FromResourcePropertyMap(suppliedOutputs),
 	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	require.NoError(t, err)
@@ -1181,10 +1181,10 @@ func TestImportPlanSuppliedInputsMerge(t *testing.T) {
 		Type: "pkgA:m:typA",
 		Name: "resB",
 		ID:   "imported-id",
-		Inputs: resource.PropertyMap{
-			"foo":  resource.NewProperty("supplied"),
-			"frob": resource.MakeSecret(resource.NewProperty(2.0)),
-		},
+		Inputs: property.NewMap(map[string]property.Value{
+			"foo":  property.New("supplied"),
+			"frob": property.New(2.0).WithSecret(true),
+		}),
 	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	require.NoError(t, err)
