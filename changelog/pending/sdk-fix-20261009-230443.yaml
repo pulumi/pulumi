@@ -1,0 +1,4 @@
+component: sdk
+kind: fix
+body: Resolve the outputs of a resource that fails under `--continue-on-error` as unknown instead of failing them, so the rest of the program keeps running
+time: 2026-10-09T23:04:43.58641+02:00
