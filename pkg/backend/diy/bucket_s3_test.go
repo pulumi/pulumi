@@ -185,3 +185,83 @@ func TestS3LegacyURLCopy(t *testing.T) {
 		})
 	}
 }
+
+// directoryMarkerS3Server is a minimal S3-compatible server whose ListObjectsV2
+// responses include 0-byte directory-marker objects (keys ending in "/") in
+// Contents, the way Hitachi HCP and similar stores do.
+type directoryMarkerS3Server struct{}
+
+func (s *directoryMarkerS3Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet && r.URL.Query().Get("list-type") == "2" {
+		prefix := r.URL.Query().Get("prefix")
+		w.Header().Set("Content-Type", "application/xml")
+		fmt.Fprint(w, `<?xml version="1.0" encoding="UTF-8"?>`+
+			`<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">`+
+			`<Name>testbucket</Name>`+
+			`<Prefix>`+prefix+`</Prefix>`+
+			`<Delimiter>/</Delimiter>`+
+			`<IsTruncated>false</IsTruncated>`+
+			`<Contents>`+
+			`<Key>`+prefix+`</Key>`+
+			`<LastModified>2026-06-11T00:00:00.000Z</LastModified>`+
+			`<ETag>&quot;d41d8cd98f00b204e9800998ecf8427e&quot;</ETag>`+
+			`<Size>0</Size>`+
+			`<StorageClass>STANDARD</StorageClass>`+
+			`</Contents>`+
+			`<Contents>`+
+			`<Key>`+prefix+`stack.json</Key>`+
+			`<LastModified>2026-06-11T00:00:00.000Z</LastModified>`+
+			`<ETag>&quot;098f6bcd4621d373cade4e832627b4f6&quot;</ETag>`+
+			`<Size>2</Size>`+
+			`<StorageClass>STANDARD</StorageClass>`+
+			`</Contents>`+
+			`<CommonPrefixes>`+
+			`<Prefix>`+prefix+`history/</Prefix>`+
+			`</CommonPrefixes>`+
+			`</ListBucketResult>`)
+		return
+	}
+
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+func TestListBucketSkipsS3DirectoryMarkers(t *testing.T) {
+	t.Setenv("AWS_ACCESS_KEY_ID", "AKIAIOSFODNN7EXAMPLE")
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+	t.Setenv("AWS_REGION", "us-east-1")
+	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
+	t.Setenv("AWS_CONFIG_FILE", filepath.Join(t.TempDir(), "config"))
+	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", filepath.Join(t.TempDir(), "credentials"))
+
+	server := httptest.NewServer(&directoryMarkerS3Server{})
+	defer server.Close()
+
+	bucketURL := fmt.Sprintf("s3://testbucket?endpoint=%s&s3ForcePathStyle=true&awssdk=v2", server.URL)
+
+	ctx := t.Context()
+	u, err := massageBlobPath(bucketURL)
+	require.NoError(t, err)
+	bucket, err := blob.DefaultURLMux().OpenBucket(ctx, u)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, bucket.Close())
+	}()
+
+	objects, err := listBucket(ctx, &wrappedBucket{bucket: bucket}, ".pulumi/stacks/dev")
+	require.NoError(t, err)
+
+	var keys []string
+	for _, obj := range objects {
+		keys = append(keys, obj.Key)
+	}
+	assert.Equal(t, []string{
+		".pulumi/stacks/dev/history/",
+		".pulumi/stacks/dev/stack.json",
+	}, keys)
+
+	for _, obj := range objects {
+		if strings.HasSuffix(obj.Key, "history/") {
+			assert.True(t, obj.IsDir, "common-prefix entries must be preserved for traversal")
+		}
+	}
+}
