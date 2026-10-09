@@ -267,12 +267,6 @@
             "flags": {}
         },
         {
-            "path": ["org", "role"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["org", "usage"],
             "propagate": true,
             "exclude": true,
