@@ -22,7 +22,8 @@
                     }
                 }
             ]
-        }
+        },
+        "Schema": null
     },
     "diags": [
         {
