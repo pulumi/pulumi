@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -557,4 +558,48 @@ func TestRenderDiffPolicyViolationEvent_StackLevel(t *testing.T) {
 	resourceLevel.ResourceURN = "urn:pulumi:stack::project::aws:s3/bucket:Bucket::my-bucket"
 	resourceOut := renderDiffPolicyViolationEvent(resourceLevel, "", "", opts)
 	assert.Contains(t, resourceOut, "(aws:s3:Bucket: my-bucket)")
+}
+
+func TestShowDiffEventsRoutesDiagnosticsBySeverity(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		severity       diag.Severity
+		expectedStdout string
+		expectedStderr string
+	}{
+		{diag.Info, "hello from the program\n", ""},
+		{diag.Warning, "", "careful\n"},
+		{diag.Error, "", "boom\n"},
+	}
+
+	messages := map[diag.Severity]string{
+		diag.Info:    "hello from the program\n",
+		diag.Warning: "careful\n",
+		diag.Error:   "boom\n",
+	}
+
+	for _, c := range cases {
+		t.Run(string(c.severity), func(t *testing.T) {
+			t.Parallel()
+
+			var stdout, stderr bytes.Buffer
+			events, done := make(chan engine.Event), make(chan bool)
+			go ShowDiffEvents("test", events, done, Options{
+				Color:  colors.Raw,
+				Stdout: &stdout,
+				Stderr: &stderr,
+			})
+
+			events <- engine.NewEvent(engine.DiagEventPayload{
+				Severity: c.severity,
+				Message:  messages[c.severity],
+			})
+			events <- engine.NewCancelEvent()
+			<-done
+
+			assert.Equal(t, c.expectedStdout, stdout.String())
+			assert.Equal(t, c.expectedStderr, stderr.String())
+		})
+	}
 }
