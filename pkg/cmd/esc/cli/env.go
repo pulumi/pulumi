@@ -96,6 +96,7 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 	cmd.AddCommand(newEnvRunCmd(env))
 	cmd.AddCommand(newEnvWebhookCmd(env))
 	cmd.AddCommand(newEnvScheduleCmd(env))
+	cmd.AddCommand(newEnvChangeRequestCmd(env))
 
 	return cmd
 }

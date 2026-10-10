@@ -260,6 +260,15 @@ type testPulumiClient struct {
 	// submittedChangeRequests records submitted change requests in call order, so tests can assert
 	// that a command actually submits the change requests it creates.
 	submittedChangeRequests []submittedChangeRequest
+
+	changeRequests map[string]*testChangeRequest
+}
+
+type testChangeRequest struct {
+	client.ChangeRequest
+	orgName      string
+	baseRevision int
+	approvers    []client.ChangeRequestUser
 }
 
 type submittedChangeRequest struct {
@@ -723,7 +732,27 @@ func (c *testPulumiClient) CreateEnvironmentDraft(
 	}
 	diags, _, err = c.UpdateEnvironment(ctx, orgName, projectName, envName, yaml, "")
 	if err == nil && len(diags) == 0 {
-		return "00000000-0000-0000-0000-000000000000", []client.EnvironmentDiagnostic{}, nil
+		id := "00000000-0000-0000-0000-000000000000"
+		if c.changeRequests == nil {
+			c.changeRequests = map[string]*testChangeRequest{}
+		}
+		c.changeRequests[id] = &testChangeRequest{
+			ChangeRequest: client.ChangeRequest{
+				ID:                   id,
+				Status:               "draft",
+				Action:               "update",
+				CreatedBy:            client.ChangeRequestUser{Name: "Test User", GithubLogin: c.user},
+				LatestRevisionNumber: 1,
+				Entity: client.ChangeRequestEntity{
+					EntityType: "environment",
+					Project:    projectName,
+					Name:       strings.TrimSuffix(envName, "_DRAFT"),
+				},
+			},
+			orgName:      orgName,
+			baseRevision: latest.number,
+		}
+		return id, []client.EnvironmentDiagnostic{}, nil
 	}
 	return "", diags, err
 }
@@ -769,7 +798,186 @@ func (c *testPulumiClient) SubmitChangeRequest(
 		changeRequestID: changeRequestID,
 		description:     description,
 	})
+	if cr, ok := c.changeRequests[changeRequestID]; ok {
+		cr.Status = "pending"
+		if description != nil {
+			cr.Description = *description
+		}
+	}
 	return nil
+}
+
+func (c *testPulumiClient) getChangeRequest(orgName, changeRequestID string) (*testChangeRequest, error) {
+	cr, ok := c.changeRequests[changeRequestID]
+	if !ok || cr.orgName != orgName {
+		return nil, errors.New("not found")
+	}
+	return cr, nil
+}
+
+func (c *testPulumiClient) ListChangeRequests(
+	ctx context.Context,
+	orgName string,
+	continuationToken string,
+) ([]client.ChangeRequest, string, error) {
+	var crs []client.ChangeRequest
+	for _, cr := range c.changeRequests {
+		if cr.orgName == orgName {
+			crs = append(crs, cr.ChangeRequest)
+		}
+	}
+	slices.SortFunc(crs, func(a, b client.ChangeRequest) int { return strings.Compare(a.ID, b.ID) })
+	return crs, "", nil
+}
+
+func (c *testPulumiClient) GetChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+) (*client.GetChangeRequestResponse, error) {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return nil, err
+	}
+	satisfied := len(cr.approvers) >= 1
+	return &client.GetChangeRequestResponse{
+		ChangeRequest: cr.ChangeRequest,
+		GateEvaluation: client.ChangeRequestGateEvaluation{
+			Satisfied: satisfied,
+			ApplicableGates: []client.ChangeGateEvaluation{{
+				ID:        "gate-1",
+				Name:      "Require approval",
+				Satisfied: satisfied,
+				RuleDetails: client.ChangeGateRuleEvaluation{
+					RuleType:          "approval_required",
+					RequiredApprovals: 1,
+					Approvers:         slices.Clone(cr.approvers),
+				},
+			}},
+		},
+	}, nil
+}
+
+func (c *testPulumiClient) ApproveChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	revisionNumber int,
+	comment string,
+) error {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return err
+	}
+	if revisionNumber != cr.LatestRevisionNumber {
+		return errors.New("revision mismatch")
+	}
+	cr.approvers = append(cr.approvers, client.ChangeRequestUser{Name: "Test User", GithubLogin: c.user})
+	cr.Status = "ready"
+	return nil
+}
+
+func (c *testPulumiClient) UnapproveChangeRequest(ctx context.Context, orgName, changeRequestID string) error {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return err
+	}
+	cr.approvers, cr.Status = nil, "pending"
+	return nil
+}
+
+func (c *testPulumiClient) ApplyChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+) (*client.ChangeRequestApplyResult, error) {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return nil, err
+	}
+	if cr.Status != "ready" {
+		return nil, errors.New("change request is not approved")
+	}
+	yaml, _, err := c.GetEnvironmentDraft(ctx, orgName, cr.Entity.Project, cr.Entity.Name, changeRequestID)
+	if err != nil {
+		return nil, err
+	}
+	if _, _, err := c.UpdateEnvironment(ctx, orgName, cr.Entity.Project, cr.Entity.Name, yaml, ""); err != nil {
+		return nil, err
+	}
+	cr.Status = "applied"
+	return &client.ChangeRequestApplyResult{EntityURL: "https://app.fake.pulumi.com/" + orgName}, nil
+}
+
+func (c *testPulumiClient) CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return err
+	}
+	cr.Status = "closed"
+	return nil
+}
+
+func (c *testPulumiClient) AddChangeRequestComment(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	comment string,
+) error {
+	_, err := c.getChangeRequest(orgName, changeRequestID)
+	return err
+}
+
+func (c *testPulumiClient) GetEnvironmentDraftStatus(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) (*client.EnvironmentDraftStatus, error) {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return nil, err
+	}
+	_, latest, err := c.getEnvironment(orgName, projectName, envName, "")
+	if err != nil {
+		return nil, err
+	}
+	return &client.EnvironmentDraftStatus{
+		BaseRevision:        cr.baseRevision,
+		EnvironmentRevision: latest.number,
+		DraftRevisionNumber: cr.LatestRevisionNumber,
+	}, nil
+}
+
+// RebaseEnvironmentDraft reports a conflict on the first line whenever the environment has moved
+// past the draft's base revision.
+func (c *testPulumiClient) RebaseEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) (*client.EnvironmentDraftRebaseResponse, error) {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return nil, err
+	}
+	_, latest, err := c.getEnvironment(orgName, projectName, envName, "")
+	if err != nil {
+		return nil, err
+	}
+	resp := &client.EnvironmentDraftRebaseResponse{
+		ChangeRequestID:     changeRequestID,
+		DraftRevisionNumber: cr.LatestRevisionNumber,
+		Conflicts:           []client.EnvironmentDraftConflict{},
+	}
+	if latest.number != cr.baseRevision {
+		resp.Conflicts = append(resp.Conflicts, client.EnvironmentDraftConflict{
+			StartLine: 1, EndLine: 2, DraftStartLine: 1, DraftEndLine: 2,
+		})
+	}
+	return resp, nil
 }
 
 func (c *testPulumiClient) DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error {

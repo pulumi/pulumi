@@ -1,0 +1,64 @@
+run: |
+  esc env init default/test
+  esc env set default/test foo bar --draft
+  esc env set default/test baz qux
+  esc env change-request get 00000000-0000-0000-0000-000000000000
+  esc env change-request rebase 00000000-0000-0000-0000-000000000000 || true
+  esc env change-request close 00000000-0000-0000-0000-000000000000 -m superseded
+  esc env change-request ls --status closed
+  esc env change-request comment 00000000-0000-0000-0000-000000000000 || true
+  esc env change-request get nonexistent || true
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env set default/test foo bar --draft
+Change request created: 00000000-0000-0000-0000-000000000000
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
+Change request submitted
+> esc env set default/test baz qux
+> esc env change-request get 00000000-0000-0000-0000-000000000000
+ID: 00000000-0000-0000-0000-000000000000
+Environment: test-user/default/test
+Action: update
+Status: pending
+Author: Test User <test-user>
+Created: a long while ago
+Revision: 1
+Base environment revision: 0
+Current environment revision: 2
+Approved: false
+  Require approval (not satisfied): 0 of 1 approvals
+URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+Conflict 1:
+  environment (lines 1-2):
+       1 | values:
+       2 |   baz: qux
+  draft (lines 1-2):
+       1 | values:
+       2 |   foo: bar
+> esc env change-request close 00000000-0000-0000-0000-000000000000 -m superseded
+Closed change request 00000000-0000-0000-0000-000000000000
+> esc env change-request ls --status closed
+┌──────────────────────────────────────┬──────────────┬────────┬───────────┬─────────────┬──────────────────┐
+│ ID                                   │ ENVIRONMENT  │ STATUS │ AUTHOR    │ DESCRIPTION │ AGE              │
+├──────────────────────────────────────┼──────────────┼────────┼───────────┼─────────────┼──────────────────┤
+│ 00000000-0000-0000-0000-000000000000 │ default/test │ closed │ test-user │             │ a long while ago │
+└──────────────────────────────────────┴──────────────┴────────┴───────────┴─────────────┴──────────────────┘
+> esc env change-request comment 00000000-0000-0000-0000-000000000000
+> esc env change-request get nonexistent
+
+---
+> esc env init default/test
+> esc env set default/test foo bar --draft
+> esc env set default/test baz qux
+> esc env change-request get 00000000-0000-0000-0000-000000000000
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+Error: rebase of change request 00000000-0000-0000-0000-000000000000 has 1 conflict(s); the draft was not changed
+> esc env change-request close 00000000-0000-0000-0000-000000000000 -m superseded
+> esc env change-request ls --status closed
+> esc env change-request comment 00000000-0000-0000-0000-000000000000
+Error: required flag(s) "message" not set
+> esc env change-request get nonexistent
+Error: getting change request: not found
