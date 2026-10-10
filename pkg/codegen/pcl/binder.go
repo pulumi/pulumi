@@ -217,7 +217,7 @@ func bindInputFile(ctx context.Context, file *syntax.File, opts ...BindOption) (
 	args := make([]*model.Attribute, 0, len(file.Body.Attributes))
 	inputRanges := map[string]hcl.Range{}
 	for name, value := range file.Body.Attributes {
-		expr, diags := model.BindExpression(value.Expr, b.root, b.tokens, options.modelOptions()...)
+		expr, diags := b.bindExpression(value.Expr)
 		diagnostics = append(diagnostics, diags...)
 		inputRanges[name] = value.NameRange
 		args = append(args, &model.Attribute{
@@ -236,7 +236,7 @@ func bindInputFile(ctx context.Context, file *syntax.File, opts ...BindOption) (
 		})
 	}
 
-	return b, args, inputRanges, diagnostics
+	return b, args, inputRanges, b.options.traversalDiagnostics(diagnostics)
 }
 
 // BindFunction binds a PCL file as an invoke function input and returns the bound arguments along with the model
@@ -519,6 +519,7 @@ func BindProgramWithContext(
 		diagnostics = append(diagnostics, b.bindNode(ctx, n)...)
 	}
 
+	diagnostics = b.options.traversalDiagnostics(diagnostics)
 	if diagnostics.HasErrors() {
 		return nil, diagnostics, diagnostics
 	}
