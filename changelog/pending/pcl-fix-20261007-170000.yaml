@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Unify PCL types structurally so that collections, objects, and outputs of different element types merge element by element instead of forming a union, and make the result symmetric in its arguments
+time: 2026-10-07T17:00:00.000000+02:00

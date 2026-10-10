@@ -516,7 +516,7 @@ func (x *ConditionalExpression) Typecheck(typecheckOperands bool) hcl.Diagnostic
 	}
 
 	// Compute the type of the result.
-	resultType, _ := UnifyTypes(x.TrueResult.Type(), x.FalseResult.Type())
+	resultType := UnifyTypes(x.TrueResult.Type(), x.FalseResult.Type())
 
 	// Typecheck the condition expression.
 	if InputType(BoolType).ConversionFrom(x.Condition.Type()) == NoConversion {
@@ -1406,20 +1406,25 @@ type LiteralValueExpression struct {
 	exprType Type
 }
 
-func literalValueType(value cty.Value) Type {
-	if value.IsNull() {
-		return NoneType
-	}
-
-	if value.Type() == cty.Number {
+// literalValueType is the type of a literal value (README §2.2): the null literal is none, and every other
+// literal is the constant of its value, whose base is a function of the value. The second result is false for a
+// value that is not a bool, a number, or a string.
+func literalValueType(value cty.Value) (Type, bool) {
+	switch {
+	case value.IsNull():
+		return NoneType, true
+	case value.Type() == cty.Bool:
+		return NewConstType(BoolType, value), true
+	case value.Type() == cty.String:
+		return NewConstType(StringType, value), true
+	case value.Type() == cty.Number:
 		bi, acc := value.AsBigFloat().Int64()
 		if acc == big.Exact && bi >= math.MinInt32 && bi <= math.MaxInt32 {
-			return IntType
+			return NewConstType(IntType, value), true
 		}
-		return NumberType
+		return NewConstType(NumberType, value), true
 	}
-
-	return ctyTypeToType(value.Type(), false)
+	return DynamicType, false
 }
 
 // SyntaxNode returns the syntax node associated with the literal value expression.
@@ -1438,8 +1443,7 @@ func (x *LiteralValueExpression) NodeTokens() syntax.NodeTokens {
 // Type returns the type of the literal value expression.
 func (x *LiteralValueExpression) Type() Type {
 	if x.exprType == nil {
-		typ := literalValueType(x.Value)
-		x.exprType = NewConstType(typ, x.Value)
+		x.exprType, _ = literalValueType(x.Value)
 	}
 	return x.exprType
 }
@@ -1447,18 +1451,13 @@ func (x *LiteralValueExpression) Type() Type {
 func (x *LiteralValueExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
-	typ := literalValueType(x.Value)
-
-	switch typ {
-	case NoneType, StringType, IntType, NumberType, BoolType:
-		// OK
-		typ = NewConstType(typ, x.Value)
-	default:
+	typ, ok := literalValueType(x.Value)
+	if !ok {
 		var rng hcl.Range
 		if x.Syntax != nil {
 			rng = x.Syntax.Range()
 		}
-		typ, diagnostics = DynamicType, hcl.Diagnostics{unsupportedLiteralValue(x.Value, rng)}
+		diagnostics = hcl.Diagnostics{unsupportedLiteralValue(x.Value, rng)}
 	}
 
 	x.exprType = typ
@@ -1623,8 +1622,7 @@ func (x *ObjectConsExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics
 	}
 	var typ Type
 	if isMapType {
-		elementType, _ := UnifyTypes(types...)
-		typ = NewMapType(elementType)
+		typ = NewMapType(UnifyTypes(types...))
 	} else {
 		// If x was previously typed as an object, and the object has annotations,
 		// Typecheck should preserve these annotations.
@@ -2163,7 +2161,7 @@ func splatItemType(source Expression, splatSyntax *hclsyntax.SplatExpr) (Express
 	case *SetType:
 		itemType = sourceType.ElementType
 	case *TupleType:
-		itemType, _ = UnifyTypes(sourceType.ElementTypes...)
+		itemType = UnifyTypes(sourceType.ElementTypes...)
 	default:
 		if sourceType != DynamicType {
 			var tupleSyntax *hclsyntax.TupleConsExpr

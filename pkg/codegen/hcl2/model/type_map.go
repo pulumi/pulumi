@@ -16,8 +16,6 @@ package model
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -81,7 +79,7 @@ func (t *MapType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *MapType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *MapType) equals(other Type, seen equalPairs) bool {
 	if t == other {
 		return true
 	}
@@ -111,34 +109,10 @@ func (t *MapType) AssignableFrom(src Type) bool {
 }
 
 // ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type. A map(T)
-// is safely convertible from map(U) or object({K_0 = U_0 ... K_N = U_N}) if the element type(s) U is/are safely
-// convertible to T. If any element type is unsafely convertible to T and no element type is safely convertible to T,
-// the conversion is unsafe. Otherwise, no conversion exists.
+// converts from map(U) or object({K_0 = U_0 ... K_N = U_N}) as the least safe of the conversions from the element
+// types U to T (README §4, C-Map).
 func (t *MapType) ConversionFrom(src Type) ConversionKind {
-	kind, _ := t.conversionFrom(src, false, nil)
-	return kind
-}
-
-func (t *MapType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
-		switch src := src.(type) {
-		case *MapType:
-			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
-		case *ObjectType:
-			conversionKind := SafeConversion
-			var diags lazyDiagnostics
-			for _, src := range src.Properties {
-				if ck, why := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
-					conversionKind, diags = ck, why
-					if conversionKind == NoConversion {
-						break
-					}
-				}
-			}
-			return conversionKind, diags
-		}
-		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
-	})
+	return cachedConversionFrom(t, src, t.cache)
 }
 
 func (t *MapType) String() string {
@@ -147,32 +121,6 @@ func (t *MapType) String() string {
 
 func (t *MapType) string(seen map[Type]struct{}) string {
 	return fmt.Sprintf("map(%s)", t.ElementType.string(seen))
-}
-
-func (t *MapType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
-	return unify(t, other, seen, func() (Type, ConversionKind) {
-		switch other := other.(type) {
-		case *MapType:
-			// If the other type is a map type, unify based on the element type.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
-			return NewMapType(elementType), conversionKind
-		case *ObjectType:
-			// If the other type is an object type, prefer the map type, but unify the property types.
-			elementType, conversionKind := t.ElementType, SafeConversion
-			for _, other := range slices.SortedFunc(maps.Values(other.Properties), Compare) {
-				element, ck := elementType.unify(other, seen)
-				if ck < conversionKind {
-					conversionKind = ck
-				}
-				elementType = element
-			}
-			return NewMapType(elementType), conversionKind
-		default:
-			// Prefer the map type.
-			kind, _ := t.conversionFrom(other, true, seen)
-			return t, kind
-		}
-	})
 }
 
 func (*MapType) isType() {}

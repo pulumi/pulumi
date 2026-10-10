@@ -16,8 +16,6 @@ package model
 
 import (
 	"fmt"
-	"maps"
-	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -176,19 +174,10 @@ func (t *ObjectType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *ObjectType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *ObjectType) equals(other Type, seen equalPairs) bool {
 	if t == other {
 		return true
 	}
-	if seen != nil {
-		if _, ok := seen[t]; ok {
-			return true
-		}
-	} else {
-		seen = map[Type]struct{}{}
-	}
-	seen[t] = struct{}{}
-
 	otherObject, ok := other.(*ObjectType)
 	if !ok {
 		return false
@@ -196,6 +185,15 @@ func (t *ObjectType) equals(other Type, seen map[Type]struct{}) bool {
 	if len(t.Properties) != len(otherObject.Properties) {
 		return false
 	}
+	pair := [2]Type{t, other}
+	if _, ok := seen[pair]; ok {
+		return true
+	}
+	if seen == nil {
+		seen = equalPairs{}
+	}
+	seen[pair] = struct{}{}
+	defer delete(seen, pair)
 	for k, t := range t.Properties {
 		if u, ok := otherObject.Properties[k]; !ok || !t.equals(u, seen) {
 			return false
@@ -225,106 +223,15 @@ func (t *ObjectType) AssignableFrom(src Type) bool {
 	})
 }
 
-type objectTypeUnifier struct {
-	properties     map[string]Type
-	any            bool
-	conversionKind ConversionKind
-}
-
-func (u *objectTypeUnifier) unify(t *ObjectType, seen *cycleSet) {
-	if !u.any {
-		u.properties = map[string]Type{}
-		maps.Copy(u.properties, t.Properties)
-		u.any, u.conversionKind = true, SafeConversion
-	} else {
-		for key, pt := range u.properties {
-			if _, exists := t.Properties[key]; !exists {
-				u.properties[key] = NewOptionalType(pt)
-			}
-		}
-
-		for key, t := range t.Properties {
-			if pt, exists := u.properties[key]; exists {
-				unified, ck := pt.unify(t, seen)
-				if ck < u.conversionKind {
-					u.conversionKind = ck
-				}
-				u.properties[key] = unified
-			} else {
-				u.properties[key] = NewOptionalType(t)
-			}
-		}
-	}
-}
-
 // ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type.
 //
-// An object({K_0 = T_0, ..., K_N = T_N}) is convertible from object({K_0 = U_0, ... K_M = U_M}) if all properties
-// that exist in both types are convertible, and any keys that do not exist in the source type are optional in
-// the destination type. If any of these conversions are unsafe, the whole conversion is unsafe; otherwise, the
-// conversion is safe.
+// An object({K_0 = T_0, ..., K_N = T_N}) converts from object({K_0 = U_0, ... K_M = U_M}) as the least safe of the
+// conversions from U_I to T_I, where a U_I that the source lacks is none. Properties of the source that the
+// destination lacks do not take part (README §4, C-Object).
 //
-// An object({K_0 = T_0, ..., K_N = T_N}) is convertible from a map(U) if U is convertible to all of T_0 through T_N.
-// This conversion is always unsafe, and may fail if the map does not contain an appropriate set of keys for the
-// destination type.
+// An object({K_0 = T_0, ..., K_N = T_N}) converts unsafely from a map(U) if U converts to all of T_0 through T_N.
 func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
-	kind, _ := t.conversionFrom(src, false, nil)
-	return kind
-}
-
-func (t *ObjectType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
-		switch src := src.(type) {
-		case *ObjectType:
-			// A `(t, src)` pair already in flight is a true coinductive cycle:
-			// assume it converts and let the outer frame's per-property checks
-			// verify the (always finite) leaves.
-			if seen.has(t, src) {
-				return SafeConversion, nil
-			}
-			if seen == nil {
-				seen = &cycleSet{}
-			}
-			seen.push(t, src)
-			defer seen.pop(t, src)
-
-			if unifying {
-				var unifier objectTypeUnifier
-				unifier.unify(t, seen)
-				unifier.unify(src, seen)
-				return unifier.conversionKind, nil
-			}
-
-			conversionKind := SafeConversion
-			var diags lazyDiagnostics
-			for k, dst := range t.Properties {
-				src, ok := src.Properties[k]
-				if !ok {
-					src = NoneType
-				}
-				if ck, why := dst.conversionFrom(src, unifying, seen); ck < conversionKind {
-					conversionKind, diags = ck, why
-					if conversionKind == NoConversion {
-						break
-					}
-				}
-			}
-			return conversionKind, diags
-		case *MapType:
-			conversionKind := UnsafeConversion
-			var diags lazyDiagnostics
-			for _, dst := range t.Properties {
-				if ck, why := dst.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
-					conversionKind, diags = ck, why
-					if conversionKind == NoConversion {
-						break
-					}
-				}
-			}
-			return conversionKind, diags
-		}
-		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
-	})
+	return cachedConversionFrom(t, src, t.cache)
 }
 
 func (t *ObjectType) String() string {
@@ -359,44 +266,6 @@ func (t *ObjectType) string(seen map[Type]struct{}) string {
 	s := fmt.Sprintf("object({%s}%v)", strings.Join(properties, ", "), annotations)
 	t.s.Store(s)
 	return s
-}
-
-func (t *ObjectType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
-	return unify(t, other, seen, func() (Type, ConversionKind) {
-		switch other := other.(type) {
-		case *MapType:
-			// Prefer the map type, but unify the element type.
-			elementType, conversionKind := other.ElementType, SafeConversion
-			for _, t := range slices.SortedFunc(maps.Values(t.Properties), Compare) {
-				element, ck := elementType.unify(t, seen)
-				if ck < conversionKind {
-					conversionKind = ck
-				}
-				elementType = element
-			}
-			return NewMapType(elementType), conversionKind
-		case *ObjectType:
-			// If the other type is an object type, produce a new type whose properties are the union of the two types.
-			// The types of intersecting properties will be unified. A pair that is already being unified is recursive,
-			// and its unification is the object that the outer call builds.
-			if unified, ok := seen.unification(t, other); ok {
-				return unified, SafeConversion
-			}
-			unified := NewObjectType(nil)
-			seen.pushUnification(t, other, unified)
-			defer seen.popUnification(t, other)
-
-			var unifier objectTypeUnifier
-			unifier.unify(t, seen)
-			unifier.unify(other, seen)
-			unified.Properties = unifier.properties
-			return unified, unifier.conversionKind
-		default:
-			// Otherwise, prefer the object type.
-			kind, _ := t.conversionFrom(other, true, seen)
-			return t, kind
-		}
-	})
 }
 
 func (*ObjectType) isType() {}

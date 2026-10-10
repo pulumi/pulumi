@@ -19,7 +19,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -89,10 +88,8 @@ type Type interface {
 	// Pretty returns a pretty-printer for the type.
 	Pretty() pretty.Formatter
 
-	equals(other Type, seen map[Type]struct{}) bool
-	conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics)
+	equals(other Type, seen equalPairs) bool
 	string(seen map[Type]struct{}) string
-	unify(other Type, seen *cycleSet) (Type, ConversionKind)
 	isType()
 }
 
@@ -135,174 +132,48 @@ func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
 	}
 }
 
-type cacheKey struct {
-	src      Type
-	unifying bool
-}
+// equalPairs holds the pairs of object types whose comparison is in flight. A pair that is entered again belongs
+// to a recursive type and compares as equal (README §12).
+type equalPairs map[[2]Type]struct{}
 
-type cacheEntry struct {
-	kind  ConversionKind
-	diags lazyDiagnostics
-}
+// typeCache holds the kind of conversion to a type from each source type that a public ConversionFrom call has
+// computed. README §10: only the outermost call stores a result, because the results of the calls that run while a
+// pair of recursive object types is in flight hold under the coinductive assumption only.
+type typeCache = gsync.Map[Type, ConversionKind]
 
-type typeCache = gsync.Map[cacheKey, cacheEntry]
-
-// cycleSet tracks the `(destination, source)` pairs of a recursive [Type.conversionFrom] computation and the
-// pairs of object types of a recursive [Type.unify] computation that are currently mid-flight. Cycle detection
-// is keyed by the pair rather than the destination alone: re-entering the same destination with a different
-// source is a different question and must be checked, not short-circuited. A pair of object types under
-// unification maps to the object that their unification builds, so that re-entering the pair yields that object
-// and two recursive objects unify to one recursive object.
+// cycleSet holds the `(destination, source)` pairs that a conversion check has in flight, where either side is an
+// object type (README §12). A pair that is entered again belongs to a recursive type and converts safely.
 type cycleSet struct {
-	conversions  map[[2]Type]struct{}
-	unifications map[[2]Type]*ObjectType
+	pairs map[[2]Type]struct{}
 }
 
 func (c *cycleSet) has(dst, src Type) bool {
-	if c == nil {
-		return false
-	}
-	_, ok := c.conversions[[2]Type{dst, src}]
+	_, ok := c.pairs[[2]Type{dst, src}]
 	return ok
 }
 
 func (c *cycleSet) push(dst, src Type) {
-	if c.conversions == nil {
-		c.conversions = map[[2]Type]struct{}{}
+	if c.pairs == nil {
+		c.pairs = map[[2]Type]struct{}{}
 	}
-	c.conversions[[2]Type{dst, src}] = struct{}{}
+	c.pairs[[2]Type{dst, src}] = struct{}{}
 }
 
 func (c *cycleSet) pop(dst, src Type) {
-	delete(c.conversions, [2]Type{dst, src})
+	delete(c.pairs, [2]Type{dst, src})
 }
 
-func (c *cycleSet) unification(t, other Type) (*ObjectType, bool) {
-	unified, ok := c.unifications[[2]Type{t, other}]
-	return unified, ok
-}
-
-func (c *cycleSet) pushUnification(t, other Type, unified *ObjectType) {
-	if c.unifications == nil {
-		c.unifications = map[[2]Type]*ObjectType{}
-	}
-	c.unifications[[2]Type{t, other}] = unified
-}
-
-func (c *cycleSet) popUnification(t, other Type) {
-	delete(c.unifications, [2]Type{t, other})
-}
-
-func conversionFrom(dest, src Type, unifying bool, seen *cycleSet,
-	cache *typeCache,
-	conversionFromImpl func() (ConversionKind, lazyDiagnostics),
-) (ConversionKind, lazyDiagnostics) {
-	if dest.Equals(src) || dest == DynamicType {
-		return SafeConversion, nil
-	}
-
-	key := cacheKey{src: src, unifying: unifying}
-	if c, ok := cache.Load(key); ok {
-		return c.kind, c.diags
-	}
-
-	switch src := src.(type) {
-	case *UnionType:
-		kind, diags := src.conversionTo(dest, unifying, seen)
-		if cache != nil {
-			cache.Store(key, cacheEntry{kind: kind, diags: diags})
-		}
-		return kind, diags
-	}
-	if src == DynamicType {
-		if cache != nil {
-			cache.Store(key, cacheEntry{UnsafeConversion, nil})
-		}
-		return UnsafeConversion, nil
-	}
-	kind, diags := conversionFromImpl()
+// cachedConversionFrom is the public entry of the conversion relation: it serves a repeated question from the
+// destination's cache and stores the result of a new one.
+func cachedConversionFrom(dst, src Type, cache *typeCache) ConversionKind {
 	if cache != nil {
-		cache.Store(key, cacheEntry{kind, diags})
-	}
-
-	contract.Assertf(
-		kind.Exists() || diags != nil,
-		"%T:%v => %T:%v returns no explanation for %#v", dest, dest, src, src, kind,
-	)
-	return kind, diags
-}
-
-// unify chooses the more general of t0 and t1 when one converts to the other, and otherwise defers to the
-// type-specific unify closure. Every conversion check and nested unification shares seen, which must not be nil.
-func unify(t0, t1 Type, seen *cycleSet, unify func() (Type, ConversionKind)) (Type, ConversionKind) {
-	contract.Requiref(t0 != nil, "t0", "must not be nil")
-	contract.Requiref(seen != nil, "seen", "must not be nil")
-
-	// Normalize s.t. dynamic is always on the right.
-	if t0 == DynamicType {
-		t0, t1 = t1, t0
-	}
-
-	switch {
-	case t0.Equals(t1):
-		return t0, SafeConversion
-	case t1 == DynamicType:
-		// The dynamic type unifies with any other type by selecting that other type.
-		return t0, UnsafeConversion
-	default:
-		conversionFrom, _ := t0.conversionFrom(t1, true, seen)
-		conversionTo, _ := t1.conversionFrom(t0, true, seen)
-		switch {
-		case conversionFrom < conversionTo:
-			return t1, conversionTo
-		case conversionFrom > conversionTo:
-			return t0, conversionFrom
-		}
-		if conversionFrom == NoConversion {
-			return NewUnionType(t0, t1), SafeConversion
-		}
-		if union, ok := t1.(*UnionType); ok {
-			return union.unifyTo(t0, seen)
-		}
-
-		// A conversion check that re-enters a pair of recursive types assumes that the pair converts, so the kind of
-		// the unification may be lower than either conversion kind.
-		return unify()
-	}
-}
-
-// UnifyTypes chooses the most general type that is convertible from all of the input types.
-func UnifyTypes(types ...Type) (safeType Type, unsafeType Type) {
-	for _, t := range types {
-		if safeType == nil {
-			safeType = t
-		} else {
-			if safeT, safeConversion := safeType.unify(t, &cycleSet{}); safeConversion >= SafeConversion {
-				safeType = safeT
-			} else {
-				safeType = NewUnionType(safeType, t)
-			}
-		}
-
-		if unsafeType == nil {
-			unsafeType = t
-		} else {
-			if unsafeT, unsafeConversion := unsafeType.unify(t, &cycleSet{}); unsafeConversion >= UnsafeConversion {
-				unsafeType = unsafeT
-			} else {
-				unsafeType = NewUnionType(unsafeType, t)
-			}
+		if kind, ok := cache.Load(src); ok {
+			return kind
 		}
 	}
-
-	if safeType == nil {
-		safeType = NoneType
+	kind, _ := conversionFrom(dst, src, &cycleSet{})
+	if cache != nil {
+		cache.Store(src, kind)
 	}
-	if unsafeType == nil {
-		unsafeType = NoneType
-	}
-
-	contract.Assertf(unsafeType.Equals(safeType) || unsafeType.ConversionFrom(safeType).Exists(),
-		"no conversion from %v to %v", safeType, unsafeType)
-	return safeType, unsafeType
+	return kind
 }

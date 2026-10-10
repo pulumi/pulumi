@@ -35,7 +35,12 @@ type PromiseType struct {
 // NewPromiseType creates a new promise type with the given element type after replacing any promise types within
 // the element type with their respective element types.
 func NewPromiseType(elementType Type) *PromiseType {
-	return &PromiseType{ElementType: ResolvePromises(elementType), cache: &typeCache{}}
+	return newPromiseType(ResolvePromises(elementType))
+}
+
+// newPromiseType wraps an element type that holds no promise.
+func newPromiseType(resolved Type) *PromiseType {
+	return &PromiseType{ElementType: resolved, cache: &typeCache{}}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -75,7 +80,7 @@ func (t *PromiseType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *PromiseType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *PromiseType) equals(other Type, seen equalPairs) bool {
 	if t == other {
 		return true
 	}
@@ -94,29 +99,11 @@ func (t *PromiseType) AssignableFrom(src Type) bool {
 	})
 }
 
-// ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type. An
-// promise(T) is convertible from a type U or promise(U) if U is convertible to T. If the conversion from U to T is
-// unsafe, the entire conversion is unsafe. Otherwise, the conversion is safe.
+// ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type. A
+// promise(T) converts from no output, and from any other type U as T converts from U with every promise at any
+// depth of U removed (README §4, C-Prom).
 func (t *PromiseType) ConversionFrom(src Type) ConversionKind {
-	kind, _ := t.conversionFrom(src, false, nil)
-	return kind
-}
-
-func (t *PromiseType) conversionFrom(
-	src Type, unifying bool, seen *cycleSet,
-) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
-		if src, ok := src.(*PromiseType); ok {
-			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
-		}
-		if _, ok := src.(*OutputType); ok {
-			// An Output may carry unknowns or dependencies that a Promise cannot represent,
-			// and there is no SDK-level operation that recovers a Promise from an Output, so
-			// there is no valid conversion from output(U) to promise(T).
-			return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
-		}
-		return t.ElementType.conversionFrom(src, unifying, seen)
-	})
+	return cachedConversionFrom(t, src, t.cache)
 }
 
 func (t *PromiseType) String() string {
@@ -125,25 +112,6 @@ func (t *PromiseType) String() string {
 
 func (t *PromiseType) string(seen map[Type]struct{}) string {
 	return fmt.Sprintf("promise(%s)", t.ElementType.string(seen))
-}
-
-func (t *PromiseType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
-	return unify(t, other, seen, func() (Type, ConversionKind) {
-		switch other := other.(type) {
-		case *PromiseType:
-			// If the other type is a promise type, unify based on the element type.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
-			return NewPromiseType(elementType), conversionKind
-		case *OutputType:
-			// If the other type is an output type, prefer the output type, but unify the element types.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
-			return NewOutputType(elementType), conversionKind
-		default:
-			// Prefer the promise type.
-			kind, _ := t.conversionFrom(other, true, seen)
-			return t, kind
-		}
-	})
 }
 
 func (t *PromiseType) isType() {}

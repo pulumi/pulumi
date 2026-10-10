@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // OpaqueType represents a type that is named by a string.
@@ -48,7 +47,7 @@ func (t *OpaqueType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *OpaqueType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *OpaqueType) equals(other Type, seen equalPairs) bool {
 	if o, ok := other.(*OpaqueType); ok {
 		return *o == *t
 	}
@@ -63,93 +62,17 @@ func (t *OpaqueType) AssignableFrom(src Type) bool {
 	})
 }
 
-func (t *OpaqueType) conversionFromImpl(
-	src Type, unifying, checkUnsafe bool, seen *cycleSet,
-) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(
-		t, src, unifying, seen, &typeCache{}, func() (ConversionKind, lazyDiagnostics) {
-			if constType, ok := src.(*ConstType); ok {
-				return t.conversionFrom(constType.Type, unifying, seen)
-			}
-
-			noConversionDiag := func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
-
-			switch t {
-			case NumberType:
-				// src == NumberType is handled by t == src above
-				contract.Assertf(src != NumberType, "unexpected number-to-number conversion")
-
-				cki, _ := IntType.conversionFromImpl(src, unifying, false, seen)
-				switch cki {
-				case SafeConversion:
-					return SafeConversion, nil
-				case UnsafeConversion:
-					return UnsafeConversion, nil
-				case NoConversion:
-					if checkUnsafe {
-						if kind, _ := StringType.conversionFromImpl(src, unifying, false, seen); kind.Exists() {
-							return UnsafeConversion, nil
-						}
-					}
-				}
-				return NoConversion, noConversionDiag
-			case IntType:
-				if checkUnsafe {
-					if kind, _ := NumberType.conversionFromImpl(src, unifying, true, seen); kind.Exists() {
-						return UnsafeConversion, nil
-					}
-				}
-				return NoConversion, noConversionDiag
-			case BoolType:
-				if checkUnsafe {
-					if kind, _ := StringType.conversionFromImpl(src, unifying, false, seen); kind.Exists() {
-						return UnsafeConversion, nil
-					}
-				}
-				return NoConversion, noConversionDiag
-			case StringType:
-				if src == IDType {
-					return SafeConversion, nil
-				}
-				ckb, _ := BoolType.conversionFromImpl(src, unifying, false, seen)
-				ckn, _ := NumberType.conversionFromImpl(src, unifying, false, seen)
-				if ckb == SafeConversion || ckn == SafeConversion {
-					return SafeConversion, nil
-				}
-				if ckb == UnsafeConversion || ckn == UnsafeConversion {
-					return UnsafeConversion, nil
-				}
-				return NoConversion, noConversionDiag
-			case IDType:
-				kind, _ := StringType.conversionFromImpl(src, unifying, checkUnsafe, seen)
-				if kind.Exists() {
-					return kind, nil
-				}
-				return NoConversion, noConversionDiag
-			default:
-				return NoConversion, noConversionDiag
-			}
-		})
-}
-
-func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
-	return t.conversionFromImpl(src, unifying, true, seen)
-}
-
 // ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type.
 //
 // In general, an opaque type is only convertible from itself (in addition to the standard dynamic and union
-// conversions). However, there are special rules for the builtin types:
+// conversions). However, there are special rules for the builtin types (README §4.4):
 //
 // - The dynamic type is safely convertible from any other type, and is unsafely convertible _to_ any other type
-// - The string type is safely convertible from bool, number, and int
-// - The id type is safely convertible to and from string, and otherwise behaves like string
-// - The number type is safely convertible from int and unsafely convertible from string
-// - The int type is unsafely convertible from string
-// - The bool type is unsafely convertible from string
+// - The string type and the id type are safely convertible from every other builtin type
+// - The number type is safely convertible from int
+// - Every other pair of builtin types is unsafely convertible
 func (t *OpaqueType) ConversionFrom(src Type) ConversionKind {
-	kind, _ := t.conversionFrom(src, false, nil)
-	return kind
+	return cachedConversionFrom(t, src, nil)
 }
 
 func (t *OpaqueType) String() string {
@@ -188,33 +111,6 @@ func (t *OpaqueType) Pretty() pretty.Formatter {
 
 func (t *OpaqueType) string(_ map[Type]struct{}) string {
 	return t.String()
-}
-
-var opaquePrecedence = []Type{StringType, NumberType, IntType, BoolType, IDType}
-
-func (t *OpaqueType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
-	return unify(t, other, seen, func() (Type, ConversionKind) {
-		if t == DynamicType || other == DynamicType {
-			// These should have been handled by unify.
-			contract.Failf("unexpected type %v in OpaqueType.unify", t)
-			return DynamicType, SafeConversion
-		}
-
-		for _, goal := range opaquePrecedence {
-			if t == goal {
-				kind, _ := goal.conversionFrom(other, true, seen)
-				return goal, kind
-			}
-			if other == goal {
-				kind, _ := goal.conversionFrom(t, true, seen)
-				return goal, kind
-			}
-		}
-
-		// There should be a total order on conversions to and from these types, so there should be a total order
-		// on unifications with these types.
-		return DynamicType, SafeConversion
-	})
 }
 
 func (*OpaqueType) isType() {}

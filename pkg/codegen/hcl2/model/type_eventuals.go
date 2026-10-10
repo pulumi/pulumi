@@ -33,56 +33,63 @@ func (f typeTransform) do(t Type) Type {
 	}
 }
 
-func resolveEventuals(t Type, resolveOutputs bool) (Type, typeTransform) {
-	return resolveEventualsImpl(t, resolveOutputs, map[Type]Type{})
+// resolveEventuals rebuilds a type without the eventual wrappers that strip names: every output and promise for
+// makeOutput, every promise for makePromise, and none for makeIdentity. The wrappers it keeps hold resolved
+// elements (README §2.3). The transform it returns is the outermost kind of eventual that the type held.
+func resolveEventuals(t Type, strip typeTransform) (Type, typeTransform) {
+	return resolveEventualsImpl(t, strip, map[resolveKey]Type{})
 }
 
-func resolveEventualsImpl(t Type, resolveOutputs bool, seen map[Type]Type) (Type, typeTransform) {
+// resolveKey identifies an object under resolution. One object resolves to one copy for each context in which the
+// walk reaches it, because a copy inside an output holds no eventuals and a copy outside may.
+type resolveKey struct {
+	t     Type
+	strip typeTransform
+}
+
+func resolveEventualsImpl(t Type, strip typeTransform, seen map[resolveKey]Type) (Type, typeTransform) {
 	switch t := t.(type) {
 	case *OutputType:
-		if resolveOutputs {
-			return t.ElementType, makeOutput
+		element, _ := resolveEventualsImpl(t.ElementType, makeOutput, seen)
+		if strip == makeOutput {
+			return element, makeOutput
 		}
-		return t, makeIdentity
+		return newOutputType(element), makeOutput
 	case *PromiseType:
-		element, transform := resolveEventualsImpl(t.ElementType, resolveOutputs, seen)
-		if makePromise > transform {
-			transform = makePromise
+		element, transform := resolveEventualsImpl(t.ElementType, max(strip, makePromise), seen)
+		if strip != makeIdentity {
+			return element, max(transform, makePromise)
 		}
-		return element, transform
+		return newPromiseType(element), makePromise
 	case *MapType:
-		resolved, transform := resolveEventualsImpl(t.ElementType, resolveOutputs, seen)
+		resolved, transform := resolveEventualsImpl(t.ElementType, strip, seen)
 		return NewMapType(resolved), transform
 	case *ListType:
-		resolved, transform := resolveEventualsImpl(t.ElementType, resolveOutputs, seen)
+		resolved, transform := resolveEventualsImpl(t.ElementType, strip, seen)
 		return NewListType(resolved), transform
 	case *SetType:
-		resolved, transform := resolveEventualsImpl(t.ElementType, resolveOutputs, seen)
+		resolved, transform := resolveEventualsImpl(t.ElementType, strip, seen)
 		return NewSetType(resolved), transform
 	case *UnionType:
 		transform := makeIdentity
 		elementTypes := make([]Type, len(t.ElementTypes))
 		for i, t := range t.ElementTypes {
-			element, elementTransform := resolveEventualsImpl(t, resolveOutputs, seen)
-			if elementTransform > transform {
-				transform = elementTransform
-			}
+			element, elementTransform := resolveEventualsImpl(t, strip, seen)
+			transform = max(transform, elementTransform)
 			elementTypes[i] = element
 		}
 		return NewUnionTypeAnnotated(elementTypes, t.Annotations...), transform
 	case *ObjectType:
 		transform := makeIdentity
-		if already, ok := seen[t]; ok {
+		if already, ok := seen[resolveKey{t, strip}]; ok {
 			return already, transform
 		}
 		properties := map[string]Type{}
 		objType := NewObjectType(properties, t.Annotations...)
-		seen[t] = objType
+		seen[resolveKey{t, strip}] = objType
 		for k, t := range t.Properties {
-			property, propertyTransform := resolveEventualsImpl(t, resolveOutputs, seen)
-			if propertyTransform > transform {
-				transform = propertyTransform
-			}
+			property, propertyTransform := resolveEventualsImpl(t, strip, seen)
+			transform = max(transform, propertyTransform)
 			properties[k] = property
 		}
 		return objType, transform
@@ -90,10 +97,8 @@ func resolveEventualsImpl(t Type, resolveOutputs bool, seen map[Type]Type) (Type
 		transform := makeIdentity
 		elements := make([]Type, len(t.ElementTypes))
 		for i, t := range t.ElementTypes {
-			element, elementTransform := resolveEventualsImpl(t, resolveOutputs, seen)
-			if elementTransform > transform {
-				transform = elementTransform
-			}
+			element, elementTransform := resolveEventualsImpl(t, strip, seen)
+			transform = max(transform, elementTransform)
 			elements[i] = element
 		}
 		return NewTupleType(elements...), transform
@@ -109,7 +114,7 @@ func ResolveOutputs(t Type) Type {
 		return t
 	}
 
-	resolved, _ := resolveEventuals(t, true)
+	resolved, _ := resolveEventuals(t, makeOutput)
 	return resolved
 }
 
@@ -119,7 +124,7 @@ func ResolvePromises(t Type) Type {
 		return t
 	}
 
-	resolved, _ := resolveEventuals(t, false)
+	resolved, _ := resolveEventuals(t, makePromise)
 	return resolved
 }
 
@@ -231,7 +236,7 @@ func containsPromisesImpl(t Type, seen map[Type]struct{}) bool {
 func liftOperationType(resultType Type, arguments ...Expression) Type {
 	var transform typeTransform
 	for _, arg := range arguments {
-		_, t := resolveEventuals(arg.Type(), true)
+		_, t := resolveEventuals(arg.Type(), makeOutput)
 		if t > transform {
 			transform = t
 		}

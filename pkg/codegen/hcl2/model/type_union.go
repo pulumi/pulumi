@@ -46,31 +46,7 @@ type UnionType struct {
 // 3. Unions have have more then 1 type. If only a single type is left after (1) and (2),
 // it is returned as is.
 func NewUnionTypeAnnotated(types []Type, annotations ...any) Type {
-	var elementTypes []Type
-	for _, t := range types {
-		if union, isUnion := t.(*UnionType); isUnion {
-			elementTypes = append(elementTypes, union.ElementTypes...)
-		} else {
-			elementTypes = append(elementTypes, t)
-		}
-	}
-
-	// Remove duplicate types
-	// We first sort the types so duplicates will be adjacent
-	slices.SortFunc(elementTypes, Compare)
-	// We then filter out adjacent duplicates
-	dst := 0
-	for src := 0; src < len(elementTypes); {
-		for src < len(elementTypes) && elementTypes[src].Equals(elementTypes[dst]) {
-			src++
-		}
-		dst++
-
-		if src < len(elementTypes) {
-			elementTypes[dst] = elementTypes[src]
-		}
-	}
-	elementTypes = elementTypes[:dst]
+	elementTypes := canonicalMembers(types)
 
 	// If the union turns out to be the union of a single type, just return the underlying
 	// type.
@@ -79,6 +55,21 @@ func NewUnionTypeAnnotated(types []Type, annotations ...any) Type {
 	}
 
 	return &UnionType{ElementTypes: elementTypes, Annotations: annotations, cache: &typeCache{}}
+}
+
+// canonicalMembers is the member list of README §3: the members of each union and every other type, sorted with
+// Compare and without duplicates.
+func canonicalMembers(types []Type) []Type {
+	var elementTypes []Type
+	for _, t := range types {
+		if union, isUnion := t.(*UnionType); isUnion {
+			elementTypes = append(elementTypes, union.ElementTypes...)
+		} else {
+			elementTypes = append(elementTypes, t)
+		}
+	}
+	slices.SortFunc(elementTypes, Compare)
+	return slices.CompactFunc(elementTypes, Type.Equals)
 }
 
 // NewUnionType creates a new union type with the given element types. Any element types that are union types are
@@ -189,7 +180,7 @@ func (t *UnionType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *UnionType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *UnionType) equals(other Type, seen equalPairs) bool {
 	if t == other {
 		return true
 	}
@@ -236,66 +227,11 @@ func (t *UnionType) AssignableFrom(src Type) bool {
 }
 
 // ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type. A union
-// type is convertible from a source type if any of its elements are convertible from the source type. If any element
-// type is safely convertible, the conversion is safe; if no element is safely convertible but some element is unsafely
-// convertible, the conversion is unsafe.
+// type converts from a source type as the best of the conversions to its elements (README §4, C-UDst). A union source
+// converts to any type safely when every element does, unsafely when some element converts, and otherwise not at all
+// (C-USrc).
 func (t *UnionType) ConversionFrom(src Type) ConversionKind {
-	kind, _ := t.conversionFrom(src, false, nil)
-	return kind
-}
-
-func (t *UnionType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
-		var conversionKind ConversionKind
-		var diags []lazyDiagnostics
-
-		// Fast path: see if the source type is equal to any of the element types. Equality checks are generally
-		// less expensive that full convertibility checks.
-		if slices.ContainsFunc(t.ElementTypes, src.Equals) {
-			return SafeConversion, nil
-		}
-
-		for _, t := range t.ElementTypes {
-			ck, why := t.conversionFrom(src, unifying, seen)
-			if ck > conversionKind {
-				conversionKind = ck
-			} else if why != nil {
-				diags = append(diags, why)
-			}
-		}
-		if conversionKind == NoConversion {
-			return NoConversion, func() hcl.Diagnostics {
-				var all hcl.Diagnostics
-				for _, why := range diags {
-					//nolint:errcheck
-					all.Extend(why())
-				}
-				return all
-			}
-		}
-		return conversionKind, nil
-	})
-}
-
-// If all conversions to a dest type from a union type are safe, the conversion is safe.
-// If no conversions to a dest type from a union type exist, the conversion does not exist.
-// Otherwise, the conversion is unsafe.
-func (t *UnionType) conversionTo(dest Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
-	conversionKind, exists := SafeConversion, false
-	for _, t := range t.ElementTypes {
-		switch kind, _ := dest.conversionFrom(t, unifying, seen); kind {
-		case SafeConversion:
-			exists = true
-		case UnsafeConversion:
-			conversionKind, exists = UnsafeConversion, true
-		case NoConversion:
-			conversionKind = UnsafeConversion
-		}
-	}
-	if !exists {
-		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(dest, t)} }
-	}
-	return conversionKind, nil
+	return cachedConversionFrom(t, src, t.cache)
 }
 
 func (t *UnionType) String() string {
@@ -320,34 +256,6 @@ func (t *UnionType) string(seen map[Type]struct{}) string {
 	s := fmt.Sprintf("union(%s%v)", strings.Join(elements, ", "), annotations)
 	t.s.Store(s)
 	return s
-}
-
-func (t *UnionType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
-	return unify(t, other, seen, func() (Type, ConversionKind) {
-		return t.unifyTo(other, seen)
-	})
-}
-
-func (t *UnionType) unifyTo(other Type, seen *cycleSet) (Type, ConversionKind) {
-	switch other := other.(type) {
-	case *UnionType:
-		// If the other type is also a union type, produce a new type that is the union of their elements.
-		elements := slice.Prealloc[Type](len(t.ElementTypes) + len(other.ElementTypes))
-		elements = append(elements, t.ElementTypes...)
-		elements = append(elements, other.ElementTypes...)
-		return NewUnionType(elements...), SafeConversion
-	default:
-		// Otherwise, unify the other type with each element of the union and return a new union type.
-		elements, conversionKind := make([]Type, len(t.ElementTypes)), SafeConversion
-		for i, t := range t.ElementTypes {
-			element, ck := t.unify(other, seen)
-			if ck < conversionKind {
-				conversionKind = ck
-			}
-			elements[i] = element
-		}
-		return NewUnionType(elements...), conversionKind
-	}
 }
 
 func (*UnionType) isType() {}
