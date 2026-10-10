@@ -2160,8 +2160,16 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 
 					// This resource might already be pending-delete
 					if dependentResource.Delete {
+						// The resource was already condemned by an earlier operation, so the
+						// protection decision was made when its deletion was initiated, not
+						// here. Delete it as part of this replacement chain (rather than a
+						// standalone delete, whose protection check would refuse it and break
+						// the chain). This mirrors how GenerateDeletes handles pending-delete
+						// resources. pendingReplace is false because the resource is already
+						// marked deleted; it must not also be marked pending replacement.
 						oldViews := sg.deployment.GetOldViews(dependentResource.URN)
-						steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, dependentResource, oldViews))
+						steps = append(steps, NewDeleteReplacementStep(
+							sg.deployment, sg.deletes, dependentResource, false, oldViews))
 					} else {
 						// Check if the resource is protected, if it is we can't do this replacement chain.
 						if dependentResource.Protect && !sg.deployment.opts.IgnoreProtect {

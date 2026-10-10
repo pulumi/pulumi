@@ -1,0 +1,3 @@
+kind: fix
+body: Delete protected pending-delete dependents as part of the replacement chain instead of hanging when a delete-before-replace must delete them
+component: cli/engine
