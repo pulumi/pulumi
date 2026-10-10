@@ -68,6 +68,51 @@ map = length({for k, v in {"a" = 1, "b" = 2, "c" = 3} : k => v})
 	}, values)
 }
 
+func TestEntries(t *testing.T) {
+	t.Parallel()
+
+	entry := func(key string, value property.Value) property.Value {
+		return property.New(map[string]property.Value{"key": property.New(key), "value": value})
+	}
+	indexedEntry := func(key float64, value property.Value) property.Value {
+		return property.New(map[string]property.Value{"key": property.New(key), "value": value})
+	}
+	list := func(entries ...property.Value) property.Value {
+		return property.New(append([]property.Value{}, entries...))
+	}
+	values := evaluateLocals(t, `
+uniform = entries({"a" = 1, "b" = 2})
+mixed = entries({"a" = [true], "b" = [true, false]})
+empty = entries({})
+tuple = entries([1, 2, 3])
+mixedTuple = entries([true, "hello"])
+emptyTuple = entries([])
+list = entries(range(3))
+emptyList = entries(range(0))
+`)
+	assert.Equal(t, map[string]property.Value{
+		"uniform": list(entry("a", property.New(1.0)), entry("b", property.New(2.0))),
+		"mixed": list(
+			entry("a", property.New([]property.Value{property.New(true)})),
+			entry("b", property.New([]property.Value{property.New(true), property.New(false)})),
+		),
+		"empty": list(),
+		"tuple": list(
+			indexedEntry(0, property.New(1.0)),
+			indexedEntry(1, property.New(2.0)),
+			indexedEntry(2, property.New(3.0)),
+		),
+		"mixedTuple": list(indexedEntry(0, property.New(true)), indexedEntry(1, property.New("hello"))),
+		"emptyTuple": list(),
+		"list": list(
+			indexedEntry(0, property.New(0.0)),
+			indexedEntry(1, property.New(1.0)),
+			indexedEntry(2, property.New(2.0)),
+		),
+		"emptyList": list(),
+	}, values)
+}
+
 func TestRange(t *testing.T) {
 	t.Parallel()
 
