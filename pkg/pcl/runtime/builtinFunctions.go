@@ -883,6 +883,52 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	// lookupFn returns the default unchanged when the key is absent. cty's lookup converts the default to the
+	// element type of a map, but the binder types the result as the unification of the element type and the
+	// default, so the default need not convert.
+	lookupFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name:        "collection",
+				Type:        cty.DynamicPseudoType,
+				AllowMarked: true,
+			},
+			{
+				Name:        "key",
+				Type:        cty.String,
+				AllowMarked: true,
+			},
+			{
+				Name:        "default",
+				Type:        cty.DynamicPseudoType,
+				AllowMarked: true,
+			},
+		},
+		Type: func(args []cty.Value) (cty.Type, error) {
+			collection := args[0].Type()
+			if !collection.IsObjectType() && !collection.IsMapType() {
+				return cty.NilType, function.NewArgErrorf(0, "the first argument to 'lookup' must be a map")
+			}
+			return cty.DynamicPseudoType, nil
+		},
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			collection, marks := args[0].Unmark()
+			key, keyMarks := args[1].Unmark()
+			if !collection.IsWhollyKnown() || !key.IsKnown() {
+				return cty.DynamicVal.WithMarks(marks, keyMarks), nil
+			}
+			name := key.AsString()
+			if collection.Type().IsObjectType() {
+				if collection.Type().HasAttribute(name) {
+					return collection.GetAttr(name).WithMarks(marks, keyMarks), nil
+				}
+			} else if collection.HasIndex(key) == cty.True {
+				return collection.Index(key).WithMarks(marks, keyMarks), nil
+			}
+			return args[2].WithMarks(marks, keyMarks), nil
+		},
+	})
+
 	entriesFn := function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -1143,7 +1189,7 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 		"range":              stdlib.RangeFunc,
 		"singleOrNone":       singleOrNoneFn,
 		"entries":            entriesFn,
-		"lookup":             stdlib.LookupFunc,
+		"lookup":             lookupFn,
 		"toBase64":           toBase64Fn,
 		"fromBase64":         fromBase64Fn,
 		"toJSON":             toJSONFn,
