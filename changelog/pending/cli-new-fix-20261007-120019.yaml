@@ -1,0 +1,4 @@
+component: cli/new
+kind: fix
+body: Fix template fetching when changing branches
+time: 2026-10-07T12:00:19.377955973+02:00

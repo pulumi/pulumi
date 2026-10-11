@@ -344,7 +344,7 @@ func (host *defaultHost) PolicyAnalyzer(
 		}
 
 		// If not, try to load and bind to a plugin.
-		plug, err := plugin.NewPolicyAnalyzer(host, ctx, name, path, opts, nil)
+		plug, err := plugin.NewPolicyAnalyzer(host, ctx, name, path, opts)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(ctx.Request())
 			if infoerr != nil {
@@ -537,27 +537,42 @@ func (host *defaultHost) ResolvePlugin(
 // A plugin load that is in flight while its context is released is not torn down here; it stays
 // cached until the host closes.
 func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
+	var mu sync.Mutex
 	var errs []error
-	closePlugins := func(channel chan pluginLoadRequest, close func(cancelCtx context.Context)) error {
+	closePlugins := func(channel chan pluginLoadRequest, collect func() []func(cancelCtx context.Context) error) error {
 		_, err := host.loadPlugin(channel, func() (any, error) {
-			cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 5*time.Second)
-			defer cancelCancel()
-			close(cancelCtx)
+			var wg sync.WaitGroup
+			for _, shutdown := range collect() {
+				wg.Go(func() {
+					cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 5*time.Second)
+					defer cancelCancel()
+					if err := shutdown(cancelCtx); err != nil {
+						mu.Lock()
+						errs = append(errs, err)
+						mu.Unlock()
+					}
+				})
+			}
+			wg.Wait()
 			return nil, nil
 		})
 		return err
 	}
 
-	err := closePlugins(host.loadRequests, func(cancelCtx context.Context) {
+	err := closePlugins(host.loadRequests, func() []func(context.Context) error {
+		var shutdowns []func(context.Context) error
 		for key, plug := range host.resourcePlugins {
 			if plug.ctx != ctx {
 				continue
 			}
-			contract.IgnoreError(plug.Plugin.SignalCancellation(cancelCtx))
-			if err := plug.Plugin.Close(); err != nil {
-				errs = append(errs, fmt.Errorf("closing resource plugin %q: %w", plug.Name, err))
-			}
 			delete(host.resourcePlugins, key)
+			shutdowns = append(shutdowns, func(cancelCtx context.Context) error {
+				contract.IgnoreError(plug.Plugin.SignalCancellation(cancelCtx))
+				if err := plug.Plugin.Close(); err != nil {
+					return fmt.Errorf("closing resource plugin %q: %w", plug.Name, err)
+				}
+				return nil
+			})
 		}
 		for key, plug := range host.analyzerPlugins {
 			if _, has := plug.refs[ctx]; !has {
@@ -567,12 +582,16 @@ func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
 			if len(plug.refs) > 0 {
 				continue
 			}
-			contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
-			if err := plug.Plugin.Close(); err != nil {
-				errs = append(errs, fmt.Errorf("closing analyzer plugin %q: %w", plug.Name, err))
-			}
 			delete(host.analyzerPlugins, key)
+			shutdowns = append(shutdowns, func(cancelCtx context.Context) error {
+				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
+				if err := plug.Plugin.Close(); err != nil {
+					return fmt.Errorf("closing analyzer plugin %q: %w", plug.Name, err)
+				}
+				return nil
+			})
 		}
+		return shutdowns
 	})
 	if err != nil {
 		// The only error loadPlugin returns here is that the host is shutting down, in which
@@ -581,7 +600,8 @@ func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
 	}
 
 	// Language plugins are guarded by their own load channel.
-	err = closePlugins(host.languageLoadRequests, func(cancelCtx context.Context) {
+	err = closePlugins(host.languageLoadRequests, func() []func(context.Context) error {
+		var shutdowns []func(context.Context) error
 		for key, plug := range host.languagePlugins {
 			if _, has := plug.refs[ctx]; !has {
 				continue
@@ -590,12 +610,16 @@ func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
 			if len(plug.refs) > 0 {
 				continue
 			}
-			contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
-			if err := plug.Plugin.Close(); err != nil {
-				errs = append(errs, fmt.Errorf("closing language plugin %q: %w", plug.Name, err))
-			}
 			delete(host.languagePlugins, key)
+			shutdowns = append(shutdowns, func(cancelCtx context.Context) error {
+				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
+				if err := plug.Plugin.Close(); err != nil {
+					return fmt.Errorf("closing language plugin %q: %w", plug.Name, err)
+				}
+				return nil
+			})
 		}
+		return shutdowns
 	})
 	if err != nil {
 		return nil //nolint:nilerr
@@ -603,9 +627,7 @@ func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
 
 	// Shut down the loader and mapper gRPC servers hosted for ctx, after the plugins they may have
 	// booted have been released.
-	errs = append(errs, host.releaseContextServers(ctx))
-
-	return errors.Join(errs...)
+	return errors.Join(errors.Join(errs...), host.releaseContextServers(ctx))
 }
 
 func (host *defaultHost) SignalCancellation() error {

@@ -38,3 +38,12 @@ func (v Value) visit(f func(Value) (continueWalking bool)) bool {
 	}
 	return true
 }
+
+func (v Value) any(f func(Value) bool) bool {
+	var found bool
+	v.visit(func(v Value) bool {
+		found = f(v)
+		return !found
+	})
+	return found
+}

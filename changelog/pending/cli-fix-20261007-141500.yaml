@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Redact secrets carried on output values in plaintext log output and in `pulumi logs share`
+time: 2026-10-07T14:15:00.000000+05:30

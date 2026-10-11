@@ -69,7 +69,7 @@ func TestPackageAddNamespace(t *testing.T) {
 			e.ImportDirectory(filepath.Join("namespace"))
 			e.CWD = filepath.Join(e.RootPath, tc.runtime)
 
-			stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
+			stdout, _ := e.RunCommandWithRetry("pulumi", "package", "add", "../provider/schema.json")
 
 			require.Contains(t, stdout, tc.expectedMessage)
 			_, err := os.Stat(filepath.Join(e.CWD, tc.filepath))

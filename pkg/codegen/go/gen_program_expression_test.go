@@ -448,26 +448,47 @@ func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
 	assert.Equal(t, "pulumi.String(bucketName)", index.String())
 }
 
-// TestConvertLiteralToOutputNumberIsNotLifted pins the behavior of lowering an expression that
-// compares an output-typed number against an int literal: `v > 5` where v: output<number>. In this
-// position the binder's rewriteConversions wraps `5` in `__convert(5, InputType(number))` because
-// int is not strictly assignable to number.
-func TestConvertLiteralToOutputNumberIsNotLifted(t *testing.T) {
+// An ID output is a string input in Go, so string destinations take it as is. Other scalars parse it.
+func TestIntrinsicConvertIDOutputToScalarInput(t *testing.T) {
 	t.Parallel()
 
-	env := environment(map[string]any{
-		"v": model.NewOutputType(model.NumberType),
-	})
-	scope := env.scope()
-	genFunc := func(w io.Writer, g *generator, e model.Expression) {
-		e, temps := g.lowerExpression(e, model.NewOutputType(model.BoolType))
-		g.genTemps(w, temps)
-		g.Fgenf(w, "%v", e)
+	cases := []struct {
+		to       model.Type
+		schemaTo schema.Type
+		expected string
+	}{
+		{model.StringType, schema.StringType, "resourceID"},
+		{model.BoolType, schema.BoolType, "resourceID.ToStringOutput().ApplyT(strconv.ParseBool).(pulumi.BoolOutput)"},
+		{model.IntType, schema.IntType, "resourceID.ToStringOutput().ApplyT(strconv.Atoi).(pulumi.IntOutput)"},
+		{
+			model.NumberType, schema.NumberType,
+			"resourceID.ToStringOutput().ApplyT(func(id string) (float64, error) {" +
+				" return strconv.ParseFloat(id, 64) }).(pulumi.Float64Output)",
+		},
 	}
-	testGenerateExpression(t,
-		"v > 5",
-		"v.ApplyT(func(v float64) (bool, error) {\nreturn v > 5, nil\n}).(pulumi.BoolOutput)",
-		scope, genFunc)
+	for _, c := range cases {
+		t.Run(c.to.String(), func(t *testing.T) {
+			t.Parallel()
+
+			g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+			var index bytes.Buffer
+
+			inputType := model.NewUnionTypeAnnotated(
+				[]model.Type{c.to, model.NewOutputType(c.to)},
+				&schema.InputType{ElementType: c.schemaTo},
+			)
+			expr := pcl.NewConvertCall(
+				model.VariableReference(&model.Variable{
+					Name:         "resourceID",
+					VariableType: model.NewOutputType(model.IDType),
+				}),
+				inputType,
+			)
+
+			g.Fgenf(&index, "%v", expr)
+			assert.Equal(t, c.expected, index.String())
+		})
+	}
 }
 
 func TestTupleConsExpression(t *testing.T) {
@@ -525,4 +546,26 @@ func testGenerateExpression(
 
 		assert.Equal(t, goCode, index.String())
 	})
+}
+
+// TestConvertLiteralToOutputNumberIsNotLifted pins the behavior of lowering an expression that
+// compares an output-typed number against an int literal: `v > 5` where v: output<number>. In this
+// position the binder's rewriteConversions wraps `5` in `__convert(5, InputType(number))` because
+// int is not strictly assignable to number.
+func TestConvertLiteralToOutputNumberIsNotLifted(t *testing.T) {
+	t.Parallel()
+
+	env := environment(map[string]any{
+		"v": model.NewOutputType(model.NumberType),
+	})
+	scope := env.scope()
+	genFunc := func(w io.Writer, g *generator, e model.Expression) {
+		e, temps := g.lowerExpression(e, model.NewOutputType(model.BoolType))
+		g.genTemps(w, temps)
+		g.Fgenf(w, "%v", e)
+	}
+	testGenerateExpression(t,
+		"v > 5",
+		"v.ApplyT(func(v float64) (bool, error) {\nreturn v > 5, nil\n}).(pulumi.BoolOutput)",
+		scope, genFunc)
 }

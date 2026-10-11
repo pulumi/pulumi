@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -97,6 +98,19 @@ func ContextWithAgentCredentialUse(ctx context.Context) context.Context {
 func agentCredentialUseFromContext(ctx context.Context) *agentCredentialUse {
 	use, _ := ctx.Value(agentCredentialUseContextKey{}).(*agentCredentialUse)
 	return use
+}
+
+type skipAgentSignupContextKey struct{}
+
+// ContextWithoutAgentSignup returns a context in which agent mode never creates a new agent account,
+// for use by `pulumi login`.
+func ContextWithoutAgentSignup(ctx context.Context) context.Context {
+	return context.WithValue(ctx, skipAgentSignupContextKey{}, true)
+}
+
+func skipAgentSignup(ctx context.Context) bool {
+	skip, _ := ctx.Value(skipAgentSignupContextKey{}).(bool)
+	return skip
 }
 
 type commandNameContextKey struct{}
@@ -227,6 +241,10 @@ type cloudBackend struct {
 
 	// Cached data from BeginUpdate to avoid extra HTTP calls.
 	cachedUpdateData *cachedUpdateData
+
+	readingUpdateID atomic.Pointer[string]
+
+	stackOutputsWaitLimit time.Duration
 }
 
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
@@ -677,6 +695,11 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 			MarkAgentCredentialsUsed(ctx, cloudURL)
 			return &agentAccount, nil
 		}
+		// `pulumi login` is how users recover from rejected agent credentials.
+		if skipAgentSignup(ctx) && !workspace.IsUndecryptableCredentials(defaultCredsErr) {
+			logging.V(7).Infof("Shared agent credentials for %q are not valid; ignoring them for this login", cloudURL)
+			return nil, nil
+		}
 		if expiresAt, tokenValid := workspace.AgentAccessTokenExpiresAt(agentAccount, now); tokenValid {
 			logging.V(7).Infof(
 				"Shared agent credentials for %q were rejected by the service but are locally valid until %s; "+
@@ -708,6 +731,11 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	// not be papered over with a fresh ephemeral agent identity.
 	if workspace.IsUndecryptableCredentials(defaultCredsErr) {
 		return nil, defaultCredsErr
+	}
+
+	if skipAgentSignup(ctx) {
+		logging.V(7).Infof("Agent signup disabled for this command; not creating a new agent account")
+		return nil, nil
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
@@ -778,6 +806,11 @@ func (m defaultLoginManager) Login(
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	var accessToken string
 	accountLink := client.CloudConsoleURL(cloudURL, "user", "settings", "tokens")
+
+	// Agents have no terminal to prompt in, but the browser flow needs no console input.
+	if !cmdutil.Interactive() && skipAgentSignup(ctx) && accountLink != "" && agentdetect.Detect(os.Getenv) != "" {
+		return loginWithBrowser(ctx, cloudURL, insecure, command, welcome, setCurrent, opts)
+	}
 
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
@@ -1810,6 +1843,16 @@ func (b *cloudBackend) createAndStartUpdate(
 		Message:     op.M.Message,
 		Environment: op.M.Environment,
 	}
+	if op.CoherenceWindow != "" {
+		if err := checkCoherenceWindowSupport(b.Capabilities(ctx)); err != nil {
+			return client.UpdateIdentifier{}, updateMetadata{}, err
+		}
+		if dryRun && action != apitype.PreviewUpdate && !op.Opts.PreviewOnly {
+			return client.UpdateIdentifier{}, updateMetadata{}, errors.New(
+				"an update in a coherence window runs without its preview: pass --skip-preview, " +
+					"and preview it in its own operation")
+		}
+	}
 
 	tags, err := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj, op.StackConfiguration.Config)
 	if err != nil {
@@ -1828,7 +1871,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		logging.V(7).Infof("Using combined begin-update endpoint for %s", stackRef)
 		resp, err := b.client.BeginUpdate(
 			ctx, action, stackID, op.Proj, op.StackConfiguration.Config,
-			metadata, op.Opts.Engine, tags, dryRun)
+			metadata, op.Opts.Engine, tags, dryRun, op.CoherenceWindow)
 		if err != nil {
 			if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 				conflict := backenderr.ConflictingUpdateError{Err: err}
@@ -1859,7 +1902,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		logging.V(7).Infof("Using legacy create+start update endpoints for %s", stackRef)
 		var updateDetails client.CreateUpdateDetails
 		update, updateDetails, err = b.client.CreateUpdate(
-			ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
+			ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun,
+			op.CoherenceWindow)
 		if err != nil {
 			return client.UpdateIdentifier{}, updateMetadata{}, err
 		}
@@ -2072,6 +2116,25 @@ func permalinkForDisplay(ctx context.Context, cloudURL, permalink string) (strin
 	return "", ""
 }
 
+func checkCoherenceWindowSupport(caps apitype.Capabilities) error {
+	if !caps.StackOutputs {
+		return errors.New("the Pulumi Cloud backend does not support coherence windows")
+	}
+	return checkCapabilityVersion("coherence windows", caps.CoherenceWindowsVersion)
+}
+
+func checkCapabilityVersion(feature string, version int) error {
+	switch version {
+	case 0:
+		return fmt.Errorf("the Pulumi Cloud backend does not support %s", feature)
+	case 1:
+		return nil
+	default:
+		return fmt.Errorf("this version of the Pulumi CLI is too old for the %s of this Pulumi Cloud backend; "+
+			"see https://www.pulumi.com/docs/install/ to upgrade", feature)
+	}
+}
+
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
@@ -2089,6 +2152,15 @@ func (b *cloudBackend) runEngineAction(
 	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	var outputsRecorder *stackOutputsRecorder
+	if op.CoherenceWindow != "" {
+		b.readingUpdateID.Store(&update.UpdateID)
+		defer b.readingUpdateID.Store(nil)
+		if dryRun {
+			outputsRecorder = newStackOutputsRecorder(u.Target.Snapshot)
+		}
 	}
 
 	// displayEvents renders the event to the console and Pulumi service. The processor for the
@@ -2111,6 +2183,7 @@ func (b *cloudBackend) runEngineAction(
 	eventsDone := make(chan bool)
 	go func() {
 		for e := range engineEvents {
+			outputsRecorder.record(e)
 			displayEvents <- e
 			if callerEventsOpt != nil {
 				callerEventsOpt <- e
@@ -2269,7 +2342,16 @@ func (b *cloudBackend) runEngineAction(
 	if updateErr != nil {
 		status = apitype.UpdateStatusFailed
 	}
-	completeErr := b.completeUpdate(ctx, tokenSource, update, status)
+	var outputs *apitype.StackOutputsResponse
+	if status == apitype.UpdateStatusSucceeded {
+		var err error
+		if outputs, err = outputsRecorder.response(ctx, op.SecretsManager); err != nil {
+			// Fail rather than let the coherence window read this preview as having no outputs.
+			status = apitype.UpdateStatusFailed
+			updateErr = result.MergeBails(updateErr, fmt.Errorf("recording stack outputs: %w", err))
+		}
+	}
+	completeErr := b.completeUpdate(ctx, tokenSource, update, status, outputs)
 	if completeErr != nil {
 		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
 	}
@@ -2881,7 +2963,11 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	kind apitype.UpdateKind, deploymentID string, opts display.Options,
 ) error {
 	getUpdateID := func() (string, int, error) {
-		for range 10 {
+		for {
+			deployment, err := b.client.GetDeployment(ctx, stackID, deploymentID)
+			if err != nil {
+				return "", 0, err
+			}
 			updates, err := b.client.GetDeploymentUpdates(ctx, stackID, deploymentID)
 			if err != nil {
 				return "", 0, err
@@ -2890,9 +2976,24 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 				return updates[0].UpdateID, updates[0].Version, nil
 			}
 
-			time.Sleep(500 * time.Millisecond)
+			// Check the deployment status after, so finished deployments with updates can still be returned,
+			// but failed deployments without updates will error out. We call GetDeployment before GetDeploymentUpdates
+			// to avoid a race condition where the deployment is finished after trying to get the updates, but the
+			// updates were not yet created.
+			switch deployment.Status {
+			case "not-started", "accepted", "running":
+			case "failed":
+				return "", 0, errors.New("deployment failed")
+			default:
+				return "", 0, fmt.Errorf("could not find update associated with deployment %s", deploymentID)
+			}
+
+			select {
+			case <-ctx.Done():
+				return "", 0, ctx.Err()
+			case <-time.After(500 * time.Millisecond):
+			}
 		}
-		return "", 0, fmt.Errorf("could not find update associated with deployment %s", deploymentID)
 	}
 
 	updateID, version, err := getUpdateID()

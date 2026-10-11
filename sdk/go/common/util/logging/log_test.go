@@ -481,3 +481,50 @@ func TestSerializedSecretsRedactedBySignature(t *testing.T) {
 	assert.Contains(t, string(out), "web")
 	assert.NotContains(t, string(out), "hunter2")
 }
+
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestSerializedOutputValueSecretsRedacted(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 1, false)
+	os.Stderr = oldStderr
+
+	// A secret that carries dependencies is marshalled as an output value with its secret flag
+	// set, rather than as a plain secret.
+	outputValue := map[string]any{
+		sig.Key:        sig.OutputValue,
+		"value":        "hunter2",
+		"secret":       true,
+		"dependencies": []any{"urn:pulumi:dev::proj::pkg:m:R::db"},
+	}
+	sv, err := structpb.NewValue(map[string]any{"name": "web", "password": outputValue})
+	require.NoError(t, err)
+
+	slog.Info("checking inputs", "inputs", PropertyValue{Key: "inputs", Value: sv})
+	slog.Info("registering", "props", map[string]any{"name": "web", "password": outputValue})
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "[secret]")
+	assert.Contains(t, string(out), "web")
+	assert.NotContains(t, string(out), "hunter2")
+
+	// An output value that is not secret keeps its contents.
+	assert.False(t, isSerializedSecret(map[string]any{
+		sig.Key: sig.OutputValue,
+		"value": "public",
+	}))
+}

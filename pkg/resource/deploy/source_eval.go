@@ -1550,6 +1550,124 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}, nil
 }
 
+const existsURNPrefix = "__exists__"
+
+var existsURNCounter atomic.Int64
+
+// IsExistsURN reports whether urn is one of the synthetic URNs that ExistsResource passes to a provider's Read.
+func IsExistsURN(urn resource.URN) bool {
+	return urn.IsValid() && strings.HasPrefix(urn.Name(), existsURNPrefix)
+}
+
+func (rm *resmon) ExistsResource(ctx context.Context,
+	req *pulumirpc.ExistsResourceRequest,
+) (*pulumirpc.ExistsResourceResponse, error) {
+	t, err := tokens.ParseTypeToken(req.GetType())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, err.Error())
+	}
+
+	provider := req.GetProvider()
+	if !sdkproviders.IsProviderType(t) && provider == "" {
+		providerReq, err := parseProviderRequest(
+			t.Package(), req.GetVersion(),
+			req.GetPluginDownloadURL(), req.GetPluginChecksums(), nil)
+		if err != nil {
+			return nil, err
+		}
+
+		packageRef := req.GetPackageRef()
+		if packageRef != "" {
+			var has bool
+			providerReq, has = rm.lookupPackageRef(packageRef)
+			if !has {
+				return nil, fmt.Errorf("unknown provider package '%v'", packageRef)
+			}
+		}
+
+		ref, provErr := rm.defaultProviders.getDefaultProviderRef(providerReq)
+		if provErr != nil {
+			return nil, provErr
+		} else if sdkproviders.IsDenyDefaultsProvider(ref) {
+			msg := diag.GetDefaultProviderDenied("ExistsResource").Message
+			return nil, fmt.Errorf(msg, req.GetType(), t)
+		}
+		provider = ref.String()
+	}
+
+	id := resource.ID(req.GetId())
+	label := fmt.Sprintf("ResourceMonitor.ExistsResource(%s, %s)", id, t)
+
+	props, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
+		Label:            label,
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		WorkingDirectory: rm.workingDirectory,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// If the ID is unknown (during preview), we can't check existence.
+	if id == plugin.UnknownStringValue {
+		return &pulumirpc.ExistsResourceResponse{
+			Unknown: true,
+		}, nil
+	}
+
+	// Resolve the provider.
+	providerRef, err := sdkproviders.ParseReference(provider)
+	if err != nil {
+		return nil, fmt.Errorf("invalid provider reference '%v': %w", provider, err)
+	}
+	prov, ok := rm.providers.GetProvider(providerRef)
+	if !ok {
+		return nil, fmt.Errorf("unknown provider '%v'", provider)
+	}
+
+	// The resource being checked has no logical identity, but the provider protocol's Read requires a URN and name, so
+	// we make them up. Providers use the URN's type to pick the resource and the URN itself to attribute log messages;
+	// the name is unused. Ideally Read would make the name optional and replace the URN with a "logging context" that
+	// says only where diagnostics should go.
+	parent, err := resource.ParseOptionalURN(req.GetParent())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
+	}
+	parentType := tokens.Type("")
+	if parent != "" && parent.QualifiedType() != resource.RootStackType {
+		parentType = parent.QualifiedType()
+	}
+	urn := resource.NewURN(
+		tokens.QName(rm.constructInfo.Stack),
+		tokens.PackageName(rm.constructInfo.Project),
+		parentType, t, fmt.Sprintf("%s%d", existsURNPrefix, existsURNCounter.Add(1)))
+
+	// Call the provider's Read method to check if the resource exists.
+	readResult, err := prov.Read(ctx, plugin.ReadRequest{
+		URN:    urn,
+		Name:   urn.Name(),
+		Type:   urn.Type(),
+		ID:     id,
+		Inputs: resource.FromResourcePropertyMap(props),
+		State:  resource.FromResourcePropertyMap(props),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("reading resource '%s': %w", id, err)
+	}
+
+	// This is a bit of an odd condition, and is intended to handle the case where the provider is configured with
+	// unknowns. In that case, the provider will return non-nil but empty outputs.
+	if readResult.Outputs != nil && readResult.Outputs.Len() == 0 {
+		return &pulumirpc.ExistsResourceResponse{
+			Unknown: true,
+		}, nil
+	}
+	return &pulumirpc.ExistsResourceResponse{
+		Exists: readResult.Outputs != nil,
+	}, nil
+}
+
 // Wrap the transform callback so the engine can call the callback server, which will then execute the function.  The
 // wrapper takes care of all the necessary marshalling and unmarshalling.
 func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFunction, error) {

@@ -696,9 +696,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		default:
 			g.Fgenf(w, "%v[%v]", expr.Args[0], expr.Args[1])
 		}
-		if len(expr.Args) == 3 {
-			g.Fgenf(w, " || %v", expr.Args[2])
-		}
+		g.Fgenf(w, " || %v", expr.Args[2])
 	case "range":
 		g.genRange(w, expr, false)
 	case "readFile":

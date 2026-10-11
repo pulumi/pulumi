@@ -1,0 +1,4 @@
+runtime:
+  name: test
+  options:
+    noconfig: true

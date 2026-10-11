@@ -1,0 +1,4 @@
+component: cli/new
+kind: fix
+body: Fix switching template source when prefixes match
+time: 2026-10-07T09:50:56.834457796+02:00

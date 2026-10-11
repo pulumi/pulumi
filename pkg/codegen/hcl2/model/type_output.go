@@ -104,7 +104,7 @@ func (t *OutputType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *OutputType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *OutputType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *OutputType:
@@ -124,20 +124,20 @@ func (t *OutputType) string(seen map[Type]struct{}) string {
 	return fmt.Sprintf("output(%s)", t.ElementType.string(seen))
 }
 
-func (t *OutputType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *OutputType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		switch other := other.(type) {
 		case *OutputType:
 			// If the other type is an output type, unify based on the element type.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType)
+			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
 			return NewOutputType(elementType), conversionKind
 		case *PromiseType:
 			// If the other type is a promise type, unify based on the element type.
-			elementType, conversionKind := t.ElementType.unify(ResolveOutputs(other.ElementType))
+			elementType, conversionKind := t.ElementType.unify(ResolveOutputs(other.ElementType), seen)
 			return NewOutputType(elementType), conversionKind
 		default:
 			// Prefer the output type.
-			kind, _ := t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, seen)
 			return t, kind
 		}
 	})

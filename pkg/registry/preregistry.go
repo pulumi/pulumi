@@ -16,11 +16,11 @@ package registry
 
 import "strings"
 
-// PulumiPublishedBeforeRegistry checks if name could be a valid package, even though it
+// IsPreRegistryPackage checks if name could be a valid package, even though it
 // hasn't been published in the Pulumi package registry.
 //
 // Put another way, for `pulumi plugin install resource <name>` to succeed, either name
-// needs to be in the Pulumi registry OR PulumiPublishedBeforeRegistry(name) needs to be
+// needs to be in the Pulumi registry OR IsPreRegistryPackage(name) needs to be
 // true.
 //
 // IsPreRegistryPackage exists only for backwards compatibility, and should never

@@ -1380,7 +1380,14 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 		// Pip is always available in a Python installation or virtual environment.
 		choices := slice.Prealloc[*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue](3)
 		choices = append(choices, pipOption)
-		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry", "uv")...)
+		others := plugin.MakeExecutablePromptChoices("poetry", "uv")
+		// Only offer the other toolchains if at least one is installed. With pip as the single choice, the CLI
+		// uses it without prompting.
+		if slices.ContainsFunc(others, func(c *pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue) bool {
+			return c.DisplayName == c.StringValue
+		}) {
+			choices = append(choices, others...)
+		}
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 			Key:         "toolchain",
 			Description: "The toolchain to use for installing dependencies and running the program",

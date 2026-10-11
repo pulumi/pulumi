@@ -1,0 +1,4 @@
+component: cli/new
+kind: improvement
+body: Skip the package manager prompt for new Node.js projects when only one package manager is installed
+time: 2026-10-08T12:00:00.000000+02:00

@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type stateGetRenderFunc func(cmd *cobra.Command, res *pkgresource.State, showSecrets bool) error
@@ -198,11 +199,11 @@ func namedResourceURNs(snap *deploy.Snapshot, name string) []resource.URN {
 }
 
 func renderResourceStateJSON(cmd *cobra.Command, res *pkgresource.State, showSecrets bool) error {
-	inputs, err := renderProperties(cmd.Context(), res.Inputs, showSecrets)
+	inputs, err := renderProperties(cmd.Context(), resource.FromResourcePropertyMap(res.Inputs), showSecrets)
 	if err != nil {
 		return err
 	}
-	outputs, err := renderProperties(cmd.Context(), res.Outputs, showSecrets)
+	outputs, err := renderProperties(cmd.Context(), resource.FromResourcePropertyMap(res.Outputs), showSecrets)
 	if err != nil {
 		return err
 	}
@@ -251,13 +252,14 @@ func renderResourceStateText(cmd *cobra.Command, res *pkgresource.State, showSec
 // renderProperties converts a property map to plain JSON-marshalable values via the same
 // MassageSecrets+SerializeProperties path as `pulumi stack output`, after dropping internal
 // (double-underscore) keys.
-func renderProperties(ctx context.Context, props resource.PropertyMap, showSecrets bool) (map[string]any, error) {
-	visible := make(resource.PropertyMap, len(props))
-	for k, v := range props {
-		if !resource.IsInternalPropertyKey(k) {
+func renderProperties(ctx context.Context, props property.Map, showSecrets bool) (map[string]any, error) {
+	visible := make(map[string]property.Value, props.Len())
+	for k, v := range props.All {
+		if !resource.IsInternalPropertyKey(resource.PropertyKey(k)) {
 			visible[k] = v
 		}
 	}
-	return stack.SerializeProperties(ctx, display.MassageSecrets(visible, showSecrets),
+	return stack.SerializeProperties(ctx,
+		resource.ToResourcePropertyMap(display.MassageSecrets(property.NewMap(visible), showSecrets)),
 		config.NewPanicCrypter(), showSecrets)
 }

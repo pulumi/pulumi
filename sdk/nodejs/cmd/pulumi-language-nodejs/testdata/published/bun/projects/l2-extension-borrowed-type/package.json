@@ -1,0 +1,16 @@
+{
+	"name": "l2-extension-borrowed-type",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/borrowbase": "ROOT/artifacts/pulumi-borrowbase-56.0.0.tgz",
+		"@pulumi/myborrow": "ROOT/artifacts/pulumi-myborrow-3.0.0.tgz"
+	}
+}

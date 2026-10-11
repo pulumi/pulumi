@@ -341,44 +341,12 @@ func (o AnyOutput) ToOutput(context.Context) pulumix.Output[any] {
 	}
 }
 
-func (in ID) ToStringPtrOutput() StringPtrOutput {
-	return in.ToStringPtrOutputWithContext(context.Background())
-}
-
-func (in ID) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
-	return in.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
-}
-
-func (o IDOutput) ToStringPtrOutput() StringPtrOutput {
-	return o.ToStringPtrOutputWithContext(context.Background())
-}
-
-func (o IDOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
-	return o.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
-}
-
 func (o IDOutput) awaitID(ctx context.Context) (ID, bool, bool, error) {
 	id, known, secret, _, err := internal.AwaitOutput(ctx, o)
 	if !known || err != nil {
 		return "", known, false, err
 	}
 	return ID(convert(id, stringType).(string)), true, secret, nil
-}
-
-func (in URN) ToStringPtrOutput() StringPtrOutput {
-	return in.ToStringPtrOutputWithContext(context.Background())
-}
-
-func (in URN) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
-	return in.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
-}
-
-func (o URNOutput) ToStringPtrOutput() StringPtrOutput {
-	return o.ToStringPtrOutputWithContext(context.Background())
-}
-
-func (o URNOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
-	return o.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
 func (o URNOutput) awaitURN(ctx context.Context) (URN, bool, bool, error) {

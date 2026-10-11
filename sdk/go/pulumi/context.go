@@ -2070,7 +2070,14 @@ func (ctx *Context) RegisterPackage(
 	if !ctx.state.supportsParameterization {
 		return nil, errors.New("the Pulumi CLI does not support parameterization. Please update the Pulumi CLI")
 	}
-	return ctx.state.monitor.RegisterPackage(ctx.ctx, in)
+	resp, err := ctx.state.monitor.RegisterPackage(ctx.ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	if ext := in.GetExtension(); ext != nil && in.GetName() != "" {
+		ctx.state.packagesByRef.Store(resp.Ref, in.GetName())
+	}
+	return resp, nil
 }
 
 // packageRefEntry holds a cached package reference for a parameterized provider.
@@ -2102,9 +2109,6 @@ func (ctx *Context) GetOrRegisterPackageRef(
 		if err != nil {
 			entry.err = err
 			return
-		}
-		if ext := r.GetExtension(); ext != nil && r.GetName() != "" {
-			ctx.state.packagesByRef.Store(resp.Ref, r.GetName())
 		}
 		entry.ref = resp.Ref
 	})

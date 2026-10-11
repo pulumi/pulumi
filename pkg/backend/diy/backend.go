@@ -1327,6 +1327,10 @@ func (b *diyBackend) apply(
 		return nil, nil, err
 	}
 
+	if op.CoherenceWindow != "" {
+		return nil, nil, errors.New("coherence windows are only supported by the Pulumi Cloud backend")
+	}
+
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&

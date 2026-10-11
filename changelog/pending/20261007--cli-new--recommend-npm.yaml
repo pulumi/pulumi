@@ -1,0 +1,4 @@
+component: cli/new
+kind: improvement
+body: Mark npm as the recommended package manager when prompting in `pulumi new`
+time: 2026-10-07T00:00:00Z

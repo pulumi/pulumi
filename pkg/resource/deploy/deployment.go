@@ -848,7 +848,7 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview or update.
 func (d *Deployment) Execute(ctx context.Context) (*Plan, error) {
-	deploymentExec := &deploymentExecutor{deployment: d}
+	deploymentExec := newDeploymentExecutor(d)
 	return deploymentExec.Execute(ctx)
 }
 
