@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Report an unknown drift status in `pulumi stack drift status` when drift detection has never run
+time: 2026-10-11T11:50:04.615284+01:00
