@@ -112,6 +112,27 @@ func deliveryPath(stack StackIdentifier, suffix string) string {
 		url.PathEscape(stack.Project), url.PathEscape(stack.Stack.String()), suffix)
 }
 
+// DeliveryStackEnvironment is a stack's delivery-managed materialized config environment (the
+// slot): the ESC environment the owning delivery program publishes the stack's wired config
+// to. Config resolution composes it, pinned at the admitted tag, after the stack's own
+// configuration.
+type DeliveryStackEnvironment struct {
+	Environment       string `json:"environment"`
+	AdmittedTag       string `json:"admittedTag"`
+	DeliveryProgramID string `json:"deliveryProgramID"`
+}
+
+// GetDeliveryStackEnvironment returns the stack's materialized-config slot. The stack is a
+// delivery MEMBER stack here, not a pipeline stack; a 404 means no delivery program has
+// materialized config for it.
+func (pc *Client) GetDeliveryStackEnvironment(ctx context.Context,
+	stack StackIdentifier,
+) (DeliveryStackEnvironment, error) {
+	var response DeliveryStackEnvironment
+	err := pc.restCall(ctx, "GET", deliveryPath(stack, "/environment"), nil, nil, &response)
+	return response, err
+}
+
 func (pc *Client) GetDeliveryPipeline(ctx context.Context, stack StackIdentifier) (DeliveryPipelineSnapshot, error) {
 	var response DeliveryPipelineSnapshot
 	err := pc.restCall(ctx, "GET", deliveryPath(stack, "/pipeline"), nil, nil, &response)

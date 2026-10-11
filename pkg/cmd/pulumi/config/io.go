@@ -18,12 +18,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -241,27 +244,144 @@ func openStackEnv(
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
 ) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+	var userEnv *esc.Environment
 	yaml := workspaceStack.EnvironmentBytes()
-	if len(yaml) == 0 {
-		return nil, nil, nil
-	}
+	if len(yaml) != 0 {
+		overrides, err := parseEnvironmentOverrides(envOverrides)
+		if err != nil {
+			return nil, nil, err
+		}
 
-	overrides, err := parseEnvironmentOverrides(envOverrides)
+		envs, ok := stack.Backend().(backend.EnvironmentsBackend)
+		if !ok {
+			return nil, nil, errBackendNoEnvironments(stack.Backend())
+		}
+		orgNamer, ok := stack.(interface{ OrgName() string })
+		if !ok {
+			return nil, nil, fmt.Errorf("cannot determine organzation for stack %v", stack.Ref())
+		}
+		orgName := orgNamer.OrgName()
+
+		env, diags, err := envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour, overrides)
+		if err != nil || len(diags) != 0 {
+			return env, diags, err
+		}
+		userEnv = env
+	}
+	return composeDeliverySlotEnv(ctx, stack, workspaceStack, userEnv, envOverrides)
+}
+
+// composeDeliverySlotEnv overlays the stack's delivery-managed materialized config
+// environment (the slot) onto the opened stack environment, when the service holds one for
+// this stack. The slot applies LAST: a promoted, admitted value must not be shadowed by
+// local configuration, so a key collision with the stack's own config or environment is an
+// error rather than a silent override. A stack with no slot, or a backend with no delivery
+// support, composes nothing. A slot whose environment has no admitted revision yet fails
+// loudly: before the first admission there is no truthful value to resolve, and resolving
+// ambient or empty values is the drift materialization exists to kill.
+//
+// A surface composes the slot XOR receives delivery-injected config, never both: a
+// delivery-managed execution (a candidate preview, an enacted member run) already carries
+// the candidate's resolved values on its own channel, so composing @admitted underneath
+// would leak keys the candidate DROPPED from the prior admitted revision pre-admission, and
+// collide with delivery's own injected values post-admission. Delivery-managed contexts are
+// recognized by their manifest env var and skipped; --override-env passes through to the
+// slot open, so a caller that wants the slot resolved at a different pin (e.g. a
+// per-candidate cand-* tag) can redirect the import.
+func composeDeliverySlotEnv(
+	ctx context.Context,
+	stack backend.Stack,
+	workspaceStack *workspace.ProjectStack,
+	userEnv *esc.Environment,
+	envOverrides []string,
+) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+	if os.Getenv("PULUMI_DELIVERY_PREVIEW_MANIFEST") != "" {
+		return userEnv, nil, nil
+	}
+	cloudBackend, ok := stack.Backend().(httpstate.Backend)
+	if !ok {
+		return userEnv, nil, nil
+	}
+	orgNamer, ok := stack.(interface{ OrgName() string })
+	if !ok {
+		return userEnv, nil, nil
+	}
+	project, ok := stack.Ref().Project()
+	if !ok {
+		return userEnv, nil, nil
+	}
+	stackID := client.StackIdentifier{
+		Owner: orgNamer.OrgName(), Project: string(project), Stack: stack.Ref().Name(),
+	}
+	slot, err := cloudBackend.Client().GetDeliveryStackEnvironment(ctx, stackID)
 	if err != nil {
-		return nil, nil, err
+		var errResp *apitype.ErrorResponse
+		if errors.As(err, &errResp) && errResp.Code == http.StatusNotFound {
+			return userEnv, nil, nil
+		}
+		return userEnv, nil, fmt.Errorf("resolving delivery materialized config: %w", err)
 	}
 
 	envs, ok := stack.Backend().(backend.EnvironmentsBackend)
 	if !ok {
-		return nil, nil, errBackendNoEnvironments(stack.Backend())
+		return userEnv, nil, errBackendNoEnvironments(stack.Backend())
 	}
-	orgNamer, ok := stack.(interface{ OrgName() string })
-	if !ok {
-		return nil, nil, fmt.Errorf("cannot determine organzation for stack %v", stack.Ref())
+	overrides, err := parseEnvironmentOverrides(envOverrides)
+	if err != nil {
+		return userEnv, nil, err
 	}
-	orgName := orgNamer.OrgName()
+	importYAML := fmt.Sprintf("imports:\n  - %s@%s\n", slot.Environment, slot.AdmittedTag)
+	slotEnv, diags, err := envs.OpenYAMLEnvironment(ctx, stackID.Owner, []byte(importYAML), 2*time.Hour, overrides)
+	if err != nil {
+		return userEnv, nil, fmt.Errorf("opening delivery materialized environment %s@%s: %w",
+			slot.Environment, slot.AdmittedTag, err)
+	}
+	if len(diags) != 0 {
+		return slotEnv, diags, nil
+	}
 
-	return envs.OpenYAMLEnvironment(ctx, orgName, yaml, 2*time.Hour, overrides)
+	slotConfig, _ := slotEnv.Properties["pulumiConfig"].Value.(map[string]esc.Value)
+	if len(slotConfig) == 0 {
+		return userEnv, nil, nil
+	}
+	var userConfig map[string]esc.Value
+	if userEnv != nil {
+		userConfig, _ = userEnv.Properties["pulumiConfig"].Value.(map[string]esc.Value)
+	}
+	var conflicts []string
+	for key := range slotConfig {
+		if _, shadowed := userConfig[key]; shadowed {
+			conflicts = append(conflicts, key)
+			continue
+		}
+		// A slot key that doesn't parse as a config key can't collide with file config; the
+		// exact-string check against the environment above still covers it.
+		if parsed, parseErr := config.ParseKey(key); parseErr == nil {
+			if _, shadowed := workspaceStack.Config[parsed]; shadowed {
+				conflicts = append(conflicts, key)
+			}
+		}
+	}
+	if len(conflicts) != 0 {
+		slices.Sort(conflicts)
+		return nil, nil, fmt.Errorf(
+			"stack configuration conflicts with delivery materialized config for %s: "+
+				"these keys are owned by the delivery program %s (environment %s); remove the local values",
+			strings.Join(conflicts, ", "), slot.DeliveryProgramID, slot.Environment)
+	}
+
+	if userEnv == nil {
+		return slotEnv, nil, nil
+	}
+	merged := make(map[string]esc.Value, len(userConfig)+len(slotConfig))
+	for key, value := range userConfig {
+		merged[key] = value
+	}
+	for key, value := range slotConfig {
+		merged[key] = value
+	}
+	userEnv.Properties["pulumiConfig"] = esc.NewValue(merged)
+	return userEnv, nil, nil
 }
 
 // parseEnvironmentOverrides converts <env>=<replacement> pairs into a map sent to ESC,
