@@ -16,7 +16,7 @@ func main() {
 		data := component.IdentityOutput(ctx, component.IdentityOutputArgs{
 			Input: pulumi.String("reachable"),
 		}, pulumi.DependsOn([]pulumi.Resource{
-			interface{}(target).(pulumi.Resource),
+			pulumi.Resource(target),
 		}))
 		ctx.Export("echoed", data.Result())
 		return nil
