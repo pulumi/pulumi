@@ -105,18 +105,10 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		// `__convert`'s single argument is the source value being converted. The signature's
 		// declared parameter type was captured at construction (NewConvertCall uses from.Type())
 		// and goes stale when upstream rewriters replace the argument. Rewrite the argument
-		// against its own current type so its substructure (binary ops, nested function calls)
-		// still gets cleaned up, but we don't insert a redundant conversion to the stale type.
-		//
-		// If the argument then resolves to another `__convert`, flatten the nesting: a chain
-		// `__convert(__convert(y, X), to)` is equivalent to `__convert(y, to)` and the latter
-		// gives code generators enough information to emit the right conversion without stale
-		// intermediate type claims that make them insert bogus casts.
+		// against its own current type so its substructure still gets cleaned up without
+		// inserting a redundant conversion to the stale type.
 		if x.Name == IntrinsicConvert && len(x.Args) == 1 {
 			x.Args[0], _ = rewriteConversions(x.Args[0], x.Args[0].Type(), diags)
-			if inner, ok := x.Args[0].(*model.FunctionCallExpression); ok && inner.Name == IntrinsicConvert && len(inner.Args) == 1 {
-				x.Args[0] = inner.Args[0]
-			}
 			break
 		}
 		args := x.Args
