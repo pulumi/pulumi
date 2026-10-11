@@ -451,12 +451,7 @@ func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
 // TestConvertLiteralToOutputNumberIsNotLifted pins the behavior of lowering an expression that
 // compares an output-typed number against an int literal: `v > 5` where v: output<number>. In this
 // position the binder's rewriteConversions wraps `5` in `__convert(5, InputType(number))` because
-// int is not strictly assignable to number. Historically RewriteApplies then observed the
-// __convert's return type as eventual (its target is Union(number, output<number>)) and lifted it
-// into an `__apply(5, (c) => v > c)`, which Go's code generator emits as a bogus `5.ApplyT(...)`.
-//
-// The fix lives in RewriteApplies: a __convert whose source is prompt must not be treated as
-// eventual, since its runtime value is prompt regardless of the target's union-with-output shape.
+// int is not strictly assignable to number.
 func TestConvertLiteralToOutputNumberIsNotLifted(t *testing.T) {
 	t.Parallel()
 
