@@ -23,6 +23,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/blang/semver"
+	mapset "github.com/deckarep/golang-set/v2"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
@@ -1256,4 +1257,160 @@ func TestUpContinueOnErrorSkippedImportReturnsUnknown(t *testing.T) {
 	for _, r := range snap.Resources {
 		assert.NotEqual(t, "imported", r.URN.Name(), "expected skipped import to be absent from snapshot")
 	}
+}
+
+// A resource whose input comes from a failed resource has that input stripped during an update, since
+// it's unknown, so the provider's Check would reject it. It's going to be skipped anyway, so it should
+// never reach the provider, and it shouldn't stop later resources from being created.
+func TestUpContinueOnErrorSkipsCheckForFailedDependency(t *testing.T) {
+	t.Parallel()
+
+	checked := mapset.NewSet[string]()
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					checked.Add(req.URN.Name())
+					if _, ok := req.NewInputs.GetOk("value"); !ok {
+						return plugin.CheckResponse{
+							Failures: []plugin.CheckFailure{{Property: "value", Reason: "missing value"}},
+						}, nil
+					}
+					return plugin.CheckResponse{Properties: req.NewInputs}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{}, errors.New("intentionally failed create")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		failing, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_FAIL, failing.Result)
+
+		dependent, err := monitor.RegisterResource("pkgA:m:typA", "dependent", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  resource.PropertyMap{"value": resource.MakeComputed(resource.NewProperty(""))},
+			PropertyDeps:            map[resource.PropertyKey][]resource.URN{"value": {failing.URN}},
+		})
+		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_FAIL, dependent.Result)
+
+		independent, err := monitor.RegisterResource("pkgA:m:typA", "independent", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  resource.PropertyMap{"value": resource.NewProperty("hello")},
+		})
+		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, independent.Result)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:             t,
+			UpdateOptions: UpdateOptions{ContinueOnError: true},
+			HostF:         hostF,
+		},
+	}
+
+	snap, err := lt.TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "intentionally failed create")
+	require.NotNil(t, snap)
+
+	assert.True(t, slices.ContainsFunc(snap.Resources, func(rs *pkgresource.State) bool {
+		return rs.URN.Name() == "independent"
+	}), "expected independent to be created")
+	assert.False(t, checked.Contains("dependent"), "expected dependent never to be checked")
+}
+
+// As above, but for an update: a resource whose input comes from a resource that failed to update
+// should be skipped without asking its provider for a diff.
+func TestUpContinueOnErrorSkipsDiffForFailedDependency(t *testing.T) {
+	t.Parallel()
+
+	failUpdate := false
+	diffed := mapset.NewSet[string]()
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+					diffed.Add(req.URN.Name())
+					if _, ok := req.NewInputs.GetOk("value"); !ok {
+						return plugin.DiffResponse{}, errors.New("missing value")
+					}
+					return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResponse, error) {
+					return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+				},
+				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					if failUpdate {
+						return plugin.UpdateResponse{}, errors.New("intentionally failed update")
+					}
+					return plugin.UpdateResponse{Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	run := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		run++
+		failing, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  resource.PropertyMap{"run": resource.NewProperty(float64(run))},
+		})
+		require.NoError(t, err)
+
+		value := resource.NewProperty("hello")
+		if failing.Result != pulumirpc.Result_SUCCESS {
+			value = resource.MakeComputed(resource.NewProperty(""))
+		}
+		_, err = monitor.RegisterResource("pkgA:m:typA", "dependent", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  resource.PropertyMap{"value": value},
+			PropertyDeps:            map[resource.PropertyKey][]resource.URN{"value": {failing.URN}},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:             t,
+			UpdateOptions: UpdateOptions{ContinueOnError: true},
+			HostF:         hostF,
+		},
+	}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	failUpdate = true
+	diffed.Clear()
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "intentionally failed update")
+	require.NotNil(t, snap)
+
+	assert.True(t, slices.ContainsFunc(snap.Resources, func(rs *pkgresource.State) bool {
+		return rs.URN.Name() == "dependent"
+	}), "expected dependent's old state to be kept")
+	assert.False(t, diffed.Contains("dependent"), "expected dependent never to be diffed")
 }
