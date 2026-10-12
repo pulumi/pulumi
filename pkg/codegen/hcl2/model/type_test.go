@@ -1443,3 +1443,20 @@ func TestAssignableFromRecursiveType(t *testing.T) {
 		})
 	}
 }
+
+// A constant keeps its identity under assignability: a union that lists the constant accepts it, and a type that
+// accepts the constant's value type accepts the constant.
+func TestAssignableFromConst(t *testing.T) {
+	t.Parallel()
+
+	a := NewConstType(StringType, cty.StringVal("a"))
+	b := NewConstType(StringType, cty.StringVal("b"))
+	c := NewConstType(StringType, cty.StringVal("c"))
+	aOrB := NewUnionType(a, b)
+
+	assert.True(t, aOrB.AssignableFrom(NewConstType(StringType, cty.StringVal("a"))))
+	assert.False(t, aOrB.AssignableFrom(c))
+	assert.False(t, aOrB.AssignableFrom(StringType))
+	assert.True(t, NewOutputType(StringType).AssignableFrom(a))
+	assert.True(t, NewListType(StringType).AssignableFrom(NewTupleType(a, b)))
+}

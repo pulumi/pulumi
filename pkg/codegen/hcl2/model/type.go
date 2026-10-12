@@ -126,7 +126,7 @@ func assignableFrom(dest, src Type, seen *cycleSet, assignableFromImpl func(seen
 
 	switch src := src.(type) {
 	case *ConstType:
-		return dest.assignableFrom(src.Type, seen)
+		return assignableFrom(dest, src.Type, seen, assignableFromImpl)
 	case *UnionType:
 		// A union U(U_0, U_1, ...) is assignable to a type T when each of its members is assignable to T.
 		for _, element := range src.ElementTypes {
