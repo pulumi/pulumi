@@ -25,7 +25,7 @@ import (
 )
 
 func init() {
-	LanguageTests["l2-failed-create-recover-continue-on-error"] = LanguageTest{
+	LanguageTests["l2-recover-invoke"] = LanguageTest{
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider { return &providers.SimpleProvider{} },
 			func() plugin.Provider { return &providers.FailOnCreateProvider{} },

@@ -1,5 +1,5 @@
 {
-	"name": "l2-failed-create-recover-continue-on-error",
+	"name": "l2-recover-invoke",
 	"devDependencies": {
 		"@types/node": "^20"
 	},

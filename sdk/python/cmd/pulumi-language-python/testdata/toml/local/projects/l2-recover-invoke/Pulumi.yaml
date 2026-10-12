@@ -1,4 +1,4 @@
-name: l2-failed-create-recover-continue-on-error
+name: l2-recover-invoke
 runtime:
   name: python
   options:
