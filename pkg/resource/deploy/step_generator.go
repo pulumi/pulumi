@@ -3116,8 +3116,7 @@ func unwrapResourcePropertySecretsAndOutputs(value resource.PropertyValue) resou
 func issueCheckErrors(deployment *Deployment, new *pkgresource.State, urn resource.URN,
 	failures []plugin.CheckFailure,
 ) bool {
-	showSecrets := deployment.opts != nil && deployment.opts.ShowSecrets
-	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures, showSecrets)
+	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures, deployment.opts.ShowSecrets)
 }
 
 // issueCheckFailures prints any check failures to printf, redacting secret values unless showSecrets is set.
