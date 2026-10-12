@@ -90,6 +90,7 @@ type Type interface {
 	Pretty() pretty.Formatter
 
 	equals(other Type, seen map[Type]struct{}) bool
+	assignableFrom(src Type, seen *cycleSet) bool
 	conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics)
 	string(seen map[Type]struct{}) string
 	unify(other Type, seen *cycleSet) (Type, ConversionKind)
@@ -114,25 +115,37 @@ var (
 	DynamicType = NewOpaqueType("dynamic")
 )
 
-func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
+// assignableFrom implements [Type.assignableFrom] for dest: it handles the sources that every type treats the
+// same way and defers to assignableFromImpl for the rest. seen tracks the `(dest, src)` pairs that are mid-flight,
+// so that recursive types terminate: a pair already in flight is a true coinductive cycle, assumed assignable, and
+// the outer frame's checks verify the (always finite) leaves.
+func assignableFrom(dest, src Type, seen *cycleSet, assignableFromImpl func(seen *cycleSet) bool) bool {
 	if dest.Equals(src) || dest == DynamicType {
 		return true
 	}
 
 	switch src := src.(type) {
 	case *ConstType:
-		return assignableFrom(dest, src.Type, assignableFromImpl)
+		return dest.assignableFrom(src.Type, seen)
 	case *UnionType:
 		// A union U(U_0, U_1, ...) is assignable to a type T when each of its members is assignable to T.
 		for _, element := range src.ElementTypes {
-			if !dest.AssignableFrom(element) {
+			if !dest.assignableFrom(element, seen) {
 				return false
 			}
 		}
 		return true
-	default:
-		return assignableFromImpl()
 	}
+
+	if seen.hasAssignment(dest, src) {
+		return true
+	}
+	if seen == nil {
+		seen = &cycleSet{}
+	}
+	seen.pushAssignment(dest, src)
+	defer seen.popAssignment(dest, src)
+	return assignableFromImpl(seen)
 }
 
 type cacheKey struct {
@@ -147,15 +160,36 @@ type cacheEntry struct {
 
 type typeCache = gsync.Map[cacheKey, cacheEntry]
 
-// cycleSet tracks the `(destination, source)` pairs of a recursive [Type.conversionFrom] computation and the
-// pairs of object types of a recursive [Type.unify] computation that are currently mid-flight. Cycle detection
+// cycleSet tracks the `(destination, source)` pairs of a recursive [Type.conversionFrom] or
+// [Type.assignableFrom] computation and the pairs of object types of a recursive [Type.unify] computation that
+// are currently mid-flight. Cycle detection
 // is keyed by the pair rather than the destination alone: re-entering the same destination with a different
 // source is a different question and must be checked, not short-circuited. A pair of object types under
 // unification maps to the object that their unification builds, so that re-entering the pair yields that object
 // and two recursive objects unify to one recursive object.
 type cycleSet struct {
 	conversions  map[[2]Type]struct{}
+	assignments  map[[2]Type]struct{}
 	unifications map[[2]Type]*ObjectType
+}
+
+func (c *cycleSet) hasAssignment(dst, src Type) bool {
+	if c == nil {
+		return false
+	}
+	_, ok := c.assignments[[2]Type{dst, src}]
+	return ok
+}
+
+func (c *cycleSet) pushAssignment(dst, src Type) {
+	if c.assignments == nil {
+		c.assignments = map[[2]Type]struct{}{}
+	}
+	c.assignments[[2]Type{dst, src}] = struct{}{}
+}
+
+func (c *cycleSet) popAssignment(dst, src Type) {
+	delete(c.assignments, [2]Type{dst, src})
 }
 
 func (c *cycleSet) has(dst, src Type) bool {

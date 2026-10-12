@@ -128,14 +128,18 @@ func (t *TupleType) equals(other Type, seen map[Type]struct{}) bool {
 
 // AssignableFrom returns true if this type is assignable from the indicated source type..
 func (t *TupleType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *TupleType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		if src, ok := src.(*TupleType); ok {
 			for i := 0; i < len(t.ElementTypes); i++ {
 				srcElement := NoneType
 				if i < len(src.ElementTypes) {
 					srcElement = src.ElementTypes[i]
 				}
-				if !t.ElementTypes[i].AssignableFrom(srcElement) {
+				if !t.ElementTypes[i].assignableFrom(srcElement, seen) {
 					return false
 				}
 			}

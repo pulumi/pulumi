@@ -1394,3 +1394,52 @@ func TestTupleConversionFromShorterTuple(t *testing.T) {
 	assert.Equal(t, NoConversion, NewTupleType(IntType, BoolType).ConversionFrom(NewTupleType(IntType)))
 	assert.Equal(t, NoConversion, NewTupleType(IntType).ConversionFrom(NewTupleType(IntType, BoolType)))
 }
+
+// A recursive type, such as a WAF statement that nests statements, must not send assignability into an
+// infinite descent.
+func TestAssignableFromRecursiveType(t *testing.T) {
+	t.Parallel()
+
+	// statement = { statements: list(statement) }
+	statement := NewObjectType(map[string]Type{})
+	statement.Properties["statements"] = NewListType(statement)
+
+	// named = { statements: list(named), name: string }
+	named := NewObjectType(map[string]Type{"name": StringType})
+	named.Properties["statements"] = NewListType(named)
+
+	// node = { next: optional(node) }
+	node := NewObjectType(map[string]Type{})
+	node.Properties["next"] = NewOptionalType(node)
+
+	// tree = { children: map(tree) }
+	tree := NewObjectType(map[string]Type{})
+	tree.Properties["children"] = NewMapType(tree)
+
+	// even = { odd: odd }, odd = { even: optional(even) }
+	even, odd := NewObjectType(map[string]Type{}), NewObjectType(map[string]Type{})
+	even.Properties["odd"] = odd
+	odd.Properties["even"] = NewOptionalType(even)
+
+	cases := []struct {
+		name      string
+		dest, src Type
+		want      bool
+	}{
+		{"input from self", InputType(statement), statement, true},
+		{"output from self", NewOutputType(statement), statement, true},
+		{"promise from self", NewPromiseType(statement), statement, true},
+		{"list of input from list of self", NewListType(InputType(statement)), NewListType(statement), true},
+		{"optional self reference", InputType(node), node, true},
+		{"map self reference", InputType(tree), tree, true},
+		{"mutual recursion", InputType(even), even, true},
+		{"wider recursive source", statement, named, true},
+		{"narrower recursive source", named, statement, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, c.want, c.dest.AssignableFrom(c.src))
+		})
+	}
+}
