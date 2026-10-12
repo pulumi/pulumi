@@ -50,14 +50,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -181,124 +179,54 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 
-		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
-		if err != nil {
-			return fmt.Errorf("getting stack configuration: %w", err)
-		}
-
-		m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cfg, cmd.Flags())
-		if err != nil {
-			return fmt.Errorf("gathering environment metadata: %w", err)
-		}
-		cmdutil.SetStringSpanAttributes(ctx, m.Environment)
-
-		decrypter := sm.Decrypter()
-		encrypter := sm.Encrypter()
-
-		stackName := s.Ref().Name().String()
-		if skipConfigValidation {
-			// Still apply project config defaults onto the stack config, but skip validation.
-			if configErr := pkgWorkspace.ApplyProjectConfig(
-				ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter,
-			); configErr != nil {
-				return fmt.Errorf("applying stack config: %w", configErr)
-			}
-		} else {
-			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
-				ctx,
-				stackName,
-				proj,
-				cfg.Environment,
-				cfg.Config,
-				encrypter,
-				decrypter,
-			)
-			if configErr != nil {
-				return fmt.Errorf("validating stack config: %w", configErr)
-			}
-		}
-
-		targetURNs := slice.Prealloc[string](len(targets) + len(targetReplaces))
-		replaceURNs := slice.Prealloc[string](len(replaces) + len(targetReplaces))
-		excludeURNs := slice.Prealloc[string](len(excludes))
-		targetURNs = append(targetURNs, targets...)
-		excludeURNs = append(excludeURNs, excludes...)
-		replaceURNs = append(replaceURNs, replaces...)
-
-		for _, tr := range targetReplaces {
-			targetURNs = append(targetURNs, tr)
-			replaceURNs = append(replaceURNs, tr)
-		}
-
-		refreshOption, err := getRefreshOption(proj, refresh)
-		if err != nil {
-			return err
-		}
-
-		autonamer, err := autonaming.ParseAutonamingConfig(autonamingStackContext(proj, s), cfg.Config, decrypter)
-		if err != nil {
-			return fmt.Errorf("getting autonaming config: %w", err)
-		}
-
-		opts.Engine = engine.UpdateOptions{
-			ParallelDiff:              env.ParallelDiff.Value(),
-			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:                  parallel,
-			Debug:                     debug,
-			Refresh:                   refreshOption,
-			RefreshProgram:            runProgram,
-			ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
-			UseLegacyDiff:             env.EnableLegacyDiff.Value(),
-			UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
-			DisableProviderPreview:    env.DisableProviderPreview.Value(),
-			DisableResourceReferences: env.DisableResourceReferences.Value(),
-			DisableOutputValues:       env.DisableOutputValues.Value(),
-			ShowSecrets:               showSecrets,
-			Targets:                   deploy.NewUrnTargets(targetURNs),
-			Excludes:                  deploy.NewUrnTargets(excludeURNs),
-			TargetDependents:          targetDependents,
-			ExcludeDependents:         excludeDependents,
-			// Trigger a plan to be generated during the preview phase which can be constrained to during the
-			// update phase.
-			GeneratePlan:         env.Experimental.Value() || strict,
-			Experimental:         env.Experimental.Value(),
+		op, err := NewUpdateOperation(ctx, ssml, s, opts, UpdateArgs{
+			Proj:                    proj,
+			Root:                    root,
+			ConfigFile:              configFile,
+			EnvOverrides:            envOverrides,
+			SkipConfigValidation:    skipConfigValidation,
+			Message:                 message,
+			ExecKind:                execKind,
+			ExecAgent:               execAgent,
+			UpdatePlan:              planFilePath != "",
+			Flags:                   cmd.Flags(),
+			LanguageRuntimeMetadata: meta,
+			Refresh:                 refresh,
+			RefreshProgram:          runProgram,
+			Targets:                 targets,
+			Excludes:                excludes,
+			Replaces:                replaces,
+			TargetReplaces:          targetReplaces,
+			TargetDependents:        targetDependents,
+			ExcludeDependents:       excludeDependents,
+			PolicyPackPaths:         policyPackPaths,
+			PolicyPackConfigPaths:   policyPackConfigPaths,
+			Parallel:                parallel,
+			Debug:                   debug,
+			ShowSecrets:             showSecrets,
+			// Generate a plan during the preview phase so the update phase can be constrained to it.
+			GeneratePlan:         strict,
 			Strict:               strict,
 			ContinueOnError:      continueOnError,
 			IgnoreProtect:        ignoreProtect,
 			AttachDebugger:       attachDebugger,
-			Autonamer:            autonamer,
 			SkipPluginPreInstall: skipPluginPreInstall,
+			CoherenceWindow:      coherenceWindow,
+			Scopes:               backend.CancellationScopes,
+		})
+		if err != nil {
+			return err
 		}
 
 		if planFilePath != "" {
-			dec := sm.Decrypter()
-			p, err := plan.Read(planFilePath, dec)
+			p, err := plan.Read(planFilePath, op.SecretsManager.Decrypter())
 			if err != nil {
 				return err
 			}
-			opts.Engine.Plan = p
+			op.Opts.Engine.Plan = p
 		}
 
-		start := time.Now()
-		metadata, err := meta.Result(ctx)
-		slog.InfoContext(ctx, "Waiting for language runtime metadata", "duration", time.Since(start))
-		if err != nil {
-			slog.InfoContext(ctx, "Could not retrieve language runtime metadata", "err", err)
-		} else {
-			maps.Copy(m.Environment, metadata)
-		}
-
-		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
-			Proj:               proj,
-			Root:               root,
-			M:                  m,
-			Opts:               opts,
-			StackConfiguration: cfg,
-			SecretsManager:     sm,
-			SecretsProvider:    secrets.DefaultProvider,
-			Scopes:             backend.CancellationScopes,
-			CoherenceWindow:    coherenceWindow,
-		}, nil /* events */)
+		changes, err := backend.UpdateStack(ctx, s, op, nil /* events */)
 		switch {
 		case err == context.Canceled:
 			return backenderr.CancelledError{Operation: "update"}

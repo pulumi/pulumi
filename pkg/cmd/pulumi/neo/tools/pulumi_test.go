@@ -28,12 +28,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -937,66 +937,67 @@ func TestNewPulumiResultUsesParsedNames(t *testing.T) {
 	assert.Equal(t, "/tmp/events.ndjson", res.EventsFile)
 }
 
-func TestAutonamingStackContextFor_NonHTTPStateStack(t *testing.T) {
-	t.Parallel()
-
-	// A plain backend.Stack (not the cloud httpstate.Stack) cannot supply an
-	// org name — autonamingStackContextFor must fall back to the placeholder
-	// "organization" so autonaming config still loads.
-	proj := &workspace.Project{Name: tokens.PackageName("my-proj")}
-	stk := &backend.MockStack{
-		RefF: func() backend.StackReference {
-			return &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
-		},
+// TestPulumi_Run_HonorsProjectRefreshOption proves that `options.refresh: always` in
+// Pulumi.yaml reaches the engine, as it does for `pulumi preview` and `pulumi up`.
+//
+//nolint:paralleltest // mutates the global cmdBackend.DefaultLoginManager
+func TestPulumi_Run_HonorsProjectRefreshOption(t *testing.T) {
+	dir := newProjectDir(t)
+	proj := &workspace.Project{Name: "p", Options: &workspace.ProjectOptions{Refresh: "always"}}
+	ref := &backend.MockStackReference{
+		StringV:             "dev",
+		NameV:               tokens.MustParseStackName("dev"),
+		ProjectV:            "p",
+		FullyQualifiedNameV: "dev",
 	}
 
-	got := autonamingStackContextFor(proj, stk)
-	assert.Equal(t, "organization", got.Organization)
-	assert.Equal(t, "my-proj", got.Project)
-	assert.Equal(t, "dev", got.Stack)
-}
-
-func TestAutonamingStackContextFor_HTTPStateStackUsesOrgName(t *testing.T) {
-	t.Parallel()
-
-	// httpstate.Stack callers expose the real organization via OrgName(); that
-	// value must propagate into the autonaming context.
-	proj := &workspace.Project{Name: tokens.PackageName("my-proj")}
-	stk := &fakeHTTPStack{
-		MockStack: &backend.MockStack{
-			RefF: func() backend.StackReference {
-				return &backend.MockStackReference{NameV: tokens.MustParseStackName("prod")}
-			},
+	var got backend.UpdateOperation
+	be := &backend.MockBackend{}
+	s := &backend.MockStack{
+		RefF:     func() backend.StackReference { return ref },
+		BackendF: func() backend.Backend { return be },
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+			return b64.NewBase64SecretsManager(), nil
 		},
-		orgName: "my-org",
+	}
+	be.ParseStackReferenceF = func(string) (backend.StackReference, error) { return ref, nil }
+	be.GetStackF = func(context.Context, backend.StackReference) (backend.Stack, error) { return s, nil }
+	be.PreviewF = func(
+		_ context.Context, _ backend.Stack, op backend.UpdateOperation,
+	) (*deploy.Plan, display.ResourceChanges, error) {
+		got = op
+		return nil, nil, nil
 	}
 
-	got := autonamingStackContextFor(proj, stk)
-	assert.Equal(t, "my-org", got.Organization)
-	assert.Equal(t, "my-proj", got.Project)
-	assert.Equal(t, "prod", got.Stack)
-}
+	prev := cmdBackend.DefaultLoginManager
+	cmdBackend.DefaultLoginManager = &cmdBackend.MockLoginManager{
+		CurrentF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+			url string, project *workspace.Project, setCurrent bool,
+			insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+	t.Cleanup(func() { cmdBackend.DefaultLoginManager = prev })
 
-// fakeHTTPStack satisfies httpstate.Stack so tests can exercise the
-// type-assertion branch in autonamingStackContextFor. Methods other than the
-// two cloud-only ones delegate to the embedded MockStack.
-type fakeHTTPStack struct {
-	*backend.MockStack
-	orgName string
-}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(_ string) (*workspace.Project, string, error) { return proj, dir, nil },
+	}
+	p := &Pulumi{Cwd: dir, Workspace: ws}
 
-func (f *fakeHTTPStack) OrgName() string {
-	return f.orgName
-}
+	args, err := json.Marshal(map[string]any{
+		"project_name":     "p",
+		"stack_name":       "dev",
+		"local_pulumi_dir": dir,
+	})
+	require.NoError(t, err)
 
-func (f *fakeHTTPStack) CurrentOperation() *apitype.OperationStatus {
-	return nil
+	_, err = p.Invoke(t.Context(), "pulumi_preview", args)
+	require.NoError(t, err)
+	assert.True(t, got.Opts.Engine.Refresh)
 }
-
-func (f *fakeHTTPStack) StackIdentifier() client.StackIdentifier {
-	return client.StackIdentifier{}
-}
-
-// Compile-time assertion: fakeHTTPStack must satisfy httpstate.Stack so the
-// type assertion in autonamingStackContextFor succeeds.
-var _ httpstate.Stack = (*fakeHTTPStack)(nil)

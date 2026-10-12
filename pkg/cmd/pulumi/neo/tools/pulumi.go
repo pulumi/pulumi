@@ -28,12 +28,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -42,7 +38,6 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -267,43 +262,11 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("stack %q not found", a.StackName))
 	}
 
-	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, "", nil)
-	if err != nil {
-		return failedResult(a, "", fmt.Errorf("getting stack configuration: %w", err))
-	}
-
-	decrypter := sm.Decrypter()
-	encrypter := sm.Encrypter()
-	if err := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
-		ctx, s.Ref().Name().String(), proj, cfg.Environment, cfg.Config, encrypter, decrypter,
-	); err != nil {
-		return failedResult(a, "", fmt.Errorf("validating stack config: %w", err))
-	}
-
-	autonamer, err := autonaming.ParseAutonamingConfig(
-		autonamingStackContextFor(proj, s), cfg.Config, decrypter)
-	if err != nil {
-		return failedResult(a, "", fmt.Errorf("getting autonaming config: %w", err))
-	}
-
-	// Pass nil for flags: GetUpdateMetadata only uses them to record
-	// "pulumi.flag.<name>" entries, and Neo has no CLI flags to record.
-	m, err := metadata.GetUpdateMetadata("" /*message*/, root,
-		"neo" /*execKind*/, "" /*execAgent*/, false /*updatePlan*/, cfg, nil)
-	if err != nil {
-		return failedResult(a, "", fmt.Errorf("gathering metadata: %w", err))
-	}
-
 	opts := backend.UpdateOptions{
 		AutoApprove: true, // Upstream approval already gates pulumi_up before dispatch.
 		// pulumi_up follows an approved pulumi_preview, so don't run a second preview first.
 		// Matches the Automation API's `up --yes --skip-preview`. Never set for pulumi_preview.
 		SkipPreview: !isPreview,
-		Engine: engine.UpdateOptions{
-			Experimental: true,
-			Autonamer:    autonamer,
-		},
 		Display: backendDisplay.Options{
 			// Mute the backend's own progress renderer so it doesn't fight the Neo TUI.
 			// Stdout / Stderr go to io.Discard; the Neo tool handler consumes events via
@@ -316,6 +279,19 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 			Stdout:           io.Discard,
 			Stderr:           io.Discard,
 		},
+	}
+	// Neo has no CLI flags, so Flags stays nil and the update metadata records none.
+	// LanguageRuntimeMetadata stays nil: it would start a language host per tool call.
+	op, err := operations.NewUpdateOperation(ctx, cmdStack.NewStackSecretsManagerLoaderFromEnv(), s, opts,
+		operations.UpdateArgs{
+			Proj:     proj,
+			Root:     root,
+			ExecKind: "neo",
+			Parallel: operations.DefaultParallel(),
+			Scopes:   ctxOnlyCancellationSource{},
+		})
+	if err != nil {
+		return failedResult(a, "", err)
 	}
 
 	eventsFile, err := os.CreateTemp("", "pulumi-neo-events-*.ndjson")
@@ -347,16 +323,6 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}()
 
 	startedAt := time.Now()
-	op := backend.UpdateOperation{
-		Proj:               proj,
-		Root:               root,
-		M:                  m,
-		Opts:               opts,
-		StackConfiguration: cfg,
-		SecretsManager:     sm,
-		SecretsProvider:    secrets.DefaultProvider,
-		Scopes:             ctxOnlyCancellationSource{},
-	}
 
 	// The engine and backend print a handful of headers/messages directly to
 	// os.Stdout/os.Stderr (e.g. the "Previewing update (stack)" banner in
@@ -700,18 +666,4 @@ func failedResult(a pulumiArgs, eventsPath string, err error) (pulumiResult, err
 		StackName:   a.StackName,
 		EventsFile:  eventsPath,
 	}, errToolFailed
-}
-
-// autonamingStackContextFor mirrors operations.autonamingStackContext without pulling in
-// the cobra-coupled operations package.
-func autonamingStackContextFor(proj *workspace.Project, s backend.Stack) autonaming.StackContext {
-	organization := "organization"
-	if cs, ok := s.(httpstate.Stack); ok {
-		organization = cs.OrgName()
-	}
-	return autonaming.StackContext{
-		Organization: organization,
-		Project:      proj.Name.String(),
-		Stack:        s.Ref().Name().String(),
-	}
 }

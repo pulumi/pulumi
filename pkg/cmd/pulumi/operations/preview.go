@@ -20,10 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
@@ -32,8 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -55,7 +51,6 @@ import (
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -505,95 +500,43 @@ func NewPreviewCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, envOverrides)
-			if err != nil {
-				return fmt.Errorf("getting stack configuration: %w", err)
-			}
-
-			m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, planFilePath != "", cfg, cmd.Flags())
-			if err != nil {
-				return fmt.Errorf("gathering environment metadata: %w", err)
-			}
-			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
-
-			decrypter := sm.Decrypter()
-			encrypter := sm.Encrypter()
-
-			stackName := s.Ref().Name().String()
-			if skipConfigValidation {
-				// Still apply project config defaults onto the stack config, but skip validation.
-				if configErr := pkgWorkspace.ApplyProjectConfig(
-					ctx, stackName, proj, cfg.Environment, cfg.Config, encrypter, decrypter); configErr != nil {
-					return fmt.Errorf("applying stack config: %w", configErr)
-				}
-			} else {
-				configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
-					ctx,
-					stackName,
-					proj,
-					cfg.Environment,
-					cfg.Config,
-					encrypter,
-					decrypter)
-				if configErr != nil {
-					return fmt.Errorf("validating stack config: %w", configErr)
-				}
-			}
-
-			targetURNs := slice.Prealloc[string](len(targets))
-			targetURNs = append(targetURNs, targets...)
-
-			excludeURNs := slice.Prealloc[string](len(excludes))
-			excludeURNs = append(excludeURNs, excludes...)
-
-			replaceURNs := slice.Prealloc[string](len(replaces))
-			replaceURNs = append(replaceURNs, replaces...)
-
-			for _, tr := range targetReplaces {
-				targetURNs = append(targetURNs, tr)
-				replaceURNs = append(replaceURNs, tr)
-			}
-
-			refreshOption, err := getRefreshOption(proj, refresh)
+			op, err := NewUpdateOperation(ctx, ssml, s, backend.UpdateOptions{Display: displayOpts}, UpdateArgs{
+				Proj:                    proj,
+				Root:                    root,
+				ConfigFile:              configFile,
+				EnvOverrides:            envOverrides,
+				SkipConfigValidation:    skipConfigValidation,
+				Message:                 message,
+				ExecKind:                execKind,
+				ExecAgent:               execAgent,
+				UpdatePlan:              planFilePath != "",
+				Flags:                   cmd.Flags(),
+				LanguageRuntimeMetadata: meta,
+				Refresh:                 refresh,
+				RefreshProgram:          runProgram,
+				Targets:                 targets,
+				Excludes:                excludes,
+				Replaces:                replaces,
+				TargetReplaces:          targetReplaces,
+				TargetDependents:        targetDependents,
+				ExcludeDependents:       excludeDependents,
+				PolicyPackPaths:         policyPackPaths,
+				PolicyPackConfigPaths:   policyPackConfigPaths,
+				Parallel:                parallel,
+				Debug:                   debug,
+				ShowSecrets:             showSecrets,
+				// A plan file can only be saved if the engine generates a plan.
+				GeneratePlan:         planFilePath != "",
+				IgnoreProtect:        ignoreProtect,
+				AttachDebugger:       attachDebugger,
+				SkipPluginPreInstall: skipPluginPreInstall,
+				CoherenceWindow:      coherenceWindow,
+				Scopes:               backend.CancellationScopes,
+			})
 			if err != nil {
 				return err
 			}
-
-			autonamer, err := autonaming.ParseAutonamingConfig(autonamingStackContext(proj, s), cfg.Config, decrypter)
-			if err != nil {
-				return fmt.Errorf("getting autonaming config: %w", err)
-			}
-
-			opts := backend.UpdateOptions{
-				Engine: engine.UpdateOptions{
-					ParallelDiff:              env.ParallelDiff.Value(),
-					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-					Parallel:                  parallel,
-					Debug:                     debug,
-					ShowSecrets:               showSecrets,
-					Refresh:                   refreshOption,
-					RefreshProgram:            runProgram,
-					ReplaceTargets:            deploy.NewUrnTargets(replaceURNs),
-					UseLegacyDiff:             env.EnableLegacyDiff.Value(),
-					UseLegacyRefreshDiff:      env.EnableLegacyRefreshDiff.Value(),
-					DisableProviderPreview:    env.DisableProviderPreview.Value(),
-					DisableResourceReferences: env.DisableResourceReferences.Value(),
-					DisableOutputValues:       env.DisableOutputValues.Value(),
-					Targets:                   deploy.NewUrnTargets(targetURNs),
-					TargetDependents:          targetDependents,
-					Excludes:                  deploy.NewUrnTargets(excludeURNs),
-					ExcludeDependents:         excludeDependents,
-					IgnoreProtect:             ignoreProtect,
-					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
-					// experimental mode to just get more testing of it.
-					GeneratePlan:         env.Experimental.Value() || planFilePath != "",
-					Experimental:         env.Experimental.Value(),
-					AttachDebugger:       attachDebugger,
-					Autonamer:            autonamer,
-					SkipPluginPreInstall: skipPluginPreInstall,
-				},
-				Display: displayOpts,
-			}
+			sm := op.SecretsManager
 
 			// If we're building an import file we want to hook the event stream from the engine to transform
 			// create operations into import specs.
@@ -604,26 +547,7 @@ func NewPreviewCmd() *cobra.Command {
 				importFilePromise = buildImportFile(ctx, events, sm.Encrypter())
 			}
 
-			start := time.Now()
-			metadata, err := meta.Result(ctx)
-			slog.InfoContext(ctx, "Waiting for language runtime metadata", "duration", time.Since(start))
-			if err != nil {
-				slog.InfoContext(ctx, "Could not retrieve language runtime metadata", "err", err)
-			} else {
-				maps.Copy(m.Environment, metadata)
-			}
-
-			plan, changes, res := backend.PreviewStack(ctx, s, backend.UpdateOperation{
-				Proj:               proj,
-				Root:               root,
-				M:                  m,
-				Opts:               opts,
-				StackConfiguration: cfg,
-				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
-				Scopes:             backend.CancellationScopes,
-				CoherenceWindow:    coherenceWindow,
-			}, events)
+			plan, changes, res := backend.PreviewStack(ctx, s, op, events)
 			// If we made an events channel then we need to close it to trigger the exit of the import goroutine above.
 			// The engine doesn't close the channel for us, but once its returned here we know it won't append any more
 			// events.

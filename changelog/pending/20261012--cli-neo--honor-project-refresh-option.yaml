@@ -1,0 +1,4 @@
+component: cli/neo
+kind: fix
+body: Honor the project's `options.refresh` setting in the `pulumi neo` pulumi_preview and pulumi_up tools
+time: 2026-10-12T00:00:00Z
