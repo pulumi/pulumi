@@ -15,6 +15,7 @@
 import asyncio
 import json
 import os
+import time
 import unittest
 from unittest.mock import patch
 from typing import Mapping, Optional, Sequence, cast
@@ -421,6 +422,25 @@ class OutputRecoverTests(unittest.TestCase):
         ok_known.set_result(True)
         return Output(resources=ok_res, future=bad, is_known=ok_known)
 
+    def _late_faulted_output(self, exc: Exception) -> Output:
+        """An output that faults only after the program body has returned."""
+
+        async def fail_later():
+            await asyncio.sleep(0.01)
+            raise exc
+
+        ok_res: asyncio.Future = asyncio.Future()
+        ok_res.set_result(set())
+        ok_known: asyncio.Future = asyncio.Future()
+        ok_known.set_result(True)
+        return Output(resources=ok_res, future=fail_later(), is_known=ok_known)
+
+    def _faulted_outputs(self):
+        return [
+            ("immediate", self._faulted_output),
+            ("late", self._late_faulted_output),
+        ]
+
     def test_faulted_output_raises_at_program_exit(self):
         """Baseline: a faulted Output causes pulumi_test to raise."""
 
@@ -496,21 +516,91 @@ class OutputRecoverTests(unittest.TestCase):
 
         @pulumi_test
         async def test():
-            async def fail_later():
-                await asyncio.sleep(0.01)
-                raise Exception("boom")
-
-            ok_res: asyncio.Future = asyncio.Future()
-            ok_res.set_result(set())
-            ok_known: asyncio.Future = asyncio.Future()
-            ok_known.set_result(True)
-            faulted = Output(resources=ok_res, future=fail_later(), is_known=ok_known)
+            faulted = self._late_faulted_output(Exception("boom"))
             faulted.apply(lambda v: v).apply(lambda v: v).recover(lambda _: 42).apply(
                 recovered_values.append
             )
 
         test()
         self.assertEqual(recovered_values, [42])
+
+    def test_unrecovered_fault_through_apply_raises(self):
+        for name, faulted_output in self._faulted_outputs():
+            with self.subTest(name):
+
+                @pulumi_test
+                async def test():
+                    faulted_output(Exception("boom")).apply(lambda v: v).apply(
+                        lambda v: v
+                    )
+
+                with self.assertRaisesRegex(Exception, "boom"):
+                    test()
+
+    def test_fault_with_one_unrecovered_branch_raises(self):
+        for name, faulted_output in self._faulted_outputs():
+            with self.subTest(name):
+
+                @pulumi_test
+                async def test():
+                    faulted = faulted_output(Exception("boom"))
+                    faulted.apply(lambda v: v).recover(lambda _: 42)
+                    faulted.apply(lambda v: v)
+
+                with self.assertRaisesRegex(Exception, "boom"):
+                    test()
+
+    def test_recovered_fault_with_unrecovered_apply_raises(self):
+        for name, faulted_output in self._faulted_outputs():
+            with self.subTest(name):
+
+                @pulumi_test
+                async def test():
+                    faulted = faulted_output(Exception("boom"))
+                    faulted.recover(lambda _: 42)
+                    faulted.apply(lambda v: v)
+
+                with self.assertRaisesRegex(Exception, "boom"):
+                    test()
+
+    def test_fault_in_apply_func_raises(self):
+        @pulumi_test
+        async def test():
+            def fail(_):
+                raise Exception("boom")
+
+            Output.from_input("hello").apply(fail)
+
+        with self.assertRaisesRegex(Exception, "boom"):
+            test()
+
+    def test_fault_in_recover_func_raises(self):
+        for name, faulted_output in self._faulted_outputs():
+            with self.subTest(name):
+
+                @pulumi_test
+                async def test():
+                    def fail(_):
+                        raise Exception("recover failed")
+
+                    faulted_output(Exception("boom")).apply(lambda v: v).recover(fail)
+
+                with self.assertRaisesRegex(Exception, "recover failed"):
+                    test()
+
+    def test_unrecovered_fault_through_apply_fails_fast(self):
+        slow_values = []
+
+        @pulumi_test
+        async def test():
+            self._late_faulted_output(Exception("boom")).apply(lambda v: v)
+            Output.from_input(asyncio.sleep(5, "slow")).apply(slow_values.append)
+
+        start = time.monotonic()
+        with self.assertRaisesRegex(Exception, "boom"):
+            test()
+        self.assertLess(time.monotonic() - start, 5)
+        self.assertEqual(slow_values, [])
 
 
 class OutputAllTests(unittest.IsolatedAsyncioTestCase):
