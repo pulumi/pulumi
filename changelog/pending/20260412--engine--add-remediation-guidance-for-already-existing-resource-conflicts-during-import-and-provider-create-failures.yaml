@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Add remediation guidance for already-existing resource conflicts during import and provider create failures
