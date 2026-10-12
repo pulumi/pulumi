@@ -223,8 +223,12 @@ class Output(Generic[T_co]):
 
         value = state["value"]
 
+        # Overwrite methods with setattr rather than `self.x = ...`: some type checkers (e.g. ty,
+        # see https://github.com/astral-sh/ty/issues/350) treat the assignment as declaring an
+        # instance attribute and union it with the method, breaking every call to it.
+
         # Replace '.get' with a function that returns the value without raising an error.
-        self.get = lambda: value
+        setattr(self, "get", lambda: value)
 
         def error(name: str):
             def f(*args: Any, **kwargs: Any):
@@ -236,11 +240,8 @@ class Output(Generic[T_co]):
             return f
 
         # Replace '.apply' and other methods on Output with implementations that raise an error.
-        self.apply = error("apply")
-        self.resources = error("resources")
-        self.future = error("future")
-        self.is_known = error("is_known")
-        self.is_secret = error("is_secret")
+        for method in ("apply", "resources", "future", "is_known", "is_secret"):
+            setattr(self, method, error(method))
 
     def get(self) -> T_co:
         """
