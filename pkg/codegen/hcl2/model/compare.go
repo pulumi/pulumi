@@ -30,8 +30,9 @@ func Compare(a, b Type) int {
 	return compareTypes(a, b, nil)
 }
 
-// comparePairs holds the pairs of object types whose comparison is in flight. A pair that is entered again belongs
-// to a recursive type and compares as equal.
+// comparePairs holds the pairs of object types whose comparison or equality check is in flight. A pair that is
+// entered again belongs to a recursive type and compares as equal. The set is keyed by the pair rather than one
+// side alone: re-entering the same object against a different other is a different question and must be checked.
 type comparePairs map[[2]Type]struct{}
 
 func compareTypes(a, b Type, seen comparePairs) int {

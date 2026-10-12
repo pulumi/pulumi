@@ -176,18 +176,19 @@ func (t *ObjectType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *ObjectType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *ObjectType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
+	pair := [2]Type{t, other}
 	if seen != nil {
-		if _, ok := seen[t]; ok {
+		if _, ok := seen[pair]; ok {
 			return true
 		}
 	} else {
-		seen = map[Type]struct{}{}
+		seen = comparePairs{}
 	}
-	seen[t] = struct{}{}
+	seen[pair] = struct{}{}
 
 	otherObject, ok := other.(*ObjectType)
 	if !ok {
