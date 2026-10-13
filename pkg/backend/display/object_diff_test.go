@@ -635,3 +635,21 @@ func TestTextDiffLargeReformattedJSON(t *testing.T) {
 	assert.NotContains(t, out, `\"[`)
 	assert.Less(t, len(out), 4096)
 }
+
+func TestTextDiffLargeLineWithTrailingNewline(t *testing.T) {
+	t.Parallel()
+
+	old := randomText(1, 1<<20, 1)
+	new := randomText(2, 1<<20, 1)
+
+	// A trailing newline makes the value multi-line, so it gets a line diff, which is fast for a single line.
+	for _, tc := range []struct{ old, new string }{
+		{old + "\n", new + "\n"},
+		{old, new + "\n"},
+	} {
+		out := renderStringDiff(t, tc.old, tc.new, true)
+		assert.Contains(t, out, old[:150]+"...")
+		assert.Contains(t, out, new[:150]+"...")
+		assert.Less(t, len(out), 4096)
+	}
+}
