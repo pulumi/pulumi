@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -210,7 +211,10 @@ type analyzerServer struct {
 	pulumirpc.UnimplementedAnalyzerServer
 
 	policyPackFactory func(*pulumi.Context) (PolicyPack, error)
-	policyPack        PolicyPack
+
+	// policyPackLock guards policyPack, which ConfigureStack sets and getPolicyPack creates on demand.
+	policyPackLock sync.Mutex
+	policyPack     PolicyPack
 
 	stacktags map[string]string
 	config    map[string]PolicyConfig
@@ -225,15 +229,56 @@ func (srv *analyzerServer) Handshake(
 	return &pulumirpc.AnalyzerHandshakeResponse{}, nil
 }
 
-func (srv *analyzerServer) GetPluginInfo(context.Context, *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+// getPolicyPack returns the policy pack. If ConfigureStack has not run, as with `pulumi policy publish`, it creates the
+// policy pack with a context that has no stack information. The policy pack outlives the request, so its context keeps
+// the values of ctx but not its cancellation.
+func (srv *analyzerServer) getPolicyPack(ctx context.Context) (PolicyPack, error) {
+	srv.policyPackLock.Lock()
+	defer srv.policyPackLock.Unlock()
+
+	if srv.policyPack != nil {
+		return srv.policyPack, nil
+	}
+
+	info := pulumi.RunInfo{Parallel: 1}
+	if srv.handshake != nil {
+		info.EngineAddr = srv.handshake.EngineAddress
+		if srv.handshake.RootDirectory != nil {
+			info.RootDirectory = *srv.handshake.RootDirectory
+		}
+	}
+	pctx, err := pulumi.NewContext(context.WithoutCancel(ctx), info)
+	if err != nil {
+		return nil, fmt.Errorf("creating context: %w", err)
+	}
+
+	policyPack, err := srv.policyPackFactory(pctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create policy pack: %w", err)
+	}
+	srv.policyPack = policyPack
+	return policyPack, nil
+}
+
+func (srv *analyzerServer) GetPluginInfo(ctx context.Context, _ *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
+	policyPack, err := srv.getPolicyPack(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &pulumirpc.PluginInfo{
-		Version: srv.policyPack.Version().String(),
+		Version: policyPack.Version().String(),
 	}, nil
 }
 
-func (srv *analyzerServer) GetAnalyzerInfo(context.Context, *pbempty.Empty) (*pulumirpc.AnalyzerInfo, error) {
-	policies := make([]*pulumirpc.PolicyInfo, 0, len(srv.policyPack.Policies()))
-	for _, p := range srv.policyPack.Policies() {
+func (srv *analyzerServer) GetAnalyzerInfo(ctx context.Context, _ *pbempty.Empty) (*pulumirpc.AnalyzerInfo, error) {
+	policyPack, err := srv.getPolicyPack(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	policies := make([]*pulumirpc.PolicyInfo, 0, len(policyPack.Policies()))
+	for _, p := range policyPack.Policies() {
 		schema := p.ConfigSchema()
 		var configSchema *pulumirpc.PolicyConfigSchema
 		if schema != nil {
@@ -261,8 +306,8 @@ func (srv *analyzerServer) GetAnalyzerInfo(context.Context, *pbempty.Empty) (*pu
 		})
 	}
 	return &pulumirpc.AnalyzerInfo{
-		Name:           srv.policyPack.Name(),
-		Version:        srv.policyPack.Version().String(),
+		Name:           policyPack.Name(),
+		Version:        policyPack.Version().String(),
 		Policies:       policies,
 		SupportsConfig: true,
 		InitialConfig:  nil, /* TODO */
@@ -304,10 +349,14 @@ func (srv *analyzerServer) ConfigureStack(ctx context.Context,
 
 	srv.stacktags = req.Tags
 
-	srv.policyPack, err = srv.policyPackFactory(pctx)
+	policyPack, err := srv.policyPackFactory(pctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create policy pack: %w", err)
 	}
+
+	srv.policyPackLock.Lock()
+	srv.policyPack = policyPack
+	srv.policyPackLock.Unlock()
 
 	return &pulumirpc.AnalyzerStackConfigureResponse{}, nil
 }
