@@ -206,6 +206,20 @@ describe("CustomResource", () => {
         assert.strictEqual(await missing.isKnown, true);
         assert.strictEqual(await missing.promise(), false);
     });
+
+    it("checks whether a resource exists with properties and options", async () => {
+        await new MyCustomResource("existing-with-options").id.promise();
+
+        const exists = runtime.existsResource(
+            "test:index:MyCustomResource",
+            "existing-with-options_id",
+            { foo: "bar" },
+            { provider: new MyProvider("exists-provider"), parent: new MyCustomResource("exists-parent") },
+            Promise.resolve("package-ref"),
+        );
+        assert.strictEqual(await exists.isKnown, true);
+        assert.strictEqual(await exists.promise(), true);
+    });
 });
 
 interface MyCustomComponentResourceArgs {
