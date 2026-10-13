@@ -1229,71 +1229,56 @@ func escape(s string) string {
 	return escaped[1 : len(escaped)-1]
 }
 
-// The text diff is quadratic in the length of the strings (characters for single-line values, lines for multi-line
-// values), so larger values are printed as replaced instead of diffed. See
-// https://github.com/pulumi/pulumi/issues/25189.
+// Changed strings larger than these limits are printed as replaced instead of diffed. Diffs up to these sizes are
+// still fast to compute.
 const (
-	// About 0.07 s worst case for unrelated strings; 100,000 characters take 40 s.
 	maxCharacterDiffLength = 4 * 1024
-	// About 0.07 s worst case when every line changed; 40,000 changed lines take 4 s.
-	maxLineDiffLines = 5000
+	maxLineDiffLines       = 5000
 )
 
 func (p *propertyPrinter) printTextDiff(old, new string) {
 	if p.printEncodedValueDiff(old, new) {
 		return
 	}
-
-	if !p.printDiffMatchPatchDiff(old, new) {
+	if tooLargeToDiff(old, new) {
 		p.printReplacedText(old, new)
+		return
 	}
-}
 
-// printDiffMatchPatchDiff prints a character or line diff of old and new. It returns false without printing
-// anything if the values are too large to diff.
-func (p *propertyPrinter) printDiffMatchPatchDiff(old, new string) bool {
 	differ := diffmatchpatch.New()
 	differ.DiffTimeout = 0
 
 	singleLine := !strings.ContainsRune(old, '\n') && !strings.ContainsRune(new, '\n')
 	if singleLine {
-		if len(old) > maxCharacterDiffLength || len(new) > maxCharacterDiffLength {
-			return false
-		}
 		diff := differ.DiffMain(old, new, false)
 		p.printCharacterDiff(differ.DiffCleanupEfficiency(diff))
 	} else {
-		if countLines(old) > maxLineDiffLines || countLines(new) > maxLineDiffLines {
-			return false
-		}
 		hashed1, hashed2, lineArray := differ.DiffLinesToChars(old, new)
 		diffs := differ.DiffMain(hashed1, hashed2, false)
 		p.indented(1).printLineDiff(differ.DiffCharsToLines(diffs, lineArray))
 	}
-	return true
 }
 
-// countLines returns the number of lines in s; a single trailing newline does not start a new line.
-func countLines(s string) int {
-	if s == "" {
-		return 0
+// tooLargeToDiff reports whether old or new is too large for printTextDiff to diff. Multi-line values are limited by
+// line count, ignoring a trailing newline; single-line values by length.
+func tooLargeToDiff(old, new string) bool {
+	if strings.ContainsRune(old, '\n') || strings.ContainsRune(new, '\n') {
+		return strings.Count(strings.TrimSuffix(old, "\n"), "\n") >= maxLineDiffLines ||
+			strings.Count(strings.TrimSuffix(new, "\n"), "\n") >= maxLineDiffLines
 	}
-	return strings.Count(strings.TrimSuffix(s, "\n"), "\n") + 1
+	return len(old) > maxCharacterDiffLength || len(new) > maxCharacterDiffLength
 }
 
 // printReplacedText prints old and new as a replacement, honoring truncateOutput.
 func (p *propertyPrinter) printReplacedText(old, new string) {
-	p.withOp(deploy.OpDelete).printQuotedText(old)
-	p.writeVerbatim(" => ")
-	p.withOp(deploy.OpCreate).printQuotedText(new)
-	p.writeVerbatim("\n")
-}
-
-func (p *propertyPrinter) printQuotedText(s string) {
 	if p.truncateOutput {
-		s = p.truncatePropertyString(s)
+		old = p.truncatePropertyString(old)
+		new = p.truncatePropertyString(new)
 	}
-	p.writef("%q", s)
+	p.withOp(deploy.OpDelete).writef("%q", old)
+	p.writeVerbatim(" => ")
+	p.withOp(deploy.OpCreate).writef("%q", new)
+	p.writeVerbatim("\n")
 }
 
 func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
@@ -1410,8 +1395,12 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 
 	// If the decoded values are the same, then print a text diff as an object diff won't show any changes.
 	if oldValue.DeepEquals(newValue) {
-		if !p.printDiffMatchPatchDiff(strconv.Quote(old), strconv.Quote(new)) {
+		quotedOld := strconv.Quote(old)
+		quotedNew := strconv.Quote(new)
+		if tooLargeToDiff(quotedOld, quotedNew) {
 			p.printReplacedText(old, new)
+		} else {
+			p.printTextDiff(quotedOld, quotedNew)
 		}
 		return true
 	}

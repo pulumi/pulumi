@@ -16,6 +16,7 @@ package display
 
 import (
 	"bytes"
+	"encoding/json"
 	"math/rand"
 	"strings"
 	"testing"
@@ -598,14 +599,6 @@ func TestTextDiffLargeMultiLine(t *testing.T) {
 	assert.Contains(t, out, strings.SplitN(new, "\n", 2)[0])
 }
 
-func TestCountLines(t *testing.T) {
-	t.Parallel()
-
-	for s, want := range map[string]int{"": 0, "a": 1, "a\n": 1, "a\nb": 2, "a\nb\n": 2, "\n": 1} {
-		assert.Equal(t, want, countLines(s), "%q", s)
-	}
-}
-
 func TestTextDiffAtLimits(t *testing.T) {
 	t.Parallel()
 
@@ -622,4 +615,23 @@ func TestTextDiffAtLimits(t *testing.T) {
 			t, randomText(1, 20, maxLineDiffLines+1)+terminator, randomText(2, 20, maxLineDiffLines+1)+terminator, true)
 		assert.Less(t, len(out), 4096, "terminator %q", terminator)
 	}
+}
+
+func TestTextDiffLargeReformattedJSON(t *testing.T) {
+	t.Parallel()
+
+	values := make([]int, 20_000)
+	for i := range values {
+		values[i] = i
+	}
+	minified, err := json.Marshal(values)
+	require.NoError(t, err)
+	indented, err := json.MarshalIndent(values, "", "  ")
+	require.NoError(t, err)
+
+	// The values decode to the same JSON, so they are printed as replaced text, quoted once.
+	out := renderStringDiff(t, string(minified), string(indented), true)
+	assert.Contains(t, out, `"[0,1,2,3`)
+	assert.NotContains(t, out, `\"[`)
+	assert.Less(t, len(out), 4096)
 }
