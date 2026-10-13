@@ -2192,6 +2192,26 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 					return nil, fmt.Errorf("could not load provider for resource %v: %w", old.URN, err)
 				}
 
+				// A component that refers to this provider is never replaced with it (see
+				// calculateDependentReplacements), so it keeps referring to the old provider until it is
+				// registered again later in the program. Removing the old provider from the state now would
+				// leave that reference dangling and fail snapshot verification. Deleting a provider resource
+				// only unloads the plugin instance, so nothing outside the engine depends on when it
+				// happens: keep deleting the provider's custom dependents first, as above, but delete the
+				// old provider itself at the end of the deployment, as for a create-before-replace.
+				if sdkproviders.IsProviderType(old.Type) && !old.PendingReplacement &&
+					sg.hasUnregisteredComponentUsing(old) {
+					logging.V(7).Infof("Planner deferred deleting replaced provider '%v' because a component "+
+						"still refers to it", urn)
+					return append(
+						steps,
+						NewCreateReplacementStep(
+							sg.deployment, event, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, true,
+						),
+						NewReplaceStep(sg.deployment, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff, true),
+					), nil
+				}
+
 				// If the resource is already pending replacement we don't need to emit any step. The "old"
 				// currently pending replace resource will get removed from the state when the CreateReplacementStep is
 				// successful.
@@ -3349,6 +3369,24 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 type dependentReplace struct {
 	res  *pkgresource.State
 	keys []resource.PropertyKey
+}
+
+// hasUnregisteredComponentUsing reports whether a component resource in the old state that has not
+// been registered yet in this deployment refers to the given provider. Such a component keeps its
+// reference to the provider until the program registers it again.
+func (sg *stepGenerator) hasUnregisteredComponentUsing(provider *pkgresource.State) bool {
+	ref, err := sdkproviders.NewReference(provider.URN, provider.ID)
+	if err != nil {
+		return false
+	}
+	refString := ref.String()
+	for urn, res := range sg.deployment.olds {
+		if res.Custom || res.Provider != refString || sg.hasGeneratedStep(urn) {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 func (sg *stepGenerator) calculateDependentReplacements(root *pkgresource.State) ([]dependentReplace, error) {
