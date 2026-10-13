@@ -186,10 +186,7 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 
 	// Arrange.
 
-	p := &lt.TestPlan{
-		Project: "test-project",
-		Stack:   "test-stack",
-	}
+	p := &lt.TestPlan{}
 	project := p.GetProject()
 
 	// Set up the initial snapshot. We want to end up with the following starting state:
@@ -327,21 +324,11 @@ func TestProtectedDeleteChainsWithDuplicateDeletedResources(t *testing.T) {
 	require.Equal(t, "resB", snap.Resources[2].URN.Name())
 }
 
-// TestDeleteBeforeReplaceWithProtectedPendingDeleteDependent is a regression test for
-// https://github.com/pulumi/pulumi/issues/25014: when a delete-before-replace must delete a
-// dependent that is protected and already pending deletion (for example left over from an
-// earlier failed replacement), the engine used to schedule a plain delete step for it. The
-// protection check in DeleteStep.Apply refused the delete, breaking the replacement chain
-// and hanging the update. The pending-delete dependent is now deleted as part of the
-// replacement chain (like GenerateDeletes already does for pending-deletes), so the
-// replacement completes instead.
+// Regression test for https://github.com/pulumi/pulumi/issues/25014.
 func TestDeleteBeforeReplaceWithProtectedPendingDeleteDependent(t *testing.T) {
 	t.Parallel()
 
-	p := &lt.TestPlan{
-		Project: "test-project",
-		Stack:   "test-stack",
-	}
+	p := &lt.TestPlan{}
 
 	resAURN := p.NewURN("pkgA:m:typA", "resA", "")
 	resBURN := p.NewURN("pkgA:m:typA", "resB", "")
@@ -432,12 +419,8 @@ func TestDeleteBeforeReplaceWithProtectedPendingDeleteDependent(t *testing.T) {
 	snap := p.Run(t, old)
 
 	// resB is gone from the state and resA was replaced.
-	names := make([]string, 0, len(snap.Resources))
-	for _, r := range snap.Resources {
-		names = append(names, r.URN.Name())
-	}
-	assert.NotContains(t, names, "resB")
-	assert.Contains(t, names, "resA")
+	require.Len(t, snap.Resources, 2)
+	assert.Equal(t, "resA", snap.Resources[1].URN.Name())
 }
 
 // TestIgnoreProtect tests that a preview and up can delete protected resources when
