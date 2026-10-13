@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Report a missing `go` executable with one message that names the toolchain and links to install instructions
+time: 2026-10-13T10:01:00.000000+01:00

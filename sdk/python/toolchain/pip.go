@@ -34,6 +34,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -360,9 +361,12 @@ func CommandPath() (string /*pythonPath*/, string /*pythonCmd*/, error) {
 			pythonCmd, pythonPath, err = resolveWindowsExecutionAlias(pythonCmds)
 		}
 		if err != nil {
-			return "", "", fmt.Errorf(
-				"failed to locate any of %q on your PATH. Have you installed Python 3.6 or greater?",
-				pythonCmds)
+			return "", "", &executable.ToolchainNotFoundError{
+				Runtime:    "python",
+				Toolchain:  fmt.Sprintf("Python %d.%d or later", MinimumPythonVersion.Major, MinimumPythonVersion.Minor),
+				Programs:   pythonCmds,
+				InstallURL: "https://www.pulumi.com/docs/iac/languages-sdks/python/",
+			}
 		}
 	}
 	return pythonPath, pythonCmd, nil

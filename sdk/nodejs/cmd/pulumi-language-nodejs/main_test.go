@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -222,6 +223,39 @@ func TestGetRequiredPackages(t *testing.T) {
 		"foo": "v1.2.3",
 		"bar": "v4.5.6",
 	}, actual)
+}
+
+func TestGetRequiredPackagesWithoutRuntime(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+
+	dir := t.TempDir()
+	for _, tt := range []struct {
+		runtime  string
+		expected string
+	}{
+		{
+			runtime: "nodejs",
+			expected: "the nodejs runtime requires Node.js, but 'node' was not found on your PATH. " +
+				"See https://www.pulumi.com/docs/iac/languages-sdks/javascript/ for installation instructions",
+		},
+		{
+			runtime: "bun",
+			expected: "the bun runtime requires Bun, but 'bun' was not found on your PATH. " +
+				"See https://bun.sh/docs/installation for installation instructions",
+		},
+	} {
+		host := &nodeLanguageHost{runtime: tt.runtime}
+		_, err := host.GetRequiredPackages(t.Context(), &pulumirpc.GetRequiredPackagesRequest{
+			Info: &pulumirpc.ProgramInfo{
+				RootDirectory:    dir,
+				ProgramDirectory: dir,
+				EntryPoint:       ".",
+			},
+		})
+		var notFound *executable.ToolchainNotFoundError
+		require.ErrorAs(t, err, &notFound)
+		assert.Equal(t, tt.expected, err.Error())
+	}
 }
 
 func TestGetRequiredPackagesSymlinkCycles(t *testing.T) {

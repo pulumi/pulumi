@@ -45,7 +45,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"google.golang.org/grpc/codes"
 )
 
 const (
@@ -323,13 +325,22 @@ func GetRequiredPlugins(
 	//     later than we do (right now, we do it up front, but at that point we don't know the version).
 	deps, _, err := lang.GetRequiredPackages(ctx, info)
 	if err != nil {
-		return nil, fmt.Errorf("failed to discover plugin requirements: %w", err)
+		return nil, requirementsError("plugin", err)
 	}
 	for _, dep := range deps {
 		plugins = append(plugins, dep.PluginDescriptor)
 	}
 
 	return plugins, nil
+}
+
+// requirementsError wraps an error from the language host's requirements query. A failed precondition, such as a
+// missing toolchain, is already explained by the host and is returned as is.
+func requirementsError(what string, err error) error {
+	if rpcErr, ok := errors.AsType[*rpcerror.Error](err); ok && rpcErr.Code() == codes.FailedPrecondition {
+		return err
+	}
+	return fmt.Errorf("failed to discover %s requirements: %w", what, err)
 }
 
 // gatherPackagesFromProgram inspects the given program and returns the set of packages that the program requires to
@@ -347,7 +358,7 @@ func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plu
 
 	pkgs, specs, err := lang.GetRequiredPackages(plugctx.Request(), info)
 	if err != nil {
-		return nil, fmt.Errorf("failed to discover package requirements: %w", err)
+		return nil, requirementsError("package", err)
 	}
 	if len(specs) > 0 {
 		return nil, fmt.Errorf("language runtime %q returned %d unresolved package spec(s), "+
