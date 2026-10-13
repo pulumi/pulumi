@@ -1,4 +1,4 @@
 package "pick-call" {
   baseProviderName    = "pick-call"
-  baseProviderVersion = "56.0.0"
+  baseProviderVersion = "57.0.0"
 }

@@ -63,7 +63,7 @@ func (p *PickCallProvider) Configure(
 }
 
 func (p *PickCallProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	ver := semver.MustParse("56.0.0")
+	ver := semver.MustParse("57.0.0")
 	return plugin.PluginInfo{Version: &ver}, nil
 }
 
@@ -98,7 +98,7 @@ func (p *PickCallProvider) GetSchema(
 	}}
 	pkg := schema.PackageSpec{
 		Name:    "pick-call",
-		Version: "56.0.0",
+		Version: "57.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			"pick-call:index:Picker": picker,
 		},
