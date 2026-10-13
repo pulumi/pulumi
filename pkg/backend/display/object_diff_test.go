@@ -567,17 +567,16 @@ func renderStringDiff(t *testing.T, old, new string, truncateOutput bool) string
 	}
 }
 
-func TestTextDiffLarge(t *testing.T) {
+func TestTextDiffLimits(t *testing.T) {
 	t.Parallel()
 
 	bigOld := randomText(1, 1<<20, 1)
 	bigNew := randomText(2, 1<<20, 1)
-	bigEdited := bigOld[:1<<19] + "X" + bigOld[1<<19+1:]
 	longLinesOld := randomText(1, 100_000, 10)
 	longLinesNew := randomText(2, 100_000, 10)
 	lastNewLine := longLinesNew[strings.LastIndex(longLinesNew, "\n")+1:]
 	oneLongLineChanged := longLinesOld[:strings.LastIndex(longLinesOld, "\n")+1] + lastNewLine
-	values := make([]int, 200_000)
+	values := make([]int, 20_000)
 	for i := range values {
 		values[i] = i
 	}
@@ -592,45 +591,63 @@ func TestTextDiffLarge(t *testing.T) {
 		untruncated bool
 		contains    []string
 		notContains []string
-		minLen      int
-		maxLen      int
+		minLen      int // Set for values that are still diffed, which prints them in full.
+		maxLen      int // Set for values that are replaced or whose printed lines are truncated.
 	}{
 		{
-			name: "unrelated single line is replaced", old: bigOld, new: bigNew,
+			name: "single line over limit is replaced", old: bigOld, new: bigNew,
 			contains: []string{bigOld[:150] + "...", bigNew[:150] + "..."}, maxLen: 4096,
 		},
 		{
-			name: "unrelated single line is replaced in full", old: bigOld, new: bigNew, untruncated: true,
+			name: "single line over limit is replaced in full", old: bigOld, new: bigNew, untruncated: true,
 			contains: []string{bigOld, bigNew}, maxLen: 4 * (len(bigOld) + len(bigNew)),
 		},
 		{
-			name: "single line with one edit is diffed", old: bigOld, new: bigEdited,
-			minLen: len(bigOld),
+			name: "single line at limit is diffed",
+			old:  randomText(1, maxCharacterDiffLength, 1), new: randomText(2, maxCharacterDiffLength, 1),
+			minLen: maxCharacterDiffLength,
 		},
 		{
-			name: "unrelated lines are replaced",
-			old:  randomText(1, 30, 40_000), new: randomText(2, 30, 40_000),
+			name: "multi-line over limit is replaced",
+			old:  randomText(1, 20, maxLineDiffLines+1), new: randomText(2, 20, maxLineDiffLines+1),
 			contains: []string{" => "}, maxLen: 4096,
 		},
 		{
+			name: "multi-line over limit with trailing newline is replaced",
+			old:  randomText(1, 20, maxLineDiffLines+1) + "\n", new: randomText(2, 20, maxLineDiffLines+1) + "\n",
+			contains: []string{" => "}, maxLen: 4096,
+		},
+		{
+			name: "multi-line at limit is diffed",
+			old:  randomText(1, 20, maxLineDiffLines), new: randomText(2, 20, maxLineDiffLines),
+			minLen: 100_000,
+		},
+		{
+			name: "multi-line at limit with trailing newline is diffed",
+			old:  randomText(1, 20, maxLineDiffLines) + "\n", new: randomText(2, 20, maxLineDiffLines) + "\n",
+			minLen: 100_000,
+		},
+		{
 			name: "long line with trailing newline is line diffed", old: bigOld + "\n", new: bigNew + "\n",
-			contains: []string{bigOld[:150] + "...", bigNew[:150] + "..."}, maxLen: 4096,
+			contains:    []string{bigOld[:150] + "...", bigNew[:150] + "..."},
+			notContains: []string{" => "}, maxLen: 4096,
 		},
 		{
 			name: "long line with trailing newline on one side is line diffed", old: bigOld, new: bigNew + "\n",
-			contains: []string{bigOld[:150] + "...", bigNew[:150] + "..."}, maxLen: 4096,
+			contains:    []string{bigOld[:150] + "...", bigNew[:150] + "..."},
+			notContains: []string{" => "}, maxLen: 4096,
 		},
 		{
 			name: "long lines all changed are line diffed", old: longLinesOld, new: longLinesNew,
-			contains: []string{longLinesNew[:150] + "..."}, maxLen: 8192,
+			contains: []string{longLinesNew[:150] + "..."}, notContains: []string{" => "}, maxLen: 8192,
 		},
 		{
 			name: "one long line changed is line diffed", old: longLinesOld, new: oneLongLineChanged,
-			contains: []string{lastNewLine[:150] + "..."}, maxLen: 8192,
+			contains: []string{lastNewLine[:150] + "..."}, notContains: []string{" => "}, maxLen: 8192,
 		},
 		{
-			// The values decode to the same JSON, so the text is diffed and, on timeout, replaced and quoted once.
-			name: "reformatted JSON is replaced", old: string(minified), new: string(indented),
+			// The values decode to the same JSON, so the text is replaced and must be quoted only once.
+			name: "reformatted JSON over limit is replaced", old: string(minified), new: string(indented),
 			contains: []string{`"[0,1,2,3`}, notContains: []string{`\"[`}, maxLen: 4096,
 		},
 	}
