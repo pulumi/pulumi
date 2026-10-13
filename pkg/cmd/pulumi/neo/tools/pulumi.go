@@ -34,6 +34,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -243,6 +244,14 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		return failedResult(a, "", fmt.Errorf("reading project: %w", err))
 	}
 
+	refresh := false
+	if isPreview {
+		refresh, err = operations.GetRefreshOption(proj, os.Getenv("PULUMI_OPTION_REFRESH"))
+		if err != nil {
+			return failedResult(a, "", err)
+		}
+	}
+
 	// Resolve the backend fresh per tool call, the same way `pulumi preview`/`pulumi up`
 	// do (stack.RequireStack -> cmdBackend.CurrentBackend -> Login). Reusing the backend
 	// frozen at `pulumi neo` startup would pin the access token resolved back then, so the
@@ -303,6 +312,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		Engine: engine.UpdateOptions{
 			Experimental: true,
 			Autonamer:    autonamer,
+			Refresh:      refresh,
 		},
 		Display: backendDisplay.Options{
 			// Mute the backend's own progress renderer so it doesn't fight the Neo TUI.
