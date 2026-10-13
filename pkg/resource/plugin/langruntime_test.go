@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -26,6 +27,8 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestMakeExecutablePromptChoices(t *testing.T) {
@@ -54,6 +57,8 @@ func TestMakeExecutablePromptChoices(t *testing.T) {
 type MockLanguageRuntimeClient struct {
 	RunPluginF (func(ctx context.Context, info *pulumirpc.RunPluginRequest,
 	) (pulumirpc.LanguageRuntime_RunPluginClient, error))
+	InstallDependenciesF (func(ctx context.Context, req *pulumirpc.InstallDependenciesRequest,
+	) (pulumirpc.LanguageRuntime_InstallDependenciesClient, error))
 }
 
 func (m *MockLanguageRuntimeClient) RunPlugin(
@@ -89,7 +94,7 @@ func (m *MockLanguageRuntimeClient) GetPluginInfo(
 func (m *MockLanguageRuntimeClient) InstallDependencies(
 	ctx context.Context, in *pulumirpc.InstallDependenciesRequest, opts ...grpc.CallOption,
 ) (pulumirpc.LanguageRuntime_InstallDependenciesClient, error) {
-	panic("not implemented")
+	return m.InstallDependenciesF(ctx, in)
 }
 
 func (m *MockLanguageRuntimeClient) RuntimeOptionsPrompts(
@@ -209,4 +214,58 @@ func TestRunPluginPassesLoaderAddress(t *testing.T) {
 		LoaderAddress:    expectedLoaderAddr,
 	})
 	require.ErrorIs(t, err, assert.AnError)
+}
+
+type mockInstallDependenciesClient struct {
+	grpc.ClientStream
+	RecvF func() (*pulumirpc.InstallDependenciesResponse, error)
+}
+
+func (m *mockInstallDependenciesClient) Recv() (*pulumirpc.InstallDependenciesResponse, error) {
+	return m.RecvF()
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/25138. A failure while installing dependencies
+// is reported once, through the done channel, rather than also through both output pipes.
+func TestInstallDependenciesReportsErrorOnce(t *testing.T) {
+	t.Parallel()
+
+	responses := []*pulumirpc.InstallDependenciesResponse{
+		{Stdout: []byte("Installing dependencies...\n")},
+	}
+	host := &langhost{
+		runtime: "test",
+		plug:    nil,
+		client: &MockLanguageRuntimeClient{
+			InstallDependenciesF: func(
+				context.Context, *pulumirpc.InstallDependenciesRequest,
+			) (pulumirpc.LanguageRuntime_InstallDependenciesClient, error) {
+				return &mockInstallDependenciesClient{
+					RecvF: func() (*pulumirpc.InstallDependenciesResponse, error) {
+						if len(responses) == 0 {
+							return nil, status.Error(codes.Unknown, "unable to find program: dotnet")
+						}
+						resp := responses[0]
+						responses = responses[1:]
+						return resp, nil
+					},
+				}, nil
+			},
+		},
+	}
+
+	stdout, stderr, done, err := host.InstallDependencies(t.Context(), InstallDependenciesRequest{
+		Info: NewProgramInfo("/tmp", "/tmp", ".", nil),
+	})
+	require.NoError(t, err)
+
+	out, err := io.ReadAll(stdout)
+	require.NoError(t, err)
+	assert.Equal(t, "Installing dependencies...\n", string(out))
+
+	errOut, err := io.ReadAll(stderr)
+	require.NoError(t, err)
+	assert.Empty(t, errOut)
+
+	assert.ErrorContains(t, <-done, "unable to find program: dotnet")
 }
