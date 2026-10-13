@@ -122,7 +122,7 @@ func (t *ListType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *ListType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *ListType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ListType:
@@ -154,14 +154,14 @@ func (t *ListType) string(seen map[Type]struct{}) string {
 	return fmt.Sprintf("list(%s)", t.ElementType.string(seen))
 }
 
-func (t *ListType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *ListType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		switch other := other.(type) {
 		case *TupleType:
 			// If the other element is a list type, prefer the list type, but unify the element type.
 			elementType, conversionKind := t.ElementType, SafeConversion
 			for _, other := range other.ElementTypes {
-				element, ck := elementType.unify(other)
+				element, ck := elementType.unify(other, seen)
 				if ck < conversionKind {
 					conversionKind = ck
 				}
@@ -170,15 +170,15 @@ func (t *ListType) unify(other Type) (Type, ConversionKind) {
 			return NewListType(elementType), conversionKind
 		case *SetType:
 			// If the other element is a set type, prefer the list type, but unify the element types.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType)
+			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
 			return NewListType(elementType), conversionKind
 		case *ListType:
 			// If the other type is a list type, unify based on the element type.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType)
+			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
 			return NewListType(elementType), conversionKind
 		default:
 			// Prefer the list type.
-			kind, _ := t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, seen)
 			return t, kind
 		}
 	})

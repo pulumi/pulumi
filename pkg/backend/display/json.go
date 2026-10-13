@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // byteStringDisplay renders a string containing bytes that are not valid UTF-8 as b"<base64>",
@@ -45,26 +46,28 @@ func byteStringDisplay(s string) string {
 // massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
 // not true any secret values are replaced with "[secret]". Strings containing bytes that are not valid UTF-8 are
 // replaced with their b"<base64>" rendering.
-func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.PropertyValue {
+func massagePropertyValue(v property.Value, showSecrets bool) property.Value {
 	switch {
-	case v.IsString() && !utf8.ValidString(v.StringValue()):
-		return resource.NewProperty(byteStringDisplay(v.StringValue()))
+	case v.IsString() && !utf8.ValidString(v.AsString()):
+		return property.New(byteStringDisplay(v.AsString()))
 	case v.IsArray():
-		new := make([]resource.PropertyValue, len(v.ArrayValue()))
-		for i, e := range v.ArrayValue() {
+		arr := v.AsArray()
+		new := make([]property.Value, arr.Len())
+		for i, e := range arr.All {
 			new[i] = massagePropertyValue(e, showSecrets)
 		}
-		return resource.NewProperty(new)
-	case v.IsObject():
-		new := make(resource.PropertyMap, len(v.ObjectValue()))
-		for k, e := range v.ObjectValue() {
+		return property.New(new)
+	case v.IsMap():
+		obj := v.AsMap()
+		new := make(map[string]property.Value, obj.Len())
+		for k, e := range obj.All {
 			new[k] = massagePropertyValue(e, showSecrets)
 		}
-		return resource.NewProperty(new)
-	case v.IsSecret() && showSecrets:
-		return massagePropertyValue(v.SecretValue().Element, showSecrets)
-	case v.IsSecret():
-		return resource.NewProperty("[secret]")
+		return property.New(new)
+	case v.Secret() && showSecrets:
+		return massagePropertyValue(v.WithSecret(false), showSecrets)
+	case v.Secret():
+		return property.New("[secret]")
 	default:
 		return v
 	}
@@ -74,12 +77,12 @@ func massagePropertyValue(v resource.PropertyValue, showSecrets bool) resource.P
 // This allows us to serialize the resulting map using our existing serialization logic we use for deployments, to
 // produce sane output for stackOutputs.  If we did not do this, SecretValues would be serialized as objects
 // with the signature key and value.
-func MassageSecrets(m resource.PropertyMap, showSecrets bool) resource.PropertyMap {
-	new := make(resource.PropertyMap, len(m))
-	for k, e := range m {
+func MassageSecrets(m property.Map, showSecrets bool) property.Map {
+	new := make(map[string]property.Value, m.Len())
+	for k, e := range m.All {
 		new[k] = massagePropertyValue(e, showSecrets)
 	}
-	return new
+	return property.NewMap(new)
 }
 
 // stateForJSONOutput prepares some resource's state for JSON output. This includes filtering the output based
@@ -89,8 +92,8 @@ func stateForJSONOutput(s *pkgresource.State, opts Options) *pkgresource.State {
 	var outputs resource.PropertyMap
 	if !isRootURN(s.URN) || !opts.SuppressOutputs {
 		// For now, replace any secret properties as the string [secret] and then serialize what we have.
-		inputs = MassageSecrets(s.Inputs, false)
-		outputs = MassageSecrets(s.Outputs, false)
+		inputs = resource.ToResourcePropertyMap(MassageSecrets(resource.FromResourcePropertyMap(s.Inputs), false))
+		outputs = resource.ToResourcePropertyMap(MassageSecrets(resource.FromResourcePropertyMap(s.Outputs), false))
 	} else {
 		// If we're suppressing outputs, don't show the root stack properties.
 		inputs = resource.PropertyMap{}

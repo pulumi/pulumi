@@ -42,7 +42,6 @@
         {
             "path": ["refresh"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -137,7 +136,6 @@
         {
             "path": ["whoami"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "json": { "omit": true, "preset": true }
             }
@@ -170,12 +168,6 @@
         },
         {
             "path": ["console"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["convert"],
             "propagate": true,
             "exclude": true,
             "flags": {}
@@ -230,12 +222,6 @@
         },
         {
             "path": ["insights"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["install"],
             "propagate": true,
             "exclude": true,
             "flags": {}

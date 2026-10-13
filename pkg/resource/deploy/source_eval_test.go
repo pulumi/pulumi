@@ -73,6 +73,9 @@ type mockResmon struct {
 	ReadResourceF func(ctx context.Context,
 		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
 
+	ExistsResourceF func(ctx context.Context,
+		req *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error)
+
 	RegisterResourceF func(ctx context.Context,
 		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
 
@@ -128,6 +131,15 @@ func (rm *mockResmon) ReadResource(ctx context.Context,
 ) (*pulumirpc.ReadResourceResponse, error) {
 	if rm.ReadResourceF != nil {
 		return rm.ReadResourceF(ctx, req)
+	}
+	panic("not implemented")
+}
+
+func (rm *mockResmon) ExistsResource(ctx context.Context,
+	req *pulumirpc.ExistsResourceRequest,
+) (*pulumirpc.ExistsResourceResponse, error) {
+	if rm.ExistsResourceF != nil {
+		return rm.ExistsResourceF(ctx, req)
 	}
 	panic("not implemented")
 }

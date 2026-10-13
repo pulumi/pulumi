@@ -21,7 +21,6 @@ import (
 	"io"
 	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -40,11 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
-
-// The credentials preflight may probe cloud metadata services or STS-like endpoints; timeouts on
-// hosts without instance metadata are the slow path, so give the check a generous but bounded budget.
-// The budget covers plugin launch, GetSchema, CheckConfig and Configure for every opted-in package.
-const defaultCredentialsPreflightTimeout = 15 * time.Second
 
 // cloudProvider describes a provider package that opted into the `pulumi new` credentials
 // preflight through its schema.
@@ -114,13 +108,8 @@ func preflightCloudCredentials(
 		return
 	}
 
-	// Providers send their RPCs on the plugin context's base context rather than the
-	// context passed to each call, so the plugin context runNew already has cannot carry a
-	// deadline for this check. Create a second context on the same host instead, so that
-	// plugin launch, GetSchema, CheckConfig and Configure all share one deadline.
-	tctx, cancel := context.WithTimeout(ctx, defaultCredentialsPreflightTimeout)
-	defer cancel()
-	pctx, err := plugin.NewContextWithHost(tctx, sink, sink, host, root, root, nil)
+	// The check has its own plugin context so that the providers it launches are released when it is done.
+	pctx, err := plugin.NewContextWithHost(ctx, sink, sink, host, root, root, nil)
 	if err != nil {
 		slog.DebugContext(ctx, "skipping credentials check", "err", err)
 		return
@@ -132,10 +121,10 @@ func preflightCloudCredentials(
 		if pkg.Kind != apitype.ResourcePlugin || pkg.ExtensionParameterization != nil {
 			continue
 		}
-		if tctx.Err() != nil {
+		if ctx.Err() != nil {
 			return
 		}
-		pf.checkPackage(tctx, pkg)
+		pf.checkPackage(ctx, pkg)
 	}
 }
 
@@ -205,7 +194,7 @@ func cloudProviderFromSchema(
 
 // probeCredentials calls the cloud provider's CheckConfig and then Configure, which is
 // where providers validate credentials and initialise their clients. It returns nil when
-// both succeed, and also when ctx expires, in which case the check stays silent.
+// both succeed, and also when ctx is cancelled, in which case the check stays silent.
 func probeCredentials(
 	ctx context.Context, cp cloudProvider, prov plugin.Provider, news property.Map,
 ) *credentialsProblem {

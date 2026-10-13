@@ -4084,3 +4084,34 @@ func TestNewGenerateOnlyInSubDir(t *testing.T) {
 	require.Contains(t, string(contents), "name: sub-project")
 	require.Contains(t, string(contents), "description: A sub-project for testing")
 }
+
+func TestStackSelectedThroughSymlinkedWorkDir(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks require elevated privileges on Windows")
+	}
+
+	root := t.TempDir()
+	t.Setenv("PULUMI_HOME", filepath.Join(root, "home"))
+	t.Setenv("PULUMI_BACKEND_URL", "file://"+filepath.ToSlash(filepath.Join(root, "state")))
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+
+	realDir := filepath.Join(root, "real")
+	linkDir := filepath.Join(root, "link")
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "state"), 0o755))
+	require.NoError(t, os.Mkdir(realDir, 0o755))
+	require.NoError(t, os.Symlink(realDir, linkDir))
+	require.NoError(t, os.WriteFile(filepath.Join(realDir, "Pulumi.yaml"), []byte("name: p\nruntime: yaml\n"), 0o600))
+
+	cmd := exec.Command("pulumi", "stack", "init", "dev")
+	cmd.Dir = linkDir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+
+	ws, err := NewLocalWorkspace(t.Context(), WorkDir(linkDir))
+	require.NoError(t, err)
+
+	stack, err := ws.Stack(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, stack)
+	require.Equal(t, "dev", stack.Name)
+}

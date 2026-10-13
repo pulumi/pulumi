@@ -588,7 +588,7 @@ func parseImportFile(
 					pusherrf("could not deserialize provider inputs for %v: %w",
 						describeResource(i, spec), err)
 				} else {
-					imp.ProviderInputs = providerInputs
+					imp.ProviderInputs = resource.FromResourcePropertyMap(providerInputs)
 				}
 			}
 		}
@@ -604,7 +604,7 @@ func parseImportFile(
 					pusherrf("could not deserialize provider inputs for %v: %w",
 						describeResource(i, spec), err)
 				} else {
-					imp.Inputs = inputs
+					imp.Inputs = resource.FromResourcePropertyMap(inputs)
 				}
 			}
 		} else {
@@ -613,7 +613,7 @@ func parseImportFile(
 				if err != nil {
 					pusherrf("could not deserialize inputs for %v: %w", describeResource(i, spec), err)
 				} else {
-					imp.Inputs = inputs
+					imp.Inputs = resource.FromResourcePropertyMap(inputs)
 				}
 			}
 			if spec.Outputs != nil {
@@ -621,7 +621,7 @@ func parseImportFile(
 				if err != nil {
 					pusherrf("could not deserialize outputs for %v: %w", describeResource(i, spec), err)
 				} else {
-					imp.Outputs = outputs
+					imp.Outputs = resource.FromResourcePropertyMap(outputs)
 				}
 			}
 		}
@@ -662,12 +662,12 @@ func parseImportFile(
 			}
 		}
 
-		for field, props := range map[string]resource.PropertyMap{
+		for field, props := range map[string]property.Map{
 			"inputs":         imp.Inputs,
 			"outputs":        imp.Outputs,
 			"providerInputs": imp.ProviderInputs,
 		} {
-			if props.ContainsUnknowns() {
+			if props.HasComputed() {
 				pusherrf("the %v for %v contain unknown values; fill them in before importing",
 					field, describeResource(i, spec))
 			}

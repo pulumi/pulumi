@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type displayedStep struct {
@@ -207,13 +208,13 @@ func (s displayedStep) metadata(showSecrets bool) engine.StepEventMetadata {
 	}
 }
 
-func operationState(urn resource.URN, id resource.ID, inputs, outputs resource.PropertyMap) *pkgresource.State {
+func operationState(urn resource.URN, id resource.ID, inputs, outputs property.Map) *pkgresource.State {
 	return &pkgresource.State{
 		Type:    urn.Type(),
 		URN:     urn,
 		Custom:  true,
 		ID:      id,
-		Inputs:  inputs,
-		Outputs: outputs,
+		Inputs:  resource.ToResourcePropertyMap(inputs),
+		Outputs: resource.ToResourcePropertyMap(outputs),
 	}
 }

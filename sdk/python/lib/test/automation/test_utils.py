@@ -42,11 +42,11 @@ def stack_cleanup(stack: Stack, destroy: bool = True):
 
 
 def get_test_org():
+    if not os.getenv("PULUMI_ACCESS_TOKEN"):
+        return "organization"
     env_var = os.getenv("PULUMI_TEST_ORG")
     if env_var is not None:
         return env_var
-    if os.getenv("PULUMI_ACCESS_TOKEN") is None:
-        return "organization"
     test_org = "moolumi"
     return test_org
 

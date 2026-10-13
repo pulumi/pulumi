@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Report a missing `lookup` default at bind time instead of failing when the program runs
+time: 2026-09-23T17:14:36.77809+02:00

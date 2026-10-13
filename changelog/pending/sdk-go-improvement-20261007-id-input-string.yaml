@@ -1,0 +1,4 @@
+component: sdk/go
+kind: improvement
+body: Make `IDInput` and `URNInput` satisfy `StringInput`, and `AssetInput` and `ArchiveInput` satisfy `AssetOrArchiveInput`
+time: 2026-10-07T16:00:00.000000+02:00

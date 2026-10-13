@@ -1,0 +1,4 @@
+component: programgen/go
+kind: fix
+body: Type object literals of outputs as `pulumi.StringMap` and friends so they compile and export without a cast
+time: 2026-10-07T18:00:00.000000+02:00

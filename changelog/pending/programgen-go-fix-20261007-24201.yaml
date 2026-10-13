@@ -1,0 +1,4 @@
+component: programgen/go
+kind: fix
+body: Remove redundant `ToIDOutput().ToStringOutput()` conversions when passing resource IDs to string inputs
+time: 2026-10-07T16:00:01.000000+02:00
