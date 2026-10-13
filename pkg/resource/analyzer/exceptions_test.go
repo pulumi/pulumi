@@ -164,7 +164,7 @@ func TestParsePolicyExceptionsSkipsInvalid(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, warnings, 1)
 	assert.Contains(t, warnings[0], `policy exception "bad"`)
-	assert.Contains(t, warnings[0], "ignoring it")
+	assert.Contains(t, warnings[0], "ignoring it. Try upgrading the Pulumi CLI")
 	assert.Equal(t, 1, set.Len())
 	assert.Equal(t, "good", matchID(set, "p", accessLogsURN))
 }

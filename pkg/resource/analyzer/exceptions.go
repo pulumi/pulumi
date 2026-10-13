@@ -142,7 +142,12 @@ func ParsePolicyExceptions(
 			if strict {
 				return nil, nil, err
 			}
-			warnings = append(warnings, err.Error()+"; ignoring it")
+			warning := err.Error() + "; ignoring it"
+			if errors.As(err, new(fieldError)) {
+				// The service may send fields that a newer CLI supports.
+				warning += ". Try upgrading the Pulumi CLI"
+			}
+			warnings = append(warnings, warning)
 			continue
 		}
 		set.exceptions = append(set.exceptions, e)
@@ -240,15 +245,20 @@ func objectFields(raw json.RawMessage) (map[string]json.RawMessage, error) {
 	return fields, nil
 }
 
+// fieldError reports a field that this version doesn't recognize.
+type fieldError struct{ msg string }
+
+func (e fieldError) Error() string { return e.msg }
+
 // checkFields returns an error for the first field that isn't in known.
 func checkFields(fields map[string]json.RawMessage, known, reserved []string) error {
 	for _, f := range slices.Sorted(maps.Keys(fields)) {
 		switch {
 		case slices.Contains(known, f):
 		case slices.Contains(reserved, f):
-			return fmt.Errorf(`%q isn't supported yet; list one "policy" and "urn" per entry`, f)
+			return fieldError{fmt.Sprintf(`%q isn't supported yet; list one "policy" and "urn" per entry`, f)}
 		default:
-			return fmt.Errorf("unknown field %q", f)
+			return fieldError{fmt.Sprintf("unknown field %q", f)}
 		}
 	}
 	return nil
