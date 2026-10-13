@@ -40,6 +40,400 @@ class API:
             args, cwd or os.getcwd(), additional_env or {}, on_output, on_error
         )
 
+    def api_describe(
+        self,
+        path_or_operation_id: str,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: bool = False,
+        all: bool = False,
+        body: Optional[str] = None,
+        dry_run: bool = False,
+        envelope_version: Optional[int] = None,
+        field: Optional[list[str]] = None,
+        header: Optional[list[str]] = None,
+        include: bool = False,
+        input: Optional[str] = None,
+        method: Optional[str] = None,
+        output: Optional[str] = None,
+        raw_field: Optional[list[str]] = None,
+        refresh_spec: bool = False,
+        silent: bool = False,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi api describe`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Dump full request and response to stderr
+        :param all: Follow pagination cursors and emit the combined result
+        :param body: Inline request body sent verbatim (default Content-Type: application/json). Mutually exclusive with --input
+        :param dry_run: Print the resolved request without sending it
+        :param envelope_version: Pin the JSON envelope version the caller expects
+        :param field: Typed key=value; numbers/bools/null auto-detected; JSON object/array literals parsed; @file reads file; @- reads stdin. Sent as query params on GET/HEAD, JSON body fields otherwise
+        :param header: Custom HTTP header `Key: Value` (repeatable)
+        :param include: Include HTTP status line and response headers in output
+        :param input: Read request body from file; `-` reads stdin
+        :param method: HTTP method to look up (a path can map to multiple ops by method)
+        :param output: Output format: default is a human-readable schema render; `markdown` emits a markdown document (piping friendly, renders in IDEs/glow); `json` emits the stable agent envelope
+        :param raw_field: String key=value with no type coercion. Sent as query params on GET/HEAD, JSON body fields otherwise
+        :param refresh_spec: Re-fetch the OpenAPI spec from Pulumi Cloud and overwrite the local cache
+        :param silent: Do not print the response body on success; errors are still printed and exit non-zero
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("api")
+        __final.append("describe")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose:
+            __flags.append("--verbose")
+        if all:
+            __flags.append("--all")
+        if body is not None:
+            __flags.extend(["--body", str(body)])
+        if dry_run:
+            __flags.append("--dry-run")
+        if envelope_version is not None:
+            __flags.extend(["--envelope-version", str(envelope_version)])
+        for __item in field or []:
+            __flags.extend(["--field", str(__item)])
+        for __item in header or []:
+            __flags.extend(["--header", str(__item)])
+        if include:
+            __flags.append("--include")
+        if input is not None:
+            __flags.extend(["--input", str(input)])
+        if method is not None:
+            __flags.extend(["--method", str(method)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        for __item in raw_field or []:
+            __flags.extend(["--raw-field", str(__item)])
+        if refresh_spec:
+            __flags.append("--refresh-spec")
+        if silent:
+            __flags.append("--silent")
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        __arguments.append(str(path_or_operation_id))
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def api_list(
+        self,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: bool = False,
+        all: bool = False,
+        body: Optional[str] = None,
+        dry_run: bool = False,
+        envelope_version: Optional[int] = None,
+        field: Optional[list[str]] = None,
+        header: Optional[list[str]] = None,
+        include: bool = False,
+        input: Optional[str] = None,
+        method: Optional[str] = None,
+        output: Optional[str] = None,
+        raw_field: Optional[list[str]] = None,
+        refresh_spec: bool = False,
+        silent: bool = False,
+        filter: Optional[str] = None,
+        include_deprecated: bool = False,
+        include_preview: bool = False,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi api list`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Dump full request and response to stderr
+        :param all: Follow pagination cursors and emit the combined result
+        :param body: Inline request body sent verbatim (default Content-Type: application/json). Mutually exclusive with --input
+        :param dry_run: Print the resolved request without sending it
+        :param envelope_version: Pin the JSON envelope version the caller expects
+        :param field: Typed key=value; numbers/bools/null auto-detected; JSON object/array literals parsed; @file reads file; @- reads stdin. Sent as query params on GET/HEAD, JSON body fields otherwise
+        :param header: Custom HTTP header `Key: Value` (repeatable)
+        :param include: Include HTTP status line and response headers in output
+        :param input: Read request body from file; `-` reads stdin
+        :param method: HTTP method (default GET, POST when body fields are present)
+        :param output: Output format: `table` (human-readable, default when interactive), `json` (stable agent envelope, default when non-interactive). Use --output=table to keep the table when redirecting.
+        :param raw_field: String key=value with no type coercion. Sent as query params on GET/HEAD, JSON body fields otherwise
+        :param refresh_spec: Re-fetch the OpenAPI spec from Pulumi Cloud and overwrite the local cache
+        :param silent: Do not print the response body on success; errors are still printed and exit non-zero
+        :param filter: Show only operations whose ID, path, tag, summary, or description contains this text (case-insensitive)
+        :param include_deprecated: Include endpoints marked as deprecated
+        :param include_preview: Include endpoints marked as preview
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("api")
+        __final.append("list")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose:
+            __flags.append("--verbose")
+        if all:
+            __flags.append("--all")
+        if body is not None:
+            __flags.extend(["--body", str(body)])
+        if dry_run:
+            __flags.append("--dry-run")
+        if envelope_version is not None:
+            __flags.extend(["--envelope-version", str(envelope_version)])
+        for __item in field or []:
+            __flags.extend(["--field", str(__item)])
+        for __item in header or []:
+            __flags.extend(["--header", str(__item)])
+        if include:
+            __flags.append("--include")
+        if input is not None:
+            __flags.extend(["--input", str(input)])
+        if method is not None:
+            __flags.extend(["--method", str(method)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        for __item in raw_field or []:
+            __flags.extend(["--raw-field", str(__item)])
+        if refresh_spec:
+            __flags.append("--refresh-spec")
+        if silent:
+            __flags.append("--silent")
+        if filter is not None:
+            __flags.extend(["--filter", str(filter)])
+        if include_deprecated:
+            __flags.append("--include-deprecated")
+        if include_preview:
+            __flags.append("--include-preview")
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
+    def api(
+        self,
+        *,
+        color: Optional[str] = None,
+        disable_integrity_checking: bool = False,
+        fully_qualify_stack_names: bool = False,
+        logflow: bool = False,
+        logtostderr: bool = False,
+        memprofilerate: Optional[int] = None,
+        otel_traces: Optional[str] = None,
+        profiling: Optional[str] = None,
+        tracing: Optional[str] = None,
+        tracing_header: Optional[str] = None,
+        verbose: bool = False,
+        all: bool = False,
+        body: Optional[str] = None,
+        dry_run: bool = False,
+        envelope_version: Optional[int] = None,
+        field: Optional[list[str]] = None,
+        header: Optional[list[str]] = None,
+        include: bool = False,
+        input: Optional[str] = None,
+        method: Optional[str] = None,
+        output: Optional[str] = None,
+        raw_field: Optional[list[str]] = None,
+        refresh_spec: bool = False,
+        silent: bool = False,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ):
+        """Run `pulumi api`.
+
+        :param color: Colorize output. Choices are: always, never, raw, auto
+        :param disable_integrity_checking: Disable integrity checking of checkpoint files
+        :param fully_qualify_stack_names: Show fully-qualified stack names
+        :param logflow: Flow log settings to child processes (like plugins)
+        :param logtostderr: Log to stderr instead of to files
+        :param memprofilerate: Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate
+        :param otel_traces: Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
+        :param profiling: Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
+        :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
+        :param tracing_header: Include the tracing header with the given contents.
+        :param verbose: Dump full request and response to stderr
+        :param all: Follow pagination cursors and emit the combined result
+        :param body: Inline request body sent verbatim (default Content-Type: application/json). Mutually exclusive with --input
+        :param dry_run: Print the resolved request without sending it
+        :param envelope_version: Pin the JSON envelope version the caller expects
+        :param field: Typed key=value; numbers/bools/null auto-detected; JSON object/array literals parsed; @file reads file; @- reads stdin. Sent as query params on GET/HEAD, JSON body fields otherwise
+        :param header: Custom HTTP header `Key: Value` (repeatable)
+        :param include: Include HTTP status line and response headers in output
+        :param input: Read request body from file; `-` reads stdin
+        :param method: HTTP method (default GET, POST when body fields are present)
+        :param output: Drive content negotiation and rendering. Default uses the op's primary response content type (usually JSON). `json` or `markdown` request that format via the Accept header — rejected if the op's spec doesn't declare it. `raw` keeps the op's default Accept and writes the body through unchanged.
+        :param raw_field: String key=value with no type coercion. Sent as query params on GET/HEAD, JSON body fields otherwise
+        :param refresh_spec: Re-fetch the OpenAPI spec from Pulumi Cloud and overwrite the local cache
+        :param silent: Do not print the response body on success; errors are still printed and exit non-zero
+        :param cwd: Working directory to run the command in.
+        :param additional_env: Additional environment variables to set when running the command.
+        :param on_output: A callback to invoke when the command outputs stdout data.
+        :param on_error: A callback to invoke when the command outputs stderr data."""
+        __final = []
+        __final.append("api")
+        __flags = []
+        if color is not None:
+            __flags.extend(["--color", str(color)])
+        if disable_integrity_checking:
+            __flags.append("--disable-integrity-checking")
+        if fully_qualify_stack_names:
+            __flags.append("--fully-qualify-stack-names")
+        if logflow:
+            __flags.append("--logflow")
+        if logtostderr:
+            __flags.append("--logtostderr")
+        if memprofilerate is not None:
+            __flags.extend(["--memprofilerate", str(memprofilerate)])
+        if otel_traces is not None:
+            __flags.extend(["--otel-traces", str(otel_traces)])
+        if profiling is not None:
+            __flags.extend(["--profiling", str(profiling)])
+        if tracing is not None:
+            __flags.extend(["--tracing", str(tracing)])
+        if tracing_header is not None:
+            __flags.extend(["--tracing-header", str(tracing_header)])
+        if verbose:
+            __flags.append("--verbose")
+        if all:
+            __flags.append("--all")
+        if body is not None:
+            __flags.extend(["--body", str(body)])
+        if dry_run:
+            __flags.append("--dry-run")
+        if envelope_version is not None:
+            __flags.extend(["--envelope-version", str(envelope_version)])
+        for __item in field or []:
+            __flags.extend(["--field", str(__item)])
+        for __item in header or []:
+            __flags.extend(["--header", str(__item)])
+        if include:
+            __flags.append("--include")
+        if input is not None:
+            __flags.extend(["--input", str(input)])
+        if method is not None:
+            __flags.extend(["--method", str(method)])
+        if output is not None:
+            __flags.extend(["--output", str(output)])
+        for __item in raw_field or []:
+            __flags.extend(["--raw-field", str(__item)])
+        if refresh_spec:
+            __flags.append("--refresh-spec")
+        if silent:
+            __flags.append("--silent")
+        __final.extend(__flags)
+        __arguments: list[str] = []
+        if __arguments:
+            __final.append("--")
+            __final.extend(__arguments)
+        return self._run(
+            __final,
+            cwd=cwd,
+            additional_env=additional_env,
+            on_output=on_output,
+            on_error=on_error,
+        )
+
     def cancel(
         self,
         stack_name: Optional[str] = None,
