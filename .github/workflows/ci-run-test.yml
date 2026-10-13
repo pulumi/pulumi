@@ -81,6 +81,7 @@ env:
   # We're hitting a lot of github limits because of deploytest trying to auto install plugins, skip that for now.
   PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION: "true"
   PYTHON: python
+  UV_PYTHON_PREFERENCE: only-system
   GO_TEST_PARALLELISM: 8
   GO_TEST_PKG_PARALLELISM: 2
   GO_TEST_SHUFFLE: off
