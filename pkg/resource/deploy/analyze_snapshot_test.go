@@ -588,7 +588,10 @@ func TestAnalyzeSnapshot_ExceptedViolations(t *testing.T) {
 		},
 	}
 	exceptions, _, err := resourceanalyzer.ParsePolicyExceptionsBlock(
-		json.RawMessage(`{"EXC-1": {"policies": ["p"], "stacks": ["project/stack"], "reason": "r"}}`), true)
+		json.RawMessage(`{"EXC-1": {"reason": "r", "match": [
+			{"policy": "p", "urn": "`+string(urn)+`"},
+			{"policy": "p", "urn": "`+string(resource.DefaultRootStackURN("stack", "project"))+`"}
+		]}}`), true)
 	require.NoError(t, err)
 
 	events := &recordingPolicyEvents{}

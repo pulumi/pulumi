@@ -1301,7 +1301,7 @@ func TestParsePolicyPackConfigExtractsExceptions(t *testing.T) {
 	file, _, err := parsePolicyPackConfig([]byte(`{
 		"all": "mandatory",
 		"environments": ["policy/shared"],
-		"exceptions": {"a": {"policies": ["p"], "stacks": ["web/prod"], "reason": "r"}}
+		"exceptions": {"a": {"reason": "r", "match": [{"policy": "p", "urn": "urn:pulumi:prod::web::pkg:index:R::r"}]}}
 	}`))
 	require.NoError(t, err)
 	assert.Equal(t, []string{"policy/shared"}, file.Environments)
@@ -1321,7 +1321,7 @@ func TestLoadPolicyPackConfigFromFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(file, []byte(`{
 		"p": "advisory",
 		"environments": ["policy/shared"],
-		"exceptions": {"a": {"policies": ["p"], "stacks": ["web/prod"], "reason": "r"}}
+		"exceptions": {"a": {"reason": "r", "match": [{"policy": "p", "urn": "urn:pulumi:prod::web::pkg:index:R::r"}]}}
 	}`), 0o600))
 
 	f, warnings, err := LoadPolicyPackConfigFromFile(file)
@@ -1332,7 +1332,7 @@ func TestLoadPolicyPackConfigFromFile(t *testing.T) {
 	assert.Equal(t, 1, f.Exceptions.Len())
 }
 
-func TestLoadPolicyPackConfigFromFileExceptionErrorsAndWarnings(t *testing.T) {
+func TestLoadPolicyPackConfigFromFileExceptionErrors(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -1344,14 +1344,12 @@ func TestLoadPolicyPackConfigFromFileExceptionErrorsAndWarnings(t *testing.T) {
 
 	// A malformed exception in a local file is an error.
 	_, _, err := LoadPolicyPackConfigFromFile(write("bad.json",
-		`{"exceptions": {"a": {"policies": ["p"]}}}`))
-	assert.ErrorContains(t, err, `"reason" is required`)
+		`{"exceptions": {"a": {"match": [{"policy": "p", "urn": "urn:pulumi:prod::web::pkg:index:R::r"}]}}}`))
+	assert.ErrorContains(t, err, `policy exception "a": "reason" is required`)
 
-	// An exception with an unrecognized field is ignored, with a warning.
-	f, warnings, err := LoadPolicyPackConfigFromFile(write("unknown.json",
-		`{"exceptions": {"a": {"policies": ["p"], "stacks": ["web/prod"], "reason": "r", "tags": {}}}}`))
-	require.NoError(t, err)
-	assert.Equal(t, 0, f.Exceptions.Len())
-	require.Len(t, warnings, 1)
-	assert.Contains(t, warnings[0], "unrecognized fields (tags)")
+	// So is an exception with a field this version doesn't recognize.
+	_, _, err = LoadPolicyPackConfigFromFile(write("unknown.json",
+		`{"exceptions": {"a": {"reason": "r", "tags": {},
+			"match": [{"policy": "p", "urn": "urn:pulumi:prod::web::pkg:index:R::r"}]}}}`))
+	assert.ErrorContains(t, err, `policy exception "a": unknown field "tags"`)
 }

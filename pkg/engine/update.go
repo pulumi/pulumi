@@ -209,7 +209,7 @@ type RequiredPolicy interface {
 	// resolved config and environment variables. Returns nil, nil if no environments are referenced.
 	ResolveEnvironments(ctx context.Context) (*ResolvedPolicyEnvironment, error)
 	// Exceptions returns the PolicyPack's active policy exceptions, keyed by exception ID.
-	// Each value should be a apitype.PolicyException.
+	// Each value should be an apitype.PolicyException.
 	Exceptions() map[string]json.RawMessage
 }
 

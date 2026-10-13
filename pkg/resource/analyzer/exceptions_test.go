@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +30,7 @@ import (
 const (
 	accessLogsURN = resource.URN("urn:pulumi:prod::web::aws:s3/bucket:Bucket::access-logs")
 	cfLogsURN     = resource.URN("urn:pulumi:prod::web::aws:s3/bucket:Bucket::cf-logs")
-	auditTableURN = resource.URN("urn:pulumi:prod::web::aws:dynamodb/table:Table::audit-events")
+	devLogsURN    = resource.URN("urn:pulumi:dev::web::aws:s3/bucket:Bucket::access-logs")
 	webStackURN   = resource.URN("urn:pulumi:prod::web::pulumi:pulumi:Stack::web-prod")
 )
 
@@ -44,8 +43,8 @@ func mustParseExceptions(t *testing.T, js string) *PolicyExceptions {
 }
 
 // matchID returns the ID of the exception that matches, or "" if none does.
-func matchID(set *PolicyExceptions, policy string, urn resource.URN, props property.Map) string {
-	id, _, _ := set.Match(policy, urn, props)
+func matchID(set *PolicyExceptions, policy string, urn resource.URN) string {
+	id, _, _ := set.Match(policy, urn)
 	return id
 }
 
@@ -64,93 +63,110 @@ func TestParsePolicyExceptionsInvalid(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		json    string
-		wantErr string
+		name, js, err string
 	}{
-		{"not an object", `[]`, "must be an object"},
-		{"entry not an object", `{"a": "b"}`, "must be an object"},
-		{"bad id", `{"a b": {"reason": "r"}}`, "the ID"},
-		{"no reason", `{"a": {"policies": ["p"]}}`, `"reason"`},
-		{"blank reason", `{"a": {"reason": "  "}}`, `"reason"`},
-		{"empty policy", `{"a": {"policies": [""], "reason": "r"}}`, `empty name`},
-		{"policy pattern", `{"a": {"policies": ["s3-*"], "reason": "r"}}`, "exact name"},
-		{"stack pattern", `{"a": {"stacks": ["*/prod"], "reason": "r"}}`, "exact name"},
-		{"bad stack", `{"a": {"stacks": ["prod"], "reason": "r"}}`, "<project>/<stack>"},
-		{"org stack", `{"a": {"stacks": ["o/p/s"], "reason": "r"}}`, "<project>/<stack>"},
-		{"wrong type", `{"a": {"policies": "p", "reason": "r"}}`, `policy exception "a"`},
-		{"resources not a list", `{"a": {"resources": {}, "reason": "r"}}`, `"resources" must be a list`},
-		{"selector not an object", `{"a": {"resources": ["x"], "reason": "r"}}`, "resources[0]: must be an object"},
-		{"bad urn", `{"a": {"resources": [{"urn": "access-logs"}], "reason": "r"}}`, "not a valid URN"},
+		{"not an object", `[]`, `"exceptions" must be an object`},
+		{"entry not an object", `{"a": "x"}`, `policy exception "a": must be an object`},
 		{
-			"urn contradicts type",
-			`{"a": {"resources": [{"urn": "` + string(accessLogsURN) + `", "type": "aws:dynamodb/table:Table"}], ` +
-				`"reason": "r"}}`,
-			`never matches "type"`,
+			"invalid ID", `{"a b": {"reason": "r", "match": [{"policy": "p", "urn": "` + string(accessLogsURN) + `"}]}}`,
+			`policy exception "a b": the ID must be non-empty`,
 		},
 		{
-			"urn contradicts name",
-			`{"a": {"resources": [{"urn": "` + string(accessLogsURN) + `", "name": "cf-*"}], "reason": "r"}}`,
-			`never matches "name"`,
+			"missing reason", `{"a": {"match": [{"policy": "p", "urn": "` + string(accessLogsURN) + `"}]}}`,
+			`policy exception "a": "reason" is required`,
 		},
 		{
-			"urn outside stacks",
-			`{"a": {"stacks": ["web/dev"], "resources": [{"urn": "` + string(accessLogsURN) + `"}], "reason": "r"}}`,
-			`"stacks" doesn't include`,
+			"blank reason", `{"a": {"reason": " ", "match": [{"policy": "p", "urn": "` + string(accessLogsURN) + `"}]}}`,
+			`policy exception "a": "reason" is required`,
+		},
+		{"missing match", `{"a": {"reason": "r"}}`, `policy exception "a": "match" must list at least one`},
+		{"empty match", `{"a": {"reason": "r", "match": []}}`, `policy exception "a": "match" must list at least one`},
+		{"match not a list", `{"a": {"reason": "r", "match": {}}}`, `policy exception "a": "match" must be a list`},
+		{
+			"entry not an object", `{"a": {"reason": "r", "match": ["p"]}}`,
+			`policy exception "a": match[0]: must be an object`,
 		},
 		{
-			"bad property path", `{"a": {"resources": [{"properties": {"tags[": "x"}}], "reason": "r"}}`,
-			"invalid property path",
+			"missing policy", `{"a": {"reason": "r", "match": [{"urn": "` + string(accessLogsURN) + `"}]}}`,
+			`policy exception "a": match[0]: "policy" is required`,
 		},
-		{"object value", `{"a": {"resources": [{"properties": {"tags": {"env": "dev"}}}], "reason": "r"}}`, "longer path"},
-		{"empty value list", `{"a": {"resources": [{"properties": {"tags.env": []}}], "reason": "r"}}`, "never matches"},
+		{
+			"empty policy", `{"a": {"reason": "r", "match": [{"policy": "", "urn": "` + string(accessLogsURN) + `"}]}}`,
+			`policy exception "a": match[0]: "policy" is required`,
+		},
+		{
+			"all", `{"a": {"reason": "r", "match": [{"policy": "all", "urn": "` + string(accessLogsURN) + `"}]}}`,
+			`policy exception "a": match[0]: "policy" must name one policy; "all" isn't allowed`,
+		},
+		{
+			"missing urn", `{"a": {"reason": "r", "match": [{"policy": "p"}]}}`,
+			`policy exception "a": match[0]: "urn" is required`,
+		},
+		{
+			"invalid urn", `{"a": {"reason": "r", "match": [{"policy": "p", "urn": "access-logs"}]}}`,
+			`policy exception "a": match[0]: "urn" "access-logs" is not a valid URN`,
+		},
+		{
+			"error in a later entry", `{"a": {"reason": "r", "match": [
+			{"policy": "p", "urn": "` + string(accessLogsURN) + `"}, {"policy": "p"}]}}`,
+			`policy exception "a": match[1]: "urn" is required`,
+		},
+		{
+			"policies in an entry", `{"a": {"reason": "r", "match": [
+				{"policies": ["p"], "urn": "` + string(accessLogsURN) + `"}]}}`,
+			`policy exception "a": match[0]: "policies" isn't supported yet; list one "policy" and "urn" per entry`,
+		},
+		{
+			"stacks in an entry", `{"a": {"reason": "r", "match": [{"policy": "p", "stacks": ["web/prod"]}]}}`,
+			`policy exception "a": match[0]: "stacks" isn't supported yet; list one "policy" and "urn" per entry`,
+		},
+		{
+			"resources in an entry", `{"a": {"reason": "r", "match": [{"policy": "p", "resources": []}]}}`,
+			`policy exception "a": match[0]: "resources" isn't supported yet; list one "policy" and "urn" per entry`,
+		},
+		{
+			"unknown field in an entry", `{"a": {"reason": "r", "match": [
+			{"policy": "p", "urn": "` + string(accessLogsURN) + `", "type": "aws:s3/bucket:Bucket"}]}}`,
+			`policy exception "a": match[0]: unknown field "type"`,
+		},
+		{
+			"unknown field in an exception", `{"a": {"reason": "r", "expires": "2027-01-01", "match": [
+			{"policy": "p", "urn": "` + string(accessLogsURN) + `"}]}}`,
+			`policy exception "a": unknown field "expires"`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Strict: an error.
-			_, _, err := ParsePolicyExceptionsBlock(json.RawMessage(tt.json), true)
-			assert.ErrorContains(t, err, tt.wantErr)
+			// A local file fails.
+			_, _, err := ParsePolicyExceptionsBlock(json.RawMessage(tt.js), true)
+			assert.ErrorContains(t, err, tt.err)
 
-			// Not strict: a warning, and the entry is ignored.
-			set, warnings, err := ParsePolicyExceptionsBlock(json.RawMessage(tt.json), false)
+			// Exceptions from the service are skipped with a warning.
+			set, warnings, err := ParsePolicyExceptionsBlock(json.RawMessage(tt.js), false)
 			require.NoError(t, err)
 			assert.Equal(t, 0, set.Len())
 			require.Len(t, warnings, 1)
-			assert.Contains(t, warnings[0], tt.wantErr)
+			assert.Contains(t, warnings[0], tt.err)
 		})
 	}
 }
 
-// An entry with a field this version doesn't understand, at the top level or in a selector, is skipped in both
-// modes, because the field might narrow the exception.
-func TestParsePolicyExceptionsUnknownField(t *testing.T) {
+// Outside strict mode, an invalid exception is skipped and the others still apply.
+func TestParsePolicyExceptionsSkipsInvalid(t *testing.T) {
 	t.Parallel()
 
-	js := `{
-		"a": {"stacks": ["web/prod"], "reason": "r", "expires": "2027-01-01"},
-		"b": {"resources": [{"name": "access-logs", "tags": {"env": "dev"}}], "reason": "r"},
-		"c": {"stacks": ["web/prod"], "reason": "r"}
-	}`
-	for _, strict := range []bool{true, false} {
-		set, warnings, err := ParsePolicyExceptionsBlock(json.RawMessage(js), strict)
-		require.NoError(t, err)
-		assert.Equal(t, 1, set.Len())
-		assert.Equal(t, "c", matchID(set, "p", accessLogsURN, property.Map{}))
-		require.Len(t, warnings, 2)
-		assert.Contains(t, warnings[0], `"a" has unrecognized fields (expires)`)
-		assert.Contains(t, warnings[1], `"b" has unrecognized fields (resources[0].tags)`)
-	}
-}
-
-// Only the reason is required: an exception without filters excepts every violation of the pack.
-func TestPolicyExceptionsNoFilters(t *testing.T) {
-	t.Parallel()
-
-	set := mustParseExceptions(t, `{"everything": {"reason": "Audit mode"}}`)
-	assert.Equal(t, "everything", matchID(set, "any-policy", accessLogsURN, property.Map{}))
-	assert.Equal(t, "everything", matchID(set, "any-policy", "", property.Map{}))
+	set, warnings, err := ParsePolicyExceptionsBlock(json.RawMessage(`{
+		"bad": {"reason": "r", "match": [{"policy": "p", "stacks": ["web/prod"]}]},
+		"good": {"reason": "r", "match": [{"policy": "p", "urn": "`+string(accessLogsURN)+`"}]}
+	}`), false)
+	require.NoError(t, err)
+	require.Len(t, warnings, 1)
+	assert.Contains(t, warnings[0], `policy exception "bad"`)
+	assert.Contains(t, warnings[0], "ignoring it")
+	assert.Equal(t, 1, set.Len())
+	assert.Equal(t, "good", matchID(set, "p", accessLogsURN))
 }
 
 func TestPolicyExceptionsMatch(t *testing.T) {
@@ -158,130 +174,65 @@ func TestPolicyExceptionsMatch(t *testing.T) {
 
 	set := mustParseExceptions(t, `{
 		"log-buckets": {
-			"policies": ["s3-no-public-read", "s3-versioning"],
-			"resources": [{"urn": "`+string(accessLogsURN)+`"}, {"urn": "`+string(cfLogsURN)+`"}],
-			"reason": "Log target buckets"
+			"reason": "Log target buckets",
+			"match": [
+				{"policy": "s3-no-public-read", "urn": "`+string(accessLogsURN)+`"},
+				{"policy": "s3-no-public-read", "urn": "`+string(accessLogsURN)+`"},
+				{"policy": "s3-block-public-acls", "urn": "`+string(accessLogsURN)+`"},
+				{"policy": "s3-no-public-read", "urn": "`+string(cfLogsURN)+`"},
+				{"policy": "s3-no-public-read", "urn": "`+string(devLogsURN)+`"}
+			]
 		},
-		"prod-web": {"policies": ["stack-policy"], "stacks": ["web/prod"], "reason": "Whole stack"},
-		"archive": {
-			"policies": ["kms-encryption"],
-			"stacks": ["web/prod"],
-			"resources": [
-				{"type": "aws:s3/bucket:Bucket", "name": "access-logs"},
-				{"type": "aws:dynamodb/table:Table", "name": "audit-*"}
-			],
-			"reason": "Compliance archive"
-		}
+		"flow-logs": {"reason": "Only in prod", "match": [{"policy": "vpc-flow-logs", "urn": "`+string(webStackURN)+`"}]}
 	}`)
+	require.Equal(t, 2, set.Len())
 
 	tests := []struct {
 		name   string
 		policy string
 		urn    resource.URN
-		wantID string
+		want   string
 	}{
-		{"policy and urn", "s3-no-public-read", accessLogsURN, "log-buckets"},
-		{"urn is exact", "s3-no-public-read", accessLogsURN + "-2", ""},
-		{"second selector", "s3-versioning", cfLogsURN, "log-buckets"},
-		{"policy narrows", "required-tags", accessLogsURN, ""},
-		{"stack only", "stack-policy", webStackURN, "prod-web"},
-		{"stack only, other stack", "stack-policy", "urn:pulumi:dev::web::pulumi:pulumi:Stack::web-dev", ""},
-		{"selector type and name", "kms-encryption", accessLogsURN, "archive"},
-		{"other selector", "kms-encryption", auditTableURN, "archive"},
-		{"no cross product", "kms-encryption", "urn:pulumi:prod::web::aws:s3/bucket:Bucket::audit-x", ""},
-		{"stacks and resources both apply", "kms-encryption", "urn:pulumi:dev::web::aws:dynamodb/table:Table::audit-x", ""},
-		{"empty urn", "stack-policy", "", ""},
+		{"exact match", "s3-no-public-read", accessLogsURN, "log-buckets"},
+		{"another policy in the same exception", "s3-block-public-acls", accessLogsURN, "log-buckets"},
+		{"another resource in the same exception", "s3-no-public-read", cfLogsURN, "log-buckets"},
+		{"entries span stacks", "s3-no-public-read", devLogsURN, "log-buckets"},
+		{"the root stack URN", "vpc-flow-logs", webStackURN, "flow-logs"},
+		{"policy and URN must match in one entry", "s3-block-public-acls", cfLogsURN, ""},
+		{"another policy", "required-tags", accessLogsURN, ""},
+		{"another stack", "s3-block-public-acls", devLogsURN, ""},
+		{"another name", "s3-no-public-read", "urn:pulumi:prod::web::aws:s3/bucket:Bucket::access-log", ""},
+		{"another type", "s3-no-public-read", "urn:pulumi:prod::web::aws:s3/bucketV2:BucketV2::access-logs", ""},
+		{"an empty URN", "s3-no-public-read", "", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.wantID, matchID(set, tt.policy, tt.urn, property.Map{}))
+			assert.Equal(t, tt.want, matchID(set, tt.policy, tt.urn))
 		})
 	}
+
+	id, reason, ok := set.Match("vpc-flow-logs", webStackURN)
+	assert.True(t, ok)
+	assert.Equal(t, "flow-logs", id)
+	assert.Equal(t, "Only in prod", reason)
+
+	var empty *PolicyExceptions
+	_, _, ok = empty.Match("p", accessLogsURN)
+	assert.False(t, ok)
 }
 
-func TestPolicyExceptionsMatchProperties(t *testing.T) {
-	t.Parallel()
-
-	set := mustParseExceptions(t, `{
-		"physical-name": {"resources": [{"properties": {"bucket": "prod-logs-*"}}], "reason": "r"},
-		"nested": {
-			"resources": [{"properties": {"tags.env": ["dev", "staging"], "tags[\"team.name\"]": "data"}}],
-			"reason": "r"
-		},
-		"scalars": {
-			"resources": [{"properties": {"mapPublicIpOnLaunch": true, "port": 22, "kmsKeyId": null}}],
-			"reason": "r"
-		},
-		"wildcard-path": {"resources": [{"properties": {"ingress[*].cidrBlocks[*]": "10.*"}}], "reason": "r"}
-	}`)
-	str := property.New[string]
-	tags := func(kv ...string) property.Value {
-		m := map[string]property.Value{}
-		for i := 0; i < len(kv); i += 2 {
-			m[kv[i]] = str(kv[i+1])
-		}
-		return property.New(property.NewMap(m))
-	}
-
-	tests := []struct {
-		name   string
-		props  map[string]property.Value
-		wantID string
-	}{
-		{"glob on string", map[string]property.Value{"bucket": str("prod-logs-eu")}, "physical-name"},
-		{"glob mismatch", map[string]property.Value{"bucket": str("dev-logs")}, ""},
-		{"nested paths AND", map[string]property.Value{"tags": tags("env", "dev", "team.name", "data")}, "nested"},
-		{"nested value list", map[string]property.Value{"tags": tags("env", "staging", "team.name", "data")}, "nested"},
-		{"nested one fails", map[string]property.Value{"tags": tags("env", "prod", "team.name", "data")}, ""},
-		{"nested missing", map[string]property.Value{"tags": tags("env", "dev")}, ""},
-		{
-			"scalars, missing is null",
-			map[string]property.Value{"mapPublicIpOnLaunch": property.New(true), "port": property.New(22.0)},
-			"scalars",
-		},
-		{
-			"scalars, explicit null",
-			map[string]property.Value{
-				"mapPublicIpOnLaunch": property.New(true), "port": property.New(22.0), "kmsKeyId": property.New(property.Null),
-			},
-			"scalars",
-		},
-		{
-			"scalar type matters",
-			map[string]property.Value{"mapPublicIpOnLaunch": str("true"), "port": property.New(22.0)},
-			"",
-		},
-		{
-			"wildcard path, any element",
-			map[string]property.Value{"ingress": property.New(property.NewArray([]property.Value{
-				property.New(property.NewMap(map[string]property.Value{
-					"cidrBlocks": property.New(property.NewArray([]property.Value{str("0.0.0.0/0"), str("10.0.0.0/8")})),
-				})),
-			}))},
-			"wildcard-path",
-		},
-		{"unknown never matches", map[string]property.Value{"bucket": property.New(property.Computed)}, ""},
-		{"secret never matches", map[string]property.Value{"bucket": str("prod-logs-eu").WithSecret(true)}, ""},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tt.wantID, matchID(set, "p", accessLogsURN, property.NewMap(tt.props)))
-		})
-	}
-}
-
-// When several exceptions match, the lowest ID wins, with digits compared as numbers.
+// When several exceptions match, the one with the lowest ID wins, with digits compared as numbers.
 func TestPolicyExceptionsMatchOrder(t *testing.T) {
 	t.Parallel()
 
+	entry := `"match": [{"policy": "p", "urn": "` + string(accessLogsURN) + `"}]`
 	set := mustParseExceptions(t, `{
-		"EXC-10": {"reason": "ten"},
-		"EXC-9": {"reason": "nine"},
-		"EXC-100": {"reason": "hundred"}
+		"EXC-10": {"reason": "ten", `+entry+`},
+		"EXC-9": {"reason": "nine", `+entry+`},
+		"EXC-100": {"reason": "hundred", `+entry+`}
 	}`)
-	id, reason, ok := set.Match("p", accessLogsURN, property.Map{})
+	id, reason, ok := set.Match("p", accessLogsURN)
 	require.True(t, ok)
 	assert.Equal(t, "EXC-9", id)
 	assert.Equal(t, "nine", reason)
@@ -292,35 +243,14 @@ func TestPolicyExceptionsMatchOrder(t *testing.T) {
 	assert.Equal(t, 0, compareExceptionIDs("EXC-7", "EXC-7"))
 }
 
-func TestGlob(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		pattern, value string
-		want           bool
-	}{
-		{"admin", "admin", true},
-		{"admin", "superadmin", false}, // anchored
-		{"my.bucket", "myXbucket", false},
-		{"prod-*", "prod-logs", true},
-		{"prod-*", "prod-", true},
-		{"*-logs", "cf-logs", true},
-		{"a*b*c", "aXXbYYc", true},
-		{"a*b*c", "acb", false},
-		{"ab*ba", "aba", false}, // the prefix and suffix can't overlap
-		{"**", "", true},
-		{"*", "anything", true},
-		{"dev[b*", "dev[box", true},
-	}
-	for _, tt := range tests {
-		assert.Equal(t, tt.want, compileGlob(tt.pattern).match(tt.value), "%q ~ %q", tt.pattern, tt.value)
-	}
-}
-
 func TestPolicyExceptionsUnknownPolicyWarnings(t *testing.T) {
 	t.Parallel()
 
-	set := mustParseExceptions(t, `{"a": {"policies": ["known", "gone"], "reason": "r"}}`)
+	set := mustParseExceptions(t, `{"a": {"reason": "r", "match": [
+		{"policy": "known", "urn": "`+string(accessLogsURN)+`"},
+		{"policy": "gone", "urn": "`+string(accessLogsURN)+`"},
+		{"policy": "gone", "urn": "`+string(cfLogsURN)+`"}
+	]}}`)
 	warnings := set.UnknownPolicyWarnings("pack", []plugin.AnalyzerPolicyInfo{{Name: "known"}})
 	require.Len(t, warnings, 1)
 	assert.Contains(t, warnings[0], `"gone"`)
@@ -349,53 +279,44 @@ func TestWithPolicyExceptions(t *testing.T) {
 	t.Parallel()
 
 	set := mustParseExceptions(t, `{
-		"EXC-1": {"policies": ["p"], "resources": [{"urn": "`+string(accessLogsURN)+`"}], "reason": "because"},
-		"EXC-2": {"policies": ["by-prop"], "resources": [{"properties": {"bucket": "prod-*"}}], "reason": "prop"}
+		"EXC-1": {"reason": "because", "match": [{"policy": "p", "urn": "`+string(accessLogsURN)+`"}]}
 	}`)
 	excepted := &apitype.PolicyEventException{ID: "EXC-1", Reason: "because"}
-	bucketProps := property.NewMap(map[string]property.Value{"bucket": property.New("prod-logs")})
 
 	// No exceptions: the analyzer is returned unchanged.
 	inner := &stubAnalyzer{}
 	assert.Same(t, inner, WithPolicyExceptions(inner, nil))
 
-	t.Run("Analyze matches the analyzed resource and its inputs", func(t *testing.T) {
+	t.Run("Analyze matches the analyzed resource", func(t *testing.T) {
 		t.Parallel()
 		a := WithPolicyExceptions(&stubAnalyzer{diags: []plugin.AnalyzeDiagnostic{
 			{PolicyName: "p", EnforcementLevel: apitype.Mandatory},
 			{PolicyName: "other", EnforcementLevel: apitype.Mandatory},
-			{PolicyName: "by-prop", EnforcementLevel: apitype.Mandatory},
 		}}, set)
 
-		resp, err := a.Analyze(t.Context(), plugin.AnalyzerResource{URN: accessLogsURN, Properties: bucketProps})
+		resp, err := a.Analyze(t.Context(), plugin.AnalyzerResource{URN: accessLogsURN})
 		require.NoError(t, err)
 		assert.Equal(t, excepted, resp.Diagnostics[0].Exception)
 		assert.Nil(t, resp.Diagnostics[1].Exception)
-		assert.Equal(t, "EXC-2", resp.Diagnostics[2].Exception.ID)
 
 		resp, err = a.Analyze(t.Context(), plugin.AnalyzerResource{URN: cfLogsURN})
 		require.NoError(t, err)
 		assert.Nil(t, resp.Diagnostics[0].Exception)
-		assert.Nil(t, resp.Diagnostics[2].Exception)
 	})
 
-	t.Run("AnalyzeStack matches the diagnostic's resource and its outputs", func(t *testing.T) {
+	t.Run("AnalyzeStack matches the diagnostic's URN", func(t *testing.T) {
 		t.Parallel()
 		a := WithPolicyExceptions(&stubAnalyzer{diags: []plugin.AnalyzeDiagnostic{
 			{PolicyName: "p", URN: accessLogsURN},
 			{PolicyName: "p", URN: cfLogsURN},
-			{PolicyName: "by-prop", URN: cfLogsURN},
-			{PolicyName: "by-prop", URN: accessLogsURN},
 		}}, set)
 
 		resp, err := a.AnalyzeStack(t.Context(), []plugin.AnalyzerStackResource{
-			{AnalyzerResource: plugin.AnalyzerResource{URN: cfLogsURN, Properties: bucketProps}},
+			{AnalyzerResource: plugin.AnalyzerResource{URN: cfLogsURN}},
 			{AnalyzerResource: plugin.AnalyzerResource{URN: accessLogsURN}},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, excepted, resp.Diagnostics[0].Exception)
 		assert.Nil(t, resp.Diagnostics[1].Exception)
-		assert.Equal(t, "EXC-2", resp.Diagnostics[2].Exception.ID)
-		assert.Nil(t, resp.Diagnostics[3].Exception)
 	})
 }
