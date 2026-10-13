@@ -1519,18 +1519,10 @@ func (ctx *Context) readPackageResource(
 	return nil
 }
 
-// ExistsResource checks whether a resource with the given type and ID exists.
-// It returns a BoolOutput that resolves to true if the resource exists, false otherwise.
+// ExistsResource checks whether a resource with the given type and ID exists, using the specified package
+// reference, which may be empty. It returns a BoolOutput that resolves to true if the resource exists, false
+// otherwise.
 func (ctx *Context) ExistsResource(
-	t string, id IDInput, props Input, opts ...ResourceOption,
-) BoolOutput {
-	return ctx.ExistsPackageResource(t, id, props, "" /* packageRef */, opts...)
-}
-
-// ExistsPackageResource checks whether a resource with the given type and ID exists,
-// using the specified package reference. It returns a BoolOutput that resolves to true if
-// the resource exists, false otherwise.
-func (ctx *Context) ExistsPackageResource(
 	t string, id IDInput, props Input, packageRef string, opts ...ResourceOption,
 ) BoolOutput {
 	output := ctx.newOutput(reflect.TypeFor[BoolOutput]())

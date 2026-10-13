@@ -1279,12 +1279,12 @@ func TestExistsResource(t *testing.T) {
 		_, _, _, _, err := await(res.ID())
 		require.NoError(t, err)
 
-		exists, known, _, _, err := await(ctx.ExistsResource("pkg:index:Resource", ID("existing"), nil))
+		exists, known, _, _, err := await(ctx.ExistsResource("pkg:index:Resource", ID("existing"), nil, ""))
 		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, true, exists)
 
-		exists, known, _, _, err = await(ctx.ExistsResource("pkg:index:Resource", ID("missing"), nil))
+		exists, known, _, _, err = await(ctx.ExistsResource("pkg:index:Resource", ID("missing"), nil, ""))
 		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, false, exists)
