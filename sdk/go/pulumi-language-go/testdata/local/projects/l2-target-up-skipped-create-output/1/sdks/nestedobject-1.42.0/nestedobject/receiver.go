@@ -63,7 +63,7 @@ func (ReceiverState) ElementType() reflect.Type {
 // ReceiverExists checks whether an existing Receiver resource with the given ID exists.
 func ReceiverExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ReceiverState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("nestedobject:index:Receiver", id, state, opts...)
+	return ctx.ExistsResource("nestedobject:index:Receiver", id, state, "", opts...)
 }
 
 type receiverArgs struct {

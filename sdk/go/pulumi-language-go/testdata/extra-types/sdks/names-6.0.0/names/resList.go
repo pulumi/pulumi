@@ -63,7 +63,7 @@ func (ResListState) ElementType() reflect.Type {
 // ResListExists checks whether an existing ResList resource with the given ID exists.
 func ResListExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ResListState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("names:index:ResList", id, state, opts...)
+	return ctx.ExistsResource("names:index:ResList", id, state, "", opts...)
 }
 
 type resListArgs struct {

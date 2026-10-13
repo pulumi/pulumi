@@ -66,7 +66,7 @@ func (MapState) ElementType() reflect.Type {
 // MapExists checks whether an existing Map resource with the given ID exists.
 func MapExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *MapState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("large:index:Map", id, state, opts...)
+	return ctx.ExistsResource("large:index:Map", id, state, "", opts...)
 }
 
 type mapArgs struct {

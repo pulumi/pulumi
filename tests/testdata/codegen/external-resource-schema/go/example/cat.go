@@ -59,7 +59,7 @@ func (CatState) ElementType() reflect.Type {
 // CatExists checks whether an existing Cat resource with the given ID exists.
 func CatExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *CatState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("example::Cat", id, state, opts...)
+	return ctx.ExistsResource("example::Cat", id, state, "", opts...)
 }
 
 type catArgs struct {

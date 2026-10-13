@@ -63,7 +63,7 @@ func (ArchiveResourceState) ElementType() reflect.Type {
 // ArchiveResourceExists checks whether an existing ArchiveResource resource with the given ID exists.
 func ArchiveResourceExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ArchiveResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("asset-archive:index:ArchiveResource", id, state, opts...)
+	return ctx.ExistsResource("asset-archive:index:ArchiveResource", id, state, "", opts...)
 }
 
 type archiveResourceArgs struct {

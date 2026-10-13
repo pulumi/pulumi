@@ -74,7 +74,7 @@ func (ComponentState) ElementType() reflect.Type {
 // ComponentExists checks whether an existing Component resource with the given ID exists.
 func ComponentExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ComponentState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("example::Component", id, state, opts...)
+	return ctx.ExistsResource("example::Component", id, state, "", opts...)
 }
 
 type componentArgs struct {

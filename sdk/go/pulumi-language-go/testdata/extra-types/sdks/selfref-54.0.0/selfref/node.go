@@ -57,7 +57,7 @@ func (NodeState) ElementType() reflect.Type {
 // NodeExists checks whether an existing Node resource with the given ID exists.
 func NodeExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *NodeState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("selfref:index:Node", id, state, opts...)
+	return ctx.ExistsResource("selfref:index:Node", id, state, "", opts...)
 }
 
 type nodeArgs struct {

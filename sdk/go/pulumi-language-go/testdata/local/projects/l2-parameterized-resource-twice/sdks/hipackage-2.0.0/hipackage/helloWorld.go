@@ -72,7 +72,7 @@ func HelloWorldExists(ctx *pulumi.Context,
 		var ret pulumi.BoolOutput
 		return ret
 	}
-	return ctx.ExistsPackageResource("hipackage:index:HelloWorld", id, state, ref, opts...)
+	return ctx.ExistsResource("hipackage:index:HelloWorld", id, state, ref, opts...)
 }
 
 type helloWorldArgs struct {

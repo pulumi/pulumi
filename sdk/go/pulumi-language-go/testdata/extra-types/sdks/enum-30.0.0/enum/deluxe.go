@@ -64,7 +64,7 @@ func (DeluxeState) ElementType() reflect.Type {
 // DeluxeExists checks whether an existing Deluxe resource with the given ID exists.
 func DeluxeExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *DeluxeState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("enum:index:Deluxe", id, state, opts...)
+	return ctx.ExistsResource("enum:index:Deluxe", id, state, "", opts...)
 }
 
 type deluxeArgs struct {

@@ -63,7 +63,7 @@ func (Another_resourceState) ElementType() reflect.Type {
 // Another_resourceExists checks whether an existing Another_resource resource with the given ID exists.
 func Another_resourceExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *Another_resourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("snake_names:cool_module:another_resource", id, state, opts...)
+	return ctx.ExistsResource("snake_names:cool_module:another_resource", id, state, "", opts...)
 }
 
 type another_resourceArgs struct {

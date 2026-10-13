@@ -59,7 +59,7 @@ func (ExampleServerState) ElementType() reflect.Type {
 // ExampleServerExists checks whether an existing ExampleServer resource with the given ID exists.
 func ExampleServerExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ExampleServerState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("example:index:ExampleServer", id, state, opts...)
+	return ctx.ExistsResource("example:index:ExampleServer", id, state, "", opts...)
 }
 
 type exampleServerArgs struct {

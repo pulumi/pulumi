@@ -57,7 +57,7 @@ func (FlakyCreateState) ElementType() reflect.Type {
 // FlakyCreateExists checks whether an existing FlakyCreate resource with the given ID exists.
 func FlakyCreateExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *FlakyCreateState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("flaky:index:FlakyCreate", id, state, opts...)
+	return ctx.ExistsResource("flaky:index:FlakyCreate", id, state, "", opts...)
 }
 
 type flakyCreateArgs struct {

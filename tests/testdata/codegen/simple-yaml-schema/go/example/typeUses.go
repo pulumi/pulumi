@@ -66,7 +66,7 @@ func (TypeUsesState) ElementType() reflect.Type {
 // TypeUsesExists checks whether an existing TypeUses resource with the given ID exists.
 func TypeUsesExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *TypeUsesState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("example::TypeUses", id, state, opts...)
+	return ctx.ExistsResource("example::TypeUses", id, state, "", opts...)
 }
 
 type typeUsesArgs struct {

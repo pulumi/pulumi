@@ -57,7 +57,7 @@ func (BlockState) ElementType() reflect.Type {
 // BlockExists checks whether an existing Block resource with the given ID exists.
 func BlockExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *BlockState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("sync:index:Block", id, state, opts...)
+	return ctx.ExistsResource("sync:index:Block", id, state, "", opts...)
 }
 
 type blockArgs struct {

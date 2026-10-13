@@ -64,7 +64,7 @@ func (UserState) ElementType() reflect.Type {
 // UserExists checks whether an existing User resource with the given ID exists.
 func UserExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *UserState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("credentials:index:User", id, state, opts...)
+	return ctx.ExistsResource("credentials:index:User", id, state, "", opts...)
 }
 
 type userArgs struct {

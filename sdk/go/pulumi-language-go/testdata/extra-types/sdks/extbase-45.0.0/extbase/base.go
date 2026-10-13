@@ -59,7 +59,7 @@ func (BaseState) ElementType() reflect.Type {
 // BaseExists checks whether an existing Base resource with the given ID exists.
 func BaseExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *BaseState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("extbase:index:Base", id, state, opts...)
+	return ctx.ExistsResource("extbase:index:Base", id, state, "", opts...)
 }
 
 type baseArgs struct {

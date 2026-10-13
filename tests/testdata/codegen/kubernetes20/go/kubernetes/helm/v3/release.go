@@ -69,7 +69,7 @@ func (ReleaseState) ElementType() reflect.Type {
 // ReleaseExists checks whether an existing Release resource with the given ID exists.
 func ReleaseExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ReleaseState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("kubernetes:helm.sh/v3:Release", id, state, opts...)
+	return ctx.ExistsResource("kubernetes:helm.sh/v3:Release", id, state, "", opts...)
 }
 
 type releaseArgs struct {

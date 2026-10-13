@@ -59,7 +59,7 @@ func (WorldMapState) ElementType() reflect.Type {
 // WorldMapExists checks whether an existing WorldMap resource with the given ID exists.
 func WorldMapExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *WorldMapState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("world::WorldMap", id, state, opts...)
+	return ctx.ExistsResource("world::WorldMap", id, state, "", opts...)
 }
 
 type worldMapArgs struct {

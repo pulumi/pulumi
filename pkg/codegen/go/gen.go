@@ -2658,11 +2658,9 @@ func (pkg *pkgContext) genResource(
 		if err != nil {
 			return err
 		}
-		existsPackageRef := ""
-		existsPackageArg := ""
+		existsPackageRef := `""`
 		if def.Parameterization != nil {
-			existsPackageRef = "Package"
-			existsPackageArg = "ref, "
+			existsPackageRef = "ref"
 			fmt.Fprintf(w, "\tref, err := %s.PkgGetPackageRef(ctx)\n", pkg.internalModuleName)
 			fmt.Fprintf(w, "\tif err != nil {\n")
 			fmt.Fprintf(w, "\t\tvar ret pulumi.BoolOutput\n")
@@ -2670,8 +2668,8 @@ func (pkg *pkgContext) genResource(
 			fmt.Fprintf(w, "\t}\n")
 		}
 
-		fmt.Fprintf(w, "\treturn ctx.Exists%sResource(\"%s\", id, state, %sopts...)\n",
-			existsPackageRef, r.Token, existsPackageArg)
+		fmt.Fprintf(w, "\treturn ctx.ExistsResource(\"%s\", id, state, %s, opts...)\n",
+			r.Token, existsPackageRef)
 		fmt.Fprintf(w, "}\n\n")
 	}
 

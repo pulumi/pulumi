@@ -66,7 +66,7 @@ func (ComplexResourceState) ElementType() reflect.Type {
 // ComplexResourceExists checks whether an existing ComplexResource resource with the given ID exists.
 func ComplexResourceExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ComplexResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("output:index:ComplexResource", id, state, opts...)
+	return ctx.ExistsResource("output:index:ComplexResource", id, state, "", opts...)
 }
 
 type complexResourceArgs struct {

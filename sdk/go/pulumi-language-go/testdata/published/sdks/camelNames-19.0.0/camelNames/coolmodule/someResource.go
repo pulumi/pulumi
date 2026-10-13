@@ -64,7 +64,7 @@ func (SomeResourceState) ElementType() reflect.Type {
 // SomeResourceExists checks whether an existing SomeResource resource with the given ID exists.
 func SomeResourceExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *SomeResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("camelNames:CoolModule:SomeResource", id, state, opts...)
+	return ctx.ExistsResource("camelNames:CoolModule:SomeResource", id, state, "", opts...)
 }
 
 type someResourceArgs struct {

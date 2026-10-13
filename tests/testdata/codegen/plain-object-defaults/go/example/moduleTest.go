@@ -64,7 +64,7 @@ func (ModuleTestState) ElementType() reflect.Type {
 // ModuleTestExists checks whether an existing ModuleTest resource with the given ID exists.
 func ModuleTestExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ModuleTestState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("example:index:moduleTest", id, state, opts...)
+	return ctx.ExistsResource("example:index:moduleTest", id, state, "", opts...)
 }
 
 type moduleTestArgs struct {

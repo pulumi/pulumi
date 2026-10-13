@@ -65,7 +65,7 @@ func (ResourceWithAssetsState) ElementType() reflect.Type {
 // ResourceWithAssetsExists checks whether an existing ResourceWithAssets resource with the given ID exists.
 func ResourceWithAssetsExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ResourceWithAssetsState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("example:index:ResourceWithAssets", id, state, opts...)
+	return ctx.ExistsResource("example:index:ResourceWithAssets", id, state, "", opts...)
 }
 
 type resourceWithAssetsArgs struct {

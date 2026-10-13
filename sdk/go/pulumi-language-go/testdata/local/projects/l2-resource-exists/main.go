@@ -13,7 +13,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		existsResult := ctx.ExistsResource("simple:index:Resource", res.ID(), nil)
+		existsResult := ctx.ExistsResource("simple:index:Resource", res.ID(), nil, "")
 		ctx.Export("existsResult", existsResult)
 		return nil
 	})

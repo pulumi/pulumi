@@ -60,7 +60,7 @@ func (ModuleResourceState) ElementType() reflect.Type {
 // ModuleResourceExists checks whether an existing ModuleResource resource with the given ID exists.
 func ModuleResourceExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ModuleResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("foo-bar:submodule1:ModuleResource", id, state, opts...)
+	return ctx.ExistsResource("foo-bar:submodule1:ModuleResource", id, state, "", opts...)
 }
 
 type moduleResourceArgs struct {

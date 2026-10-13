@@ -61,7 +61,7 @@ func (NurseryState) ElementType() reflect.Type {
 // NurseryExists checks whether an existing Nursery resource with the given ID exists.
 func NurseryExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *NurseryState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("plant:tree/v1:Nursery", id, state, opts...)
+	return ctx.ExistsResource("plant:tree/v1:Nursery", id, state, "", opts...)
 }
 
 type nurseryArgs struct {

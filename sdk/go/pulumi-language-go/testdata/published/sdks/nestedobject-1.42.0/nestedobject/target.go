@@ -63,7 +63,7 @@ func (TargetState) ElementType() reflect.Type {
 // TargetExists checks whether an existing Target resource with the given ID exists.
 func TargetExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *TargetState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("nestedobject:index:Target", id, state, opts...)
+	return ctx.ExistsResource("nestedobject:index:Target", id, state, "", opts...)
 }
 
 type targetArgs struct {

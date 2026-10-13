@@ -57,7 +57,7 @@ func (UniverseState) ElementType() reflect.Type {
 // UniverseExists checks whether an existing Universe resource with the given ID exists.
 func UniverseExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *UniverseState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("world::Universe", id, state, opts...)
+	return ctx.ExistsResource("world::Universe", id, state, "", opts...)
 }
 
 type universeArgs struct {

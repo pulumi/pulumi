@@ -67,7 +67,7 @@ func (GreetingState) ElementType() reflect.Type {
 // GreetingExists checks whether an existing Greeting resource with the given ID exists.
 func GreetingExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *GreetingState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("myext:index:Greeting", id, state, opts...)
+	return ctx.ExistsResource("myext:index:Greeting", id, state, "", opts...)
 }
 
 type greetingArgs struct {

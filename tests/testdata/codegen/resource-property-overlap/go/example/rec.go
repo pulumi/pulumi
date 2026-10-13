@@ -59,7 +59,7 @@ func (RecState) ElementType() reflect.Type {
 // RecExists checks whether an existing Rec resource with the given ID exists.
 func RecExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *RecState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("example::Rec", id, state, opts...)
+	return ctx.ExistsResource("example::Rec", id, state, "", opts...)
 }
 
 type recArgs struct {

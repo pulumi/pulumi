@@ -62,7 +62,7 @@ func (ExampleState) ElementType() reflect.Type {
 // ExampleExists checks whether an existing Example resource with the given ID exists.
 func ExampleExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ExampleState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("union:index:Example", id, state, opts...)
+	return ctx.ExistsResource("union:index:Example", id, state, "", opts...)
 }
 
 type exampleArgs struct {

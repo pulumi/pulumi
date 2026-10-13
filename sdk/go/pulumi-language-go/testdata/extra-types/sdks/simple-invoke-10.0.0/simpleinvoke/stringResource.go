@@ -63,7 +63,7 @@ func (StringResourceState) ElementType() reflect.Type {
 // StringResourceExists checks whether an existing StringResource resource with the given ID exists.
 func StringResourceExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *StringResourceState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("simple-invoke:index:StringResource", id, state, opts...)
+	return ctx.ExistsResource("simple-invoke:index:StringResource", id, state, "", opts...)
 }
 
 type stringResourceArgs struct {

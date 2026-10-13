@@ -72,7 +72,7 @@ func GoodbyeWorldExists(ctx *pulumi.Context,
 		var ret pulumi.BoolOutput
 		return ret
 	}
-	return ctx.ExistsPackageResource("byepackage:index:GoodbyeWorld", id, state, ref, opts...)
+	return ctx.ExistsResource("byepackage:index:GoodbyeWorld", id, state, ref, opts...)
 }
 
 type goodbyeWorldArgs struct {

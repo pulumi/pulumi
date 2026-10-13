@@ -60,7 +60,7 @@ func (ResState) ElementType() reflect.Type {
 // ResExists checks whether an existing Res resource with the given ID exists.
 func ResExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ResState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("enum:mod/nested:Res", id, state, opts...)
+	return ctx.ExistsResource("enum:mod/nested:Res", id, state, "", opts...)
 }
 
 type resArgs struct {

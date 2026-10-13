@@ -71,7 +71,7 @@ func (LambdaState) ElementType() reflect.Type {
 // LambdaExists checks whether an existing Lambda resource with the given ID exists.
 func LambdaExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *LambdaState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("keywords:module:Lambda", id, state, opts...)
+	return ctx.ExistsResource("keywords:module:Lambda", id, state, "", opts...)
 }
 
 type lambdaArgs struct {

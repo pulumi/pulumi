@@ -74,7 +74,7 @@ func (ConfigMapListState) ElementType() reflect.Type {
 // ConfigMapListExists checks whether an existing ConfigMapList resource with the given ID exists.
 func ConfigMapListExists(ctx *pulumi.Context,
 	id pulumi.IDInput, state *ConfigMapListState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
-	return ctx.ExistsResource("kubernetes:core/v1:ConfigMapList", id, state, opts...)
+	return ctx.ExistsResource("kubernetes:core/v1:ConfigMapList", id, state, "", opts...)
 }
 
 type configMapListArgs struct {
