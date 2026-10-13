@@ -567,60 +567,17 @@ func renderStringDiff(t *testing.T, old, new string, truncateOutput bool) string
 	}
 }
 
-func TestTextDiffLargeSingleLine(t *testing.T) {
+func TestTextDiffLarge(t *testing.T) {
 	t.Parallel()
 
-	old := randomText(1, 1<<20, 1)
-	new := randomText(2, 1<<20, 1)
-
-	out := renderStringDiff(t, old, new, true)
-	assert.Contains(t, out, old[:150]+"...")
-	assert.Contains(t, out, new[:150]+"...")
-	assert.Less(t, len(out), 4096)
-
-	out = renderStringDiff(t, old, new, false)
-	assert.Contains(t, out, old)
-	assert.Contains(t, out, new)
-	assert.Less(t, len(out), 4*(len(old)+len(new)))
-}
-
-func TestTextDiffLargeMultiLine(t *testing.T) {
-	t.Parallel()
-
-	old := randomText(1, 20, maxLineDiffLines+1)
-	new := randomText(2, 20, maxLineDiffLines+1)
-
-	out := renderStringDiff(t, old, new, true)
-	assert.Contains(t, out, " => ")
-	assert.Less(t, len(out), 4096)
-
-	out = renderStringDiff(t, old, new, false)
-	assert.Contains(t, out, strings.SplitN(old, "\n", 2)[0])
-	assert.Contains(t, out, strings.SplitN(new, "\n", 2)[0])
-}
-
-func TestTextDiffAtLimits(t *testing.T) {
-	t.Parallel()
-
-	// With truncation on, the replaced form is short, whereas the character and line diffs print everything.
-	out := renderStringDiff(t, randomText(1, maxCharacterDiffLength, 1), randomText(2, maxCharacterDiffLength, 1), true)
-	assert.Greater(t, len(out), maxCharacterDiffLength)
-
-	for _, terminator := range []string{"", "\n"} {
-		out = renderStringDiff(
-			t, randomText(1, 20, maxLineDiffLines)+terminator, randomText(2, 20, maxLineDiffLines)+terminator, true)
-		assert.Greater(t, len(out), 100_000, "terminator %q", terminator)
-
-		out = renderStringDiff(
-			t, randomText(1, 20, maxLineDiffLines+1)+terminator, randomText(2, 20, maxLineDiffLines+1)+terminator, true)
-		assert.Less(t, len(out), 4096, "terminator %q", terminator)
-	}
-}
-
-func TestTextDiffLargeReformattedJSON(t *testing.T) {
-	t.Parallel()
-
-	values := make([]int, 20_000)
+	bigOld := randomText(1, 1<<20, 1)
+	bigNew := randomText(2, 1<<20, 1)
+	bigEdited := bigOld[:1<<19] + "X" + bigOld[1<<19+1:]
+	longLinesOld := randomText(1, 100_000, 10)
+	longLinesNew := randomText(2, 100_000, 10)
+	lastNewLine := longLinesNew[strings.LastIndex(longLinesNew, "\n")+1:]
+	oneLongLineChanged := longLinesOld[:strings.LastIndex(longLinesOld, "\n")+1] + lastNewLine
+	values := make([]int, 200_000)
 	for i := range values {
 		values[i] = i
 	}
@@ -629,27 +586,71 @@ func TestTextDiffLargeReformattedJSON(t *testing.T) {
 	indented, err := json.MarshalIndent(values, "", "  ")
 	require.NoError(t, err)
 
-	// The values decode to the same JSON, so they are printed as replaced text, quoted once.
-	out := renderStringDiff(t, string(minified), string(indented), true)
-	assert.Contains(t, out, `"[0,1,2,3`)
-	assert.NotContains(t, out, `\"[`)
-	assert.Less(t, len(out), 4096)
-}
+	tests := []struct {
+		name        string
+		old, new    string
+		untruncated bool
+		contains    []string
+		notContains []string
+		minLen      int
+		maxLen      int
+	}{
+		{
+			name: "unrelated single line is replaced", old: bigOld, new: bigNew,
+			contains: []string{bigOld[:150] + "...", bigNew[:150] + "..."}, maxLen: 4096,
+		},
+		{
+			name: "unrelated single line is replaced in full", old: bigOld, new: bigNew, untruncated: true,
+			contains: []string{bigOld, bigNew}, maxLen: 4 * (len(bigOld) + len(bigNew)),
+		},
+		{
+			name: "single line with one edit is diffed", old: bigOld, new: bigEdited,
+			minLen: len(bigOld),
+		},
+		{
+			name: "unrelated lines are replaced",
+			old:  randomText(1, 30, 40_000), new: randomText(2, 30, 40_000),
+			contains: []string{" => "}, maxLen: 4096,
+		},
+		{
+			name: "long line with trailing newline is line diffed", old: bigOld + "\n", new: bigNew + "\n",
+			contains: []string{bigOld[:150] + "...", bigNew[:150] + "..."}, maxLen: 4096,
+		},
+		{
+			name: "long line with trailing newline on one side is line diffed", old: bigOld, new: bigNew + "\n",
+			contains: []string{bigOld[:150] + "...", bigNew[:150] + "..."}, maxLen: 4096,
+		},
+		{
+			name: "long lines all changed are line diffed", old: longLinesOld, new: longLinesNew,
+			contains: []string{longLinesNew[:150] + "..."}, maxLen: 8192,
+		},
+		{
+			name: "one long line changed is line diffed", old: longLinesOld, new: oneLongLineChanged,
+			contains: []string{lastNewLine[:150] + "..."}, maxLen: 8192,
+		},
+		{
+			// The values decode to the same JSON, so the text is diffed and, on timeout, replaced and quoted once.
+			name: "reformatted JSON is replaced", old: string(minified), new: string(indented),
+			contains: []string{`"[0,1,2,3`}, notContains: []string{`\"[`}, maxLen: 4096,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-func TestTextDiffLargeLineWithTrailingNewline(t *testing.T) {
-	t.Parallel()
-
-	old := randomText(1, 1<<20, 1)
-	new := randomText(2, 1<<20, 1)
-
-	// A trailing newline makes the value multi-line, so it gets a line diff, which is fast for a single line.
-	for _, tc := range []struct{ old, new string }{
-		{old + "\n", new + "\n"},
-		{old, new + "\n"},
-	} {
-		out := renderStringDiff(t, tc.old, tc.new, true)
-		assert.Contains(t, out, old[:150]+"...")
-		assert.Contains(t, out, new[:150]+"...")
-		assert.Less(t, len(out), 4096)
+			out := renderStringDiff(t, tt.old, tt.new, !tt.untruncated)
+			for _, s := range tt.contains {
+				assert.Contains(t, out, s)
+			}
+			for _, s := range tt.notContains {
+				assert.NotContains(t, out, s)
+			}
+			if tt.minLen > 0 {
+				assert.Greater(t, len(out), tt.minLen)
+			}
+			if tt.maxLen > 0 {
+				assert.Less(t, len(out), tt.maxLen)
+			}
+		})
 	}
 }

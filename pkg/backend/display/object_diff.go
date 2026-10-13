@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/sergi/go-diff/diffmatchpatch"
@@ -1229,44 +1230,42 @@ func escape(s string) string {
 	return escaped[1 : len(escaped)-1]
 }
 
-// Changed strings larger than these limits are printed as replaced instead of diffed. Diffs up to these sizes are
-// still fast to compute.
-const (
-	maxCharacterDiffLength = 4 * 1024
-	maxLineDiffLines       = 5000
-)
+// textDiffTimeout bounds the time spent diffing a changed string. Diffing large, mostly different strings is
+// quadratic, so a value whose diff hits the timeout is printed as replaced instead.
+const textDiffTimeout = 200 * time.Millisecond
 
 func (p *propertyPrinter) printTextDiff(old, new string) {
 	if p.printEncodedValueDiff(old, new) {
 		return
 	}
-	if tooLargeToDiff(old, new) {
+	if !p.printDiff(old, new) {
 		p.printReplacedText(old, new)
-		return
 	}
+}
 
+// printDiff prints a character diff of old and new, or a line diff if either has multiple lines. It prints nothing
+// and returns false if the diff hits textDiffTimeout.
+func (p *propertyPrinter) printDiff(old, new string) bool {
 	differ := diffmatchpatch.New()
-	differ.DiffTimeout = 0
+	differ.DiffTimeout = textDiffTimeout
+	start := time.Now()
 
 	singleLine := !strings.ContainsRune(old, '\n') && !strings.ContainsRune(new, '\n')
 	if singleLine {
 		diff := differ.DiffMain(old, new, false)
+		if time.Since(start) >= textDiffTimeout {
+			return false
+		}
 		p.printCharacterDiff(differ.DiffCleanupEfficiency(diff))
 	} else {
 		hashed1, hashed2, lineArray := differ.DiffLinesToChars(old, new)
 		diffs := differ.DiffMain(hashed1, hashed2, false)
+		if time.Since(start) >= textDiffTimeout {
+			return false
+		}
 		p.indented(1).printLineDiff(differ.DiffCharsToLines(diffs, lineArray))
 	}
-}
-
-// tooLargeToDiff reports whether old or new is too large for printTextDiff to diff. Multi-line values are limited by
-// line count, ignoring a trailing newline; single-line values by length.
-func tooLargeToDiff(old, new string) bool {
-	if strings.ContainsRune(old, '\n') || strings.ContainsRune(new, '\n') {
-		return strings.Count(strings.TrimSuffix(old, "\n"), "\n") >= maxLineDiffLines ||
-			strings.Count(strings.TrimSuffix(new, "\n"), "\n") >= maxLineDiffLines
-	}
-	return len(old) > maxCharacterDiffLength || len(new) > maxCharacterDiffLength
+	return true
 }
 
 // printReplacedText prints old and new as a replacement, honoring truncateOutput.
@@ -1395,12 +1394,11 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 
 	// If the decoded values are the same, then print a text diff as an object diff won't show any changes.
 	if oldValue.DeepEquals(newValue) {
-		// Replace oversized values here, since printTextDiff would print the quoted strings quoted again.
-		if tooLargeToDiff(strconv.Quote(old), strconv.Quote(new)) {
+		// Diff the quoted strings so whitespace changes are visible, but print a replacement unquoted, since
+		// printReplacedText quotes it.
+		if !p.printDiff(strconv.Quote(old), strconv.Quote(new)) {
 			p.printReplacedText(old, new)
-			return true
 		}
-		p.printTextDiff(strconv.Quote(old), strconv.Quote(new))
 		return true
 	}
 
