@@ -19,7 +19,11 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -292,4 +296,84 @@ func TestStackImport_ServiceSecrets_DefaultSecretManagerMutatesProjectStack(t *t
 	assert.Contains(t, string(configBytes), "secretsprovider: passphrase")
 	assert.Contains(t, string(configBytes), "encryptionsalt: v1:dummy")
 	assert.Contains(t, string(configBytes), "proj:key: value")
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/25145. Input that is not a stack export
+// should be reported as such, rather than as a deployment that is too old for this version of the CLI.
+func TestStackImport_InvalidInput(t *testing.T) {
+	t.Parallel()
+
+	newCmd := func(t *testing.T) *cobra.Command {
+		w := &pkgWorkspace.MockW{
+			SettingsF: func() *pkgWorkspace.Settings {
+				return &pkgWorkspace.Settings{
+					Stack: "org/proj/stk", //nolint:staticcheck
+				}
+			},
+		}
+		var be *backend.MockBackend
+		stk := &backend.MockStack{
+			RefF: func() backend.StackReference {
+				return &backend.MockStackReference{
+					NameV: tokens.MustParseStackName("stk"),
+				}
+			},
+			BackendF: func() backend.Backend { return be },
+		}
+		be = &backend.MockBackend{
+			URLF: func() string { return "https://api.pulumi.com" },
+			GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+				return stk, nil
+			},
+			ImportDeploymentF: func(ctx context.Context, s backend.Stack, deployment *apitype.UntypedDeployment) error {
+				t.Fatal("import should not be attempted for an invalid deployment")
+				return nil
+			},
+		}
+		ws := &pkgWorkspace.MockContext{
+			NewF: func(_ string) (pkgWorkspace.W, error) {
+				return w, nil
+			},
+		}
+		lm := &cmdBackend.MockLoginManager{
+			LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+				project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			) (backend.Backend, error) {
+				return be, nil
+			},
+		}
+		return newStackImportCmd(ws, lm, &secrets.MockProvider{})
+	}
+
+	for _, input := range []string{
+		`{"bogus": true}`,
+		`{"deployment": {}}`,
+		`{"version": 3}`,
+	} {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+
+			cmd := newCmd(t)
+			cmd.SetIn(strings.NewReader(input))
+			cmd.SetArgs([]string{})
+
+			err := cmd.ExecuteContext(t.Context())
+			assert.ErrorContains(t, err, "the deployment read from stdin is not a valid stack export")
+			assert.NotContains(t, err.Error(), "too old")
+		})
+	}
+
+	t.Run("file", func(t *testing.T) {
+		t.Parallel()
+
+		file := filepath.Join(t.TempDir(), "bad.json")
+		err := os.WriteFile(file, []byte(`{"bogus": true}`), 0o600)
+		require.NoError(t, err)
+
+		cmd := newCmd(t)
+		cmd.SetArgs([]string{"--file", file})
+
+		err = cmd.ExecuteContext(t.Context())
+		assert.ErrorContains(t, err, file+" is not a valid stack export")
+	})
 }

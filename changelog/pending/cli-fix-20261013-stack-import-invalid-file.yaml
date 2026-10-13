@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Report an invalid input file as such in `pulumi stack import` instead of claiming the stack is too old for this CLI
+time: 2026-10-13T10:05:12.418210+01:00

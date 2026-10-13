@@ -84,6 +84,13 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 			if err = json.NewDecoder(reader).Decode(&deployment); err != nil {
 				return err
 			}
+			if deployment.Version == 0 || len(deployment.Deployment) == 0 {
+				source := "the deployment read from stdin"
+				if file != "" {
+					source = file
+				}
+				return fmt.Errorf("%s is not a valid stack export: missing a \"version\" or \"deployment\" field", source)
+			}
 
 			// We do, however, now want to unmarshal the json.RawMessage into a real, typed deployment.  We do this so
 			// we can check that the deployment doesn't contain resources from a stack other than the selected one. This
