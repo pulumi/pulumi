@@ -1,0 +1,4 @@
+component: cli/display
+kind: fix
+body: Print very large changed strings as replaced instead of computing a slow text diff (#25189)
+time: 2026-10-13T00:00:00Z

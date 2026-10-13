@@ -1229,23 +1229,71 @@ func escape(s string) string {
 	return escaped[1 : len(escaped)-1]
 }
 
+// The text diff is quadratic in the length of the strings (characters for single-line values, lines for multi-line
+// values), so larger values are printed as replaced instead of diffed. See
+// https://github.com/pulumi/pulumi/issues/25189.
+const (
+	// About 0.07 s worst case for unrelated strings; 100,000 characters take 40 s.
+	maxCharacterDiffLength = 4 * 1024
+	// About 0.07 s worst case when every line changed; 40,000 changed lines take 4 s.
+	maxLineDiffLines = 5000
+)
+
 func (p *propertyPrinter) printTextDiff(old, new string) {
 	if p.printEncodedValueDiff(old, new) {
 		return
 	}
 
+	if !p.printDiffMatchPatchDiff(old, new) {
+		p.printReplacedText(old, new)
+	}
+}
+
+// printDiffMatchPatchDiff prints a character or line diff of old and new. It returns false without printing
+// anything if the values are too large to diff.
+func (p *propertyPrinter) printDiffMatchPatchDiff(old, new string) bool {
 	differ := diffmatchpatch.New()
 	differ.DiffTimeout = 0
 
 	singleLine := !strings.ContainsRune(old, '\n') && !strings.ContainsRune(new, '\n')
 	if singleLine {
+		if len(old) > maxCharacterDiffLength || len(new) > maxCharacterDiffLength {
+			return false
+		}
 		diff := differ.DiffMain(old, new, false)
 		p.printCharacterDiff(differ.DiffCleanupEfficiency(diff))
 	} else {
+		if countLines(old) > maxLineDiffLines || countLines(new) > maxLineDiffLines {
+			return false
+		}
 		hashed1, hashed2, lineArray := differ.DiffLinesToChars(old, new)
 		diffs := differ.DiffMain(hashed1, hashed2, false)
 		p.indented(1).printLineDiff(differ.DiffCharsToLines(diffs, lineArray))
 	}
+	return true
+}
+
+// countLines returns the number of lines in s; a single trailing newline does not start a new line.
+func countLines(s string) int {
+	if s == "" {
+		return 0
+	}
+	return strings.Count(strings.TrimSuffix(s, "\n"), "\n") + 1
+}
+
+// printReplacedText prints old and new as a replacement, honoring truncateOutput.
+func (p *propertyPrinter) printReplacedText(old, new string) {
+	p.withOp(deploy.OpDelete).printQuotedText(old)
+	p.writeVerbatim(" => ")
+	p.withOp(deploy.OpCreate).printQuotedText(new)
+	p.writeVerbatim("\n")
+}
+
+func (p *propertyPrinter) printQuotedText(s string) {
+	if p.truncateOutput {
+		s = p.truncatePropertyString(s)
+	}
+	p.writef("%q", s)
 }
 
 func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
@@ -1362,7 +1410,9 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 
 	// If the decoded values are the same, then print a text diff as an object diff won't show any changes.
 	if oldValue.DeepEquals(newValue) {
-		p.printTextDiff(strconv.Quote(old), strconv.Quote(new))
+		if !p.printDiffMatchPatchDiff(strconv.Quote(old), strconv.Quote(new)) {
+			p.printReplacedText(old, new)
+		}
 		return true
 	}
 

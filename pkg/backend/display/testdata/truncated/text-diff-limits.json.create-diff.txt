@@ -1,0 +1,7 @@
+Configuration:
+~ test:index:Thing: (update)
+    [id=thing-1]
+    [urn=urn:pulumi:dev::textdiff::test:index:Thing::thing]
+  ~ encoded   : "{\"name\":\"example\",\"items\":[1,2,3],\"description\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..." => "{\"name\": \"example\", \"items\": [1, 2, 3], \"description\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..."
+  ~ singleLine: "adgjmpswzcfilosvybehkoruxadgknqtwzcgjmpsvycfiloruybehknquxadgjmqtwzcfimpsvybeiloruxaehknqtwadgjmpswzcfilosvybehkoruxadgknqtwzcgjmpsvycfiloruybehknquxa..." => "ahovcjqyfmtahowdkryfmubipwdkszgnubiqxelszgovcjqxemtahovckryfmtaipwdkrygnubipwelszgnucjqxelsahovcjqyfmtahowdkryfmubipwdkszgnubiqxelszgovcjqxemtahovckry..."
+  ~ small     : "before" => "after"

@@ -16,8 +16,10 @@ package display
 
 import (
 	"bytes"
+	"math/rand"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -523,5 +525,101 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			)
 			require.Equal(t, tt.expected, s)
 		})
+	}
+}
+
+// randomText returns lines newline-separated lines of width pseudo-random lowercase characters.
+func randomText(seed int64, width int, lines int) string {
+	r := rand.New(rand.NewSource(seed)) //nolint:gosec // Deterministic test data.
+	var sb strings.Builder
+	for l := range lines {
+		if l > 0 {
+			sb.WriteByte('\n')
+		}
+		for range width {
+			sb.WriteByte(byte('a' + r.Intn(26)))
+		}
+	}
+	return sb.String()
+}
+
+// renderStringDiff renders a diff of a changed string property, failing the test if it takes too long.
+func renderStringDiff(t *testing.T, old, new string, truncateOutput bool) string {
+	t.Helper()
+
+	diff := resource.NewPropertyMapFromMap(map[string]any{"value": old}).
+		Diff(resource.NewPropertyMapFromMap(map[string]any{"value": new}))
+	require.NotNil(t, diff)
+
+	done := make(chan string, 1)
+	go func() {
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, *diff, nil, false, 1, false, truncateOutput, false, false, nil)
+		done <- buf.String()
+	}()
+	select {
+	case out := <-done:
+		return out
+	case <-time.After(30 * time.Second):
+		t.Fatal("timed out rendering a text diff")
+		return ""
+	}
+}
+
+func TestTextDiffLargeSingleLine(t *testing.T) {
+	t.Parallel()
+
+	old := randomText(1, 1<<20, 1)
+	new := randomText(2, 1<<20, 1)
+
+	out := renderStringDiff(t, old, new, true)
+	assert.Contains(t, out, old[:150]+"...")
+	assert.Contains(t, out, new[:150]+"...")
+	assert.Less(t, len(out), 4096)
+
+	out = renderStringDiff(t, old, new, false)
+	assert.Contains(t, out, old)
+	assert.Contains(t, out, new)
+	assert.Less(t, len(out), 4*(len(old)+len(new)))
+}
+
+func TestTextDiffLargeMultiLine(t *testing.T) {
+	t.Parallel()
+
+	old := randomText(1, 20, maxLineDiffLines+1)
+	new := randomText(2, 20, maxLineDiffLines+1)
+
+	out := renderStringDiff(t, old, new, true)
+	assert.Contains(t, out, " => ")
+	assert.Less(t, len(out), 4096)
+
+	out = renderStringDiff(t, old, new, false)
+	assert.Contains(t, out, strings.SplitN(old, "\n", 2)[0])
+	assert.Contains(t, out, strings.SplitN(new, "\n", 2)[0])
+}
+
+func TestCountLines(t *testing.T) {
+	t.Parallel()
+
+	for s, want := range map[string]int{"": 0, "a": 1, "a\n": 1, "a\nb": 2, "a\nb\n": 2, "\n": 1} {
+		assert.Equal(t, want, countLines(s), "%q", s)
+	}
+}
+
+func TestTextDiffAtLimits(t *testing.T) {
+	t.Parallel()
+
+	// With truncation on, the replaced form is short, whereas the character and line diffs print everything.
+	out := renderStringDiff(t, randomText(1, maxCharacterDiffLength, 1), randomText(2, maxCharacterDiffLength, 1), true)
+	assert.Greater(t, len(out), maxCharacterDiffLength)
+
+	for _, terminator := range []string{"", "\n"} {
+		out = renderStringDiff(
+			t, randomText(1, 20, maxLineDiffLines)+terminator, randomText(2, 20, maxLineDiffLines)+terminator, true)
+		assert.Greater(t, len(out), 100_000, "terminator %q", terminator)
+
+		out = renderStringDiff(
+			t, randomText(1, 20, maxLineDiffLines+1)+terminator, randomText(2, 20, maxLineDiffLines+1)+terminator, true)
+		assert.Less(t, len(out), 4096, "terminator %q", terminator)
 	}
 }
