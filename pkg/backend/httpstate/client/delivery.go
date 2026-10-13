@@ -114,11 +114,13 @@ func deliveryPath(stack StackIdentifier, suffix string) string {
 
 // DeliveryStackEnvironment is a stack's delivery-managed materialized config environment (the
 // slot): the ESC environment the owning delivery program publishes the stack's wired config
-// to. Config resolution composes it, pinned at the admitted tag, after the stack's own
+// to. Config resolution composes it, pinned at the admitted revision, after the stack's own
 // configuration.
 type DeliveryStackEnvironment struct {
-	Environment       string `json:"environment"`
-	AdmittedTag       string `json:"admittedTag"`
+	Environment string `json:"environment"`
+	// AdmittedRevision is the environment revision the stack's most recent admission
+	// published. Nil until the first admission.
+	AdmittedRevision  *int   `json:"admittedRevision,omitempty"`
 	DeliveryProgramID string `json:"deliveryProgramID"`
 }
 

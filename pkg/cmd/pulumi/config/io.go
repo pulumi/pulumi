@@ -276,18 +276,19 @@ func openStackEnv(
 // this stack. The slot applies LAST: a promoted, admitted value must not be shadowed by
 // local configuration, so a key collision with the stack's own config or environment is an
 // error rather than a silent override. A stack with no slot, or a backend with no delivery
-// support, composes nothing. A slot whose environment has no admitted revision yet fails
-// loudly: before the first admission there is no truthful value to resolve, and resolving
-// ambient or empty values is the drift materialization exists to kill.
+// support, composes nothing. The environment is opened pinned at the revision the service
+// records as admitted for this stack -- the service's record, not a tag on the environment, so
+// nothing done to the environment's tags changes what resolves. A slot with no admitted
+// revision yet fails loudly: before the first admission there is no truthful value to
+// resolve, and resolving ambient or empty values is the drift materialization exists to kill.
 //
 // A surface composes the slot XOR receives delivery-injected config, never both: a
 // delivery-managed execution (a candidate preview, an enacted member run) already carries
-// the candidate's resolved values on its own channel, so composing @admitted underneath
-// would leak keys the candidate DROPPED from the prior admitted revision pre-admission, and
-// collide with delivery's own injected values post-admission. Delivery-managed contexts are
+// the candidate's resolved values on its own channel, so composing the admitted revision
+// underneath would leak keys the candidate DROPPED from it pre-admission, and collide with
+// delivery's own injected values post-admission. Delivery-managed contexts are
 // recognized by their manifest env var and skipped; --override-env passes through to the
-// slot open, so a caller that wants the slot resolved at a different pin (e.g. a
-// per-candidate cand-* tag) can redirect the import.
+// slot open, so a caller can redirect the import.
 func composeDeliverySlotEnv(
 	ctx context.Context,
 	stack backend.Stack,
@@ -330,11 +331,15 @@ func composeDeliverySlotEnv(
 	if err != nil {
 		return userEnv, nil, err
 	}
-	importYAML := fmt.Sprintf("imports:\n  - %s@%s\n", slot.Environment, slot.AdmittedTag)
+	if slot.AdmittedRevision == nil {
+		return userEnv, nil, fmt.Errorf("delivery materialized environment %s has no admitted revision yet: "+
+			"no release has been admitted into this stack's stage", slot.Environment)
+	}
+	importYAML := fmt.Sprintf("imports:\n  - %s@%d\n", slot.Environment, *slot.AdmittedRevision)
 	slotEnv, diags, err := envs.OpenYAMLEnvironment(ctx, stackID.Owner, []byte(importYAML), 2*time.Hour, overrides)
 	if err != nil {
-		return userEnv, nil, fmt.Errorf("opening delivery materialized environment %s@%s: %w",
-			slot.Environment, slot.AdmittedTag, err)
+		return userEnv, nil, fmt.Errorf("opening delivery materialized environment %s@%d: %w",
+			slot.Environment, *slot.AdmittedRevision, err)
 	}
 	if len(diags) != 0 {
 		return slotEnv, diags, nil
