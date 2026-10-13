@@ -8,7 +8,8 @@
                 "non-interactive": { "omit": true },
                 "yes": { "omit": true, "preset": true },
                 "cwd": { "omit": true },
-                "emoji": { "omit": true }
+                "emoji": { "omit": true },
+                "coherence-window": { "omit": true }
             }
         },
         {
