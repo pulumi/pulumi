@@ -1,0 +1,23 @@
+run: |
+  esc env run -- dump-env
+process:
+  fs:
+    .esc.yaml: |
+      environment:
+        imports:
+          - default/base
+  commands:
+    dump-env: |
+      echo "foo: $FOO"
+environments:
+  test-user/default/base:
+    values:
+      environmentVariables:
+        FOO: bar
+
+---
+> esc env run -- dump-env
+foo: bar
+
+---
+> esc env run -- dump-env

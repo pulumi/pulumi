@@ -1,0 +1,36 @@
+run: |
+  esc env open
+  esc env open foo
+  esc env open default/other
+  esc env open default/other foo
+process:
+  fs:
+    .esc.yaml: |
+      environment: test-user/default/test
+environments:
+  test-user/default/other:
+    values:
+      foo: other-bar
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env open
+{
+  "foo": "bar"
+}
+> esc env open foo
+"bar"
+> esc env open default/other
+{
+  "foo": "other-bar"
+}
+> esc env open default/other foo
+"other-bar"
+
+---
+> esc env open
+> esc env open foo
+> esc env open default/other
+> esc env open default/other foo
