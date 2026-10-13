@@ -1395,13 +1395,12 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 
 	// If the decoded values are the same, then print a text diff as an object diff won't show any changes.
 	if oldValue.DeepEquals(newValue) {
-		quotedOld := strconv.Quote(old)
-		quotedNew := strconv.Quote(new)
-		if tooLargeToDiff(quotedOld, quotedNew) {
+		// Replace oversized values here, since printTextDiff would print the quoted strings quoted again.
+		if tooLargeToDiff(strconv.Quote(old), strconv.Quote(new)) {
 			p.printReplacedText(old, new)
-		} else {
-			p.printTextDiff(quotedOld, quotedNew)
+			return true
 		}
+		p.printTextDiff(strconv.Quote(old), strconv.Quote(new))
 		return true
 	}
 
