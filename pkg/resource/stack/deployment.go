@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+	"unsafe"
 
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"go.opentelemetry.io/otel"
@@ -875,7 +876,8 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		} else {
 			// If the encrypter is a batchEncrypter, use the Enqueue method to asynchronously encrypt the secret value.
 			if batchEncrypter, ok := enc.(BatchEncrypter); ok {
-				err = batchEncrypter.Enqueue(ctx, prop.SecretValue(), plaintext, &secret)
+				id := SecretID(uintptr(unsafe.Pointer(prop.SecretValue())))
+				err = batchEncrypter.Enqueue(ctx, id, plaintext, &secret)
 				if err != nil {
 					return nil, fmt.Errorf("enqueuing secret value for encryption: %w", err)
 				}

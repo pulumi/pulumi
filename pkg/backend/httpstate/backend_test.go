@@ -1787,7 +1787,7 @@ func (nopBatchEncrypter) BatchEncrypt(context.Context, []string) ([]string, erro
 	return nil, nil
 }
 
-func (nopBatchEncrypter) Enqueue(context.Context, *resource.Secret, string, *apitype.SecretV1) error {
+func (nopBatchEncrypter) Enqueue(context.Context, stack.SecretID, string, *apitype.SecretV1) error {
 	return nil
 }
 

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"unsafe"
 
 	"go.opentelemetry.io/otel"
 
@@ -113,28 +114,34 @@ func (csm *batchingCachingSecretsManager) BeginBatchDecryption() (BatchDecrypter
 	return BeginDecryptionBatch(csm.manager.Decrypter())
 }
 
-// SecretCache allows the bidirectional cached conversion between: `ciphertext <-> plaintext + secret pointer`.
+// SecretID identifies a particular secret value within one process. Callers obtain IDs from
+// [property.Value.SecretID] on the serialisation side, or from the address of a
+// [*resource.Secret] on the deserialisation side. The value is opaque; it is only ever
+// compared for equality and used as a map key.
+type SecretID uintptr
+
+// SecretCache allows the bidirectional cached conversion between: `ciphertext <-> plaintext + secret id`.
 // The same plaintext can be associated with multiple secrets, each of which will have their own ciphertexts which
 // should not be shared.
 //
 //	cache := NewSecretCache()
-//	secret := &resource.Secret{}
-//	cache.Write("plaintext", "ciphertext", secret)
+//	id := SecretID(uintptr(unsafe.Pointer(&resource.Secret{})))
+//	cache.Write("plaintext", "ciphertext", id)
 //	plaintext, ok := cache.LookupPlaintext("ciphertext") // "plaintext", true
-//	ciphertext, ok := cache.LookupCiphertext(secret, "plaintext") // "ciphertext", true
+//	ciphertext, ok := cache.LookupCiphertext(id, "plaintext") // "ciphertext", true
 type SecretCache interface {
-	// Write stores the plaintext, ciphertext, and secret in the cache, overwriting any previous entry for the secret.
-	Write(plaintext, ciphertext string, secret *resource.Secret)
-	// LookupCiphertext returns the cached ciphertext for the given secret and plaintext, if it exists.
-	LookupCiphertext(secret *resource.Secret, plaintext string) (string, bool)
+	// Write stores the plaintext, ciphertext, and secret id in the cache, overwriting any previous entry for the id.
+	Write(plaintext, ciphertext string, id SecretID)
+	// LookupCiphertext returns the cached ciphertext for the given secret id and plaintext, if it exists.
+	LookupCiphertext(id SecretID, plaintext string) (string, bool)
 	// LookupPlaintext returns the cached plaintext for the given ciphertext, if it exists.
 	LookupPlaintext(ciphertext string) (string, bool)
 }
 
 type nullSecretCache struct{}
 
-func (nullSecretCache) Write(plaintext, ciphertext string, secret *resource.Secret) {}
-func (nullSecretCache) LookupCiphertext(secret *resource.Secret, plaintext string) (string, bool) {
+func (nullSecretCache) Write(plaintext, ciphertext string, id SecretID) {}
+func (nullSecretCache) LookupCiphertext(id SecretID, plaintext string) (string, bool) {
 	return "", false
 }
 
@@ -143,14 +150,14 @@ func (nullSecretCache) LookupPlaintext(ciphertext string) (string, bool) {
 }
 
 type secretCache struct {
-	bySecret     sync.Map
+	byID         sync.Map
 	byCiphertext sync.Map
 }
 
 type secretCacheEntry struct {
 	plaintext  string
 	ciphertext string
-	secret     *resource.Secret
+	id         SecretID
 }
 
 // NewSecretCache returns a new secretCache which allows the bidirectional cached conversion between:
@@ -177,17 +184,17 @@ func NewSecretCache() SecretCache {
 
 // Write stores the plaintext, ciphertext, and secret in the cache, overwriting any previous entry for the secret.
 // This method is thread-safe and can be called concurrently by multiple goroutines.
-func (c *secretCache) Write(plaintext, ciphertext string, secret *resource.Secret) {
-	entry := secretCacheEntry{plaintext, ciphertext, secret}
-	c.bySecret.Store(secret, entry)
+func (c *secretCache) Write(plaintext, ciphertext string, id SecretID) {
+	entry := secretCacheEntry{plaintext, ciphertext, id}
+	c.byID.Store(id, entry)
 	c.byCiphertext.Store(ciphertext, entry)
 }
 
-// LookupCiphertext returns the cached ciphertext for the given secret and plaintext, if it exists.
-// The ciphertext is returned as a string, and a boolean is returned to indicate whether the secret was found.
+// LookupCiphertext returns the cached ciphertext for the given secret id and plaintext, if it exists.
+// The ciphertext is returned as a string, and a boolean is returned to indicate whether the id was found.
 // This method is thread-safe and can be called concurrently by multiple goroutines.
-func (c *secretCache) LookupCiphertext(secret *resource.Secret, plaintext string) (string, bool) {
-	entry, ok := c.bySecret.Load(secret)
+func (c *secretCache) LookupCiphertext(id SecretID, plaintext string) (string, bool) {
+	entry, ok := c.byID.Load(id)
 	if !ok {
 		return "", false
 	}
@@ -215,9 +222,9 @@ type BatchEncrypter interface {
 	config.Encrypter
 
 	// Enqueue a secret for encryption at some point in the future. The ciphertext will be written to the target secret
-	// object when the batch operation is processed.
+	// object when the batch operation is processed. id identifies the source secret for cache reuse.
 	// This method is thread-safe and can be called concurrently by multiple goroutines.
-	Enqueue(ctx context.Context, source *resource.Secret, plaintext string, target *apitype.SecretV1) error
+	Enqueue(ctx context.Context, id SecretID, plaintext string, target *apitype.SecretV1) error
 }
 
 // CompleteCrypterBatch is a function that must be called to ensure that all enqueued crypter operations are processed.
@@ -233,7 +240,7 @@ type cachingBatchEncrypter struct {
 }
 
 type queuedEncryption struct {
-	source    *resource.Secret
+	id        SecretID
 	target    *apitype.SecretV1
 	plaintext string
 }
@@ -282,14 +289,13 @@ func beginBatchEncryption(
 }
 
 func (be *cachingBatchEncrypter) Enqueue(ctx context.Context,
-	source *resource.Secret, plaintext string, target *apitype.SecretV1,
+	id SecretID, plaintext string, target *apitype.SecretV1,
 ) error {
-	contract.Assertf(source != nil, "source secret must not be nil")
 	contract.Assertf(!be.closed.Load(), "batch encrypter must not be closed")
 	// Add to the queue
 	for {
 		select {
-		case be.queue <- queuedEncryption{source, target, plaintext}:
+		case be.queue <- queuedEncryption{id, target, plaintext}:
 			return nil
 		default:
 			// If the queue is full, process the queue to make room.
@@ -331,7 +337,7 @@ dequeue:
 	// If the cache has entries for all secrets, re-use the previous ciphertexts to save the re-encryption cost.
 	cacheMissed := false
 	for i, q := range dequeued {
-		if ciphertext, ok := be.cache.LookupCiphertext(q.source, q.plaintext); ok {
+		if ciphertext, ok := be.cache.LookupCiphertext(q.id, q.plaintext); ok {
 			ciphertexts[i] = ciphertext
 		} else {
 			cacheMissed = true
@@ -349,7 +355,7 @@ dequeue:
 	for i, q := range dequeued {
 		ciphertext := ciphertexts[i]
 		q.target.Ciphertext = ciphertext
-		be.cache.Write(q.plaintext, ciphertext, q.source)
+		be.cache.Write(q.plaintext, ciphertext, q.id)
 	}
 	return nil
 }
@@ -516,7 +522,7 @@ dequeue:
 			return err
 		}
 		q.target.Element = propertyValue
-		bd.cache.Write(plaintext, q.ciphertext, q.target)
+		bd.cache.Write(plaintext, q.ciphertext, SecretID(uintptr(unsafe.Pointer(q.target))))
 	}
 	return nil
 }
