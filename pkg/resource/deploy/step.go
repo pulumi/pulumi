@@ -1384,16 +1384,26 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			return resource.StatusOK, nil, err
 		}
 
-		// Technically the only data we have at this point is "inputs", but we've been passing that as "state" to
-		// providers since forever and it would probably break things to stop sending that now. Thus this strange double
-		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
+		var state property.Map
+		typ := string(urn.Type())
+		if strings.HasPrefix(typ, "pulumi-nodejs:dynamic") || strings.HasPrefix(typ, "pulumi-python:dynamic") {
+			state = resource.FromResourcePropertyMap(s.new.Inputs)
+		}
+
 		result, err := prov.Read(context.TODO(), plugin.ReadRequest{
-			URN:                   urn,
-			Name:                  urn.Name(),
-			Type:                  urn.Type(),
-			ID:                    id,
-			Inputs:                resource.FromResourcePropertyMap(s.new.Inputs),
-			State:                 resource.FromResourcePropertyMap(s.new.Inputs),
+			URN:    urn,
+			Name:   urn.Name(),
+			Type:   urn.Type(),
+			ID:     id,
+			Inputs: resource.FromResourcePropertyMap(s.new.Inputs),
+			// N.B. We used to send "inputs" as "state" only, but since 2019 have been filling in both Inputs and State.
+			// This was a back-compat to deal with providers that were only looking at "state" (because originally there
+			// was no "inputs" field). Enough time has passed that we can assume providers have updated to looking at
+			// "inputs" now. This allows providers to tell the difference between a read/import and a refresh because
+			// only refresh will send non-nil state. Caveat that dynamic providers may still expect state to be non-nil,
+			// they were only updated in https://github.com/pulumi/pulumi/pull/24977 October 2026. So for those we
+			// special case and keep sending inputs in state, eventually we can clean that up as well.
+			State:                 state,
 			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
