@@ -86,11 +86,15 @@ func (t *PromiseType) equals(other Type, seen map[Type]struct{}) bool {
 // AssignableFrom returns true if this type is assignable from the indicated source type. A promise(T) is assignable
 // from values of type promise(U) and U, where T is assignable from U.
 func (t *PromiseType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *PromiseType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		if src, ok := src.(*PromiseType); ok {
-			return t.ElementType.AssignableFrom(src.ElementType)
+			return t.ElementType.assignableFrom(src.ElementType, seen)
 		}
-		return t.ElementType.AssignableFrom(src)
+		return t.ElementType.assignableFrom(src, seen)
 	})
 }
 

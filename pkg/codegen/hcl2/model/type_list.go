@@ -97,13 +97,17 @@ func (t *ListType) equals(other Type, seen map[Type]struct{}) bool {
 // AssignableFrom returns true if this type is assignable from the indicated source type. A list(T) is assignable
 // from values of type list(U) where T is assignable from U.
 func (t *ListType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *ListType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		switch src := src.(type) {
 		case *ListType:
-			return t.ElementType.AssignableFrom(src.ElementType)
+			return t.ElementType.assignableFrom(src.ElementType, seen)
 		case *TupleType:
 			for _, src := range src.ElementTypes {
-				if !t.ElementType.AssignableFrom(src) {
+				if !t.ElementType.assignableFrom(src, seen) {
 					return false
 				}
 			}

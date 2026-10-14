@@ -137,7 +137,11 @@ func (t *EnumType) equals(other Type, seen map[Type]struct{}) bool {
 // source type. The whole point of enums is they are a unique type, so we can't
 // convert between them.
 func (t *EnumType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *EnumType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		return false
 	})
 }
