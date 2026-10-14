@@ -19,7 +19,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1348,6 +1350,275 @@ func TestByteStringDeploymentRoundTrip(t *testing.T) {
 	require.Len(t, roundTripped.Resources, 1)
 	assert.Equal(t, res.Inputs, roundTripped.Resources[0].Inputs)
 	assert.Equal(t, res.Outputs, roundTripped.Resources[0].Outputs)
+}
+
+// propertyValuesNaNEqual mirrors PropertyValue.DeepEquals, except NaN == NaN. Round-trip tests
+// through FloatObjectGenerator may generate NaN floats, which the standard DeepEquals rejects.
+func propertyValuesNaNEqual(a, b resource.PropertyValue) bool {
+	switch {
+	case a.IsNumber() && b.IsNumber():
+		av, bv := a.NumberValue(), b.NumberValue()
+		if math.IsNaN(av) && math.IsNaN(bv) {
+			return true
+		}
+		return av == bv
+	case a.IsArray() && b.IsArray():
+		av, bv := a.ArrayValue(), b.ArrayValue()
+		if len(av) != len(bv) {
+			return false
+		}
+		for i := range av {
+			if !propertyValuesNaNEqual(av[i], bv[i]) {
+				return false
+			}
+		}
+		return true
+	case a.IsObject() && b.IsObject():
+		return propertyMapsNaNEqual(a.ObjectValue(), b.ObjectValue())
+	case a.IsSecret() && b.IsSecret():
+		return propertyValuesNaNEqual(a.SecretValue().Element, b.SecretValue().Element)
+	}
+	return a.DeepEquals(b)
+}
+
+func propertyMapsNaNEqual(a, b resource.PropertyMap) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, av := range a {
+		bv, ok := b[k]
+		if !ok || !propertyValuesNaNEqual(av, bv) {
+			return false
+		}
+	}
+	return true
+}
+
+// nonSecretObjectValueGenerator generates object values that never contain nested secrets.
+// Mirrors ObjectValueGenerator but omits SecretObjectGenerator; used to populate the element of
+// a top-level secret, since round-tripping nested encrypted secrets is lossy (the outer decrypt
+// yields a plaintext containing another ciphertext that NopDecrypter cannot decode).
+func nonSecretObjectValueGenerator(maxDepth int) *rapid.Generator[any] {
+	choices := []*rapid.Generator[any]{
+		UnknownObjectGenerator(),
+		BoolObjectGenerator().AsAny(),
+		NumberObjectGenerator().AsAny(),
+		StringObjectGenerator().AsAny(),
+		AssetObjectGenerator().AsAny(),
+		FloatObjectGenerator().AsAny(),
+		ResourceReferenceObjectGenerator(),
+	}
+	if maxDepth > 0 {
+		choices = append(choices,
+			ArchiveObjectGenerator(maxDepth).AsAny(),
+			rapid.Custom(func(t *rapid.T) []any {
+				return rapid.SliceOfN(nonSecretObjectValueGenerator(maxDepth-1), 0, 8).Draw(t, "array elements")
+			}).AsAny(),
+			rapid.Custom(func(t *rapid.T) map[string]any {
+				return rapid.MapOfN(rapid.String(), nonSecretObjectValueGenerator(maxDepth-1), 0, 8).Draw(t, "map elements")
+			}).AsAny(),
+		)
+	}
+	return rapid.OneOf(choices...)
+}
+
+// safeSecretObjectGenerator generates a secret value whose element is guaranteed not to be
+// itself a secret, keeping serialize/decrypt round-trips lossless.
+func safeSecretObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
+	return rapid.Custom(func(t *rapid.T) map[string]any {
+		value := nonSecretObjectValueGenerator(maxDepth - 1).Draw(t, "secret element")
+		bytes, err := json.Marshal(value)
+		require.NoError(t, err)
+		return map[string]any{
+			resource.SigKey: resource.SecretSig,
+			"plaintext":     string(bytes),
+		}
+	})
+}
+
+// safeObjectValueGenerator mirrors ObjectValueGenerator but uses safeSecretObjectGenerator so no
+// secret ever contains another secret.
+func safeObjectValueGenerator(maxDepth int) *rapid.Generator[any] {
+	choices := []*rapid.Generator[any]{
+		nonSecretObjectValueGenerator(maxDepth),
+	}
+	if maxDepth > 0 {
+		choices = append(choices, safeSecretObjectGenerator(maxDepth).AsAny())
+	}
+	return rapid.OneOf(choices...)
+}
+
+func safeMapObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
+	return rapid.Custom(func(t *rapid.T) map[string]any {
+		return rapid.MapOfN(rapid.String(), safeObjectValueGenerator(maxDepth-1), 0, 8).Draw(t, "map elements")
+	})
+}
+
+// ResourceV3Generator generates arbitrary ResourceV3 shapes whose Inputs, Outputs, and
+// ReplacementTrigger carry randomly scattered (non-nested) plaintext secrets.
+func ResourceV3Generator(maxDepth int) *rapid.Generator[apitype.ResourceV3] {
+	return rapid.Custom(func(t *rapid.T) apitype.ResourceV3 {
+		return apitype.ResourceV3{
+			URN:                resource.URN("urn:pulumi:test::proj::pkg:index:type::" + rapid.StringMatching(`[a-z]{1,8}`).Draw(t, "name")),
+			Type:               tokens.Type("pkg:index:type"),
+			Custom:             true,
+			Inputs:             safeMapObjectGenerator(maxDepth).Draw(t, "inputs"),
+			Outputs:            safeMapObjectGenerator(maxDepth).Draw(t, "outputs"),
+			ReplacementTrigger: rapid.OneOf(rapid.Just[any](nil), safeObjectValueGenerator(maxDepth)).Draw(t, "replacement trigger"),
+		}
+	})
+}
+
+// DeploymentV3Generator generates an arbitrary DeploymentV3 with 0-5 random resources.
+func DeploymentV3Generator(maxDepth int) *rapid.Generator[apitype.DeploymentV3] {
+	return rapid.Custom(func(t *rapid.T) apitype.DeploymentV3 {
+		resources := rapid.SliceOfN(ResourceV3Generator(maxDepth), 0, 5).Draw(t, "resources")
+		return apitype.DeploymentV3{
+			SecretsProviders: &apitype.SecretsProvidersV1{Type: "counting"},
+			Resources:        resources,
+		}
+	})
+}
+
+// countingSecretsManager wraps an inner secrets.Manager and counts BatchDecrypt / DecryptValue
+// calls that reach the underlying decrypter. When combined with NewBatchingCachingSecretsManager
+// the counts measure the deserializer's traffic to the real crypter: a correctly batched flow
+// collapses every encrypted secret into a single BatchDecrypt and 0 DecryptValue calls.
+type countingSecretsManager struct {
+	inner             secrets.Manager
+	batchDecryptCalls atomic.Int64
+	decryptValueCalls atomic.Int64
+}
+
+func (c *countingSecretsManager) Type() string              { return c.inner.Type() }
+func (c *countingSecretsManager) State() json.RawMessage    { return c.inner.State() }
+func (c *countingSecretsManager) Encrypter() config.Encrypter { return c.inner.Encrypter() }
+func (c *countingSecretsManager) Decrypter() config.Decrypter {
+	return &countingDecrypter{inner: c.inner.Decrypter(), m: c}
+}
+
+type countingDecrypter struct {
+	inner config.Decrypter
+	m     *countingSecretsManager
+}
+
+func (d *countingDecrypter) DecryptValue(ctx context.Context, ciphertext string) (string, error) {
+	d.m.decryptValueCalls.Add(1)
+	return d.inner.DecryptValue(ctx, ciphertext)
+}
+
+func (d *countingDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	d.m.batchDecryptCalls.Add(1)
+	return d.inner.BatchDecrypt(ctx, ciphertexts)
+}
+
+// countingSecretsProvider returns the same wrapped BatchingSecretsManager for any secrets type,
+// so a DeploymentV3 pointing at any provider will route through our counting manager.
+type countingSecretsProvider struct {
+	manager BatchingSecretsManager
+}
+
+func (p *countingSecretsProvider) OfType(_ context.Context, _ string, _ json.RawMessage) (secrets.Manager, error) {
+	return p.manager, nil
+}
+
+// TestDeserializeDeploymentV3_BatchesSecrets exercises the batching invariant of
+// DeserializeDeploymentV3: no matter how secrets are scattered across a deployment, the pre-pass
+// walker must enqueue every ciphertext so that the subsequent deserialize is served entirely from
+// the batch's local cache. The property-based test draws random deployment shapes containing
+// nested secrets, serialises them through the counting secrets manager, deserialises them back,
+// and asserts (a) at most one BatchDecrypt call reaches the underlying crypter, (b) zero
+// DecryptValue calls do, and (c) the round-tripped property values deep-equal the originals. If
+// enqueueCiphertexts ever drifts out of sync with the deserializer's secret recognition, (b) will
+// fail; if a resource shape is forgotten entirely, (a) and (b) will both fail.
+func TestDeserializeDeploymentV3_BatchesSecrets(t *testing.T) {
+	t.Parallel()
+
+	//nolint:paralleltest // uses rapid.T not golang testing.T
+	rapid.Check(t, func(t *rapid.T) {
+		ctx := context.Background()
+		counting := &countingSecretsManager{inner: b64.NewBase64SecretsManager()}
+		sm := NewBatchingCachingSecretsManager(counting)
+
+		// Draw a random plaintext deployment, then re-encode its Inputs/Outputs/ReplacementTrigger
+		// through the batch encrypter so every secret becomes a real ciphertext. The round-trip
+		// correctness check later compares against the deserialized form of the plaintext tree.
+		plain := DeploymentV3Generator(3).Draw(t, "deployment")
+
+		encrypt := func(v map[string]any) map[string]any {
+			if v == nil {
+				return nil
+			}
+			pm, err := DeserializeProperties(v, config.NopDecrypter)
+			require.NoError(t, err)
+			enc, done := sm.BeginBatchEncryption()
+			out, err := SerializeProperties(ctx, pm, enc, false /* showSecrets */)
+			require.NoError(t, err)
+			require.NoError(t, done(ctx))
+			return out
+		}
+		encryptValue := func(v any) any {
+			if v == nil {
+				return nil
+			}
+			pv, err := DeserializePropertyValue(v, config.NopDecrypter)
+			require.NoError(t, err)
+			enc, done := sm.BeginBatchEncryption()
+			out, err := SerializePropertyValue(ctx, pv, enc, false /* showSecrets */)
+			require.NoError(t, err)
+			require.NoError(t, done(ctx))
+			return out
+		}
+
+		expected := make([]resource.PropertyMap, len(plain.Resources)*2)
+		expectedTriggers := make([]resource.PropertyValue, len(plain.Resources))
+		for i := range plain.Resources {
+			res := &plain.Resources[i]
+			// Capture the plaintext-decoded form for the round-trip assertion before we encrypt.
+			inpPM, err := DeserializeProperties(res.Inputs, config.NopDecrypter)
+			require.NoError(t, err)
+			outPM, err := DeserializeProperties(res.Outputs, config.NopDecrypter)
+			require.NoError(t, err)
+			expected[i*2] = inpPM
+			expected[i*2+1] = outPM
+			if res.ReplacementTrigger != nil {
+				trig, err := DeserializePropertyValue(res.ReplacementTrigger, config.NopDecrypter)
+				require.NoError(t, err)
+				expectedTriggers[i] = trig
+			}
+
+			res.Inputs = encrypt(res.Inputs)
+			res.Outputs = encrypt(res.Outputs)
+			res.ReplacementTrigger = encryptValue(res.ReplacementTrigger)
+		}
+
+		// Reset counters: only the decrypt pass matters for the batching invariant.
+		counting.batchDecryptCalls.Store(0)
+		counting.decryptValueCalls.Store(0)
+
+		provider := &countingSecretsProvider{manager: sm}
+		snap, err := DeserializeDeploymentV3(ctx, plain, provider)
+		require.NoError(t, err)
+		require.Len(t, snap.Resources, len(plain.Resources))
+
+		// The whole point: exactly one BatchDecrypt call (or zero if the deployment had no
+		// encrypted secrets), and zero per-secret DecryptValue fallthroughs.
+		require.LessOrEqual(t, counting.batchDecryptCalls.Load(), int64(1),
+			"deserialize should fold every ciphertext into a single BatchDecrypt round-trip")
+		require.Zero(t, counting.decryptValueCalls.Load(),
+			"deserialize should never fall through to DecryptValue: enqueueCiphertexts missed a shape")
+
+		// Round-trip equality: the deserialized tree must match the original plaintext tree.
+		// DeepEquals treats NaN as equal to NaN, which generated float values can produce.
+		for i, res := range snap.Resources {
+			require.True(t, propertyMapsNaNEqual(expected[i*2], res.Inputs), "resource %d inputs", i)
+			require.True(t, propertyMapsNaNEqual(expected[i*2+1], res.Outputs), "resource %d outputs", i)
+			if expectedTriggers[i].V != nil {
+				require.True(t, propertyValuesNaNEqual(expectedTriggers[i], resource.ToResourcePropertyValue(res.ReplacementTrigger)),
+					"resource %d replacement trigger", i)
+			}
+		}
+	})
 }
 
 func TestSerializeResourceReportsByteString(t *testing.T) {
