@@ -24,7 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-//nolint:paralleltest // Sets environment variables.
 func TestWatchRemovalError(t *testing.T) {
 	run := func() error {
 		cmd := NewWatchCmd()
