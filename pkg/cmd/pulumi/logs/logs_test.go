@@ -56,7 +56,6 @@ func TestParseSince(t *testing.T) {
 	assert.Equal(t, "2006-01-02T00:00:00-08:00", f.In(pst).Format(time.RFC3339))
 }
 
-//nolint:paralleltest // Sets environment variables.
 func TestLogsRemovalError(t *testing.T) {
 	errReadProject := errors.New("read project")
 	run := func() error {
