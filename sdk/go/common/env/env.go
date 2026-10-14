@@ -291,3 +291,7 @@ var DisableExperimentalWatchRemovalWarning = env.Bool("DISABLE_EXPERIMENTAL_WATC
 // TODO[https://github.com/pulumi/pulumi/issues/24718]: Remove when `pulumi logs` is removed.
 var DisableExperimentalLogsRemovalWarning = env.Bool("DISABLE_EXPERIMENTAL_LOGS_REMOVAL_WARNING",
 	"Disable the removal warning when using `pulumi logs`.")
+
+// TODO[https://github.com/pulumi/pulumi/issues/24718]: Remove when `pulumi logs` is removed.
+var DisableExperimentalLogsRemovalError = env.Bool("DISABLE_EXPERIMENTAL_LOGS_REMOVAL_ERROR",
+	"Re-enable `pulumi logs`, which errors by default before its removal.")

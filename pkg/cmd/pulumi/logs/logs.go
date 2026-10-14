@@ -61,6 +61,11 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"CloudWatch Logs for log data relevant to resources in a stack.\n",
 		RunE: func(cobraCmd *cobra.Command, args []string) error {
 			// Setting cobra's Deprecated field would hide the `pulumi logs` subcommands, which are not deprecated.
+			if !env.DisableExperimentalLogsRemovalError.Value() {
+				return fmt.Errorf("command %q is deprecated and disabled by default.\n\n%s\n"+
+					"To run the command until it is removed, set %s=1.",
+					cobraCmd.Name(), logsRemovalWarning, env.DisableExperimentalLogsRemovalError.Var().Name())
+			}
 			if !env.DisableExperimentalLogsRemovalWarning.Value() {
 				cobraCmd.PrintErrf("Command %q is deprecated, %s\n", cobraCmd.Name(), logsRemovalWarning)
 			}
