@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Make `pulumi logs` error by default before its removal
+time: 2026-10-14T00:00:00Z
