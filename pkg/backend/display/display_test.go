@@ -16,10 +16,12 @@ package display
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -29,6 +31,36 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCredentialHelperDiagnosticsDuringRendering(t *testing.T) {
+	t.Parallel()
+	var stdout, stderr bytes.Buffer
+	messages := make(chan string)
+	restored := false
+	var jsonEvent apitype.EngineEvent
+	require.NoError(t, json.Unmarshal([]byte(`{
+		"stdoutEvent":{"message":"existing system message\n","color":"never"}
+	}`), &jsonEvent))
+	event, err := ConvertJSONEvent(jsonEvent)
+	require.NoError(t, err)
+	events, done := make(chan engine.Event), make(chan bool)
+	go ShowProgressEvents("test", apitype.UpdateUpdate, tokens.MustParseStackName("stack"), "project", "",
+		events, done, Options{
+			IsInteractive: true, Color: colors.Never, Stdout: &stdout, Stderr: &stderr,
+			HelperDiagnostics: func() (<-chan string, func()) {
+				return messages, func() { restored = true }
+			},
+			term: terminal.NewMockTerminal(&stdout, 100, 40, true), DeterministicOutput: true,
+		}, false)
+	events <- event
+	messages <- "helper diagnostic\n"
+	events <- engine.NewCancelEvent()
+	<-done
+	assert.Empty(t, stderr.String())
+	assert.True(t, restored)
+	assert.Contains(t, stdout.String(), "existing system message")
+	assert.Contains(t, stdout.String(), "helper diagnostic")
+}
 
 func TestShowEvents(t *testing.T) {
 	t.Parallel()

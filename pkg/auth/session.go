@@ -42,7 +42,7 @@ type Session struct {
 	discoverHelper func() error
 	runHelper      runHelperFunc
 	resolved       *credentialhelper.Resolved
-	stderr         io.Writer
+	stderr         *helperOutput
 	// helperEnv holds the variables applied so far, to detect conflicts between backends.
 	helperEnv map[string]string
 	// prepared caches each backend's preparation result, including when no helper is available.
@@ -74,7 +74,11 @@ func DefaultSession() *Session {
 // automatic discovery when the first backend is prepared. Helper diagnostics go to stderr.
 func NewSession(stderr io.Writer) *Session {
 	session := NewSessionWithHelperFunc(nil)
-	session.stderr = stderr
+	if stderr == nil {
+		session.stderr = defaultHelperOutput
+	} else {
+		session.stderr.terminal = stderr
+	}
 	session.discoverHelper = sync.OnceValue(func() error {
 		resolved, err := FindHelper()
 		if err != nil || resolved == nil {
@@ -122,6 +126,7 @@ func (s *Session) CredentialInfo(url string) CredentialInfo {
 func NewSessionWithHelperFunc(run runHelperFunc) *Session {
 	return &Session{
 		runHelper: run,
+		stderr:    &helperOutput{},
 		helperEnv: map[string]string{},
 		prepared:  map[string]preparedBackend{},
 	}
@@ -129,7 +134,9 @@ func NewSessionWithHelperFunc(run runHelperFunc) *Session {
 
 func (s *Session) executableRunner(resolved *credentialhelper.Resolved) runHelperFunc {
 	return func(ctx context.Context, request credentialhelper.Request) (*credentialhelper.Response, error) {
-		runner := credentialhelper.Runner{Path: resolved.Path, Args: resolved.Args, Stderr: s.stderr}
+		stderr := &helperLines{output: s.stderr}
+		defer stderr.flush()
+		runner := credentialhelper.Runner{Path: resolved.Path, Args: resolved.Args, Stderr: stderr}
 		return runner.Run(ctx, request)
 	}
 }

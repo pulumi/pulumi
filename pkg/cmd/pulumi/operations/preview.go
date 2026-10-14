@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -413,6 +415,7 @@ func NewPreviewCmd() *cobra.Command {
 			}
 
 			displayOpts := display.Options{
+				HelperDiagnostics:      pkgauth.CaptureHelperStderr,
 				Color:                  cmdutil.GetGlobalColorization(),
 				ShowConfig:             showConfig,
 				ShowPolicyRemediations: showPolicyRemediations,

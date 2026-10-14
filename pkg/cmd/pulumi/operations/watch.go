@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 
+	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -88,6 +90,7 @@ func NewWatchCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
+				HelperDiagnostics:    pkgauth.CaptureHelperStderr,
 				Color:                cmdutil.GetGlobalColorization(),
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,

@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
+
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/spf13/cobra"
@@ -163,6 +165,7 @@ func NewRefreshCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
+				HelperDiagnostics:    pkgauth.CaptureHelperStderr,
 				Color:                cmdutil.GetGlobalColorization(),
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,

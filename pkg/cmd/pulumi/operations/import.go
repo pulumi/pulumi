@@ -24,6 +24,8 @@ import (
 	"os"
 	"strings"
 
+	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
+
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/blang/semver"
@@ -923,17 +925,18 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			opts.Display = display.Options{
-				Color:            cmdutil.GetGlobalColorization(),
-				ShowConfig:       showConfig,
-				ShowURNs:         showURNs,
-				SuppressOutputs:  suppressOutputs,
-				SuppressProgress: suppressProgress,
-				IsInteractive:    interactive,
-				Type:             displayType,
-				EventLogPath:     eventLogPath,
-				Debug:            debug,
-				JSONDisplay:      jsonDisplay,
-				SummaryJSON:      outputFormat == "json",
+				HelperDiagnostics: pkgauth.CaptureHelperStderr,
+				Color:             cmdutil.GetGlobalColorization(),
+				ShowConfig:        showConfig,
+				ShowURNs:          showURNs,
+				SuppressOutputs:   suppressOutputs,
+				SuppressProgress:  suppressProgress,
+				IsInteractive:     interactive,
+				Type:              displayType,
+				EventLogPath:      eventLogPath,
+				Debug:             debug,
+				JSONDisplay:       jsonDisplay,
+				SummaryJSON:       outputFormat == "json",
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
