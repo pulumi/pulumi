@@ -465,7 +465,20 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					if isOutput && to.Equals(model.DynamicType) {
 						typeName = "pulumi.AnyOutput"
 					}
-					g.Fgenf(w, "%.v.(%s)", from, typeName)
+					// A Dynamic PCL source may emit as either an interface value (e.g. a function
+					// returning `any`) or a concrete value (e.g. a resource reference whose static
+					// Go type is a struct pointer). Go's `.(T)` type assertion requires an
+					// interface LHS, and Go's `T(x)` conversion only works when `T` is an
+					// interface or `x` is already assignable to `T`. Pick the form by looking at
+					// the target: for interface-typed Pulumi SDK targets, `T(x)` is a plain
+					// interface conversion that works regardless of whether `x` is already an
+					// interface. For plain scalar targets, `.(T)` is the only form that works
+					// when `x` is an interface.
+					if isPulumiInterfaceType(typeName) {
+						g.Fgenf(w, "%s(%.v)", typeName, from)
+					} else {
+						g.Fgenf(w, "%.v.(%s)", from, typeName)
+					}
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}
@@ -1548,6 +1561,19 @@ func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpress
 		opstr = "-"
 	}
 	g.Fgenf(w, "%[2]v%.[1]*[3]v", precedence, opstr, expr.Operand)
+}
+
+// isPulumiInterfaceType reports whether a Pulumi SDK Go type name denotes a non-generic interface
+// (as opposed to a plain scalar wrapper like `pulumi.String`). Used by `__convert` emission to
+// decide between the `T(x)` interface-conversion form (works for both concrete and interface
+// sources) and the `x.(T)` type-assertion form (needed when the target is a plain scalar).
+func isPulumiInterfaceType(typeName string) bool {
+	switch typeName {
+	case "pulumi.Resource", "pulumi.ProviderResource",
+		"pulumi.Asset", "pulumi.Archive", "pulumi.AssetOrArchive":
+		return true
+	}
+	return false
 }
 
 // argumentTypeName computes the go type for the given model type.

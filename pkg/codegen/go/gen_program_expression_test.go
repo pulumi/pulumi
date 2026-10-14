@@ -547,3 +547,25 @@ func testGenerateExpression(
 		assert.Equal(t, goCode, index.String())
 	})
 }
+
+// TestConvertLiteralToOutputNumberIsNotLifted pins the behavior of lowering an expression that
+// compares an output-typed number against an int literal: `v > 5` where v: output<number>. In this
+// position the binder's rewriteConversions wraps `5` in `__convert(5, InputType(number))` because
+// int is not strictly assignable to number.
+func TestConvertLiteralToOutputNumberIsNotLifted(t *testing.T) {
+	t.Parallel()
+
+	env := environment(map[string]any{
+		"v": model.NewOutputType(model.NumberType),
+	})
+	scope := env.scope()
+	genFunc := func(w io.Writer, g *generator, e model.Expression) {
+		e, temps := g.lowerExpression(e, model.NewOutputType(model.BoolType))
+		g.genTemps(w, temps)
+		g.Fgenf(w, "%v", e)
+	}
+	testGenerateExpression(t,
+		"v > 5",
+		"v.ApplyT(func(v float64) (bool, error) {\nreturn v > 5, nil\n}).(pulumi.BoolOutput)",
+		scope, genFunc)
+}
