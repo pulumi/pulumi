@@ -1426,7 +1426,7 @@ func nonSecretObjectValueGenerator(maxDepth int) *rapid.Generator[any] {
 // itself a secret, keeping serialize/decrypt round-trips lossless.
 func safeSecretObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
 	return rapid.Custom(func(t *rapid.T) map[string]any {
-		value := nonSecretObjectValueGenerator(maxDepth - 1).Draw(t, "secret element")
+		value := nonSecretObjectValueGenerator(maxDepth-1).Draw(t, "secret element")
 		bytes, err := json.Marshal(value)
 		require.NoError(t, err)
 		return map[string]any{
@@ -1490,8 +1490,8 @@ type countingSecretsManager struct {
 	decryptValueCalls atomic.Int64
 }
 
-func (c *countingSecretsManager) Type() string              { return c.inner.Type() }
-func (c *countingSecretsManager) State() json.RawMessage    { return c.inner.State() }
+func (c *countingSecretsManager) Type() string                { return c.inner.Type() }
+func (c *countingSecretsManager) State() json.RawMessage      { return c.inner.State() }
 func (c *countingSecretsManager) Encrypter() config.Encrypter { return c.inner.Encrypter() }
 func (c *countingSecretsManager) Decrypter() config.Decrypter {
 	return &countingDecrypter{inner: c.inner.Decrypter(), m: c}
@@ -1534,9 +1534,8 @@ func (p *countingSecretsProvider) OfType(_ context.Context, _ string, _ json.Raw
 func TestDeserializeDeploymentV3_BatchesSecrets(t *testing.T) {
 	t.Parallel()
 
-	//nolint:paralleltest // uses rapid.T not golang testing.T
 	rapid.Check(t, func(t *rapid.T) {
-		ctx := context.Background()
+		ctx := t.Context()
 		counting := &countingSecretsManager{inner: b64.NewBase64SecretsManager()}
 		sm := NewBatchingCachingSecretsManager(counting)
 
