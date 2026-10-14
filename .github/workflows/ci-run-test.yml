@@ -261,12 +261,6 @@ jobs:
           tar xzf maven.tar.gz
           echo "${MAVEN_DIR}/apache-maven-${MAVEN_VERSION}/bin" | tee -a "$GITHUB_PATH"
           "${MAVEN_DIR}/apache-maven-${MAVEN_VERSION}/bin/mvn" --version
-      - name: Setup Gradle
-        uses: ./.github/actions/retry
-        with:
-          action: gradle/actions/setup-gradle@v6
-          with: |
-            gradle-version: "7.6"
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
