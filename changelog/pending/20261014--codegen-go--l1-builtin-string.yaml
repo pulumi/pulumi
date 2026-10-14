@@ -1,0 +1,4 @@
+component: codegen/go
+kind: fix
+body: Fix Go program generation for `split` and string `length` so they produce compilable, Unicode-correct code
+time: 2026-10-14T12:00:00.000000+00:00
