@@ -267,7 +267,7 @@ func New(ctx context.Context, d diag.Sink,
 		account.SetCredentials(at, expiresAt, rt)
 		return account.Save(cloudURL, false)
 	})
-	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
+	escClient := esc_client.NewWithHTTPAuth(client.UserAgent(), cloudURL, insecure, apiClient.HTTPAuth())
 
 	org := env.DefaultOrg.Value()
 	if org == "" {

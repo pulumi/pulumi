@@ -26,7 +26,6 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/go-querystring/query"
@@ -37,6 +36,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -155,34 +155,10 @@ type UpdateIdentifier struct {
 	UpdateID   string
 }
 
-// accessTokenKind is enumerates the various types of access token used with the Pulumi API. These kinds correspond
-// directly to the "method" piece of an HTTP `Authorization` header.
-type accessTokenKind string
-
-const (
-	// accessTokenKindAPIToken denotes a standard Pulumi API token.
-	accessTokenKindAPIToken accessTokenKind = "token"
-	// accessTokenKindUpdateToken denotes an update lease token.
-	accessTokenKindUpdateToken accessTokenKind = "update-token"
-)
-
-// accessToken is an abstraction over the two different kinds of access tokens used by the Pulumi API.
-type accessToken interface {
-	Kind() accessTokenKind
-	Get(ctx context.Context) (string, error)
-}
-
-// refreshable is the opt-in interface for access tokens that can renew themselves when the server
-// rejects the current value with 401. defaultRESTClient.Call type-asserts on this after a 401 and,
-// if the assertion succeeds, calls Refresh once and retries the request before surfacing
-// LoginRequiredError. prevAccessToken is the access token the caller sent on the failed request;
-// if it no longer matches the wrapper's current token, another caller has already refreshed and
-// Refresh returns nil without contacting the server.
-type refreshable interface {
-	Refresh(ctx context.Context, prevAccessToken string) error
-}
-
 type httpCallOptions struct {
+	// UpdateToken replaces the backend token for an update lease request.
+	UpdateToken UpdateTokenSource
+
 	// RetryPolicy defines the policy for retrying requests by httpClient.Do.
 	//
 	// By default, only GET requests are retried.
@@ -205,72 +181,6 @@ type httpCallOptions struct {
 	SkipDecodeErrors bool
 }
 
-// apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind
-// accessTokenKindAPIToken)
-type apiAccessToken string
-
-func (apiAccessToken) Kind() accessTokenKind {
-	return accessTokenKindAPIToken
-}
-
-func (t apiAccessToken) Get(_ context.Context) (string, error) {
-	return string(t), nil
-}
-
-// refreshableAPIAccessToken is an apiAccessToken that can renew itself via the OAuth refresh-token
-// grant (RFC 6749 §6) when the current access token expires. defaultRESTClient.Call type-asserts
-// on the refreshable interface after a 401 and calls Refresh once before falling through to
-// LoginRequiredError.
-//
-// The refresh and writeback callbacks are decoupled so the type stays free of dependencies on the
-// Pulumi service client and credential storage: callers wire the wrapper into client.NewClient by
-// closing over Client.RefreshAccessToken and workspace.StoreAccount respectively.
-type refreshableAPIAccessToken struct {
-	mu sync.Mutex
-	// accessToken is the current short-lived bearer; sent on every request.
-	accessToken string
-	// refreshToken is the long-lived credential exchanged at /api/oauth/token for a fresh
-	// access token. Held off the request path and only ever passed to the refresh callback.
-	refreshToken string
-	// refresh exchanges refreshToken for a new access token. Empty newRefreshToken /
-	// zero accessTokenExpiresAt means the server did not supply that field; the
-	// wrapper keeps the existing value.
-	refresh func(ctx context.Context, refreshToken string) (
-		accessToken string, accessTokenExpiresAt time.Time, newRefreshToken string, err error)
-	// writeback persists the refreshed credentials. Called with the wrapper's lock held
-	// so the in-memory and on-disk views can't diverge under concurrent refreshes.
-	writeback func(accessToken string, accessTokenExpiresAt time.Time, refreshToken string) error
-}
-
-func (*refreshableAPIAccessToken) Kind() accessTokenKind {
-	return accessTokenKindAPIToken
-}
-
-func (t *refreshableAPIAccessToken) Get(_ context.Context) (string, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	return t.accessToken, nil
-}
-
-func (t *refreshableAPIAccessToken) Refresh(ctx context.Context, prevAccessToken string) error {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	// If another caller already refreshed while we were queued for the lock, the in-memory
-	// access token has advanced past the one we sent — bail without burning another grant.
-	if t.accessToken != prevAccessToken {
-		return nil
-	}
-	newAT, expiresAt, newRT, err := t.refresh(ctx, t.refreshToken)
-	if err != nil {
-		return err
-	}
-	t.accessToken = newAT
-	if newRT != "" {
-		t.refreshToken = newRT
-	}
-	return t.writeback(t.accessToken, expiresAt, t.refreshToken)
-}
-
 // UpdateTokenSource allows the API client to request tokens for an in-progress update as near as possible to the
 // actual API call (e.g. after marshaling, etc.).
 type UpdateTokenSource interface {
@@ -281,24 +191,6 @@ type updateTokenStaticSource string
 
 func (t updateTokenStaticSource) GetToken(_ context.Context) (string, error) {
 	return string(t), nil
-}
-
-// updateToken is an implementation of accessToken for update lease tokens (i.e. tokens of kind
-// accessTokenKindUpdateToken)
-type updateToken struct {
-	source UpdateTokenSource
-}
-
-func updateAccessToken(source UpdateTokenSource) updateToken {
-	return updateToken{source: source}
-}
-
-func (updateToken) Kind() accessTokenKind {
-	return accessTokenKindUpdateToken
-}
-
-func (t updateToken) Get(ctx context.Context) (string, error) {
-	return t.source.GetToken(ctx)
 }
 
 // retryPolicy defines the policy for retrying requests by httpClient.Do.
@@ -429,7 +321,7 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 		transport = http.DefaultTransport
 	}
 	tracingClient := *c.client
-	tracingClient.Transport = &tracingTransport{base: transport, apiHost: c.apiHost}
+	tracingClient.Transport = auth.Transport(&tracingTransport{base: transport, apiHost: c.apiHost})
 
 	// Wait 1s before retrying on failure. Then increase by 2x until the
 	// maximum delay is reached. Stop after maxRetryCount requests have
@@ -449,8 +341,10 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 func pulumiAPICall(ctx context.Context,
 	requestSpan opentracing.Span,
 	d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
-	tok accessToken, opts httpCallOptions,
+	httpAuth *auth.HTTPAuth, opts httpCallOptions,
 ) (string, *http.Response, error) {
+	ctx = auth.WithHTTPAuth(ctx, httpAuth)
+
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
 	path = cleanPath(path)
@@ -499,13 +393,12 @@ func pulumiAPICall(ctx context.Context,
 	// table above `currentAPIVersion`.
 	req.Header.Add("Accept", acceptAPIVersionHeader)
 
-	// Apply credentials if provided.
-	creds, err := tok.Get(ctx)
-	if err != nil {
-		return "", nil, fmt.Errorf("fetching credentials: %w", err)
-	}
-	if creds != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("%s %s", tok.Kind(), creds))
+	if opts.UpdateToken != nil {
+		token, err := opts.UpdateToken.GetToken(ctx)
+		if err != nil {
+			return "", nil, fmt.Errorf("fetching update credentials: %w", err)
+		}
+		req.Header.Set("Authorization", "update-token "+token)
 	}
 
 	tracingOptions := tracing.OptionsFromContext(ctx)
@@ -555,7 +448,7 @@ func pulumiAPICall(ctx context.Context,
 	}
 
 	// Provide a better error if using an authenticated call without having logged in first.
-	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && creds == "" {
+	if resp.StatusCode == 401 && opts.UpdateToken == nil && httpAuth.AccessToken() == "" {
 		return "", nil, backenderr.ErrLoginRequired
 	}
 
@@ -625,7 +518,7 @@ type restClient interface {
 	HTTPClient() httpClient
 
 	Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
-		respObj any, tok accessToken, opts httpCallOptions) error
+		respObj any, httpAuth *auth.HTTPAuth, opts httpCallOptions) error
 }
 
 // defaultRESTClient is the default implementation for calling the Pulumi REST API.
@@ -643,7 +536,7 @@ func (c *defaultRESTClient) HTTPClient() httpClient {
 // as JSON and storing it in respObj (use nil for NoContent). The error return type might
 // be an instance of apitype.ErrorResponse, in which case will have the response code.
 func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
-	respObj any, tok accessToken, opts httpCallOptions,
+	respObj any, httpAuth *auth.HTTPAuth, opts httpCallOptions,
 ) error {
 	requestSpan, ctx := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
 		opentracing.Tag{Key: "method", Value: method},
@@ -691,22 +584,8 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 		}
 	}
 
-	// Make API call. If the access token can refresh itself and the server rejects it with
-	// LoginRequiredError, refresh once and retry — this lets agent CLIs survive routine access-token
-	// expiry without bouncing back through a human-driven login. Snapshot the access token before
-	// the send so we can tell Refresh which one we used; concurrent 401s thereby dedupe to one
-	// refresh instead of N.
-	sentAccessToken, _ := tok.Get(ctx)
 	url, resp, err := pulumiAPICall(
-		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
-	if err != nil && errors.Is(err, backenderr.LoginRequiredError{}) {
-		if r, ok := tok.(refreshable); ok {
-			if refreshErr := r.Refresh(ctx, sentAccessToken); refreshErr == nil {
-				url, resp, err = pulumiAPICall(
-					ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
-			}
-		}
-	}
+		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, httpAuth, opts)
 	if err != nil {
 		otelSpan.RecordError(err)
 		otelSpan.SetStatus(codes.Error, err.Error())

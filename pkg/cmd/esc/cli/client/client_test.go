@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/schema"
@@ -59,7 +60,7 @@ func newTestServer(t *testing.T) (*http.ServeMux, *client) {
 	}))
 	t.Cleanup(server.Close)
 
-	client := newClient(userAgent, server.URL, token, server.Client())
+	client := newClient(userAgent, server.URL, auth.NewHTTPAuth(server.URL, token, nil), server.Client())
 	return mux, client
 }
 

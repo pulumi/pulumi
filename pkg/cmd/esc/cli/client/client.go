@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/google/go-querystring/query"
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
@@ -501,7 +502,7 @@ type Client interface {
 
 type client struct {
 	apiURL     string
-	apiToken   string
+	httpAuth   *auth.HTTPAuth
 	apiUser    string
 	apiOrgs    []string
 	tokenInfo  *workspace.TokenInformation // might be nil if running against old services
@@ -522,13 +523,15 @@ func newHTTPClient(insecure bool) *http.Client {
 	return http.DefaultClient
 }
 
-// newClient creates a new ESC API client with the given user agent, URL, API token, and HTTP client.
-func newClient(userAgent, apiURL, apiToken string, httpClient *http.Client) *client {
+// newClient creates an ESC API client with the given user agent, URL, authentication, and HTTP client.
+func newClient(userAgent, apiURL string, httpAuth *auth.HTTPAuth, httpClient *http.Client) *client {
+	transportClient := *httpClient
+	transportClient.Transport = auth.Transport(httpClient.Transport)
 	return &client{
 		apiURL:     apiURL,
-		apiToken:   apiToken,
+		httpAuth:   httpAuth,
 		userAgent:  userAgent,
-		httpClient: httpClient,
+		httpClient: &transportClient,
 	}
 }
 
@@ -545,7 +548,12 @@ func NewDefaultClient(apiToken string) Client {
 
 // New creates a new Pulumi API client with the given URL and API token.
 func New(userAgent, apiURL, apiToken string, insecure bool) Client {
-	return newClient(userAgent, apiURL, apiToken, newHTTPClient(insecure))
+	return NewWithHTTPAuth(userAgent, apiURL, insecure, auth.NewHTTPAuth(apiURL, apiToken, nil))
+}
+
+// NewWithHTTPAuth creates an ESC client that shares backend authentication with other clients.
+func NewWithHTTPAuth(userAgent, apiURL string, insecure bool, httpAuth *auth.HTTPAuth) Client {
+	return newClient(userAgent, apiURL, httpAuth, newHTTPClient(insecure))
 }
 
 // URL returns the URL of the API endpoint this client interacts with
@@ -1744,6 +1752,8 @@ func (pc *client) httpCall(
 	body []byte,
 	opts httpCallOptions,
 ) (*http.Response, error) {
+	ctx = auth.WithHTTPAuth(ctx, pc.httpAuth)
+
 	// Normalize URL components
 	cloudAPI := strings.TrimSuffix(pc.apiURL, "/")
 	path = cleanPath(path)
@@ -1791,11 +1801,6 @@ func (pc *client) httpCall(
 	// Specify the specific API version we accept.
 	req.Header.Set("Accept", "application/vnd.pulumi+8")
 
-	// Apply credentials if provided.
-	if pc.apiToken != "" {
-		req.Header.Set("Authorization", "token "+pc.apiToken)
-	}
-
 	if opts.GzipCompress {
 		// If we're sending something that's gzipped, set that header too.
 		req.Header.Set("Content-Encoding", "gzip")
@@ -1811,7 +1816,7 @@ func (pc *client) httpCall(
 	}
 
 	// Provide a better error if using an authenticated call without having logged in first.
-	if resp.StatusCode == 401 && pc.apiToken == "" {
+	if resp.StatusCode == 401 && pc.httpAuth.AccessToken() == "" {
 		return nil, errors.New("this command requires logging in; try running `pulumi login` first")
 	}
 

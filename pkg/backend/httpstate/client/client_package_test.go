@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -380,7 +381,7 @@ func TestPublishPackage(t *testing.T) {
 			// Create client pointing to our test server
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: apiAccessToken("fake-token"),
+				httpAuth: auth.NewHTTPAuth(server.URL, "fake-token", nil),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: httpClient,

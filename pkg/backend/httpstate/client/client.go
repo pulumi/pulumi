@@ -41,6 +41,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"go.opentelemetry.io/otel"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -230,7 +231,7 @@ type PublishTemplateVersionCompleteResponse struct{}
 // Client provides a slim wrapper around the Pulumi HTTP/REST API.
 type Client struct {
 	apiURL     string
-	apiToken   accessToken
+	httpAuth   *auth.HTTPAuth
 	apiUser    string
 	apiOrgs    []string
 	tokenInfo  *workspace.TokenInformation // might be nil if running against old services
@@ -257,7 +258,7 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 
 	return &Client{
 		apiURL:   apiURL,
-		apiToken: apiAccessToken(apiToken),
+		httpAuth: auth.NewHTTPAuth(apiURL, apiToken, nil),
 		diag:     d,
 		insecure: insecure,
 		restClient: &defaultRESTClient{
@@ -289,11 +290,21 @@ func newDefaultHTTPClient(client *http.Client, apiURL string) *defaultHTTPClient
 	return &defaultHTTPClient{client: client, apiHost: apiHost}
 }
 
-// WithRefresh wires an OAuth refresh token + a credentials-writeback callback into this client.
-// Once configured, the client transparently exchanges the refresh token at /api/oauth/token for a
-// fresh access token whenever the service rejects the current one with 401, retrying the original
-// request before falling through to LoginRequiredError. Passing an empty refresh token is a no-op
-// so callers can guard on workspace.Account.RefreshToken without a separate branch.
+// HTTPAuth returns the client's shared backend authentication.
+func (pc *Client) HTTPAuth() *auth.HTTPAuth {
+	return pc.httpAuth
+}
+
+// WithHTTPAuth replaces the client's authentication. A nil value leaves it unchanged.
+func (pc *Client) WithHTTPAuth(httpAuth *auth.HTTPAuth) *Client {
+	if httpAuth != nil {
+		pc.httpAuth = httpAuth
+	}
+	return pc
+}
+
+// WithRefresh configures OAuth token refresh and writeback before the client is used.
+// An empty refresh token leaves the client's authentication unchanged.
 func (pc *Client) WithRefresh(
 	refreshToken string,
 	writeback func(accessToken string, accessTokenExpiresAt time.Time, refreshToken string) error,
@@ -302,23 +313,23 @@ func (pc *Client) WithRefresh(
 		return pc
 	}
 	contract.Requiref(writeback != nil, "writeback", "must not be nil when refreshToken is non-empty")
-	initial, _ := pc.apiToken.Get(context.Background())
-	pc.apiToken = &refreshableAPIAccessToken{
-		accessToken:  initial,
-		refreshToken: refreshToken,
-		refresh: func(ctx context.Context, rt string) (string, time.Time, string, error) {
-			resp, err := pc.RefreshAccessToken(ctx, rt)
-			if err != nil {
-				return "", time.Time{}, "", err
-			}
-			var expiresAt time.Time
-			if resp.ExpiresIn > 0 {
-				expiresAt = time.Now().Add(time.Duration(resp.ExpiresIn) * time.Second)
-			}
-			return resp.AccessToken, expiresAt, resp.RefreshToken, nil
-		},
-		writeback: writeback,
-	}
+	pc.httpAuth = auth.NewHTTPAuth(pc.apiURL, pc.httpAuth.AccessToken(), func(ctx context.Context) (string, error) {
+		resp, err := pc.RefreshAccessToken(ctx, refreshToken)
+		if err != nil {
+			return "", fmt.Errorf("%w: refreshing access token: %w", auth.ErrCannotRefresh, err)
+		}
+		var expiresAt time.Time
+		if resp.ExpiresIn > 0 {
+			expiresAt = time.Now().Add(time.Duration(resp.ExpiresIn) * time.Second)
+		}
+		if resp.RefreshToken != "" {
+			refreshToken = resp.RefreshToken
+		}
+		if err := writeback(resp.AccessToken, expiresAt, refreshToken); err != nil {
+			return "", fmt.Errorf("%w: saving refreshed credentials: %w", auth.ErrCannotRefresh, err)
+		}
+		return resp.AccessToken, nil
+	})
 	return pc
 }
 
@@ -449,7 +460,7 @@ func leadingZeroBits(b []byte) int {
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. If a response object is provided, the server's response is deserialized into that object.
 func (pc *Client) restCall(ctx context.Context, method, path string, queryObj, reqObj, respObj any) error {
-	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken,
+	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.httpAuth,
 		httpCallOptions{})
 }
 
@@ -459,16 +470,17 @@ func (pc *Client) restCallWithOptions(
 	ctx context.Context, method, path string, queryObj, reqObj,
 	respObj any, opts httpCallOptions,
 ) error {
-	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.apiToken, opts)
+	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.httpAuth, opts)
 }
 
 // updateRESTCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request
 // object. The call is authorized with the indicated update token. If a response object is provided, the server's
 // response is deserialized into that object.
 func (pc *Client) updateRESTCall(ctx context.Context, method, path string, queryObj, reqObj, respObj any,
-	token updateToken, httpOptions httpCallOptions,
+	token UpdateTokenSource, httpOptions httpCallOptions,
 ) error {
-	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
+	httpOptions.UpdateToken = token
+	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, pc.httpAuth, httpOptions)
 }
 
 // getProjectPath returns the API path for the given owner and the given project name joined with path separators
@@ -668,7 +680,7 @@ func (pc *Client) RefreshAccessToken(
 	}
 	bodyReader := strings.NewReader(data.Encode())
 
-	req, err := http.NewRequestWithContext(ctx, "POST", tokenURL, bodyReader)
+	req, err := http.NewRequestWithContext(auth.WithHTTPAuth(ctx, nil), "POST", tokenURL, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("creating HTTP request: %w", err)
 	}
@@ -2374,7 +2386,7 @@ func (pc *Client) RenewUpdateLease(ctx context.Context, update UpdateIdentifier,
 	// during a long running update).  Since we would fail our update operation if we can't renew our lease, we'll retry
 	// these POST operations.
 	if err := pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "renew_lease"), nil, req, &resp,
-		updateAccessToken(updateTokenStaticSource(token)), httpCallOptions{RetryPolicy: retryAllMethods}); err != nil {
+		updateTokenStaticSource(token), httpCallOptions{RetryPolicy: retryAllMethods}); err != nil {
 		return "", err
 	}
 	return resp.Token, nil
@@ -2396,7 +2408,7 @@ func (pc *Client) PatchUpdateCheckpoint(
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpoint"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+		token, httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
 // PatchUpdateCheckpointVerbatim is a variant of PatchUpdateCheckpoint that preserves JSON indentation of the
@@ -2418,7 +2430,7 @@ func (pc *Client) PatchUpdateCheckpointVerbatim(ctx context.Context, update Upda
 	// It is safe to retry this PATCH operation, because it is logically idempotent, since we send the entire
 	// deployment instead of a set of changes to apply.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointverbatim"), nil, reqPayload, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+		token, httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
 // PatchUpdateCheckpointDelta patches the checkpoint for the indicated update with the given contents, just like
@@ -2437,7 +2449,7 @@ func (pc *Client) PatchUpdateCheckpointDelta(ctx context.Context, update UpdateI
 
 	// It is safe to retry because SequenceNumber serves as an idempotency key.
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "checkpointdelta"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+		token, httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
 // SaveJournalEntry sends a single journal entry to the service. When we get a success response,
@@ -2457,7 +2469,7 @@ func (pc *Client) SaveJournalEntries(ctx context.Context, update UpdateIdentifie
 		Entries: entries,
 	}
 	return pc.updateRESTCall(ctx, "PATCH", getUpdatePath(update, "journalentries"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
+		token, httpCallOptions{RetryPolicy: retryAllMethods, GzipCompress: true})
 }
 
 // CancelUpdate cancels the indicated update.
@@ -2481,7 +2493,7 @@ func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, s
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent.
 	return pc.updateRESTCall(ctx, "POST", getUpdatePath(update, "complete"), nil, req, nil,
-		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods})
+		token, httpCallOptions{RetryPolicy: retryAllMethods})
 }
 
 // GetUpdateEngineEventsOptions configures filtering and pagination for
@@ -2541,7 +2553,7 @@ func (pc *Client) RecordEngineEvents(
 	return pc.updateRESTCall(
 		ctx, "POST", getUpdatePath(update, "events/batch"),
 		nil, batch, nil,
-		updateAccessToken(token), callOpts)
+		token, callOpts)
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
@@ -2965,18 +2977,13 @@ func (pc *Client) StreamNeoTaskEvents(
 	ctx context.Context, orgName, taskID, lastEventID string,
 ) (<-chan NeoStreamEvent, error) {
 	streamURL := pc.apiURL + fmt.Sprintf("/api/preview/agents/%s/tasks/%s/events/stream", orgName, taskID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, streamURL, nil)
+	req, err := http.NewRequestWithContext(auth.WithHTTPAuth(ctx, pc.httpAuth), http.MethodGet, streamURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating Neo event stream request: %w", err)
 	}
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
-	apiToken, err := pc.apiToken.Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fetching credentials: %w", err)
-	}
-	req.Header.Set("Authorization", "token "+apiToken)
 	if lastEventID != "" {
 		req.Header.Set("Last-Event-ID", lastEventID)
 	}
@@ -3087,19 +3094,15 @@ func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, err
 	defer cancel()
 
 	url := pc.apiURL + "/api/ai/chat/preview"
-	apiToken, err := pc.apiToken.Get(ctx)
-	if err != nil {
-		return "", fmt.Errorf("fetching credentials: %w", err)
-	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(
+		auth.WithHTTPAuth(ctx, pc.httpAuth), http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("creating request: %w", err)
 	}
 
 	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "token "+apiToken)
 
 	resp, err := pc.restClient.HTTPClient().Do(req, retryAllMethods)
 	if err != nil {

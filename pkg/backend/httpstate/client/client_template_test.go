@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
@@ -113,7 +114,7 @@ func TestStartTemplatePublish(t *testing.T) {
 
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: apiAccessToken("fake-token"),
+				httpAuth: auth.NewHTTPAuth(server.URL, "fake-token", nil),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: newHTTPClient(),
@@ -197,7 +198,7 @@ func TestCompleteTemplatePublish(t *testing.T) {
 
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: apiAccessToken("fake-token"),
+				httpAuth: auth.NewHTTPAuth(server.URL, "fake-token", nil),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: newHTTPClient(),
@@ -403,7 +404,7 @@ func TestPublishTemplate_Integration(t *testing.T) {
 			// Create a mock cloud registry that uses the HTTP client methods
 			client := &Client{
 				apiURL:   server.URL,
-				apiToken: apiAccessToken("fake-token"),
+				httpAuth: auth.NewHTTPAuth(server.URL, "fake-token", nil),
 				restClient: &defaultRESTClient{
 					client: &defaultHTTPClient{
 						client: httpClient,
