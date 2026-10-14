@@ -48,7 +48,7 @@ func (t *OpaqueType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *OpaqueType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *OpaqueType) equals(other Type, seen comparePairs) bool {
 	if o, ok := other.(*OpaqueType); ok {
 		return *o == *t
 	}

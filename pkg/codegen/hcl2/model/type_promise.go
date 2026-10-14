@@ -75,7 +75,7 @@ func (t *PromiseType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *PromiseType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *PromiseType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}

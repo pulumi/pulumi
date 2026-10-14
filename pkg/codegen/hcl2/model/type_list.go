@@ -85,7 +85,7 @@ func (t *ListType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *ListType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *ListType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}

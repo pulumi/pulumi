@@ -116,7 +116,7 @@ func (t *EnumType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *EnumType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *EnumType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}

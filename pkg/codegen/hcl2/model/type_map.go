@@ -81,7 +81,7 @@ func (t *MapType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *MapType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *MapType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}

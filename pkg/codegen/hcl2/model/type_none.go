@@ -44,7 +44,7 @@ func (n noneType) Equals(other Type) bool {
 	return n.equals(other, nil)
 }
 
-func (noneType) equals(other Type, seen map[Type]struct{}) bool {
+func (noneType) equals(other Type, seen comparePairs) bool {
 	return other == NoneType
 }
 

@@ -89,7 +89,7 @@ type Type interface {
 	// Pretty returns a pretty-printer for the type.
 	Pretty() pretty.Formatter
 
-	equals(other Type, seen map[Type]struct{}) bool
+	equals(other Type, seen comparePairs) bool
 	assignableFrom(src Type, seen *cycleSet) bool
 	conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics)
 	string(seen map[Type]struct{}) string

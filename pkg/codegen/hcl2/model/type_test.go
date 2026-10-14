@@ -1396,7 +1396,8 @@ func TestTupleConversionFromShorterTuple(t *testing.T) {
 }
 
 // A recursive type, such as a WAF statement that nests statements, must not send assignability into an
-// infinite descent.
+// infinite descent. A cycle is assumed assignable only for the exact `(dest, src)` pair that is mid-flight, so a
+// mismatch at any finite leaf is still found.
 func TestAssignableFromRecursiveType(t *testing.T) {
 	t.Parallel()
 
@@ -1421,6 +1422,9 @@ func TestAssignableFromRecursiveType(t *testing.T) {
 	even.Properties["odd"] = odd
 	odd.Properties["even"] = NewOptionalType(even)
 
+	// outerNamed = { statements: list(statement), name: string }: named at the top level only.
+	outerNamed := NewObjectType(map[string]Type{"name": StringType, "statements": NewListType(statement)})
+
 	cases := []struct {
 		name      string
 		dest, src Type
@@ -1435,6 +1439,10 @@ func TestAssignableFromRecursiveType(t *testing.T) {
 		{"mutual recursion", InputType(even), even, true},
 		{"wider recursive source", statement, named, true},
 		{"narrower recursive source", named, statement, false},
+		{"finite source mismatch at a leaf", statement, NewObjectType(map[string]Type{
+			"statements": NewListType(NewObjectType(map[string]Type{"statements": NewListType(StringType)})),
+		}), false},
+		{"re-entry with a different source", named, outerNamed, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -1459,4 +1467,47 @@ func TestAssignableFromConst(t *testing.T) {
 	assert.False(t, aOrB.AssignableFrom(StringType))
 	assert.True(t, NewOutputType(StringType).AssignableFrom(a))
 	assert.True(t, NewListType(StringType).AssignableFrom(NewTupleType(a, b)))
+}
+
+// Two recursive objects are equal when every finite leaf matches. A cycle counts as equal only for the exact pair of
+// objects that is mid-flight, so an object that re-enters the cycle against a different other is still compared.
+func TestObjectTypeEqualsRecursive(t *testing.T) {
+	t.Parallel()
+
+	// statement = { statements: list(statement) }, twice, as two distinct values.
+	newStatement := func() *ObjectType {
+		statement := NewObjectType(map[string]Type{})
+		statement.Properties["statements"] = NewListType(statement)
+		return statement
+	}
+	statement, sameShape := newStatement(), newStatement()
+
+	// named = { statements: list(named), name: string }
+	named := NewObjectType(map[string]Type{"name": StringType})
+	named.Properties["statements"] = NewListType(named)
+
+	// outerNamed = { statements: list(statement), name: string }: named at the top level only.
+	outerNamed := NewObjectType(map[string]Type{"name": StringType, "statements": NewListType(statement)})
+
+	// twoDeep = { statements: list({ statements: list(string) }) }: finite, and differs from statement at depth two.
+	twoDeep := NewObjectType(map[string]Type{
+		"statements": NewListType(NewObjectType(map[string]Type{"statements": NewListType(StringType)})),
+	})
+
+	cases := []struct {
+		name string
+		a, b Type
+		want bool
+	}{
+		{"same shape", statement, sameShape, true},
+		{"differs in a leaf", statement, twoDeep, false},
+		{"differs under a cycle", named, outerNamed, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, c.want, c.a.Equals(c.b))
+			assert.Equal(t, c.want, c.b.Equals(c.a))
+		})
+	}
 }
