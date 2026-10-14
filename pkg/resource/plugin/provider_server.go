@@ -51,6 +51,9 @@ type providerServer struct {
 
 	// True if the provider negotiated OutputValues on Call via Handshake (both sides opted in).
 	callOutputValues bool
+
+	// True if the provider negotiated OutputValues on Check via Handshake (both sides opted in).
+	checkOutputValues bool
 }
 
 func NewProviderServer(provider Provider) pulumirpc.ResourceProviderServer {
@@ -172,6 +175,7 @@ func (p *providerServer) Handshake(
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
 		AcceptsOutputsInCall:        req.AcceptsOutputsInCall,
+		AcceptsOutputsInCheck:       req.AcceptsOutputsInCheck,
 	})
 	if err != nil {
 		return nil, err
@@ -182,6 +186,7 @@ func (p *providerServer) Handshake(
 	p.sendByteString = req.AcceptsByteString
 	p.invokeOutputValues = req.AcceptsOutputsInInvoke && res.AcceptsOutputsInInvoke
 	p.callOutputValues = req.AcceptsOutputsInCall && res.AcceptsOutputsInCall
+	p.checkOutputValues = req.AcceptsOutputsInCheck && res.AcceptsOutputsInCheck
 
 	return &pulumirpc.ProviderHandshakeResponse{
 		AcceptSecrets:                   res.AcceptSecrets,
@@ -193,6 +198,7 @@ func (p *providerServer) Handshake(
 		AcceptsByteString:      true,
 		AcceptsOutputsInInvoke: res.AcceptsOutputsInInvoke,
 		AcceptsOutputsInCall:   res.AcceptsOutputsInCall,
+		AcceptsOutputsInCheck:  res.AcceptsOutputsInCheck,
 	}, nil
 }
 
