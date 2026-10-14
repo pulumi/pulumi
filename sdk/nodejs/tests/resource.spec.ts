@@ -300,6 +300,94 @@ describe("RemoteComponentResource", () => {
     });
 });
 
+describe("extension package resources", () => {
+    const registeredProviders = new Map<string, string | undefined>();
+    let invokedProvider: string | undefined;
+
+    beforeEach(() => {
+        registeredProviders.clear();
+        invokedProvider = undefined;
+        runtime.setMocks({
+            call: (args) => {
+                invokedProvider = args.provider;
+                return {};
+            },
+            newResource: (args) => {
+                registeredProviders.set(args.name, args.provider);
+                return { id: `${args.name}_id`, state: {} };
+            },
+        });
+    });
+
+    async function registeredProvider(name: string, res: CustomResource): Promise<string | undefined> {
+        await res.urn.promise();
+        return registeredProviders.get(name);
+    }
+
+    async function providerRef(provider: ProviderResource): Promise<string> {
+        return `${await provider.urn.promise()}::${await provider.id.promise()}`;
+    }
+
+    it("inherits the base provider from a parent's provider", async () => {
+        const provider = new MyBaseProvider("prov");
+        const component = new MyResource("comp", { provider });
+        const res = new MyExtensionResource("res", { parent: component });
+        assert.strictEqual(await registeredProvider("res", res), await providerRef(provider));
+    });
+
+    it("inherits the base provider from a parent's providers list", async () => {
+        const provider = new MyBaseProvider("prov");
+        const component = new MyResource("comp", { providers: [provider] });
+        const res = new MyExtensionResource("res", { parent: component });
+        assert.strictEqual(await registeredProvider("res", res), await providerRef(provider));
+    });
+
+    it("inherits the base provider from a parent's providers map", async () => {
+        const provider = new MyBaseProvider("prov");
+        const component = new MyResource("comp", { providers: { extbase: provider } });
+        const res = new MyExtensionResource("res", { parent: component });
+        assert.strictEqual(await registeredProvider("res", res), await providerRef(provider));
+    });
+
+    it("inherits the base provider through nested parents", async () => {
+        const provider = new MyBaseProvider("prov");
+        const outer = new MyResource("outer", { provider });
+        const inner = new MyResource("inner", { parent: outer });
+        const res = new MyExtensionResource("res", { parent: inner });
+        assert.strictEqual(await registeredProvider("res", res), await providerRef(provider));
+    });
+
+    it("prefers a parent's provider for the extension package over the base provider", async () => {
+        const base = new MyBaseProvider("base");
+        const other = new MyBaseProvider("other");
+        const component = new MyResource("comp", { providers: { extbase: base, myext: other } });
+        const res = new MyExtensionResource("res", { parent: component });
+        assert.strictEqual(await registeredProvider("res", res), await providerRef(other));
+    });
+
+    it("prefers an explicit provider over the parent's base provider", async () => {
+        const base = new MyBaseProvider("base");
+        const explicit = new MyBaseProvider("explicit");
+        const component = new MyResource("comp", { provider: base });
+        const res = new MyExtensionResource("res", { parent: component, provider: explicit });
+        assert.strictEqual(await registeredProvider("res", res), await providerRef(explicit));
+    });
+
+    it("does not inherit the base provider for a replacement package", async () => {
+        const provider = new MyBaseProvider("prov");
+        const component = new MyResource("comp", { provider });
+        const res = new MyReplacementResource("res", { parent: component });
+        assert.strictEqual(await registeredProvider("res", res), "");
+    });
+
+    it("inherits the base provider for an invoke from a parent", async () => {
+        const provider = new MyBaseProvider("prov");
+        const component = new MyResource("comp", { provider });
+        await runtime.invoke("myext:index:greet", {}, { parent: component }, getExtensionPackage());
+        assert.strictEqual(invokedProvider, await providerRef(provider));
+    });
+});
+
 class MyProvider extends ProviderResource {
     constructor(name: string) {
         super("test", name);
@@ -321,6 +409,47 @@ class MyCustomResource extends CustomResource {
 class MyRemoteComponentResource extends ComponentResource {
     constructor(name: string, opts?: ComponentResourceOptions) {
         super("test:index:MyRemoteComponentResource", name, {}, opts, true /*remote*/);
+    }
+}
+
+class MyBaseProvider extends ProviderResource {
+    constructor(name: string) {
+        super("extbase", name);
+    }
+}
+
+async function getExtensionPackage(): Promise<string | undefined> {
+    return runtime.registerPackage({
+        baseProviderName: "extbase",
+        baseProviderVersion: "45.0.0",
+        baseProviderDownloadUrl: "",
+        packageName: "myext",
+        packageVersion: "2.0.0",
+        base64Parameter: "SGVsbG8=",
+        extension: true,
+    });
+}
+
+async function getReplacementPackage(): Promise<string | undefined> {
+    return runtime.registerPackage({
+        baseProviderName: "extbase",
+        baseProviderVersion: "45.0.0",
+        baseProviderDownloadUrl: "",
+        packageName: "myreplacement",
+        packageVersion: "2.0.0",
+        base64Parameter: "SGVsbG8=",
+    });
+}
+
+class MyExtensionResource extends CustomResource {
+    constructor(name: string, opts?: CustomResourceOptions) {
+        super("myext:index:Greeting", name, {}, opts, false, getExtensionPackage());
+    }
+}
+
+class MyReplacementResource extends CustomResource {
+    constructor(name: string, opts?: CustomResourceOptions) {
+        super("myreplacement:index:Greeting", name, {}, opts, false, getReplacementPackage());
     }
 }
 
