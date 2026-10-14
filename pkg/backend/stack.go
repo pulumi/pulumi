@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers/sandbox"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -146,6 +147,15 @@ func ImportStackDeployment(ctx context.Context, s Stack, deployment *apitype.Unt
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
 func UpdateStackTags(ctx context.Context, s Stack, tags map[apitype.StackTagName]string) error {
 	return s.Backend().UpdateStackTags(ctx, s, tags)
+}
+
+// SandboxStackTag marks a stack as local: every operation on it runs against local cloud emulators rather than real
+// cloud endpoints. It is set when the stack is created and cannot be changed afterwards.
+const SandboxStackTag apitype.StackTagName = sandbox.StackTag
+
+// IsSandboxStack reports whether the stack was created as a sandbox stack.
+func IsSandboxStack(s Stack) bool {
+	return s.Tags()[SandboxStackTag] == "true"
 }
 
 // GetMergedStackTags returns the stack's existing tags merged with fresh tags from the environment

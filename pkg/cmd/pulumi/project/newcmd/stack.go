@@ -64,7 +64,7 @@ func GetStack(ctx context.Context, b backend.Backend,
 // PromptAndCreateStack creates and returns a new stack (prompting for the name as needed).
 func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	b backend.Backend, prompt promptForValueFunc, stack string, root string, setCurrent bool,
-	yes bool, opts display.Options, secretsProvider string, useRemoteConfig bool, configFile string,
+	yes bool, opts display.Options, secretsProvider string, useRemoteConfig bool, sandbox bool, configFile string,
 ) (backend.Stack, error) {
 	contract.Requiref(b != nil, "b", "must not be nil")
 	contract.Requiref(root != "", "root", "must not be empty")
@@ -73,6 +73,7 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 		SetCurrent:      setCurrent,
 		SecretsProvider: secretsProvider,
 		UseRemoteConfig: useRemoteConfig,
+		Sandbox:         sandbox,
 		ConfigFile:      configFile,
 	}
 	if stack != "" {

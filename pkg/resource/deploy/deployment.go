@@ -34,6 +34,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers/sandbox"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -128,6 +129,8 @@ type Options struct {
 	// migration callbacks. The engine injects it because the serialization logic lives in pkg/resource/stack, which
 	// already imports this package and therefore cannot be imported here.
 	StateMigrationSerializer StateMigrationResourceSerializer
+	// Sandbox, if set, redirects every provider at local cloud emulators.
+	Sandbox *sandbox.Mode
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -666,6 +669,9 @@ func NewDeployment(
 	// old resource list, the registry itself will filter out other sorts of resources when processing the prior state,
 	// so we just pass all of the old resources.
 	reg := providers.NewRegistry(ctx, opts.DryRun, builtins)
+	if opts.Sandbox != nil {
+		reg.SetSandbox(opts.Sandbox)
+	}
 
 	deployment := &Deployment{
 		ctx:                             ctx,

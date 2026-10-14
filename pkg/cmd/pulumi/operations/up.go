@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
 	newcmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/sandbox"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -269,6 +270,9 @@ func NewUpCmd() *cobra.Command {
 			Autonamer:            autonamer,
 			SkipPluginPreInstall: skipPluginPreInstall,
 		}
+		if err := sandbox.ApplySandbox(ctx, cmd.OutOrStdout(), s, &opts.Engine); err != nil {
+			return err
+		}
 
 		if planFilePath != "" {
 			dec := sm.Decrypter()
@@ -432,7 +436,8 @@ func NewUpCmd() *cobra.Command {
 		// Create the stack, if needed.
 		if s == nil {
 			if s, err = newcmd.PromptAndCreateStack(ctx, cmdutil.Diag(), ws, b, ui.PromptForValue, stackName, root,
-				false /*setCurrent*/, yes, opts.Display, secretsProvider, false /*useRemoteConfig*/, configFile); err != nil {
+				false /*setCurrent*/, yes, opts.Display, secretsProvider,
+				false /*useRemoteConfig*/, false /*sandbox*/, configFile); err != nil {
 				return err
 			}
 			// cmdStack.CreateStack prints "Created stack '<stack>'" on success.
@@ -546,6 +551,9 @@ func NewUpCmd() *cobra.Command {
 
 			AttachDebugger:       attachDebugger,
 			SkipPluginPreInstall: skipPluginPreInstall,
+		}
+		if err := sandbox.ApplySandbox(ctx, cmd.OutOrStdout(), s, &opts.Engine); err != nil {
+			return err
 		}
 
 		start := time.Now()
