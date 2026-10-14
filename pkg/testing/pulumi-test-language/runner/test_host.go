@@ -115,11 +115,7 @@ func (h *testHost) Analyzer(ctx *plugin.Context, nm tokens.QName) (plugin.Analyz
 func (h *testHost) PolicyAnalyzer(
 	ctx *plugin.Context, name tokens.QName, path string, opts *plugin.PolicyAnalyzerOptions,
 ) (plugin.Analyzer, error) {
-	hasPlugin := func(spec workspace.PluginDescriptor) bool {
-		// This is only called for the language runtime, so we can just do a simple check.
-		return spec.Kind == apitype.LanguagePlugin && spec.Name == h.runtimeName
-	}
-	analyzer, err := plugin.NewPolicyAnalyzer(h, ctx, name, path, opts, hasPlugin)
+	analyzer, err := plugin.NewPolicyAnalyzer(h, ctx, name, path, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -374,6 +370,8 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 	_, err = wrapped.Handshake(context.Background(), plugin.ProviderHandshakeRequest{
 		AcceptsByteString:      true,
 		SendsOldOutputsToCheck: true,
+		AcceptsOutputsInInvoke: true,
+		AcceptsOutputsInCall:   true,
 	})
 	if err != nil && status.Code(err) != codes.Unimplemented {
 		contract.IgnoreClose(wrapper)

@@ -615,9 +615,9 @@ func TestParseImportFileProviderInputs(t *testing.T) {
 
 	// Verify the provider inputs were deserialized and attached to the import.
 	assert.Equal(t, providerURN, imports[0].Provider)
-	require.NotNil(t, imports[0].ProviderInputs)
-	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].ProviderInputs["region"])
-	assert.Equal(t, resource.NewProperty("6.0.0"), imports[0].ProviderInputs["version"])
+	require.NotZero(t, imports[0].ProviderInputs)
+	assert.Equal(t, property.New("eu-west-1"), imports[0].ProviderInputs.Get("region"))
+	assert.Equal(t, property.New("6.0.0"), imports[0].ProviderInputs.Get("version"))
 }
 
 func TestParseImportFileUnknownValues(t *testing.T) {
@@ -705,8 +705,8 @@ func TestMakeImportFileFromResourceListInputsOutputs(t *testing.T) {
 	require.Len(t, imports, 1)
 
 	// Secret values survive the round trip through the import file's serialized form.
-	assert.Equal(t, resource.MakeSecret(resource.NewProperty("shh")), imports[0].Inputs["password"])
-	assert.Equal(t, resource.NewProperty("some:arn"), imports[0].Outputs["arn"])
+	assert.Equal(t, property.New("shh").WithSecret(true), imports[0].Inputs.Get("password"))
+	assert.Equal(t, property.New("some:arn"), imports[0].Outputs.Get("arn"))
 }
 
 func TestParseImportFileInputsOutputs(t *testing.T) {
@@ -741,11 +741,11 @@ func TestParseImportFileInputsOutputs(t *testing.T) {
 	require.Len(t, imports, 2)
 
 	// A provider spec's inputs become its configuration.
-	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].Inputs["region"])
-	require.Nil(t, imports[0].ProviderInputs)
+	assert.Equal(t, property.New("eu-west-1"), imports[0].Inputs.Get("region"))
+	require.Zero(t, imports[0].ProviderInputs.Len())
 
-	assert.Equal(t, resource.NewProperty("my-bucket"), imports[1].Inputs["bucket"])
-	assert.Equal(t, resource.NewProperty("arn:aws:s3:::my-bucket"), imports[1].Outputs["arn"])
+	assert.Equal(t, property.New("my-bucket"), imports[1].Inputs.Get("bucket"))
+	assert.Equal(t, property.New("arn:aws:s3:::my-bucket"), imports[1].Outputs.Get("arn"))
 }
 
 func TestParseImportFileDeclaredProvider(t *testing.T) {
@@ -775,8 +775,8 @@ func TestParseImportFileDeclaredProvider(t *testing.T) {
 	require.Len(t, imports, 2)
 
 	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")
-	require.NotNil(t, imports[0].Inputs)
-	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].Inputs["region"])
+	require.NotZero(t, imports[0].Inputs.Len())
+	assert.Equal(t, property.New("eu-west-1"), imports[0].Inputs.Get("region"))
 	assert.Equal(t, providerURN, imports[1].Provider)
 }
 
@@ -809,7 +809,7 @@ func TestParseImportFileProviderWithParent(t *testing.T) {
 	require.Len(t, imports, 3)
 
 	assert.Equal(t, resource.URN("urn:pulumi:stack::proj::my:index:Comp::comp"), imports[1].Parent)
-	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[1].Inputs["region"])
+	assert.Equal(t, property.New("eu-west-1"), imports[1].Inputs.Get("region"))
 	assert.Equal(t,
 		resource.URN("urn:pulumi:stack::proj::my:index:Comp$pulumi:providers:aws::my-prov"),
 		imports[2].Provider)
@@ -838,7 +838,7 @@ func TestParseImportFileProviderInputsWithoutEntry(t *testing.T) {
 	require.Len(t, imports, 1)
 
 	assert.Equal(t, providerURN, imports[0].Provider)
-	assert.Nil(t, imports[0].ProviderInputs)
+	assert.Zero(t, imports[0].ProviderInputs)
 }
 
 // Small test to ensure that importFile is marshalled to JSON sensibly, mostly checking that optional fields

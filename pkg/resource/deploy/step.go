@@ -100,6 +100,15 @@ type SameStep struct {
 	// If this is a same-step emitted for a resource that was not included in a
 	// target-constrained operation.
 	untargeted bool
+
+	// A list of URNs (all dependencies of the step) that this step needs to wait on before completing. In
+	// untargeted same steps this is used to wait for any dependencies that may no longer be in the users
+	// program, but still in the state, so they need to be waited on to have correct state ordering.  They are
+	// turned into waitTokens when the step is applied, so URNs that no longer exist in the program don't get a
+	// wait token and will not be waited on to prevent deadlocks.
+	waitURNs []resource.URN
+	// The list of completion tokens that the step actually waits on.
+	waitTokens []completionToken
 }
 
 var _ Step = (*SameStep)(nil)
@@ -129,9 +138,12 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *pk
 
 // NewUntargetedSameStep produces a SameStep for a resource that is only "same" because it was not
 // included in a target-constrained operation, as opposed to having been diffed and found unchanged.
-func NewUntargetedSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *pkgresource.State) Step {
+func NewUntargetedSameStep(
+	deployment *Deployment, reg RegisterResourceEvent, old, new *pkgresource.State, waitURNs []resource.URN,
+) Step {
 	step := NewSameStep(deployment, reg, old, new).(*SameStep)
 	step.untargeted = true
+	step.waitURNs = waitURNs
 	return step
 }
 

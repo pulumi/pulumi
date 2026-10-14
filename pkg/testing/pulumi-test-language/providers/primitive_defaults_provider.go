@@ -144,16 +144,14 @@ func (p *PrimitiveDefaultsProvider) Check(
 	) *plugin.CheckResponse {
 		v, ok := props[key]
 		if !ok {
-			resp := plugin.CheckResponse{
+			return new(plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "missing required property"),
-			}
-			return &resp
+			})
 		}
 		if !assertType(unsecret(v)) {
-			resp := plugin.CheckResponse{
+			return new(plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "value is not a "+typeName),
-			}
-			return &resp
+			})
 		}
 		return nil
 	}

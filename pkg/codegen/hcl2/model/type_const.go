@@ -79,7 +79,7 @@ func (t *ConstType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *ConstType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *ConstType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
@@ -91,7 +91,11 @@ func (t *ConstType) equals(other Type, seen map[Type]struct{}) bool {
 // AssignableFrom returns true if this type is assignable from the indicated source type. A const(value) is assignable
 // from const(value).
 func (t *ConstType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *ConstType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		return false
 	})
 }
@@ -103,7 +107,7 @@ func (t *ConstType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *ConstType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *ConstType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		notConvertible := func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 		if src, ok := src.(*ConstType); ok {
@@ -128,9 +132,10 @@ func (t *ConstType) string(_ map[Type]struct{}) string {
 	return t.String()
 }
 
-func (t *ConstType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
-		return t, other.ConversionFrom(t)
+func (t *ConstType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
+		kind, _ := other.conversionFrom(t, true, seen)
+		return t, kind
 	})
 }
 

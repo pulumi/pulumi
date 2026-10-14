@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Check assignability of recursive types, such as a schema object that nests itself, without overflowing the stack
+time: 2026-10-12T16:00:00.000000+02:00

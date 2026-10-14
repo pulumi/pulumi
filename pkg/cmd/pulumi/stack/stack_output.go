@@ -158,7 +158,9 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	// massageSecrets will remove all the secrets from the property map, so it should be safe to pass a panic
 	// crypter. This also ensures that if for some reason we didn't remove everything, we don't accidentally disclose
 	// secret values!
-	outputs, err := stack.SerializeProperties(ctx, display.MassageSecrets(snapshotStackOutputsMap, cmd.showSecrets),
+	outputs, err := stack.SerializeProperties(ctx,
+		resource.ToResourcePropertyMap(display.MassageSecrets(
+			resource.FromResourcePropertyMap(snapshotStackOutputsMap), cmd.showSecrets)),
 		config.NewPanicCrypter(), cmd.showSecrets)
 	if err != nil {
 		return fmt.Errorf("getting outputs: %w", err)
@@ -313,6 +315,7 @@ func getStackOutputs(snap *deploy.Snapshot, showSecrets bool) (map[string]any, e
 	// crypter. This also ensures that if for some reason we didn't remove everything, we don't accidentally disclose
 	// secret values!
 	ctx := context.TODO()
-	return stack.SerializeProperties(ctx, display.MassageSecrets(state.Outputs, showSecrets),
+	return stack.SerializeProperties(ctx,
+		resource.ToResourcePropertyMap(display.MassageSecrets(resource.FromResourcePropertyMap(state.Outputs), showSecrets)),
 		config.NewPanicCrypter(), showSecrets)
 }

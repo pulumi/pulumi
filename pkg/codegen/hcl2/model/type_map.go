@@ -16,6 +16,8 @@ package model
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -79,7 +81,7 @@ func (t *MapType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *MapType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *MapType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
@@ -92,13 +94,17 @@ func (t *MapType) equals(other Type, seen map[Type]struct{}) bool {
 // from values of type map(U) where T is assignable from U or object(K_0=U_0, ..., K_N=U_N) if T is assignable from the
 // unified type of U_0 through U_N.
 func (t *MapType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *MapType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		switch src := src.(type) {
 		case *MapType:
-			return t.ElementType.AssignableFrom(src.ElementType)
+			return t.ElementType.assignableFrom(src.ElementType, seen)
 		case *ObjectType:
 			for _, src := range src.Properties {
-				if !t.ElementType.AssignableFrom(src) {
+				if !t.ElementType.assignableFrom(src, seen) {
 					return false
 				}
 			}
@@ -117,7 +123,7 @@ func (t *MapType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *MapType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *MapType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *MapType:
@@ -147,18 +153,18 @@ func (t *MapType) string(seen map[Type]struct{}) string {
 	return fmt.Sprintf("map(%s)", t.ElementType.string(seen))
 }
 
-func (t *MapType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *MapType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		switch other := other.(type) {
 		case *MapType:
 			// If the other type is a map type, unify based on the element type.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType)
+			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
 			return NewMapType(elementType), conversionKind
 		case *ObjectType:
 			// If the other type is an object type, prefer the map type, but unify the property types.
 			elementType, conversionKind := t.ElementType, SafeConversion
-			for _, other := range other.Properties {
-				element, ck := elementType.unify(other)
+			for _, other := range slices.SortedFunc(maps.Values(other.Properties), Compare) {
+				element, ck := elementType.unify(other, seen)
 				if ck < conversionKind {
 					conversionKind = ck
 				}
@@ -167,7 +173,7 @@ func (t *MapType) unify(other Type) (Type, ConversionKind) {
 			return NewMapType(elementType), conversionKind
 		default:
 			// Prefer the map type.
-			kind, _ := t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, seen)
 			return t, kind
 		}
 	})

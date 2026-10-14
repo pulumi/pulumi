@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import re
 import unittest
 from unittest import mock
 from enum import Enum
@@ -406,9 +407,12 @@ class NextSerializationTests(unittest.IsolatedAsyncioTestCase):
         out = Output({res}, fut, known_fut)
 
         other = Output.from_input(99)
-        self.assertRaises(ValueError, Output.all, out, other=other)
         self.assertRaisesRegex(
-            ValueError, "Output.all() was supplied a mix of named and unnamed inputs"
+            ValueError,
+            re.escape("Output.all() was supplied a mix of named and unnamed inputs"),
+            Output.all,
+            out,
+            other=other,
         )
 
     @pulumi_test

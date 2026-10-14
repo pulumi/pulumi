@@ -848,7 +848,7 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview or update.
 func (d *Deployment) Execute(ctx context.Context) (*Plan, error) {
-	deploymentExec := &deploymentExecutor{deployment: d}
+	deploymentExec := newDeploymentExecutor(d)
 	return deploymentExec.Execute(ctx)
 }
 
@@ -862,6 +862,15 @@ func (d *Deployment) Close() error {
 	}
 
 	return nil
+}
+
+// toPropertyMapPtr converts a resource.PropertyMap to a *property.Map, preserving the
+// nil-vs-empty distinction (nil input yields a nil pointer).
+func toPropertyMapPtr(m resource.PropertyMap) *property.Map {
+	if m == nil {
+		return nil
+	}
+	return new(resource.FromResourcePropertyMap(m))
 }
 
 // RunHooks runs all the before/after hooks on the given state. A hook that returns an error will cause an error return,
@@ -885,7 +894,10 @@ func (d *Deployment) RunHooks(
 			urn, id, name, typ,
 			oldOptions,
 			newOptions,
-			newInputs, oldInputs, newOutputs, oldOutputs,
+			toPropertyMapPtr(newInputs),
+			toPropertyMapPtr(oldInputs),
+			toPropertyMapPtr(newOutputs),
+			toPropertyMapPtr(oldOutputs),
 		)
 		if err != nil {
 			if hook.IgnoreErrors {
@@ -928,7 +940,9 @@ func (d *Deployment) RunErrorHooks(
 			urn, id, name, typ,
 			oldOptions,
 			newOptions,
-			newInputs, oldInputs, oldOutputs,
+			toPropertyMapPtr(newInputs),
+			toPropertyMapPtr(oldInputs),
+			toPropertyMapPtr(oldOutputs),
 			failedOperation,
 			errors,
 		)

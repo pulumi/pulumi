@@ -29,9 +29,11 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -227,8 +229,8 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 
-				authContext, innerErr := workspace.NewAuthContextForTokenExchange(
-					resolvedOrg, resolvedTeam, resolvedUser, oidcToken, oidcExpiration,
+				authContext, innerErr := pkgauth.NewAuthContextForTokenExchange(
+					resolvedOrg, resolvedTeam, resolvedUser, oidcToken, oidcExpiration, store.GetString(env.AccessToken),
 				)
 				if innerErr != nil {
 					return fmt.Errorf("problem logging in: %w", innerErr)
@@ -238,7 +240,8 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				)
 			} else {
 				be, err = lm.Login(
-					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color,
+					httpstate.ContextWithoutAgentSignup(ctx), ws, cmdutil.Diag(), cloudURL, project,
+					true /* setCurrent */, insecure, displayOptions.Color,
 				)
 			}
 

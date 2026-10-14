@@ -190,17 +190,6 @@ linters:
       - common-false-positives
       - std-error-handling
     rules:
-      - linters:
-          - revive
-        text: 'unused-parameter: parameter \S+ seems to be unused, consider removing or renaming it as _'
-      - linters:
-          - revive
-        text: 'empty-block: this block is empty, you can remove it'
-      - linters:
-          - revive
-        text: 'redefines-builtin-id: redefinition of the built-in function new'
-      - path: (.+)\.go$
-        text: '"github.com/golang/protobuf/[\w/]+" is deprecated'
       - path: (.+)\.go$
         text: strings.Title has been deprecated
       - path: (.+)\.go$

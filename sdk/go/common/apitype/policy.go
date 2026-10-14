@@ -269,16 +269,10 @@ type CreatePolicyGroupRequest struct {
 	AgentPoolID string `json:"agentPoolId,omitempty"`
 }
 
-// UpdatePolicyGroupRequest modifies a Policy Group. Callers may set:
-//
-//   - NewName to rename the group.
-//   - A singular AddX/RemoveX field for a single per-PATCH membership change.
-//   - A list field (Stacks, PolicyPacks, InsightsAccounts) to replace the
-//     corresponding list outright; the values sent become the new full list.
-//     Use the pointer-to-slice indirection to distinguish "leave list
-//     unchanged" (nil pointer) from "set list to empty" (non-nil empty slice).
-//
-// Multiple of these may be combined in a single request to batch changes.
+// UpdatePolicyGroupRequest modifies a Policy Group. Each field holds one
+// mutation: NewName renames the group, and each AddX or RemoveX field adds or
+// removes one member. To apply more than one mutation of the same kind, send
+// one request per mutation to the batch endpoint.
 type UpdatePolicyGroupRequest struct {
 	NewName *string `json:"newName,omitempty"`
 
@@ -290,15 +284,6 @@ type UpdatePolicyGroupRequest struct {
 
 	AddInsightsAccount    *InsightsAccountReference `json:"addInsightsAccount,omitempty"`
 	RemoveInsightsAccount *InsightsAccountReference `json:"removeInsightsAccount,omitempty"`
-
-	// Stacks, when non-nil, replaces the full list of stacks in the group.
-	Stacks *[]PulumiStackReference `json:"stacks,omitempty"`
-	// PolicyPacks, when non-nil, replaces the full list of Policy Packs
-	// applied to the group.
-	PolicyPacks *[]PolicyPackMetadata `json:"policyPacks,omitempty"`
-	// InsightsAccounts, when non-nil, replaces the full list of Insights
-	// accounts in the group.
-	InsightsAccounts *[]string `json:"insightsAccounts,omitempty"`
 }
 
 // InsightsAccountReference identifies an Insights account for policy group

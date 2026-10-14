@@ -8,7 +8,8 @@
                 "non-interactive": { "omit": true },
                 "yes": { "omit": true, "preset": true },
                 "cwd": { "omit": true },
-                "emoji": { "omit": true }
+                "emoji": { "omit": true },
+                "coherence-window": { "omit": true }
             }
         },
         {
@@ -26,9 +27,10 @@
         {
             "path": ["about"],
             "propagate": false,
-            "exclude": true,
             "flags": {
-                "color": { "preset": "never", "omit": false }
+                "color": { "preset": "never", "omit": false },
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
             }
         },
         {
@@ -42,7 +44,6 @@
         {
             "path": ["refresh"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -97,7 +98,6 @@
         {
             "path": ["config"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "json": { "omit": true, "preset": true }
             }
@@ -105,31 +105,21 @@
         {
             "path": ["config", "get"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "json": { "omit": true, "preset": true }
             }
         },
         {
-            "path": ["config", "set-all"],
+            "path": ["config", "env", "list"],
             "propagate": false,
-            "exclude": true,
             "flags": {
-                "json": { "omit": true, "preset": true }
-            }
-        },
-        {
-            "path": ["config", "env", "ls"],
-            "propagate": false,
-            "exclude": true,
-            "flags": {
-                "json": { "omit": true, "preset": true }
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
             }
         },
         {
             "path": ["config", "refresh"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "force": { "omit": true, "preset": true }
             }
@@ -137,7 +127,6 @@
         {
             "path": ["whoami"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "json": { "omit": true, "preset": true }
             }
@@ -170,12 +159,6 @@
         },
         {
             "path": ["console"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["convert"],
             "propagate": true,
             "exclude": true,
             "flags": {}
@@ -230,12 +213,6 @@
         },
         {
             "path": ["insights"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["install"],
             "propagate": true,
             "exclude": true,
             "flags": {}

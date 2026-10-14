@@ -696,7 +696,7 @@ func hasDependency(pkg *schema.Package, dep string) bool {
 
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
-) (*testingrpc.RunLanguageTestResponse, error) {
+) (resp *testingrpc.RunLanguageTestResponse, err error) {
 	eng.runSlots <- struct{}{}
 	defer func() { <-eng.runSlots }()
 
@@ -715,6 +715,11 @@ func (eng *languageTestServer) RunLanguageTest(
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
 	}
+	defer func() {
+		if err == nil && resp != nil && resp.Success {
+			removeTestDirectories(token.TemporaryDirectory, req.Test)
+		}
+	}()
 
 	// If the language defines any snapshot edits compile those regexs to apply now
 	snapshotEdits := []compiledReplacement{}
@@ -1005,6 +1010,10 @@ func (eng *languageTestServer) RunLanguageTest(
 
 				// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
 				// any intermediate build files don't end up getting captured in the snapshot folder.
+				generatedFiles, err := listFiles(sdkTempDir)
+				if err != nil {
+					return nil, fmt.Errorf("list generated sdk files for %s: %w", pkg.Name, err)
+				}
 				sdkArtifact, err = languageClient.Pack(ctx, sdkTempDir, artifactsDir)
 				if err != nil {
 					return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
@@ -1033,6 +1042,12 @@ func (eng *languageTestServer) RunLanguageTest(
 					return makeTestResponse(
 						fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
 							pkg.Name, strings.Join(validations, "\n"))), nil
+				}
+
+				if !isWithin(sdkArtifact, sdkTempDir) {
+					if err := removeNewFiles(sdkTempDir, generatedFiles); err != nil {
+						return nil, fmt.Errorf("remove sdk build files for %s: %w", pkg.Name, err)
+					}
 				}
 
 				return nil, nil

@@ -1328,54 +1328,54 @@ options {
 func TestPropertyValueToPCLLiteral(t *testing.T) {
 	t.Parallel()
 
-	got, err := propertyValueToPCLLiteral("x", resource.NewNullProperty())
+	got, err := propertyValueToPCLLiteral("x", property.New(property.Null))
 	require.NoError(t, err)
 	assert.Equal(t, "null", got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(true))
+	got, err = propertyValueToPCLLiteral("x", property.New(true))
 	require.NoError(t, err)
 	assert.Equal(t, "true", got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(3.5))
+	got, err = propertyValueToPCLLiteral("x", property.New(3.5))
 	require.NoError(t, err)
 	assert.Equal(t, "3.5", got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty("hello"))
+	got, err = propertyValueToPCLLiteral("x", property.New("hello"))
 	require.NoError(t, err)
 	assert.Equal(t, `"hello"`, got)
 
 	// Nested array/object with deterministic key order.
-	inner := resource.PropertyMap{
-		"b": resource.NewProperty("two"),
-		"a": resource.NewProperty(1.0),
-	}
-	arr := resource.NewProperty([]resource.PropertyValue{
-		resource.NewProperty("first"),
-		resource.NewProperty(inner),
+	inner := property.NewMap(map[string]property.Value{
+		"b": property.New("two"),
+		"a": property.New(1.0),
 	})
+	arr := property.New(property.NewArray([]property.Value{
+		property.New("first"),
+		property.New(inner),
+	}))
 	got, err = propertyValueToPCLLiteral("x", arr)
 	require.NoError(t, err)
 	assert.Equal(t, "[\"first\", {\n  a = 1\n  b = \"two\"\n}]", got)
 
 	// Secrets are preserved.
-	got, err = propertyValueToPCLLiteral("x", resource.MakeSecret(resource.NewProperty("s")))
+	got, err = propertyValueToPCLLiteral("x", property.New("s").WithSecret(true))
 	require.NoError(t, err)
 	assert.Equal(t, `secret("s")`, got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
-		"plain":  resource.NewProperty("p"),
-		"secret": resource.MakeSecret(resource.NewProperty("s")),
-	}))
+	got, err = propertyValueToPCLLiteral("x", property.New(property.NewMap(map[string]property.Value{
+		"plain":  property.New("p"),
+		"secret": property.New("s").WithSecret(true),
+	})))
 	require.NoError(t, err)
 	assert.Equal(t, "{\n  plain = \"p\"\n  secret = secret(\"s\")\n}", got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
-		"123":         resource.NewProperty("number prefix"),
-		"cost center": resource.NewProperty("platform"),
-		"quote\"key":  resource.NewProperty("quoted"),
-		"team:name":   resource.NewProperty("infra"),
-		"valid":       resource.NewProperty("identifier"),
-	}))
+	got, err = propertyValueToPCLLiteral("x", property.New(property.NewMap(map[string]property.Value{
+		"123":         property.New("number prefix"),
+		"cost center": property.New("platform"),
+		"quote\"key":  property.New("quoted"),
+		"team:name":   property.New("infra"),
+		"valid":       property.New("identifier"),
+	})))
 	require.NoError(t, err)
 	assert.Equal(t, "{\n"+
 		"  \"123\" = \"number prefix\"\n"+
@@ -1385,11 +1385,11 @@ func TestPropertyValueToPCLLiteral(t *testing.T) {
 		"  valid = \"identifier\"\n"+
 		"}", got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
-		"outer key": resource.NewProperty(resource.PropertyMap{
-			"inner:key": resource.MakeSecret(resource.NewProperty("s")),
-		}),
-	}))
+	got, err = propertyValueToPCLLiteral("x", property.New(property.NewMap(map[string]property.Value{
+		"outer key": property.New(property.NewMap(map[string]property.Value{
+			"inner:key": property.New("s").WithSecret(true),
+		})),
+	})))
 	require.NoError(t, err)
 	assert.Equal(t, "{\n  \"outer key\" = {\n    \"inner:key\" = secret(\"s\")\n  }\n}", got)
 
@@ -1403,19 +1403,19 @@ func TestPropertyValueToPCLLiteral(t *testing.T) {
 	// Asset errors.
 	asset, err := resource.NewTextAsset("hello")
 	require.NoError(t, err)
-	_, err = propertyValueToPCLLiteral("cfg", resource.NewProperty(asset))
+	_, err = propertyValueToPCLLiteral("cfg", property.New(asset))
 	require.ErrorContains(t, err, `"cfg"`)
 	require.ErrorContains(t, err, "asset")
 
 	// Resource reference errors.
-	rref := resource.ResourceReference{URN: resource.URN("urn:pulumi:x::y::z::n")}
-	_, err = propertyValueToPCLLiteral("cfg", resource.NewProperty(rref))
+	rref := property.ResourceReference{URN: "urn:pulumi:x::y::z::n"}
+	_, err = propertyValueToPCLLiteral("cfg", property.New(rref))
 	require.ErrorContains(t, err, `"cfg"`)
 	require.ErrorContains(t, err, "resource reference")
 
 	// Computed value errors.
 	_, err = propertyValueToPCLLiteral(
-		"cfg", resource.MakeComputed(resource.NewProperty("")))
+		"cfg", property.New(property.Computed))
 	require.ErrorContains(t, err, `"cfg"`)
 	require.ErrorContains(t, err, "computed/output")
 }

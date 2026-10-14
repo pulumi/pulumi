@@ -70,6 +70,14 @@ func NewWatchCmd() *cobra.Command {
 			"The program to watch is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Cobra prints the full removal notice from cmd.Deprecated before RunE runs.
+			if !env.DisableExperimentalWatchRemovalError.Value() {
+				return fmt.Errorf("command %q is disabled by default because it will be removed, "+
+					"see https://github.com/pulumi/pulumi/issues/24717.\n"+
+					"To run the command until it is removed, set %s=1.",
+					cmd.Name(), env.DisableExperimentalWatchRemovalError.Var().Name())
+			}
+
 			ctx := cmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance

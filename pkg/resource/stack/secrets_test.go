@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"unsafe"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -28,6 +29,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func secretID(s *resource.Secret) SecretID { return SecretID(uintptr(unsafe.Pointer(s))) }
 
 type testSecretsManager struct {
 	encryptCalls      int
@@ -261,7 +264,7 @@ func TestSecretCache(t *testing.T) {
 		t.Parallel()
 		cache := NewSecretCache()
 
-		ciphertext, encrypted := cache.LookupCiphertext(&resource.Secret{}, "foo")
+		ciphertext, encrypted := cache.LookupCiphertext(secretID(&resource.Secret{}), "foo")
 		plaintext, decrypted := cache.LookupPlaintext("ciphertext")
 
 		assert.False(t, encrypted, "was encrypted")
@@ -275,17 +278,19 @@ func TestSecretCache(t *testing.T) {
 		cache := NewSecretCache()
 		secret1 := &resource.Secret{}
 		secret2 := &resource.Secret{}
-		cache.Write("plaintext1", "ciphertext1", secret1)
-		cache.Write("plaintext2", "ciphertext2", secret2)
+		id1 := secretID(secret1)
+		id2 := secretID(secret2)
+		cache.Write("plaintext1", "ciphertext1", id1)
+		cache.Write("plaintext2", "ciphertext2", id2)
 
-		ciphertext1, encrypted1 := cache.LookupCiphertext(secret1, "plaintext1")
+		ciphertext1, encrypted1 := cache.LookupCiphertext(id1, "plaintext1")
 		plaintext1, decrypted1 := cache.LookupPlaintext("ciphertext1")
 		assert.True(t, encrypted1, "was encrypted")
 		assert.Equal(t, "ciphertext1", ciphertext1)
 		assert.True(t, decrypted1, "was decrypted")
 		assert.Equal(t, "plaintext1", plaintext1)
 
-		ciphertext2, encrypted2 := cache.LookupCiphertext(secret2, "plaintext2")
+		ciphertext2, encrypted2 := cache.LookupCiphertext(id2, "plaintext2")
 		plaintext2, decrypted2 := cache.LookupPlaintext("ciphertext2")
 		assert.True(t, encrypted2, "was encrypted")
 		assert.Equal(t, "ciphertext2", ciphertext2)
@@ -297,9 +302,9 @@ func TestSecretCache(t *testing.T) {
 		t.Parallel()
 		cache := NewSecretCache()
 		secret := &resource.Secret{}
-		cache.Write("plaintext", "ciphertext", secret)
+		cache.Write("plaintext", "ciphertext", secretID(secret))
 
-		ciphertext, encrypted := cache.LookupCiphertext(secret, "different plaintext")
+		ciphertext, encrypted := cache.LookupCiphertext(secretID(secret), "different plaintext")
 		plaintext, decrypted := cache.LookupPlaintext("different ciphertext")
 
 		assert.False(t, encrypted, "was encrypted")
@@ -313,8 +318,8 @@ func TestSecretCache(t *testing.T) {
 		cache := NewSecretCache()
 		secret := &resource.Secret{}
 
-		cache.Write("plaintext", "ciphertext", secret)
-		ciphertext, encrypted := cache.LookupCiphertext(secret, "different plaintext")
+		cache.Write("plaintext", "ciphertext", secretID(secret))
+		ciphertext, encrypted := cache.LookupCiphertext(secretID(secret), "different plaintext")
 		plaintext, decrypted := cache.LookupPlaintext("ciphertext")
 
 		assert.False(t, encrypted, "was encrypted")
@@ -328,10 +333,10 @@ func TestSecretCache(t *testing.T) {
 		cache := NewSecretCache()
 		secret := &resource.Secret{}
 
-		cache.Write("plaintext", "ciphertext", secret)
-		cache.Write("plaintext", "updated ciphertext", secret)
+		cache.Write("plaintext", "ciphertext", secretID(secret))
+		cache.Write("plaintext", "updated ciphertext", secretID(secret))
 
-		ciphertext, encrypted := cache.LookupCiphertext(secret, "plaintext")
+		ciphertext, encrypted := cache.LookupCiphertext(secretID(secret), "plaintext")
 		plaintext, decrypted := cache.LookupPlaintext("ciphertext")
 
 		assert.True(t, encrypted, "was encrypted")
@@ -345,8 +350,8 @@ func TestSecretCache(t *testing.T) {
 		cache := nullSecretCache{}
 		secret := &resource.Secret{}
 
-		cache.Write("plaintext", "ciphertext", secret)
-		ciphertext, encrypted := cache.LookupCiphertext(secret, "plaintext")
+		cache.Write("plaintext", "ciphertext", secretID(secret))
+		ciphertext, encrypted := cache.LookupCiphertext(secretID(secret), "plaintext")
 		plaintext, decrypted := cache.LookupPlaintext("ciphertext")
 
 		assert.False(t, encrypted, "was encrypted")
@@ -377,7 +382,7 @@ func TestBatchEncrypter(t *testing.T) {
 		target := &apitype.SecretV1{}
 
 		enc, complete := beginBatchEncryption(sm.Encrypter(), NewSecretCache(), 999)
-		require.NoError(t, enc.Enqueue(ctx, secret, "plaintext", target), "enqueue")
+		require.NoError(t, enc.Enqueue(ctx, secretID(secret), "plaintext", target), "enqueue")
 		require.NoError(t, complete(ctx), "complete")
 
 		assert.Equal(t, &apitype.SecretV1{Ciphertext: "1-1:plaintext"}, target)
@@ -393,8 +398,8 @@ func TestBatchEncrypter(t *testing.T) {
 		target2 := &apitype.SecretV1{}
 
 		enc, complete := beginBatchEncryption(sm.Encrypter(), NewSecretCache(), 1)
-		require.NoError(t, enc.Enqueue(ctx, secret, "plaintext1", target1), "enqueue 1")
-		require.NoError(t, enc.Enqueue(ctx, secret, "plaintext2", target2), "enqueue 2")
+		require.NoError(t, enc.Enqueue(ctx, secretID(secret), "plaintext1", target1), "enqueue 1")
+		require.NoError(t, enc.Enqueue(ctx, secretID(secret), "plaintext2", target2), "enqueue 2")
 		assert.Equal(t, 1, sm.batchEncryptCalls, "first batch auto-sent on limit reached")
 		assert.Equal(t, &apitype.SecretV1{Ciphertext: "1-1:plaintext1"}, target1)
 
@@ -411,9 +416,9 @@ func TestBatchEncrypter(t *testing.T) {
 		secret := &resource.Secret{}
 		target := &apitype.SecretV1{}
 
-		cache.Write("plaintext", "ciphertext", secret)
+		cache.Write("plaintext", "ciphertext", secretID(secret))
 		enc, complete := beginBatchEncryption(sm.Encrypter(), cache, 999)
-		require.NoError(t, enc.Enqueue(ctx, secret, "plaintext", target), "enqueue")
+		require.NoError(t, enc.Enqueue(ctx, secretID(secret), "plaintext", target), "enqueue")
 		require.NoError(t, complete(ctx), "complete")
 
 		assert.Equal(t, &apitype.SecretV1{Ciphertext: "ciphertext"}, target)
@@ -430,10 +435,10 @@ func TestBatchEncrypter(t *testing.T) {
 		target1 := &apitype.SecretV1{}
 		target2 := &apitype.SecretV1{}
 
-		cache.Write("0-1:plaintext", "ciphertext 1", secret1) // Add one value to the cache
+		cache.Write("0-1:plaintext", "ciphertext 1", secretID(secret1)) // Add one value to the cache
 		enc, complete := beginBatchEncryption(sm.Encrypter(), cache, 999)
-		require.NoError(t, enc.Enqueue(ctx, secret1, "plaintext", target1), "enqueue 1")
-		require.NoError(t, enc.Enqueue(ctx, secret2, "plaintext", target2), "enqueue 2")
+		require.NoError(t, enc.Enqueue(ctx, secretID(secret1), "plaintext", target1), "enqueue 1")
+		require.NoError(t, enc.Enqueue(ctx, secretID(secret2), "plaintext", target2), "enqueue 2")
 		require.NoError(t, complete(ctx), "complete")
 
 		assert.Equal(t, &apitype.SecretV1{Ciphertext: "1-1:plaintext"}, target1)
@@ -449,7 +454,7 @@ func TestBatchEncrypter(t *testing.T) {
 		require.NoError(t, complete(ctx), "complete")
 
 		assert.Panics(t, func() {
-			err := enc.Enqueue(ctx, &resource.Secret{}, "plaintext", &apitype.SecretV1{})
+			err := enc.Enqueue(ctx, secretID(&resource.Secret{}), "plaintext", &apitype.SecretV1{})
 			assert.Error(t, err) // Make lint happy
 		}, "can't write to completed batch")
 	})
@@ -508,7 +513,7 @@ func TestBatchDecrypter(t *testing.T) {
 		secret := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
 
 		const ciphertext = "1-1:\"ciphertext\""
-		cache.Write("\"plaintext\"", ciphertext, &resource.Secret{}) // Pointer doesn't have to match for decryption
+		cache.Write("\"plaintext\"", ciphertext, secretID(&resource.Secret{})) // Pointer doesn't have to match for decryption
 		dec, complete := beginBatchDecryption(sm.Decrypter(), cache, secretPropertyValueFromPlaintext, 999)
 		require.NoError(t, dec.Enqueue(ctx, ciphertext, secret), "enqueue")
 
@@ -527,7 +532,7 @@ func TestBatchDecrypter(t *testing.T) {
 
 		const ciphertext1 = "1:\"plaintext 1\""
 		const ciphertext2 = "2:\"plaintext 2\""
-		cache.Write("\"plaintext from cache\"", ciphertext1, &resource.Secret{})
+		cache.Write("\"plaintext from cache\"", ciphertext1, secretID(&resource.Secret{}))
 		dec, complete := beginBatchDecryption(sm.Decrypter(), cache, secretPropertyValueFromPlaintext, 999)
 		require.NoError(t, dec.Enqueue(ctx, ciphertext1, secret1), "enqueue 1")
 		require.NoError(t, dec.Enqueue(ctx, ciphertext2, secret2), "enqueue 2")

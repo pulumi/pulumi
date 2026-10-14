@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/progress"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -77,8 +78,10 @@ func newPluginInstallCmd() *cobra.Command {
 			"  - `tool`: an arbitrary plugin that can be run as a tool.\n" +
 			"\n" +
 			"If VERSION is specified, it cannot be a range; it must be a specific number.\n" +
-			"If VERSION is unspecified, Pulumi will attempt to look up the latest version of\n" +
-			"the plugin, though the result is not guaranteed.",
+			"If VERSION is unspecified, a language plugin that is distributed separately from\n" +
+			"the CLI installs the version this release of the CLI is pinned to. For any other\n" +
+			"plugin, Pulumi will attempt to look up the latest version, though the result is\n" +
+			"not guaranteed.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			picmd.stderr = cmd.ErrOrStderr()
@@ -260,13 +263,17 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 				}
 				pluginSpec = updatedSpec
 			}
-		} else if version == nil && pluginSpec.Version == nil {
-			// If we don't have a version try to look one up
-			latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec, ctx)
-			if err != nil {
-				return err
+		} else {
+			// Unbundled language runtimes the CLI knows about are pinned to the release it auto-installs,
+			// which may live outside the default pulumi/pulumi-<name> repository.
+			util.SetKnownPluginDownloadURL(&pluginSpec)
+			if pluginSpec.Version == nil {
+				latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec, ctx)
+				if err != nil {
+					return err
+				}
+				pluginSpec.Version = latestVersion
 			}
-			pluginSpec.Version = latestVersion
 		}
 		installs = append(installs, pluginSpec)
 	} else {

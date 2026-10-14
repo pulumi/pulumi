@@ -201,13 +201,11 @@ func makeStepsAndExecutor(states ...*pkgresource.State) (map[*pkgresource.State]
 		steps[state] = &RefreshStep{old: state, new: state}
 	}
 
-	ex := &deploymentExecutor{
-		deployment: &Deployment{
-			prev: &Snapshot{
-				Resources: states,
-			},
+	ex := newDeploymentExecutor(&Deployment{
+		prev: &Snapshot{
+			Resources: states,
 		},
-	}
+	})
 
 	return steps, ex
 }
@@ -224,11 +222,15 @@ func (src *source) Iterate(ctx context.Context, providers ProviderSource) (Sourc
 
 type iterator struct {
 	closed      bool
+	closeCtxErr chan error
 	returnError bool
 }
 
-func (iter *iterator) Cancel(context.Context) error {
+func (iter *iterator) Cancel(ctx context.Context) error {
 	iter.closed = true
+	if iter.closeCtxErr != nil {
+		iter.closeCtxErr <- ctx.Err()
+	}
 	return nil
 }
 
@@ -412,7 +414,7 @@ func TestStateMigrationWaitsForAsyncPlanning(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	_, err = (&deploymentExecutor{deployment: deployment}).Execute(t.Context())
+	_, err = newDeploymentExecutor(deployment).Execute(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, int32(1), diffCalls.Load())
 	assert.Equal(t, int32(1), migrationCalls.Load())
@@ -421,42 +423,43 @@ func TestStateMigrationWaitsForAsyncPlanning(t *testing.T) {
 func TestSourceIteratorClose(t *testing.T) {
 	t.Parallel()
 	iter := &iterator{}
-	ex := &deploymentExecutor{
-		deployment: &Deployment{
-			source: &source{iter},
-			opts:   &Options{},
-			ctx: &plugin.Context{
-				Diag: &deploytest.NoopSink{},
-				Host: deploytest.NewPluginHost(nil, nil, nil),
-			},
-			newPlans: &resourcePlans{},
+	ex := newDeploymentExecutor(&Deployment{
+		source: &source{iter},
+		opts:   &Options{},
+		ctx: &plugin.Context{
+			Diag: &deploytest.NoopSink{},
+			Host: deploytest.NewPluginHost(nil, nil, nil),
 		},
-		stepGen: &stepGenerator{},
-	}
+		newPlans: &resourcePlans{},
+	})
+	ex.stepGen = &stepGenerator{}
 
 	_, err := ex.Execute(t.Context())
 	require.NoError(t, err)
 	require.True(t, iter.closed, "The source iterator should be closed after execution")
 }
 
-// If we run into an error, bail out and don't attempt to close the iterator.
-func TestSourceIteratorNoCloseOnError(t *testing.T) {
+// If we run into an error, close the iterator but don't wait for the program to complete.
+func TestSourceIteratorCloseWithoutWaitOnError(t *testing.T) {
 	t.Parallel()
-	iter := &iterator{returnError: true}
-	ex := &deploymentExecutor{
-		deployment: &Deployment{
-			source: &source{iter},
-			opts:   &Options{},
-			ctx: &plugin.Context{
-				Diag: &deploytest.NoopSink{},
-				Host: deploytest.NewPluginHost(nil, nil, nil),
-			},
-			newPlans: &resourcePlans{},
+	iter := &iterator{returnError: true, closeCtxErr: make(chan error, 1)}
+	ex := newDeploymentExecutor(&Deployment{
+		source: &source{iter},
+		opts:   &Options{},
+		ctx: &plugin.Context{
+			Diag: &deploytest.NoopSink{},
+			Host: deploytest.NewPluginHost(nil, nil, nil),
 		},
-		stepGen: &stepGenerator{},
-	}
+		newPlans: &resourcePlans{},
+	})
+	ex.stepGen = &stepGenerator{}
 
 	_, err := ex.Execute(t.Context())
 	require.ErrorContains(t, err, "BAIL")
-	require.False(t, iter.closed)
+	select {
+	case closeCtxErr := <-iter.closeCtxErr:
+		require.ErrorIs(t, closeCtxErr, context.Canceled)
+	case <-time.After(10 * time.Second):
+		require.Fail(t, "source iterator was not closed")
+	}
 }

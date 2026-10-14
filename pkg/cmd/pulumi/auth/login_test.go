@@ -27,6 +27,7 @@ import (
 	"strings"
 	"testing"
 
+	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -216,7 +217,7 @@ func TestLoginURLResolution(t *testing.T) {
 					project *workspace.Project,
 					setCurrent bool,
 					insecure bool,
-					authContext workspace.AuthContext,
+					authContext pkgauth.AuthContext,
 				) (pkgBackend.Backend, error) {
 					captured.calls++
 					captured.url = url
@@ -262,6 +263,37 @@ func TestLoginURLResolution(t *testing.T) {
 				assert.Equal(t, tt.expectedURL, captured.url,
 					"login should be called with expected URL")
 				assert.Equal(t, tt.flags["oidc-token"], captured.oidcToken)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // Shares an isolated credential directory and process environment.
+func TestLoginOIDCUsesInjectedEnvironment(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_ACCESS_TOKEN", "process-token")
+
+	for _, accessToken := range []string{"", "injected-token"} {
+		t.Run("accessToken="+accessToken, func(t *testing.T) {
+			reachedLogin := errors.New("reached token exchange")
+			lm := &backend.MockLoginManager{
+				LoginFromAuthContextF: func(
+					context.Context, diag.Sink, string, *workspace.Project, bool, bool, pkgauth.AuthContext,
+				) (pkgBackend.Backend, error) {
+					return nil, reachedLogin
+				},
+			}
+			store := env.NewEnv(env.MapStore{"PULUMI_ACCESS_TOKEN": accessToken})
+			cmd := NewLoginCmd(&pkgWorkspace.MockContext{}, lm, store)
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+			cmd.SetArgs([]string{"--oidc-token", "oidc-token", "--oidc-org", "org"})
+			err := cmd.ExecuteContext(t.Context())
+			if accessToken == "" {
+				require.ErrorIs(t, err, reachedLogin)
+			} else {
+				require.EqualError(t, err,
+					"problem logging in: cannot perform token exchange when an access token is set as environment variable")
 			}
 		})
 	}

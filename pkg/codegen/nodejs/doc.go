@@ -32,10 +32,27 @@ type DocLanguageHelper struct{}
 
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
-// GetDocLinkForPulumiType returns the NodeJS API doc link for a Pulumi type.
+// pulumiTypeDocRoot is the TypeDoc reference for the `@pulumi/pulumi` package.
+const pulumiTypeDocRoot = "/docs/reference/pkg/nodejs/pulumi/pulumi/"
+
+// pulumiTypeDocKinds maps linked `@pulumi/pulumi` types to their TypeDoc kind directory.
+var pulumiTypeDocKinds = map[string]string{
+	"ComponentResourceOptions": "interfaces",
+	"CustomResourceOptions":    "interfaces",
+	"InvokeOptions":            "interfaces",
+	"InvokeOutputOptions":      "interfaces",
+	"ID":                       "types",
+}
+
+// GetDocLinkForPulumiType returns the TypeDoc page for a `@pulumi/pulumi` type. Unknown types link to
+// the package index, since TypeDoc does not generate per-type anchors there.
 func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
 	typeName = strings.ReplaceAll(typeName, "?", "")
-	return "/docs/reference/pkg/nodejs/pulumi/pulumi/#" + typeName
+	kind, ok := pulumiTypeDocKinds[typeName]
+	if !ok {
+		return pulumiTypeDocRoot
+	}
+	return pulumiTypeDocRoot + kind + "/" + typeName + ".html"
 }
 
 // GetDocLinkForResourceType returns the NodeJS API doc for a type belonging to a resource provider.

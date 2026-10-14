@@ -1,0 +1,4 @@
+component: sdk/python
+kind: fix
+body: Fix `Output.recover` failing to catch faults that arrive through `apply` or after the program body has returned
+time: 2026-10-09T17:09:05.890828+02:00

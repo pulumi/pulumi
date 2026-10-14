@@ -116,7 +116,7 @@ func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (back
 	}
 }
 
-func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
+func GetRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	// we want to check for an explicit --refresh or a --refresh=true or --refresh=false
 	// refresh is assigned the empty string by default to distinguish the difference between
 	// when the user actually interacted with the cli argument (`NoOptDefVal`)

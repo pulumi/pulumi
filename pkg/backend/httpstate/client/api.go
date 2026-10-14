@@ -34,6 +34,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
@@ -349,9 +350,10 @@ type httpClient interface {
 }
 
 // tracingTransport wraps an http.RoundTripper to create a span for each individual HTTP attempt,
-// making retries visible in traces.
+// making retries visible in traces. Requests to apiHost carry the context of the attempt span.
 type tracingTransport struct {
 	base    http.RoundTripper
+	apiHost string
 	attempt int
 }
 
@@ -368,7 +370,11 @@ func (t *tracingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		))
 	defer span.End()
 
-	req = req.WithContext(ctx)
+	// A RoundTripper must not modify the caller's request, so clone it before the headers change.
+	req = req.Clone(ctx)
+	if req.URL.Host == t.apiHost {
+		otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
+	}
 	resp, err := t.base.RoundTrip(req)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
@@ -388,6 +394,8 @@ func (t *tracingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 // using the specified *http.Client, with retry support.
 type defaultHTTPClient struct {
 	client *http.Client
+	// apiHost is the host of the Pulumi Cloud API. Only requests to this host carry the trace context.
+	apiHost string
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
@@ -421,7 +429,7 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 		transport = http.DefaultTransport
 	}
 	tracingClient := *c.client
-	tracingClient.Transport = &tracingTransport{base: transport}
+	tracingClient.Transport = &tracingTransport{base: transport, apiHost: c.apiHost}
 
 	// Wait 1s before retrying on failure. Then increase by 2x until the
 	// maximum delay is reached. Stop after maxRetryCount requests have

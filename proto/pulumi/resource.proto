@@ -42,6 +42,7 @@ service ResourceMonitor {
     rpc Invoke(ResourceInvokeRequest) returns (ResourceInvokeResponse) {}
     rpc Call(ResourceCallRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
+    rpc ExistsResource(ExistsResourceRequest) returns (ExistsResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
 
@@ -100,6 +101,14 @@ enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15;
     // The monitor accepts state migration callbacks on resource registrations.
     RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS = 16;
+    // The monitor accepts OutputValues nested in `ResourceInvokeRequest.args` (and will harvest their
+    // dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
+    // OutputValues in `ResourceInvokeResponse.return`.
+    RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES = 17;
+    // The monitor accepts OutputValues nested in `ResourceCallRequest.args` (and will harvest their
+    // dependencies into the call's wait-set), and will honour `accept_output_values` on the request to return
+    // OutputValues in `CallResponse.return`.
+    RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES = 18;
 }
 
 // DeploymentInfo returns monitor execution state currently sent to programs
@@ -185,6 +194,25 @@ message ReadResourceResponse {
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
     Result result = 3;                     // the reason, whether the read was successful or failed.
     bool unknown = 4;                      // true if the result of the read is unknown, e.g. because the read was skipped as part of a --continue-on-error run; result is still SUCCESS and SDKs should resolve outputs as unknown.
+}
+
+// ExistsResourceRequest contains enough information to check whether a resource with a given ID exists.
+message ExistsResourceRequest {
+    string type = 1;                        // the type of the resource object.
+    string id = 2;                          // the ID of the resource to check.
+    string parent = 3;                      // an optional parent URN that this child resource belongs to.
+    google.protobuf.Struct properties = 4;  // optional state sufficient to uniquely identify the resource.
+    string provider = 5;                    // an optional reference to the provider to use for this check.
+    string version = 6;                     // the version of the provider to use when servicing this request.
+    string pluginDownloadURL = 7;           // the server url of the provider to use when servicing this request.
+    map<string, bytes> pluginChecksums = 8; // a map of checksums of the provider to use when servicing this request.
+    string packageRef = 9;                  // a reference from RegisterPackageRequest.
+}
+
+// ExistsResourceResponse contains the result of checking whether a resource exists.
+message ExistsResourceResponse {
+    bool exists = 1;  // whether the resource exists; only meaningful when unknown is false.
+    bool unknown = 2; // true if existence could not be determined, e.g. because the id is unknown during preview or the provider was configured with unknown values.
 }
 
 // RegisterResourceRequest contains information about a resource object that was newly allocated.
@@ -337,6 +365,10 @@ message ResourceInvokeRequest {
     // the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
     // resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
     string parent = 15;
+
+    // When true the SDK accepts OutputValues in `ResourceInvokeResponse.return`. Only meaningful when the monitor
+    // advertises `INVOKE_OUTPUT_VALUES`; older monitors will ignore this field.
+    bool accept_output_values = 16;
 }
 
 message ResourceInvokeResponse {
@@ -377,6 +409,10 @@ message ResourceCallRequest {
     // When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     // carrying the byte string signature and a base64 encoding of the string's bytes.
     bool accepts_byte_string = 20;
+
+    // When true the SDK accepts OutputValues in `CallResponse.return`. Only meaningful when the monitor
+    // advertises `CALL_OUTPUT_VALUES`; older monitors will ignore this field.
+    bool accept_output_values = 21;
 }
 
 // TransformResourceOptions is a subset of all resource options that are relevant to transforms.

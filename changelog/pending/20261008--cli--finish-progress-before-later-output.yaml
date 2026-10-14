@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Stop finished download and unpack progress bars from reappearing below later output, such as the `pulumi new` success message
+time: 2026-10-08T00:00:00Z

@@ -261,9 +261,7 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 		diag:     d,
 		insecure: insecure,
 		restClient: &defaultRESTClient{
-			client: &defaultHTTPClient{
-				client: httpClient,
-			},
+			client: newDefaultHTTPClient(httpClient, apiURL),
 		},
 	}
 }
@@ -277,11 +275,18 @@ func (pc *Client) Insecure() bool {
 // Useful for testing.
 func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 	pc.restClient = &defaultRESTClient{
-		client: &defaultHTTPClient{
-			client: httpClient,
-		},
+		client: newDefaultHTTPClient(httpClient, pc.apiURL),
 	}
 	return pc
+}
+
+// newDefaultHTTPClient returns a defaultHTTPClient that sends the trace context to the host of apiURL.
+func newDefaultHTTPClient(client *http.Client, apiURL string) *defaultHTTPClient {
+	var apiHost string
+	if u, err := url.Parse(apiURL); err == nil {
+		apiHost = u.Host
+	}
+	return &defaultHTTPClient{client: client, apiHost: apiHost}
 }
 
 // WithRefresh wires an OAuth refresh token + a credentials-writeback callback into this client.
@@ -1468,14 +1473,18 @@ func (pc *Client) ExportStackDeployment(
 
 // GetStackOutputs reads the outputs of the latest deployment of the indicated stack.
 func (pc *Client) GetStackOutputs(
-	ctx context.Context, stack StackIdentifier,
+	ctx context.Context, stack StackIdentifier, readingUpdateID string,
 ) (apitype.StackOutputsResponse, error) {
 	tracer := otel.Tracer("pulumi-cli")
 	ctx, span := cmdutil.StartSpan(ctx, tracer, "GetStackOutputs")
 	defer span.End()
 
+	queryObj := struct {
+		ReadingUpdateID string `url:"readingUpdateID,omitempty"`
+	}{ReadingUpdateID: readingUpdateID}
+
 	var resp apitype.StackOutputsResponse
-	if err := pc.restCall(ctx, "GET", getStackPath(stack, "outputs"), nil, nil, &resp); err != nil {
+	if err := pc.restCall(ctx, "GET", getStackPath(stack, "outputs"), queryObj, nil, &resp); err != nil {
 		return apitype.StackOutputsResponse{}, err
 	}
 	return resp, nil
@@ -1510,7 +1519,7 @@ type CreateUpdateDetails struct {
 func (pc *Client) CreateUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
 	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
-	dryRun bool,
+	dryRun bool, coherenceWindow string,
 ) (UpdateIdentifier, CreateUpdateDetails, error) {
 	// First create the update program request.
 	wireConfig := make(map[string]apitype.ConfigValue)
@@ -1545,7 +1554,8 @@ func (pc *Client) CreateUpdate(
 			ShowReplacementSteps: false, // This is a legacy option now, the engine will always emit this information
 			ShowSames:            false, // This is a legacy option now, the engine will always emit this information
 		},
-		Metadata: m,
+		Metadata:        m,
+		CoherenceWindow: coherenceWindow,
 	}
 
 	// Create the initial update object.
@@ -1572,14 +1582,14 @@ func (pc *Client) CreateUpdate(
 	}
 
 	return UpdateIdentifier{
-			StackIdentifier: stack,
-			UpdateKind:      kind,
-			UpdateID:        updateResponse.UpdateID,
-		}, CreateUpdateDetails{
-			Messages:                updateResponse.Messages,
-			RequiredPolicies:        updateResponse.RequiredPolicies,
-			IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
-		}, nil
+		StackIdentifier: stack,
+		UpdateKind:      kind,
+		UpdateID:        updateResponse.UpdateID,
+	}, CreateUpdateDetails{
+		Messages:                updateResponse.Messages,
+		RequiredPolicies:        updateResponse.RequiredPolicies,
+		IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
+	}, nil
 }
 
 // RenameStack renames the provided stack to have the new identifier.
@@ -1623,7 +1633,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 func (pc *Client) BeginUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
 	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
-	tags map[apitype.StackTagName]string, dryRun bool,
+	tags map[apitype.StackTagName]string, dryRun bool, coherenceWindow string,
 ) (*apitype.BeginUpdateResponse, error) {
 	if err := validation.ValidateStackTags(tags); err != nil {
 		return nil, fmt.Errorf("validating stack properties: %w", err)
@@ -1658,7 +1668,8 @@ func (pc *Client) BeginUpdate(
 			DryRun:               dryRun,
 			Parallel:             opts.Parallel,
 		},
-		Metadata: m,
+		Metadata:        m,
+		CoherenceWindow: coherenceWindow,
 	}
 
 	req := apitype.BeginUpdateRequest{
@@ -1717,16 +1728,14 @@ func (pc *Client) GetPolicyGroup(
 	return resp, nil
 }
 
-// UpdatePolicyGroup issues a PATCH against the Policy Group endpoint. The
-// service's UpdatePolicyGroup endpoint accepts at most one mutation per
-// request (rename, add/remove stack, add/remove policy pack, add/remove
-// insights account), so callers performing multiple mutations must issue
-// multiple calls.
-func (pc *Client) UpdatePolicyGroup(
-	ctx context.Context, orgName, policyGroup string, req apitype.UpdatePolicyGroupRequest,
+// BatchUpdatePolicyGroup applies the given updates to a Policy Group in one
+// request. Each update carries one mutation: a rename, or the addition or
+// removal of one stack, Policy Pack, or Insights account.
+func (pc *Client) BatchUpdatePolicyGroup(
+	ctx context.Context, orgName, policyGroup string, reqs []apitype.UpdatePolicyGroupRequest,
 ) error {
 	if err := pc.restCall(
-		ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup), nil, req, nil,
+		ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup)+"/batch", nil, reqs, nil,
 	); err != nil {
 		return fmt.Errorf("updating policy group: %w", err)
 	}
@@ -2460,10 +2469,14 @@ func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) err
 
 // CompleteUpdate completes the indicated update with the given status.
 func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, status apitype.UpdateStatus,
-	token UpdateTokenSource,
+	token UpdateTokenSource, outputs *apitype.StackOutputsResponse,
 ) error {
 	req := apitype.CompleteUpdateRequest{
 		Status: status,
+	}
+	if outputs != nil {
+		req.Outputs = outputs.Outputs
+		req.SecretsProviders = outputs.SecretsProviders
 	}
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent.

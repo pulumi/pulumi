@@ -618,6 +618,26 @@ func GitCloneOrPull(
 	return gitCloneOrPull(ctx, rawurl, referenceName, path, shallow)
 }
 
+func switchBranch(repo *git.Repository, referenceName plumbing.ReferenceName) error {
+	cfg, err := repo.Config()
+	if err != nil {
+		return err
+	}
+	remote, ok := cfg.Remotes[git.DefaultRemoteName]
+	if !ok {
+		return fmt.Errorf("remote %q not found", git.DefaultRemoteName)
+	}
+	remoteRef := plumbing.NewRemoteReferenceName(git.DefaultRemoteName, referenceName.Short())
+	remote.Fetch = []config.RefSpec{config.RefSpec(fmt.Sprintf("+%s:%s", referenceName, remoteRef))}
+	if err := repo.SetConfig(cfg); err != nil {
+		return err
+	}
+	if err := repo.Storer.RemoveReference(referenceName); err != nil {
+		return err
+	}
+	return repo.Storer.SetReference(plumbing.NewSymbolicReference(plumbing.HEAD, referenceName))
+}
+
 // GitCloneOrPull clones or updates the specified referenceName (branch or tag) of a Git repository.
 func gitCloneOrPull(
 	ctx context.Context, url string, referenceName plumbing.ReferenceName, path string, shallow bool,
@@ -664,6 +684,12 @@ func gitCloneOrPull(
 				Mode: git.HardReset,
 			}); err != nil {
 				return err
+			}
+
+			if head, err := repo.Head(); err != nil || head.Name() != referenceName {
+				if err := switchBranch(repo, referenceName); err != nil {
+					return err
+				}
 			}
 
 			if cloneErr = w.Pull(&git.PullOptions{

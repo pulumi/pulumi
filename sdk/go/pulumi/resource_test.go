@@ -1690,8 +1690,7 @@ func TestInvokeOutputArgsDependencies(t *testing.T) {
 		dep := newTestRes(t, ctx, "dep")
 		args := DoEchoOutputArgs{
 			Echo: dep.URN().ApplyT(func(urn URN) *string {
-				s := string(urn)
-				return &s
+				return new(string(urn))
 			}).(StringPtrOutput),
 		}
 
@@ -1737,8 +1736,7 @@ func TestInvokeOutputArgsDependencyPendingCreate(t *testing.T) {
 		args := DoEchoOutputArgs{
 			// The argument's value is known, but it depends on dep, whose ID is unknown.
 			Echo: dep.URN().ApplyT(func(URN) *string {
-				s := "known value"
-				return &s
+				return new("known value")
 			}).(StringPtrOutput),
 		}
 

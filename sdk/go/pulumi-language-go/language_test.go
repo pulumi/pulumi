@@ -143,7 +143,10 @@ var expectedFailures = map[string]string{
 
 	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
 
-	"l2-failed-create-recover-continue-on-error": "Go SDK output recovery is not implemented",
+	"l2-recover-invoke": "Go SDK output recovery is not implemented",
+
+	"l2-invoke-per-value-deps": "output aware invokes not yet implemented",
+	"l2-call-per-value-deps":   "output aware calls not yet implemented",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

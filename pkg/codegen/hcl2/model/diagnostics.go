@@ -41,7 +41,7 @@ func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ..
 }
 
 func ExprNotConvertible(destType Type, expr Expression) *hcl.Diagnostic {
-	conversionKind, whyF := destType.conversionFrom(expr.Type(), false, cycleSet{})
+	conversionKind, whyF := destType.conversionFrom(expr.Type(), false, &cycleSet{})
 	contract.Assertf(whyF != nil, "destType.conversionFrom (kind: %#v) should always have a reason: %T\n",
 		conversionKind, destType)
 	why := whyF()

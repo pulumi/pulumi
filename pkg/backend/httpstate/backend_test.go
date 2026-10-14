@@ -26,6 +26,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1519,11 +1523,152 @@ func TestCloudPersistenceSupportsStateMigrations(t *testing.T) {
 	}
 }
 
+func TestRunEngineActionCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	stackURN := resource.NewURN("stack", "project", "", resource.RootStackType, "project-stack")
+	provider := (&secrets.MockProvider{}).Add(b64.Type, func(json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+
+	cases := []struct {
+		name            string
+		window          string
+		wantReadingID   string
+		wantSentOutputs bool
+	}{
+		{
+			name:            "in a window",
+			window:          "d333a711-4aa0-402f-be6d-72af9665fc37",
+			wantReadingID:   "update-id",
+			wantSentOutputs: true,
+		},
+		{
+			name: "outside a window",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			snap := &deploy.Snapshot{
+				SecretsManager: b64.NewBase64SecretsManager(),
+				Resources: []*pkgresource.State{{
+					Type:    resource.RootStackType,
+					URN:     stackURN,
+					Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")},
+				}},
+			}
+			fx := newRunEngineActionFixture(t, snap, provider, b64.NewBase64SecretsManager())
+			fx.op.CoherenceWindow = tc.window
+			fx.op.Scopes = backend.CancellationScopes
+			fx.update.UpdateKind = apitype.DestroyUpdate
+
+			events := make(chan engine.Event)
+			readingIDs := make(chan string, 1)
+			go func() {
+				defer close(readingIDs)
+				var seen string
+				for e := range events {
+					if id := fx.backend.readingUpdateID.Load(); id != nil && e.Type == engine.ResourceOutputsEvent {
+						seen = *id
+					}
+				}
+				readingIDs <- seen
+			}()
+
+			_, _, err := fx.backend.runEngineAction(
+				t.Context(), apitype.DestroyUpdate, fx.stackRef, fx.op, fx.update,
+				"lease-token", "", engine.NewEvent(engine.UpdateStartedEventPayload{UpdateID: "update-id"}),
+				events, true /* dryRun */, 0,
+			)
+			close(events)
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantReadingID, <-readingIDs)
+			assert.Nil(t, fx.backend.readingUpdateID.Load())
+
+			completions := fx.completions()
+			require.Len(t, completions, 1)
+			assert.Equal(t, apitype.UpdateStatusSucceeded, completions[0].Status)
+			if tc.wantSentOutputs {
+				assert.Empty(t, completions[0].Outputs)
+				require.NotNil(t, completions[0].SecretsProviders)
+				assert.Equal(t, b64.Type, completions[0].SecretsProviders.Type)
+			} else {
+				assert.Nil(t, completions[0].Outputs)
+				assert.Nil(t, completions[0].SecretsProviders)
+			}
+		})
+	}
+}
+
+func TestCreateAndStartUpdateInACoherenceWindowSkipsThePreview(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		action      apitype.UpdateKind
+		dryRun      bool
+		previewOnly bool
+		refused     bool
+	}{
+		{"the preview of an update", apitype.UpdateUpdate, true, false, true},
+		{"the preview of a refresh", apitype.RefreshUpdate, true, false, true},
+		{"the update itself", apitype.UpdateUpdate, false, false, false},
+		{"a preview on its own", apitype.PreviewUpdate, true, false, false},
+		{"a preview-only refresh", apitype.RefreshUpdate, true, true, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
+			fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) {
+				return apitype.Capabilities{CoherenceWindowsVersion: 1, StackOutputs: true}, nil
+			})
+			fx.op.CoherenceWindow = "d333a711-4aa0-402f-be6d-72af9665fc37"
+			fx.op.Opts.PreviewOnly = tc.previewOnly
+			fx.op.M = &backend.UpdateMetadata{}
+
+			stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
+			_, _, err := fx.backend.createAndStartUpdate(t.Context(), tc.action, stk, &fx.op, tc.dryRun)
+			if tc.refused {
+				require.ErrorContains(t, err, "pass --skip-preview")
+			} else if err != nil {
+				assert.NotContains(t, err.Error(), "pass --skip-preview")
+			}
+		})
+	}
+}
+
+func TestCreateAndStartUpdateRequiresCoherenceWindowCapability(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		caps apitype.Capabilities
+		want string
+	}{
+		{apitype.Capabilities{}, "does not support coherence windows"},
+		{apitype.Capabilities{StackOutputs: true}, "does not support coherence windows"},
+		{apitype.Capabilities{CoherenceWindowsVersion: 1}, "does not support coherence windows"},
+		{apitype.Capabilities{CoherenceWindowsVersion: 2, StackOutputs: true}, "too old for the coherence windows"},
+	} {
+		fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
+		fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) { return tc.caps, nil })
+		fx.op.CoherenceWindow = "d333a711-4aa0-402f-be6d-72af9665fc37"
+		fx.op.M = &backend.UpdateMetadata{}
+
+		stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
+		_, _, err := fx.backend.createAndStartUpdate(t.Context(), apitype.PreviewUpdate, stk, &fx.op, true)
+		assert.ErrorContains(t, err, tc.want)
+	}
+}
+
 type runEngineActionFixture struct {
-	backend  *cloudBackend
-	stackRef cloudBackendReference
-	op       backend.UpdateOperation
-	update   client.UpdateIdentifier
+	backend     *cloudBackend
+	stackRef    cloudBackendReference
+	op          backend.UpdateOperation
+	update      client.UpdateIdentifier
+	completions func() []apitype.CompleteUpdateRequest
 }
 
 func newRunEngineActionFixture(
@@ -1540,7 +1685,17 @@ func newRunEngineActionFixture(
 	deployment, err := stack.SerializeUntypedDeployment(t.Context(), snap, &stack.SerializeOptions{ShowSecrets: true})
 	require.NoError(t, err)
 
+	var completionsMu sync.Mutex
+	var completions []apitype.CompleteUpdateRequest
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/update-id/complete") {
+			var req apitype.CompleteUpdateRequest
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+			completionsMu.Lock()
+			defer completionsMu.Unlock()
+			completions = append(completions, req)
+			return
+		}
 		switch r.URL.Path {
 		case "/api/stacks/owner/project/stack/export":
 			require.NoError(t, json.NewEncoder(w).Encode(apitype.ExportStackResponse(*deployment)))
@@ -1594,7 +1749,17 @@ func newRunEngineActionFixture(
 		UpdateID:        "update-id",
 	}
 
-	return runEngineActionFixture{backend: b, stackRef: stackRef, op: op, update: update}
+	return runEngineActionFixture{
+		backend:  b,
+		stackRef: stackRef,
+		op:       op,
+		update:   update,
+		completions: func() []apitype.CompleteUpdateRequest {
+			completionsMu.Lock()
+			defer completionsMu.Unlock()
+			return slices.Clone(completions)
+		},
+	}
 }
 
 type failingBatchingSecretsManager struct{ err error }
@@ -1622,7 +1787,7 @@ func (nopBatchEncrypter) BatchEncrypt(context.Context, []string) ([]string, erro
 	return nil, nil
 }
 
-func (nopBatchEncrypter) Enqueue(context.Context, *resource.Secret, string, *apitype.SecretV1) error {
+func (nopBatchEncrypter) Enqueue(context.Context, stack.SecretID, string, *apitype.SecretV1) error {
 	return nil
 }
 
@@ -1662,6 +1827,8 @@ func TestShowDeploymentEventsResult(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 				var err error
 				switch req.URL.Path {
+				case "/api/stacks/org/proj/stack/deployments/deployment-id":
+					err = json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{ID: "deployment-id", Status: "running"})
 				case "/api/stacks/org/proj/stack/deployments/deployment-id/updates":
 					err = json.NewEncoder(rw).Encode([]apitype.GetDeploymentUpdatesUpdateInfo{
 						{UpdateID: "update-id", Version: 1},
@@ -1695,6 +1862,76 @@ func TestShowDeploymentEventsResult(t *testing.T) {
 				require.ErrorContains(t, err, tt.wantErr)
 			default:
 				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestShowDeploymentEventsWaitsForUpdate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		finalStatus string
+		updateAfter int
+		wantErr     string
+	}{
+		{name: "update appears late", finalStatus: "running", updateAfter: 12},
+		{name: "deployment failed", finalStatus: "failed", updateAfter: -1, wantErr: "deployment failed"},
+		{
+			name: "deployment succeeded", finalStatus: "succeeded", updateAfter: -1,
+			wantErr: "could not find update associated with deployment deployment-id",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var polls atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				var err error
+				switch req.URL.Path {
+				case "/api/stacks/org/proj/stack/deployments/deployment-id":
+					status := "running"
+					if polls.Load() >= 2 {
+						status = tt.finalStatus
+					}
+					err = json.NewEncoder(rw).Encode(apitype.GetDeploymentResponse{ID: "deployment-id", Status: status})
+				case "/api/stacks/org/proj/stack/deployments/deployment-id/updates":
+					n := polls.Add(1)
+					updates := []apitype.GetDeploymentUpdatesUpdateInfo{}
+					if tt.updateAfter >= 0 && int(n) > tt.updateAfter {
+						updates = append(updates, apitype.GetDeploymentUpdatesUpdateInfo{UpdateID: "update-id", Version: 1})
+					}
+					err = json.NewEncoder(rw).Encode(updates)
+				case "/api/stacks/org/proj/stack/update/update-id/events":
+					err = json.NewEncoder(rw).Encode(apitype.GetUpdateEventsResponse{
+						Events: []apitype.EngineEvent{
+							{Sequence: 1, SummaryEvent: &apitype.SummaryEvent{Result: apitype.OperationResultSucceeded}},
+						},
+					})
+				default:
+					require.Failf(t, "unexpected request", "path %v", req.URL.Path)
+				}
+				require.NoError(t, err)
+			}))
+			t.Cleanup(server.Close)
+
+			b := &cloudBackend{client: client.NewClient(server.URL, "fake-token", true, nil)}
+			stackID := client.StackIdentifier{
+				Owner:   "org",
+				Project: "proj",
+				Stack:   tokens.MustParseStackName("stack"),
+			}
+			opts := display.Options{Color: colors.Never, Stdout: io.Discard, Stderr: io.Discard}
+
+			err := b.showDeploymentEvents(t.Context(), stackID, apitype.UpdateUpdate, "deployment-id", opts)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				require.Greater(t, polls.Load(), int32(10))
+			} else {
+				require.EqualError(t, err, tt.wantErr)
 			}
 		})
 	}
@@ -1925,6 +2162,24 @@ func TestGetSnapshotStackOutputs(t *testing.T) {
 		assert.Equal(t, wantOutputs, outputs)
 	})
 
+	t.Run("unknown outputs keep their names and secrecy only", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				Outputs:          serializedOutputs,
+				SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+				Unknown:          true,
+			}))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"plain":  property.New(property.Computed),
+			"secret": property.New(property.Computed).WithSecret(true),
+		}), outputs)
+	})
+
 	t.Run("capability absent falls back to export", func(t *testing.T) {
 		t.Parallel()
 		deployment, err := json.Marshal(apitype.DeploymentV3{
@@ -1947,5 +2202,75 @@ func TestGetSnapshotStackOutputs(t *testing.T) {
 		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
 		require.NoError(t, err)
 		assert.Equal(t, wantOutputs, outputs)
+	})
+
+	t.Run("waits while a coherence window subgroup may still update the stack", func(t *testing.T) {
+		t.Parallel()
+		var reads atomic.Int32
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			resp := apitype.StackOutputsResponse{State: apitype.StackOutputsPending}
+			if reads.Add(1) > 2 {
+				resp = apitype.StackOutputsResponse{
+					Outputs:          serializedOutputs,
+					SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+					State:            apitype.StackOutputsCompleted,
+				}
+			}
+			require.NoError(t, json.NewEncoder(w).Encode(resp))
+		})
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+		assert.Equal(t, int32(3), reads.Load())
+	})
+
+	t.Run("a read gives up after the wait limit", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				State: apitype.StackOutputsPending,
+			}))
+		})
+		b.stackOutputsWaitLimit = 50 * time.Millisecond
+
+		_, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.ErrorContains(t, err, "gave up waiting for owner/project/stack to join the coherence window")
+	})
+
+	t.Run("a cancelled read stops waiting", func(t *testing.T) {
+		t.Parallel()
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				State: apitype.StackOutputsPending,
+			}))
+		})
+
+		ctx, cancel := context.WithCancel(t.Context())
+		go func() {
+			time.Sleep(100 * time.Millisecond)
+			cancel()
+		}()
+		_, err := b.getSnapshotStackOutputs(ctx, secretsProvider, ref)
+		assert.ErrorIs(t, err, context.Canceled)
+	})
+
+	t.Run("reads during an update name the reading update", func(t *testing.T) {
+		t.Parallel()
+		var gotQuery string
+		b, ref := newBackend(t, apitype.Capabilities{StackOutputs: true}, func(w http.ResponseWriter, r *http.Request) {
+			gotQuery = r.URL.RawQuery
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.StackOutputsResponse{
+				Outputs:          serializedOutputs,
+				SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
+			}))
+		})
+		updateID := "d333a711-4aa0-402f-be6d-72af9665fc37"
+		b.readingUpdateID.Store(&updateID)
+
+		outputs, err := b.getSnapshotStackOutputs(t.Context(), secretsProvider, ref)
+		require.NoError(t, err)
+		assert.Equal(t, wantOutputs, outputs)
+		assert.Equal(t, "readingUpdateID="+updateID, gotQuery)
 	})
 }

@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -32,9 +33,11 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	stdiotest "testing/iotest"
 	"time"
 
 	"github.com/blang/semver"
+	git "github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -1264,6 +1267,61 @@ func TestDownloadToFile_retries(t *testing.T) {
 	assert.Equal(t, numRequests, numRetries)
 }
 
+func TestChecksumSource_finalReadWithEOF(t *testing.T) {
+	t.Parallel()
+
+	// Verifies that bytes returned together with io.EOF are covered by the checksum.
+	// net/http returns the end of a body with a known Content-Length this way.
+
+	archive := []byte("plugin archive")
+	checksum := sha256.Sum256(archive)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write(archive)
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	version := semver.MustParse("1.0.0")
+	spec := PluginDescriptor{
+		Name:              "myplugin",
+		Kind:              apitype.ResourcePlugin,
+		Version:           &version,
+		PluginDownloadURL: server.URL,
+		Checksums:         map[string][]byte{"linux-amd64": checksum[:]},
+	}
+	source, err := spec.GetSource()
+	require.NoError(t, err)
+
+	t.Run("valid archive", func(t *testing.T) {
+		t.Parallel()
+
+		r, _, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		defer r.Close()
+		readBytes, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, archive, readBytes)
+	})
+
+	t.Run("trailing data", func(t *testing.T) {
+		t.Parallel()
+
+		// The archive matches the checksum, but more bytes follow it in the final read.
+		getHTTPResponse := func(*http.Request) (io.ReadCloser, int64, error) {
+			body := io.MultiReader(
+				bytes.NewReader(archive),
+				stdiotest.DataErrReader(strings.NewReader("trailing data")))
+			return io.NopCloser(body), -1, nil
+		}
+		r, _, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		_, err = io.ReadAll(r)
+		var checksumErr *checksumError
+		require.ErrorAs(t, err, &checksumErr)
+	})
+}
+
 func TestUnmarshalProjectWithProviderList(t *testing.T) {
 	t.Parallel()
 	tempdir := t.TempDir()
@@ -2129,6 +2187,72 @@ func TestGitSourceDownloadSemver(t *testing.T) {
 	buf, err := io.ReadAll(tarReader)
 	require.NoError(t, err)
 	require.Equal(t, "a string", string(buf))
+}
+
+func TestGitSourceDownloadUnprefixedTag(t *testing.T) {
+	t.Parallel()
+
+	prefixed := plumbing.ReferenceName("refs/tags/v1.0.0")
+	unprefixed := plumbing.ReferenceName("refs/tags/1.0.0")
+	prefixedNotFound := fmt.Errorf("%w: %s", git.ErrRemoteRefNotFound, prefixed)
+	unprefixedNotFound := fmt.Errorf("%w: %s", git.ErrRemoteRefNotFound, unprefixed)
+	errAuth := errors.New("authentication required")
+
+	cases := []struct {
+		name         string
+		cloneErrs    map[plumbing.ReferenceName]error
+		expectedRefs []plumbing.ReferenceName
+		expectedErrs []error
+	}{
+		{
+			name:         "only unprefixed tag exists",
+			cloneErrs:    map[plumbing.ReferenceName]error{prefixed: prefixedNotFound},
+			expectedRefs: []plumbing.ReferenceName{prefixed, unprefixed},
+		},
+		{
+			name: "no tag exists",
+			cloneErrs: map[plumbing.ReferenceName]error{
+				prefixed:   prefixedNotFound,
+				unprefixed: unprefixedNotFound,
+			},
+			expectedRefs: []plumbing.ReferenceName{prefixed, unprefixed},
+			expectedErrs: []error{prefixedNotFound, unprefixedNotFound},
+		},
+		{
+			name:         "other clone error",
+			cloneErrs:    map[plumbing.ReferenceName]error{prefixed: errAuth},
+			expectedRefs: []plumbing.ReferenceName{prefixed},
+			expectedErrs: []error{errAuth},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			var refs []plumbing.ReferenceName
+			gitSource := &gitSource{
+				url: "https://example.com/repo/test",
+				cloneOrPull: func(_ context.Context, _ string, ref plumbing.ReferenceName, tmpdir string, _ bool) error {
+					refs = append(refs, ref)
+					if err := c.cloneErrs[ref]; err != nil {
+						return err
+					}
+					return os.WriteFile(filepath.Join(tmpdir, "test"), []byte("a string"), 0o600)
+				},
+			}
+			readCloser, _, err := gitSource.Download(t.Context(), semver.MustParse("1.0.0"), "unused", "unused",
+				func(*http.Request) (io.ReadCloser, int64, error) { panic("unused") })
+			require.Equal(t, c.expectedRefs, refs)
+			if len(c.expectedErrs) > 0 {
+				for _, expected := range c.expectedErrs {
+					require.ErrorIs(t, err, expected)
+				}
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, readCloser)
+		})
+	}
 }
 
 func TestGitSourceDownloadHEAD(t *testing.T) {

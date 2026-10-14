@@ -89,10 +89,11 @@ type Type interface {
 	// Pretty returns a pretty-printer for the type.
 	Pretty() pretty.Formatter
 
-	equals(other Type, seen map[Type]struct{}) bool
-	conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics)
+	equals(other Type, seen comparePairs) bool
+	assignableFrom(src Type, seen *cycleSet) bool
+	conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics)
 	string(seen map[Type]struct{}) string
-	unify(other Type) (Type, ConversionKind)
+	unify(other Type, seen *cycleSet) (Type, ConversionKind)
 	isType()
 }
 
@@ -114,25 +115,37 @@ var (
 	DynamicType = NewOpaqueType("dynamic")
 )
 
-func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
+// assignableFrom implements [Type.assignableFrom] for dest: it handles the sources that every type treats the
+// same way and defers to assignableFromImpl for the rest. seen tracks the `(dest, src)` pairs that are mid-flight,
+// so that recursive types terminate: a pair already in flight is a true coinductive cycle, assumed assignable, and
+// the outer frame's checks verify the (always finite) leaves.
+func assignableFrom(dest, src Type, seen *cycleSet, assignableFromImpl func(seen *cycleSet) bool) bool {
 	if dest.Equals(src) || dest == DynamicType {
 		return true
 	}
 
 	switch src := src.(type) {
 	case *ConstType:
-		return assignableFrom(dest, src.Type, assignableFromImpl)
+		return assignableFrom(dest, src.Type, seen, assignableFromImpl)
 	case *UnionType:
 		// A union U(U_0, U_1, ...) is assignable to a type T when each of its members is assignable to T.
 		for _, element := range src.ElementTypes {
-			if !dest.AssignableFrom(element) {
+			if !dest.assignableFrom(element, seen) {
 				return false
 			}
 		}
 		return true
-	default:
-		return assignableFromImpl()
 	}
+
+	if seen.hasAssignment(dest, src) {
+		return true
+	}
+	if seen == nil {
+		seen = &cycleSet{}
+	}
+	seen.pushAssignment(dest, src)
+	defer seen.popAssignment(dest, src)
+	return assignableFromImpl(seen)
 }
 
 type cacheKey struct {
@@ -147,27 +160,74 @@ type cacheEntry struct {
 
 type typeCache = gsync.Map[cacheKey, cacheEntry]
 
-// cycleSet tracks `(destination, source)` pairs currently mid-flight in a
-// recursive [Type.conversionFrom] computation. Cycle detection is keyed by
-// the pair rather than the destination alone: re-entering the same destination
-// with a different source is a different question and must be checked, not
-// short-circuited.
-type cycleSet map[[2]Type]struct{}
+// cycleSet tracks the `(destination, source)` pairs of a recursive [Type.conversionFrom] or
+// [Type.assignableFrom] computation and the pairs of object types of a recursive [Type.unify] computation that
+// are currently mid-flight. Cycle detection
+// is keyed by the pair rather than the destination alone: re-entering the same destination with a different
+// source is a different question and must be checked, not short-circuited. A pair of object types under
+// unification maps to the object that their unification builds, so that re-entering the pair yields that object
+// and two recursive objects unify to one recursive object.
+type cycleSet struct {
+	conversions  map[[2]Type]struct{}
+	assignments  map[[2]Type]struct{}
+	unifications map[[2]Type]*ObjectType
+}
 
-func (c cycleSet) has(dst, src Type) bool {
-	_, ok := c[[2]Type{dst, src}]
+func (c *cycleSet) hasAssignment(dst, src Type) bool {
+	if c == nil {
+		return false
+	}
+	_, ok := c.assignments[[2]Type{dst, src}]
 	return ok
 }
 
-func (c cycleSet) push(dst, src Type) {
-	c[[2]Type{dst, src}] = struct{}{}
+func (c *cycleSet) pushAssignment(dst, src Type) {
+	if c.assignments == nil {
+		c.assignments = map[[2]Type]struct{}{}
+	}
+	c.assignments[[2]Type{dst, src}] = struct{}{}
 }
 
-func (c cycleSet) pop(dst, src Type) {
-	delete(c, [2]Type{dst, src})
+func (c *cycleSet) popAssignment(dst, src Type) {
+	delete(c.assignments, [2]Type{dst, src})
 }
 
-func conversionFrom(dest, src Type, unifying bool, seen cycleSet,
+func (c *cycleSet) has(dst, src Type) bool {
+	if c == nil {
+		return false
+	}
+	_, ok := c.conversions[[2]Type{dst, src}]
+	return ok
+}
+
+func (c *cycleSet) push(dst, src Type) {
+	if c.conversions == nil {
+		c.conversions = map[[2]Type]struct{}{}
+	}
+	c.conversions[[2]Type{dst, src}] = struct{}{}
+}
+
+func (c *cycleSet) pop(dst, src Type) {
+	delete(c.conversions, [2]Type{dst, src})
+}
+
+func (c *cycleSet) unification(t, other Type) (*ObjectType, bool) {
+	unified, ok := c.unifications[[2]Type{t, other}]
+	return unified, ok
+}
+
+func (c *cycleSet) pushUnification(t, other Type, unified *ObjectType) {
+	if c.unifications == nil {
+		c.unifications = map[[2]Type]*ObjectType{}
+	}
+	c.unifications[[2]Type{t, other}] = unified
+}
+
+func (c *cycleSet) popUnification(t, other Type) {
+	delete(c.unifications, [2]Type{t, other})
+}
+
+func conversionFrom(dest, src Type, unifying bool, seen *cycleSet,
 	cache *typeCache,
 	conversionFromImpl func() (ConversionKind, lazyDiagnostics),
 ) (ConversionKind, lazyDiagnostics) {
@@ -206,8 +266,11 @@ func conversionFrom(dest, src Type, unifying bool, seen cycleSet,
 	return kind, diags
 }
 
-func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKind) {
+// unify chooses the more general of t0 and t1 when one converts to the other, and otherwise defers to the
+// type-specific unify closure. Every conversion check and nested unification shares seen, which must not be nil.
+func unify(t0, t1 Type, seen *cycleSet, unify func() (Type, ConversionKind)) (Type, ConversionKind) {
 	contract.Requiref(t0 != nil, "t0", "must not be nil")
+	contract.Requiref(seen != nil, "seen", "must not be nil")
 
 	// Normalize s.t. dynamic is always on the right.
 	if t0 == DynamicType {
@@ -221,8 +284,8 @@ func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKi
 		// The dynamic type unifies with any other type by selecting that other type.
 		return t0, UnsafeConversion
 	default:
-		conversionFrom, _ := t0.conversionFrom(t1, true, nil)
-		conversionTo, _ := t1.conversionFrom(t0, true, nil)
+		conversionFrom, _ := t0.conversionFrom(t1, true, seen)
+		conversionTo, _ := t1.conversionFrom(t0, true, seen)
 		switch {
 		case conversionFrom < conversionTo:
 			return t1, conversionTo
@@ -233,15 +296,12 @@ func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKi
 			return NewUnionType(t0, t1), SafeConversion
 		}
 		if union, ok := t1.(*UnionType); ok {
-			return union.unifyTo(t0)
+			return union.unifyTo(t0, seen)
 		}
 
-		unified, conversionKind := unify()
-		contract.Assertf(conversionKind >= conversionFrom,
-			"conversionKind (%v) < conversionFrom (%v)", conversionKind, conversionFrom)
-		contract.Assertf(conversionKind >= conversionTo,
-			"conversionKind (%v) < conversionTo (%v)", conversionKind, conversionTo)
-		return unified, conversionKind
+		// A conversion check that re-enters a pair of recursive types assumes that the pair converts, so the kind of
+		// the unification may be lower than either conversion kind.
+		return unify()
 	}
 }
 
@@ -251,7 +311,7 @@ func UnifyTypes(types ...Type) (safeType Type, unsafeType Type) {
 		if safeType == nil {
 			safeType = t
 		} else {
-			if safeT, safeConversion := safeType.unify(t); safeConversion >= SafeConversion {
+			if safeT, safeConversion := safeType.unify(t, &cycleSet{}); safeConversion >= SafeConversion {
 				safeType = safeT
 			} else {
 				safeType = NewUnionType(safeType, t)
@@ -261,7 +321,7 @@ func UnifyTypes(types ...Type) (safeType Type, unsafeType Type) {
 		if unsafeType == nil {
 			unsafeType = t
 		} else {
-			if unsafeT, unsafeConversion := unsafeType.unify(t); unsafeConversion >= UnsafeConversion {
+			if unsafeT, unsafeConversion := unsafeType.unify(t, &cycleSet{}); unsafeConversion >= UnsafeConversion {
 				unsafeType = unsafeT
 			} else {
 				unsafeType = NewUnionType(unsafeType, t)

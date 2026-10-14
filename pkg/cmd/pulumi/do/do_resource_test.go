@@ -442,15 +442,14 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 				},
 				UpdateF: func(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					calls = append(calls, "update")
-					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
-					assert.Equal(t, "new", newInputs["name"].StringValue())
-					assert.Equal(t, 1.0, newInputs["size"].NumberValue())
-					assert.Equal(t, true, newInputs["enabled"].BoolValue())
+					assert.Equal(t, "new", req.NewInputs.Get("name").AsString())
+					assert.Equal(t, 1.0, req.NewInputs.Get("size").AsNumber())
+					assert.Equal(t, true, req.NewInputs.Get("enabled").AsBool())
 					return plugin.UpdateResponse{
-						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-							"name":    resource.NewProperty("new"),
-							"size":    resource.NewProperty(1.0),
-							"enabled": resource.NewProperty(true),
+						Properties: property.NewMap(map[string]property.Value{
+							"name":    property.New("new"),
+							"size":    property.New(1.0),
+							"enabled": property.New(true),
 						}),
 					}, nil
 				},
@@ -503,9 +502,9 @@ enabled = true
 				},
 				UpdateF: func(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{
-						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-							"name":    resource.NewProperty("existing"),
-							"enabled": resource.NewProperty(true),
+						Properties: property.NewMap(map[string]property.Value{
+							"name":    property.New("existing"),
+							"enabled": property.New(true),
 						}),
 					}, nil
 				},
@@ -1210,13 +1209,13 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 			"tenant": {TypeSpec: schema.TypeSpec{Type: "string"}},
 		},
 	}
-	var gotInputs resource.PropertyMap
+	var gotInputs property.Map
 	cmd, _, _ := providerFlagStackContext(
 		t, &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					gotInputs = resource.ToResourcePropertyMap(req.Inputs)
+					gotInputs = req.Inputs
 					return plugin.ConfigureResponse{}, nil
 				},
 				ReadF: func(_ context.Context, _ plugin.ReadRequest) (plugin.ReadResponse, error) {
@@ -1250,9 +1249,8 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 	})
 	require.NoError(t, cmd.Execute())
 
-	require.NotNil(t, gotInputs, "provider.Configure should have been called")
-	assert.Equal(t, "us-west-2", gotInputs["region"].StringValue(), "overlay should win for explicitly-set keys")
-	assert.Equal(t, "acme", gotInputs["tenant"].StringValue(),
+	assert.Equal(t, "us-west-2", gotInputs.Get("region").AsString(), "overlay should win for explicitly-set keys")
+	assert.Equal(t, "acme", gotInputs.Get("tenant").AsString(),
 		"snapshot value should pass through for keys not in overlay")
 }
 

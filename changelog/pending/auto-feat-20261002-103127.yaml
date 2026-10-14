@@ -1,4 +1,0 @@
-component: auto
-kind: feat
-body: Add `version` to the generated automation APIs for NodeJS, Python and Go
-time: 2026-10-02T10:31:27.905086+02:00
