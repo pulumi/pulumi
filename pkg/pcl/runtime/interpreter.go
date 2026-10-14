@@ -499,12 +499,17 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		i.call,
 	)
 
-	// Probe the monitor for the INVOKE_OUTPUT_VALUES capability. Older monitors don't implement GetDeploymentInfo
-	// (or don't advertise the feature); in either case we silently fall back to the legacy path.
+	// Probe the monitor for the INVOKE_OUTPUT_VALUES and CALL_OUTPUT_VALUES capabilities. Older monitors don't
+	// implement GetDeploymentInfo (or don't advertise the features); in either case we silently fall back to
+	// the legacy path.
 	if info, err := i.monitor.GetDeploymentInfo(ctx, &emptypb.Empty{}); err == nil {
 		if slices.Contains(info.GetSupportedFeatures(),
 			pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES) {
 			i.evalContext.SetInvokeOutputValues(true)
+		}
+		if slices.Contains(info.GetSupportedFeatures(),
+			pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES) {
+			i.evalContext.SetCallOutputValues(true)
 		}
 	}
 
