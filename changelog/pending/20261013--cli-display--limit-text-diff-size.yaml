@@ -1,4 +1,4 @@
 component: cli/display
 kind: fix
-body: Print very large changed strings as replaced instead of computing a slow text diff (#25189)
+body: Skip the slow detailed text diff for large changed strings that differ too much to diff quickly
 time: 2026-10-13T00:00:00Z
