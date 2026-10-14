@@ -24,9 +24,7 @@ import (
 // passes an empty map, so fall back to req.Inputs to emulate a provider that returns the live state.
 func coalesceReadOutputs(req plugin.ReadRequest) *property.Map {
 	if req.State.Len() > 0 {
-		s := req.State
-		return &s
+		return &req.State
 	}
-	i := req.Inputs
-	return &i
+	return &req.Inputs
 }
