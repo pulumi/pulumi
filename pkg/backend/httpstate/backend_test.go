@@ -38,6 +38,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -84,10 +85,11 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager(nil).Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	credentials, err := NewLoginManager(nil).Login(
+		ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := NewWithCredentials(ctx, diagtest.LogSink(t), *credentials, &workspace.Project{Name: "testproj"})
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -123,10 +125,11 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager(nil).Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	credentials, err := NewLoginManager(nil).Login(
+		ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := NewWithCredentials(ctx, diagtest.LogSink(t), *credentials, &workspace.Project{Name: "testproj"})
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -379,12 +382,6 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 				case "/api/capabilities":
 					err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
 					require.NoError(t, err)
-				case "/api/user":
-					err := json.NewEncoder(rw).Encode(map[string]any{
-						"githubLogin":   "test-user",
-						"organizations": []map[string]string{},
-					})
-					require.NoError(t, err)
 				case "/api/user/organizations/default":
 					defaultOrgCalls++
 					err := json.NewEncoder(rw).Encode(apitype.GetDefaultOrganizationResponse{
@@ -397,24 +394,19 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 			}))
 			t.Cleanup(server.Close)
 
-			err := workspace.StoreAccount(server.URL, workspace.Account{
-				AccessToken: testJWT,
-			}, true)
-			require.NoError(t, err)
-
 			if tt.configuredOrg != "" {
-				err = workspace.SetBackendConfigDefaultOrg(server.URL, tt.configuredOrg)
+				err := workspace.SetBackendConfigDefaultOrg(server.URL, tt.configuredOrg)
 				require.NoError(t, err)
 			}
 
-			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false)
+			b, err := NewWithCredentials(ctx, diagtest.LogSink(t), auth.Credentials{
+				BackendURL: server.URL, HTTPAuth: auth.NewHTTPAuth(server.URL, testJWT, nil),
+				Identity: auth.Identity{Username: "test-user"},
+			}, nil)
 			require.NoError(t, err)
 
-			// New spawns goroutines that may log to the test's diag sink;
-			// wait for them before the test finishes.
-			cb := b.(*cloudBackend)
-			_, _ = cb.capabilities.Result(ctx)
-			_, _ = cb.userInfo.Result(ctx)
+			// Wait for capability detection before the test's diag sink closes.
+			b.Capabilities(ctx)
 
 			org, err := b.GetDefaultOrg(ctx)
 			require.NoError(t, err)
@@ -435,31 +427,20 @@ func TestParseStackReferenceExplicitOrgBeatsEnvVar(t *testing.T) {
 		case "/api/capabilities":
 			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
 			require.NoError(t, err)
-		case "/api/user":
-			err := json.NewEncoder(rw).Encode(map[string]any{
-				"githubLogin":   "test-user",
-				"organizations": []map[string]string{},
-			})
-			require.NoError(t, err)
 		default:
 			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
 		}
 	}))
 	t.Cleanup(server.Close)
 
-	err := workspace.StoreAccount(server.URL, workspace.Account{
-		AccessToken: testJWT,
-	}, true)
+	b, err := NewWithCredentials(ctx, diagtest.LogSink(t), auth.Credentials{
+		BackendURL: server.URL, HTTPAuth: auth.NewHTTPAuth(server.URL, testJWT, nil),
+		Identity: auth.Identity{Username: "test-user"},
+	}, &workspace.Project{Name: "proj"})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), server.URL, &workspace.Project{Name: "proj"}, false)
-	require.NoError(t, err)
-
-	// New spawns goroutines that may log to the test's diag sink;
-	// wait for them before the test finishes.
-	cb := b.(*cloudBackend)
-	_, _ = cb.capabilities.Result(ctx)
-	_, _ = cb.userInfo.Result(ctx)
+	// Wait for capability detection before the test's diag sink closes.
+	b.Capabilities(ctx)
 
 	ref, err := b.ParseStackReference("explicit-org/proj/stack")
 	require.NoError(t, err)
@@ -478,10 +459,11 @@ func TestDisableIntegrityChecking(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager(nil).Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	credentials, err := NewLoginManager(nil).Login(
+		ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := NewWithCredentials(ctx, diagtest.LogSink(t), *credentials, &workspace.Project{Name: "testproj"})
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -633,10 +615,12 @@ func TestListStackNames(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager(nil).Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	credentials, err := NewLoginManager(nil).Login(
+		ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := NewWithCredentials(
+		ctx, diagtest.LogSink(t), *credentials, &workspace.Project{Name: "testproj-list-stacks"})
 	require.NoError(t, err)
 
 	// Create test stacks
@@ -748,10 +732,12 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager(nil).Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	credentials, err := NewLoginManager(nil).Login(
+		ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := NewWithCredentials(
+		ctx, diagtest.LogSink(t), *credentials, &workspace.Project{Name: "testproj-list-stacks"})
 	require.NoError(t, err)
 
 	// Create a test stack
@@ -909,13 +895,6 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 			resp := apitype.CapabilitiesResponse{Capabilities: capabilities()}
 			err := json.NewEncoder(rw).Encode(resp)
 			require.NoError(t, err)
-		case "/api/user":
-			resp := map[string]any{
-				"githubLogin":   "test-user",
-				"organizations": []map[string]string{},
-			}
-			err := json.NewEncoder(rw).Encode(resp)
-			require.NoError(t, err)
 		case "/api/user/organizations/default":
 			resp := apitype.GetDefaultOrganizationResponse{
 				GitHubLogin: "owner",
@@ -938,7 +917,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	defer server.Client()
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, server.URL, nil, false)
+	b, err := NewWithCredentials(ctx, sink, auth.Credentials{BackendURL: server.URL}, nil)
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -972,7 +951,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, sink, server.URL, nil, false)
+	b, err = NewWithCredentials(ctx, sink, auth.Credentials{BackendURL: server.URL}, nil)
 	require.NoError(t, err)
 
 	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
@@ -1016,12 +995,6 @@ func TestCreateStackDisplaysBackendMessages(t *testing.T) {
 		case "/api/capabilities":
 			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
 			require.NoError(t, err)
-		case "/api/user":
-			err := json.NewEncoder(rw).Encode(map[string]any{
-				"githubLogin":   "test-user",
-				"organizations": []map[string]string{},
-			})
-			require.NoError(t, err)
 		case "/api/user/organizations/default":
 			err := json.NewEncoder(rw).Encode(apitype.GetDefaultOrganizationResponse{
 				GitHubLogin: "owner",
@@ -1043,7 +1016,7 @@ func TestCreateStackDisplaysBackendMessages(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, server.URL, nil, false)
+	b, err := NewWithCredentials(ctx, sink, auth.Credentials{BackendURL: server.URL}, nil)
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -1105,13 +1078,6 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 			resp := apitype.CapabilitiesResponse{Capabilities: capabilities()}
 			err := json.NewEncoder(rw).Encode(resp)
 			require.NoError(t, err)
-		case "/api/user":
-			resp := map[string]any{
-				"githubLogin":   "test-user",
-				"organizations": []map[string]string{},
-			}
-			err := json.NewEncoder(rw).Encode(resp)
-			require.NoError(t, err)
 		case "/api/user/organizations/default":
 			resp := apitype.GetDefaultOrganizationResponse{
 				GitHubLogin: "owner",
@@ -1147,7 +1113,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	defer server.Client()
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, server.URL, nil, false)
+	b, err := NewWithCredentials(ctx, sink, auth.Credentials{BackendURL: server.URL}, nil)
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -1184,7 +1150,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, sink, server.URL, nil, false)
+	b, err = NewWithCredentials(ctx, sink, auth.Credentials{BackendURL: server.URL}, nil)
 	require.NoError(t, err)
 
 	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{

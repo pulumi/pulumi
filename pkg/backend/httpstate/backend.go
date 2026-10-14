@@ -212,13 +212,6 @@ type Backend interface {
 	GetLatestStackPreview(ctx context.Context, stackRef backend.StackReference) (*apitype.StackPreview, error)
 }
 
-// userInfo holds the user account details fetched from the backend.
-type userInfo struct {
-	username      string
-	organizations []string
-	tokenInfo     *workspace.TokenInformation
-}
-
 // cachedUpdateData holds deployment and stack metadata fetched from BeginUpdate.
 type cachedUpdateData struct {
 	deployment *apitype.UntypedDeployment
@@ -232,7 +225,7 @@ type cloudBackend struct {
 	client       *client.Client
 	escClient    esc_client.Client
 	capabilities *promise.Promise[apitype.Capabilities]
-	userInfo     *promise.Promise[userInfo]
+	identity     auth.Identity
 	defaultOrg   *promise.Promise[string]
 
 	// The current project, if any.
@@ -250,24 +243,7 @@ type cloudBackend struct {
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
 var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
-// New creates a Pulumi backend using stored credentials for the given cloud API URL.
-func New(ctx context.Context, d diag.Sink,
-	cloudURL string, project *workspace.Project, insecure bool,
-) (Backend, error) {
-	contract.Requiref(d != nil, "d", "expected a non-nil diag.Sink")
-	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
-	account, err := getBackendAccount(ctx, cloudURL)
-	if err != nil {
-		return nil, fmt.Errorf("getting stored credentials: %w", err)
-	}
-	account.Insecure = insecure
-	credentials := newAccountCredentials(cloudURL, account, func(updated workspace.Account) error {
-		return updated.Save(cloudURL, false)
-	})
-	return NewWithCredentials(ctx, d, *credentials, project)
-}
-
-// NewWithCredentials creates a Pulumi backend using the provided credentials.
+// NewWithCredentials creates a Pulumi backend using credentials and identity supplied by login.
 func NewWithCredentials(
 	ctx context.Context, d diag.Sink, credentials auth.Credentials, project *workspace.Project,
 ) (Backend, error) {
@@ -314,7 +290,7 @@ func NewWithCredentials(
 		client:         apiClient,
 		escClient:      escClient,
 		capabilities:   detectCapabilities(ctx, d, apiClient),
-		userInfo:       detectUserInfo(ctx, d, credentials.Identity, apiClient),
+		identity:       credentials.Identity,
 		defaultOrg:     defaultOrg,
 		currentProject: project,
 	}, nil
@@ -357,24 +333,6 @@ func finishUserLoginWithAgentFallback(
 			}
 			return nil
 		})
-}
-
-// getBackendAccount returns account credentials for a backend, falling back to
-// the shared agent cache when an agent cannot read the default credentials.
-func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account, error) {
-	account, fromAgent, err := workspace.GetAccountWithAgentFallback(cloudURL)
-	if err != nil {
-		return workspace.Account{}, err
-	}
-	if fromAgent {
-		logging.V(7).Infof("Using backend account for %q from shared agent credentials", cloudURL)
-		MarkAgentCredentialsUsed(ctx, cloudURL)
-	} else if account.HasCredential() {
-		logging.V(7).Infof("Using backend account for %q from default credentials", cloudURL)
-	} else {
-		logging.V(7).Infof("No backend account for %q found", cloudURL)
-	}
-	return account, nil
 }
 
 // loginWithBrowser uses a web browser to log into the cloud and returns its credentials.
@@ -1003,11 +961,7 @@ func (b *cloudBackend) Name() string {
 }
 
 func (b *cloudBackend) URL() string {
-	user, _, _, err := b.CurrentUser()
-	if err != nil {
-		return client.CloudConsoleURL(b.url)
-	}
-	return client.CloudConsoleURL(b.url, user)
+	return client.CloudConsoleURL(b.url, b.identity.Username)
 }
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
@@ -1016,15 +970,7 @@ func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
 }
 
 func (b *cloudBackend) CurrentUser() (string, []string, *workspace.TokenInformation, error) {
-	return b.currentUser(context.Background())
-}
-
-func (b *cloudBackend) currentUser(ctx context.Context) (string, []string, *workspace.TokenInformation, error) {
-	info, err := b.userInfo.Result(ctx)
-	if err != nil {
-		return "", nil, nil, err
-	}
-	return info.username, info.organizations, info.tokenInfo, nil
+	return b.identity.Username, b.identity.Organizations, b.identity.TokenInformation, nil
 }
 
 func (b *cloudBackend) CloudURL() string { return b.url }
@@ -1044,11 +990,7 @@ func (b *cloudBackend) parsePolicyPackReference(s string) (backend.PolicyPackRef
 	}
 
 	if orgName == "" {
-		currentUser, _, _, userErr := b.CurrentUser()
-		if userErr != nil {
-			return nil, userErr
-		}
-		orgName = currentUser
+		orgName = b.identity.Username
 	}
 
 	return newCloudBackendPolicyPackReference(b.CloudConsoleURL(), orgName, tokens.QName(policyPackName)), nil
@@ -1199,11 +1141,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		if defaultOrg != "" {
 			qualifiedName.Owner = defaultOrg
 		} else {
-			currentUser, _, _, userErr := b.CurrentUser()
-			if userErr != nil {
-				return nil, userErr
-			}
-			qualifiedName.Owner = currentUser
+			qualifiedName.Owner = b.identity.Username
 		}
 	}
 
@@ -1337,8 +1275,7 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 		return b.defaultOrg.Result(ctx)
 	}
 	getUserOrg := func() (string, error) {
-		orgName, _, _, err := b.currentUser(ctx)
-		return orgName, err
+		return b.identity.Username, nil
 	}
 	orgName, err := inferOrg(ctx, getDefaultOrg, getUserOrg)
 	if err != nil {
@@ -1478,10 +1415,7 @@ func (b *cloudBackend) ListStacks(
 		return nil, nil, err
 	}
 	if defaultOrg == "" {
-		defaultOrg, _, _, err = b.CurrentUser()
-		if err != nil {
-			return nil, nil, err
-		}
+		defaultOrg = b.identity.Username
 	}
 
 	// Convert []apitype.StackSummary into []backend.StackSummary.
@@ -1986,10 +1920,6 @@ func (b *cloudBackend) createAndStartUpdate(
 		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
 	}
 
-	userName, _, _, err := b.CurrentUser()
-	if err != nil {
-		userName = "unknown"
-	}
 	// Check if the user's org (stack's owner) has Neo enabled. If not, we don't show the link to Neo.
 	isNeoEnabled := isNeoIntegrationEnabled
 	b.neoEnabledForCurrentProject = &isNeoEnabled
@@ -2008,7 +1938,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		neoEnabledValueString = "is not"
 	}
 	logging.V(7).Infof("Neo in org '%s' %s enabled for user '%s'%s",
-		stackID.Owner, neoEnabledValueString, userName, continuationString)
+		stackID.Owner, neoEnabledValueString, b.identity.Username, continuationString)
 
 	return update, updateMetadata{
 		version:        version,
@@ -3176,37 +3106,6 @@ func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Clien
 	}
 
 	return caps
-}
-
-// Builds a lazy wrapper around fetching user info.
-func detectUserInfo(
-	ctx context.Context,
-	d diag.Sink,
-	identity auth.Identity,
-	client *client.Client,
-) *promise.Promise[userInfo] {
-	return promise.Run(func() (userInfo, error) {
-		if identity.Username != "" {
-			logging.V(1).Infof("found cached username for access token")
-			return userInfo{
-				username:      identity.Username,
-				organizations: identity.Organizations,
-				tokenInfo:     identity.TokenInformation,
-			}, nil
-		}
-
-		logging.V(1).Infof("no username for access token")
-		username, orgs, tokenInfo, err := client.GetPulumiAccountDetails(ctx)
-		if err != nil {
-			d.Warningf(diag.Message("" /*urn*/, "failed to get user account details: %v"), err)
-			return userInfo{}, err
-		}
-		return userInfo{
-			username:      username,
-			organizations: orgs,
-			tokenInfo:     tokenInfo,
-		}, nil
-	})
 }
 
 func (b *cloudBackend) DefaultSecretManager(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {

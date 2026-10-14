@@ -39,6 +39,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -162,14 +163,6 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 			err := json.NewEncoder(rw).Encode(resp)
 			require.NoError(t, err)
 			return
-		case "/api/user":
-			resp := map[string]any{
-				"githubLogin":   "test-user",
-				"organizations": []map[string]string{},
-			}
-			err := json.NewEncoder(rw).Encode(resp)
-			require.NoError(t, err)
-			return
 		case "/api/user/organizations/default":
 			resp := apitype.GetDefaultOrganizationResponse{
 				GitHubLogin: "test-org",
@@ -206,7 +199,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 
 	initPersister := func() *cloudSnapshotPersister {
-		backendGeneric, err := New(ctx, sink, server.URL, nil, false)
+		backendGeneric, err := NewWithCredentials(ctx, sink, auth.Credentials{BackendURL: server.URL}, nil)
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
@@ -678,14 +671,6 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 				err := json.NewEncoder(rw).Encode(resp)
 				require.NoError(t, err)
 				return
-			case "/api/user":
-				resp := map[string]any{
-					"githubLogin":   "test-user",
-					"organizations": []map[string]string{},
-				}
-				err := json.NewEncoder(rw).Encode(resp)
-				require.NoError(t, err)
-				return
 			case "/api/user/organizations/default":
 				resp := apitype.GetDefaultOrganizationResponse{
 					GitHubLogin: "test-org",
@@ -722,7 +707,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	initPersister := func() *cloudSnapshotPersister {
 		server := newMockServer()
-		backendGeneric, err := New(ctx, sink, server.URL, nil, false)
+		backendGeneric, err := NewWithCredentials(ctx, sink, auth.Credentials{BackendURL: server.URL}, nil)
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{

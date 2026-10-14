@@ -73,11 +73,8 @@ func (c cloudBackendReference) String() string {
 			if c.owner == c.defaultOrg {
 				return c.name.String()
 			}
-		} else {
-			currentUser, _, _, userErr := c.b.CurrentUser()
-			if userErr == nil && c.owner == currentUser {
-				return c.name.String()
-			}
+		} else if c.owner == c.b.identity.Username {
+			return c.name.String()
 		}
 		return fmt.Sprintf("%s/%s", c.owner, c.name)
 	}

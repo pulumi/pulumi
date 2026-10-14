@@ -58,24 +58,6 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 	}
 }
 
-func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *testing.T) {
-	ptesting.IsolateCredentials(t)
-	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
-
-	badCredentialsDir := t.TempDir()
-	badCredentialsPath := badCredentialsDir + "/not-a-directory"
-	require.NoError(t, os.WriteFile(badCredentialsPath, []byte("not a directory"), 0o600))
-	t.Setenv(workspace.PulumiCredentialsPathEnvVar, badCredentialsPath)
-	t.Setenv("CODEX_SANDBOX", "1")
-
-	err := workspace.StoreAgentAccount("https://api.example.com", workspace.Account{AccessToken: "agent-token"}, true)
-	require.NoError(t, err)
-
-	account, err := getBackendAccount(t.Context(), "https://api.example.com")
-	require.Error(t, err)
-	assert.Empty(t, account.AccessToken)
-}
-
 func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
 	ptesting.IsolateCredentials(t)
 	t.Setenv("PULUMI_TEST_ALLOW_AGENT_FALLBACK", "true")
