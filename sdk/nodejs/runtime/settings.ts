@@ -18,7 +18,7 @@ import * as path from "path";
 import { ComponentResource } from "../resource";
 import { CallbackServer, ICallbackServer } from "./callbacks";
 import { debuggablePromise } from "./debuggable";
-import { getLocalStore, getPackageRefs, getStore } from "./state";
+import { getExtensionBaseProviders, getLocalStore, getPackageRefs, getStore } from "./state";
 import { ensureNotInStateMigration } from "./stateMigration";
 
 import * as engrpc from "../proto/engine_grpc_pb";
@@ -211,6 +211,7 @@ export function resetOptions(
     store.supportsParameterization = false;
     store.callbacks = undefined;
     store.packageRefs = new Map<string, Promise<string>>();
+    store.extensionBaseProviders = new Map<string, string>();
     store.pendingResourceRegistrations = new Map();
     store.deferredOutputSources = new WeakMap();
 }
@@ -882,6 +883,7 @@ export function registerPackage(args: RegisterPackageArgs): Promise<string> {
     req.setDownloadUrl(args.baseProviderDownloadUrl);
     if (args.extension) {
         req.setExtension$(params);
+        getExtensionBaseProviders().set(args.packageName, args.baseProviderName);
     } else {
         req.setParameterization(params);
     }

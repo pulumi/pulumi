@@ -235,6 +235,12 @@ export interface Store {
      */
     packageRefs: Map<string, Promise<string>>;
 
+    /**
+     * Maps the name of each registered extension package to the name of the
+     * base provider that serves it.
+     */
+    extensionBaseProviders: Map<string, string>;
+
     pendingResourceRegistrations: Map<Resource, PendingResourceRegistration>;
 
     deferredOutputSources: WeakMap<object, object>;
@@ -348,6 +354,7 @@ export class LocalStore implements Store {
     resourcePackages = new Map<string, ResourcePackage[]>();
     resourceModules = new Map<string, ResourceModule[]>();
     packageRefs = new Map<string, Promise<string>>();
+    extensionBaseProviders = new Map<string, string>();
     pendingResourceRegistrations = new Map<Resource, PendingResourceRegistration>();
     deferredOutputSources = new WeakMap<object, object>();
 }
@@ -405,6 +412,22 @@ export function getPackageRefs(): Map<string, Promise<string>> {
         store.packageRefs = new Map<string, Promise<string>>();
     }
     return store.packageRefs;
+}
+
+/**
+ * Get the base provider names of the extension packages registered in the
+ * current stack deployment, keyed by extension package name.
+ *
+ * @internal
+ */
+export function getExtensionBaseProviders(): Map<string, string> {
+    const store = getStore();
+    if (store.extensionBaseProviders === undefined) {
+        // extensionBaseProviders may be undefined if the Store was created by
+        // an older copy of the SDK runtime that didn't define this field.
+        store.extensionBaseProviders = new Map<string, string>();
+    }
+    return store.extensionBaseProviders;
 }
 
 /**
