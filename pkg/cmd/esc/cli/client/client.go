@@ -481,6 +481,17 @@ type Client interface {
 		accessDurationSeconds int,
 	) (*CreateEnvironmentOpenRequestResponse, error)
 
+	// GetEnvironmentMetadata returns metadata for the given environment.
+	GetEnvironmentMetadata(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+	) (*EnvironmentMetadata, error)
+
+	// ListEnvironmentChangeRequests returns the change requests for the environment with the given ID.
+	ListEnvironmentChangeRequests(ctx context.Context, orgName string, envID string) ([]ChangeRequest, error)
+
 	// GetEnvironmentSettings returns settings for the given environment.
 	GetEnvironmentSettings(
 		ctx context.Context,
@@ -1613,6 +1624,46 @@ func (pc *client) CreateEnvironmentOpenRequest(
 	}
 
 	return &resp, nil
+}
+
+func (pc *client) GetEnvironmentMetadata(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+) (*EnvironmentMetadata, error) {
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/metadata", orgName, projectName, envName)
+	var resp EnvironmentMetadata
+	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (pc *client) ListEnvironmentChangeRequests(
+	ctx context.Context,
+	orgName string,
+	envID string,
+) ([]ChangeRequest, error) {
+	queryObj := struct {
+		EntityType        string `url:"entityType"`
+		EntityID          string `url:"entityId"`
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{EntityType: "environment", EntityID: envID}
+
+	var changeRequests []ChangeRequest
+	for {
+		var resp ListChangeRequestsResponse
+		if err := pc.restCall(ctx, http.MethodGet, "/api/change-requests/"+orgName, queryObj, nil, &resp); err != nil {
+			return nil, err
+		}
+		changeRequests = append(changeRequests, resp.ChangeRequests...)
+		if resp.ContinuationToken == "" {
+			return changeRequests, nil
+		}
+		queryObj.ContinuationToken = resp.ContinuationToken
+	}
 }
 
 func (pc *client) GetEnvironmentSettings(

@@ -241,6 +241,7 @@ type testEnvironment struct {
 	revisionTags      map[string]int
 	tags              map[string]string
 	deletionProtected bool
+	gatedActions      []string
 	webhooks          []client.EnvironmentWebhook
 	webhookDeliveries map[string][]client.EnvironmentWebhookDelivery
 	schedules         []client.ScheduledAction
@@ -663,6 +664,13 @@ func (c *testPulumiClient) UpdateEnvironment(
 
 	if etag != "" && etag != latest.etag {
 		return nil, 0, errors.New("etag mismatch")
+	}
+
+	if slices.Contains(env.gatedActions, "update") {
+		return nil, 0, &client.EnvironmentErrorResponse{
+			Code:    http.StatusConflict,
+			Message: "This environment requires updates to be approved via change request.",
+		}
 	}
 
 	envId := projectName + "/" + envName
@@ -1559,6 +1567,27 @@ func (c *testPulumiClient) CreateEnvironmentOpenRequest(
 	}, nil
 }
 
+func (c *testPulumiClient) GetEnvironmentMetadata(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+) (*client.EnvironmentMetadata, error) {
+	env, ok := c.environments[path.Join(orgName, projectName, envName)]
+	if !ok {
+		return nil, errors.New("not found")
+	}
+	return &client.EnvironmentMetadata{GatedActions: env.gatedActions}, nil
+}
+
+func (c *testPulumiClient) ListEnvironmentChangeRequests(
+	ctx context.Context,
+	orgName string,
+	envID string,
+) ([]client.ChangeRequest, error) {
+	return nil, nil
+}
+
 func (c *testPulumiClient) GetEnvironmentSettings(
 	ctx context.Context,
 	orgName string,
@@ -1755,6 +1784,10 @@ type cliTestcaseRevisions struct {
 	Revisions []cliTestcaseRevision `yaml:"revisions,omitempty"`
 }
 
+type cliTestcaseEnvironmentGatedActions struct {
+	GatedActions []string `yaml:"gatedActions,omitempty"`
+}
+
 type cliTestcaseEnvironmentTags struct {
 	Tags map[string]string `yaml:"tags,omitempty"`
 }
@@ -1946,6 +1979,9 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 			envTags = tags.Tags
 		}
 
+		var gated cliTestcaseEnvironmentGatedActions
+		_ = env.Decode(&gated)
+
 		var webhooks cliTestcaseEnvironmentWebhooks
 		var envWebhooks []client.EnvironmentWebhook
 		if err := env.Decode(&webhooks); webhooks.Webhooks != nil && err == nil {
@@ -2024,6 +2060,7 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 			revisions:    envRevisions,
 			revisionTags: revisionTags,
 			tags:         envTags,
+			gatedActions: gated.GatedActions,
 			webhooks:     envWebhooks,
 			schedules:    envSchedules,
 			referrers:    envReferrers,

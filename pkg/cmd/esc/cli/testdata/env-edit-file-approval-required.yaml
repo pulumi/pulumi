@@ -1,0 +1,19 @@
+run: |
+  echo '{"values":{"foo":"baz"}}' | esc env edit default/test -f=-
+error: exit status 1
+environments:
+  test-user/default/test:
+    gatedActions:
+      - update
+    revisions:
+      - yaml:
+          values:
+            foo: bar
+
+---
+> esc env edit default/test -f=-
+
+---
+> esc env edit default/test -f=-
+Error: updating environment definition: [409] This environment requires updates to be approved via change request.
+Re-run with --draft to submit your changes as a change request

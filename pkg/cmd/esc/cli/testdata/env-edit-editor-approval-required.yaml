@@ -1,0 +1,24 @@
+run: |
+  esc env edit default/test
+error: exit status 1
+process:
+  environ:
+    EDITOR: my-editor
+  commands:
+    my-editor: |
+      echo -e "values:\n  foo: baz\n" >$1
+environments:
+  test-user/default/test:
+    gatedActions:
+      - update
+    revisions:
+      - yaml:
+          values:
+            foo: bar
+
+---
+> esc env edit default/test
+
+---
+> esc env edit default/test
+Error: this environment requires approval; re-run with --draft to submit your changes as a change request

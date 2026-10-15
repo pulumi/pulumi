@@ -1949,3 +1949,36 @@ func TestGetDefaultOrg(t *testing.T) {
 		assert.Empty(t, orgName)
 	})
 }
+
+func TestListEnvironmentChangeRequests(t *testing.T) {
+	t.Parallel()
+
+	path := "/api/change-requests/test-org"
+	client := newTestClient(t, http.MethodGet, path, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "environment", r.URL.Query().Get("entityType"))
+		assert.Equal(t, "env-id", r.URL.Query().Get("entityId"))
+		var body string
+		switch token := r.URL.Query().Get("continuationToken"); token {
+		case "":
+			body = `{"changeRequests":[{"id":"cr-1","status":"draft","action":"update",` +
+				`"createdBy":{"githubLogin":"alice"}}],"continuationToken":"page-2"}`
+		case "page-2":
+			body = `{"changeRequests":[{"id":"cr-2","status":"pending","action":"update",` +
+				`"createdBy":{"githubLogin":"bob"}}],"continuationToken":null}`
+		default:
+			assert.Failf(t, "unexpected continuation token", "%q", token)
+		}
+		_, err := w.Write([]byte(body))
+		require.NoError(t, err)
+	})
+
+	crs, err := client.ListEnvironmentChangeRequests(t.Context(), "test-org", "env-id")
+	require.NoError(t, err)
+	require.Len(t, crs, 2)
+	assert.Equal(t, "cr-1", crs[0].ID)
+	assert.Equal(t, "draft", crs[0].Status)
+	assert.Equal(t, "update", crs[0].Action)
+	assert.Equal(t, "alice", crs[0].CreatedBy.GitHubLogin)
+	assert.Equal(t, "cr-2", crs[1].ID)
+	assert.Equal(t, "bob", crs[1].CreatedBy.GitHubLogin)
+}
