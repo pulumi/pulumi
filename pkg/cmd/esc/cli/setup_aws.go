@@ -638,7 +638,7 @@ func createAWSEnvironments(
 			continue
 		}
 		if err := applyProviderUpdate(
-			ctx, setup.env, ref, "", path, node, awsLoginEnvVars(propertyPathRef(path))); err != nil {
+			ctx, setup.env, ref, "", "", path, node, awsLoginEnvVars(propertyPathRef(path))); err != nil {
 			fmt.Fprintf(setup.esc().stderr, "  %v\n", err)
 			failed++
 			continue
