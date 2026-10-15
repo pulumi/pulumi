@@ -14,6 +14,12 @@ func main() {
 		if err != nil {
 			return err
 		}
+		_, err = simple.NewResource(ctx, "dependent", &simple.ResourceArgs{
+			Value: failing.Value,
+		})
+		if err != nil {
+			return err
+		}
 		_, err = simple.NewResource(ctx, "independent", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
 		})

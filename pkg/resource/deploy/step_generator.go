@@ -1482,8 +1482,8 @@ func (sg *stepGenerator) continueStepsFromImport(
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
 	// If theres no plan for this resource check that nothing has been changed.
-	// We don't check plans if the resource is invalid, it's going to fail anyway.
-	if !invalid && sg.deployment.plan != nil {
+	// We don't check plans if the resource is invalid or will be skipped, it's not going to be operated on anyway.
+	if !invalid && sg.deployment.plan != nil && !sg.dependsOnSkipped(new) {
 		resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
 		if !ok {
 			if old == nil {

@@ -1504,3 +1504,63 @@ func TestUpContinueOnErrorExplicitProviderCreateFails(t *testing.T) {
 		assert.True(t, found, "Expected URN %s not found in snapshot", u)
 	}
 }
+
+// A resource that's going to be skipped isn't checked by its provider, so its inputs lack anything
+// that Check would have added. It shouldn't be checked against an update plan either.
+func TestUpContinueOnErrorSkipsPlanCheckForFailedDependency(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
+					return plugin.CheckResponse{Properties: req.NewInputs.Set("name", property.New("auto"))}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if req.Preview {
+						return plugin.CreateResponse{Properties: req.Properties}, nil
+					}
+					return plugin.CreateResponse{}, errors.New("intentionally failed create")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		failing, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "dependent", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  resource.PropertyMap{"value": resource.MakeComputed(resource.NewProperty(""))},
+			PropertyDeps:            map[resource.PropertyKey][]resource.URN{"value": {failing.URN}},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:             t,
+			UpdateOptions: UpdateOptions{ContinueOnError: true, GeneratePlan: true, Experimental: true},
+			HostF:         hostF,
+		},
+	}
+	project := p.GetProject()
+
+	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	p.Options.Plan = plan.Clone()
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "intentionally failed create")
+	assert.NotContains(t, err.Error(), "violates plan")
+}

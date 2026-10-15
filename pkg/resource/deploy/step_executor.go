@@ -459,11 +459,12 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 	if se.ignoreErrors {
 		// Do nothing.
 	} else if continueOnError {
-		step.Fail()
-		// Record the failure, but allow the deployment to continue.
+		// Record the failure, but allow the deployment to continue. Record it before failing the
+		// step, which unblocks the program, so that its dependents are known to be skipped.
 		se.erroredStepLock.Lock()
-		defer se.erroredStepLock.Unlock()
 		se.erroredSteps = append(se.erroredSteps, step)
+		se.erroredStepLock.Unlock()
+		step.Fail()
 	} else {
 		se.cancel()
 	}

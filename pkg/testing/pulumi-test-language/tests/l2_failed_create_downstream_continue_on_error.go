@@ -76,6 +76,20 @@ func init() {
 				},
 				Assert: func(l *L, res AssertArgs) {
 					require.True(l, result.IsBail(res.Err), "expected a bail result")
+					requireFailedCreateDiagnostic(l, res.Events, "failed create")
+
+					// The dependent is skipped, so it isn't in the snapshot, but the independent
+					// resource is still created.
+					require.NotNil(l, res.Snap, "expected snapshot to be non-nil")
+					RequireSingleNamedResource(l, res.Snap.Resources, "independent")
+					for _, r := range res.Snap.Resources {
+						require.NotEqual(l, "dependent", r.URN.Name(), "expected dependent to be skipped")
+					}
+
+					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
+					require.Contains(l, stack.Outputs, resource.PropertyKey("failingValue"))
+					assert.True(l, stack.Outputs["failingValue"].IsComputed(),
+						"expected stack output 'failingValue' to be unknown, got %v", stack.Outputs["failingValue"])
 				},
 			},
 		},
