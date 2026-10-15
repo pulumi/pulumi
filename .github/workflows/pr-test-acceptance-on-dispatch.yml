@@ -79,11 +79,3 @@ jobs:
       acceptance-test-platforms: 'windows-latest'
       # We'll only upload coverage artifacts with the periodic-coverage cron workflow.
       enable-coverage: false
-    secrets:
-      # Scope secrets to the minimum required:
-      PULUMI_PROD_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
-      GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
