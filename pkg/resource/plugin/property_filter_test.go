@@ -30,11 +30,10 @@ import (
 
 // keepAll is the identity filter: everything through, byte strings accepted.
 var keepAll = FilterOptions{
-	KeepUnknowns:      true,
-	KeepSecrets:       true,
-	KeepResources:     true,
-	KeepOutputValues:  true,
-	AcceptsByteString: true,
+	KeepUnknowns:     true,
+	KeepSecrets:      true,
+	KeepResources:    true,
+	KeepDependencies: true,
 }
 
 func hasKey(m property.Map, k string) bool {
@@ -74,7 +73,7 @@ func TestFilterKeepUnknowns(t *testing.T) {
 	})
 
 	// KeepUnknowns=false drops computed map entries and nulls them in arrays.
-	out := filterMap(t, m, FilterOptions{KeepSecrets: true, KeepResources: true, AcceptsByteString: true})
+	out := filterMap(t, m, FilterOptions{KeepSecrets: true, KeepResources: true})
 	assert.False(t, hasKey(out, "unknown"))
 	assert.True(t, hasKey(out, "known"))
 	arr := out.Get("arr").AsArray()
@@ -96,14 +95,23 @@ func TestFilterRejectUnknowns(t *testing.T) {
 	opts := keepAll
 	opts.RejectUnknowns = true
 	_, err := FilterProperties(m, opts)
-	assert.ErrorContains(t, err, "unknown")
+	assert.EqualError(t, err, `unexpected unknown value at unknown`)
 
-	// Nested computed is also rejected.
+	// Nested computed is also rejected and the path points at the array index.
 	m = property.NewMap(map[string]property.Value{
-		"arr": property.New([]property.Value{property.New(property.Computed)}),
+		"arr": property.New([]property.Value{property.New("ok"), property.New(property.Computed)}),
 	})
 	_, err = FilterProperties(m, opts)
-	assert.ErrorContains(t, err, "unknown")
+	assert.EqualError(t, err, `unexpected unknown value at arr[1]`)
+
+	// Deep nesting: object inside array inside map.
+	m = property.NewMap(map[string]property.Value{
+		"outer": property.New([]property.Value{
+			property.New(map[string]property.Value{"inner": property.New(property.Computed)}),
+		}),
+	})
+	_, err = FilterProperties(m, opts)
+	assert.EqualError(t, err, `unexpected unknown value at outer[0].inner`)
 }
 
 func TestFilterKeepSecrets(t *testing.T) {
@@ -114,7 +122,7 @@ func TestFilterKeepSecrets(t *testing.T) {
 	})
 
 	// KeepSecrets=false strips the marker, retains the value.
-	out := filterMap(t, m, FilterOptions{KeepUnknowns: true, KeepResources: true, AcceptsByteString: true})
+	out := filterMap(t, m, FilterOptions{KeepUnknowns: true, KeepResources: true})
 	v := out.Get("s")
 	assert.False(t, v.Secret())
 	assert.Equal(t, "secret-value", v.AsString())
@@ -150,7 +158,7 @@ func TestFilterKeepResources(t *testing.T) {
 	assert.True(t, out.Get("with").IsResourceReference())
 
 	// KeepResources=false: ID when present, URN otherwise.
-	opts := FilterOptions{KeepUnknowns: true, KeepSecrets: true, AcceptsByteString: true}
+	opts := FilterOptions{KeepUnknowns: true, KeepSecrets: true}
 	out = filterMap(t, m, opts)
 	assert.Equal(t, "abc123", out.Get("with").AsString())
 	assert.Equal(t, string(refWithoutID.URN), out.Get("without").AsString())
@@ -170,7 +178,7 @@ func TestFilterKeepResourcesPreservesSecretAndDeps(t *testing.T) {
 		"r": property.New(ref).WithSecret(true).WithDependencies(deps),
 	})
 
-	opts := FilterOptions{KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true, AcceptsByteString: true}
+	opts := FilterOptions{KeepUnknowns: true, KeepSecrets: true, KeepDependencies: true}
 	out := filterMap(t, m, opts)
 	v := out.Get("r")
 	assert.Equal(t, "abc", v.AsString())
@@ -187,7 +195,7 @@ func TestFilterKeepOutputValues(t *testing.T) {
 	})
 
 	// KeepOutputValues=false strips dependencies.
-	opts := FilterOptions{KeepUnknowns: true, KeepSecrets: true, KeepResources: true, AcceptsByteString: true}
+	opts := FilterOptions{KeepUnknowns: true, KeepSecrets: true, KeepResources: true}
 	out := filterMap(t, m, opts)
 	assert.Empty(t, out.Get("v").Dependencies())
 
@@ -233,19 +241,21 @@ func TestFilterRejectAssets(t *testing.T) {
 
 	a, err := asset.FromText("hello")
 	require.NoError(t, err)
-	m := property.NewMap(map[string]property.Value{"a": property.New(a)})
+	m := property.NewMap(map[string]property.Value{"top": property.New(a)})
 
 	opts := keepAll
 	opts.RejectAssets = true
 	_, err = FilterProperties(m, opts)
-	assert.ErrorContains(t, err, "asset")
+	assert.EqualError(t, err, `unexpected asset value at top`)
 
-	// Archives too.
+	// Archive at a nested path.
 	arc, err := archive.FromAssets(map[string]any{"f": a})
 	require.NoError(t, err)
-	m = property.NewMap(map[string]property.Value{"a": property.New(arc)})
+	m = property.NewMap(map[string]property.Value{
+		"outer": property.New([]property.Value{property.New(arc)}),
+	})
 	_, err = FilterProperties(m, opts)
-	assert.ErrorContains(t, err, "archive")
+	assert.EqualError(t, err, `unexpected archive value at outer[0]`)
 }
 
 func TestFilterElideAssetContents(t *testing.T) {
@@ -291,19 +301,22 @@ func TestFilterAcceptsByteString(t *testing.T) {
 	_, err := FilterProperties(m, keepAll)
 	require.NoError(t, err)
 
-	// AcceptsByteString=false: error referencing the offending key.
+	// RejectNonUTF8Strings=true: error pointing at the offending key.
 	opts := keepAll
-	opts.AcceptsByteString = false
+	opts.RejectNonUTF8Strings = true
 	_, err = FilterProperties(m, opts)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "bad")
+	assert.EqualError(t, err,
+		`the value of property bad is a string that contains non-UTF8 bytes, `+
+			`which the receiver does not support`)
 
-	// Also inside arrays and maps.
+	// Nested path through an array.
 	nested := property.NewMap(map[string]property.Value{
 		"outer": property.New([]property.Value{property.New(invalid)}),
 	})
 	_, err = FilterProperties(nested, opts)
-	assert.Error(t, err)
+	assert.EqualError(t, err,
+		`the value of property outer[0] is a string that contains non-UTF8 bytes, `+
+			`which the receiver does not support`)
 }
 
 func TestFilterWorkingDirectoryFillsMissingHashes(t *testing.T) {

@@ -288,3 +288,7 @@ func (g Path) Segments(yield func(PathSegment) bool) {
 		}
 	}
 }
+
+func (g Path) AppendSegment(seg PathSegment) Path {
+	return Path{g.appendGlobSegment(seg), struct{}{}}
+}
