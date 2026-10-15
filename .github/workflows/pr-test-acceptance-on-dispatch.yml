@@ -17,6 +17,13 @@ permissions:
   # To sign artifacts.
   id-token: write
 
+env:
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.client_payload.pull_request.number }}
   cancel-in-progress: true
@@ -38,11 +45,15 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      id-token: write
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@6cf9520e68354d86f81c455e8d43eabd58f5c9f5 # v1
       - name: Update with Result
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
           repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
           comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
           issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
