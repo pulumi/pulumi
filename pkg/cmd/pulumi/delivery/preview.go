@@ -490,7 +490,8 @@ func previewMember(
 		"--save-plan", planPath, "--event-log", eventsPath, "--json")
 	var stdout, stderr bytes.Buffer
 	process.Dir, process.Stdout, process.Stderr = run.directory, &stdout, &stderr
-	process.Env = mergedEnvironment(os.Environ(), run.env)
+	// --event-log is registered only when debug commands are enabled.
+	process.Env = append(mergedEnvironment(os.Environ(), run.env), "PULUMI_DEBUG_COMMANDS=true")
 	if err := process.Run(); err != nil {
 		tail := stderr.Bytes()
 		if len(tail) > 4096 {
