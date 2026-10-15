@@ -466,7 +466,9 @@ func newSetupAzureCmd(setup *setupCommand) *cobra.Command {
 		"the Azure tenant to configure, which only its own subscriptions are visible through "+
 			"(prompted for when omitted)")
 	cmd.Flags().BoolVar(&browserAuth, "browser", false, "force browser sign-in instead of using existing credentials")
+	cmd.Flags().StringVarP(&orgName, "organization", "o", "", "the Pulumi organization to configure OIDC for")
 	cmd.Flags().StringVar(&orgName, "org", "", "the Pulumi organization to configure OIDC for")
+	_ = cmd.Flags().MarkHidden("org")
 	cmd.Flags().BoolVar(&yes, "yes", false, "skip all confirmation prompts")
 
 	cmd.Flags().StringVar(&projectName, "project", "azure-login",

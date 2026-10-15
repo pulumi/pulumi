@@ -1,0 +1,3 @@
+component: cli/env
+kind: improvement
+body: Use `--organization`/`-o` to select the organization in `pulumi env setup` commands
