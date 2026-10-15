@@ -292,7 +292,7 @@ func (l *fakeLog) all() []string {
 	return slices.Clone(l.lines)
 }
 
-// installFakeCLI writes a stand-in for pulumi-upstream. It appends every invocation to a log file
+// installFakeCLI writes a stand-in for the pulumi CLI binary. It appends every invocation to a log file
 // (which the test merges with the subgroup log), and for `preview` writes a plan with one
 // resource named after the stack, an event log and a --json digest. A stack whose name contains
 // "fail" exits 1 with a message that includes the secret value.
@@ -322,9 +322,11 @@ cat > "$events" <<EOF2
 EOF2
 echo '{"changeSummary":{"create":1}}'
 `
-	path := filepath.Join(dir, "pulumi-upstream")
+	path := filepath.Join(dir, "pulumi")
 	require.NoError(t, os.WriteFile(path, []byte(script), 0o755))
-	t.Setenv(upstreamCLIEnv, path)
+	prev := executable
+	executable = func() (string, error) { return path, nil }
+	t.Cleanup(func() { executable = prev })
 	return logPath
 }
 
@@ -353,7 +355,7 @@ func calls(t *testing.T, logPath string) []string {
 // closed once the group's members are done, and that config, secrets, ESC environments and
 // environment variables are applied before the group's previews.
 //
-//nolint:paralleltest // sets the upstream CLI environment variable
+//nolint:paralleltest // replaces the CLI binary lookup
 func TestRunCandidatePreview_GroupsRunInOrderWithExactSubgroups(t *testing.T) {
 	logPath := installFakeCLI(t)
 	secretEnv, err := json.Marshal(candidatePreviewEnvironment{
@@ -419,7 +421,7 @@ func TestRunCandidatePreview_GroupsRunInOrderWithExactSubgroups(t *testing.T) {
 // TestRunCandidatePreview_NoGroupsIsOneGroup proves a manifest from before groups existed runs
 // as a single subgroup holding every member.
 //
-//nolint:paralleltest // sets the upstream CLI environment variable
+//nolint:paralleltest // replaces the CLI binary lookup
 func TestRunCandidatePreview_NoGroupsIsOneGroup(t *testing.T) {
 	installFakeCLI(t)
 	manifest := groupedManifest(t,
@@ -438,7 +440,7 @@ func TestRunCandidatePreview_NoGroupsIsOneGroup(t *testing.T) {
 // TestRunCandidatePreview_MemberFailureClosesSubgroup proves a failing member fails the run with
 // its stderr tail (secrets redacted), still closes the subgroup, and skips later groups.
 //
-//nolint:paralleltest // sets the upstream CLI environment variable
+//nolint:paralleltest // replaces the CLI binary lookup
 func TestRunCandidatePreview_MemberFailureClosesSubgroup(t *testing.T) {
 	logPath := installFakeCLI(t)
 	manifest := groupedManifest(t,
@@ -461,7 +463,7 @@ func TestRunCandidatePreview_MemberFailureClosesSubgroup(t *testing.T) {
 	assert.NotContains(t, strings.Join(calls(t, logPath), "\n"), "acme/b/prod")
 }
 
-//nolint:paralleltest // sets the upstream CLI environment variable
+//nolint:paralleltest // replaces the CLI binary lookup
 func TestRunCandidatePreview_SubgroupCreateFailure(t *testing.T) {
 	installFakeCLI(t)
 	manifest := groupedManifest(t,

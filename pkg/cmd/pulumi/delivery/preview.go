@@ -227,19 +227,8 @@ type coherenceAPI interface {
 	CloseCoherenceWindowSubgroup(ctx context.Context, org string, windowID string, subgroupID string) error
 }
 
-// upstreamCLIEnv overrides the stock CLI binary that runs each member preview.
-const upstreamCLIEnv = "PULUMI_DELIVERY_UPSTREAM_CLI"
-
-func upstreamCLI() (string, error) {
-	if path := os.Getenv(upstreamCLIEnv); path != "" {
-		return path, nil
-	}
-	path, err := exec.LookPath("pulumi-upstream")
-	if err != nil {
-		return "", fmt.Errorf("locating the stock pulumi CLI (pulumi-upstream): %w", err)
-	}
-	return path, nil
-}
+// executable returns the CLI binary that runs each member preview; tests replace it.
+var executable = os.Executable
 
 // memberRun is a manifest member resolved for execution.
 type memberRun struct {
@@ -312,9 +301,9 @@ func runCandidatePreview(
 			environments: environment.Environments, preRun: environment.PreRunCommands,
 		}
 	}
-	cli, err := upstreamCLI()
+	cli, err := executable()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, fmt.Errorf("locating the pulumi CLI binary: %w", err)
 	}
 	tmp, err := os.MkdirTemp("", "delivery-preview-")
 	if err != nil {

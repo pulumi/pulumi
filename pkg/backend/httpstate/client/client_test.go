@@ -2294,4 +2294,3 @@ func TestGetStackOutputsInCoherenceWindow(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "readingUpdateID=d333a711-4aa0-402f-be6d-72af9665fc37", gotQuery)
 }
-
