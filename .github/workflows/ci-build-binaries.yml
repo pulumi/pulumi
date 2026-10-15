@@ -2,6 +2,7 @@ name: Build Binaries
 
 permissions:
   contents: read
+  id-token: write
 
 on:
   workflow_call:
@@ -61,6 +62,11 @@ defaults:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 
 jobs:
   build:
@@ -120,6 +126,10 @@ jobs:
         run: |
           brew install findutils
           gfind bin -type f -printf "%M    %p/"\\n
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        if: ${{ inputs.sign-windows-binaries && inputs.os == 'windows' }}
+        uses: pulumi/esc-action@6cf9520e68354d86f81c455e8d43eabd58f5c9f5 # v1
       - name: Install jsign
         if: ${{ inputs.sign-windows-binaries && inputs.os == 'windows' }}
         run: |
@@ -135,9 +145,9 @@ jobs:
           PULUMI_ENABLE_RACE_DETECTION: ${{ inputs.enable-race-detection && 'true' || 'false' }}
           SIGN_WINDOWS_BINARIES: ${{ inputs.sign-windows-binaries && inputs.os == 'windows' }}
           JSIGN_JAR: ${{ runner.temp }}/jsign.jar
-          AZURE_SIGNING_CLIENT_ID: ${{ secrets.AZURE_SIGNING_CLIENT_ID }}
-          AZURE_SIGNING_CLIENT_SECRET: ${{ secrets.AZURE_SIGNING_CLIENT_SECRET }}
-          AZURE_SIGNING_TENANT_ID: ${{ secrets.AZURE_SIGNING_TENANT_ID }}
+          AZURE_SIGNING_CLIENT_ID: ${{ steps.esc-secrets.outputs.AZURE_SIGNING_CLIENT_ID }}
+          AZURE_SIGNING_CLIENT_SECRET: ${{ steps.esc-secrets.outputs.AZURE_SIGNING_CLIENT_SECRET }}
+          AZURE_SIGNING_TENANT_ID: ${{ steps.esc-secrets.outputs.AZURE_SIGNING_TENANT_ID }}
           AZURE_SIGNING_ACCOUNT_ENDPOINT: https://wus2.codesigning.azure.net/
           AZURE_SIGNING_ACCOUNT_NAME: pulumi-code-signing
           AZURE_SIGNING_CERT_PROFILE_NAME: pulumi-code-signing
