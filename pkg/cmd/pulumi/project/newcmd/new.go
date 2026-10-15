@@ -365,6 +365,13 @@ func runNew(ctx context.Context, args newArgs) error {
 		return err
 	}
 	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+	var cloudCredentialEnv map[string]string
+	if !args.generateOnly {
+		cloudCredentialEnv, err = cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+		if err != nil {
+			return err
+		}
+	}
 	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
 		ctx,
 		projinfo,
@@ -374,7 +381,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		false, /* disableProviderPreview */
 		nil,   /* tracingSpan */
 		nil,   /* config */
-		nil,
+		cloudCredentialEnv,
 	)
 	if err != nil {
 		return err

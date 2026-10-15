@@ -21,6 +21,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	for i, arg := range os.Args {
+		if arg == "--credentials-login-test" {
+			os.Exit(runCredentialsLoginHelper(os.Args[i+1:]))
+		}
+	}
 	// The OS credential store holds one key for all credentials files. With a mode that the
 	// developer set, `pulumi logout --all` in a test deletes the key that protects the real
 	// credentials of the developer.

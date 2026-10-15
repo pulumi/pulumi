@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	pulumi_workspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -245,6 +246,35 @@ func TestPulumiBackendURLEnvOverridesPulumiAPI(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "http://localhost:8081", esc.account.BackendURL)
 	assert.Contains(t, login.accounts, "http://localhost:8081")
+}
+
+func TestBackendEnvironmentDoesNotChangeCurrent(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_CREDENTIAL_HELPER", "none")
+	const backendURL = "https://api.example.com/"
+	t.Setenv("PULUMI_BACKEND_URL", backendURL)
+	account := pulumi_workspace.Account{Username: "user", AccessToken: "token"}
+	creds := pulumi_workspace.Credentials{
+		Current: "https://saved.example.com",
+		Accounts: map[string]pulumi_workspace.Account{
+			"https://saved.example.com": account,
+			backendURL:                  account,
+		},
+	}
+	require.NoError(t, pulumi_workspace.StoreCredentials(creds))
+	esc := &escCommand{
+		command: "esc",
+		ws:      pkgWorkspace.Instance,
+		login:   &provisioningLoginManager{accounts: creds.Accounts},
+		newClient: func(string, string, string, bool) client.Client {
+			return &testPulumiClient{defaultOrg: "org"}
+		},
+	}
+	require.NoError(t, esc.getCachedClient(t.Context()))
+	assert.Equal(t, backendURL, esc.account.BackendURL)
+	after, err := pulumi_workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, creds.Current, after.Current)
 }
 
 func TestInvalidSelfHostedBackend(t *testing.T) {

@@ -17,24 +17,171 @@ package stack
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+//nolint:paralleltest // Isolates process credentials.
+func TestStackImportHelperCredentials(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	for _, test := range []struct {
+		name, response, header, value string
+		foreignBackend                bool
+	}{
+		{"token", `{"version":1,"accessToken":"helper-token"}`, "Authorization", "token helper-token", false},
+		{"headers", `{"version":1,"headers":{"X-Session":["helper-session"]}}`, "X-Session", "helper-session", false},
+		{"different backend", `{"version":1,"accessToken":"helper-token"}`, "Authorization", "token helper-token", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ciphertext := base64.StdEncoding.EncodeToString([]byte("source-ciphertext"))
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, test.value, r.Header.Get(test.header))
+				assert.Empty(t, r.Header.Get("X-Source-Session"))
+				w.Header().Set("Content-Type", "application/json")
+				switch r.URL.Path {
+				case "/api/capabilities":
+					_ = json.NewEncoder(w).Encode(apitype.CapabilitiesResponse{})
+				case "/api/stacks/source-owner/source-project/source-stack/batch-decrypt":
+					_ = json.NewEncoder(w).Encode(apitype.BatchDecryptResponse{
+						Plaintexts: map[string][]byte{ciphertext: []byte(`"secret-value"`)},
+					})
+				case "/api/stacks/source-owner/source-project/source-stack/decrypt":
+					_ = json.NewEncoder(w).Encode(apitype.DecryptValueResponse{Plaintext: []byte(`"secret-value"`)})
+				case "/api/stacks/target-owner/target-project/target-stack/encrypt":
+					var req apitype.EncryptValueRequest
+					if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+						t.Errorf("decoding encryption request: %v", err)
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+					assert.Equal(t, `"secret-value"`, string(req.Plaintext))
+					_ = json.NewEncoder(w).Encode(apitype.EncryptValueResponse{Ciphertext: []byte("target-ciphertext")})
+				default:
+					t.Errorf("unexpected request: %s", r.URL.Path)
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}))
+			defer server.Close()
+			sourceURL := server.URL
+			response := test.response
+			if test.foreignBackend {
+				sourceServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, "source-session", r.Header.Get("X-Source-Session"))
+					assert.Empty(t, r.Header.Get("Authorization"))
+					w.Header().Set("Content-Type", "application/json")
+					switch r.URL.Path {
+					case "/api/capabilities":
+						_ = json.NewEncoder(w).Encode(apitype.CapabilitiesResponse{})
+					case "/api/stacks/source-owner/source-project/source-stack/batch-decrypt":
+						_ = json.NewEncoder(w).Encode(apitype.BatchDecryptResponse{
+							Plaintexts: map[string][]byte{ciphertext: []byte(`"secret-value"`)},
+						})
+					default:
+						t.Errorf("unexpected source request: %s", r.URL.Path)
+						w.WriteHeader(http.StatusNotFound)
+					}
+				}))
+				defer sourceServer.Close()
+				sourceURL = sourceServer.URL
+				responses, err := json.Marshal(map[string]json.RawMessage{
+					server.URL: json.RawMessage(test.response),
+					sourceURL:  json.RawMessage(`{"version":1,"headers":{"X-Source-Session":["source-session"]}}`),
+				})
+				require.NoError(t, err)
+				response = string(responses)
+			}
+			source, apiClient := stackHelperClient(t, server.URL, response)
+			require.NoError(t, credentialhelper.SetCurrent(server.URL))
+			state, err := json.Marshal(map[string]string{
+				"url": sourceURL, "owner": "source-owner", "project": "source-project", "stack": "source-stack",
+			})
+			require.NoError(t, err)
+			deploymentJSON, err := json.Marshal(apitype.DeploymentV3{
+				SecretsProviders: &apitype.SecretsProvidersV1{Type: service.Type, State: state},
+				Resources: []apitype.ResourceV3{{
+					URN:  "urn:pulumi:target-stack::target-project::pulumi:pulumi:Stack::target-project-target-stack",
+					Type: resource.RootStackType,
+					Outputs: map[string]any{"secret": map[string]any{
+						resource.SigKey: resource.SecretSig, "ciphertext": ciphertext,
+					}},
+				}},
+			})
+			require.NoError(t, err)
+			input, err := json.Marshal(apitype.UntypedDeployment{Version: 3, Deployment: deploymentJSON})
+			require.NoError(t, err)
+			be := &httpstate.MockHTTPBackend{FClient: func() *client.Client { return apiClient }}
+			ref := &backend.MockStackReference{
+				StringV: "target-owner/target-project/target-stack", NameV: tokens.MustParseStackName("target-stack"),
+			}
+			stk := &backend.MockStack{
+				BackendF: func() backend.Backend { return be }, RefF: func() backend.StackReference { return ref },
+				DefaultSecretManagerF: func(ctx context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
+					return service.NewServiceSecretsManager(ctx, apiClient, client.StackIdentifier{
+						Owner: "target-owner", Project: "target-project", Stack: ref.Name(),
+					}, info)
+				},
+			}
+			be.GetStackF = func(context.Context, backend.StackReference) (backend.Stack, error) { return stk, nil }
+			var imported *apitype.UntypedDeployment
+			be.ImportDeploymentF = func(_ context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
+				imported = deployment
+				return nil
+			}
+			lm := &cmdBackend.MockLoginManager{Clients: source, LoginF: func(
+				context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
+			) (backend.Backend, error) {
+				return be, nil
+			}}
+			cmd := newStackImportCmd(&pkgWorkspace.MockContext{}, lm, cmdBackend.SecretsProvider(lm))
+			cmd.SetIn(bytes.NewReader(input))
+			var out bytes.Buffer
+			cmd.SetOut(&out)
+			cmd.SetArgs([]string{"--stack", ref.String()})
+			err = cmd.ExecuteContext(t.Context())
+			require.NoError(t, err)
+			require.NotNil(t, imported)
+			var deployment apitype.DeploymentV3
+			require.NoError(t, json.Unmarshal(imported.Deployment, &deployment))
+			assert.JSONEq(t, `{"url":"`+server.URL+`","owner":"target-owner","project":"target-project","stack":"target-stack"}`,
+				string(deployment.SecretsProviders.State))
+			assert.Equal(t, map[string]any{
+				resource.SigKey: resource.SecretSig, "ciphertext": base64.StdEncoding.EncodeToString([]byte("target-ciphertext")),
+			}, deployment.Resources[0].Outputs["secret"])
+			assert.NotContains(t, string(imported.Deployment), "secret-value")
+			account, err := workspace.GetAccount(server.URL)
+			require.NoError(t, err)
+			assert.Empty(t, account.AccessToken)
+			creds, err := workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Equal(t, server.URL, creds.Current)
+			assert.Empty(t, creds.Accounts[sourceURL].AccessToken)
+		})
+	}
+}
 
 // Regression test for https://github.com/pulumi/pulumi/issues/20956. Ensure that if we import a deployment
 // file that's using the "service" secrets manager that we reconfigure it for the target stack, rather than

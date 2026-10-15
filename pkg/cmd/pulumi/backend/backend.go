@@ -32,7 +32,23 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
+// PluginCloudCredentialEnv resolves helper credentials for a new plugin context.
+func PluginCloudCredentialEnv(
+	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
+) (map[string]string, error) {
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
+	if err != nil {
+		return nil, fmt.Errorf("could not get cloud url: %w", err)
+	}
+	session := lm.CredentialHelperSession()
+	url, _, err = prepareBackend(ctx, session, ws, url, false)
+	if err != nil {
+		return nil, err
+	}
+	return session.Lookup(url).PluginEnv(), nil
+}
+
+func IsDIYBackend(ctx context.Context, lm LoginManager, ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return false, fmt.Errorf("getting current working directory: %w", err)
@@ -49,6 +65,10 @@ func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 		return false, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
+	url, _, err = prepareBackend(ctx, lm.CredentialHelperSession(), ws, url, false)
+	if err != nil {
+		return false, err
+	}
 	return diy.IsDIYBackendURL(url), nil
 }
 

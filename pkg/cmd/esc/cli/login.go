@@ -16,12 +16,15 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -58,13 +61,60 @@ func (esc *escCommand) checkBackendURL(url string) error {
 
 func (esc *escCommand) getCachedClient(ctx context.Context) error {
 	// Resolve the current cloud URL exactly as the rest of the Pulumi CLI does (see
-	// pkg/cmd/pulumi/cloud/resolve.go): honor PULUMI_BACKEND_URL, then PULUMI_API, then the
-	// current stored account, then the default cloud.
+	// pkg/cmd/pulumi/cloud/resolve.go): honor PULUMI_BACKEND_URL, then the current stored
+	// account, then PULUMI_API, then the default cloud. ESC does not read the project backend.
 	projectURL, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(esc.ws, env.Global(), nil)
 	if err != nil {
 		projectURL = ""
 	}
-	backendURL := httpstate.ValueOrDefaultURL(esc.ws, projectURL)
+	if projectURL == "" {
+		projectURL = env.APIURL.Value()
+	}
+	session := esc.helpers
+	if session == nil {
+		session = credentialhelper.NewSession()
+		esc.helpers = session
+	}
+	helper, err := session.Resolve(ctx, projectURL)
+	if err != nil {
+		return err
+	}
+	fallback := httpstate.ValueOrDefaultURL(esc.ws, projectURL)
+	backendURL := helper.BackendURL()
+	if backendURL == "" {
+		backendURL = fallback
+	}
+	saveCurrent := helper.SelectedBackend() &&
+		strings.TrimSuffix(backendURL, "/") != strings.TrimSuffix(fallback, "/")
+	if err := session.SelectBackend(helper, backendURL); err != nil {
+		return err
+	}
+	if err := esc.checkBackendURL(backendURL); err != nil {
+		return err
+	}
+	if helper.HasHTTP() {
+		account, err := httpstate.NewLoginManagerWithCredentials(helper).Current(
+			ctx, backendURL, pkgWorkspace.GetCloudInsecure(esc.ws, backendURL), false)
+		if err != nil {
+			return err
+		}
+		if account == nil {
+			return errors.New("credentials helper did not authenticate to the backend")
+		}
+		esc.account = Account{Account: *account, BackendURL: backendURL}
+		esc.client = client.NewWithCredentials(esc.userAgent, backendURL, "", account.Insecure, helper)
+		org, err := esc.lookupDefaultOrg(ctx, backendURL, account.Username)
+		if err != nil {
+			return err
+		}
+		esc.account.DefaultOrg = org
+		if saveCurrent {
+			if err := credentialhelper.SetCurrent(backendURL); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 
 	// Read the stored account for the backend from Pulumi's shared credentials.
 	var acct *Account
@@ -121,6 +171,11 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 		return fmt.Errorf("looking up org to default to: %w", err)
 	} else if defaultOrg != "" {
 		esc.account.DefaultOrg = defaultOrg
+	}
+	if saveCurrent {
+		if err := credentialhelper.SetCurrent(backendURL); err != nil {
+			return err
+		}
 	}
 
 	return nil

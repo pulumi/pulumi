@@ -92,6 +92,7 @@ func newPolicyAnalyzeCmd(
 					"the number of --policy-pack-config paths must match the number of --policy-pack paths")
 			}
 
+			var cloudCredentialEnv map[string]string
 			// Default: loadAnalyzers.
 			if loadAnalyzers == nil {
 				loadAnalyzers = func(ctx context.Context, packs []engine.LocalPolicyPack) ([]plugin.Analyzer, func(), error) {
@@ -108,7 +109,7 @@ func newPolicyAnalyzeCmd(
 						return nil, nil, fmt.Errorf("creating plugin host: %w", err)
 					}
 					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
-						pluginHost, nil, cwd, nil, true, nil, nil)
+						pluginHost, nil, cwd, nil, true, nil, cloudCredentialEnv)
 					if err != nil {
 						contract.IgnoreClose(pluginHost)
 						return nil, nil, fmt.Errorf("creating plugin context: %w", err)
@@ -179,6 +180,7 @@ func newPolicyAnalyzeCmd(
 				if err != nil {
 					return fmt.Errorf("loading stack snapshot: %w", err)
 				}
+				cloudCredentialEnv = lm.CredentialHelperSession().Current().PluginEnv()
 
 				stackRef = s.Ref()
 				sourceDesc = fmt.Sprintf("Stack %s", stackRef)

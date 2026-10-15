@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -85,8 +86,10 @@ func (b *cloudBackend) recordAndDisplayEvents(
 	// We take the channel of engine events and pass them to separate components that will display
 	// them to the console or persist them on the Pulumi Service. Both should terminate as soon as
 	// they see a CancelEvent, and when finished, close the "done" channel.
-	displayEvents := make(chan engine.Event) // Note: unbuffered, but we assume it won't matter in practice.
+	displayEvents := make(chan engine.Event)
 	displayEventsDone := make(chan bool)
+	stopHelperDiagnostics := b.routeHelperDiagnostics(displayEvents, displayEventsDone, opts)
+	defer stopHelperDiagnostics()
 
 	persistEvents := make(chan engine.Event, 100)
 	persistEventsDone := make(chan bool)
@@ -469,4 +472,20 @@ func (b *cloudBackend) persistEngineEvents(
 	// finally close the `done` channel so the caller knows we are finished processing the
 	// engine event stream.
 	close(batchesToTransmit)
+}
+
+func (b *cloudBackend) routeHelperDiagnostics(
+	events chan<- engine.Event, done <-chan bool, opts display.Options,
+) func() {
+	if b.helper == nil || !opts.IsInteractive || opts.JSONDisplay ||
+		opts.SummaryJSON || opts.Type != display.DisplayProgress {
+		return func() {}
+	}
+	return b.helper.DisplayDiagnostics(func(message string) {
+		event := engine.NewEvent(engine.StdoutEventPayload{Message: message + "\n", Color: colors.Never})
+		select {
+		case events <- event:
+		case <-done:
+		}
+	})
 }
