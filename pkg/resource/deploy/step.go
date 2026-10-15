@@ -1321,7 +1321,9 @@ func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgr
 
 // NewReadReplacementStep creates a new Read step with the `replacing` flag set. When executed,
 // it will pend deletion of the "old" resource, which must not be an external resource.
-func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State, skipProvider bool) Step {
+func NewReadReplacementStep(
+	deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State, skipProvider bool,
+) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
 	contract.Requiref(new.ID != "", "new", "must have an ID")

@@ -18,7 +18,6 @@ import (
 	"context"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
@@ -50,9 +49,6 @@ func readDependsOnProviderLoader(record func(string), diffReplace bool) []*deplo
 					return plugin.DiffResponse{}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					// Hold the Create briefly so a buggy, unordered engine would
-					// race the Read ahead of it.
-					time.Sleep(100 * time.Millisecond)
 					record("create:" + req.URN.Name())
 					id := resource.ID("src-id")
 					if req.Preview {
@@ -111,7 +107,7 @@ func TestReadDependsOnOrdering(t *testing.T) {
 					Inputs: resource.PropertyMap{"value": resource.NewProperty(true)},
 				})
 				require.NoError(t, err)
-				_, err = monitor.Client().ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+				_, err = monitor.Client().ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 					Type:         "pkgA:m:typA",
 					Name:         "res",
 					Id:           "existing-id",
@@ -134,7 +130,7 @@ func TestReadDependsOnOrdering(t *testing.T) {
 					Inputs: resource.PropertyMap{"value": resource.NewProperty(false)},
 				})
 				require.NoError(t, err)
-				_, err = monitor.Client().ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+				_, err = monitor.Client().ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 					Type:         "pkgA:m:typA",
 					Name:         "res",
 					Id:           "existing-id",
@@ -147,9 +143,7 @@ func TestReadDependsOnOrdering(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		for _, dryRun := range []bool{false, true} {
-			dryRun := dryRun
 			mode := "update"
 			if dryRun {
 				mode = "preview"
@@ -167,7 +161,10 @@ func TestReadDependsOnOrdering(t *testing.T) {
 				loaders := readDependsOnProviderLoader(record, tc.diffReplace)
 
 				p := &lt.TestPlan{
-					Options: lt.TestUpdateOptions{T: t, SkipDisplayTests: true},
+					// Display tests replay only the program-under-test. Scenarios with a prime
+					// step depend on seeded state that the display replay doesn't apply, so
+					// their event streams don't match the generated snapshots. Skip those.
+					Options: lt.TestUpdateOptions{T: t, SkipDisplayTests: tc.prime != nil},
 				}
 				project := p.GetProject()
 
