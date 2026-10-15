@@ -628,10 +628,17 @@ func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
 }
 
 func doesResourceDependOn(res *pkgresource.State, skipped mapset.Set[urn.URN]) bool {
-	_, allDeps := res.GetAllDependencies()
+	provider, allDeps := res.GetAllDependencies()
 	for _, dep := range allDeps {
 		if skipped.Contains(dep.URN) {
 			return true
+		}
+	}
+	if provider != "" {
+		if ref, err := sdkproviders.ParseReference(provider); err == nil {
+			if skipped.Contains(ref.URN()) {
+				return true
+			}
 		}
 	}
 
@@ -651,7 +658,7 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 	event = normalizedEvent
 
 	// Record errored steps before generating new ones, so that the step generator doesn't send
-	// resources that depend on them to providers or analyzers.
+	// resources that depend on them (or on a failed provider) to providers or analyzers.
 	for _, errored := range ex.stepExec.GetErroredSteps() {
 		ex.skipped.Add(errored.Res().URN)
 	}
