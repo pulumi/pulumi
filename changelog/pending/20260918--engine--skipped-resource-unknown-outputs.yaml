@@ -1,4 +1,4 @@
 component: engine
 kind: improvement
-body: Skipped resource operations under `--continue-on-error` now return dry-run outputs to dependents instead of failing their registrations
+body: Return dry-run outputs to dependents of resources skipped under `--continue-on-error`, instead of failing their registrations
 time: 2026-09-18T00:00:00Z
