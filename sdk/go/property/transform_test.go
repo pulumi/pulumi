@@ -32,7 +32,7 @@ func TestTransform(t *testing.T) {
 	original := New([]Value{New(map[string]Value{"key": leaf})}).
 		WithSecret(true).WithDependencies([]urn.URN{"root"})
 	var visited []string
-	got := original.Transform(func(v Value) Value {
+	got := original.Transform(func(_ Path, v Value) Value {
 		switch {
 		case v.IsString():
 			visited = append(visited, "string")
@@ -55,11 +55,12 @@ func TestTransform(t *testing.T) {
 	assert.Equal(t, leaf.Dependencies(), child.Dependencies())
 }
 
-//nolint:paralleltest // AllocsPerRun cannot run in parallel with other tests.
 func TestTransformSharing(t *testing.T) {
+	t.Parallel()
+
 	unchanged := New(map[string]Value{"key": New("unchanged")})
 	v := New([]Value{unchanged, New("change"), unchanged, New("change")})
-	result := v.Transform(func(v Value) Value {
+	result := v.Transform(func(_ Path, v Value) Value {
 		if v.IsString() && v.AsString() == "change" {
 			return New("changed")
 		}
@@ -72,9 +73,42 @@ func TestTransformSharing(t *testing.T) {
 	assert.Equal(t, "change", v.AsArray().Get(1).AsString())
 	assert.Equal(t, "change", v.AsArray().Get(3).AsString())
 
-	identity := func(v Value) Value { return v }
+	identity := func(_ Path, v Value) Value { return v }
 	assert.True(t, v.transformIdentical(v.Transform(identity)))
-	assert.Zero(t, testing.AllocsPerRun(100, func() { v.Transform(identity) }))
+}
+
+//nolint:paralleltest // AllocsPerRun cannot run in parallel with other tests.
+func TestTransformAllocations(t *testing.T) {
+	deep := New("leaf")
+	for range 32 {
+		deep = New(map[string]Value{"child": New([]Value{deep})})
+	}
+	wide := make([]Value, 128)
+	for i := range wide {
+		wide[i] = New(map[string]Value{"child": New("leaf")})
+	}
+
+	for name, v := range map[string]Value{
+		"leaf":        New("leaf"),
+		"empty array": New(Array{}),
+		"empty map":   New(Map{}),
+		"deep":        deep,
+		"wide":        New(wide),
+	} {
+		t.Run(name, func(t *testing.T) {
+			var nodes int
+			v.visit(func(Value) bool {
+				nodes++
+				return true
+			})
+			var result Value
+			allocations := testing.AllocsPerRun(100, func() {
+				result = v.Transform(func(_ Path, v Value) Value { return v })
+			})
+			assert.LessOrEqual(t, allocations, float64(nodes))
+			assert.True(t, v.transformIdentical(result), "unchanged containers must retain their identity")
+		})
+	}
 }
 
 func TestTransformLeaves(t *testing.T) {
@@ -88,7 +122,8 @@ func TestTransformLeaves(t *testing.T) {
 		New(Array{}), New(Map{}),
 	} {
 		calls := 0
-		result := v.Transform(func(value Value) Value {
+		result := v.Transform(func(path Path, value Value) Value {
+			assert.Equal(t, Path{}, path)
 			calls++
 			assert.True(t, v.transformIdentical(value))
 			return New([]Value{New("replacement")})
@@ -99,13 +134,57 @@ func TestTransformLeaves(t *testing.T) {
 	}
 }
 
+func TestTransformPaths(t *testing.T) {
+	t.Parallel()
+
+	v := New([]Value{
+		New(map[string]Value{"a.b[0]": New([]Value{New("first"), New("second")})}),
+		New("last"),
+	})
+	var paths []Path
+	var values []Value
+	got := v.Transform(func(path Path, value Value) Value {
+		paths = append(paths, path)
+		values = append(values, value)
+		return value
+	})
+	assert.True(t, v.transformIdentical(got))
+	assert.Equal(t, []Path{
+		PathFromSegments(NewSegment(0), NewSegment("a.b[0]"), NewSegment(0)),
+		PathFromSegments(NewSegment(0), NewSegment("a.b[0]"), NewSegment(1)),
+		PathFromSegments(NewSegment(0), NewSegment("a.b[0]")),
+		PathFromSegments(NewSegment(0)),
+		PathFromSegments(NewSegment(1)),
+		{},
+	}, paths)
+	for i, path := range paths {
+		value, err := path.Get(v)
+		require.NoError(t, err)
+		assert.True(t, values[i].transformIdentical(value))
+	}
+
+	target := PathFromSegments(NewSegment(0), NewSegment("a.b[0]"), NewSegment(1))
+	got = v.Transform(func(path Path, value Value) Value {
+		if path == target {
+			return New("changed")
+		}
+		return value
+	})
+	value, err := target.Get(got)
+	require.NoError(t, err)
+	assert.Equal(t, "changed", value.AsString())
+	value, err = target.Get(v)
+	require.NoError(t, err)
+	assert.Equal(t, "second", value.AsString())
+}
+
 func TestTransformEqualReplacement(t *testing.T) {
 	t.Parallel()
 
 	before := New("secret").WithSecret(true)
 	after := New("secret").WithSecret(true)
 	v := New(map[string]Value{"key": before})
-	got := v.Transform(func(v Value) Value {
+	got := v.Transform(func(_ Path, v Value) Value {
 		if v.IsString() {
 			return after
 		}

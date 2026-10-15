@@ -17,17 +17,22 @@ package property
 import "reflect"
 
 // Transform applies f to each value in v, children before parents, and returns the
-// transformed value. Parents receive their transformed children.
+// transformed value. Parents receive their transformed children. The path passed to f
+// is relative to v, with an empty path for v itself, and may be retained by f.
 //
 // Only arrays and maps are traversed; all other values, including resource references,
 // are leaves. Array elements are visited in index order; map order is unspecified.
 // Values returned by f are not traversed again.
-func (v Value) Transform(f func(Value) Value) Value {
+func (v Value) Transform(f func(Path, Value) Value) Value {
+	return v.transform(Path{}, f)
+}
+
+func (v Value) transform(path Path, f func(Path, Value) Value) Value {
 	switch inner := v.v.(type) {
 	case Array:
 		var cp []Value
 		for i, child := range inner.arr {
-			transformed := child.Transform(f)
+			transformed := child.transform(Path{path.appendIndex(uint64(i)), struct{}{}}, f)
 			if !child.transformIdentical(transformed) {
 				if cp == nil {
 					cp = copyArray(inner.arr)
@@ -41,7 +46,7 @@ func (v Value) Transform(f func(Value) Value) Value {
 	case Map:
 		var cp map[string]Value
 		for k, child := range inner.m {
-			transformed := child.Transform(f)
+			transformed := child.transform(Path{path.appendKey(k), struct{}{}}, f)
 			if !child.transformIdentical(transformed) {
 				if cp == nil {
 					cp = copyMapNonNil(inner.m)
@@ -53,7 +58,7 @@ func (v Value) Transform(f func(Value) Value) Value {
 			v.v = Map{cp}
 		}
 	}
-	return f(v)
+	return f(path, v)
 }
 
 // transformIdentical conservatively checks identity, not semantic equality. Comparing
