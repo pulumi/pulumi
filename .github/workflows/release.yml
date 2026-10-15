@@ -165,6 +165,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      id-token: write
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
@@ -219,6 +220,7 @@ jobs:
     uses: ./.github/workflows/release-homebrew-tap.yml
     permissions:
       contents: read
+      id-token: write
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
