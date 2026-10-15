@@ -74,6 +74,8 @@ jobs:
     uses: ./.github/workflows/ci-performance-gate.yml
     permissions:
       contents: read
+      # To fetch secrets from ESC with OIDC.
+      id-token: write
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
