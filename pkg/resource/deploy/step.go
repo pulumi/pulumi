@@ -1280,16 +1280,19 @@ func (s *ReplaceStep) Skip() {
 // ReadResource in the next deployment, a ReadReplacement step will be issued to indicate the transition from owned to
 // external.
 type ReadStep struct {
-	deployment *Deployment        // the deployment that produced this read
-	event      ReadResourceEvent  // the event that should be signaled upon completion
-	old        *pkgresource.State // the old resource state, if one exists for this urn
-	new        *pkgresource.State // the new resource state, to be used to query the provider
-	replacing  bool               // whether or not the new resource is replacing the old resource
-	provider   plugin.Provider    // the optional provider to use.
+	deployment   *Deployment        // the deployment that produced this read
+	event        ReadResourceEvent  // the event that should be signaled upon completion
+	old          *pkgresource.State // the old resource state, if one exists for this urn
+	new          *pkgresource.State // the new resource state, to be used to query the provider
+	replacing    bool               // whether or not the new resource is replacing the old resource
+	provider     plugin.Provider    // the optional provider to use.
+	skipProvider bool               // if true, do not call the provider's Read; outputs are unknown.
 }
 
-// NewReadStep creates a new Read step.
-func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State) Step {
+// NewReadStep creates a new Read step. If skipProvider is true, the provider's Read is not called
+// and the resulting outputs are signaled as unknown; this is used in preview when a dependsOn
+// target is being newly created or replaced and so the read cannot be meaningfully performed.
+func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State, skipProvider bool) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
 	contract.Requiref(new.ID != "", "new", "must have an ID")
@@ -1307,17 +1310,18 @@ func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgr
 	}
 
 	return &ReadStep{
-		deployment: deployment,
-		event:      event,
-		old:        old,
-		new:        new,
-		replacing:  false,
+		deployment:   deployment,
+		event:        event,
+		old:          old,
+		new:          new,
+		replacing:    false,
+		skipProvider: skipProvider,
 	}
 }
 
 // NewReadReplacementStep creates a new Read step with the `replacing` flag set. When executed,
 // it will pend deletion of the "old" resource, which must not be an external resource.
-func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State) Step {
+func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State, skipProvider bool) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
 	contract.Requiref(new.ID != "", "new", "must have an ID")
@@ -1331,11 +1335,12 @@ func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old
 	contract.Requiref(new.ViewOf == "", "new", "must not be a view")
 
 	return &ReadStep{
-		deployment: deployment,
-		event:      event,
-		old:        old,
-		new:        new,
-		replacing:  true,
+		deployment:   deployment,
+		event:        event,
+		old:          old,
+		new:          new,
+		replacing:    true,
+		skipProvider: skipProvider,
 	}
 }
 
@@ -1363,9 +1368,11 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	// Unlike most steps, Read steps run during previews. The only time
-	// we can't run is if the ID we are given is unknown.
-	if id == plugin.UnknownStringValue {
+	// Unlike most steps, Read steps run during previews. We skip the provider call when either
+	// the ID is unknown, or when a dependsOn target is being newly created/replaced in this
+	// preview and so the real resource doesn't exist yet (issue #16395). In both cases the
+	// outputs are signaled as unknown back to the SDK.
+	if id == plugin.UnknownStringValue || s.skipProvider {
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
 
@@ -1448,7 +1455,8 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.Modified = &now
 	}
 
-	complete := func() { s.event.Done(&ReadResult{State: s.new}) }
+	unknown := s.skipProvider || id == plugin.UnknownStringValue
+	complete := func() { s.event.Done(&ReadResult{State: s.new, Unknown: unknown}) }
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
