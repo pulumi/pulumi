@@ -1,0 +1,3 @@
+component: engine
+kind: improvement
+body: Download the Java language runtime on demand instead of bundling it with the CLI
