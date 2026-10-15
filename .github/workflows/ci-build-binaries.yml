@@ -129,7 +129,7 @@ jobs:
       - name: Fetch secrets from ESC
         id: esc-secrets
         if: ${{ inputs.sign-windows-binaries && inputs.os == 'windows' }}
-        uses: pulumi/esc-action@6cf9520e68354d86f81c455e8d43eabd58f5c9f5 # v1
+        uses: pulumi/esc-action@57e332b6dfb0d7edcf6cb813ee9a98b9665f12c2 # v3
       - name: Install jsign
         if: ${{ inputs.sign-windows-binaries && inputs.os == 'windows' }}
         run: |
