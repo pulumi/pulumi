@@ -216,3 +216,29 @@ func (pc *Client) CompleteDeliveryCandidatePreview(ctx context.Context, stack St
 		url.PathEscape(stack.Project)+"/"+url.PathEscape(stack.Stack.String())+"/delivery/candidates/"+
 		url.PathEscape(candidateID)+"/preview", nil, request, nil)
 }
+
+// CreateCoherenceWindowSubgroup creates a subgroup of size stacks in the coherence window and
+// returns the subgroup ID, which updates pass as their coherence window.
+func (pc *Client) CreateCoherenceWindowSubgroup(
+	ctx context.Context, org string, windowID string, size int,
+) (string, error) {
+	var response struct {
+		ID string `json:"id"`
+	}
+	request := struct {
+		Size int `json:"size"`
+	}{Size: size}
+	if err := pc.restCall(ctx, "POST", "/api/orgs/"+url.PathEscape(org)+"/coherence-windows/"+
+		url.PathEscape(windowID)+"/subgroups", nil, request, &response); err != nil {
+		return "", err
+	}
+	return response.ID, nil
+}
+
+// CloseCoherenceWindowSubgroup closes a subgroup so that no further update can join it.
+func (pc *Client) CloseCoherenceWindowSubgroup(
+	ctx context.Context, org string, windowID string, subgroupID string,
+) error {
+	return pc.restCall(ctx, "DELETE", "/api/orgs/"+url.PathEscape(org)+"/coherence-windows/"+
+		url.PathEscape(windowID)+"/subgroups/"+url.PathEscape(subgroupID), nil, nil, nil)
+}

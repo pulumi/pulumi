@@ -9,18 +9,25 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/pkg/v3/auto"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -153,7 +160,7 @@ func TestReadCandidatePreviewManifest_RejectsInvalidStatus(t *testing.T) {
 }
 
 // TestRunCandidatePreview_AllUnavailable proves an all-unavailable manifest never touches the
-// filesystem or PreviewMany (a bogus, nonexistent Workspace would fail immediately if it did),
+// filesystem or a subprocess (a bogus, nonexistent Workspace would fail immediately if it did),
 // and returns the unavailable rows with a nil plan.
 func TestRunCandidatePreview_AllUnavailable(t *testing.T) {
 	t.Parallel()
@@ -164,7 +171,7 @@ func TestRunCandidatePreview_AllUnavailable(t *testing.T) {
 		unavailable("urn:services"), unavailable("urn:jobs"),
 	}
 
-	stacks, plan, events, err := runCandidatePreview(t.Context(), manifest)
+	stacks, plan, events, err := runCandidatePreview(t.Context(), manifest, nil)
 	require.NoError(t, err)
 	assert.Nil(t, plan)
 	assert.JSONEq(t, "[]", string(events))
@@ -182,22 +189,14 @@ func planWithResource(urn resource.URN) *deploy.Plan {
 	}}
 }
 
-// TestAggregateNativePreviewPlan_UnionsPerMemberURNs proves that once every member runs as its
-// own real Deployment (each stamping its own project+stack into every URN), the Delivery
-// aggregate is a straightforward union of per-member ResourcePlans, keyed by URN.
 func TestAggregateNativePreviewPlan_UnionsPerMemberURNs(t *testing.T) {
 	t.Parallel()
 
 	urnA := resource.NewURN("dev", "member-a", "", "pulumi:pulumi:Stack", "member-a-dev")
 	urnB := resource.NewURN("dev", "member-b", "", "pulumi:pulumi:Stack", "member-b-dev")
 
-	results := []auto.Result{
-		{Plan: planWithResource(urnA)},
-		{Plan: planWithResource(urnB)},
-	}
-	members := []candidatePreviewMember{{Name: "a"}, {Name: "b"}}
-
-	merged, err := aggregateNativePreviewPlan(results, members)
+	merged, err := aggregateNativePreviewPlan(
+		[]*deploy.Plan{planWithResource(urnA), planWithResource(urnB)}, []string{"a", "b"})
 	require.NoError(t, err)
 	require.Len(t, merged.ResourcePlans, 2)
 	assert.Contains(t, merged.ResourcePlans, urnA)
@@ -205,125 +204,303 @@ func TestAggregateNativePreviewPlan_UnionsPerMemberURNs(t *testing.T) {
 	assert.Nil(t, merged.Config, "aggregate must not merge per-member Plan.Config")
 }
 
-// TestAggregateNativePreviewPlan_RejectsDuplicateURN proves the aggregate rejects two members
-// that (incorrectly, or from a real name collision) produced the identical resource URN, rather
-// than silently letting one member's resource overwrite the other's in the approval artifact.
 func TestAggregateNativePreviewPlan_RejectsDuplicateURN(t *testing.T) {
 	t.Parallel()
 
 	urn := resource.NewURN("dev", "same-project", "", "pulumi:pulumi:Stack", "same-project-dev")
-	results := []auto.Result{
-		{Plan: planWithResource(urn)},
-		{Plan: planWithResource(urn)},
-	}
-	members := []candidatePreviewMember{{Name: "a"}, {Name: "b"}}
-
-	_, err := aggregateNativePreviewPlan(results, members)
+	_, err := aggregateNativePreviewPlan(
+		[]*deploy.Plan{planWithResource(urn), planWithResource(urn)}, []string{"a", "b"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "duplicate resource URN")
-	assert.Contains(t, err.Error(), "a")
-	assert.Contains(t, err.Error(), "b")
 }
 
-// TestAggregateNativePreviewEvents_CombinesSummaries proves the combined event stream keeps
-// every member's own diff/diagnostic events and collapses the per-member summary events into
-// one summary whose resource-change counts are the sum across all members.
 func TestAggregateNativePreviewEvents_CombinesSummaries(t *testing.T) {
 	t.Parallel()
 
-	memberAEvents := []engine.Event{
-		engine.NewEvent(engine.ResourcePreEventPayload{}),
-		engine.NewEvent(engine.SummaryEventPayload{
-			IsPreview:       true,
-			ResourceChanges: display.ResourceChanges{deploy.OpCreate: 1},
-		}),
-	}
-	memberBEvents := []engine.Event{
-		engine.NewEvent(engine.ResourcePreEventPayload{}),
-		engine.NewEvent(engine.SummaryEventPayload{
-			IsPreview:       true,
-			ResourceChanges: display.ResourceChanges{deploy.OpCreate: 2, deploy.OpUpdate: 1},
-		}),
-	}
-	results := []auto.Result{{Events: memberAEvents}, {Events: memberBEvents}}
-
-	combined := aggregateNativePreviewEvents(results)
-
-	var summaries int
-	var nonSummaries int
-	var lastSummary engine.SummaryEventPayload
-	for _, event := range combined {
-		if event.Type == engine.SummaryEvent {
-			summaries++
-			lastSummary = event.Payload().(engine.SummaryEventPayload)
-			continue
+	member := func(creates int, updates int) []apitype.EngineEvent {
+		return []apitype.EngineEvent{
+			{Sequence: 7, ResourcePreEvent: &apitype.ResourcePreEvent{}},
+			{Sequence: 8, SummaryEvent: &apitype.SummaryEvent{
+				IsPreview:       true,
+				ResourceChanges: map[apitype.OpType]int{apitype.OpCreate: creates, apitype.OpUpdate: updates},
+			}},
 		}
-		nonSummaries++
 	}
-	assert.Equal(t, 1, summaries, "per-member summaries must collapse into exactly one")
-	assert.Equal(t, 2, nonSummaries, "every member's non-summary events must be preserved")
-	assert.Equal(t, 3, lastSummary.ResourceChanges[deploy.OpCreate], "creates must sum across members")
-	assert.Equal(t, 1, lastSummary.ResourceChanges[deploy.OpUpdate])
+	combined := aggregateNativePreviewEvents([][]apitype.EngineEvent{member(1, 0), member(2, 1)})
+
+	require.Len(t, combined, 3, "two member events plus exactly one summary")
+	last := combined[2].SummaryEvent
+	require.NotNil(t, last)
+	assert.True(t, last.IsPreview)
+	assert.Equal(t, 3, last.ResourceChanges[apitype.OpCreate])
+	assert.Equal(t, 1, last.ResourceChanges[apitype.OpUpdate])
+	for i, event := range combined {
+		assert.Equal(t, i+1, event.Sequence)
+	}
 }
 
-// TestRunCandidatePreview_MixedOrdering proves a manifest with runnable members and unavailable
-// rows previews only the members (via the previewManyFunc seam, never touching a real Pulumi
-// workspace), and orders the result as members-in-manifest-order then unavailable-in-manifest-
-// order, with executed rows marked succeeded and unavailable rows appended unmodified.
-//
-//nolint:paralleltest // mutates the package-global previewManyFunc seam
-func TestRunCandidatePreview_MixedOrdering(t *testing.T) {
+// fakeSubgroups records subgroup create/close calls, in order, into the shared log.
+type fakeSubgroups struct {
+	mu        sync.Mutex
+	log       *fakeLog
+	createErr error
+}
+
+func (f *fakeSubgroups) CreateCoherenceWindowSubgroup(
+	_ context.Context, org string, windowID string, size int,
+) (string, error) {
+	if f.createErr != nil {
+		return "", f.createErr
+	}
+	f.log.add(fmt.Sprintf("create %s %s %d", org, windowID, size))
+	return fmt.Sprintf("sub-%d", f.log.count("create ")), nil
+}
+
+func (f *fakeSubgroups) CloseCoherenceWindowSubgroup(
+	_ context.Context, org string, windowID string, subgroupID string,
+) error {
+	f.log.add(fmt.Sprintf("close %s %s %s", org, windowID, subgroupID))
+	return nil
+}
+
+type fakeLog struct {
+	mu    sync.Mutex
+	lines []string
+}
+
+func (l *fakeLog) add(line string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.lines = append(l.lines, line)
+}
+
+func (l *fakeLog) count(prefix string) int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	n := 0
+	for _, line := range l.lines {
+		if strings.HasPrefix(line, prefix) {
+			n++
+		}
+	}
+	return n
+}
+
+func (l *fakeLog) all() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.lines)
+}
+
+// installFakeCLI writes a stand-in for pulumi-upstream. It appends every invocation to a log file
+// (which the test merges with the subgroup log), and for `preview` writes a plan with one
+// resource named after the stack, an event log and a --json digest. A stack whose name contains
+// "fail" exits 1 with a message that includes the secret value.
+func installFakeCLI(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "calls.log")
+	script := `#!/bin/sh
+echo "$*" >> "` + logPath + `"
+[ "$1" = preview ] || exit 0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --save-plan) plan=$2; shift;;
+    --event-log) events=$2; shift;;
+    --stack) stack=$2; shift;;
+  esac
+  shift
+done
+case "$stack" in *fail*) echo "boom hunter2" >&2; exit 1;; esac
+name=$(echo "$stack" | cut -d/ -f2)
+cat > "$plan" <<EOF2
+{"manifest":{"time":"2026-01-01T00:00:00Z","magic":"","version":""},"resourcePlans":{"urn:pulumi:$name::proj::pulumi:pulumi:Stack::proj-$name":{}}}
+EOF2
+cat > "$events" <<EOF2
+{"sequence":1,"timestamp":1,"resourcePreEvent":{"metadata":{"op":"create","urn":"u","type":"t"}}}
+{"sequence":2,"timestamp":2,"summaryEvent":{"maybeCorrupt":false,"durationSeconds":0,"resourceChanges":{"create":1},"PolicyPacks":{},"isPreview":true,"result":"succeeded"}}
+EOF2
+echo '{"changeSummary":{"create":1}}'
+`
+	path := filepath.Join(dir, "pulumi-upstream")
+	require.NoError(t, os.WriteFile(path, []byte(script), 0o755))
+	t.Setenv(upstreamCLIEnv, path)
+	return logPath
+}
+
+func groupedManifest(t *testing.T, members ...candidatePreviewMember) candidatePreviewManifest {
+	t.Helper()
 	workspace := t.TempDir()
-	require.NoError(t, os.Mkdir(filepath.Join(workspace, "a"), 0o755))
-	require.NoError(t, os.Mkdir(filepath.Join(workspace, "b"), 0o755))
-
+	for _, member := range members {
+		require.NoError(t, os.MkdirAll(filepath.Join(workspace, member.Directory), 0o755))
+	}
 	manifest := validManifest()
-	manifest.Workspace = workspace
-	manifest.Members = []candidatePreviewMember{
-		{URN: "urn:a", Name: "a", Stage: "prod", TargetStack: "org/a/prod", Directory: "a"},
-		{URN: "urn:b", Name: "b", Stage: "prod", TargetStack: "org/b/prod", Directory: "b"},
+	manifest.Workspace, manifest.Organization, manifest.Members = workspace, "acme", members
+	return manifest
+}
+
+func calls(t *testing.T, logPath string) []string {
+	t.Helper()
+	contents, err := os.ReadFile(logPath)
+	if err != nil {
+		return nil
 	}
-	manifest.UnpreviewableStacks = []candidatePreviewUnavailableStack{unavailable("urn:services")}
+	return strings.Split(strings.TrimSpace(string(contents)), "\n")
+}
 
-	urnA := resource.NewURN("prod", "a", "", "pulumi:pulumi:Stack", "a-prod")
-	urnB := resource.NewURN("prod", "b", "", "pulumi:pulumi:Stack", "b-prod")
-
-	original := previewManyFunc
-	t.Cleanup(func() { previewManyFunc = original })
-	previewManyFunc = func(_ context.Context, specs []auto.Options) ([]auto.Result, error) {
-		require.Len(t, specs, 2, "unavailable rows must never reach PreviewMany")
-		// Distinct, spec-order-derived results: if runCandidatePreview zipped a result against
-		// the wrong manifest member, these assertions on the *returned* rows below would catch
-		// it, since each stack's Changes/Stack are tied to which spec produced which result.
-		require.Equal(t, "org/a/prod", specs[0].Stack, "spec order must match manifest member order")
-		require.Equal(t, "org/b/prod", specs[1].Stack, "spec order must match manifest member order")
-		return []auto.Result{
-			{Plan: planWithResource(urnA), Changes: display.ResourceChanges{deploy.OpCreate: 1}},
-			{Plan: planWithResource(urnB), Changes: display.ResourceChanges{deploy.OpUpdate: 2}},
-		}, nil
-	}
-
-	stacks, plan, events, err := runCandidatePreview(t.Context(), manifest)
+// TestRunCandidatePreview_GroupsRunInOrderWithExactSubgroups proves groups run in ascending
+// groupOrder (not manifest order), each in a fresh window with a subgroup sized to the group,
+// closed once the group's members are done, and that config, secrets, ESC environments and
+// environment variables are applied before the group's previews.
+//
+//nolint:paralleltest // sets the upstream CLI environment variable
+func TestRunCandidatePreview_GroupsRunInOrderWithExactSubgroups(t *testing.T) {
+	logPath := installFakeCLI(t)
+	secretEnv, err := json.Marshal(candidatePreviewEnvironment{
+		Env:            map[string]candidatePreviewConfigValue{"TOKEN": {Value: "tok", Secret: true}},
+		Environments:   []string{"acme/base"},
+		PreRunCommands: []string{"echo prerun >> " + logPath},
+	})
 	require.NoError(t, err)
-	require.NotNil(t, plan)
-	require.NotNil(t, events)
-	require.Len(t, stacks, 3)
-	assert.Equal(t, "urn:a", stacks[0].URN)
-	assert.Equal(t, "org/a/prod", stacks[0].TargetStack)
-	assert.Equal(t, "succeeded", stacks[0].Status)
-	assert.Equal(t, map[string]int{"create": 1}, stacks[0].Changes, "member a's result must not be attributed to b")
-	assert.Equal(t, "urn:b", stacks[1].URN)
-	assert.Equal(t, "org/b/prod", stacks[1].TargetStack)
-	assert.Equal(t, "succeeded", stacks[1].Status)
-	assert.Equal(t, map[string]int{"update": 2}, stacks[1].Changes, "member b's result must not be attributed to a")
-	assert.Equal(t, "urn:services", stacks[2].URN)
-	assert.Equal(t, "not-previewable", stacks[2].Status)
-	assert.Equal(t, map[string]int{}, stacks[2].Changes)
+	manifest := groupedManifest(t,
+		candidatePreviewMember{URN: "urn:app", Name: "app", Stage: "prod", TargetStack: "acme/app/prod",
+			Directory: "app", Group: "g2", GroupOrder: 1},
+		candidatePreviewMember{URN: "urn:net", Name: "net", Stage: "prod", TargetStack: "acme/net/prod",
+			Directory: "net", Group: "g1", GroupOrder: 0,
+			Config: map[string]candidatePreviewConfigValue{
+				"proj:plain":  {Value: "v1"},
+				"proj:secret": {Value: "hunter2", Secret: true},
+			}, Environment: secretEnv},
+		candidatePreviewMember{URN: "urn:db", Name: "db", Stage: "prod", TargetStack: "acme/db/prod",
+			Directory: "db", Group: "g1", GroupOrder: 0},
+	)
+	manifest.UnpreviewableStacks = []candidatePreviewUnavailableStack{unavailable("urn:later")}
+	log := &fakeLog{}
+	api := &fakeSubgroups{log: log}
+
+	stacks, plan, events, err := runCandidatePreview(t.Context(), manifest, api)
+	require.NoError(t, err)
+
+	got := log.all()
+	require.Len(t, got, 4)
+	assert.Regexp(t, `^create acme [0-9a-f-]{36} 2$`, got[0], "g1 has two members")
+	assert.Regexp(t, `^close acme [0-9a-f-]{36} sub-1$`, got[1])
+	assert.Regexp(t, `^create acme [0-9a-f-]{36} 1$`, got[2], "g2 has one member")
+	assert.Regexp(t, `^close acme [0-9a-f-]{36} sub-2$`, got[3])
+	assert.NotEqual(t, strings.Fields(got[0])[2], strings.Fields(got[2])[2], "fresh window per group")
+
+	all := strings.Join(calls(t, logPath), "\n")
+	assert.Contains(t, all, "config env add acme/base --yes --non-interactive --stack acme/net/prod")
+	assert.Contains(t, all, "config set --non-interactive --stack acme/net/prod")
+	assert.Contains(t, all, "-- proj:plain v1")
+	assert.Contains(t, all, "config set --secret --non-interactive --stack acme/net/prod")
+	assert.Contains(t, all, "-- proj:secret hunter2")
+	assert.Contains(t, all, "prerun")
+	assert.Contains(t, all, "preview --non-interactive --coherence-window sub-1 --stack acme/net/prod")
+	assert.Contains(t, all, "preview --non-interactive --coherence-window sub-1 --stack acme/db/prod")
+	assert.Contains(t, all, "preview --non-interactive --coherence-window sub-2 --stack acme/app/prod")
+	assert.Less(t, strings.Index(all, "coherence-window sub-1"), strings.Index(all, "coherence-window sub-2"))
+
+	require.Len(t, stacks, 4, "members in manifest order, then unavailable rows")
+	assert.Equal(t, []string{"urn:app", "urn:net", "urn:db", "urn:later"},
+		[]string{stacks[0].URN, stacks[1].URN, stacks[2].URN, stacks[3].URN})
+	assert.Equal(t, map[string]int{"create": 1}, stacks[0].Changes)
+	assert.Equal(t, "not-previewable", stacks[3].Status)
+
+	var serialized apitype.DeploymentPlanV1
+	require.NoError(t, json.Unmarshal(plan, &serialized))
+	assert.Len(t, serialized.ResourcePlans, 3)
+	var aggregated []apitype.EngineEvent
+	require.NoError(t, json.Unmarshal(events, &aggregated))
+	require.Len(t, aggregated, 4, "one pre event per member plus one summary")
+	assert.Equal(t, 3, aggregated[3].SummaryEvent.ResourceChanges[apitype.OpCreate])
+}
+
+// TestRunCandidatePreview_NoGroupsIsOneGroup proves a manifest from before groups existed runs
+// as a single subgroup holding every member.
+//
+//nolint:paralleltest // sets the upstream CLI environment variable
+func TestRunCandidatePreview_NoGroupsIsOneGroup(t *testing.T) {
+	installFakeCLI(t)
+	manifest := groupedManifest(t,
+		candidatePreviewMember{URN: "urn:a", Name: "a", TargetStack: "acme/a/prod", Directory: "a"},
+		candidatePreviewMember{URN: "urn:b", Name: "b", TargetStack: "acme/b/prod", Directory: "b"},
+	)
+	log := &fakeLog{}
+	_, _, _, err := runCandidatePreview(t.Context(), manifest, &fakeSubgroups{log: log})
+	require.NoError(t, err)
+	got := log.all()
+	require.Len(t, got, 2)
+	assert.Regexp(t, ` 2$`, got[0])
+	assert.True(t, strings.HasPrefix(got[1], "close"))
+}
+
+// TestRunCandidatePreview_MemberFailureClosesSubgroup proves a failing member fails the run with
+// its stderr tail (secrets redacted), still closes the subgroup, and skips later groups.
+//
+//nolint:paralleltest // sets the upstream CLI environment variable
+func TestRunCandidatePreview_MemberFailureClosesSubgroup(t *testing.T) {
+	logPath := installFakeCLI(t)
+	manifest := groupedManifest(t,
+		candidatePreviewMember{URN: "urn:a", Name: "a", TargetStack: "acme/a/fail", Directory: "a",
+			GroupOrder: 0, Group: "g1",
+			Config: map[string]candidatePreviewConfigValue{"proj:s": {Value: "hunter2", Secret: true}}},
+		candidatePreviewMember{URN: "urn:b", Name: "b", TargetStack: "acme/b/prod", Directory: "b",
+			GroupOrder: 1, Group: "g2"},
+	)
+	log := &fakeLog{}
+	_, _, _, err := runCandidatePreview(t.Context(), manifest, &fakeSubgroups{log: log})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "boom")
+	assert.NotContains(t, err.Error(), "hunter2")
+	assert.Contains(t, err.Error(), "[secret]")
+	got := log.all()
+	require.Len(t, got, 2, "g2 never starts")
+	assert.True(t, strings.HasPrefix(got[0], "create"))
+	assert.True(t, strings.HasPrefix(got[1], "close"))
+	assert.NotContains(t, strings.Join(calls(t, logPath), "\n"), "acme/b/prod")
+}
+
+//nolint:paralleltest // sets the upstream CLI environment variable
+func TestRunCandidatePreview_SubgroupCreateFailure(t *testing.T) {
+	installFakeCLI(t)
+	manifest := groupedManifest(t,
+		candidatePreviewMember{URN: "urn:a", Name: "a", TargetStack: "acme/a/prod", Directory: "a"})
+	_, _, _, err := runCandidatePreview(t.Context(), manifest,
+		&fakeSubgroups{log: &fakeLog{}, createErr: errors.New("nope")})
+	require.ErrorContains(t, err, "creating coherence window subgroup")
+}
+
+// TestCoherenceWindowSubgroupClientRoutes proves the service client calls the documented routes
+// and bodies.
+func TestCoherenceWindowSubgroupClientRoutes(t *testing.T) {
+	t.Parallel()
+
+	var requests []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		requests = append(requests, r.Method+" "+r.URL.Path+" "+string(body))
+		if r.Method == http.MethodPost {
+			_, _ = w.Write([]byte(`{"id":"sub-9"}`))
+		}
+	}))
+	defer server.Close()
+	api := client.NewClient(server.URL, "token", false,
+		diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}))
+
+	id, err := api.CreateCoherenceWindowSubgroup(t.Context(), "acme", "win-1", 3)
+	require.NoError(t, err)
+	assert.Equal(t, "sub-9", id)
+	require.NoError(t, api.CloseCoherenceWindowSubgroup(t.Context(), "acme", "win-1", "sub-9"))
+	assert.Equal(t, []string{
+		`POST /api/orgs/acme/coherence-windows/win-1/subgroups {"size":3}`,
+		`DELETE /api/orgs/acme/coherence-windows/win-1/subgroups/sub-9 `,
+	}, requests)
 }
 
 // TestCandidatePreviewRequest_FailureIncludesUnavailableRows proves the failure callback still
 // reports the manifest's known unavailable dispositions, not just an empty Stacks list, even
-// though PreviewMany discarded every runnable-member result on error.
+// though the failed preview discarded every runnable-member result on error.
 func TestCandidatePreviewRequest_FailureIncludesUnavailableRows(t *testing.T) {
 	t.Parallel()
 

@@ -61,10 +61,6 @@ func TestCandidatePreviewEnvironmentHelpers(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, []string{"HOME=/tmp/home", "PATH=/bin", "TOKEN=secret"},
 		mergedEnvironment([]string{"HOME=/old", "PATH=/bin"}, map[string]string{"TOKEN": "secret", "HOME": "/tmp/home"}))
-	assert.Equal(t, map[string]string{
-		"acme/base": "acme/base@42",
-		"acme/live": "acme/live",
-	}, environmentRevisions([]string{"acme/base@42", "acme/live"}))
 	assert.JSONEq(t, `{"diagnostic":"token=[secret]","other":"safe"}`,
 		string(redactJSONSecrets(json.RawMessage(`{"diagnostic":"token=s3cr\"et","other":"safe"}`),
 			[]string{`s3cr"et`})))
@@ -78,7 +74,7 @@ func TestRunCandidatePreviewRejectsSymlinkOutsideWorkspace(t *testing.T) {
 	_, _, _, err := runCandidatePreview(t.Context(), candidatePreviewManifest{
 		Workspace: workspace,
 		Members:   []candidatePreviewMember{{Name: "member", TargetStack: "acme/app/dev", Directory: "member"}},
-	})
+	}, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "outside the release workspace")
 }
