@@ -378,12 +378,15 @@ class ReadResourceResponse(google.protobuf.message.Message):
     PROPERTIES_FIELD_NUMBER: builtins.int
     RESULT_FIELD_NUMBER: builtins.int
     UNKNOWN_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the URN for this resource."""
     result: global___Result.ValueType
     """the reason, whether the read was successful or failed."""
     unknown: builtins.bool
     """true if the result of the read is unknown, e.g. because the read was skipped as part of a --continue-on-error run; result is still SUCCESS and SDKs should resolve outputs as unknown."""
+    id: builtins.str
+    """the id resolved by the provider's Read. If empty, SDKs should treat the id as unknown during preview, otherwise fall back to the id supplied on the request for back-compat with older engines."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """the state of the resource read from the live environment."""
@@ -395,9 +398,10 @@ class ReadResourceResponse(google.protobuf.message.Message):
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         result: global___Result.ValueType = ...,
         unknown: builtins.bool = ...,
+        id: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["properties", b"properties", "result", b"result", "unknown", b"unknown", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "properties", b"properties", "result", b"result", "unknown", b"unknown", "urn", b"urn"]) -> None: ...
 
 global___ReadResourceResponse = ReadResourceResponse
 
