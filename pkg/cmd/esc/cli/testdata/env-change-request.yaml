@@ -8,9 +8,11 @@ run: |
   esc env change-request ls --env default/test
   esc env change-request list --env default/test
   esc env change-request get 00000000-0000-0000-0000-000000000000
+  esc env change-request diff 00000000-0000-0000-0000-000000000000
   esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
   esc env change-request ls
   esc env change-request ls --status all --output json
+  esc env change-request diff 00000000-0000-0000-0000-000000000000
   esc env get default/test
 
 ---
@@ -59,6 +61,13 @@ Current environment revision: 2
 Approved: false
   Require approval (not satisfied): 0 of 1 approvals
 URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
+> esc env change-request diff 00000000-0000-0000-0000-000000000000
+--- test-user/default/test@2
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
 > esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
 {
   "id": "00000000-0000-0000-0000-000000000000",
@@ -125,6 +134,13 @@ URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-000
     }
   ]
 }
+> esc env change-request diff 00000000-0000-0000-0000-000000000000
+--- test-user/default/test@2
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
 > esc env get default/test
 # Value
 ```json
@@ -151,7 +167,9 @@ No change requests found.
 > esc env change-request ls --env default/test
 > esc env change-request list --env default/test
 > esc env change-request get 00000000-0000-0000-0000-000000000000
+> esc env change-request diff 00000000-0000-0000-0000-000000000000
 > esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
 > esc env change-request ls
 > esc env change-request ls --status all --output json
+> esc env change-request diff 00000000-0000-0000-0000-000000000000
 > esc env get default/test

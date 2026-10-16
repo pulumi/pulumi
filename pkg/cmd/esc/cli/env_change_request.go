@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/dustin/go-humanize"
@@ -46,7 +47,7 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 			"--draft, such as `env edit` and `env set`. Use `env open --draft=<id>`\n" +
 			"to open the draft version of an environment.\n" +
 			"\n" +
-			"Subcommands exist for listing and viewing change requests.",
+			"Subcommands exist for listing, viewing, and diffing change requests.",
 		Example: fmt.Sprintf("  # Propose a change, then review and apply it\n"+
 			"  %[1]s env set my-project/prod app.replicas 3 --draft\n"+
 			"  %[1]s env change-request list --env my-project/prod\n"+
@@ -59,6 +60,7 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 
 	cmd.AddCommand(newEnvChangeRequestLsCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestGetCmd(cr))
+	cmd.AddCommand(newEnvChangeRequestDiffCmd(cr))
 
 	return cmd
 }
@@ -71,6 +73,31 @@ func (cr *changeRequestCommand) orgName(ctx context.Context) (string, error) {
 		return cr.org, nil
 	}
 	return cr.env.esc.account.DefaultOrg, nil
+}
+
+// printDraftDiff prints the difference between the given version of an environment and a change request's draft.
+func (cr *changeRequestCommand) printDraftDiff(
+	ctx context.Context, w io.Writer, ref environmentRef, changeRequestID, version string,
+) error {
+	old, _, _, err := cr.env.esc.client.GetEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, version, false)
+	if err != nil {
+		return fmt.Errorf("getting environment definition: %w", err)
+	}
+	draft, _, err := cr.env.esc.client.GetEnvironmentDraft(
+		ctx, ref.orgName, ref.projectName, ref.envName, changeRequestID)
+	if err != nil {
+		return fmt.Errorf("getting draft definition: %w", err)
+	}
+	oldName := ref.String()
+	if version != "" {
+		oldName += "@" + version
+	}
+	if d := diff(oldName, string(old), "draft "+changeRequestID, string(draft)); d != "" {
+		fmt.Fprint(w, d)
+	} else {
+		fmt.Fprintln(w, "The draft does not change the environment definition.")
+	}
+	return nil
 }
 
 func newEnvChangeRequestLsCmd(cr *changeRequestCommand) *cobra.Command {
@@ -312,4 +339,39 @@ func printChangeRequest(
 	if url != "" {
 		fmt.Fprintf(w, "URL: %v\n", url)
 	}
+}
+
+func newEnvChangeRequestDiffCmd(cr *changeRequestCommand) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "diff <change-request-id>",
+		Short: "[EXPERIMENTAL] Show the change a change request proposes.",
+		Long: "[EXPERIMENTAL] Show the change a change request proposes\n" +
+			"\n" +
+			"This command shows the difference between the environment revision the draft is based on and\n" +
+			"the draft.\n",
+		Example: fmt.Sprintf("  %[1]s env change-request diff <change-request-id>", cr.env.esc.command),
+		Args:    cmdutil.SpecificArgs([]string{"change-request-id"}),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			orgName, err := cr.orgName(ctx)
+			if err != nil {
+				return err
+			}
+
+			c, err := cr.env.esc.client.GetChangeRequest(ctx, orgName, args[0])
+			if err != nil {
+				return fmt.Errorf("getting change request: %w", err)
+			}
+			ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
+
+			status, err := cr.env.esc.client.GetEnvironmentDraftStatus(ctx, orgName, ref.projectName, ref.envName, c.ID)
+			if err != nil {
+				return fmt.Errorf("getting draft status: %w", err)
+			}
+			return cr.printDraftDiff(ctx, cr.env.esc.stdout, ref, c.ID, strconv.Itoa(status.BaseRevision))
+		},
+	}
+
+	return cmd
 }
