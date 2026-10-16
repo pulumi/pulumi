@@ -116,6 +116,7 @@ func TestPerfParentChainUpdate(t *testing.T) {
 
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfSecretsBatchUpdate(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
 		MaxPreviewDuration: 7 * time.Second,
@@ -138,6 +139,7 @@ func TestPerfSecretsBatchUpdate(t *testing.T) {
 
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
 		MaxPreviewDuration: 10 * time.Second,

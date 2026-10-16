@@ -14,6 +14,9 @@
 
 """
 Dynamic Providers for Python.
+
+Dynamic providers currently require Python 3.11 through 3.14. Python 3.15 support
+is pending a compatible dill release.
 """
 
 # Make all module members inside of this package available as package members.

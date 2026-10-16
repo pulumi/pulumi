@@ -19,6 +19,7 @@ https://github.com/pulumi/pulumi/issues/6981
 """
 
 import contextlib
+import sys
 from typing import Dict
 import uuid
 import pytest
@@ -72,6 +73,10 @@ class X(dyn.Resource):
         super().__init__(XProvider(), name, vars(args), opts)
 
 
+@pytest.mark.skipif(
+    sys.version_info >= (3, 15),
+    reason="Dynamic providers require a dill release supporting Python 3.15",
+)
 @raises(AssertionError)
 @pytest.mark.timeout(10)
 @pulumi.runtime.test
