@@ -927,8 +927,8 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 }
 
 // WelcomeUser prints a Welcome to Pulumi message. consoleURL may be empty, in which case the
-// console line is omitted.
-func WelcomeUser(opts display.Options, consoleURL string) {
+// console line is omitted. showNewProjectHint controls whether the message suggests running `pulumi new`.
+func WelcomeUser(opts display.Options, consoleURL string, showNewProjectHint bool) {
 	fmt.Printf("\n\n  %s\n\n", opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset))
 	if consoleURL != "" {
 		fmt.Printf("  Your stacks, state, and deployment history live at %s\n\n",
@@ -936,8 +936,11 @@ func WelcomeUser(opts display.Options, consoleURL string) {
 	}
 	fmt.Printf("  See what's new: %s\n\n",
 		opts.Color.Colorize(colors.BrightBlue+colors.Underline+"https://www.pulumi.com/releases/changelog/"+colors.Reset))
-	fmt.Printf("  %s Create your first project with `pulumi new`.\n\n\n",
-		opts.Color.Colorize(colors.SpecSubHeadline+"New to Pulumi?"+colors.Reset))
+	if showNewProjectHint {
+		fmt.Printf("  %s Create your first project with `pulumi new`.\n\n",
+			opts.Color.Colorize(colors.SpecSubHeadline+"New to Pulumi?"+colors.Reset))
+	}
+	fmt.Println()
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
