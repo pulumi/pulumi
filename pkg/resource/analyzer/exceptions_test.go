@@ -42,10 +42,18 @@ func mustParseExceptions(t *testing.T, js string) *PolicyExceptions {
 	return set
 }
 
-// matchID returns the ID of the exception that matches, or "" if none does.
-func matchID(set *PolicyExceptions, policy string, urn resource.URN) string {
-	id, _, _ := set.Match(policy, urn)
-	return id
+// entry returns a match entry for one policy and one target.
+func entry(policy string, target resource.URN) string {
+	return `{"policies": ["` + policy + `"], "targets": ["` + string(target) + `"]}`
+}
+
+// matchIDs returns the IDs of the exceptions that match, in order.
+func matchIDs(set *PolicyExceptions, policy string, urn resource.URN) []string {
+	var ids []string
+	for _, e := range set.Match(policy, urn) {
+		ids = append(ids, e.ID)
+	}
+	return ids
 }
 
 func TestParsePolicyExceptionsEmpty(t *testing.T) {
@@ -62,21 +70,19 @@ func TestParsePolicyExceptionsEmpty(t *testing.T) {
 func TestParsePolicyExceptionsInvalid(t *testing.T) {
 	t.Parallel()
 
+	valid := entry("p", accessLogsURN)
 	tests := []struct {
 		name, js, err string
 	}{
 		{"not an object", `[]`, `"exceptions" must be an object`},
 		{"entry not an object", `{"a": "x"}`, `policy exception "a": must be an object`},
 		{
-			"invalid ID", `{"a b": {"reason": "r", "match": [{"policy": "p", "urn": "` + string(accessLogsURN) + `"}]}}`,
+			"invalid ID", `{"a b": {"reason": "r", "match": [` + valid + `]}}`,
 			`policy exception "a b": the ID must be non-empty`,
 		},
+		{"missing reason", `{"a": {"match": [` + valid + `]}}`, `policy exception "a": "reason" is required`},
 		{
-			"missing reason", `{"a": {"match": [{"policy": "p", "urn": "` + string(accessLogsURN) + `"}]}}`,
-			`policy exception "a": "reason" is required`,
-		},
-		{
-			"blank reason", `{"a": {"reason": " ", "match": [{"policy": "p", "urn": "` + string(accessLogsURN) + `"}]}}`,
+			"blank reason", `{"a": {"reason": " ", "match": [` + valid + `]}}`,
 			`policy exception "a": "reason" is required`,
 		},
 		{"missing match", `{"a": {"reason": "r"}}`, `policy exception "a": "match" must list at least one`},
@@ -87,51 +93,41 @@ func TestParsePolicyExceptionsInvalid(t *testing.T) {
 			`policy exception "a": match[0]: must be an object`,
 		},
 		{
-			"missing policy", `{"a": {"reason": "r", "match": [{"urn": "` + string(accessLogsURN) + `"}]}}`,
-			`policy exception "a": match[0]: "policy" is required`,
+			"missing policies", `{"a": {"reason": "r", "match": [{"targets": ["` + string(accessLogsURN) + `"]}]}}`,
+			`policy exception "a": match[0]: "policies" must list at least one policy`,
 		},
 		{
-			"empty policy", `{"a": {"reason": "r", "match": [{"policy": "", "urn": "` + string(accessLogsURN) + `"}]}}`,
-			`policy exception "a": match[0]: "policy" is required`,
+			"empty policy", `{"a": {"reason": "r", "match": [{"policies": [""], "targets": ["` +
+				string(accessLogsURN) + `"]}]}}`,
+			`policy exception "a": match[0]: "policies" can't contain an empty name`,
 		},
 		{
-			"all", `{"a": {"reason": "r", "match": [{"policy": "all", "urn": "` + string(accessLogsURN) + `"}]}}`,
-			`policy exception "a": match[0]: "policy" must name one policy; "all" isn't allowed`,
+			"all", `{"a": {"reason": "r", "match": [` + entry("all", accessLogsURN) + `]}}`,
+			`policy exception "a": match[0]: "policies" must name policies; "all" isn't allowed`,
 		},
 		{
-			"missing urn", `{"a": {"reason": "r", "match": [{"policy": "p"}]}}`,
-			`policy exception "a": match[0]: "urn" is required`,
+			"missing targets", `{"a": {"reason": "r", "match": [{"policies": ["p"]}]}}`,
+			`policy exception "a": match[0]: "targets" must list at least one URN`,
 		},
 		{
-			"invalid urn", `{"a": {"reason": "r", "match": [{"policy": "p", "urn": "access-logs"}]}}`,
-			`policy exception "a": match[0]: "urn" "access-logs" is not a valid URN`,
+			"invalid urn", `{"a": {"reason": "r", "match": [` + entry("p", "access-logs") + `]}}`,
+			`policy exception "a": match[0]: target "access-logs" is not a valid URN`,
 		},
 		{
-			"error in a later entry", `{"a": {"reason": "r", "match": [
-			{"policy": "p", "urn": "` + string(accessLogsURN) + `"}, {"policy": "p"}]}}`,
-			`policy exception "a": match[1]: "urn" is required`,
+			"error in a later entry", `{"a": {"reason": "r", "match": [` + valid + `, {"policies": ["p"]}]}}`,
+			`policy exception "a": match[1]: "targets" must list at least one`,
 		},
 		{
-			"policies in an entry", `{"a": {"reason": "r", "match": [
-				{"policies": ["p"], "urn": "` + string(accessLogsURN) + `"}]}}`,
-			`policy exception "a": match[0]: "policies" isn't supported yet; list one "policy" and "urn" per entry`,
-		},
-		{
-			"stacks in an entry", `{"a": {"reason": "r", "match": [{"policy": "p", "stacks": ["web/prod"]}]}}`,
-			`policy exception "a": match[0]: "stacks" isn't supported yet; list one "policy" and "urn" per entry`,
-		},
-		{
-			"resources in an entry", `{"a": {"reason": "r", "match": [{"policy": "p", "resources": []}]}}`,
-			`policy exception "a": match[0]: "resources" isn't supported yet; list one "policy" and "urn" per entry`,
+			"resources in an entry", `{"a": {"reason": "r", "match": [{"policies": ["p"], "resources": []}]}}`,
+			`policy exception "a": match[0]: "resources" isn't supported yet; list "policies" and "targets"`,
 		},
 		{
 			"unknown field in an entry", `{"a": {"reason": "r", "match": [
-			{"policy": "p", "urn": "` + string(accessLogsURN) + `", "type": "aws:s3/bucket:Bucket"}]}}`,
+			{"policies": ["p"], "targets": ["` + string(accessLogsURN) + `"], "type": "aws:s3/bucket:Bucket"}]}}`,
 			`policy exception "a": match[0]: unknown field "type"`,
 		},
 		{
-			"unknown field in an exception", `{"a": {"reason": "r", "expires": "2027-01-01", "match": [
-			{"policy": "p", "urn": "` + string(accessLogsURN) + `"}]}}`,
+			"unknown field in an exception", `{"a": {"reason": "r", "expires": "2027-01-01", "match": [` + valid + `]}}`,
 			`policy exception "a": unknown field "expires"`,
 		},
 	}
@@ -158,15 +154,15 @@ func TestParsePolicyExceptionsSkipsInvalid(t *testing.T) {
 	t.Parallel()
 
 	set, warnings, err := ParsePolicyExceptionsBlock(json.RawMessage(`{
-		"bad": {"reason": "r", "match": [{"policy": "p", "stacks": ["web/prod"]}]},
-		"good": {"reason": "r", "match": [{"policy": "p", "urn": "`+string(accessLogsURN)+`"}]}
+		"bad": {"reason": "r", "match": [{"policies": ["p"], "resources": []}]},
+		"good": {"reason": "r", "match": [`+entry("p", accessLogsURN)+`]}
 	}`), false)
 	require.NoError(t, err)
 	require.Len(t, warnings, 1)
 	assert.Contains(t, warnings[0], `policy exception "bad"`)
 	assert.Contains(t, warnings[0], "ignoring it. Try upgrading the Pulumi CLI")
 	assert.Equal(t, 1, set.Len())
-	assert.Equal(t, "good", matchID(set, "p", accessLogsURN))
+	assert.Equal(t, []string{"good"}, matchIDs(set, "p", accessLogsURN))
 }
 
 func TestPolicyExceptionsMatch(t *testing.T) {
@@ -176,14 +172,17 @@ func TestPolicyExceptionsMatch(t *testing.T) {
 		"log-buckets": {
 			"reason": "Log target buckets",
 			"match": [
-				{"policy": "s3-no-public-read", "urn": "`+string(accessLogsURN)+`"},
-				{"policy": "s3-no-public-read", "urn": "`+string(accessLogsURN)+`"},
-				{"policy": "s3-block-public-acls", "urn": "`+string(accessLogsURN)+`"},
-				{"policy": "s3-no-public-read", "urn": "`+string(cfLogsURN)+`"},
-				{"policy": "s3-no-public-read", "urn": "`+string(devLogsURN)+`"}
+				{
+					"policies": ["s3-no-public-read", "s3-block-public-acls"],
+					"targets": ["`+string(accessLogsURN)+`"]
+				},
+				{
+					"policies": ["s3-no-public-read"],
+					"targets": ["`+string(cfLogsURN)+`", "`+string(devLogsURN)+`"]
+				}
 			]
 		},
-		"flow-logs": {"reason": "Only in prod", "match": [{"policy": "vpc-flow-logs", "urn": "`+string(webStackURN)+`"}]}
+		"flow-logs": {"reason": "Only in prod", "match": [`+entry("vpc-flow-logs", webStackURN)+`]}
 	}`)
 	require.Equal(t, 2, set.Len())
 
@@ -191,51 +190,48 @@ func TestPolicyExceptionsMatch(t *testing.T) {
 		name   string
 		policy string
 		urn    resource.URN
-		want   string
+		want   []string
 	}{
-		{"exact match", "s3-no-public-read", accessLogsURN, "log-buckets"},
-		{"another policy in the same exception", "s3-block-public-acls", accessLogsURN, "log-buckets"},
-		{"another resource in the same exception", "s3-no-public-read", cfLogsURN, "log-buckets"},
-		{"entries span stacks", "s3-no-public-read", devLogsURN, "log-buckets"},
-		{"the root stack URN", "vpc-flow-logs", webStackURN, "flow-logs"},
-		{"policy and URN must match in one entry", "s3-block-public-acls", cfLogsURN, ""},
-		{"another policy", "required-tags", accessLogsURN, ""},
-		{"another stack", "s3-block-public-acls", devLogsURN, ""},
-		{"another name", "s3-no-public-read", "urn:pulumi:prod::web::aws:s3/bucket:Bucket::access-log", ""},
-		{"another type", "s3-no-public-read", "urn:pulumi:prod::web::aws:s3/bucketV2:BucketV2::access-logs", ""},
-		{"an empty URN", "s3-no-public-read", "", ""},
+		{"exact match", "s3-no-public-read", accessLogsURN, []string{"log-buckets"}},
+		{"another policy in the same entry", "s3-block-public-acls", accessLogsURN, []string{"log-buckets"}},
+		{"another target in the same entry", "s3-no-public-read", cfLogsURN, []string{"log-buckets"}},
+		{"targets span stacks", "s3-no-public-read", devLogsURN, []string{"log-buckets"}},
+		{"the root stack URN", "vpc-flow-logs", webStackURN, []string{"flow-logs"}},
+		{"policy and target must match in one entry", "s3-block-public-acls", cfLogsURN, nil},
+		{"another policy", "s3-encryption", accessLogsURN, nil},
+		{"another name", "s3-no-public-read", "urn:pulumi:prod::web::aws:s3/bucket:Bucket::access-log", nil},
+		{"another type", "s3-no-public-read", "urn:pulumi:prod::web::aws:s3/bucketV2:BucketV2::access-logs", nil},
+		{"an empty URN", "s3-no-public-read", "", nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.want, matchID(set, tt.policy, tt.urn))
+			assert.Equal(t, tt.want, matchIDs(set, tt.policy, tt.urn))
 		})
 	}
 
-	id, reason, ok := set.Match("vpc-flow-logs", webStackURN)
-	assert.True(t, ok)
-	assert.Equal(t, "flow-logs", id)
-	assert.Equal(t, "Only in prod", reason)
+	assert.Equal(t, []apitype.PolicyEventException{{ID: "flow-logs", Reason: "Only in prod"}},
+		set.Match("vpc-flow-logs", webStackURN))
 
 	var empty *PolicyExceptions
-	_, _, ok = empty.Match("p", accessLogsURN)
-	assert.False(t, ok)
+	assert.Empty(t, empty.Match("p", accessLogsURN))
 }
 
-// When several exceptions match, the one with the lowest ID wins, with digits compared as numbers.
+// Every matching exception is returned, lowest ID first, with digits compared as numbers.
 func TestPolicyExceptionsMatchOrder(t *testing.T) {
 	t.Parallel()
 
-	entry := `"match": [{"policy": "p", "urn": "` + string(accessLogsURN) + `"}]`
+	match := `"match": [` + entry("p", accessLogsURN) + `]`
 	set := mustParseExceptions(t, `{
-		"EXC-10": {"reason": "ten", `+entry+`},
-		"EXC-9": {"reason": "nine", `+entry+`},
-		"EXC-100": {"reason": "hundred", `+entry+`}
+		"EXC-10": {"reason": "ten", `+match+`},
+		"EXC-9": {"reason": "nine", `+match+`},
+		"EXC-100": {"reason": "hundred", `+match+`}
 	}`)
-	id, reason, ok := set.Match("p", accessLogsURN)
-	require.True(t, ok)
-	assert.Equal(t, "EXC-9", id)
-	assert.Equal(t, "nine", reason)
+	assert.Equal(t, []apitype.PolicyEventException{
+		{ID: "EXC-9", Reason: "nine"},
+		{ID: "EXC-10", Reason: "ten"},
+		{ID: "EXC-100", Reason: "hundred"},
+	}, set.Match("p", accessLogsURN))
 
 	assert.Equal(t, -1, compareExceptionIDs("EXC-2", "EXC-10"))
 	assert.Equal(t, -1, compareExceptionIDs("EXC-2", "EXC-02a"))
@@ -247,9 +243,8 @@ func TestPolicyExceptionsUnknownPolicyWarnings(t *testing.T) {
 	t.Parallel()
 
 	set := mustParseExceptions(t, `{"a": {"reason": "r", "match": [
-		{"policy": "known", "urn": "`+string(accessLogsURN)+`"},
-		{"policy": "gone", "urn": "`+string(accessLogsURN)+`"},
-		{"policy": "gone", "urn": "`+string(cfLogsURN)+`"}
+		{"policies": ["known", "gone"], "targets": ["`+string(accessLogsURN)+`"]},
+		`+entry("gone", cfLogsURN)+`
 	]}}`)
 	warnings := set.UnknownPolicyWarnings("pack", []plugin.AnalyzerPolicyInfo{{Name: "known"}})
 	require.Len(t, warnings, 1)
@@ -278,10 +273,8 @@ func (a *stubAnalyzer) AnalyzeStack(
 func TestWithPolicyExceptions(t *testing.T) {
 	t.Parallel()
 
-	set := mustParseExceptions(t, `{
-		"EXC-1": {"reason": "because", "match": [{"policy": "p", "urn": "`+string(accessLogsURN)+`"}]}
-	}`)
-	excepted := &apitype.PolicyEventException{ID: "EXC-1", Reason: "because"}
+	set := mustParseExceptions(t, `{"EXC-1": {"reason": "because", "match": [`+entry("p", accessLogsURN)+`]}}`)
+	excepted := []apitype.PolicyEventException{{ID: "EXC-1", Reason: "because"}}
 
 	// No exceptions: the analyzer is returned unchanged.
 	inner := &stubAnalyzer{}
@@ -296,12 +289,12 @@ func TestWithPolicyExceptions(t *testing.T) {
 
 		resp, err := a.Analyze(t.Context(), plugin.AnalyzerResource{URN: accessLogsURN})
 		require.NoError(t, err)
-		assert.Equal(t, excepted, resp.Diagnostics[0].Exception)
-		assert.Nil(t, resp.Diagnostics[1].Exception)
+		assert.Equal(t, excepted, resp.Diagnostics[0].Exceptions)
+		assert.Empty(t, resp.Diagnostics[1].Exceptions)
 
 		resp, err = a.Analyze(t.Context(), plugin.AnalyzerResource{URN: cfLogsURN})
 		require.NoError(t, err)
-		assert.Nil(t, resp.Diagnostics[0].Exception)
+		assert.Empty(t, resp.Diagnostics[0].Exceptions)
 	})
 
 	t.Run("AnalyzeStack matches the diagnostic's URN", func(t *testing.T) {
@@ -316,7 +309,7 @@ func TestWithPolicyExceptions(t *testing.T) {
 			{AnalyzerResource: plugin.AnalyzerResource{URN: accessLogsURN}},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, excepted, resp.Diagnostics[0].Exception)
-		assert.Nil(t, resp.Diagnostics[1].Exception)
+		assert.Equal(t, excepted, resp.Diagnostics[0].Exceptions)
+		assert.Empty(t, resp.Diagnostics[1].Exceptions)
 	})
 }

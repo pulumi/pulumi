@@ -3692,7 +3692,7 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 					d.EnforcementLevel = apitype.Mandatory
 				}
 
-				if d.EnforcementLevel == apitype.Mandatory && d.Exception == nil {
+				if d.EnforcementLevel == apitype.Mandatory && len(d.Exceptions) == 0 {
 					sawError.Store(true)
 				}
 				sg.deployment.events.OnPolicyViolation(d.URN, d)

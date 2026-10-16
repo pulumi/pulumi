@@ -1295,23 +1295,69 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 	}
 }
 
-func TestParsePolicyPackConfigExtractsExceptions(t *testing.T) {
+func TestParsePolicyPackConfigV2(t *testing.T) {
 	t.Parallel()
 
 	file, _, err := parsePolicyPackConfig([]byte(`{
-		"all": "mandatory",
+		"version": 2,
 		"environments": ["policy/shared"],
-		"exceptions": {"a": {"reason": "r", "match": [{"policy": "p", "urn": "urn:pulumi:prod::web::pkg:index:R::r"}]}}
+		"policies": {"all": "mandatory", "p": {"enforcementLevel": "advisory", "max": 3}},
+		"exceptions": {"a": {"reason": "r", "match": [
+			{"policies": ["p"], "targets": ["urn:pulumi:prod::web::pkg:index:R::r"]}
+		]}}
 	}`))
 	require.NoError(t, err)
 	assert.Equal(t, []string{"policy/shared"}, file.Environments)
-	assert.NotContains(t, file.Config, "exceptions")
-	assert.Contains(t, file.Config, "all")
+	assert.Equal(t, map[string]plugin.AnalyzerPolicyConfig{
+		"all": {EnforcementLevel: apitype.Mandatory},
+		"p":   {EnforcementLevel: apitype.Advisory, Properties: map[string]any{"max": float64(3)}},
+	}, file.Config)
 	assert.Equal(t, 1, file.Exceptions.Len())
 
-	file, _, err = parsePolicyPackConfig([]byte(`{"p": "advisory"}`))
+	file, _, err = parsePolicyPackConfig([]byte(`{"version": 2}`))
 	require.NoError(t, err)
+	assert.Empty(t, file.Config)
 	assert.Nil(t, file.Exceptions)
+
+	// An unversioned file is parsed as before.
+	file, _, err = parsePolicyPackConfig([]byte(`{"p": "advisory", "environments": ["policy/shared"]}`))
+	require.NoError(t, err)
+	assert.Equal(t, map[string]plugin.AnalyzerPolicyConfig{"p": {EnforcementLevel: apitype.Advisory}}, file.Config)
+	assert.Equal(t, []string{"policy/shared"}, file.Environments)
+}
+
+func TestParsePolicyPackConfigVersionErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name, js, err string
+	}{
+		{"exceptions need version 2", `{"exceptions": {}}`, `policy exceptions need "version": 2`},
+		{"newer version", `{"version": 3}`, "policy pack config version 3 isn't supported; try upgrading"},
+		{"older version", `{"version": 1}`, `"version" must be 2`},
+		{"unknown key", `{"version": 2, "p": "advisory"}`, `unknown key "p"; try upgrading the Pulumi CLI`},
+		{
+			"invalid policy config", `{"version": 2, "policies": {"p": "loud"}}`,
+			`parsing enforcement level for "p": "loud" is not a valid enforcement level`,
+		},
+		{
+			"malformed exception", `{"version": 2, "exceptions": {"a": {"match": [
+				{"policies": ["p"], "targets": ["urn:pulumi:prod::web::pkg:index:R::r"]}]}}}`,
+			`policy exception "a": "reason" is required`,
+		},
+		{
+			"exception field this version doesn't recognize", `{"version": 2, "exceptions": {"a": {"reason": "r",
+				"tags": {}, "match": [{"policies": ["p"], "targets": ["urn:pulumi:prod::web::pkg:index:R::r"]}]}}}`,
+			`policy exception "a": unknown field "tags"`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, _, err := parsePolicyPackConfig([]byte(tt.js))
+			assert.ErrorContains(t, err, tt.err)
+		})
+	}
 }
 
 func TestLoadPolicyPackConfigFromFile(t *testing.T) {
@@ -1319,9 +1365,12 @@ func TestLoadPolicyPackConfigFromFile(t *testing.T) {
 
 	file := filepath.Join(t.TempDir(), "config.json")
 	require.NoError(t, os.WriteFile(file, []byte(`{
-		"p": "advisory",
+		"version": 2,
+		"policies": {"p": "advisory"},
 		"environments": ["policy/shared"],
-		"exceptions": {"a": {"reason": "r", "match": [{"policy": "p", "urn": "urn:pulumi:prod::web::pkg:index:R::r"}]}}
+		"exceptions": {"a": {"reason": "r", "match": [
+			{"policies": ["p"], "targets": ["urn:pulumi:prod::web::pkg:index:R::r"]}
+		]}}
 	}`), 0o600))
 
 	f, warnings, err := LoadPolicyPackConfigFromFile(file)
@@ -1330,26 +1379,4 @@ func TestLoadPolicyPackConfigFromFile(t *testing.T) {
 	assert.Equal(t, map[string]plugin.AnalyzerPolicyConfig{"p": {EnforcementLevel: apitype.Advisory}}, f.Config)
 	assert.Equal(t, []string{"policy/shared"}, f.Environments)
 	assert.Equal(t, 1, f.Exceptions.Len())
-}
-
-func TestLoadPolicyPackConfigFromFileExceptionErrors(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	write := func(name, content string) string {
-		path := filepath.Join(dir, name)
-		require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
-		return path
-	}
-
-	// A malformed exception in a local file is an error.
-	_, _, err := LoadPolicyPackConfigFromFile(write("bad.json",
-		`{"exceptions": {"a": {"match": [{"policy": "p", "urn": "urn:pulumi:prod::web::pkg:index:R::r"}]}}}`))
-	assert.ErrorContains(t, err, `policy exception "a": "reason" is required`)
-
-	// So is an exception with a field this version doesn't recognize.
-	_, _, err = LoadPolicyPackConfigFromFile(write("unknown.json",
-		`{"exceptions": {"a": {"reason": "r", "tags": {},
-			"match": [{"policy": "p", "urn": "urn:pulumi:prod::web::pkg:index:R::r"}]}}}`))
-	assert.ErrorContains(t, err, `policy exception "a": unknown field "tags"`)
 }

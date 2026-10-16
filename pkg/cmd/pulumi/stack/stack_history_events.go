@@ -394,8 +394,8 @@ func describeEngineEvent(ev apitype.EngineEvent) (string, string) {
 	case ev.PolicyEvent != nil:
 		p := ev.PolicyEvent
 		detail := fmt.Sprintf("%s/%s: %s", p.PolicyPackName, p.PolicyName, plain(p.Message))
-		if p.Exception != nil {
-			detail += fmt.Sprintf(" (excepted: %s)", p.Exception.ID)
+		if len(p.Exceptions) > 0 {
+			detail += fmt.Sprintf(" (excepted: %s)", p.Exceptions[0].ID)
 		}
 		return "policy", detail
 	case ev.PolicyRemediationEvent != nil:

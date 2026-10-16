@@ -157,7 +157,7 @@ func RenderDiffEvent(event engine.Event, resourcesErrored int,
 	case engine.PolicyViolationEvent:
 		payload := event.Payload().(engine.PolicyViolationEventPayload)
 		// Policy exceptions are only summarized under "Policies:"
-		if payload.Exception != nil {
+		if len(payload.Exceptions) > 0 {
 			return ""
 		}
 		return renderDiffPolicyViolationEvent(payload, "", "", opts)
@@ -293,12 +293,13 @@ func renderDiffExceptedPolicyViolations(payloads []engine.PolicyViolationEventPa
 	if opts.ShowPolicyExceptions {
 		byException := make(map[string][]engine.PolicyViolationEventPayload)
 		for _, p := range payloads {
-			byException[p.Exception.ID] = append(byException[p.Exception.ID], p)
+			id := p.Exceptions[0].ID
+			byException[id] = append(byException[id], p)
 		}
 		for _, id := range slices.Sorted(maps.Keys(byException)) {
 			exceptionPayloads := byException[id]
 			fmt.Fprintf(&policyLines, "%s%s%s: %s%s\n",
-				linePrefix, colors.BrightBlack, id, exceptionPayloads[0].Exception.Reason, colors.Reset)
+				linePrefix, colors.BrightBlack, id, exceptionPayloads[0].Exceptions[0].Reason, colors.Reset)
 			for _, urn := range uniquePolicyViolationURNs(exceptionPayloads) {
 				fmt.Fprintf(&policyLines, "%s  %s- %s%s\n",
 					linePrefix, colors.BrightBlack, exceptedResourceText(urn, opts), colors.Reset)

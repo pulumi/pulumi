@@ -122,23 +122,27 @@ func TestConvertJSONEventExhaustive(t *testing.T) {
 func TestPolicyViolationExceptionRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	exception := &apitype.PolicyEventException{ID: "EXC-42", Reason: "Log target bucket"}
+	exceptions := []apitype.PolicyEventException{
+		{ID: "EXC-42", Reason: "Log target bucket"},
+		{ID: "EXC-50", Reason: "Old"},
+	}
 	event := engine.NewEvent(engine.PolicyViolationEventPayload{
 		ResourceURN:      "urn:pulumi:stack::project::pkgA:index:typA::resA",
 		PolicyName:       "public-read",
 		EnforcementLevel: apitype.Mandatory,
-		Exception:        exception,
+		Exceptions:       exceptions,
 	})
 
 	apiEvent, err := ConvertEngineEvent(event, false)
 	require.NoError(t, err)
-	assert.Equal(t, exception, apiEvent.PolicyEvent.Exception)
+	assert.Equal(t, exceptions, apiEvent.PolicyEvent.Exceptions)
 
 	b, err := json.Marshal(apiEvent.PolicyEvent)
 	require.NoError(t, err)
-	assert.Contains(t, string(b), `"exception":{"id":"EXC-42","reason":"Log target bucket"}`)
+	assert.Contains(t, string(b),
+		`"exceptions":[{"id":"EXC-42","reason":"Log target bucket"},{"id":"EXC-50","reason":"Old"}]`)
 
 	back, err := ConvertJSONEvent(apiEvent)
 	require.NoError(t, err)
-	assert.Equal(t, exception, back.Payload().(engine.PolicyViolationEventPayload).Exception)
+	assert.Equal(t, exceptions, back.Payload().(engine.PolicyViolationEventPayload).Exceptions)
 }

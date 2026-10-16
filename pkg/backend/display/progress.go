@@ -939,7 +939,7 @@ func (display *ProgressDisplay) printPolicies() bool {
 		// Split violations and excepted violations
 		var violations, excepted []engine.PolicyViolationEventPayload
 		for _, violation := range info.ViolationEvents {
-			if violation.Exception != nil {
+			if len(violation.Exceptions) > 0 {
 				excepted = append(excepted, violation)
 			} else {
 				violations = append(violations, violation)

@@ -687,7 +687,7 @@ func exceptedAnalyzer(t *testing.T) plugin.Analyzer {
 	exceptions, warnings, err := resourceanalyzer.ParsePolicyExceptionsBlock(json.RawMessage(`{
 		"EXC-42": {
 			"reason": "Needed for the CDN",
-			"match": [{"policy": "test-policy", "urn": "urn:pulumi:stack::project::pkg:index:MyResource::res"}]
+			"match": [{"policies": ["test-policy"], "targets": ["urn:pulumi:stack::project::pkg:index:MyResource::res"]}]
 		}
 	}`), true)
 	require.NoError(t, err)
@@ -754,7 +754,7 @@ func TestPolicyAnalyzeCmd_ExceptedViolation(t *testing.T) {
 		require.NotEmpty(t, events)
 		require.NotNil(t, events[0].PolicyEvent)
 		assert.Equal(t, "mandatory", events[0].PolicyEvent.EnforcementLevel)
-		assert.Equal(t, &apitype.PolicyEventException{ID: "EXC-42", Reason: "Needed for the CDN"},
-			events[0].PolicyEvent.Exception)
+		assert.Equal(t, []apitype.PolicyEventException{{ID: "EXC-42", Reason: "Needed for the CDN"}},
+			events[0].PolicyEvent.Exceptions)
 	})
 }

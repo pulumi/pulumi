@@ -136,14 +136,14 @@ func TestPolicyExceptionMandatoryViolationWithoutException(t *testing.T) {
 		assert.Error(t, err)
 		require.NotEmpty(t, violations)
 		for _, v := range violations {
-			assert.Nil(t, v.Exception)
+			assert.Empty(t, v.Exceptions)
 		}
 	}
 }
 
 // matchEntry returns a match entry for the "always-fails" policy on urn.
 func matchEntry(urn resource.URN) string {
-	return `{"policy": "always-fails", "urn": "` + string(urn) + `"}`
+	return `{"policies": ["always-fails"], "targets": ["` + string(urn) + `"]}`
 }
 
 // Excepting every violating resource lets the update and the preview succeed, and the violations are still
@@ -159,15 +159,15 @@ func TestPolicyExceptionExceptsResourceViolations(t *testing.T) {
 		violations, err := policyExceptionTest(t, exceptions, false, dryRun)
 		require.NoError(t, err)
 
-		got := map[resource.URN]*apitype.PolicyEventException{}
+		got := map[resource.URN][]apitype.PolicyEventException{}
 		for _, v := range violations {
 			assert.Equal(t, apitype.Mandatory, v.EnforcementLevel)
-			got[v.ResourceURN] = v.Exception
+			got[v.ResourceURN] = v.Exceptions
 		}
-		// When both exceptions match, the lowest ID wins.
-		assert.Equal(t, map[resource.URN]*apitype.PolicyEventException{
-			resAURN: {ID: "EXC-1", Reason: "resA is special"},
-			resBURN: {ID: "EXC-2", Reason: "both"},
+		// Every matching exception is reported, lowest ID first.
+		assert.Equal(t, map[resource.URN][]apitype.PolicyEventException{
+			resAURN: {{ID: "EXC-1", Reason: "resA is special"}, {ID: "EXC-2", Reason: "both"}},
+			resBURN: {{ID: "EXC-2", Reason: "both"}},
 		}, got)
 	}
 }
@@ -182,7 +182,7 @@ func TestPolicyExceptionPartialCoverageStillFails(t *testing.T) {
 
 	excepted := map[resource.URN]bool{}
 	for _, v := range violations {
-		excepted[v.ResourceURN] = v.Exception != nil
+		excepted[v.ResourceURN] = len(v.Exceptions) > 0
 	}
 	assert.True(t, excepted[resAURN])
 	assert.False(t, excepted[resBURN])
@@ -194,8 +194,7 @@ func TestPolicyExceptionOtherPolicyOrStackDoesNotMatch(t *testing.T) {
 
 	exceptions := exceptionsJSON(t, `{
 		"other-policy": {"reason": "r", "match": [
-			{"policy": "something-else", "urn": "`+string(resAURN)+`"},
-			{"policy": "something-else", "urn": "`+string(resBURN)+`"}
+			{"policies": ["something-else"], "targets": ["`+string(resAURN)+`", "`+string(resBURN)+`"]}
 		]},
 		"other-stack": {"reason": "r", "match": [
 			`+matchEntry("urn:pulumi:dev::web::pkgA:m:typA::resA")+`,
@@ -205,7 +204,7 @@ func TestPolicyExceptionOtherPolicyOrStackDoesNotMatch(t *testing.T) {
 	violations, err := policyExceptionTest(t, exceptions, false, false)
 	assert.Error(t, err)
 	for _, v := range violations {
-		assert.Nil(t, v.Exception)
+		assert.Empty(t, v.Exceptions)
 	}
 }
 
@@ -222,7 +221,7 @@ func TestPolicyExceptionSpansStacks(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, violations, 2)
 	for _, v := range violations {
-		assert.Equal(t, &apitype.PolicyEventException{ID: "EXC-1", Reason: "r"}, v.Exception)
+		assert.Equal(t, []apitype.PolicyEventException{{ID: "EXC-1", Reason: "r"}}, v.Exceptions)
 	}
 }
 
@@ -237,7 +236,7 @@ func TestPolicyExceptionExceptsStackViolation(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, violations, 1)
 	assert.Equal(t, rootStackURN, violations[0].ResourceURN)
-	assert.Equal(t, &apitype.PolicyEventException{ID: "EXC-1", Reason: "r"}, violations[0].Exception)
+	assert.Equal(t, []apitype.PolicyEventException{{ID: "EXC-1", Reason: "r"}}, violations[0].Exceptions)
 
 	_, err = policyExceptionTest(t, nil, true, false)
 	assert.Error(t, err)
@@ -250,12 +249,12 @@ func TestPolicyExceptionMalformedFromServiceIgnored(t *testing.T) {
 	exceptions := exceptionsJSON(t, `{
 		"no-reason": {"match": [`+matchEntry(resAURN)+`, `+matchEntry(resBURN)+`]},
 		"unknown-field": {"reason": "r", "tags": ["x"], "match": [`+matchEntry(resAURN)+`, `+matchEntry(resBURN)+`]},
-		"stacks": {"reason": "r", "match": [{"policy": "always-fails", "stacks": ["web/prod"]}]}
+		"resources": {"reason": "r", "match": [{"policies": ["always-fails"], "resources": []}]}
 	}`)
 	violations, err := policyExceptionTest(t, exceptions, false, false)
 	assert.Error(t, err)
 	require.NotEmpty(t, violations)
 	for _, v := range violations {
-		assert.Nil(t, v.Exception)
+		assert.Empty(t, v.Exceptions)
 	}
 }

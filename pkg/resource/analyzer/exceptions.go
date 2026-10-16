@@ -37,27 +37,35 @@ const policyExceptionsKey = "exceptions"
 var (
 	// The fields of an exception, and of one of its match entries.
 	policyExceptionFields = []string{"reason", "match"}
-	matchEntryFields      = []string{"policy", "urn"}
+	matchEntryFields      = []string{"policies", "targets"}
 	// Fields reserved for later versions of match entries.
-	reservedMatchEntryFields = []string{"policies", "stacks", "resources"}
+	reservedMatchEntryFields = []string{"resources"}
 )
 
 // PolicyExceptions is the set of active policy exceptions for one policy pack.
 type PolicyExceptions struct {
 	exceptions []policyException // in ID order
-	// The exception that excepts each (policy, URN) pair: the one with the lowest ID that lists it.
-	byMatch map[exceptionKey]*policyException
 }
 
 type policyException struct {
 	id     string
 	reason string
-	match  []exceptionKey
+	match  []PolicyExceptionMatcher
 }
 
-type exceptionKey struct {
-	policy string
-	urn    resource.URN
+// PolicyExceptionMatcher is a parsed match entry: it matches the violations of any of its policies on any of its
+// target resources.
+type PolicyExceptionMatcher struct {
+	policies []string
+	urns     []resource.URN
+}
+
+// Matches reports whether the entry matches a violation of the given policy, reported against the given URN.
+func (m PolicyExceptionMatcher) Matches(policy string, urn resource.URN) bool {
+	if !slices.Contains(m.policies, policy) {
+		return false
+	}
+	return slices.Contains(m.urns, urn)
 }
 
 // Len returns the number of exceptions in the set.
@@ -68,17 +76,19 @@ func (s *PolicyExceptions) Len() int {
 	return len(s.exceptions)
 }
 
-// Match returns the ID and reason of the exception that excepts a violation of the given policy, reported against
-// the given URN. When several exceptions match, the one with the lowest ID wins.
-func (s *PolicyExceptions) Match(policy string, urn resource.URN) (string, string, bool) {
+// Match returns the exceptions that except a violation of the given policy, reported against the given URN, lowest
+// ID first.
+func (s *PolicyExceptions) Match(policy string, urn resource.URN) []apitype.PolicyEventException {
 	if s == nil {
-		return "", "", false
+		return nil
 	}
-	e, ok := s.byMatch[exceptionKey{policy: policy, urn: urn}]
-	if !ok {
-		return "", "", false
+	var result []apitype.PolicyEventException
+	for _, e := range s.exceptions {
+		if slices.ContainsFunc(e.match, func(m PolicyExceptionMatcher) bool { return m.Matches(policy, urn) }) {
+			result = append(result, apitype.PolicyEventException{ID: e.id, Reason: e.reason})
+		}
 	}
-	return e.id, e.reason, true
+	return result
 }
 
 // UnknownPolicyWarnings returns a warning for each policy named by an exception that isn't in the pack. That isn't
@@ -91,8 +101,10 @@ func (s *PolicyExceptions) UnknownPolicyWarnings(packName string, policies []plu
 	for _, e := range s.exceptions {
 		var names []string
 		for _, m := range e.match {
-			if !slices.Contains(names, m.policy) {
-				names = append(names, m.policy)
+			for _, p := range m.policies {
+				if !slices.Contains(names, p) {
+					names = append(names, p)
+				}
 			}
 		}
 		for _, name := range names {
@@ -132,7 +144,7 @@ func ParsePolicyExceptions(
 	entries map[string]json.RawMessage, strict bool,
 ) (*PolicyExceptions, []string, error) {
 	var warnings []string
-	set := &PolicyExceptions{byMatch: map[exceptionKey]*policyException{}}
+	set := &PolicyExceptions{}
 
 	ids := slices.SortedFunc(maps.Keys(entries), compareExceptionIDs)
 	for _, id := range ids {
@@ -156,15 +168,6 @@ func ParsePolicyExceptions(
 	if set.Len() == 0 {
 		return nil, warnings, nil
 	}
-	// Exceptions are in ID order, so the first one to list a pair is the one that excepts it.
-	for i := range set.exceptions {
-		e := &set.exceptions[i]
-		for _, key := range e.match {
-			if _, ok := set.byMatch[key]; !ok {
-				set.byMatch[key] = e
-			}
-		}
-	}
 	return set, warnings, nil
 }
 
@@ -185,7 +188,7 @@ func parsePolicyException(id string, raw json.RawMessage) (policyException, erro
 	var rawMatch []json.RawMessage
 	if m, ok := fields["match"]; ok {
 		if err := json.Unmarshal(m, &rawMatch); err != nil {
-			return result, errors.New(`"match" must be a list of {"policy", "urn"} entries`)
+			return result, errors.New(`"match" must be a list of {"policies", "targets"} entries`)
 		}
 	}
 	for i, m := range rawMatch {
@@ -207,33 +210,43 @@ func parsePolicyException(id string, raw json.RawMessage) (policyException, erro
 	}
 	result.reason = e.Reason
 	if len(e.Match) == 0 {
-		return result, errors.New(`"match" must list at least one {"policy", "urn"} entry`)
+		return result, errors.New(`"match" must list at least one {"policies", "targets"} entry`)
 	}
 	for i, m := range e.Match {
-		key, err := parseMatchEntry(m)
+		matcher, err := ParsePolicyExceptionMatch(m)
 		if err != nil {
 			return result, fmt.Errorf("match[%d]: %w", i, err)
 		}
-		result.match = append(result.match, key)
+		result.match = append(result.match, matcher)
 	}
 	return result, nil
 }
 
-func parseMatchEntry(m apitype.PolicyExceptionMatch) (exceptionKey, error) {
-	switch m.Policy {
-	case "":
-		return exceptionKey{}, errors.New(`"policy" is required`)
-	case "all":
-		return exceptionKey{}, errors.New(`"policy" must name one policy; "all" isn't allowed`)
+// ParsePolicyExceptionMatch validates a match entry. Its targets are URNs, compared exactly.
+func ParsePolicyExceptionMatch(m apitype.PolicyExceptionMatch) (PolicyExceptionMatcher, error) {
+	result := PolicyExceptionMatcher{policies: m.Policies}
+	if len(m.Policies) == 0 {
+		return result, errors.New(`"policies" must list at least one policy`)
 	}
-	if m.URN == "" {
-		return exceptionKey{}, errors.New(`"urn" is required`)
+	for _, p := range m.Policies {
+		switch p {
+		case "":
+			return result, errors.New(`"policies" can't contain an empty name`)
+		case "all":
+			return result, errors.New(`"policies" must name policies; "all" isn't allowed`)
+		}
 	}
-	urn, err := resource.ParseURN(m.URN)
-	if err != nil {
-		return exceptionKey{}, fmt.Errorf(`"urn" %q is not a valid URN: %w`, m.URN, err)
+	if len(m.Targets) == 0 {
+		return result, errors.New(`"targets" must list at least one URN`)
 	}
-	return exceptionKey{policy: m.Policy, urn: urn}, nil
+	for _, t := range m.Targets {
+		urn, err := resource.ParseURN(t)
+		if err != nil {
+			return result, fmt.Errorf("target %q is not a valid URN: %w", t, err)
+		}
+		result.urns = append(result.urns, urn)
+	}
+	return result, nil
 }
 
 // objectFields decodes a JSON object into its fields.
@@ -256,7 +269,7 @@ func checkFields(fields map[string]json.RawMessage, known, reserved []string) er
 		switch {
 		case slices.Contains(known, f):
 		case slices.Contains(reserved, f):
-			return fieldError{fmt.Sprintf(`%q isn't supported yet; list one "policy" and "urn" per entry`, f)}
+			return fieldError{fmt.Sprintf(`%q isn't supported yet; list "policies" and "targets"`, f)}
 		default:
 			return fieldError{fmt.Sprintf("unknown field %q", f)}
 		}
@@ -308,7 +321,7 @@ func compareInts(a, b int) int {
 }
 
 // exceptionAnalyzer runs its policy pack's analyzer unchanged, and marks the violations that one of the pack's
-// exceptions matches by setting their Exception.
+// exceptions match by setting their Exceptions.
 type exceptionAnalyzer struct {
 	plugin.Analyzer
 	exceptions *PolicyExceptions
@@ -350,7 +363,5 @@ func (a *exceptionAnalyzer) AnalyzeStack(
 }
 
 func (a *exceptionAnalyzer) apply(d *plugin.AnalyzeDiagnostic, urn resource.URN) {
-	if id, reason, ok := a.exceptions.Match(d.PolicyName, urn); ok {
-		d.Exception = &apitype.PolicyEventException{ID: id, Reason: reason}
-	}
+	d.Exceptions = a.exceptions.Match(d.PolicyName, urn)
 }

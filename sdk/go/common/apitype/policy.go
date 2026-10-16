@@ -112,13 +112,13 @@ type PolicyException struct {
 	Match []PolicyExceptionMatch `json:"match"`
 }
 
-// PolicyExceptionMatch identifies the violations of one policy on one resource. Both fields are compared exactly. A
-// stack policy violation that isn't tied to a resource is reported against the root stack resource's URN.
+// PolicyExceptionMatch identifies the violations of any of its policies on any of its target resources. A stack
+// policy violation that isn't tied to a resource is reported against the root stack resource's URN.
 type PolicyExceptionMatch struct {
-	// The name of a policy within the Policy Pack.
-	Policy string `json:"policy"`
-	// The URN the violation is reported against.
-	URN string `json:"urn"`
+	// The names of policies within the Policy Pack.
+	Policies []string `json:"policies"`
+	// The URNs of the resources the violations are reported against, compared exactly.
+	Targets []string `json:"targets"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.

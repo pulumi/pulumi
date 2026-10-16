@@ -655,7 +655,7 @@ func TestProgressPoliciesExceptedViolations(t *testing.T) {
 	resA := resource.NewURN("stack", "project", "", "pkgA:index:typA", "resA")
 	rootStack := resource.DefaultRootStackURN("stack", "project")
 	violation := func(urn resource.URN, policy string, level apitype.EnforcementLevel,
-		exception *apitype.PolicyEventException,
+		exceptions []apitype.PolicyEventException,
 	) engine.Event {
 		return engine.NewEvent(engine.PolicyViolationEventPayload{
 			ResourceURN:       urn,
@@ -664,7 +664,7 @@ func TestProgressPoliciesExceptedViolations(t *testing.T) {
 			PolicyPackName:    "pack",
 			PolicyPackVersion: "1.0.0",
 			EnforcementLevel:  level,
-			Exception:         exception,
+			Exceptions:        exceptions,
 		})
 	}
 
@@ -683,9 +683,9 @@ func TestProgressPoliciesExceptedViolations(t *testing.T) {
 
 		eventChannel <- violation(resA, "versioning", apitype.Advisory, nil)
 		eventChannel <- violation(resA, "public-read", apitype.Mandatory,
-			&apitype.PolicyEventException{ID: "EXC-42", Reason: "Log target bucket"})
+			[]apitype.PolicyEventException{{ID: "EXC-42", Reason: "Log target bucket"}, {ID: "EXC-50", Reason: "Old"}})
 		eventChannel <- violation(rootStack, "public-read", apitype.Mandatory,
-			&apitype.PolicyEventException{ID: "EXC-7", Reason: "Legacy stack"})
+			[]apitype.PolicyEventException{{ID: "EXC-7", Reason: "Legacy stack"}})
 		eventChannel <- engine.NewEvent(engine.SummaryEventPayload{PolicyPacks: map[string]string{"pack": "1.0.0"}})
 		close(eventChannel)
 		<-doneChannel

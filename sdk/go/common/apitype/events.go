@@ -98,9 +98,9 @@ type PolicyEvent struct {
 	// Severity is one of "low", "medium", "high", or "critical".
 	// An empty string is omitted and represents an unspecified severity.
 	Severity string `json:"severity,omitempty"`
-	// Exception is set when a policy exception matched this violation. An excepted violation doesn't fail
-	// the operation, whatever its EnforcementLevel.
-	Exception *PolicyEventException `json:"exception,omitempty"`
+	// Exceptions lists the policy exceptions that matched this violation, lowest ID first. An excepted violation
+	// doesn't fail the operation, whatever its EnforcementLevel.
+	Exceptions []PolicyEventException `json:"exceptions,omitempty"`
 }
 
 // PolicyEventException identifies the policy exception that matched a policy violation.

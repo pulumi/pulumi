@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -30,11 +31,12 @@ import (
 
 // PolicyPackConfigFile is the content of a policy pack config file (--policy-pack-config).
 type PolicyPackConfigFile struct {
-	// Config is the policy config: every key that isn't reserved.
+	// Config is the policy config: the "policies" key of a version 2 file, or every key that isn't reserved in an
+	// unversioned one.
 	Config map[string]plugin.AnalyzerPolicyConfig
-	// Environments are the ESC environments named by the reserved "environments" key.
+	// Environments are the ESC environments named by the "environments" key.
 	Environments []string
-	// Exceptions are the policy exceptions of the reserved "exceptions" key, or nil if there are none.
+	// Exceptions are the policy exceptions of a version 2 file's "exceptions" key, or nil if there are none.
 	Exceptions *PolicyExceptions
 }
 
@@ -87,11 +89,20 @@ func ParsePolicyPackConfigFromAPI(config map[string]*json.RawMessage) (map[strin
 }
 
 func parsePolicyPackConfig(b []byte) (*PolicyPackConfigFile, []string, error) {
-	result := make(map[string]plugin.AnalyzerPolicyConfig)
-
 	// Gracefully allow empty content.
 	if strings.TrimSpace(string(b)) == "" {
 		return &PolicyPackConfigFile{}, nil, nil
+	}
+
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(b, &fields); err != nil {
+		return nil, nil, err
+	}
+	if _, ok := fields["version"]; ok {
+		return parsePolicyPackConfigV2(b, fields)
+	}
+	if _, ok := fields[policyExceptionsKey]; ok {
+		return nil, nil, errors.New(`policy exceptions need "version": 2, with the policy config under "policies"`)
 	}
 
 	config := make(map[string]any)
@@ -117,22 +128,51 @@ func parsePolicyPackConfig(b []byte) (*PolicyPackConfigFile, []string, error) {
 		delete(config, "environments")
 	}
 
-	// Extract and parse policy exceptions if present.
-	var exceptions *PolicyExceptions
-	var warnings []string
-	if _, ok := config[policyExceptionsKey]; ok {
-		var raw map[string]json.RawMessage
-		if err := json.Unmarshal(b, &raw); err != nil {
-			return nil, nil, err
+	result, err := parsePolicyConfigs(config)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &PolicyPackConfigFile{Config: result, Environments: environments}, nil, nil
+}
+
+// parsePolicyPackConfigV2 parses a versioned config file, which nests the policy config under "policies".
+func parsePolicyPackConfigV2(b []byte, fields map[string]json.RawMessage) (*PolicyPackConfigFile, []string, error) {
+	var file struct {
+		Version      int             `json:"version"`
+		Environments []string        `json:"environments"`
+		Policies     map[string]any  `json:"policies"`
+		Exceptions   json.RawMessage `json:"exceptions"`
+	}
+	if err := json.Unmarshal(b, &file); err != nil {
+		return nil, nil, err
+	}
+	switch {
+	case file.Version > 2:
+		return nil, nil, fmt.Errorf(
+			"policy pack config version %d isn't supported; try upgrading the Pulumi CLI", file.Version)
+	case file.Version < 2:
+		return nil, nil, errors.New(`"version" must be 2`)
+	}
+	for k := range fields {
+		if !slices.Contains([]string{"version", "environments", "policies", policyExceptionsKey}, k) {
+			return nil, nil, fmt.Errorf("unknown key %q; try upgrading the Pulumi CLI", k)
 		}
-		var err error
-		exceptions, warnings, err = ParsePolicyExceptionsBlock(raw[policyExceptionsKey], true /*strict*/)
-		if err != nil {
-			return nil, nil, err
-		}
-		delete(config, policyExceptionsKey)
 	}
 
+	result, err := parsePolicyConfigs(file.Policies)
+	if err != nil {
+		return nil, nil, err
+	}
+	exceptions, warnings, err := ParsePolicyExceptionsBlock(file.Exceptions, true /*strict*/)
+	if err != nil {
+		return nil, nil, err
+	}
+	return &PolicyPackConfigFile{Config: result, Environments: file.Environments, Exceptions: exceptions}, warnings, nil
+}
+
+// parsePolicyConfigs parses the config of each policy, keyed by policy name.
+func parsePolicyConfigs(config map[string]any) (map[string]plugin.AnalyzerPolicyConfig, error) {
+	result := make(map[string]plugin.AnalyzerPolicyConfig)
 	for k, v := range config {
 		var enforcementLevel apitype.EnforcementLevel
 		var properties map[string]any
@@ -140,20 +180,20 @@ func parsePolicyPackConfig(b []byte) (*PolicyPackConfigFile, []string, error) {
 		case string:
 			el := apitype.EnforcementLevel(val)
 			if !el.IsValid() {
-				return nil, nil, fmt.Errorf("parsing enforcement level for %q: %q is not a valid enforcement level", k, val)
+				return nil, fmt.Errorf("parsing enforcement level for %q: %q is not a valid enforcement level", k, val)
 			}
 			enforcementLevel = el
 		case map[string]any:
 			el, err := extractEnforcementLevel(val)
 			if err != nil {
-				return nil, nil, fmt.Errorf("parsing enforcement level for %q: %w", k, err)
+				return nil, fmt.Errorf("parsing enforcement level for %q: %w", k, err)
 			}
 			enforcementLevel = el
 			if len(val) > 0 {
 				properties = val
 			}
 		default:
-			return nil, nil, fmt.Errorf("parsing %q: %v is not a valid value; must be a string or object", k, v)
+			return nil, fmt.Errorf("parsing %q: %v is not a valid value; must be a string or object", k, v)
 		}
 
 		// Don't bother including empty configs.
@@ -166,7 +206,7 @@ func parsePolicyPackConfig(b []byte) (*PolicyPackConfigFile, []string, error) {
 			Properties:       properties,
 		}
 	}
-	return &PolicyPackConfigFile{Config: result, Environments: environments, Exceptions: exceptions}, warnings, nil
+	return result, nil
 }
 
 // extractEnforcementLevel looks for "enforcementLevel" in the map, and if so, validates that it is a valid value, and

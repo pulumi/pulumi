@@ -589,8 +589,7 @@ func TestAnalyzeSnapshot_ExceptedViolations(t *testing.T) {
 	}
 	exceptions, _, err := resourceanalyzer.ParsePolicyExceptionsBlock(
 		json.RawMessage(`{"EXC-1": {"reason": "r", "match": [
-			{"policy": "p", "urn": "`+string(urn)+`"},
-			{"policy": "p", "urn": "`+string(resource.DefaultRootStackURN("stack", "project"))+`"}
+			{"policies": ["p"], "targets": ["`+string(urn)+`", "`+string(resource.DefaultRootStackURN("stack", "project"))+`"]}
 		]}}`), true)
 	require.NoError(t, err)
 
@@ -604,7 +603,7 @@ func TestAnalyzeSnapshot_ExceptedViolations(t *testing.T) {
 	assert.Equal(t, urn, events.violationURNs[0])
 	assert.Equal(t, resource.RootStackType, events.violationURNs[1].QualifiedType())
 	for _, v := range events.violations {
-		assert.Equal(t, &apitype.PolicyEventException{ID: "EXC-1", Reason: "r"}, v.Exception)
+		assert.Equal(t, []apitype.PolicyEventException{{ID: "EXC-1", Reason: "r"}}, v.Exceptions)
 	}
 
 	// Without the exceptions, the same violations fail.
