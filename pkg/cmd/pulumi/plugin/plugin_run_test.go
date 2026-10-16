@@ -19,16 +19,32 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestMain also runs this test executable as a plugin child to capture its environment.
+func TestMain(m *testing.M) {
+	if output := os.Getenv("PULUMI_TEST_PLUGIN_RUN_ENV_FILE"); output != "" {
+		data := os.Getenv("PULUMI_RPC_TARGET") + "\n" +
+			os.Getenv("PULUMI_API") + "\n" + os.Getenv("PULUMI_ACCESS_TOKEN") + "\n"
+		if err := os.WriteFile(output, []byte(data), 0o600); err != nil {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
 
 // testSetup creates a plugin context and RPC server for testing
 func testSetup(t *testing.T) (context.Context, *plugin.Context, *plugin.GrpcServer) {
@@ -39,7 +55,7 @@ func testSetup(t *testing.T) (context.Context, *plugin.Context, *plugin.GrpcServ
 		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { pluginHost.Close() })
-	pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil)
+	pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { pctx.Close() })
 
@@ -80,7 +96,7 @@ func TestNewInstallPluginFunc_DisabledAcquisition(t *testing.T) {
 		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	defer pluginHost.Close()
-	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil)
+	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil, nil)
 	require.NoError(t, err)
 	defer pctx.Close()
 
@@ -99,7 +115,7 @@ func TestNewInstallPluginFunc_PluginInstallError(t *testing.T) {
 		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	defer pluginHost.Close()
-	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil)
+	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil, nil)
 	require.NoError(t, err)
 	defer pctx.Close()
 
@@ -112,57 +128,43 @@ func TestNewInstallPluginFunc_PluginInstallError(t *testing.T) {
 }
 
 func TestPluginRunCommand(t *testing.T) {
-	// Skip on Windows - test uses bash script which is not cross-platform
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping on Windows - test requires bash")
+	for _, test := range []struct {
+		name, token string
+		stored      bool
+	}{
+		{name: "environment", token: "ambient-token"},
+		{name: "stored", token: "stored-token", stored: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")
+			t.Setenv("PULUMI_ACCESS_TOKEN", "ambient-token")
+			if test.stored {
+				t.Setenv("PULUMI_ACCESS_TOKEN", "")
+				require.NoError(t, workspace.StoreAccount("https://api.example.com",
+					workspace.Account{AccessToken: test.token}, false))
+			}
+			dir := t.TempDir()
+
+			outputFile := filepath.Join(dir, "env")
+			t.Setenv("PULUMI_TEST_PLUGIN_RUN_ENV_FILE", outputFile)
+			pluginPath, err := os.Executable()
+			require.NoError(t, err)
+			cmd := newPluginRunCmd()
+			cmd.SetContext(t.Context())
+			cmd.SetArgs([]string{pluginPath})
+			err = cmd.Execute()
+
+			require.NoError(t, err)
+			output, err := os.ReadFile(outputFile)
+			require.NoError(t, err)
+			lines := strings.Split(strings.TrimSuffix(string(output), "\n"), "\n")
+			require.Len(t, lines, 3)
+			assert.NotEmpty(t, lines[0], "plugin RPC target")
+			assert.Equal(t, "https://api.example.com", lines[1])
+			assert.Equal(t, test.token, lines[2])
+		})
 	}
-
-	// Create a temporary directory for our test plugin
-	tmpDir := t.TempDir()
-
-	// Create output file path
-	outputFile := filepath.Join(tmpDir, "env-output.txt")
-
-	// Create a simple test plugin that writes its environment variables to a file
-	pluginPath := filepath.Join(tmpDir, "pulumi-tool-testplugin")
-	pluginScript := `#!/bin/bash
-cat > ` + outputFile + ` <<EOF
-PULUMI_RPC_TARGET=$PULUMI_RPC_TARGET
-PULUMI_API=$PULUMI_API
-PULUMI_ACCESS_TOKEN=$PULUMI_ACCESS_TOKEN
-EOF
-exit 0
-`
-	//nolint:gosec // G306: File needs to be executable (0755)
-	err := os.WriteFile(pluginPath, []byte(pluginScript), 0o755)
-	require.NoError(t, err)
-
-	// The API address and token reach the plugin through the plugin context, resolved from the
-	// active login; drive that resolution from the environment here.
-	cloudURL := "https://api.test-pulumi.com"
-	token := "test-token-123"
-	t.Setenv("PULUMI_BACKEND_URL", cloudURL)
-	t.Setenv("PULUMI_ACCESS_TOKEN", token)
-
-	// Create the command
-	cmd := newPluginRunCmd()
-	cmd.SetArgs([]string{pluginPath})
-
-	// Execute the command
-	ctx := t.Context()
-	cmd.SetContext(ctx)
-	err = cmd.Execute()
-	require.NoError(t, err)
-
-	// Read the output file written by the plugin
-	output, err := os.ReadFile(outputFile)
-	require.NoError(t, err)
-	outputStr := string(output)
-
-	// Verify the plugin received the environment variables
-	assert.Contains(t, outputStr, "PULUMI_RPC_TARGET=", "Plugin should receive PULUMI_RPC_TARGET")
-	assert.Contains(t, outputStr, "PULUMI_API="+cloudURL, "Plugin should receive PULUMI_API")
-	assert.Contains(t, outputStr, "PULUMI_ACCESS_TOKEN="+token, "Plugin should receive PULUMI_ACCESS_TOKEN")
 }
 
 func TestPluginRunCommandError(t *testing.T) {

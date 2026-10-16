@@ -207,7 +207,7 @@ func TestPluginInstallCancellation(t *testing.T) {
 		}
 
 		t.Logf("InstallPlugin")
-		_, err := InstallPlugin(ctx, spec, func(diag.Severity, string) {}, nil)
+		_, err := InstallPlugin(ctx, spec, func(diag.Severity, string) {}, nil, nil)
 		assertCorrectFailureMode(err)
 
 		t.Logf("GetLatestVersion")

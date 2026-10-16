@@ -333,7 +333,12 @@ func NewRefreshCmd() *cobra.Command {
 			excludeUrns := slice.Prealloc[string](len(*excludes))
 			excludeUrns = append(excludeUrns, *excludes...)
 
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			if err != nil {
+				return err
+			}
 			opts.Engine = engine.UpdateOptions{
+				CloudCredentialEnv:        cloudCredentialEnv,
 				ParallelDiff:              env.ParallelDiff.Value(),
 				Parallel:                  parallel,
 				Debug:                     debug,

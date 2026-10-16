@@ -228,7 +228,11 @@ func runConvert(
 	// the plugin context uses the output directory as the working directory
 	// of the generated program because in general, where Pulumi.yaml lives is
 	// the root of the project.
-	pCtx, err := packages.NewPluginContext(outDir, reg)
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, nil)
+	if err != nil {
+		return err
+	}
+	pCtx, err := packages.NewPluginContext(outDir, reg, cloudCredentialEnv)
 	if err != nil {
 		return fmt.Errorf("create plugin host: %w", err)
 	}
@@ -531,8 +535,13 @@ func runConvert(
 			return err
 		}
 		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, proj)
+		if err != nil {
+			return err
+		}
 		_, main, pctx, err := engine.ProjectInfoContext(
 			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+			cloudCredentialEnv,
 		)
 		if err != nil {
 			return err

@@ -15,12 +15,25 @@
 package do
 
 import (
+	"os"
 	"testing"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// TestMain also runs this test executable as a plugin child to capture its environment.
+func TestMain(m *testing.M) {
+	if output := os.Getenv("PULUMI_TEST_DO_PROVIDER_ENV_FILE"); output != "" {
+		data := os.Getenv("PULUMI_API") + "\n" + os.Getenv("PULUMI_ACCESS_TOKEN") + "\n"
+		if err := os.WriteFile(output, []byte(data), 0o600); err != nil {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
 
 func newTestWorkspace(t *testing.T) *pkgWorkspace.MockContext {
 	t.Helper()

@@ -95,8 +95,13 @@ func GetLanguageRuntimeMetadata(
 			return nil, err
 		}
 		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+			ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, proj)
+		if err != nil {
+			return nil, err
+		}
 		pwd, main, pctx, err := engine.ProjectInfoContext(
-			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil, cloudCredentialEnv)
 		if err != nil {
 			return nil, err
 		}

@@ -2673,7 +2673,7 @@ func debugProvidersHelperContext(t *testing.T) *plugin.Context {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, pluginHost.Close()) })
 	pluginCtx, err := plugin.NewContext(
-		t.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+		t.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil, nil)
 	require.NoError(t, err)
 	return pluginCtx
 }
