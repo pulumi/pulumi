@@ -18,10 +18,10 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
-	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/property"
+	"github.com/pulumi/pulumi/shared/v3/go/propertyrpc"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 

@@ -27,9 +27,9 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax/encoding"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc/syntax/encoding"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
 )
 
 func newEnvSetCmd(env *envCommand) *cobra.Command {

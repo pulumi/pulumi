@@ -40,9 +40,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag"
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag/colors"
 )
 
 func TestRetryPolicy_String(t *testing.T) {

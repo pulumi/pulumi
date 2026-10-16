@@ -22,6 +22,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"os"
 	"os/exec"
@@ -29,6 +30,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -46,23 +48,23 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/buildutil"
 	"github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/goversion"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tail"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/shared/v3/go/common/constant"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/common/tail"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/errutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/tracing"
+	"github.com/pulumi/pulumi/shared/v3/go/common/version"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/pulumi-internal/netutil"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
@@ -1439,6 +1441,11 @@ func (host *goLanguageHost) GenerateProject(
 	if err != nil {
 		return nil, err
 	}
+	if core, ok := req.LocalDependencies["pulumi"]; ok {
+		if err := addLocalReplaces(filepath.Join(req.TargetDirectory, project.Main), core); err != nil {
+			return nil, err
+		}
+	}
 
 	return &pulumirpc.GenerateProjectResponse{
 		Diagnostics: rpcDiagnostics,
@@ -1571,9 +1578,102 @@ func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest
 		return nil, fmt.Errorf("copy package: %w", err)
 	}
 
+	// Modules this package replaces with local paths (e.g. the sdk's replacement of the shared module) are packed
+	// next to it, so that Link can re-apply the replacements: Go ignores replace directives in dependencies.
+	replaced := false
+	for _, r := range mod.Replace {
+		if r.New.Version != "" {
+			continue
+		}
+		src := r.New.Path
+		if !filepath.IsAbs(src) {
+			src = filepath.Join(req.PackageDirectory, src)
+		}
+		name := strings.ReplaceAll(r.Old.Path, "/", "_")
+		// Already packed, e.g. a generated SDK that replaces the core SDK with its artifact.
+		if _, err := os.Stat(filepath.Join(req.DestinationDirectory, name)); err != nil {
+			if err := fsutil.CopyFile(filepath.Join(req.DestinationDirectory, name), src, nil); err != nil {
+				return nil, fmt.Errorf("copy replaced module %s: %w", r.Old.Path, err)
+			}
+		}
+		if err := mod.AddReplace(r.Old.Path, r.Old.Version, "../"+name, ""); err != nil {
+			return nil, fmt.Errorf("replace %s: %w", r.Old.Path, err)
+		}
+		replaced = true
+	}
+	if replaced {
+		data, err := mod.Format()
+		if err != nil {
+			return nil, fmt.Errorf("format go.mod: %w", err)
+		}
+		if err := os.WriteFile(filepath.Join(artifactPath, "go.mod"), data, 0o600); err != nil {
+			return nil, fmt.Errorf("write go.mod: %w", err)
+		}
+	}
+
 	return &pulumirpc.PackResponse{
 		ArtifactPath: artifactPath,
 	}, nil
+}
+
+// localReplaces returns the local replace directives of the module at depPath, rewritten to be relative to
+// programDir in the same way as depPath.
+func localReplaces(programDir, depPath string) (map[string]string, error) {
+	dir := depPath
+	if !filepath.IsAbs(dir) {
+		dir = filepath.Join(programDir, dir)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "go.mod"))
+	if err != nil {
+		return nil, fmt.Errorf("read go.mod: %w", err)
+	}
+	mod, err := modfile.Parse("go.mod", data, nil)
+	if err != nil {
+		return nil, fmt.Errorf("parse go.mod: %w", err)
+	}
+	res := map[string]string{}
+	for _, r := range mod.Replace {
+		if r.New.Version != "" {
+			continue
+		}
+		p := r.New.Path
+		if !filepath.IsAbs(p) {
+			// The relative path used in the replace directive must start with `./` or `../`.
+			p = filepath.Join(depPath, p)
+			if !filepath.IsAbs(p) && !strings.HasPrefix(p, "..") {
+				p = "." + string(filepath.Separator) + p
+			}
+		}
+		res[r.Old.Path] = p
+	}
+	return res, nil
+}
+
+// addLocalReplaces adds the local replace directives of the module at depPath to the go.mod in programDir.
+func addLocalReplaces(programDir, depPath string) error {
+	inherited, err := localReplaces(programDir, depPath)
+	if err != nil || len(inherited) == 0 {
+		return err
+	}
+	gomodPath := filepath.Join(programDir, "go.mod")
+	data, err := os.ReadFile(gomodPath)
+	if err != nil {
+		return fmt.Errorf("read go.mod: %w", err)
+	}
+	gomod, err := modfile.Parse(gomodPath, data, nil)
+	if err != nil {
+		return fmt.Errorf("parse go.mod: %w", err)
+	}
+	for _, modulePath := range slices.Sorted(maps.Keys(inherited)) {
+		if err := gomod.AddReplace(modulePath, "", inherited[modulePath], ""); err != nil {
+			return fmt.Errorf("could not add replace statement: %w", err)
+		}
+	}
+	data, err = gomod.Format()
+	if err != nil {
+		return fmt.Errorf("formatting go.mod: %w", err)
+	}
+	return os.WriteFile(gomodPath, data, 0o600)
 }
 
 func (host *goLanguageHost) Handshake(
@@ -1622,6 +1722,11 @@ func (host *goLanguageHost) Link(
 	for _, dep := range req.Packages {
 		if dep.Package.Name == "pulumi" { // TODO: should this just be github.com/pulumi/pulumi/sdk/v3?
 			modules["github.com/pulumi/pulumi/sdk/v3"] = dep.Path
+			inherited, err := localReplaces(req.Info.ProgramDirectory, dep.Path)
+			if err != nil {
+				return nil, err
+			}
+			maps.Copy(modules, inherited)
 			continue
 		}
 

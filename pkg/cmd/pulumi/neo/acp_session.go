@@ -22,7 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/acp"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 )
 
 // acpSession is the per-session state an ACP session carries: the resolved

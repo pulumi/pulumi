@@ -26,13 +26,13 @@ import (
 
 	"github.com/blang/semver"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
-	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	rarchive "github.com/pulumi/pulumi/shared/v3/go/common/resource/archive"
+	rasset "github.com/pulumi/pulumi/shared/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
 )
 
 // addDependency adds a dependency on the given resource to the set of deps.

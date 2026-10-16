@@ -24,10 +24,10 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/shared/v3/go/common/constant"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"

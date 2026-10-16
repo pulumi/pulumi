@@ -29,11 +29,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/shared/v3/go/common/env"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 func newPackageDeleteCmd() *cobra.Command {

@@ -24,10 +24,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/config"
+	ptesting "github.com/pulumi/pulumi/shared/v3/go/common/testing"
+	"github.com/pulumi/pulumi/shared/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 // TestConfigSave ensures that config commands in the Pulumi CLI work as expected.

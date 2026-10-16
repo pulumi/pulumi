@@ -1,0 +1,1244 @@
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package workspace
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sync/atomic"
+	"time"
+
+	"github.com/pulumi/pulumi/shared/v3/go/common/env"
+	"github.com/rogpeppe/go-internal/lockedfile"
+
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/agentdetect"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/securestore"
+)
+
+// PulumiCredentialsPathEnvVar is a path to the folder where credentials are stored.
+// We use this in testing so that tests which log in and out do not impact the local developer's
+// credentials or tests interacting with one another
+//
+//nolint:gosec
+const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
+
+// GetAccount returns an account underneath a given key.
+//
+// Note that the account may not be fully populated: it may only have a valid AccessToken. In that case, it is up to
+// the caller to fill in the username and last validation time.
+func GetAccount(key string) (Account, error) {
+	path, err := getCredsFilePath()
+	if err != nil {
+		return Account{}, err
+	}
+	return getAccountAt(path, key)
+}
+
+// getAccountAt loads an account from the given credentials file, stamping the source path so
+// subsequent account.Save calls write back to the same file.
+func getAccountAt(path, key string) (Account, error) {
+	creds, err := readCredentialsFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return Account{}, err
+	}
+
+	account, ok := creds.Accounts[key]
+	if !ok {
+		return Account{}, nil
+	}
+	account.sourcePath = path
+	return account, nil
+}
+
+// GetAccountWithAgentFallback returns an account from default credentials, or
+// from shared temporary agent credentials when running in a detected agent
+// environment without an explicit Pulumi credential path. The boolean return is
+// true only when the returned account came from shared agent credentials.
+func GetAccountWithAgentFallback(key string) (Account, bool, error) {
+	account, err := GetAccount(key)
+	if err == nil && account.HasCredential() {
+		return account, false, nil
+	}
+
+	if !AgentCredentialsFallbackEnabled() {
+		return account, false, err
+	}
+
+	agent := agentdetect.Detect(os.Getenv)
+	if err != nil {
+		logging.V(7).Infof(
+			"Could not read account for %q from default credentials in agent mode (%s); "+
+				"checking shared agent credentials: %v",
+			key, agent, err)
+	} else {
+		logging.V(7).Infof(
+			"No account for %q found in default credentials in agent mode (%s); "+
+				"checking shared agent credentials",
+			key, agent)
+	}
+
+	agentAccount, agentErr := GetAgentAccount(key)
+	if agentErr != nil {
+		return Account{}, false, errors.Join(err, agentErr)
+	}
+	if !agentAccount.HasCredential() {
+		// With no agent credentials standing in, do not mask this as
+		// "not logged in".
+		if IsUndecryptableCredentials(err) {
+			return Account{}, false, err
+		}
+		return Account{}, false, nil
+	}
+	return agentAccount, true, nil
+}
+
+// DeleteAccount deletes an account underneath the given key.
+func DeleteAccount(key string) error {
+	creds, err := GetStoredCredentials()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if err = StoreCredentials(deleteAccountFromCredentials(creds, key)); err != nil {
+		return err
+	}
+	return deleteBackendConfig(key)
+}
+
+// deleteAccountFromCredentials removes a cloud URL from a credentials object
+// and clears it as current if it was selected.
+func deleteAccountFromCredentials(creds Credentials, key string) Credentials {
+	if creds.Accounts != nil {
+		delete(creds.Accounts, key)
+	}
+	if creds.Current == key {
+		creds.Current = ""
+	}
+	return creds
+}
+
+func DeleteAllAccounts() error {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+
+	dropCorruptKey(credsFile)
+	var result error
+	if err = os.Remove(credsFile); err != nil && !os.IsNotExist(err) {
+		result = errors.Join(result, err)
+	}
+	if err = deleteAllBackendConfig(); err != nil {
+		result = errors.Join(result, err)
+	}
+	return result
+}
+
+// StoreAccount saves the given account underneath the given key in the default credentials file.
+func StoreAccount(key string, account Account, current bool) error {
+	path, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+	return storeAccountAt(path, key, account, current)
+}
+
+// storeAccountAt persists an account into the given credentials file (load-modify-write).
+func storeAccountAt(path, key string, account Account, current bool) error {
+	creds, err := readCredentialsFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		// Storing only happens after a successful authentication, and the
+		// unreadable contents cannot be preserved — this is what lets
+		// `pulumi login` recover.
+		if !IsUndecryptableCredentials(err) {
+			return err
+		}
+		logging.V(3).Infof("replacing credentials that can no longer be decrypted: %v", err)
+		creds = Credentials{}
+	}
+	if creds.Accounts == nil {
+		creds.Accounts = make(map[string]Account)
+	}
+	creds.Accounts[key] = account
+	if current {
+		creds.Current = key
+	}
+	return writeCredentialsFile(path, creds)
+}
+
+// Account holds the information associated with a Pulumi account.
+type Account struct {
+	// The access token for this account.
+	AccessToken string `json:"accessToken,omitempty"`
+	// The OAuth refresh token, if the server issued one alongside the access token. When set, the
+	// CLI exchanges this token at /api/oauth/token for a fresh access token whenever the current
+	// one expires. Held off-the-wire — only sent to the token endpoint, not on every request.
+	RefreshToken string `json:"refreshToken,omitempty"`
+	// The username for this account.
+	Username string `json:"username,omitempty"`
+	// The organizations for this account.
+	Organizations []string `json:"organizations,omitempty"`
+	// The last time this token was validated.
+	LastValidatedAt time.Time `json:"lastValidatedAt,omitempty"`
+	// Allow insecure server connections when using SSL.
+	Insecure bool `json:"insecure,omitempty"`
+	// Information about the token used to authenticate.
+	TokenInformation *TokenInformation `json:"tokenInformation,omitempty"`
+
+	// sourcePath is the credentials file this account was loaded from. Set by the loaders
+	// (GetAccount, GetAgentAccount, GetAccountWithAgentFallback); empty for accounts constructed
+	// in memory (env-var tokens before persistence, test literals, fresh-login pre-persist).
+	// Used by Save to persist credential refreshes back to the file the account came from.
+	sourcePath string
+}
+
+// HasCredential reports whether this account carries anything the CLI can use to authenticate —
+// either a current access token or a refresh token to mint one with. Used at credential-selection
+// time so that an account with only a refresh token is treated as usable rather than skipped.
+func (a Account) HasCredential() bool {
+	return a.AccessToken != "" || a.RefreshToken != ""
+}
+
+// SetCredentials writes a credential-grant result to this account. A zero
+// accessTokenExpiresAt or empty refreshToken keeps the existing value — for grant
+// responses that omit the field (e.g. a refresh that didn't rotate the refresh token).
+func (a *Account) SetCredentials(accessToken string, accessTokenExpiresAt time.Time, refreshToken string) {
+	a.AccessToken = accessToken
+	if !accessTokenExpiresAt.IsZero() {
+		if a.TokenInformation == nil {
+			a.TokenInformation = &TokenInformation{}
+		}
+		a.TokenInformation.ExpiresAt = &accessTokenExpiresAt
+	}
+	if refreshToken != "" {
+		a.RefreshToken = refreshToken
+	}
+}
+
+// Save persists this account back to the credentials file it was loaded from. Returns an error if
+// the account has no known source (constructed in memory rather than loaded) — callers in that
+// case should use StoreAccount / StoreAgentAccount with an explicit destination.
+func (a Account) Save(key string, current bool) error {
+	if a.sourcePath == "" {
+		return errors.New("cannot Save an account that was not loaded from a credentials file")
+	}
+	return storeAccountAt(a.sourcePath, key, a, current)
+}
+
+// Information about the token that was used to authenticate the current user. One (or none) of Team or Organization
+// will be set, but not both.
+type TokenInformation struct {
+	Name         string     `json:"name"`                   // The name of the token.
+	Organization string     `json:"organization,omitempty"` //nolint:lll // If this was an organization token, the organization it was for.
+	Team         string     `json:"team,omitempty"`         // If this was a team token, the team it was for.
+	ExpiresAt    *time.Time `json:"expiresAt,omitempty"`    // The time when this token expires.
+}
+
+// Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
+// a map from the backend URL to the associated account.
+type Credentials struct {
+	Current  string             `json:"current,omitempty"`  // the currently selected key.
+	Accounts map[string]Account `json:"accounts,omitempty"` // a map of backend URLs to account info.
+}
+
+func (c Credentials) MarshalJSON() ([]byte, error) {
+	// To maintain backwards compatibility with CLIs v3.265.0 and earlier, we add back the
+	// "accessTokens" map, as derived from Accounts.
+
+	accessTokens := make(map[string]string, len(c.Accounts))
+	for key, account := range c.Accounts {
+		accessTokens[key] = account.AccessToken
+	}
+	return json.Marshal(struct {
+		Current      string             `json:"current,omitempty"`
+		AccessTokens map[string]string  `json:"accessTokens,omitempty"`
+		Accounts     map[string]Account `json:"accounts,omitempty"`
+	}{
+		Current:      c.Current,
+		AccessTokens: accessTokens,
+		Accounts:     c.Accounts,
+	})
+}
+
+// getCredsFilePath returns the path to the Pulumi credentials file on disk, regardless of
+// whether it exists or not.
+func getCredsFilePath() (string, error) {
+	// Allow the folder we use to store credentials to be overridden by tests
+	pulumiFolder := os.Getenv(PulumiCredentialsPathEnvVar)
+	if pulumiFolder == "" {
+		folder, err := GetPulumiHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get the home path: %w", err)
+		}
+		pulumiFolder = folder
+	}
+
+	err := os.MkdirAll(pulumiFolder, 0o700)
+	if err != nil {
+		return "", fmt.Errorf("failed to create '%s': %w", pulumiFolder, err)
+	}
+
+	return filepath.Join(pulumiFolder, "credentials.json"), nil
+}
+
+// ensurePrivateAgentCredentialDir verifies that agent credentials can be
+// written to a private directory, creating it if necessary.
+func ensurePrivateAgentCredentialDir(dir string) error {
+	info, err := os.Lstat(dir)
+	if os.IsNotExist(err) {
+		if err := os.Mkdir(dir, 0o700); err != nil && !os.IsExist(err) {
+			return fmt.Errorf("failed to create temporary Pulumi credentials directory '%s': %w", dir, err)
+		}
+		info, err = os.Lstat(dir)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to inspect temporary Pulumi credentials directory '%s': %w", dir, err)
+	}
+	// Refuse symlinks so a process cannot redirect credential writes to an
+	// unexpected path outside the shared agent credential directory.
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("temporary Pulumi credentials directory '%s' must not be a symlink", dir)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("temporary Pulumi credentials path '%s' is not a directory", dir)
+	}
+	// /tmp is shared across users, but the agent credentials are bearer tokens.
+	// Only the current OS user should be able to read, write, or traverse this
+	// directory.
+	if info.Mode().Perm()&0o077 != 0 {
+		if err := os.Chmod(dir, 0o700); err != nil {
+			return fmt.Errorf("temporary Pulumi credentials directory '%s' has insecure permissions: %w", dir, err)
+		}
+	}
+	return nil
+}
+
+// readCredentialsFile loads credentials from a specific file path.
+func readCredentialsFile(credsFile string) (Credentials, error) {
+	if _, err := credentialStoreMode(); err != nil {
+		return Credentials{}, err
+	}
+	c, err := lockedfile.Read(credsFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return Credentials{}, nil
+		}
+		return Credentials{}, fmt.Errorf("reading '%s': %w", credsFile, err)
+	}
+
+	// If the file is empty, we can act as if it doesn't exist rather than trying
+	// (and failing) to deserialize its contents. This allows us to recover from
+	// situations where a write to the file was interrupted or it was otherwise
+	// clobbered.
+	if len(c) == 0 {
+		return Credentials{}, nil
+	}
+
+	if securestore.IsEnvelope(c) {
+		if c, err = decryptCredentials(credsFile, c); err != nil {
+			return Credentials{}, err
+		}
+	} else if mode, _ := credentialStoreMode(); mode == securestore.ModeAuto || mode == securestore.ModeOS {
+		warnPlaintextPending()
+	}
+
+	var creds Credentials
+	if err = json.Unmarshal(c, &creds); err != nil {
+		return Credentials{}, fmt.Errorf("failed to read Pulumi credentials file. Please fix "+
+			"or delete invalid credentials file: '%s': %w", credsFile, err)
+	}
+
+	secrets := slice.Prealloc[string](2 * len(creds.Accounts))
+	for _, account := range creds.Accounts {
+		if account.AccessToken != "" {
+			secrets = append(secrets, account.AccessToken)
+		}
+		if account.RefreshToken != "" {
+			secrets = append(secrets, account.RefreshToken)
+		}
+	}
+
+	logging.AddGlobalSecretFilter(secrets, "[credential]")
+
+	return creds, nil
+}
+
+// Read paths surface this; `pulumi login` and `pulumi logout` recover by
+// replacing or removing the file.
+type UndecryptableCredentialsError struct {
+	Path string
+	Err  error
+}
+
+func (e *UndecryptableCredentialsError) Error() string { return e.Err.Error() }
+
+func (e *UndecryptableCredentialsError) Unwrap() error { return e.Err }
+
+func IsUndecryptableCredentials(err error) bool {
+	_, ok := errors.AsType[*UndecryptableCredentialsError](err)
+	return ok
+}
+
+func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
+	backend, err := securestore.EnvelopeBackend(data)
+	if err != nil {
+		if errors.Is(err, securestore.ErrUnsupportedVersion) {
+			return nil, fmt.Errorf("credentials file '%s' %w. "+
+				"Upgrade the Pulumi CLI, or run `pulumi logout --all` to discard the stored credentials",
+				credsFile, err)
+		}
+		return nil, fmt.Errorf("credentials file '%s' is encrypted but cannot be parsed: %w. "+
+			"Run `pulumi logout --all` to discard the stored credentials", credsFile, err)
+	}
+	st, err := stores.ForBackend(backend)
+	if errors.Is(err, securestore.ErrBackendUnsupported) {
+		// Unreadable here however long the user waits, so login may replace it.
+		return nil, &UndecryptableCredentialsError{Path: credsFile, Err: fmt.Errorf(
+			"credentials file '%s' is encrypted but cannot be decrypted here: %w. "+
+				"Run `pulumi login` in this environment, or set PULUMI_ACCESS_TOKEN", credsFile, err)}
+	}
+	if err != nil {
+		// Deliberately NOT UndecryptableCredentialsError: a merely locked or
+		// absent store says nothing about the credentials, and recovery paths
+		// would delete the file.
+		return nil, fmt.Errorf("credentials file '%s' is encrypted but the credential store "+
+			"protecting it is not usable here: %w. Unlock your keyring and retry, set "+
+			"PULUMI_ACCESS_TOKEN, or run `pulumi logout --all` to discard the stored credentials",
+			credsFile, err)
+	}
+	key, err := st.GetKey()
+	if err != nil {
+		if errors.Is(err, securestore.ErrKeyNotFound) {
+			return nil, &UndecryptableCredentialsError{Path: credsFile, Err: fmt.Errorf(
+				"credentials file '%s' is encrypted but its key is missing from the "+
+					"OS credential store (a different credential store provider may now be active, "+
+					"the key may have been deleted, or this may be a restored or copied home directory). "+
+					"Switch back to the store that holds the key, or run `pulumi login` to re-authenticate",
+				credsFile)}
+		}
+		// An unexpected failure from an available store may well be
+		// transient, so it must not authorise replacing the file.
+		return nil, fmt.Errorf("credentials file '%s' is encrypted but retrieving its key failed: %w. "+
+			"Retry, set PULUMI_ACCESS_TOKEN, or run `pulumi logout --all` to discard the stored credentials",
+			credsFile, err)
+	}
+	plaintext, err := securestore.Open(key, data)
+	if err != nil {
+		return nil, &UndecryptableCredentialsError{Path: credsFile, Err: fmt.Errorf(
+			"credentials file '%s' cannot be decrypted: %w. "+
+				"If the OS credential store changed recently, restoring the previous one may recover "+
+				"the credentials; otherwise run `pulumi login` to re-authenticate",
+			credsFile, err)}
+	}
+	return plaintext, nil
+}
+
+// Agent credentials go through here too — all agent processes share one OS
+// user and one key.
+func writeCredentialsFile(credsFile string, creds Credentials) error {
+	if len(creds.Accounts) == 0 {
+		err := os.Remove(credsFile)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+
+	raw, err := json.MarshalIndent(creds, "", "    ")
+	if err != nil {
+		return fmt.Errorf("marshalling credentials object: %w", err)
+	}
+
+	st, err := resolveWriteStore()
+	if err != nil {
+		return err
+	}
+	// Encryption is sticky: once an encrypted credentials file exists, keep
+	// writing with the backend that encrypted it, even when
+	// PULUMI_CREDENTIAL_STORE is unset — otherwise any command run without the
+	// variable would silently downgrade migrated credentials to plaintext.
+	// Only an explicit "plaintext" downgrades, and an envelope this build
+	// cannot parse is never overwritten.
+	hadPlaintext := false
+	hadEnvelope := false
+	if mode, _ := credentialStoreMode(); mode != securestore.ModePlaintext {
+		if existing, readErr := os.ReadFile(credsFile); readErr == nil {
+			if !securestore.IsEnvelope(existing) {
+				hadPlaintext = len(existing) > 0
+			} else {
+				hadEnvelope = true
+				// Plaintext mode is no way out of either error below: every
+				// real write reads the file first, and that read fails
+				// regardless of mode. Only `pulumi logout --all` clears the
+				// file without reading it.
+				backend, backendErr := securestore.EnvelopeBackend(existing)
+				if errors.Is(backendErr, securestore.ErrUnsupportedVersion) {
+					return fmt.Errorf("refusing to overwrite credentials file '%s' that %w. "+
+						"Upgrade the Pulumi CLI, or run `pulumi logout --all` to discard the stored credentials",
+						credsFile, backendErr)
+				}
+				if backendErr != nil {
+					// Envelope marker parsed but its content did not: corrupt rather
+					// than written by a newer CLI, so upgrading the cli will not help.
+					return fmt.Errorf("refusing to overwrite credentials file '%s' that is encrypted "+
+						"but cannot be parsed: %v. "+
+						"Run `pulumi logout --all` to discard the stored credentials", credsFile, backendErr)
+				}
+				if st.Backend() == securestore.BackendPlaintext {
+					stickyStore, stickyErr := stores.ForBackend(backend)
+					if errors.Is(stickyErr, securestore.ErrDeclined) {
+						return stickyErr
+					}
+					if stickyErr != nil {
+						return fmt.Errorf("refusing to overwrite encrypted credentials file '%s' with plaintext: %w. "+
+							"Set PULUMI_CREDENTIAL_STORE=plaintext to store credentials unencrypted",
+							credsFile, stickyErr)
+					}
+					st = stickyStore
+				}
+			}
+		}
+	}
+	recovery := false
+	if !hadEnvelope && st.Backend() == securestore.BackendPlaintext && replacedEnvelope.Load() {
+		if mode, _ := credentialStoreMode(); mode == securestore.ModeDefault {
+			recovered, rerr := stores.Resolve(securestore.ModeAuto)
+			if rerr != nil {
+				return rerr
+			}
+			st, recovery = recovered, true
+		}
+	}
+	encrypted := false
+	if st.Backend() != securestore.BackendPlaintext {
+		key, keyErr := st.GetOrCreateKey()
+		if keyErr != nil {
+			mode, _ := credentialStoreMode()
+			// Falling back would write plaintext over a proven envelope.
+			if hadEnvelope || mode == securestore.ModeOS || errors.Is(keyErr, securestore.ErrDeclined) {
+				return fmt.Errorf("retrieving the credentials encryption key for '%s': %w", credsFile, keyErr)
+			}
+			// Auto: secure backend was available yet getting or creating the key failed,
+			// so the write lands on plaintext unexpectedly. Unlike auto's resolution to
+			// plaintext when no store exists at all, we want to warn the user.
+			if !hadPlaintext {
+				warnPlaintextFallback(keyErr)
+			}
+		} else {
+			if raw, err = securestore.Seal(key, st.Backend(), raw); err != nil {
+				return fmt.Errorf("encrypting credentials: %w", err)
+			}
+			logging.V(7).Infof("Writing credentials with secure store backend %q", st.Backend())
+			encrypted = true
+		}
+	} else if recovery && !hadPlaintext {
+		// We had a previously encrypted creds file and are now using plaintext.
+		// Transitions from encrypted to plaintext must warn the user in auto mode.
+		reason := st.FallbackReason()
+		if reason == nil {
+			reason = securestore.ErrUnavailable
+		}
+		warnPlaintextFallback(reason)
+	}
+
+	if err := lockedfile.Write(credsFile, bytes.NewReader(raw), 0o600); err != nil {
+		return err
+	}
+	if hadPlaintext && encrypted {
+		noteCredentialsEncrypted()
+	}
+	return nil
+}
+
+// GetStoredCredentials returns any credentials stored on the local machine.
+func GetStoredCredentials() (Credentials, error) {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	logging.V(7).Infof("Reading Pulumi credentials from %q", credsFile)
+	return readCredentialsFile(credsFile)
+}
+
+// Recovering from a lost key is not the explicit "plaintext" opt-out, so the
+// replacement write stays encrypted.
+var replacedEnvelope atomic.Bool
+
+func credentialsKeyStores(credsFile string) ([]keyStore, error) {
+	var sts []keyStore
+	var errs error
+	add := func(st keyStore) {
+		for _, seen := range sts {
+			if seen.Backend() == st.Backend() {
+				return
+			}
+		}
+		sts = append(sts, st)
+	}
+
+	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
+		if backend, backendErr := securestore.EnvelopeBackend(raw); backendErr == nil {
+			st, stErr := stores.ForBackend(backend)
+			switch {
+			case stErr == nil:
+				add(st)
+			case !errors.Is(stErr, securestore.ErrBackendUnsupported):
+				errs = errors.Join(errs, stErr)
+			}
+		}
+	}
+	st, stErr := stores.Resolve(securestore.ModeAuto)
+	if stErr != nil {
+		return sts, errors.Join(errs, stErr)
+	}
+	add(st)
+	return sts, errs
+}
+
+func credentialsKeyMayExist(credsFile string) bool {
+	if raw, err := os.ReadFile(credsFile); err == nil && securestore.IsEnvelope(raw) {
+		return true
+	}
+	mode, err := credentialStoreMode()
+	return err == nil && (mode == securestore.ModeAuto || mode == securestore.ModeOS)
+}
+
+// A healthy key is shared with other credentials files, so only a corrupt one is dropped.
+func dropCorruptKey(credsFile string) {
+	if !credentialsKeyMayExist(credsFile) {
+		return
+	}
+	sts, _ := credentialsKeyStores(credsFile)
+	for _, st := range sts {
+		if _, err := st.GetKey(); !errors.Is(err, securestore.ErrKeyCorrupt) {
+			continue
+		}
+		if err := st.DeleteKey(); err != nil {
+			logging.V(3).Infof("could not delete corrupt credentials encryption key: %v", err)
+		}
+	}
+}
+
+// DeleteAllAccountsAndCredentialsKey is DeleteAllAccounts that also deletes the
+// credentials encryption key shared by all credentials files.
+func DeleteAllAccountsAndCredentialsKey() error {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+	sts, keyErr := credentialsKeyStores(credsFile)
+	if err := DeleteAllAccounts(); err != nil {
+		return err
+	}
+	for _, st := range sts {
+		if err := st.DeleteKey(); err != nil {
+			keyErr = errors.Join(keyErr, err)
+		}
+	}
+	if keyErr != nil {
+		return fmt.Errorf("deleting the credentials encryption key: %w", keyErr)
+	}
+	return nil
+}
+
+func ResetStoredCredentials() error {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+	if raw, readErr := os.ReadFile(credsFile); readErr == nil && securestore.IsEnvelope(raw) {
+		replacedEnvelope.Store(true)
+	}
+	if err := os.Remove(credsFile); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+// StoreCredentials updates the stored credentials on the machine, replacing the existing set.  If the credentials
+// are empty, the auth file will be deleted rather than just serializing an empty map.
+func StoreCredentials(creds Credentials) error {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+
+	logging.V(7).Infof("Writing Pulumi credentials to %q", credsFile)
+	return writeCredentialsFile(credsFile, creds)
+}
+
+// AgentClaim is the claim metadata returned when the CLI automatically creates
+// an account for an agent.
+type AgentClaim struct {
+	ClaimURL           string     `json:"claimUrl"`
+	ClaimToken         string     `json:"claimToken,omitempty"`
+	ValidUntil         time.Time  `json:"validUntil"`
+	CloudURL           string     `json:"cloudUrl"`
+	ClaimUnavailableAt *time.Time `json:"claimUnavailableAt,omitempty"`
+}
+
+// Active reports whether the claim can still be surfaced to the user: it has a
+// claim URL, has not been marked unavailable, and has not expired.
+func (c AgentClaim) Active(now time.Time) bool {
+	return c.ClaimURL != "" &&
+		c.ClaimUnavailableAt == nil &&
+		(c.ValidUntil.IsZero() || c.ValidUntil.After(now))
+}
+
+// agentAccessTokenExpiresAt returns the agent account access-token expiration,
+// plus whether the token is still valid at now.
+func agentAccessTokenExpiresAt(account Account, now time.Time) (*time.Time, bool) {
+	if account.TokenInformation == nil || account.TokenInformation.ExpiresAt == nil {
+		return nil, false
+	}
+	return account.TokenInformation.ExpiresAt, account.TokenInformation.ExpiresAt.After(now)
+}
+
+// AgentAccessTokenExpiresAt returns the locally stored agent account
+// access-token expiration, plus whether that expiration is still in the future.
+func AgentAccessTokenExpiresAt(account Account, now time.Time) (*time.Time, bool) {
+	return agentAccessTokenExpiresAt(account, now)
+}
+
+// GetAgentAccessTokenExpiresAt returns the locally stored access-token
+// expiration for the shared temporary agent credentials for cloudURL.
+func GetAgentAccessTokenExpiresAt(cloudURL string, now time.Time) (*time.Time, bool, error) {
+	account, err := GetAgentAccount(cloudURL)
+	if err != nil {
+		return nil, false, err
+	}
+	expiresAt, valid := agentAccessTokenExpiresAt(account, now)
+	return expiresAt, valid, nil
+}
+
+// defaultAgentPulumiDir returns the shared temporary Pulumi directory used for
+// agent credentials on this operating system.
+func defaultAgentPulumiDir() string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(os.TempDir(), BookkeepingDir)
+	}
+	return filepath.Join("/tmp", BookkeepingDir)
+}
+
+var agentPulumiDir = defaultAgentPulumiDir()
+
+// pulumiTestAgentPulumiDirEnvVar is an internal test hook for isolating shared
+// agent credentials across concurrently running package tests.
+const pulumiTestAgentPulumiDirEnvVar = "PULUMI_TEST_AGENT_PULUMI_DIR"
+
+// pulumiTestAllowAgentFallbackEnvVar lets tests isolate credentials with PULUMI_HOME
+// while still exercising agent fallback.
+const pulumiTestAllowAgentFallbackEnvVar = "PULUMI_TEST_ALLOW_AGENT_FALLBACK"
+
+// getAgentPulumiDirPath returns the shared temporary directory path used for
+// agent credentials.
+func getAgentPulumiDirPath() string {
+	if dir := os.Getenv(pulumiTestAgentPulumiDirEnvVar); dir != "" {
+		return dir
+	}
+	return agentPulumiDir
+}
+
+// getAgentPulumiDir returns the shared temporary directory used for agent
+// credentials, creating it if needed.
+func getAgentPulumiDir() (string, error) {
+	dir := getAgentPulumiDirPath()
+	if err := ensurePrivateAgentCredentialDir(dir); err != nil {
+		return "", fmt.Errorf("agent mode requires read/write access to %s: %w", dir, err)
+	}
+	logging.V(7).Infof("Using shared agent Pulumi directory %q", dir)
+	return dir, nil
+}
+
+// getAgentCredsFilePath returns the shared temporary agent credentials path.
+func getAgentCredsFilePath() (string, error) {
+	dir, err := getAgentPulumiDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "credentials.json"), nil
+}
+
+// getAgentCredsFilePathNoEnsure returns the agent credentials path without
+// creating the agent credentials directory.
+func getAgentCredsFilePathNoEnsure() string {
+	return filepath.Join(getAgentPulumiDirPath(), "credentials.json")
+}
+
+// getAgentClaimFilePath returns the shared temporary agent claim metadata path.
+func getAgentClaimFilePath() (string, error) {
+	dir, err := getAgentPulumiDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "agent-claim.json"), nil
+}
+
+// getAgentClaimFilePathNoEnsure returns the agent claim metadata path without
+// creating the agent credentials directory.
+func getAgentClaimFilePathNoEnsure() string {
+	return filepath.Join(getAgentPulumiDirPath(), "agent-claim.json")
+}
+
+// getAgentConfigFilePath returns the shared temporary agent config path.
+func getAgentConfigFilePath() (string, error) {
+	dir, err := getAgentPulumiDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "config.json"), nil
+}
+
+// getAgentConfigFilePathNoEnsure returns the agent config path without
+// creating the agent credentials directory.
+func getAgentConfigFilePathNoEnsure() string {
+	return filepath.Join(getAgentPulumiDirPath(), "config.json")
+}
+
+// GetAgentAccount returns the account for the given cloud URL from the shared
+// agent credentials file.
+func GetAgentAccount(key string) (Account, error) {
+	path, err := getAgentCredsFilePath()
+	if err != nil {
+		return Account{}, err
+	}
+	logging.V(7).Infof("Reading shared agent credentials from %q", path)
+	return getAccountAt(path, key)
+}
+
+// GetAgentStoredCredentials returns credentials stored in the shared temporary
+// agent credentials file.
+func GetAgentStoredCredentials() (Credentials, error) {
+	credsFile, err := getAgentCredsFilePath()
+	if err != nil {
+		return Credentials{}, err
+	}
+	logging.V(7).Infof("Reading shared agent credentials from %q", credsFile)
+	return readCredentialsFile(credsFile)
+}
+
+// StoreAgentAccount saves the account for the given cloud URL in the shared
+// temporary agent credentials file.
+func StoreAgentAccount(key string, account Account, current bool) error {
+	path, err := getAgentCredsFilePath()
+	if err != nil {
+		return err
+	}
+	return storeAccountAt(path, key, account, current)
+}
+
+// DeleteAgentAccount deletes an account from the shared temporary agent
+// credentials file and removes matching claim and backend config metadata.
+func DeleteAgentAccount(key string) error {
+	creds, err := GetAgentStoredCredentials()
+	if err != nil {
+		return err
+	}
+	if err = StoreAgentCredentials(deleteAccountFromCredentials(creds, key)); err != nil {
+		return err
+	}
+
+	var result error
+	if err = deleteAgentClaim(key); err != nil {
+		result = errors.Join(result, err)
+	}
+	if err = deleteAgentBackendConfig(key); err != nil {
+		result = errors.Join(result, err)
+	}
+	return result
+}
+
+// deleteAgentClaim removes the singleton shared temporary agent claim file when
+// the stored claim belongs to the given cloud URL.
+func deleteAgentClaim(key string) error {
+	claim, err := GetAgentClaim()
+	if err != nil {
+		return err
+	}
+	if claim.CloudURL != key {
+		return nil
+	}
+	claimFile := getAgentClaimFilePathNoEnsure()
+	if err = os.Remove(claimFile); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("removing '%s': %w", claimFile, err)
+	}
+	return nil
+}
+
+// StoreAgentCredentials replaces the shared temporary agent credentials file.
+func StoreAgentCredentials(creds Credentials) error {
+	credsFile, err := getAgentCredsFilePath()
+	if err != nil {
+		return err
+	}
+	logging.V(7).Infof("Writing shared agent credentials to %q", credsFile)
+	return writeCredentialsFile(credsFile, creds)
+}
+
+// DeleteAgentCredentials removes shared temporary agent credentials, claim
+// metadata, and config.
+func DeleteAgentCredentials() error {
+	var result error
+	for _, path := range []string{
+		getAgentCredsFilePathNoEnsure(),
+		getAgentClaimFilePathNoEnsure(),
+		getAgentConfigFilePathNoEnsure(),
+	} {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			result = errors.Join(result, fmt.Errorf("removing '%s': %w", path, err))
+		}
+	}
+	return result
+}
+
+// GetAgentClaim returns claim metadata for an automatically created agent
+// account, if one has been stored.
+func GetAgentClaim() (AgentClaim, error) {
+	claimFile := getAgentClaimFilePathNoEnsure()
+
+	data, err := os.ReadFile(claimFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return AgentClaim{}, nil
+		}
+		return AgentClaim{}, fmt.Errorf("reading '%s': %w", claimFile, err)
+	}
+
+	var claim AgentClaim
+	if err := json.Unmarshal(data, &claim); err != nil {
+		return AgentClaim{}, fmt.Errorf("failed to read Pulumi agent claim file '%s': %w", claimFile, err)
+	}
+	return claim, nil
+}
+
+// MarkAgentClaimUnavailable records that the shared temporary agent claim is
+// no longer claimable.
+func MarkAgentClaimUnavailable(unavailableAt time.Time) error {
+	claim, err := GetAgentClaim()
+	if err != nil {
+		return err
+	}
+	if claim.ClaimURL == "" {
+		return nil
+	}
+	claim.ClaimUnavailableAt = &unavailableAt
+	return StoreAgentClaim(claim)
+}
+
+// ClearAgentClaimUnavailable removes a persisted claim-unavailable marker,
+// e.g. after the service reports the claim usable again.
+func ClearAgentClaimUnavailable() error {
+	claim, err := GetAgentClaim()
+	if err != nil {
+		return err
+	}
+	if claim.ClaimURL == "" || claim.ClaimUnavailableAt == nil {
+		return nil
+	}
+	claim.ClaimUnavailableAt = nil
+	return StoreAgentClaim(claim)
+}
+
+// DeleteExpiredAgentCredentials removes shared temporary agent credentials when
+// both the claim URL and access token have expired. It returns true when
+// credentials were removed.
+func DeleteExpiredAgentCredentials(now time.Time) (bool, error) {
+	claim, err := GetAgentClaim()
+	if err != nil {
+		return false, err
+	}
+	if claim.ClaimURL == "" || claim.ValidUntil.IsZero() || claim.ValidUntil.After(now) {
+		if claim.ClaimURL != "" && !claim.ValidUntil.IsZero() {
+			logging.V(7).Infof("Shared agent claim metadata is valid until %s", claim.ValidUntil)
+		}
+		return false, nil
+	}
+	creds, err := GetAgentStoredCredentials()
+	if err != nil {
+		return false, err
+	}
+	if claim.CloudURL != "" {
+		if expiresAt, valid := agentAccessTokenExpiresAt(creds.Accounts[claim.CloudURL], now); valid {
+			// This is defensive: normally the access token should expire before
+			// the claim URL, but do not delete still-usable credentials if the
+			// service returns a different ordering.
+			logging.V(7).Infof(
+				"Shared agent claim metadata expired at %s, but access token for %q is valid until %s",
+				claim.ValidUntil, claim.CloudURL, *expiresAt)
+			return false, nil
+		}
+	}
+	logging.V(7).Infof("Shared agent claim metadata expired at %s; deleting shared agent state", claim.ValidUntil)
+	if err := DeleteAgentCredentials(); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// StoreAgentClaim stores claim metadata for an automatically created agent
+// account alongside the shared temporary agent credentials.
+func StoreAgentClaim(claim AgentClaim) error {
+	claimFile, err := getAgentClaimFilePath()
+	if err != nil {
+		return err
+	}
+	logging.V(7).Infof("Writing shared agent claim metadata to %q", claimFile)
+
+	raw, err := json.MarshalIndent(claim, "", "    ")
+	if err != nil {
+		return fmt.Errorf("marshalling agent claim object: %w", err)
+	}
+	return lockedfile.Write(claimFile, bytes.NewReader(raw), 0o600)
+}
+
+// deleteAgentBackendConfig removes backend config for key from the shared agent
+// config file, deleting that file if no backend config remains.
+func deleteAgentBackendConfig(key string) error {
+	configFile := getAgentConfigFilePathNoEnsure()
+	return deleteBackendConfigFromFile(configFile, key)
+}
+
+// deleteBackendConfig removes backend config for key from the default config
+// file, deleting that file if no backend config remains.
+func deleteBackendConfig(key string) error {
+	configFile, err := getConfigFilePath()
+	if err != nil {
+		return err
+	}
+	return deleteBackendConfigFromFile(configFile, key)
+}
+
+func deleteBackendConfigFromFile(configFile, key string) error {
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("reading '%s': %w", configFile, err)
+	}
+
+	var config PulumiConfig
+	if err = json.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("failed to read Pulumi agent config file '%s': %w", configFile, err)
+	}
+	delete(config.BackendConfig, key)
+	if len(config.BackendConfig) == 0 {
+		if err = os.Remove(configFile); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("removing '%s': %w", configFile, err)
+		}
+		return nil
+	}
+	return writePulumiConfigFile(configFile, config)
+}
+
+// deleteAllBackendConfig removes all backend configuration from the default
+// config file.
+func deleteAllBackendConfig() error {
+	configFile, err := getConfigFilePath()
+	if err != nil {
+		return err
+	}
+	data, err := os.ReadFile(configFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("reading '%s': %w", configFile, err)
+	}
+
+	var config PulumiConfig
+	if err = json.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("failed to read Pulumi config file '%s': %w", configFile, err)
+	}
+	config.BackendConfig = nil
+	return writePulumiConfigFile(configFile, config)
+}
+
+type BackendConfig struct {
+	DefaultOrg string `json:"defaultOrg,omitempty"` // The default org for this backend config.
+}
+
+type PulumiConfig struct {
+	BackendConfig map[string]BackendConfig `json:"backends,omitempty"` // a map of arbitrary backends configs.
+}
+
+func getConfigFilePath() (string, error) {
+	// Allow the folder we use to store config in to be overridden by tests
+	pulumiFolder := os.Getenv(PulumiCredentialsPathEnvVar)
+	if pulumiFolder == "" {
+		logging.V(7).Infof("Using default Pulumi config path")
+		folder, err := GetPulumiHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get the home path: %w", err)
+		}
+		pulumiFolder = folder
+	}
+
+	err := os.MkdirAll(pulumiFolder, 0o700)
+	if err != nil {
+		return "", fmt.Errorf("failed to create '%s': %w", pulumiFolder, err)
+	}
+
+	return filepath.Join(pulumiFolder, "config.json"), nil
+}
+
+// AgentCredentialsFallbackEnabled reports whether shared temporary agent
+// credentials may be used as an implicit fallback.
+func AgentCredentialsFallbackEnabled() bool {
+	if agentdetect.Detect(os.Getenv) == "" || os.Getenv(PulumiCredentialsPathEnvVar) != "" {
+		return false
+	}
+	return os.Getenv(env.Home.Var().Name()) == "" || os.Getenv(pulumiTestAllowAgentFallbackEnvVar) == "true"
+}
+
+func GetPulumiConfig() (PulumiConfig, error) {
+	configFile, err := getConfigFilePath()
+	if err != nil {
+		return getAgentPulumiConfigIfNeeded(err)
+	}
+
+	logging.V(7).Infof("Reading Pulumi config from %q", configFile)
+	c, err := os.ReadFile(configFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return PulumiConfig{}, nil
+		}
+		return getAgentPulumiConfigIfNeeded(fmt.Errorf("reading '%s': %w", configFile, err))
+	}
+
+	var config PulumiConfig
+	if err = json.Unmarshal(c, &config); err != nil {
+		return PulumiConfig{}, fmt.Errorf("failed to read Pulumi config file: %w", err)
+	}
+
+	return config, nil
+}
+
+func StorePulumiConfig(config PulumiConfig) error {
+	configFile, err := getConfigFilePath()
+	if err != nil {
+		return storeAgentPulumiConfigIfNeeded(config, err)
+	}
+	logging.V(7).Infof("Writing Pulumi config to %q", configFile)
+
+	if err := writePulumiConfigFile(configFile, config); err != nil {
+		return storeAgentPulumiConfigIfNeeded(config, err)
+	}
+	return nil
+}
+
+// writePulumiConfigFile atomically replaces a Pulumi config file.
+func writePulumiConfigFile(configFile string, config PulumiConfig) error {
+	raw, err := json.MarshalIndent(config, "", "    ")
+	if err != nil {
+		return fmt.Errorf("marshalling config object: %w", err)
+	}
+
+	// Use a temporary file and atomic os.Rename to ensure the file contents are
+	// updated atomically to ensure concurrent `pulumi` CLI operations are safe.
+	tempConfigFile, err := os.CreateTemp(filepath.Dir(configFile), "config-*.json")
+	if err != nil {
+		return err
+	}
+	_, err = tempConfigFile.Write(raw)
+	if err != nil {
+		return err
+	}
+	err = tempConfigFile.Close()
+	if err != nil {
+		return err
+	}
+	err = os.Rename(tempConfigFile.Name(), configFile) //nolint:forbidigo // historic usage
+	if err != nil {
+		contract.IgnoreError(os.Remove(tempConfigFile.Name()))
+		return err
+	}
+
+	return nil
+}
+
+// getAgentPulumiConfigIfNeeded reads shared agent config when agent mode cannot
+// read the default Pulumi config path.
+func getAgentPulumiConfigIfNeeded(defaultErr error) (PulumiConfig, error) {
+	if !AgentCredentialsFallbackEnabled() {
+		return PulumiConfig{}, defaultErr
+	}
+
+	configFile, err := getAgentConfigFilePath()
+	if err != nil {
+		return PulumiConfig{}, errors.Join(defaultErr, err)
+	}
+	logging.V(7).Infof(
+		"Could not read default Pulumi config in agent mode (%s); reading shared agent config from %q: %v",
+		agentdetect.Detect(os.Getenv), configFile, defaultErr)
+	c, err := os.ReadFile(configFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return PulumiConfig{}, nil
+		}
+		return PulumiConfig{}, errors.Join(defaultErr, fmt.Errorf("reading '%s': %w", configFile, err))
+	}
+
+	var config PulumiConfig
+	if err = json.Unmarshal(c, &config); err != nil {
+		return PulumiConfig{}, fmt.Errorf("failed to read Pulumi config file: %w", err)
+	}
+	return config, nil
+}
+
+// storeAgentPulumiConfigIfNeeded writes shared agent config when agent mode
+// cannot write the default Pulumi config path.
+func storeAgentPulumiConfigIfNeeded(config PulumiConfig, defaultErr error) error {
+	if !AgentCredentialsFallbackEnabled() {
+		return defaultErr
+	}
+
+	configFile, err := getAgentConfigFilePath()
+	if err != nil {
+		return errors.Join(defaultErr, err)
+	}
+	logging.V(7).Infof(
+		"Could not write default Pulumi config in agent mode (%s); writing shared agent config to %q: %v",
+		agentdetect.Detect(os.Getenv), configFile, defaultErr)
+	if err = writePulumiConfigFile(configFile, config); err != nil {
+		return errors.Join(defaultErr, err)
+	}
+	return nil
+}
+
+func SetBackendConfigDefaultOrg(backendURL, defaultOrg string) error {
+	config, err := GetPulumiConfig()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	if config.BackendConfig == nil {
+		config.BackendConfig = make(map[string]BackendConfig)
+	}
+
+	config.BackendConfig[backendURL] = BackendConfig{
+		DefaultOrg: defaultOrg,
+	}
+
+	return StorePulumiConfig(config)
+}

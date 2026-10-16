@@ -29,12 +29,12 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/env"
+	ptesting "github.com/pulumi/pulumi/shared/v3/go/common/testing"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/securestore"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 //nolint:paralleltest // IsolateCredentials changes process-wide environment variables.

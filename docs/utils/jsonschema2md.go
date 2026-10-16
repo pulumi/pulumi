@@ -11,7 +11,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 

@@ -19,7 +19,7 @@ import (
 	"log/slog"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
 )
 
 // PropertySinkHandler wraps the encrypted log sink handler, encoding

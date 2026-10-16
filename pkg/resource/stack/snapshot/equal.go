@@ -20,8 +20,8 @@ import (
 	"strings"
 
 	"github.com/go-test/deep"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
 )
 
 func AssertEqual(expected, actual *apitype.DeploymentV3) error {

@@ -10,3 +10,5 @@ require (
 replace example.com/pulumi-config-enum/sdk/go/v41 => /ROOT/artifacts/example.com_pulumi-config-enum_sdk_go_v41
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

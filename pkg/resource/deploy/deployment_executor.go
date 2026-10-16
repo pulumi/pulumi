@@ -24,14 +24,14 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag"
+	sdkproviders "github.com/pulumi/pulumi/shared/v3/go/common/providers"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/result"
 )
 
 // deploymentExecutor is responsible for taking a deployment and driving it to completion.

@@ -20,8 +20,8 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )

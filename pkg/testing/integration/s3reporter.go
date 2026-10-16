@@ -27,7 +27,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
 )
 
 // S3Reporter is a TestStatsReporter that publises test data to S3

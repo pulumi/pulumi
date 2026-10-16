@@ -30,12 +30,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/env"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/shared/v3/go/common/testing"
+	"github.com/pulumi/pulumi/shared/v3/go/common/testing/diagtest"
+	declared "github.com/pulumi/pulumi/shared/v3/go/common/util/env"
 )
 
 // This file contains copies of old backend tests

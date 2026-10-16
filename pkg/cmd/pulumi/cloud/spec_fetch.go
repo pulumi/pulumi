@@ -27,9 +27,9 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 // specCacheTTL bounds how long a cached spec may be used before ensureSpec

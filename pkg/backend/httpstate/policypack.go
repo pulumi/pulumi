@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -37,12 +37,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/atomicinstall"
 	pkgCmdUtil "github.com/pulumi/pulumi/pkg/v3/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/archive"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 type cloudRequiredPolicy struct {

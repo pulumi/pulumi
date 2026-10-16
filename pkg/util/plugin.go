@@ -19,8 +19,8 @@ import (
 
 	"github.com/blang/semver"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 // knownLanguageRuntimes pins the release of each language runtime that is no longer

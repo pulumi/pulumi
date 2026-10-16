@@ -26,10 +26,10 @@ import (
 
 	aho_corasick "github.com/pgavlin/aho-corasick"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/ast"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc/ast"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 

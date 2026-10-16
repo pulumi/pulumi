@@ -23,8 +23,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 )

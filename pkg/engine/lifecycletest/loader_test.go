@@ -32,9 +32,9 @@ import (
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/rpcutil"
+	codegenrpc "github.com/pulumi/pulumi/shared/v3/proto/go/codegen"
 )
 
 func TestLoader(t *testing.T) {

@@ -25,8 +25,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/promise"
 
 	uuid "github.com/gofrs/uuid"
 
@@ -36,18 +36,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag"
+	sdkproviders "github.com/pulumi/pulumi/shared/v3/go/common/providers"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/property"
+	"github.com/pulumi/pulumi/shared/v3/go/pulumi-internal/gsync"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 )
 
 // BackendClient is used to retrieve information about stacks from a backend.

@@ -23,10 +23,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/archive"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 )
 
 type Content interface {

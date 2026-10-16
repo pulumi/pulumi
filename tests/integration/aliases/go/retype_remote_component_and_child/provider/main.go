@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )

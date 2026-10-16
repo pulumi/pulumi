@@ -19,10 +19,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	perrors "github.com/pulumi/pulumi/sdk/v3/go/pulumi/errors"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
+	perrors "github.com/pulumi/pulumi/shared/v3/go/pulumi/errors"
 )
 
 const (

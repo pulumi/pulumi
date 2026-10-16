@@ -13,3 +13,5 @@ replace example.com/pulumi-component/sdk/go/v13 => /ROOT/projects/l3-component-p
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
 
 replace example.com/pulumi-simple/sdk/go/v2 => /ROOT/projects/l3-component-provider-inheritance/sdks/simple-2.0.0
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

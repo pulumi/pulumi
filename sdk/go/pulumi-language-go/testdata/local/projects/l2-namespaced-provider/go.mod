@@ -13,3 +13,5 @@ replace example.com/pulumi-component/sdk/go/v13 => /ROOT/projects/l2-namespaced-
 replace github.com/a-namespace/pulumi-namespaced/sdk/go/v16 => /ROOT/projects/l2-namespaced-provider/sdks/namespaced-16.0.0
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

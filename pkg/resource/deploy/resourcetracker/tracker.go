@@ -22,8 +22,8 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
 )
 
 type entry struct {

@@ -10,3 +10,5 @@ require (
 replace example.com/pulumi-keywords/sdk/go/v20 => /ROOT/projects/l2-keywords/sdks/keywords-20.0.0
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

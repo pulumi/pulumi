@@ -21,9 +21,9 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/schema"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc/eval"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc/schema"
 )
 
 func newTestProviderSchema() *schema.Schema {

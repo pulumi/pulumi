@@ -15,9 +15,9 @@
 package workspace
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	sdkWorkspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag"
+	"github.com/pulumi/pulumi/shared/v3/go/common/tokens"
+	sdkWorkspace "github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 // DetectProject loads the closest project from the current working directory, or an error if not found.

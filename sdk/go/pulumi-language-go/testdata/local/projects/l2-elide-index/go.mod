@@ -13,3 +13,5 @@ replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pul
 replace example.com/pulumi-simple/sdk/go/v2 => /ROOT/projects/l2-elide-index/sdks/simple-2.0.0
 
 replace example.com/pulumi-simple-invoke/sdk/go/v10 => /ROOT/projects/l2-elide-index/sdks/simple-invoke-10.0.0
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

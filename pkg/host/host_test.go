@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag"
+	"github.com/pulumi/pulumi/shared/v3/go/common/testing/diagtest"
+	codegenrpc "github.com/pulumi/pulumi/shared/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

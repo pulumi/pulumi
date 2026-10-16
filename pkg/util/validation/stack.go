@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 )
 
 // validateStackTagName checks if s is a valid stack tag name, otherwise returns a descriptive error.

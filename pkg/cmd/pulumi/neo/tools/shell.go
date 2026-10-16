@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
 )
 
 // Shell is the local handler for the Neo `shell` tool. The cloud agent exposes a single

@@ -17,7 +17,7 @@ package cli
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/shared/v3/go/common/version"
 	"github.com/spf13/cobra"
 )
 

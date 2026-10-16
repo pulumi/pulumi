@@ -22,7 +22,7 @@ TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/
 VERSION         = $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
-LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/nodejs/cmd/pulumi-language-bun sdk/python/cmd/pulumi-language-python sdk/pcl
+LINT_GOLANG_PKGS := shared sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/nodejs/cmd/pulumi-language-bun sdk/python/cmd/pulumi-language-python sdk/pcl
 
 # Additional arguments to pass to golangci-lint.
 GOLANGCI_LINT_ARGS ?=
@@ -45,7 +45,8 @@ TEST_ALL_DEPS ?= build $(SUB_PROJECTS:%=%_install)
 LIFECYCLE_TEST_FUZZ_CHECKS ?= 10000
 
 ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
-.make/ensure/phony: sdk/go.mod pkg/go.mod tests/go.mod
+.make/ensure/phony: shared/go.mod sdk/go.mod pkg/go.mod tests/go.mod
+	cd shared && ../scripts/retry go mod download
 	cd sdk && ../scripts/retry go mod download
 	cd pkg && ../scripts/retry go mod download
 	cd tests && ../scripts/retry go mod download
@@ -62,10 +63,10 @@ build_proto: .make/proto
 .PHONY: check-proto check_proto
 check-proto: check_proto
 check_proto: .make/proto
-	@if ! git diff --quiet -- sdk/proto/go sdk/nodejs/proto \
+	@if ! git diff --quiet -- shared/proto/go sdk/nodejs/proto \
 	    sdk/python/lib/pulumi/runtime/proto proto/grpc_version.txt; then \
 		echo "Proto output is out of date. Run 'make build_proto' and commit."; \
-		git diff -- sdk/proto/go sdk/nodejs/proto \
+		git diff -- shared/proto/go sdk/nodejs/proto \
 		    sdk/python/lib/pulumi/runtime/proto proto/grpc_version.txt; \
 		exit 1; \
 	fi
@@ -115,11 +116,11 @@ generate-automation-apis:: generate-nodejs-automation-api generate-python-automa
 # dead code elimation due to the usage of certain reflection methods.
 bin/pulumi: GO_BUILD_TAGS =
 bin/pulumi: .make/proto .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
-	go build -C pkg -o ../$@ -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+	go build -C pkg -o ../$@ -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/shared/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 .PHONY: bin/pulumi-display.wasm
 bin/pulumi-display.wasm:: .make/ensure/go .make/ensure/phony pkg/backend/display/wasm/gold-size.txt
-	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -tags="${GO_BUILD_TAGS}" -ldflags "-w -s -X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" -trimpath ./backend/display/wasm
+	cd pkg && GOOS=js GOARCH=wasm go build -o ../bin/pulumi-display.wasm -tags="${GO_BUILD_TAGS}" -ldflags "-w -s -X github.com/pulumi/pulumi/shared/v3/go/common/version.Version=${VERSION}" -trimpath ./backend/display/wasm
 	python3 scripts/wasm-size-check.py bin/pulumi-display.wasm pkg/backend/display/wasm/gold-size.txt
 
 .PHONY: build
@@ -130,19 +131,19 @@ install:: bin/pulumi
 	cp $< $(PULUMI_BIN)/pulumi
 
 build_debug::
-	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/shared/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 build_cover::
 	cd pkg && go build -cover -o ../bin/pulumi \
 		-tags="${GO_BUILD_TAGS}" \
 		-coverpkg github.com/pulumi/pulumi/pkg/v3/...,github.com/pulumi/pulumi/sdk/v3/... \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+		-ldflags "-X github.com/pulumi/pulumi/shared/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 install_cover:: build_cover
 	cp bin/pulumi $(PULUMI_BIN)
 
 dist::
-	cd pkg && go install -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go install -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/shared/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 .PHONY: brew
 # NOTE: the brew target intentionally avoids the dependency on `build`, as each language SDK has its own brew target
@@ -346,6 +347,7 @@ work:
 	rm -f go.work go.work.sum
 	go work init \
 		pkg \
+		shared \
 		sdk \
 		sdk/go/pulumi-language-go \
 		sdk/nodejs/cmd/pulumi-language-nodejs \

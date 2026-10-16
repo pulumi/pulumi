@@ -21,7 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/config"
 )
 
 // errorCatchingSecretsProvider decorates a secrets.Provider with the ability to catch and control the response to

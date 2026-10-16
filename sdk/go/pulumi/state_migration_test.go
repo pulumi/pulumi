@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 )
 
 func TestStateMigrationCallback(t *testing.T) {

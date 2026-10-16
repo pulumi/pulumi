@@ -15,9 +15,9 @@
 package resource
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/shared/v3/go/property"
 )
 
 // Goal is a desired state for a resource object. Normally it represents a subset of the resource's state expressed by

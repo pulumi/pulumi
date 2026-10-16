@@ -21,9 +21,9 @@ import (
 	"strings"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
 )
 
 // applyStateMigrations runs the state migrations attached to a resource registration against the prior state of

@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
 )
 
 // formatAgentClaimInstruction returns the claim instruction with the access-token expiry,

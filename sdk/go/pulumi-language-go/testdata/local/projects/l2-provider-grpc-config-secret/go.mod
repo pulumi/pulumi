@@ -10,3 +10,5 @@ require (
 replace example.com/pulumi-config-grpc/sdk/go => /ROOT/projects/l2-provider-grpc-config-secret/sdks/config-grpc-1.0.0
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

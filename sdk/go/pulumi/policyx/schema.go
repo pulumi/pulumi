@@ -14,7 +14,7 @@
 
 package policyx
 
-import pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+import pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 
 type EnforcementLevel int32
 

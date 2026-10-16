@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/schema"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc/eval"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

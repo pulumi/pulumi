@@ -84,8 +84,13 @@ jobs:
 
           # Update go module dependencies
           (
+            cd sdk
+            go get "github.com/pulumi/pulumi/shared/v3@v${PULUMI_VERSION}"
+          )
+          (
             cd pkg
             go get -u "github.com/pulumi/pulumi/sdk/v3@v${PULUMI_VERSION}"
+            go get "github.com/pulumi/pulumi/shared/v3@v${PULUMI_VERSION}"
           )
           make tidy_fix
           # Clear the release-in-progress marker dropped by set-version.py.

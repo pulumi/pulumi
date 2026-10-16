@@ -23,7 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
 )
 
 // ConstProvider is a minimal provider with a single resource whose only property has a constant

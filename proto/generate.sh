@@ -30,7 +30,7 @@ echo -e "\tVERSION: $PROTOC_VERSION"
 # dynamic client (written in JS) using the protobuf notion of "details" -- arbitrary protobuf
 # messages packaged up inside of an error. Hence, JavaScript and Python include it but Go does not.
 
-GO_PULUMIRPC="$REPO_ROOT/sdk/proto/go"
+GO_PULUMIRPC="$REPO_ROOT/shared/proto/go"
 PROTO_FILES_NO_STATUS=$(find . -name "*.proto" -not -name "status.proto")
 TEMP_DIR_GO=/tmp/go-build
 

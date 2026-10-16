@@ -27,9 +27,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/shared/v3/go/common/testing"
 )
 
 // TestEmptyPython simply tests that we can run an empty Python project.

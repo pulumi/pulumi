@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/opentracing/opentracing-go/mocktracer"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/shared/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/require"
 )
 

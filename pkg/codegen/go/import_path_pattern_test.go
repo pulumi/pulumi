@@ -155,7 +155,8 @@ func requireProgramCompiles(t *testing.T, main []byte) {
 	goMod := "module importpathtest\n\n" +
 		"go 1.25\n\n" +
 		"replace " + importPathPatternExpectedImport + " => ./sdk\n" +
-		"replace github.com/pulumi/pulumi/sdk/v3 => " + pulumiSDK + "\n"
+		"replace github.com/pulumi/pulumi/sdk/v3 => " + pulumiSDK + "\n" +
+		"replace github.com/pulumi/pulumi/shared/v3 => " + filepath.Join(filepath.Dir(pulumiSDK), "shared") + "\n"
 
 	writeFile(t, filepath.Join(dir, "go.mod"), goMod)
 	writeFile(t, filepath.Join(dir, "main.go"), string(main))

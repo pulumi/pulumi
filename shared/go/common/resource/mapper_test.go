@@ -1,0 +1,85 @@
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package resource_test
+
+import (
+	"reflect"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/mapper"
+)
+
+type complexBag struct {
+	asset   asset.Asset
+	archive archive.Archive
+
+	optionalAsset   *asset.Asset
+	optionalArchive *archive.Archive
+}
+
+func TestAssetsAndArchives(t *testing.T) {
+	t.Parallel()
+
+	newAsset := func(s string) *asset.Asset {
+		a, err := asset.FromText(s)
+		require.NoError(t, err, "creating asset %s", s)
+		return a
+	}
+	newArchive := func(m map[string]any) *archive.Archive {
+		a, err := archive.FromAssets(m)
+		require.NoError(t, err, "creating asset %#v", m)
+		return a
+	}
+
+	bigArchive := func() *archive.Archive {
+		return newArchive(map[string]any{
+			"asset1": newAsset("asset1"),
+			"archive1": newArchive(map[string]any{
+				"asset2": newAsset("asset2"),
+				"asset3": newAsset("asset3"),
+			}),
+		})
+	}
+	tree := map[string]any{
+		"asset":           newAsset("simple asset"),
+		"optionalAsset":   newAsset("simple optional asset"),
+		"archive":         bigArchive(),
+		"optionalArchive": bigArchive(),
+	}
+
+	bag := complexBag{}
+	md := mapper.New(nil)
+
+	t.Run("asset", func(t *testing.T) { //nolint:parallelTest
+		err := md.DecodeValue(tree, reflect.TypeFor[complexBag](), "asset", &bag.asset, false)
+		require.NoError(t, err)
+	})
+	t.Run("optionalAsset", func(t *testing.T) { //nolint:parallelTest
+		err := md.DecodeValue(tree, reflect.TypeFor[complexBag](), "optionalAsset", &bag.optionalAsset, false)
+		require.NoError(t, err)
+	})
+	t.Run("archive", func(t *testing.T) { //nolint:parallelTest
+		err := md.DecodeValue(tree, reflect.TypeFor[complexBag](), "archive", &bag.archive, false)
+		require.NoError(t, err)
+	})
+	t.Run("optionalArchive", func(t *testing.T) { //nolint:parallelTest
+		err := md.DecodeValue(tree, reflect.TypeFor[complexBag](), "optionalArchive", &bag.optionalArchive, false)
+		require.NoError(t, err)
+	})
+}

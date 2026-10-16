@@ -17,7 +17,7 @@ package analysis
 import (
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc"
 )
 
 // Describe returns a Markdown-formatted description of the entity at the indicated position.

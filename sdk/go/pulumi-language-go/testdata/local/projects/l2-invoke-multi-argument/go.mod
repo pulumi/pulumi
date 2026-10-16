@@ -10,3 +10,5 @@ require (
 replace example.com/pulumi-multi-argument-invoke/sdk/go/v44 => /ROOT/projects/l2-invoke-multi-argument/sdks/multi-argument-invoke-44.0.0
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

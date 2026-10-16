@@ -15,8 +15,8 @@
 package plugin
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/mapper"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/mapper"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 )
 
 // NewCheckResponse produces a response with property validation failures from the given array of mapper failures.

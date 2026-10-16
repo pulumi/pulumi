@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/shared/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -71,8 +71,12 @@ plugins:
 	// Set up the SDK replace directive.
 	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk"))
 	require.NoError(t, err)
+	sharedDir, err := filepath.Abs(filepath.Join("..", "..", "..", "shared"))
+	require.NoError(t, err)
 	e.RunCommand("go", "mod", "edit", "-replace",
 		"github.com/pulumi/pulumi/sdk/v3="+sdkDir)
+	e.RunCommand("go", "mod", "edit", "-replace",
+		"github.com/pulumi/pulumi/shared/v3="+sharedDir)
 	e.RunCommand("go", "mod", "tidy")
 
 	e.RunCommand("pulumi", "stack", "init", "dev")

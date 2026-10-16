@@ -15,7 +15,7 @@
 package cloud
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
 )
 
 // outputFormat describes how a command should render its top-level output.

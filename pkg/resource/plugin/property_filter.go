@@ -19,9 +19,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/shared/v3/go/property"
 )
 
 // FilterOptions configures the pre-marshal / post-unmarshal filtering applied to a

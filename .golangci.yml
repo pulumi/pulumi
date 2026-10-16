@@ -95,8 +95,8 @@ linters:
           files:
             - '**/pkg/**/*.go'
           deny:
-            - pkg: github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin
-              desc: The pkg module must not import sdk/go/common/resource/plugin
+            - pkg: github.com/pulumi/pulumi/shared/v3/go/common/resource/plugin
+              desc: The pkg module must not import shared/go/common/resource/plugin
     goheader:
       values:
         regexp:
@@ -141,13 +141,13 @@ linters:
         - unusedwrite
     importas:
       alias:
-        - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go
+        - pkg: github.com/pulumi/pulumi/shared/v3/proto/go
           alias: pulumirpc
-        - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go/testing
+        - pkg: github.com/pulumi/pulumi/shared/v3/proto/go/testing
           alias: testingrpc
         - pkg: github.com/deckarep/golang-set/v2
           alias: mapset
-        - pkg: github.com/pulumi/pulumi/sdk/v3/go/common/testing
+        - pkg: github.com/pulumi/pulumi/shared/v3/go/common/testing
           alias: ptesting
     nakedret:
       max-func-lines: 60

@@ -10,3 +10,5 @@ require (
 replace example.com/pulumi-discriminated-union/sdk/go/v31 => /ROOT/artifacts/example.com_pulumi-discriminated-union_sdk_go_v31
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

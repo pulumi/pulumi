@@ -20,7 +20,7 @@ import (
 	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 )
 
 // roleSingleRender formats a single role for the user. The action describes

@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/common/env"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
 )
 
 // PanicRecovery wraps a goroutine function with panic recovery logic.

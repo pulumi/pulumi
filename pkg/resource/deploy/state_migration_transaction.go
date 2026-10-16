@@ -18,9 +18,9 @@ import (
 	"fmt"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
-	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	sdkproviders "github.com/pulumi/pulumi/shared/v3/go/common/providers"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
 )
 
 // prepareStateMigrationTransaction validates a migration result and prepares every rewrite that must be persisted.

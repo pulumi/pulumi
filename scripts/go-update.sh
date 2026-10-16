@@ -10,6 +10,7 @@ do
     (
         cd "$(dirname $f)"
 
+        go get -u github.com/pulumi/pulumi/shared/v3
         go get -u github.com/pulumi/pulumi/sdk/v3
         go get -u github.com/pulumi/pulumi/pkg/v3
         go mod tidy -go=1.18

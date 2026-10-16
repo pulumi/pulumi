@@ -13,14 +13,14 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15pulumi/callback.proto\x12\tpulumirpc\"F\n\x08\x43\x61llback\x12\x0e\n\x06target\x18\x01 \x01(\t\x12\r\n\x05token\x18\x02 \x01(\t\x12\x1b\n\x13\x61\x63\x63\x65pts_byte_string\x18\x03 \x01(\x08\"7\n\x15\x43\x61llbackInvokeRequest\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0f\n\x07request\x18\x02 \x01(\x0c\"*\n\x16\x43\x61llbackInvokeResponse\x12\x10\n\x08response\x18\x01 \x01(\x0c\x32\\\n\tCallbacks\x12O\n\x06Invoke\x12 .pulumirpc.CallbackInvokeRequest\x1a!.pulumirpc.CallbackInvokeResponse\"\x00\x42\x34Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15pulumi/callback.proto\x12\tpulumirpc\"F\n\x08\x43\x61llback\x12\x0e\n\x06target\x18\x01 \x01(\t\x12\r\n\x05token\x18\x02 \x01(\t\x12\x1b\n\x13\x61\x63\x63\x65pts_byte_string\x18\x03 \x01(\x08\"7\n\x15\x43\x61llbackInvokeRequest\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0f\n\x07request\x18\x02 \x01(\x0c\"*\n\x16\x43\x61llbackInvokeResponse\x12\x10\n\x08response\x18\x01 \x01(\x0c\x32\\\n\tCallbacks\x12O\n\x06Invoke\x12 .pulumirpc.CallbackInvokeRequest\x1a!.pulumirpc.CallbackInvokeResponse\"\x00\x42\x37Z5github.com/pulumi/pulumi/shared/v3/proto/go;pulumirpcb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.callback_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
-  DESCRIPTOR._serialized_options = b'Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc'
+  DESCRIPTOR._serialized_options = b'Z5github.com/pulumi/pulumi/shared/v3/proto/go;pulumirpc'
   _globals['_CALLBACK']._serialized_start=36
   _globals['_CALLBACK']._serialized_end=106
   _globals['_CALLBACKINVOKEREQUEST']._serialized_start=108

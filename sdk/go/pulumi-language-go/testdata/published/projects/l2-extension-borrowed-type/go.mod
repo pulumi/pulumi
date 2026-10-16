@@ -13,3 +13,5 @@ replace example.com/pulumi-borrowbase/sdk/go/v56 => /ROOT/artifacts/example.com_
 replace example.com/pulumi-myborrow/sdk/go/v3 => /ROOT/artifacts/myborrow
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

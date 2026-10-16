@@ -22,8 +22,8 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
 )
 
 // AnyOutputType is the reflected type of pulumi.AnyOutput.

@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 
 	"github.com/git-pkgs/manifests"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/plugin"
 )
 
 // listPackagesFromLockFile parses a Python lock file (poetry.lock or uv.lock) and returns the

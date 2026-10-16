@@ -17,7 +17,7 @@ package diy
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 )
 
 // diySnapshotPersister is a simple SnapshotManager implementation that persists snapshots

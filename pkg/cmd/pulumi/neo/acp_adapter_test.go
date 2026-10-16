@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/acp"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 )
 
 // fakeACPCaller is a no-op acp.Caller; buildACPHandlers only needs a non-nil

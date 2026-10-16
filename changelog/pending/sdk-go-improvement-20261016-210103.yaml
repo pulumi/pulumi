@@ -1,0 +1,4 @@
+component: sdk/go
+kind: improvement
+body: Move the Go code shared by the CLI and the SDKs into the new `github.com/pulumi/pulumi/shared/v3` module; the existing `sdk/v3/go/common`, `sdk/v3/go/property` and `sdk/v3/proto/go` packages forward to it
+time: 2026-10-16T21:01:03.651976+02:00

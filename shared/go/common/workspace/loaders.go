@@ -1,0 +1,410 @@
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package workspace
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag"
+	"github.com/pulumi/pulumi/shared/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+)
+
+// readFileStripUTF8BOM wraps os.ReadFile and also strips the UTF-8 Byte-order Mark (BOM) if present.
+func readFileStripUTF8BOM(path string) ([]byte, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Strip UTF-8 BOM bytes if present to avoid problems with downstream parsing.
+	// References:
+	//   https://github.com/spkg/bom
+	//   https://en.wikipedia.org/wiki/Byte_order_mark
+	if len(b) >= 3 &&
+		b[0] == 0xef &&
+		b[1] == 0xbb &&
+		b[2] == 0xbf {
+		b = b[3:]
+	}
+
+	return b, nil
+}
+
+// Rewrite config values to make them namespaced. Using the project name as the default namespace
+// for example:
+//
+//	config:
+//	  instanceSize: t3.micro
+//
+// is valid configuration and will be rewritten in the form
+//
+//	config:
+//	  {projectName}:instanceSize:t3.micro
+func stackConfigNamespacedWithProject(project *Project, projectStack map[string]any) map[string]any {
+	if project == nil {
+		// return the original config if we don't have a project
+		return projectStack
+	}
+
+	config, ok := projectStack["config"]
+	if ok {
+		configAsMap, isMap := config.(map[string]any)
+		if isMap {
+			modifiedConfig := make(map[string]any)
+			for key, value := range configAsMap {
+				if strings.Contains(key, ":") {
+					// key is already namespaced
+					// use it as is
+					modifiedConfig[key] = value
+				} else {
+					namespacedKey := fmt.Sprintf("%s:%s", project.Name, key)
+					modifiedConfig[namespacedKey] = value
+				}
+			}
+
+			projectStack["config"] = modifiedConfig
+			return projectStack
+		}
+	}
+
+	return projectStack
+}
+
+// LoadProject reads a project definition from a file.
+func LoadProject(path string) (*Project, error) {
+	contract.Requiref(path != "", "path", "must not be empty")
+
+	marshaller, err := marshallerForPath(path)
+	if err != nil {
+		return nil, fmt.Errorf("can not read '%s': %w", path, err)
+	}
+
+	b, err := readFileStripUTF8BOM(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not read '%s': %w", path, err)
+	}
+
+	return LoadProjectBytes(b, path, marshaller)
+}
+
+// LoadProjectBytes reads a project definition from a byte slice.
+func LoadProjectBytes(b []byte, path string, marshaller encoding.Marshaler) (*Project, error) {
+	var raw any
+	err := marshaller.Unmarshal(b, &raw)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal '%s': %w", path, err)
+	}
+
+	err = ValidateProject(raw)
+	if err != nil {
+		return nil, fmt.Errorf("could not validate '%s': %w", path, err)
+	}
+
+	// just before marshalling, we will rewrite the config values
+	projectDef, err := SimplifyMarshalledProject(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	projectDef, rewriteError := RewriteConfigPathIntoStackConfigDir(projectDef)
+	if rewriteError != nil {
+		return nil, rewriteError
+	}
+
+	projectDef = RewriteShorthandConfigValues(projectDef)
+	modifiedProject, _ := marshaller.Marshal(projectDef)
+
+	var project Project
+	err = marshaller.Unmarshal(modifiedProject, &project)
+	if err != nil {
+		return nil, err
+	}
+
+	err = project.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal '%s': %w", path, err)
+	}
+
+	project.raw = b
+	return &project, nil
+}
+
+// LoadProjectStack reads a stack definition from a file.
+func LoadProjectStack(sink diag.Sink, project *Project, path string) (*ProjectStack, error) {
+	contract.Requiref(path != "", "path", "must not be empty")
+
+	marshaller, err := marshallerForPath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := readFileStripUTF8BOM(path)
+	if os.IsNotExist(err) {
+		defaultProjectStack := ProjectStack{
+			Config: make(config.Map),
+		}
+		return &defaultProjectStack, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return LoadProjectStackBytes(sink, project, b, path, marshaller)
+}
+
+// LoadProjectStack reads a stack definition from a byte slice.
+func LoadProjectStackBytes(
+	diags diag.Sink,
+	project *Project,
+	b []byte,
+	path string,
+	marshaller encoding.Marshaler,
+) (*ProjectStack, error) {
+	var projectStackRaw any
+	err := marshaller.Unmarshal(b, &projectStackRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	if projectStackRaw == nil {
+		// for example when reading an empty stack file
+		defaultProjectStack := ProjectStack{
+			Config: make(config.Map),
+		}
+		return &defaultProjectStack, nil
+	}
+
+	simplifiedStackForm, err := SimplifyMarshalledProject(projectStackRaw)
+	if err != nil {
+		return nil, err
+	}
+
+	// rewrite config values to make them namespaced
+	// for example:
+	//     config:
+	//       instanceSize: t3.micro
+	//
+	// is valid configuration and will be rewritten in the form
+	//
+	//     config:
+	//       {projectName}:instanceSize: t3.micro
+	projectStackWithNamespacedConfig := stackConfigNamespacedWithProject(project, simplifiedStackForm)
+
+	if diags != nil {
+		configObj, ok := simplifiedStackForm["config"]
+		if ok {
+			if configMap, ok := configObj.(map[string]any); ok {
+				checkForEmptyConfig(configMap, diags)
+			}
+		}
+	}
+
+	modifiedProjectStack, _ := marshaller.Marshal(projectStackWithNamespacedConfig)
+
+	var projectStack ProjectStack
+	err = marshaller.Unmarshal(modifiedProjectStack, &projectStack)
+	if err != nil {
+		return nil, err
+	}
+
+	if projectStack.Config == nil {
+		projectStack.Config = make(config.Map)
+	}
+
+	projectStack.raw = b
+	return &projectStack, nil
+}
+
+// LoadPluginProject reads a plugin project definition from a file.
+func LoadPluginProject(path string) (*PluginProject, error) {
+	contract.Requiref(path != "", "path", "must not be empty")
+
+	marshaller, err := marshallerForPath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := readFileStripUTF8BOM(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var pluginProject PluginProject
+	err = marshaller.Unmarshal(b, &pluginProject)
+	if err != nil {
+		return nil, err
+	}
+
+	err = pluginProject.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pluginProject, nil
+}
+
+// Detect the nearest enclosing Pulumi Project or Pulumi Plugin root directory.
+//
+// The returned [BaseProject] will be one of:
+// - *[PluginProject]
+// - *[Project]
+//
+// The returned string is the path to the returned file. If no plugin or project is found
+// upwards of wd, then [ErrBaseProjectNotFound] will be returned.
+func LoadBaseProjectFrom(wd string) (BaseProject, string, error) {
+	pluginPath, detectPluginErr := DetectPluginPathFrom(wd)
+	if detectPluginErr != nil && !errors.Is(detectPluginErr, ErrPluginNotFound) {
+		return nil, "", fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectPluginErr)
+	}
+
+	loadPlugin := func() (BaseProject, string, error) {
+		pluginProj, err := LoadPluginProject(pluginPath)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return pluginProj, pluginPath, nil
+	}
+
+	projectPath, detectProjectErr := DetectProjectPathFrom(wd)
+	if detectProjectErr != nil && !errors.Is(detectProjectErr, ErrProjectNotFound) {
+		return nil, "", fmt.Errorf("unable to detect if %q is in a plugin path: %w", wd, detectProjectErr)
+	}
+
+	loadProject := func() (BaseProject, string, error) {
+		project, err := LoadProject(projectPath)
+		if err != nil {
+			return nil, "", err
+		}
+		return project, projectPath, nil
+	}
+
+	switch {
+	// If both are missing, signal an error.
+	case errors.Is(detectPluginErr, ErrPluginNotFound) &&
+		errors.Is(detectProjectErr, ErrProjectNotFound):
+		return nil, "", ErrBaseProjectNotFound
+	// We didn't find a plugin, which means we found a project.
+	case errors.Is(detectPluginErr, ErrPluginNotFound):
+		return loadProject()
+	// We didn't find a project, which means we found a plugin.
+	case errors.Is(detectProjectErr, ErrProjectNotFound):
+		return loadPlugin()
+	// We found both a plugin and a project.
+	//
+	// We want to load the innermost one. Since we know that both paths enclose wd,
+	// the innermost one is just the longest one.
+	default:
+		countSegments := func(path string) int { return strings.Count(path, string(filepath.Separator)) }
+
+		pluginDepth := countSegments(filepath.Clean(pluginPath))
+		projectDepth := countSegments(filepath.Clean(projectPath))
+		switch {
+		case pluginDepth > projectDepth:
+			return loadPlugin()
+		case projectDepth > pluginDepth:
+			return loadProject()
+		default:
+			return nil, "", fmt.Errorf("detected both %s and %s in %s",
+				filepath.Base(pluginPath), filepath.Base(projectPath), filepath.Dir(pluginPath))
+		}
+	}
+}
+
+// LoadPolicyPack reads a policy pack definition from a file.
+func LoadPolicyPack(path string) (*PolicyPackProject, error) {
+	contract.Requiref(path != "", "path", "must not be empty")
+
+	marshaller, err := marshallerForPath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	b, err := readFileStripUTF8BOM(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var policyPackProject PolicyPackProject
+	err = marshaller.Unmarshal(b, &policyPackProject)
+	if err != nil {
+		return nil, err
+	}
+
+	err = policyPackProject.Validate()
+	if err != nil {
+		return nil, err
+	}
+
+	return &policyPackProject, nil
+}
+
+// checkForEmptyConfig emits a warning for any config values that are `null` in
+// the YAML/JSON. These are currently loaded into a `config.Value` that's
+// interpreted as an empty string when we unmarshal into `ProjectStack.Config`,
+// but we want to change this in the future to maintain nullness.
+// Note that for object values, null is maintained inside objects already.
+//
+// ```yaml
+// # somekey{1,2,3} are all `null` in YAML, but `""` in pulumi.
+// somekey1:
+// somekey2: null
+// somekey3: ~
+//
+// # someobj.somekey{4,5,6} is `null` in both YAML and pulumi
+// someobj:
+//
+//	somekey4:
+//	somekey5: null
+//	somekey6: ~
+//
+// ```
+func checkForEmptyConfig(config map[string]any, diags diag.Sink) {
+	keys := []string{}
+	for k, v := range config {
+		if v == nil {
+			keys = append(keys, k)
+		}
+	}
+
+	var pluralSuffix, keyString string
+	if len(keys) == 1 {
+		keyString = `"` + keys[0] + `"`
+	} else if len(keys) > 1 {
+		for i, k := range keys {
+			keys[i] = `"` + k + `"`
+		}
+		joiner := ", "
+		if len(keys) == 2 {
+			joiner = " and "
+		}
+		keyString = strings.Join(keys, joiner)
+		pluralSuffix = "s"
+	}
+
+	if len(keys) > 0 {
+		diags.Warningf(&diag.Diag{
+			Message: fmt.Sprintf("No value for configuration key%[1]s %[2]s. "+
+				"This is currently treated as an empty string `\"\"`, "+
+				"but will be treated as `null` in a future version of pulumi.\n"+
+				"Set the value%[1]s to `\"\"` to avoid this warning.", pluralSuffix, keyString),
+		})
+	}
+}

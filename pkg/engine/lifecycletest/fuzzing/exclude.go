@@ -15,8 +15,8 @@
 package fuzzing
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/providers"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
 )
 
 // ExclusionRule represents a rule that determines if a snapshot should be excluded from fuzzing.

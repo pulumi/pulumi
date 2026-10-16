@@ -20,7 +20,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/shared/v3/go/common/encoding"
 )
 
 // PackageManifestNames are the filenames recognized as Node.js package manifests, in priority order. pnpm allows

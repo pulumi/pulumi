@@ -19,7 +19,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/shared/v3/go/common/testing"
 )
 
 //nolint:paralleltest // sets env var, must be run in isolation

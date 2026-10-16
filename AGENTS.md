@@ -8,6 +8,7 @@ The core Pulumi SDK and CLI. Go monorepo with multiple Go modules (`pkg/`, `sdk/
 
 - `pkg/` — Core engine: CLI commands, deployment engine, codegen, resource management, backends
 - `sdk/` — Language SDKs and shared Go SDK code (`sdk/go/`, `sdk/nodejs/`, `sdk/python/`, `sdk/pcl/`)
+- `shared/` — Go code used by both `pkg` and `sdk` (`shared/go/common/`, `shared/go/property/`, `shared/proto/go/`). The old `sdk/go/common/...` etc. paths are generated forwarding shims: regenerate them with `cd sdk && go run ./go/internal/gen-sdk-shims ../shared .` after changing exported symbols in `shared/`
 - `tests/` — Integration and acceptance tests
 - `proto/` — Protobuf definitions for gRPC interfaces between engine, language hosts, and providers
 - `docs/` — Internal developer documentation (Sphinx)
@@ -47,7 +48,7 @@ All commands assume you're at the repo root.
 
 ## Key invariants
 
-- Multiple Go modules (`pkg/go.mod`, `sdk/go.mod`, `tests/go.mod`, etc.). Changes to `go.mod` in one module may require updates in others. Run `mise exec -- make tidy` to verify.
+- Multiple Go modules (`pkg/go.mod`, `shared/go.mod`, `sdk/go.mod`, `tests/go.mod`, etc.). Changes to `go.mod` in one module may require updates in others. Run `mise exec -- make tidy` to verify.
   - Use `mise exec -- make work` to create a `go.work` file for cross-module development.
 - Proto-generated files must stay in sync with `proto/*.proto`. CI enforces via `mise exec -- make check_proto`.
 - `pkg/codegen/schema/pulumi.json` is the metaschema. It must be valid JSON Schema and pass biome formatting.

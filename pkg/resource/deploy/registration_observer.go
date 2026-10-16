@@ -18,8 +18,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/promise"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
 )
 
 // URNRegistration carries the information a consumer needs to reason about a resource that has been

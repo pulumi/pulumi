@@ -259,6 +259,7 @@ require (
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/pulumi/pulumi-cloud-sdk/go v1.20260918.0 // indirect
+	github.com/pulumi/pulumi/shared/v3 v3.269.0
 	github.com/quasilyte/go-ruleguard/dsl v0.3.23 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -310,3 +311,5 @@ tool (
 	github.com/iwahbe/helpmakego
 	github.com/quasilyte/go-ruleguard/dsl
 )
+
+replace github.com/pulumi/pulumi/shared/v3 => ../shared

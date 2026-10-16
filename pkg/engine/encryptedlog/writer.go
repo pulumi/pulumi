@@ -27,7 +27,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/config"
 )
 
 // Writer writes AES-256-GCM encrypted log data in the PLOG format.

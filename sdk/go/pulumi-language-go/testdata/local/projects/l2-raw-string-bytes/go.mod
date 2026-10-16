@@ -13,3 +13,5 @@ replace example.com/pulumi-bytesink/sdk/go/v47 => /ROOT/projects/l2-raw-string-b
 replace example.com/pulumi-bytesource/sdk/go/v48 => /ROOT/projects/l2-raw-string-bytes/sdks/bytesource-48.0.0
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

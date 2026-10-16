@@ -24,7 +24,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 )
 
 // Discriminator values for the AgentConsoleEvent envelope and the inner backend/user

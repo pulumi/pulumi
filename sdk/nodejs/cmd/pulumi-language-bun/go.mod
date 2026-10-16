@@ -5,3 +5,5 @@ go 1.25.0
 tool github.com/quasilyte/go-ruleguard/dsl
 
 require github.com/quasilyte/go-ruleguard/dsl v0.3.23 // indirect
+
+replace github.com/pulumi/pulumi/shared/v3 => ../../../../shared

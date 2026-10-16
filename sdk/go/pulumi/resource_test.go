@@ -31,11 +31,11 @@ import (
 	"github.com/stretchr/testify/require"
 	grpc "google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/pulumi-internal/gsync"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 )
 
 type testRes struct {

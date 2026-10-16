@@ -24,7 +24,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 )
 
 // multiExtensionRuntimeLoader serves two extensions over the same base provider

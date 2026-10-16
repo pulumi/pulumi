@@ -17,7 +17,7 @@ package deploy
 import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
 )
 
 // ContinueResourceDiffEvent is a step that asks the engine to continue provisioning a resource after completing its

@@ -10,3 +10,5 @@ require (
 replace example.com/pulumi-module-format/sdk/go/v29 => /ROOT/artifacts/example.com_pulumi-module-format_sdk_go_v29
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

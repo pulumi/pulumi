@@ -14,7 +14,7 @@
 
 package org
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+import "github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 
 // Shared test helpers used by org member edit tests.
 

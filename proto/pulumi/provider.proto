@@ -21,7 +21,7 @@ import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
-option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
+option go_package = "github.com/pulumi/pulumi/shared/v3/proto/go;pulumirpc";
 
 // The ResourceProvider service defines a standard interface for [resource providers](providers). A resource provider
 // manages a set of configuration, resources, functions and so on in a single package, and offers methods such as CRUD

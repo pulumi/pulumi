@@ -32,8 +32,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/gitutil"
 )
 
 // Repository is an opaque handle to a Mercurial checkout. Root is the absolute

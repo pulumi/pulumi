@@ -14,7 +14,7 @@
 
 package logs
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+import "github.com/pulumi/pulumi/shared/v3/go/common/resource"
 
 // redactSecretsInValue recursively walks a JSON value and replaces any
 // secret objects (identified by the Pulumi secret signature) with a

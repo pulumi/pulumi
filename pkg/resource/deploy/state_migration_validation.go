@@ -20,9 +20,9 @@ import (
 	"reflect"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	sdkproviders "github.com/pulumi/pulumi/shared/v3/go/common/providers"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
 )
 
 var ErrStateMigrationsUnsupported = errors.New("state migrations are not supported by this deployment")

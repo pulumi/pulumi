@@ -25,7 +25,7 @@ import (
 	"time"
 
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
 	"gocloud.dev/blob"
 )
 

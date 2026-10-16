@@ -26,8 +26,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3"
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	ptesting "github.com/pulumi/pulumi/shared/v3/go/common/testing"
 	"github.com/stretchr/testify/require"
 )
 

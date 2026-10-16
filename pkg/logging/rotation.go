@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/common/env"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
 )
 
 // timestampRe matches the timestamp embedded in log filenames (e.g. "stack-20260401T030000.log").

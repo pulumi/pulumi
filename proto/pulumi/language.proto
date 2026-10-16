@@ -21,7 +21,7 @@ import "google/protobuf/struct.proto";
 
 package pulumirpc;
 
-option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
+option go_package = "github.com/pulumi/pulumi/shared/v3/proto/go;pulumirpc";
 
 // The LanguageRuntime service defines a standard interface for [language hosts/runtimes](languages). At a high level, a
 // language runtime provides the ability to execute programs, install and query dependencies, and generate code for a

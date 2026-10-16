@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc"
 )
 
 type EnvironmentDiagnosticSeverity string

@@ -1,0 +1,123 @@
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package deepcopy
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/pulumi/pulumi/shared/v3/go/property"
+	propertytest "github.com/pulumi/pulumi/shared/v3/go/property/testing"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"pgregory.net/rapid"
+)
+
+func TestDeepCopy(t *testing.T) {
+	t.Parallel()
+
+	cases := []any{
+		bool(false),
+		bool(true),
+		int(-42),
+		int8(-42),
+		int16(-42),
+		int32(-42),
+		int64(-42),
+		uint(42),
+		uint8(42),
+		uint16(42),
+		uint32(42),
+		uint64(42),
+		float32(3.14159),
+		float64(3.14159),
+		complex64(complex(3.14159, -42)),
+		complex(3.14159, -42),
+		"foo",
+		[2]byte{42, 24},
+		[]byte{0, 1, 2, 3},
+		[]string{"foo", "bar"},
+		map[string]int{
+			"a": 42,
+			"b": 24,
+		},
+		struct {
+			Foo int
+			Bar map[int]int
+		}{
+			Foo: 42,
+			Bar: map[int]int{
+				19: 77,
+			},
+		},
+		[]map[string]string{
+			{
+				"foo": "bar",
+				"baz": "qux",
+			},
+			{
+				"alpha": "beta",
+			},
+		},
+		map[string]any{
+			"foo": map[string]any{
+				"bar": "baz",
+			},
+			"bar": []int{42},
+		},
+	}
+	for i, c := range cases {
+		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
+			t.Parallel()
+			assert.EqualValues(t, c, Copy(c))
+		})
+	}
+}
+
+func TestDeepCopyPropertyValue(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		source := propertytest.Value(10).Draw(t, "source")
+
+		copied, ok := Copy(source).(property.Value)
+		require.True(t, ok)
+		assert.True(t, source.Equals(copied), "%v != %v", source, copied)
+	})
+}
+
+func TestDeepCopyStructWithPropertyMap(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(t *rapid.T) {
+		type payload struct {
+			Before property.Map
+			After  property.Map
+		}
+		source := payload{
+			Before: propertytest.Map(10).Draw(t, "before"),
+			After:  propertytest.Map(10).Draw(t, "after"),
+		}
+
+		copied, ok := Copy(source).(payload)
+		require.True(t, ok)
+		assert.True(t,
+			source.Before.Equals(copied.Before),
+			"%v != %v", source.Before, copied.Before)
+		assert.True(t,
+			source.After.Equals(copied.After),
+			"%v != %v", source.After, copied.After)
+	})
+}

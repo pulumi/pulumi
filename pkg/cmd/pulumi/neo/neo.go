@@ -41,11 +41,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/shared/v3/go/common/version"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 // nonInteractivePromptPreamble nudges the agent away from follow-up questions

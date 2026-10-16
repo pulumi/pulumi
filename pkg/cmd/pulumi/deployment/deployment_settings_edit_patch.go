@@ -24,8 +24,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
 )
 
 var editFlagNames = []string{

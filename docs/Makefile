@@ -18,8 +18,8 @@ generate-metaschema:
 generate-deployment-schema:
 	cd utils && go run ./jsonschema2md.go \
 		-title "Deployment Schema" \
-		-ids "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/deployments.json=-,https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/resources.json=../../sdk/go/common/apitype/resources.json,https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/property-values.json=../../sdk/go/common/apitype/property-values.json" \
-		< ../../sdk/go/common/apitype/deployments.json \
+		-ids "https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/deployments.json=-,https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/resources.json=../../shared/go/common/apitype/resources.json,https://github.com/pulumi/pulumi/blob/master/sdk/go/common/apitype/property-values.json=../../shared/go/common/apitype/property-values.json" \
+		< ../../shared/go/common/apitype/deployments.json \
 		> ../references/deployment-schema.md
 
 generate:: generate-proto generate-metaschema generate-deployment-schema

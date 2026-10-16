@@ -24,10 +24,10 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/git-pkgs/manifests"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/logging"
 )
 
 type PackageManagerType string

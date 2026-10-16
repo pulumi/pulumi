@@ -21,7 +21,7 @@ import (
 	"errors"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )

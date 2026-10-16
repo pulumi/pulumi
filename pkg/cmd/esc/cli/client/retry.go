@@ -19,8 +19,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/httputil"
 )
 
 // retryPolicy defines the policy for retrying requests by httpClient.Do.

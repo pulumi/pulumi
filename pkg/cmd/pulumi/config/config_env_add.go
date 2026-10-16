@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 

@@ -19,7 +19,7 @@ import "pulumi/provider.proto";
 
 package pulumirpc;
 
-option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
+option go_package = "github.com/pulumi/pulumi/shared/v3/proto/go;pulumirpc";
 
 // ResourceStatus is an interface that can be called from a resource provider to update status about a resource.
 service ResourceStatus {

@@ -17,8 +17,8 @@ package deploy
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
 )
 
 // NullSource is a source that never returns any resources.  This may be used in scenarios where the "new"

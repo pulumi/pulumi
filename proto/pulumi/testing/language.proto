@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package pulumirpc.testing;
 
-option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/testing";
+option go_package = "github.com/pulumi/pulumi/shared/v3/proto/go/testing";
 
 // LanguageTest is the interface to the pulumi language test framework. This is _highly_ experimental and
 // currently subject to breaking changes without warning.

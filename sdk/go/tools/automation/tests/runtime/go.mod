@@ -11,3 +11,5 @@ go 1.26.6
 replace github.com/pulumi/pulumi/sdk/v3 => ../../../../..
 
 require github.com/pulumi/pulumi/sdk/v3 v3.0.0-00010101000000-000000000000
+
+replace github.com/pulumi/pulumi/shared/v3 => ../../../../../../shared

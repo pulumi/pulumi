@@ -21,11 +21,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
-	propertytest "github.com/pulumi/pulumi/sdk/v3/go/property/testing"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/shared/v3/go/property"
+	propertytest "github.com/pulumi/pulumi/shared/v3/go/property/testing"
 )
 
 // keepAll is the identity filter: everything through, byte strings accepted.

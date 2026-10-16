@@ -17,7 +17,7 @@ package convert
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 // Mapper provides methods for retrieving mappings that describe how to map names in some source "provider" (e.g. a

@@ -25,7 +25,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/config"
 )
 
 // Reader reads and decrypts PLOG encrypted log files,

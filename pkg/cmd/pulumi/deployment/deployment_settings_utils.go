@@ -16,7 +16,7 @@ package deployment
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag/colors"
 )
 
 func askForConfirmation(prompt string, color colors.Colorization, defaultValue bool, yes bool) bool {

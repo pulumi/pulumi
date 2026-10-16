@@ -18,7 +18,7 @@ import "google/protobuf/empty.proto";
 
 package pulumirpc;
 
-option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
+option go_package = "github.com/pulumi/pulumi/shared/v3/proto/go;pulumirpc";
 
 // Events is a service for receiving engine events over gRPC.
 // This service allows the Pulumi CLI to send engine events to clients

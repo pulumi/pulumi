@@ -35,7 +35,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/editdistance"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/result"
 )
 
 // Install walks the command tree rooted at c and patches commands so that

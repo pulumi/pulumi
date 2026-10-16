@@ -17,7 +17,7 @@ package codegen
 import (
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
 )
 
 func visitTypeClosure(t schema.Type, visitor func(t schema.Type), seen mapset.Set[schema.Type]) {

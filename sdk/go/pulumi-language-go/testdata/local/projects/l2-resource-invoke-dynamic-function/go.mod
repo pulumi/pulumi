@@ -10,3 +10,5 @@ require (
 replace example.com/pulumi-any-type-function/sdk/go/v15 => /ROOT/projects/l2-resource-invoke-dynamic-function/sdks/any-type-function-15.0.0
 
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

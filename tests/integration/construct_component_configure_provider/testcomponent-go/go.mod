@@ -7,3 +7,5 @@ replace (
 	github.com/pulumi/pulumi/pkg/v3 => ../../../../pkg
 	github.com/pulumi/pulumi/sdk/v3 => ../../../../sdk
 )
+
+replace github.com/pulumi/pulumi/shared/v3 => ../../../../shared

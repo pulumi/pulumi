@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 // PublishOperation publishes a PolicyPack to the backend.

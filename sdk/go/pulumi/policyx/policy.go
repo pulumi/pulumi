@@ -17,8 +17,8 @@ package policyx
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/shared/v3/go/property"
 )
 
 // AnalyzerProviderResource represents a Pulumi resource as seen by an analyzer provider.

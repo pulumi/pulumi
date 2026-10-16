@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 )
 
 // runChangesOnly reads a JSONL engine event stream from in, applies the `--changes-only` filter

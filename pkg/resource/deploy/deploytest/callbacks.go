@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/rpcutil"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )

@@ -18,10 +18,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/shared/v3/proto/go/codegen"
 )
 
 type converterServer struct {

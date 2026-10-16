@@ -10,3 +10,5 @@ require (
 replace example.com/pulumi-call/sdk/go/v15 => ../../artifacts/example.com_pulumi-call_sdk_go_v15
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../../artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => ../../artifacts/github.com_pulumi_pulumi_shared_v3

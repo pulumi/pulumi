@@ -10,3 +10,5 @@ require (
 replace github.com/pulumi/pulumi/sdk/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_sdk_v3
 
 replace example.com/pulumi-sync/sdk/go/v3 => /ROOT/projects/l2-parallel-resources/sdks/sync-3.0.0-alpha.1.internal+exp.sha.2143768
+
+replace github.com/pulumi/pulumi/shared/v3 => /ROOT/artifacts/github.com_pulumi_pulumi_shared_v3

@@ -23,7 +23,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/shared/v3/go/property"
 )
 
 func TestEvalContextConcurrentParentChildAccess(t *testing.T) {

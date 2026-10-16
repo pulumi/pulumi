@@ -18,7 +18,7 @@ import (
 	"context"
 
 	sdkprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 )
 
 // Deprecated: use [github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.HostClient].

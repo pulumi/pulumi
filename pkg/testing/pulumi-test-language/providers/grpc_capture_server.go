@@ -19,8 +19,8 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )

@@ -22,7 +22,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
 )
 
 // ParsedField is one -F / -f / --input value, already decoded into the

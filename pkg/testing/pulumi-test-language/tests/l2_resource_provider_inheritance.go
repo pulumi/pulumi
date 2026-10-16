@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	sdkProviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
+	sdkProviders "github.com/pulumi/pulumi/shared/v3/go/common/providers"
 )
 
 func init() {

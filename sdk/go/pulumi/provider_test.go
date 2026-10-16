@@ -24,11 +24,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
-	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	rarchive "github.com/pulumi/pulumi/shared/v3/go/common/resource/archive"
+	rasset "github.com/pulumi/pulumi/shared/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/shared/v3/go/common/tokens"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 )
 
 type BoolEnumInput interface {

@@ -26,7 +26,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/errutil"
 	"github.com/stretchr/testify/require"
 )
 

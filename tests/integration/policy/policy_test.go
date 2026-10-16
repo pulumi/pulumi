@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/shared/v3/go/common/testing"
 )
 
 // TestPolicyWithConfig runs integration tests against the policy pack in the policy_pack_w_config

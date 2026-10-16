@@ -35,9 +35,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/fsutil"
 )
 
 func TestInputUsage(t *testing.T) {
@@ -171,6 +171,8 @@ func setupPackageInTempDir(t *testing.T, goExe, codeDir string) string {
 		test.RunCommand(t, "go_mod_init", workDir, goExe, "mod", "init", inferModuleName(codeDir))
 	}
 	replacement := "github.com/pulumi/pulumi/sdk/v3=" + sdk
+	test.RunCommand(t, "go_mod_edit", workDir, goExe, "mod", "edit", "-replace", replacement)
+	replacement = "github.com/pulumi/pulumi/shared/v3=" + filepath.Join(filepath.Dir(sdk), "shared")
 	test.RunCommand(t, "go_mod_edit", workDir, goExe, "mod", "edit", "-replace", replacement)
 	test.RunCommand(t, "go_mod_tidy", workDir, goExe, "mod", "tidy")
 

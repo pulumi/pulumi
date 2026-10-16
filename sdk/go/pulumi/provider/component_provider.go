@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

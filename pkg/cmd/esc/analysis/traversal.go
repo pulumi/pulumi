@@ -14,7 +14,7 @@
 
 package analysis
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+import "github.com/pulumi/pulumi/shared/v3/go/common/esc"
 
 // A traverser represents part of a path through a document.
 type traverser struct {

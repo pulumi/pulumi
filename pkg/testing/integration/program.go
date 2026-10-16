@@ -47,20 +47,20 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/env"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	ptesting "github.com/pulumi/pulumi/shared/v3/go/common/testing"
+	"github.com/pulumi/pulumi/shared/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/retry"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/pulumi-internal/gsync"
 	"github.com/stretchr/testify/require"
 )
 
@@ -2982,6 +2982,19 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		if err != nil {
 			return fmt.Errorf("error adding go mod replacement for dep %q: %w", dep, err)
 		}
+
+		// Go ignores replace directives in dependencies, so carry over the dependency's own local replacements
+		// (e.g. the sdk's replacement of the shared module).
+		inherited, err := getLocalReplaces(editStr[strings.Index(editStr, "=")+1:])
+		if err != nil {
+			return fmt.Errorf("error reading go mod replacements for dep %q: %w", dep, err)
+		}
+		for _, editStr := range inherited {
+			err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
+			if err != nil {
+				return fmt.Errorf("error adding go mod replacement for dep %q: %w", dep, err)
+			}
+		}
 	}
 
 	// tidy to resolve all transitive dependencies including from local dependencies above.
@@ -3057,6 +3070,31 @@ func getEditStr(dep string, gopath string, depRoot string) (string, error) {
 
 	editStr := fmt.Sprintf("%s=%s", replacedModName, targetModDir)
 	return editStr, nil
+}
+
+// getLocalReplaces returns -replace arguments for every replace directive in dir/go.mod that points at a local path.
+func getLocalReplaces(dir string) ([]string, error) {
+	modPath := filepath.Join(dir, "go.mod")
+	data, err := os.ReadFile(modPath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading go.mod at %s: %w", dir, err)
+	}
+	mod, err := modfile.Parse(modPath, data, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing go.mod at %s: %w", dir, err)
+	}
+	var edits []string
+	for _, r := range mod.Replace {
+		if r.New.Version != "" {
+			continue
+		}
+		target := r.New.Path
+		if !filepath.IsAbs(target) {
+			target = filepath.Join(dir, target)
+		}
+		edits = append(edits, r.Old.Path+"="+target)
+	}
+	return edits, nil
 }
 
 func getModName(dir string) (string, error) {

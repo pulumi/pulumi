@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vbauerster/mpb/v8"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag/colors"
 )
 
 // syncBuffer is a bytes.Buffer safe for the renderer's goroutine to write while

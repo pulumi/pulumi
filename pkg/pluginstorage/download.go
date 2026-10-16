@@ -24,8 +24,8 @@ import (
 	"regexp"
 
 	"github.com/pulumi/pulumi/pkg/v3/util/atomicinstall"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 // UnpackContents installs a plugin's tarball into the cache. It validates that

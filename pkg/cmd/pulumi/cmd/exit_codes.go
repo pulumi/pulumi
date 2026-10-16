@@ -19,7 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/result"
 )
 
 // Exit code taxonomy for the Pulumi CLI. These values form part of the

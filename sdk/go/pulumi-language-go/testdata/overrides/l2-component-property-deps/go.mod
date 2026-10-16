@@ -10,3 +10,5 @@ require (
 replace example.com/pulumi-component-property-deps/sdk/go => ../../artifacts/example.com_pulumi-component-property-deps_sdk_go
 
 replace github.com/pulumi/pulumi/sdk/v3 => ../../artifacts/github.com_pulumi_pulumi_sdk_v3
+
+replace github.com/pulumi/pulumi/shared/v3 => ../../artifacts/github.com_pulumi_pulumi_shared_v3

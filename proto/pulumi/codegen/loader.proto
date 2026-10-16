@@ -16,7 +16,7 @@ syntax = "proto3";
 
 package codegen;
 
-option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen";
+option go_package = "github.com/pulumi/pulumi/shared/v3/proto/go/codegen";
 
 // Loader is a service for getting schemas from the Pulumi engine for use in code generators and other tools.
 // This is currently unstable and experimental.

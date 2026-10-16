@@ -17,7 +17,7 @@ package deploy
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/shared/v3/go/common/tokens"
 )
 
 // NewErrorSource creates a source that panics if it is iterated. This is used by the engine to guard against unexpected

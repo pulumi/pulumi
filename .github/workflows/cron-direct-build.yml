@@ -76,4 +76,5 @@ jobs:
           cd test
           pulumi new random-go --generate-only --yes
           go mod edit -replace github.com/pulumi/pulumi/sdk/v3=../sdk
+          go mod edit -replace github.com/pulumi/pulumi/shared/v3=../shared
           retry env GOPROXY=direct pulumi install

@@ -42,14 +42,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	ptesting "github.com/pulumi/pulumi/shared/v3/go/common/testing"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/tests/testutil"
 )
 
@@ -1321,7 +1321,10 @@ func TestSourcePositionGo(t *testing.T) {
 
 	localSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk"))
 	require.NoError(t, err)
+	localShared, err := filepath.Abs(filepath.Join("..", "..", "shared"))
+	require.NoError(t, err)
 	e.RunCommand("go", "mod", "edit", "-replace", "github.com/pulumi/pulumi/sdk/v3="+localSDK)
+	e.RunCommand("go", "mod", "edit", "-replace", "github.com/pulumi/pulumi/shared/v3="+localShared)
 	e.RunCommand("go", "mod", "tidy")
 
 	e.RunCommand("pulumi", "stack", "init", "test")
@@ -1463,7 +1466,10 @@ func TestStaleParameterizedPackageRefGo(t *testing.T) {
 
 	localSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk"))
 	require.NoError(t, err)
+	localShared, err := filepath.Abs(filepath.Join("..", "..", "shared"))
+	require.NoError(t, err)
 	e.RunCommand("go", "mod", "edit", "-replace", "github.com/pulumi/pulumi/sdk/v3="+localSDK)
+	e.RunCommand("go", "mod", "edit", "-replace", "github.com/pulumi/pulumi/shared/v3="+localShared)
 	e.RunCommand("go", "mod", "tidy")
 
 	stdout, _ := e.RunCommand("go", "run", ".")
@@ -1870,8 +1876,11 @@ func TestRunPlugin(t *testing.T) {
 	require.NoError(t, err)
 	pkgPath, err := filepath.Abs("../../pkg/")
 	require.NoError(t, err)
+	sharedPath, err := filepath.Abs("../../shared/")
+	require.NoError(t, err)
 
 	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/sdk/v3="+sdkPath)
+	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/shared/v3="+sharedPath)
 	e.RunCommand("go", "mod", "edit", "-replace=github.com/pulumi/pulumi/pkg/v3="+pkgPath)
 	e.RunCommand("go", "mod", "tidy")
 	e.RunCommand("pulumi", "stack", "init", "runplugin-test")

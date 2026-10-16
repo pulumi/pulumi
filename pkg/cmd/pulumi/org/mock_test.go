@@ -17,7 +17,7 @@ package org
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 )
 
 // mockOrgRoleClient is a fake orgRoleClient used by tests across the

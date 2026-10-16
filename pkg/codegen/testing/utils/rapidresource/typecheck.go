@@ -17,7 +17,7 @@ package rapidresource
 import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/shared/v3/go/property"
 )
 
 // MapStructurallyTyped reports whether m matches the given property list:

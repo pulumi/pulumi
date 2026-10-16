@@ -17,8 +17,8 @@ package plugin
 import (
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/env"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 // pulumiCloudCredentialEnv resolves the Pulumi Cloud API address and access token to expose to

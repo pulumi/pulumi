@@ -23,8 +23,8 @@ import (
 
 	mapset "github.com/deckarep/golang-set/v2"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/slice"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/stretchr/testify/assert"

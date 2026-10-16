@@ -27,7 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/engine/encryptedlog"
 	backendlogging "github.com/pulumi/pulumi/pkg/v3/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 func TestParseLogName(t *testing.T) {

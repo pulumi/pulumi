@@ -197,6 +197,7 @@ jobs:
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-package github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language \
                 pkg/testing/pulumi-test-language 2 \
+            --partition-module shared 1 \
             --partition-module sdk 1 \
             --partition-module sdk/go/pulumi-language-go 1 \
             --partition-module tests 8
@@ -211,6 +212,7 @@ jobs:
             --platform "${INTEGRATION_PLATFORMS[@]}" \
             --version-set "${VERSION_SETS_TO_TEST[@]}" \
             --partition-module pkg 1 \
+            --partition-module shared 1 \
             --partition-module sdk 1 \
             --partition-package github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3 \
                 sdk/go/pulumi-language-go 3 \
@@ -253,6 +255,7 @@ jobs:
               --platform windows-latest \
               --version-set current \
               --partition-module pkg 2 \
+              --partition-module shared 1 \
               --partition-module sdk 1 \
               --partition-module tests 3 \
               --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \
@@ -271,6 +274,7 @@ jobs:
               --platform macos-latest \
               --version-set current \
               --partition-module pkg 1 \
+              --partition-module shared 1 \
               --partition-module sdk 1 \
               --partition-module tests 8 \
               --partition-package github.com/pulumi/pulumi/tests/smoke tests/smoke 4 \

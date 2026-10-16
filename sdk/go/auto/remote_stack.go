@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremoterefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremoteup"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 )
 
 // RemoteStack is an isolated, independently configurable instance of a Pulumi program that is

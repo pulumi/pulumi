@@ -3,4 +3,4 @@
 /pkg/cmd/pulumi/neo/ @pulumi/ai-platform
 /pkg/cloudsetup/ @pulumi/cloud-platform
 /pkg/cmd/esc/ @pulumi/cloud-platform
-/sdk/go/common/esc/ @pulumi/cloud-platform
+/shared/go/common/esc/ @pulumi/cloud-platform

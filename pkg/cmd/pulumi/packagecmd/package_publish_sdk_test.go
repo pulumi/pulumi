@@ -18,7 +18,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/executable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

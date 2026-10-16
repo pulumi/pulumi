@@ -11,7 +11,7 @@ coverage:
         informational: true
         paths:
           - "pkg"
-          - "sdk/go/common"
+          - "shared/go/common"
           - "sdk/go/auto"
 
       sdk-go:

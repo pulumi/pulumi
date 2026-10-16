@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
 )
 
 func newEnvProviderAWSLoginCmd(env *envCommand) *cobra.Command {

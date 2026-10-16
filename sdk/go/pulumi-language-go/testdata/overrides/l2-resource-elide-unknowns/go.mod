@@ -13,3 +13,5 @@ replace example.com/pulumi-output/sdk/go/v23 => ../../artifacts/example.com_pulu
 replace github.com/pulumi/pulumi/sdk/v3 => ../../artifacts/github.com_pulumi_pulumi_sdk_v3
 
 replace example.com/pulumi-simple/sdk/go/v2 => ../../artifacts/example.com_pulumi-simple_sdk_go_v2
+
+replace github.com/pulumi/pulumi/shared/v3 => ../../artifacts/github.com_pulumi_pulumi_shared_v3

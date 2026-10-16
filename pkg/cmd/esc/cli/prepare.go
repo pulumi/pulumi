@@ -20,8 +20,8 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/shared/v3/go/common/esc"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
 )
 
 func getEnvironmentVariables(env *esc.Environment, quote, redact bool) (environ, secrets []string) {

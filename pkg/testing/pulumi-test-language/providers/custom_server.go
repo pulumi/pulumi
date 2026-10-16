@@ -15,7 +15,7 @@
 package providers
 
 import (
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/shared/v3/proto/go"
 )
 
 // Permits test providers to override plugin.NewProviderServer to capture RPC-level calls.

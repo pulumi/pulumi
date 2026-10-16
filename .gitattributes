@@ -1,7 +1,7 @@
 pkg/engine/lifecycletest/testdata/** linguist-generated=true
 
 # Generated protobuf/gRPC stubs (see proto/generate.sh).
-sdk/proto/go/** linguist-generated=true
+shared/proto/go/** linguist-generated=true
 sdk/nodejs/proto/** linguist-generated=true
 sdk/python/lib/pulumi/runtime/proto/** linguist-generated=true
 # The __init__.py files are hand-maintained; generate.sh restores them from git.

@@ -30,8 +30,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/acp"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/shared/v3/go/common/version"
+	"github.com/pulumi/pulumi/shared/v3/go/common/workspace"
 )
 
 // neoACPIdentity is how the adapter introduces itself to the editor on the ACP

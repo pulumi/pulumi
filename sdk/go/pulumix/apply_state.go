@@ -17,8 +17,8 @@ package pulumix
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/contract"
 )
 
 // applyNState helps implement the ApplyN combinators

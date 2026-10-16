@@ -16,7 +16,7 @@ package deploy
 
 import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/shared/v3/go/common/resource"
 )
 
 // stateBuilder offers a fluent API for making edits to a pkgresource.State object in a way that avoids mutation and

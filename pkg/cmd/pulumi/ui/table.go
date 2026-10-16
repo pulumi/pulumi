@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
 )
 
 func FprintTable(out io.Writer, table cmdutil.Table, opts *cmdutil.TableRenderOptions) {

@@ -24,7 +24,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pgavlin/fx/v2"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/cmdutil"
 )
 
 // Binding is one resolved or deferred path-parameter value derived from

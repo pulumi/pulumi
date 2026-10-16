@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/shared/v3/go/common/util/executable"
 )
 
 func GenerateGoBatchTest(
@@ -94,6 +94,9 @@ func checkGo(t *testing.T, path string, deps mapset.Set[string], pulumiSDKPath s
 				fmt.Sprintf("--replace=%s=%s",
 					"github.com/pulumi/pulumi/sdk/v3",
 					pulumiSDKPath),
+				fmt.Sprintf("--replace=%s=%s",
+					"github.com/pulumi/pulumi/shared/v3",
+					filepath.Join(filepath.Dir(pulumiSDKPath), "shared")),
 			},
 			dir, &integration.ProgramTestOptions{})
 		require.NoError(t, err)

@@ -27,7 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	pkgdisplay "github.com/pulumi/pulumi/pkg/v3/display"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/shared/v3/go/common/apitype"
 )
 
 func eventSeq(events ...apitype.EngineEvent) iter.Seq2[apitype.EngineEvent, error] {
