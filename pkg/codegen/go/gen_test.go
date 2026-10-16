@@ -545,6 +545,72 @@ func TestTitle(t *testing.T) {
 	assert.Equal("_3gppInfos", Title("3gppInfos"))
 	assert.Equal("_3gppRaw", Title("3gppRaw"))
 	assert.Equal("_0foo", Title("0foo"))
+	// Leading underscores must be stripped: a leading underscore makes a Go identifier
+	// unexported, which defeats the purpose of title-casing a schema property name into a
+	// usable field or accessor (see https://github.com/pulumi/pulumi/issues/24220).
+	assert.Equal("Type", Title("__type"))
+	assert.Equal("Value", Title("_value"))
+}
+
+// TestGenerateDoubleUnderscorePropertyFields is a regression test for
+// https://github.com/pulumi/pulumi/issues/24220: a schema property whose name begins with a
+// double underscore (a wire-fixed discriminator convention some providers use, e.g. Jackson's
+// @JsonTypeInfo) must still generate an exported Go struct field and output accessor, since a
+// field or method starting with "_" is unexported and unreachable from calling code.
+func TestGenerateDoubleUnderscorePropertyFields(t *testing.T) {
+	t.Parallel()
+
+	pkgSpec := schema.PackageSpec{
+		Name:    "dunder",
+		Version: "0.0.1",
+		Types: map[string]schema.ComplexTypeSpec{
+			"dunder:index:Tagged": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"__type": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						"kind":   {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+					Required: []string{"__type", "kind"},
+				},
+			},
+		},
+		Resources: map[string]schema.ResourceSpec{
+			// Referencing Tagged from a resource output property triggers generation of its
+			// Output type and property accessors.
+			"dunder:index:Res": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"tagged": {TypeSpec: schema.TypeSpec{Ref: "#/types/dunder:index:Tagged"}},
+					},
+					Required: []string{"tagged"},
+				},
+			},
+		},
+	}
+
+	loader := schema.NewPluginLoader(utils.NewContext(testdataPath))
+	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	fs, err := GeneratePackage("tests", pkg, nil)
+	require.NoError(t, err)
+
+	types, ok := fs["dunder/pulumiTypes.go"]
+	require.True(t, ok, "expected generated pulumiTypes.go")
+	src := string(types)
+
+	// The struct field must be exported ("Type"), not the unexported "__type", while the wire
+	// tag keeps the original property name so (de)serialization is unaffected.
+	assert.Contains(t, src, "Type string `pulumi:\"__type\"`")
+	assert.NotContains(t, src, "__type string")
+
+	// The generated output accessor must likewise be exported.
+	assert.Regexp(t, `func \(o TaggedOutput\) Type\(\) pulumi\.StringOutput`, src)
+	assert.NotContains(t, src, ") __type() ")
 }
 
 func TestRegressTypeDuplicatesInChunking(t *testing.T) {
