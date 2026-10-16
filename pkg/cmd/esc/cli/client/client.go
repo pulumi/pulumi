@@ -218,6 +218,9 @@ type Client interface {
 	// CloseChangeRequest closes a change request without applying it.
 	CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error
 
+	// AddChangeRequestComment adds a comment to a change request.
+	AddChangeRequestComment(ctx context.Context, orgName, changeRequestID, comment string) error
+
 	// GetEnvironmentDraftStatus returns the draft's base revision and the environment's current revision.
 	GetEnvironmentDraftStatus(
 		ctx context.Context,
@@ -993,6 +996,11 @@ func (pc *client) ApplyChangeRequest(
 
 func (pc *client) CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error {
 	path := fmt.Sprintf("/api/change-requests/%v/%v/close", orgName, changeRequestID)
+	return pc.restCall(ctx, http.MethodPost, path, nil, &ChangeRequestComment{Comment: comment}, nil)
+}
+
+func (pc *client) AddChangeRequestComment(ctx context.Context, orgName, changeRequestID, comment string) error {
+	path := fmt.Sprintf("/api/change-requests/%v/%v/comments", orgName, changeRequestID)
 	return pc.restCall(ctx, http.MethodPost, path, nil, &ChangeRequestComment{Comment: comment}, nil)
 }
 

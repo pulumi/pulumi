@@ -9,6 +9,7 @@ run: |
   esc env change-request list --env default/test
   esc env change-request get 00000000-0000-0000-0000-000000000000
   esc env change-request diff 00000000-0000-0000-0000-000000000000
+  esc env change-request comment 00000000-0000-0000-0000-000000000000 -m "looks good"
   esc env change-request approve 00000000-0000-0000-0000-000000000000 --dry-run
   esc env change-request approve 00000000-0000-0000-0000-000000000000 -m lgtm --yes
   esc env change-request approve 00000000-0000-0000-0000-000000000000 -m "lgtm again"
@@ -80,6 +81,7 @@ URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-000
  values:
 -  foo: baz
 +  foo: bar
+> esc env change-request comment 00000000-0000-0000-0000-000000000000 -m looks good
 > esc env change-request approve 00000000-0000-0000-0000-000000000000 --dry-run
 Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
 
@@ -250,6 +252,8 @@ No change requests found.
 > esc env change-request list --env default/test
 > esc env change-request get 00000000-0000-0000-0000-000000000000
 > esc env change-request diff 00000000-0000-0000-0000-000000000000
+> esc env change-request comment 00000000-0000-0000-0000-000000000000 -m looks good
+Added comment to change request 00000000-0000-0000-0000-000000000000
 > esc env change-request approve 00000000-0000-0000-0000-000000000000 --dry-run
 > esc env change-request approve 00000000-0000-0000-0000-000000000000 -m lgtm --yes
 Approved change request 00000000-0000-0000-0000-000000000000

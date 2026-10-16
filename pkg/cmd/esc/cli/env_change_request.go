@@ -51,7 +51,8 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 			"--draft, such as `env edit` and `env set`. Use `env open --draft=<id>`\n" +
 			"to open the draft version of an environment.\n" +
 			"\n" +
-			"Subcommands exist for listing, viewing, diffing, approving, applying, and closing change requests.",
+			"Subcommands exist for listing, viewing, diffing, approving, applying, closing, and commenting on\n" +
+			"change requests.",
 		Example: fmt.Sprintf("  # Propose a change, then review and apply it\n"+
 			"  %[1]s env set my-project/prod app.replicas 3 --draft\n"+
 			"  %[1]s env change-request list --env my-project/prod\n"+
@@ -70,6 +71,7 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 	cmd.AddCommand(newEnvChangeRequestUnapproveCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestApplyCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestCloseCmd(cr))
+	cmd.AddCommand(newEnvChangeRequestCommentCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestDiffCmd(cr))
 
 	return cmd
@@ -633,6 +635,42 @@ func newEnvChangeRequestCloseCmd(cr *changeRequestCommand) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&comment, "message", "m", "", "a comment explaining why the change request was closed")
+
+	return cmd
+}
+
+func newEnvChangeRequestCommentCmd(cr *changeRequestCommand) *cobra.Command {
+	var comment string
+
+	cmd := &cobra.Command{
+		Use:   "comment <change-request-id>",
+		Short: "[EXPERIMENTAL] Comment on a change request.",
+		Long: "[EXPERIMENTAL] Comment on a change request\n" +
+			"\n" +
+			"This command adds a comment to a change request. To comment while approving or closing,\n" +
+			"use -m on `env change-request approve` or `env change-request close`.\n",
+		Example: fmt.Sprintf("  %[1]s env change-request comment <change-request-id> -m \"Can we lower the TTL?\"",
+			cr.env.esc.command),
+		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			orgName, err := cr.orgName(ctx)
+			if err != nil {
+				return err
+			}
+
+			if err := cr.env.esc.client.AddChangeRequestComment(ctx, orgName, args[0], comment); err != nil {
+				return fmt.Errorf("adding comment: %w", err)
+			}
+
+			fmt.Fprintf(cr.env.esc.stderr, "Added comment to change request %v\n", args[0])
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&comment, "message", "m", "", "the comment")
+	_ = cmd.MarkFlagRequired("message")
 
 	return cmd
 }
