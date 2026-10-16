@@ -1409,9 +1409,12 @@ func TestUpContinueOnErrorSkipsDiffForFailedDependency(t *testing.T) {
 	require.ErrorContains(t, err, "intentionally failed update")
 	require.NotNil(t, snap)
 
-	assert.True(t, slices.ContainsFunc(snap.Resources, func(rs *pkgresource.State) bool {
+	i := slices.IndexFunc(snap.Resources, func(rs *pkgresource.State) bool {
 		return rs.URN.Name() == "dependent"
-	}), "expected dependent's old state to be kept")
+	})
+	require.NotEqual(t, -1, i, "expected dependent's old state to be kept")
+	assert.Equal(t, resource.NewProperty("hello"), snap.Resources[i].Inputs["value"],
+		"expected dependent's old inputs to be kept")
 	assert.False(t, diffed.Contains("dependent"), "expected dependent never to be diffed")
 }
 
@@ -1451,8 +1454,8 @@ func TestUpContinueOnErrorExplicitProviderCreateFails(t *testing.T) {
 		provRef, err := providers.NewReference(provResp.URN, provResp.ID)
 		require.NoError(t, err)
 
-		// A resource using the failed explicit provider is skipped: SUCCESS + Unknown so
-		// the SDK can propagate the unknown to its own dependents.
+		// A resource using the failed explicit provider is skipped, so the SDK resolves its
+		// outputs as unknown.
 		depResp, err := monitor.RegisterResource("pkgA:m:typA", "usesExplicit", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 			Provider:                provRef.String(),
@@ -1563,4 +1566,72 @@ func TestUpContinueOnErrorSkipsPlanCheckForFailedDependency(t *testing.T) {
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed create")
 	assert.NotContains(t, err.Error(), "violates plan")
+}
+
+// A resource that already exists and whose explicit provider fails to update is skipped, and keeps its
+// old state rather than being deleted.
+func TestUpContinueOnErrorExplicitProviderUpdateFailsKeepsDependent(t *testing.T) {
+	t.Parallel()
+
+	failConfigure := false
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					if failConfigure && req.URN != nil && req.URN.Name() == "explicitProv" {
+						return plugin.ConfigureResponse{}, errors.New("intentionally failed provider configure")
+					}
+					return plugin.ConfigureResponse{}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	run := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		run++
+		provResp, err := monitor.RegisterResource(
+			providers.MakeProviderType("pkgA"), "explicitProv", true, deploytest.ResourceOptions{
+				SupportsResultReporting: true,
+				Inputs:                  resource.PropertyMap{"run": resource.NewProperty(float64(run))},
+			})
+		require.NoError(t, err)
+
+		provRef, err := providers.NewReference(provResp.URN, provResp.ID)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "usesExplicit", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Provider:                provRef.String(),
+			Inputs:                  resource.PropertyMap{"value": resource.NewProperty("hello")},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			SkipDisplayTests: true,
+			UpdateOptions:    UpdateOptions{ContinueOnError: true},
+			HostF:            hostF,
+		},
+	}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	failConfigure = true
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "intentionally failed provider configure")
+	require.NotNil(t, snap)
+
+	i := slices.IndexFunc(snap.Resources, func(rs *pkgresource.State) bool {
+		return rs.URN.Name() == "usesExplicit"
+	})
+	require.NotEqual(t, -1, i, "expected usesExplicit to be kept")
+	assert.Equal(t, resource.NewProperty("hello"), snap.Resources[i].Inputs["value"])
 }

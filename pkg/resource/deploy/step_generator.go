@@ -1028,27 +1028,6 @@ func (sg *stepGenerator) hasSkippedDependencies(new *pkgresource.State) (bool, e
 	return false, nil
 }
 
-// hasFailedProvider reports whether this resource's explicit provider failed earlier in this
-// deployment under ContinueOnError. Dependents of failed regular resources are handled later
-// by the executor's doesStepDependOn filter, which routes them through CreateStep.Skip /
-// UpdateStep.Skip so provider preview outputs are preserved. A failed explicit provider is
-// different because loadResourceProvider would otherwise bail with "unknown provider" before
-// any step is generated.
-func (sg *stepGenerator) hasFailedProvider(new *pkgresource.State) (bool, error) {
-	provider, _ := new.GetAllDependencies()
-	if provider == "" {
-		return false, nil
-	}
-	prov, err := sdkproviders.ParseReference(provider)
-	if err != nil {
-		return false, fmt.Errorf(
-			"could not parse provider reference %s for %s: %w",
-			provider, new.URN, err,
-		)
-	}
-	return sg.skipped != nil && sg.skipped.Contains(prov.URN()), nil
-}
-
 func (sg *stepGenerator) continueStepsFromExtension(
 	ctx context.Context, event ContinueExtensionEvent,
 ) ([]Step, bool, error) {
@@ -1150,16 +1129,11 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 		sg.toDelete = append(sg.toDelete, new)
 	}
 
-	// If this resource's explicit provider failed earlier in this deployment under
-	// ContinueOnError, skip this resource rather than bailing when loadResourceProvider can't
-	// resolve the failed provider ref. Dependents of failed regular resources are handled
-	// later by the executor's doesStepDependOn filter so their skip can go through
-	// CreateStep.Skip / UpdateStep.Skip (preserving provider preview outputs).
-	failedProv, err := sg.hasFailedProvider(new)
-	if err != nil {
-		return nil, false, err
-	}
-	if failedProv {
+	// If this resource depends on a resource (or provider) that failed or was skipped under --continue-on-error, the
+	// executor will skip its step too. Generate that step now, without involving its provider or any analyzers: its
+	// inputs may be missing values that the failed resources would have provided, and its provider may have failed.
+	if sg.dependsOnSkipped(new) {
+		sg.sames[urn] = true
 		sg.skippedCreates[urn] = true
 		if old != nil {
 			new.Outputs = old.Outputs
@@ -1410,11 +1384,6 @@ func (sg *stepGenerator) continueStepsFromImport(
 			checkInputs = func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
 				return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(oldInputs)}, nil
 			}
-		} else if sg.dependsOnSkipped(new) {
-			// If this resource will be skipped, stub out the provider check and use the new inputs directly.
-			checkInputs = func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
-				return plugin.CheckResponse{Properties: req.NewInputs}, nil
-			}
 		}
 
 		// If we are re-creating this resource because it was deleted earlier, the old inputs are now
@@ -1482,8 +1451,8 @@ func (sg *stepGenerator) continueStepsFromImport(
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
 	// If theres no plan for this resource check that nothing has been changed.
-	// We don't check plans if the resource is invalid or will be skipped, it's not going to be operated on anyway.
-	if !invalid && sg.deployment.plan != nil && !sg.dependsOnSkipped(new) {
+	// We don't check plans if the resource is invalid, it's going to fail anyway.
+	if !invalid && sg.deployment.plan != nil {
 		resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]
 		if !ok {
 			if old == nil {
@@ -1500,11 +1469,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 
 	// Send the resource off to any Analyzers before being operated on. We do two passes: first we perform
 	// remediations, and *then* we do analysis, since we want analyzers to run on the final resource states.
-	// Resources that will be skipped are never operated on, so they aren't analyzed.
 	analyzers := sg.deployment.analyzers
-	if sg.dependsOnSkipped(new) {
-		analyzers = nil
-	}
 
 	// First pass: perform remediations sequentially. Each remediation can transform the resource
 	// properties, so subsequent analyzers must see the transformed state.
@@ -1897,21 +1862,6 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	prov plugin.Provider, goal *pkgresource.Goal, randomSeed []byte,
 	autonaming *plugin.AutonamingOptions,
 ) ([]Step, bool, error) {
-	// If this resource will be skipped, don't ask the provider for a diff: assume there are changes.
-	if sg.dependsOnSkipped(new) {
-		updateSteps, err := sg.continueStepsFromDiff(&continueDiffResourceEvent{
-			evt:        event,
-			diff:       plugin.DiffResult{Changes: plugin.DiffSome},
-			urn:        urn,
-			old:        old,
-			new:        new,
-			provider:   prov,
-			autonaming: autonaming,
-			randomSeed: randomSeed,
-		})
-		return updateSteps, false, err
-	}
-
 	// Unknowns in replacement triggers are fine during preview, but they should raise an error during the actual
 	// operation. This check only applies when we have an old resource (i.e., during updates/replaces), since a
 	// replacement trigger only makes sense when there's something to replace.
