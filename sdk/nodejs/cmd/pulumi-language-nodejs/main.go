@@ -486,6 +486,11 @@ func (host *nodeLanguageHost) GetRequiredPackages(ctx context.Context,
 	// `require("../../elsewhere")` and that we'd miss this as a dependency, however the solution
 	// for that is simple: install the package in the project root.
 
+	// Report a missing runtime here, before the engine starts a deployment, rather than as a program error.
+	if _, err := host.findRuntime(); err != nil {
+		return nil, err
+	}
+
 	// Keep track of the versions of @pulumi/pulumi that are pulled in.  If they differ on
 	// minor version, we will issue a warning to the user.
 	pulumiPackagePathToVersionMap := make(map[string]semver.Version)
@@ -524,6 +529,25 @@ func (host *nodeLanguageHost) GetRequiredPackages(ctx context.Context,
 	return &pulumirpc.GetRequiredPackagesResponse{
 		Packages: packages,
 	}, nil
+}
+
+// findRuntime locates the node or bun executable that runs programs, reporting a missing toolchain consistently.
+func (host *nodeLanguageHost) findRuntime() (string, error) {
+	name, toolchain, program, installURL :=
+		"nodejs", "Node.js", "node", "https://www.pulumi.com/docs/iac/languages-sdks/javascript/"
+	if host.runtime == "bun" {
+		name, toolchain, program, installURL = "bun", "Bun", "bun", "https://bun.sh/docs/installation"
+	}
+	runtimeBin, err := exec.LookPath(program)
+	if err != nil {
+		return "", &executable.ToolchainNotFoundError{
+			Runtime:    name,
+			Toolchain:  toolchain,
+			Programs:   []string{program},
+			InstallURL: installURL,
+		}
+	}
+	return runtimeBin, nil
 }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
@@ -828,15 +852,9 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 	}
 	defer pipes.shutdown()
 
-	runtimeExec := host.runtime
-	if runtimeExec == "nodejs" {
-		runtimeExec = "node"
-	}
-	runtimeBin, err := exec.LookPath(runtimeExec)
+	runtimeBin, err := host.findRuntime()
 	if err != nil {
-		return &pulumirpc.RunResponse{
-			Error: fmt.Sprintf("could not find %s on the $PATH: %s", runtimeExec, err.Error()),
-		}, nil
+		return nil, err
 	}
 
 	if host.runtime == "bun" {
@@ -1649,11 +1667,7 @@ func (host *nodeLanguageHost) RunPlugin(
 		}
 	}
 
-	runtimeExec := host.runtime
-	if runtimeExec == "nodejs" {
-		runtimeExec = "node"
-	}
-	runtimeBin, err := exec.LookPath(runtimeExec)
+	runtimeBin, err := host.findRuntime()
 	if err != nil {
 		return err
 	}
