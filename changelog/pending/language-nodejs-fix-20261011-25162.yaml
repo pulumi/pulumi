@@ -1,0 +1,3 @@
+component: language/nodejs
+kind: fix
+body: Allow an attached Node.js language runtime to run after cancellation
