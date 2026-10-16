@@ -139,7 +139,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	// host is owned here, closed after the context
 	defer contract.IgnoreClose(pluginHost)
 	plugctx, err := plugin.NewContextWithRoot(ctx, cmdutil.Diag(), cmdutil.Diag(), pluginHost, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil)
+		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return err
 	}

@@ -57,7 +57,7 @@ func newCachingHost(provider plugin.Provider, pluginInfo *workspace.PluginInfo) 
 // fileCacheLoader creates a loader with the in-memory caches disabled so that
 // only the file-based cache is exercised.
 func fileCacheLoader(tb testing.TB, host plugin.Host) ReferenceLoader {
-	pctx, err := plugin.NewContextWithHost(tb.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(tb.Context(), nil, nil, host, "", "", nil, nil)
 	require.NoError(tb, err)
 	return newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,

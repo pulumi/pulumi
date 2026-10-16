@@ -76,7 +76,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
-				nil)
+				nil, nil)
 			if err != nil {
 				return err
 			}

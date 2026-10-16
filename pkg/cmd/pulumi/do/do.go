@@ -186,7 +186,7 @@ func NewDoCmd(
 
 		pctx, err := plugin.NewContext(
 			ctx, diagFwd, statusFwd, host, nil, wd, nil, false,
-			nil)
+			nil, nil)
 		if err != nil {
 			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)

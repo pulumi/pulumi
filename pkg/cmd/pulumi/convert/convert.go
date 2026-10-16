@@ -528,6 +528,7 @@ func runConvert(
 		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 		_, main, pctx, err := engine.ProjectInfoContext(
 			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+			nil,
 		)
 		if err != nil {
 			return err

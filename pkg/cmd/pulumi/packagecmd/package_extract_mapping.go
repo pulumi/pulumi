@@ -76,7 +76,7 @@ empty string.`,
 			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(
 				ctx, sink, sink, pluginHost, nil, wd, nil, false,
-				nil)
+				nil, nil)
 			if err != nil {
 				return err
 			}

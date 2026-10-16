@@ -118,6 +118,7 @@ func InstallPackagesFromProject(
 	ctx context.Context, proj workspace.BaseProject, root string, registry registry.Registry,
 	parallelism int, useLanguageVersionTools bool,
 	stdout, stderr io.Writer, e env.Env,
+	cloudCredentialEnv map[string]string,
 ) (packageinstallation.State, error) {
 	d := diag.DefaultSink(stdout, stderr, diag.FormatOptions{
 		Color: utilCmdutil.GetGlobalColorization(),
@@ -128,7 +129,7 @@ func InstallPackagesFromProject(
 	if err != nil {
 		return packageinstallation.State{}, err
 	}
-	pctx, err := plugin.NewContext(ctx, d, d, pluginHost, nil, root, nil, false, nil)
+	pctx, err := plugin.NewContext(ctx, d, d, pluginHost, nil, root, nil, false, nil, cloudCredentialEnv)
 	if err != nil {
 		return packageinstallation.State{}, errors.Join(err, pluginHost.Close())
 	}

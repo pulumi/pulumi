@@ -39,7 +39,7 @@ func testSetup(t *testing.T) (context.Context, *plugin.Context, *plugin.GrpcServ
 		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { pluginHost.Close() })
-	pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil)
+	pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { pctx.Close() })
 
@@ -80,7 +80,7 @@ func TestNewInstallPluginFunc_DisabledAcquisition(t *testing.T) {
 		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	defer pluginHost.Close()
-	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil)
+	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil, nil)
 	require.NoError(t, err)
 	defer pctx.Close()
 
@@ -99,7 +99,7 @@ func TestNewInstallPluginFunc_PluginInstallError(t *testing.T) {
 		schema.NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	defer pluginHost.Close()
-	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil)
+	pctx, err := plugin.NewContext(t.Context(), nil, nil, pluginHost, nil, ".", nil, false, nil, nil)
 	require.NoError(t, err)
 	defer pctx.Close()
 

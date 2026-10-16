@@ -78,7 +78,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false,
-				nil)
+				nil, nil)
 			if err != nil {
 				return err
 			}

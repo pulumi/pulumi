@@ -139,7 +139,7 @@ func (cmd *policyInstallCmd) Run(
 	}
 	// host is owned here, closed after the context
 	defer contract.IgnoreClose(pluginHost)
-	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, pluginHost, nil, cwd, nil, true, nil)
+	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, pluginHost, nil, cwd, nil, true, nil, nil)
 	if err != nil {
 		return fmt.Errorf("creating plugin context: %w", err)
 	}
