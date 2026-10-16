@@ -145,7 +145,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 	// When we're not showing secrets, use a blinding provider to prevent secrets from being disclosed.
-	secretsProvider := secrets.DefaultProvider
+	secretsProvider := cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager)
 	if !cmd.showSecrets {
 		secretsProvider = secrets.BlindingProvider
 	}

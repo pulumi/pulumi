@@ -28,13 +28,13 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func newStackExportCmd() *cobra.Command {
+func newStackExportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp secrets.Provider) *cobra.Command {
 	var file string
 	var stackName string
 	var version string
@@ -51,7 +51,6 @@ func newStackExportCmd() *cobra.Command {
 			"resources, etc.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -61,7 +60,7 @@ func newStackExportCmd() *cobra.Command {
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				stackName,
 				LoadOnly,
 				opts,
@@ -107,7 +106,7 @@ func newStackExportCmd() *cobra.Command {
 
 			if showSecrets {
 				// log show secrets event
-				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
+				snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, sp)
 				if err != nil {
 					return stack.FormatDeploymentDeserializationError(err, stackName)
 				}

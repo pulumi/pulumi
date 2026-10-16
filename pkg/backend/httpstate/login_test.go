@@ -71,7 +71,7 @@ func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *t
 	err := workspace.StoreAgentAccount("https://api.example.com", workspace.Account{AccessToken: "agent-token"}, true)
 	require.NoError(t, err)
 
-	account, err := getBackendAccount(t.Context(), "https://api.example.com")
+	account, _, err := getBackendAccount(t.Context(), "https://api.example.com")
 	require.Error(t, err)
 	assert.Empty(t, account.AccessToken)
 }

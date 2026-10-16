@@ -1449,7 +1449,7 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 	tgtCrypter := prefixCrypter{prefix: "tgt"}
 
 	// "test-prefix" is a fake secrets-manager type registered with the custom provider below so
-	// DeserializeUntypedDeployment can find a manager for it; the real backend_secrets.DefaultProvider
+	// DeserializeUntypedDeployment can find a manager for it; the standard secrets provider
 	// only knows passphrase / service / cloud.
 	srcSM := &secrets.MockSecretsManager{
 		TypeF:      func() string { return "test-prefix" },
