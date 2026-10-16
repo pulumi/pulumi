@@ -288,3 +288,24 @@ func (g Path) Segments(yield func(PathSegment) bool) {
 		}
 	}
 }
+
+// AppendSegment returns a new [Path] with seg appended to its segments. The receiver is
+// not modified.
+//
+// For the common cases of appending a map key or array index, prefer [Path.AppendKey]
+// or [Path.AppendIndex] to avoid the explicit [NewSegment] wrapping.
+func (p Path) AppendSegment(seg PathSegment) Path {
+	return Path{p.appendGlobSegment(seg), struct{}{}}
+}
+
+// AppendKey returns a new [Path] with a [KeySegment] for key appended. The receiver is
+// not modified. It is sugar for p.AppendSegment(NewSegment(key)).
+func (p Path) AppendKey(key string) Path {
+	return p.AppendSegment(KeySegment{key})
+}
+
+// AppendIndex returns a new [Path] with an [IndexSegment] for i appended. The receiver
+// is not modified. It is sugar for p.AppendSegment(NewSegment(i)).
+func (p Path) AppendIndex(i int) Path {
+	return p.AppendSegment(IndexSegment{uint64(i)})
+}

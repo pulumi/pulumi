@@ -81,7 +81,7 @@ func (t *MapType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *MapType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *MapType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
@@ -94,13 +94,17 @@ func (t *MapType) equals(other Type, seen map[Type]struct{}) bool {
 // from values of type map(U) where T is assignable from U or object(K_0=U_0, ..., K_N=U_N) if T is assignable from the
 // unified type of U_0 through U_N.
 func (t *MapType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *MapType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		switch src := src.(type) {
 		case *MapType:
-			return t.ElementType.AssignableFrom(src.ElementType)
+			return t.ElementType.assignableFrom(src.ElementType, seen)
 		case *ObjectType:
 			for _, src := range src.Properties {
-				if !t.ElementType.AssignableFrom(src) {
+				if !t.ElementType.assignableFrom(src, seen) {
 					return false
 				}
 			}

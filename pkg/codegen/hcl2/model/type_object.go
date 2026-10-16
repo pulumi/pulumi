@@ -176,18 +176,19 @@ func (t *ObjectType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *ObjectType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *ObjectType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
+	pair := [2]Type{t, other}
 	if seen != nil {
-		if _, ok := seen[t]; ok {
+		if _, ok := seen[pair]; ok {
 			return true
 		}
 	} else {
-		seen = map[Type]struct{}{}
+		seen = comparePairs{}
 	}
-	seen[t] = struct{}{}
+	seen[pair] = struct{}{}
 
 	otherObject, ok := other.(*ObjectType)
 	if !ok {
@@ -208,14 +209,18 @@ func (t *ObjectType) equals(other Type, seen map[Type]struct{}) bool {
 // An object({K_0 = T_0, ..., K_N = T_N}) is assignable from U = object({K_0 = U_0, ... K_M = U_M}), where T_I is
 // assignable from U[K_I] for all I from 0 to N.
 func (t *ObjectType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *ObjectType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		if src, ok := src.(*ObjectType); ok {
 			for key, t := range t.Properties {
 				src, ok := src.Properties[key]
 				if !ok {
 					src = NoneType
 				}
-				if !t.AssignableFrom(src) {
+				if !t.assignableFrom(src, seen) {
 					return false
 				}
 			}

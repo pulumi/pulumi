@@ -288,6 +288,14 @@ var ParallelAnalyze = env.Int("PARALLEL_ANALYZE",
 var DisableExperimentalWatchRemovalWarning = env.Bool("DISABLE_EXPERIMENTAL_WATCH_REMOVAL_WARNING",
 	"Disable the removal warning when using `pulumi watch`.")
 
+// TODO[https://github.com/pulumi/pulumi/issues/24717]: Remove when `pulumi watch` is removed.
+var DisableExperimentalWatchRemovalError = env.Bool("DISABLE_EXPERIMENTAL_WATCH_REMOVAL_ERROR",
+	"Re-enable `pulumi watch`, which errors by default before its removal.")
+
 // TODO[https://github.com/pulumi/pulumi/issues/24718]: Remove when `pulumi logs` is removed.
 var DisableExperimentalLogsRemovalWarning = env.Bool("DISABLE_EXPERIMENTAL_LOGS_REMOVAL_WARNING",
 	"Disable the removal warning when using `pulumi logs`.")
+
+// TODO[https://github.com/pulumi/pulumi/issues/24718]: Remove when `pulumi logs` is removed.
+var DisableExperimentalLogsRemovalError = env.Bool("DISABLE_EXPERIMENTAL_LOGS_REMOVAL_ERROR",
+	"Re-enable `pulumi logs`, which errors by default before its removal.")

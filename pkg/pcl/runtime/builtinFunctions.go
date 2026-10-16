@@ -22,9 +22,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -109,24 +110,22 @@ func recoverExpression(
 
 	valueClosure := customdecode.ExpressionClosureFromVal(args[0])
 	value, diags := valueClosure.Value()
+
+	var faultErr error
 	if diags.HasErrors() {
-		return cty.NilVal, errors.New(diags.Error())
-	}
-
-	pv, err := ctyToPropertyValue(value)
-	if err == nil {
-		return propertyValueToCty(context.TODO(), getResource, pv)
-	}
-
-	poison, ok := errors.AsType[*poisonError](err)
-	if !ok {
-		return cty.NilVal, err
+		faultErr = errors.New(diags.Error())
+	} else {
+		pv, err := ctyToPropertyValue(value)
+		if err == nil {
+			return propertyValueToCty(context.TODO(), getResource, pv)
+		}
+		faultErr = err
 	}
 
 	recoveryClosure := customdecode.ExpressionClosureFromVal(args[1])
 	childContext := recoveryClosure.EvalContext.NewChild()
 	childContext.Variables = map[string]cty.Value{
-		"error": cty.StringVal(poison.Error()),
+		"error": cty.StringVal(faultErr.Error()),
 	}
 	recoveryClosure = &customdecode.ExpressionClosure{
 		Expression:  recoveryClosure.Expression,
@@ -574,9 +573,10 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}))
 
 			request := &pulumirpc.ResourceCallRequest{
-				Tok:               fun.Token,
-				Args:              propertyrpc.Marshal(argsPM),
-				AcceptsByteString: true,
+				Tok:                fun.Token,
+				Args:               propertyrpc.Marshal(argsPM),
+				AcceptsByteString:  true,
+				AcceptOutputValues: ectx.callOutputValues,
 			}
 
 			var dependsOn []resource.URN
@@ -624,6 +624,24 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("unmarshal invoke result: %w", err)
 			}
+			// In the legacy path per-value deps come from the response's ReturnDependencies map, not from
+			// OutputValues on the return value itself. Attach them per-key before wrapping, so a downstream
+			// consumer of resultPM[k] sees the deps the provider recorded for k. In the CALL_OUTPUT_VALUES
+			// path the engine and provider already stamped per-value deps onto the returned values and the
+			// ReturnDependencies entries are redundant with them.
+			if !ectx.callOutputValues {
+				for k, deps := range resp.GetReturnDependencies() {
+					v, ok := resultPM.GetOk(k)
+					if !ok {
+						continue
+					}
+					urns := make([]resource.URN, len(deps.GetUrns()))
+					for i, u := range deps.GetUrns() {
+						urns[i] = resource.URN(u)
+					}
+					resultPM = resultPM.Set(k, v.WithDependencies(append(v.Dependencies(), urns...)))
+				}
+			}
 			// Methods declared with ReturnTypePlain but no object return type carry the single value in a
 			// property map with exactly one entry, whose key may be any name. Unwrap it so callers get the
 			// value directly.
@@ -643,7 +661,10 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			} else {
 				resultPV = property.New(resultPM)
 			}
-			resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
+			// User-declared dependsOn always applies at the top level, in both modes.
+			if len(dependsOn) > 0 {
+				resultPV = resultPV.WithDependencies(append(resultPV.Dependencies(), dependsOn...))
+			}
 			return propertyValueToCty(context.TODO(), ectx.getResource, resultPV)
 		},
 	})
@@ -926,31 +947,56 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				Type: cty.DynamicPseudoType,
 			},
 		},
-		Type: function.StaticReturnType(cty.List(cty.Object(map[string]cty.Type{
-			"key":   cty.String,
-			"value": cty.DynamicPseudoType,
-		}))),
+		Type: func(args []cty.Value) (cty.Type, error) {
+			collection := args[0].Type()
+			keyType := cty.String
+			if collection.IsListType() || collection.IsTupleType() {
+				keyType = cty.Number
+			}
+			entryType := func(valueType cty.Type) cty.Type {
+				return cty.Object(map[string]cty.Type{"key": keyType, "value": valueType})
+			}
+			switch {
+			case collection.IsMapType() || collection.IsListType():
+				return cty.List(entryType(collection.ElementType())), nil
+			case collection.IsObjectType() || collection.IsTupleType():
+				var types []cty.Type
+				if collection.IsObjectType() {
+					attributes := collection.AttributeTypes()
+					for _, k := range slices.Sorted(maps.Keys(attributes)) {
+						types = append(types, entryType(attributes[k]))
+					}
+				} else {
+					for _, t := range collection.TupleElementTypes() {
+						types = append(types, entryType(t))
+					}
+				}
+				if len(types) == 0 {
+					return cty.List(entryType(cty.DynamicPseudoType)), nil
+				}
+				for _, t := range types[1:] {
+					if !t.Equals(types[0]) {
+						return cty.Tuple(types), nil
+					}
+				}
+				return cty.List(types[0]), nil
+			}
+			return cty.NilType, fmt.Errorf("entries argument must be a collection, was %s", collection.FriendlyName())
+		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			if len(args) != 1 {
-				return cty.NilVal, errors.New("entries requires a collection argument")
+			entries := make([]cty.Value, 0, args[0].LengthInt())
+			for it := args[0].ElementIterator(); it.Next(); {
+				key, value := it.Element()
+				entries = append(entries, cty.ObjectVal(map[string]cty.Value{
+					"key":   key,
+					"value": value,
+				}))
 			}
-			if !args[0].Type().IsMapType() && !args[0].Type().IsObjectType() {
-				return cty.NilVal, fmt.Errorf("entries argument must be a collection, was %s", args[0].Type().FriendlyName())
-			}
-			obj := args[0]
-			valueMap := obj.AsValueMap()
-			keys := make([]string, 0, len(valueMap))
-			for k := range valueMap {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-			var entries []cty.Value
-			for _, k := range keys {
-				entry := cty.ObjectVal(map[string]cty.Value{
-					"key":   cty.StringVal(k),
-					"value": valueMap[k],
-				})
-				entries = append(entries, entry)
+			switch {
+			case retType.IsTupleType():
+				return cty.TupleVal(entries), nil
+			case len(entries) == 0:
+				return cty.ListValEmpty(retType.ElementType()), nil
 			}
 			return cty.ListVal(entries), nil
 		},

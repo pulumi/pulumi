@@ -832,6 +832,8 @@ export class ResourceCallRequest extends jspb.Message {
     setPackageref(value: string): ResourceCallRequest;
     getAcceptsByteString(): boolean;
     setAcceptsByteString(value: boolean): ResourceCallRequest;
+    getAcceptOutputValues(): boolean;
+    setAcceptOutputValues(value: boolean): ResourceCallRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceCallRequest.AsObject;
@@ -859,6 +861,7 @@ export namespace ResourceCallRequest {
         parentstacktracehandle: string,
         packageref: string,
         acceptsByteString: boolean,
+        acceptOutputValues: boolean,
     }
 
 
@@ -1672,6 +1675,7 @@ export enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15,
     RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS = 16,
     RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES = 17,
+    RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES = 18,
 }
 
 export enum Result {

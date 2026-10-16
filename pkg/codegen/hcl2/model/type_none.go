@@ -44,12 +44,16 @@ func (n noneType) Equals(other Type) bool {
 	return n.equals(other, nil)
 }
 
-func (noneType) equals(other Type, seen map[Type]struct{}) bool {
+func (noneType) equals(other Type, seen comparePairs) bool {
 	return other == NoneType
 }
 
 func (noneType) AssignableFrom(src Type) bool {
-	return assignableFrom(NoneType, src, func() bool {
+	return NoneType.assignableFrom(src, nil)
+}
+
+func (noneType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(NoneType, src, seen, func(seen *cycleSet) bool {
 		return false
 	})
 }

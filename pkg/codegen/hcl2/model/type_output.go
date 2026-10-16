@@ -74,7 +74,7 @@ func (t *OutputType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *OutputType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *OutputType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
@@ -85,14 +85,18 @@ func (t *OutputType) equals(other Type, seen map[Type]struct{}) bool {
 // AssignableFrom returns true if this type is assignable from the indicated source type. An output(T) is assignable
 // from values of type output(U), promise(U), and U, where T is assignable from U.
 func (t *OutputType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *OutputType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		switch src := src.(type) {
 		case *OutputType:
-			return t.ElementType.AssignableFrom(src.ElementType)
+			return t.ElementType.assignableFrom(src.ElementType, seen)
 		case *PromiseType:
-			return t.ElementType.AssignableFrom(ResolveOutputs(src.ElementType))
+			return t.ElementType.assignableFrom(ResolveOutputs(src.ElementType), seen)
 		}
-		return t.ElementType.AssignableFrom(src)
+		return t.ElementType.assignableFrom(src, seen)
 	})
 }
 

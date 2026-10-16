@@ -82,7 +82,11 @@ func ValidateUnsupportedRemoteFlags(
 	planFilePath string,
 	stackConfigFile string,
 	runProgram bool,
+	coherenceWindow string,
 ) error {
+	if coherenceWindow != "" {
+		return errors.New("--coherence-window is not supported with --remote")
+	}
 	if expectNop {
 		return errors.New("--expect-no-changes is not supported with --remote")
 	}

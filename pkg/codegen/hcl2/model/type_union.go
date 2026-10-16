@@ -189,7 +189,7 @@ func (t *UnionType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *UnionType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *UnionType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
@@ -225,9 +225,13 @@ func (t *UnionType) sortedElementTypes(seen comparePairs) []Type {
 // from values of type union(U_0, ..., U_M) where all of U_0 through U_M are assignable to some type in
 // (T_0, ..., T_N) and V where V is assignable to at least one of (T_0, ..., T_N).
 func (t *UnionType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *UnionType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		for _, t := range t.ElementTypes {
-			if t.AssignableFrom(src) {
+			if t.assignableFrom(src, seen) {
 				return true
 			}
 		}

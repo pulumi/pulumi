@@ -37,12 +37,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var Runtimes = []string{"python", "java", "go", "yaml", "nodejs", "dotnet"}
+var Runtimes = []string{"python", "go", "yaml", "nodejs", "dotnet"}
 
 // Mapping from the language runtime names to the common language name used by templates and the like.
 var Languages = map[string]string{
 	"python": "python",
-	"java":   "java",
 	"go":     "go",
 	"yaml":   "yaml",
 	"nodejs": "typescript",
@@ -105,6 +104,33 @@ func TestHCLLanguageDownloadSmoke(t *testing.T) {
 	// rather than already bundled.
 	plugins, _ := e.RunCommand("pulumi", "plugin", "ls")
 	assert.Regexp(t, `hcl\s+language`, plugins)
+
+	e.RunCommand("pulumi", "destroy", "--yes")
+}
+
+// TestJavaLanguageDownloadSmoke checks that the engine can transparently download the unbundled
+// pulumi-language-java runtime and use it to run a program. A clean PULUMI_HOME has no java
+// runtime, so `pulumi up` must fetch it from the pinned release and launch it to run the
+// (resource-free) program.
+func TestJavaLanguageDownloadSmoke(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// The engine only downloads the language runtime when automatic acquisition is enabled.
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	e.ImportDirectory("testdata/java_smoke")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "up", "--yes")
+
+	// The runtime should now be resolvable as an installed language plugin, proving it was fetched
+	// rather than already bundled.
+	plugins, _ := e.RunCommand("pulumi", "plugin", "ls")
+	assert.Regexp(t, `java\s+language`, plugins)
 
 	e.RunCommand("pulumi", "destroy", "--yes")
 }
@@ -187,11 +213,6 @@ func TestLanguageConvertSmoke(t *testing.T) {
 		t.Run(rt, func(t *testing.T) {
 			t.Parallel()
 
-			// TODO[pulumi/pulumi#18451]: Reenable this test
-			if rt == "java" && runtime.GOOS == "windows" {
-				t.Skip("the java test is very flaky on windows")
-			}
-
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
 
@@ -222,11 +243,6 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 		t.Run(rt, func(t *testing.T) {
 			t.Parallel()
 
-			// TODO[pulumi/pulumi#18451]: Reenable this test
-			if rt == "java" && runtime.GOOS == "windows" {
-				t.Skip("the java test is very flaky on windows")
-			}
-
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
 
@@ -254,9 +270,6 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 
 			if runtime == "yaml" {
 				t.Skip("yaml doesn't support components")
-			}
-			if runtime == "java" {
-				t.Skip("java doesn't support components")
 			}
 
 			e := ptesting.NewEnvironment(t)

@@ -28,7 +28,6 @@ protoc = "29.5"
 "github:WebAssembly/wabt" = "1.0.37"
 dotnet = "8"
 java = "temurin-11"
-gradle = "7.6"
 "github:pulumi/goteststats" = "0.0.7"
 
 [env]
@@ -39,4 +38,3 @@ protoc = "asdf:https://github.com/paxosglobal/asdf-protoc"
 
 [plugins]
 protoc = "https://github.com/paxosglobal/asdf-protoc"
-gradle = "https://github.com/rfrancis/asdf-gradle"
