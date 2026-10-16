@@ -15,6 +15,7 @@
 package httputil
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,6 +32,14 @@ const maxRetryAfterDelay = 30 * time.Second
 // response retryable under the normal rules (a 503 with Retry-After is then waited
 // out like any maintenance 503), "false" forbids any retry.
 const shouldRetryHeader = "X-Pulumi-Should-Retry"
+
+// maxMaintenanceWait bounds the total time one request waits out maintenance 503s. The service times out an
+// update whose lease lapsed more than two hours into a maintenance window, so waiting longer cannot save it.
+const maxMaintenanceWait = 2 * time.Hour
+
+var errMaintenanceTooLong = errors.New(
+	"the Pulumi Cloud service has been in maintenance longer than the CLI will wait; " +
+		"the update can be retried once maintenance ends")
 
 // retryAfterHeaderDelay returns the uncapped delay from a Retry-After header
 // (RFC 9110 delay-seconds or HTTP-date); ok is false if absent or malformed.
@@ -82,7 +91,8 @@ type RetryOpts struct {
 	// PulumiServiceSignals opts into the Pulumi Cloud service's retry signals. Set it only for requests to the
 	// Pulumi Cloud API. When set, a 503 carrying Retry-After is planned unavailability: the delay is honored
 	// uncapped and does not count against the retry budget, so the call keeps retrying until the server stops
-	// signaling or the request context is cancelled. The X-Pulumi-Should-Retry response header is also honored.
+	// signaling, the request context is cancelled, or the request has spent two hours waiting out maintenance.
+	// The X-Pulumi-Should-Retry response header is also honored.
 	// Under HandshakeTimeoutsOnly the 503 wait applies only when the response also carries
 	// X-Pulumi-Should-Retry: true.
 	PulumiServiceSignals bool
@@ -92,6 +102,8 @@ type RetryOpts struct {
 	// round, even when Retry-After is zero; on a 429 only for a positive Retry-After, which is capped. res's body
 	// is already closed; only its status and headers are usable.
 	OnRetryWait func(wait time.Duration, res *http.Response)
+
+	maxMaintenanceWait time.Duration
 }
 
 // DoWithRetry calls client.Do, and in the case of an error, retries the operation again after a slight delay.
@@ -123,6 +135,11 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 
 	// With PulumiServiceSignals, maintenance rounds (503 + Retry-After) don't count against the retry budget.
 	maintenanceRounds := 0
+	maintenanceBudget := maxMaintenanceWait
+	if opts.maxMaintenanceWait != 0 {
+		maintenanceBudget = opts.maxMaintenanceWait
+	}
+	var maintenanceWaited time.Duration
 
 	acceptor := retry.Acceptor{
 		// If the opts field is nil, retry.Until will provide defaults.
@@ -167,6 +184,11 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 				if delay, ok := retryAfterHeaderDelay(res, time.Now()); ok {
 					maintenanceRounds++
 					contract.IgnoreClose(res.Body)
+					// Written to not overflow on an absurd delay.
+					if delay > maintenanceBudget-maintenanceWaited-nextRetry {
+						return true, nil, errMaintenanceTooLong
+					}
+					maintenanceWaited += delay + nextRetry
 					if opts.OnRetryWait != nil {
 						opts.OnRetryWait(delay+nextRetry, res)
 					}

@@ -724,3 +724,55 @@ func TestRetryHeaderIgnoredWithoutPulumiServiceSignals(t *testing.T) {
 		})
 	}
 }
+
+func TestRetry503MaintenanceGivesUpPastWaitBudget(t *testing.T) {
+	t.Parallel()
+
+	newServer := func(retryAfter string) (*httptest.Server, *int) {
+		tries := 0
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			tries++
+			if tries > 100 {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			w.Header().Set("Retry-After", retryAfter)
+			w.WriteHeader(http.StatusServiceUnavailable)
+		}))
+		t.Cleanup(server.Close)
+		return server, &tries
+	}
+
+	run := func(server *httptest.Server) (*http.Response, error) {
+		req, err := http.NewRequest("GET", server.URL, nil)
+		require.NoError(t, err)
+		delay := time.Millisecond
+		return DoWithRetryOpts(req, server.Client(), RetryOpts{
+			PulumiServiceSignals: true,
+			Delay:                &delay,
+			Backoff:              new(1.0),
+			maxMaintenanceWait:   5 * time.Millisecond,
+		})
+	}
+
+	t.Run("cumulative waits", func(t *testing.T) {
+		t.Parallel()
+		server, tries := newServer("0")
+		res, err := run(server)
+		assert.Nil(t, res)
+		assert.ErrorIs(t, err, errMaintenanceTooLong)
+		assert.ErrorContains(t, err, "longer than the CLI will wait")
+		assert.Equal(t, 6, *tries)
+	})
+
+	t.Run("a single wait past the budget", func(t *testing.T) {
+		t.Parallel()
+		server, tries := newServer("1")
+		start := time.Now()
+		res, err := run(server)
+		assert.Nil(t, res)
+		assert.ErrorIs(t, err, errMaintenanceTooLong)
+		assert.Equal(t, 1, *tries)
+		assert.Less(t, time.Since(start), time.Second, "gives up without waiting")
+	})
+}
