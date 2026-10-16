@@ -568,8 +568,13 @@ func NewPreviewCmd() *cobra.Command {
 				return fmt.Errorf("getting autonaming config: %w", err)
 			}
 
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			if err != nil {
+				return err
+			}
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
+					CloudCredentialEnv:        cloudCredentialEnv,
 					ParallelDiff:              env.ParallelDiff.Value(),
 					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 					Parallel:                  parallel,

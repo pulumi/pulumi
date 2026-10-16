@@ -108,8 +108,13 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					// plugin. Use the global default registry.
 					reg := cmdCmd.NewDefaultRegistry(
 						ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+					cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, nil)
+					if err != nil {
+						return err
+					}
 					if _, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
-						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global()); err != nil {
+						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
+						cloudCredentialEnv); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
 
@@ -136,6 +141,10 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return err
 			}
 			defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			if err != nil {
+				return err
+			}
 			pwd, main, pctx, err := engine.ProjectInfoContext(
 				ctx,
 				projinfo,
@@ -145,6 +154,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				false,
 				span,
 				nil,
+				cloudCredentialEnv,
 			)
 			if err != nil {
 				return err
@@ -158,6 +168,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, pctx.Diag, env.Global())
 			continuation, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
 				registry, parallel, useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
+				pctx.CloudCredentialEnv,
 			)
 			if err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)

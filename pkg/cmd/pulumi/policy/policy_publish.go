@@ -177,8 +177,12 @@ func (cmd *policyPublishCmd) Run(
 	}
 	// host is owned here, closed after the context
 	defer contract.IgnoreClose(pluginHost)
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, pkgWorkspace.Instance, lm, nil)
+	if err != nil {
+		return err
+	}
 	plugctx, err := plugin.NewContextWithRoot(ctx, cmdutil.Diag(), cmdutil.Diag(), pluginHost, pwd, projinfo.Root,
-		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil)
+		projinfo.Proj.Runtime.Options(), false, nil, nil, nil, nil, cloudCredentialEnv)
 	if err != nil {
 		return err
 	}

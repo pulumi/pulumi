@@ -391,6 +391,10 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		return err
 	}
 	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+	if err != nil {
+		return err
+	}
 	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
 		ctx,
 		projinfo,
@@ -400,6 +404,7 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		false, /* disableProviderPreview */
 		nil,   /* tracingSpan */
 		nil,   /* config */
+		cloudCredentialEnv,
 	)
 	if err != nil {
 		return err
@@ -463,7 +468,7 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global(),
 		)
 		continuation, err := InstallPackagesFromProject(ctx, proj, root,
-			registry, -1, false, args.stderr, args.stderr, env.Global())
+			registry, -1, false, args.stderr, args.stderr, env.Global(), pluginCtx.CloudCredentialEnv)
 		if err != nil {
 			return err
 		}

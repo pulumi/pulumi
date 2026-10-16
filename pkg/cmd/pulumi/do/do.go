@@ -179,6 +179,10 @@ func NewDoCmd(
 		loading := startSpinner(fmt.Sprintf("Loading provider '%s'", pkgargs[0]))
 		defer loading()
 
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, proj)
+		if err != nil {
+			return nil, nil, err
+		}
 		host, err := newHost(ctx, diagFwd, statusFwd)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create plugin host: %w", err)
@@ -186,7 +190,7 @@ func NewDoCmd(
 
 		pctx, err := plugin.NewContext(
 			ctx, diagFwd, statusFwd, host, nil, wd, nil, false,
-			nil)
+			nil, cloudCredentialEnv)
 		if err != nil {
 			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
