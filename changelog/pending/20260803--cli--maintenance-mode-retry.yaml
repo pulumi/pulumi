@@ -1,8 +1,6 @@
 component: cli
 kind: improvement
-body: Wait out service maintenance windows by honoring uncapped Retry-After delays
-  on HTTP 503 responses, and honor the X-Pulumi-Should-Retry response header to
-  extend or suppress request retries
+body: Wait out Pulumi Cloud maintenance windows instead of failing, with a warning while waiting
 time: 2026-08-03T00:00:00+00:00
 custom:
     PR: "24168"

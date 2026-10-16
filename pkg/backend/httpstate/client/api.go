@@ -490,7 +490,8 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 
 	// Wait 1s before retrying on failure. Then increase by 2x until the
 	// maximum delay is reached. Stop after maxRetryCount requests have
-	// been made.
+	// been made, except that the service's maintenance 503s are waited out
+	// for as long as it keeps sending them.
 	opts := httputil.RetryOpts{
 		Delay:    new(time.Second),
 		Backoff:  new(2.0),
@@ -498,6 +499,7 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 
 		MaxRetryCount:         new(4),
 		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
+		PulumiServiceSignals:  true,
 		OnRetryWait:           c.warner.onRetryWait,
 	}
 	res, err := httputil.DoWithRetryOpts(req, &tracingClient, opts)
