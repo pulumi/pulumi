@@ -1,4 +1,0 @@
-component: backend/diy
-kind: fix
-body: Only create the PostgreSQL state table when it doesn't already exist, so roles with read-only access to the table can use the backend
-time: 2026-10-14T00:00:00Z

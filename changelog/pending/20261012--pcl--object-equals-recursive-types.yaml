@@ -1,4 +1,0 @@
-component: pcl
-kind: fix
-body: Fix `Equals` on recursive object types that differ under a cycle
-time: 2026-10-12T17:00:00.000000+02:00
