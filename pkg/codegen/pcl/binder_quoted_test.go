@@ -132,7 +132,8 @@ resource "r" "quoted:index:Resource" {
 		ignoreChanges = [_]
 	}
 }`,
-			diagnostics: []string{"cannot assign expression of type ({ foo!: { bar: string?, baz!: string? }?, plain: string? }) " +
+			diagnostics: []string{"cannot assign expression of type " +
+				"({ foo!: { bar: string?, baz!: string? }?, plain: string? }) " +
 				"to location of type list(Property | output(Property)) | output(list(Property)): "},
 		},
 		{
@@ -163,7 +164,7 @@ resource "r" "quoted:index:Resource" {
 			require.False(t, parser.Diagnostics.HasErrors(), parser.Diagnostics.Error())
 			program, diags, _ := pcl.BindProgram(parser.Files, quotedLoader)
 
-			summaries := []string{}
+			summaries := make([]string, 0, len(diags))
 			for _, d := range diags {
 				summaries = append(summaries, d.Summary)
 			}
