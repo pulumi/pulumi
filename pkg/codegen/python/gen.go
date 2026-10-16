@@ -3837,9 +3837,10 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies 
 
 var (
 	// Require the SDK to fall within the same major version.
-	MinimumValidSDKVersion = ">=3.231.0,<4.0.0"
-	// Parameterized packages call `pulumi.runtime.register_package`, which was introduced in 3.247.0
-	MinimumValidParameterizationSDKVersion = ">=3.247.0,<4.0.0"
+	MinimumValidSDKVersion = ">=3.269.0,<4.0.0"
+	// Parameterized packages call `pulumi.runtime.register_package`, which was introduced in 3.247.0, and all packages
+	// call `pulumi.runtime.exists_resource`, which was introduced in 3.269.0.
+	MinimumValidParameterizationSDKVersion = ">=3.269.0,<4.0.0"
 )
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
