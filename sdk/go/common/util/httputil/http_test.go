@@ -17,6 +17,7 @@ package httputil
 import (
 	"context"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -289,7 +290,7 @@ func TestRetry503HonorsRetryAfter(t *testing.T) {
 	req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
 	require.NoError(t, err)
 
-	delay := time.Millisecond
+	delay := 500 * time.Millisecond
 	start := time.Now()
 	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay, PulumiServiceSignals: true})
 	require.NoError(t, err)
@@ -297,7 +298,9 @@ func TestRetry503HonorsRetryAfter(t *testing.T) {
 
 	assert.Equal(t, 2, tries)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
+	// The Retry-After delay replaces the 500ms client backoff rather than adding to it.
 	assert.GreaterOrEqual(t, time.Since(start), time.Second)
+	assert.Less(t, time.Since(start), 1400*time.Millisecond)
 }
 
 func TestRetry503NotRetriedUnderHandshakeTimeoutsOnly(t *testing.T) {
@@ -558,6 +561,8 @@ func TestRetryAfterHeaderDelay(t *testing.T) {
 	check("2", 2*time.Second, true)
 	// The uncapped form is what 503 maintenance waits use.
 	check("3000", 3000*time.Second, true)
+	// More seconds than a Duration holds saturates rather than wrapping.
+	check("99999999999999999999", time.Duration(math.MaxInt64), true)
 
 	// HTTP-date form, second precision.
 	future := mk(now.Add(5 * time.Second).UTC().Format(http.TimeFormat))
@@ -611,8 +616,12 @@ func TestRetryOnRetryWaitCalledForServerDirectedWaits(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, res.StatusCode)
 			require.Len(t, calls, 1)
-			// The reported wait includes the client backoff that follows the Retry-After delay.
-			assert.Equal(t, time.Second+delay, calls[0].wait)
+			// A maintenance wait replaces the client backoff; a rate-limit wait is followed by it.
+			want := time.Second
+			if status == http.StatusTooManyRequests {
+				want += delay
+			}
+			assert.Equal(t, want, calls[0].wait)
 			assert.Equal(t, status, calls[0].status)
 		})
 	}

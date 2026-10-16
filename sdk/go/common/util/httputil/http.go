@@ -16,6 +16,7 @@ package httputil
 
 import (
 	"errors"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -50,12 +51,16 @@ func retryAfterHeaderDelay(res *http.Response, now time.Time) (time.Duration, bo
 		return 0, false
 	}
 	var delay time.Duration
-	if seconds, err := strconv.Atoi(header); err == nil {
-		// delay-seconds is 1*DIGIT per the RFC; negative is malformed.
+	if seconds, err := strconv.ParseInt(header, 10, 64); err == nil || errors.Is(err, strconv.ErrRange) {
+		// delay-seconds is 1*DIGIT per the RFC; negative is malformed. More seconds than a Duration holds
+		// saturates, as a far-future HTTP-date does.
 		if seconds < 0 {
 			return 0, false
 		}
-		delay = time.Duration(seconds) * time.Second
+		delay = time.Duration(math.MaxInt64)
+		if seconds < int64(math.MaxInt64/time.Second) {
+			delay = time.Duration(seconds) * time.Second
+		}
 	} else if date, err := http.ParseTime(header); err == nil {
 		delay = date.Sub(now)
 	} else {
@@ -97,10 +102,11 @@ type RetryOpts struct {
 	// X-Pulumi-Should-Retry: true.
 	PulumiServiceSignals bool
 
-	// OnRetryWait, if set, is called before a server-directed wait with the time until the next attempt: the
-	// Retry-After delay plus the client backoff that follows it. On a PulumiServiceSignals 503 it is called every
-	// round, even when Retry-After is zero; on a 429 only for a positive Retry-After, which is capped. res's body
-	// is already closed; only its status and headers are usable.
+	// OnRetryWait, if set, is called before a server-directed wait with the time until the next attempt. On a
+	// PulumiServiceSignals 503 that is the longer of the Retry-After delay and the client backoff, and it is called
+	// every round, even when Retry-After is zero. On a 429 it is the capped Retry-After delay plus the client
+	// backoff that follows it, and it is called only for a positive Retry-After. res's body is already closed;
+	// only its status and headers are usable.
 	OnRetryWait func(wait time.Duration, res *http.Response)
 
 	maxMaintenanceWait time.Duration
@@ -178,25 +184,28 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 				return true, res, resErr
 			}
 
-			// A 503 with Retry-After signals planned unavailability: honor the delay
-			// uncapped and keep retrying for as long as the server keeps signaling.
+			// A 503 with Retry-After signals planned unavailability: wait out the delay
+			// uncapped, within the maintenance budget. The delay replaces the client
+			// backoff rather than adding to it; the backoff only floors it, so
+			// Retry-After: 0 doesn't spin.
 			if opts.PulumiServiceSignals && resErr == nil && res.StatusCode == http.StatusServiceUnavailable {
 				if delay, ok := retryAfterHeaderDelay(res, time.Now()); ok {
 					maintenanceRounds++
 					contract.IgnoreClose(res.Body)
-					// Written to not overflow on an absurd delay.
-					if delay > maintenanceBudget-maintenanceWaited-nextRetry {
+					wait := max(delay, nextRetry)
+					if wait > maintenanceBudget-maintenanceWaited {
 						return true, nil, errMaintenanceTooLong
 					}
-					maintenanceWaited += delay + nextRetry
+					maintenanceWaited += wait
 					if opts.OnRetryWait != nil {
-						opts.OnRetryWait(delay+nextRetry, res)
+						opts.OnRetryWait(wait, res)
 					}
-					if delay > 0 {
+					// retry.Until sleeps nextRetry after this returns.
+					if delay > nextRetry {
 						select {
 						case <-req.Context().Done():
 							return true, nil, req.Context().Err()
-						case <-time.After(delay):
+						case <-time.After(delay - nextRetry):
 						}
 					}
 					return false, nil, nil
