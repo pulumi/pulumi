@@ -484,7 +484,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				newcmd.NewNewCmd(),
 				config.NewConfigCmd(pkgWorkspace.Instance),
 				cmdStack.NewStackCmd(),
-				console.NewConsoleCmd(pkgWorkspace.Instance),
+				console.NewConsoleCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				operations.NewImportCmd(),
 				operations.NewRefreshCmd(),
 				state.NewStateCmd(),

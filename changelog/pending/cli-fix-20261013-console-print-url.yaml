@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Print the stack URL from `pulumi console` and only open a browser in an interactive session
+time: 2026-10-13T10:41:37.902314+01:00

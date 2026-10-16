@@ -34,7 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
+func NewConsoleCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var stackName string
 	cmd := &cobra.Command{
 		Use:   "console",
@@ -56,7 +56,7 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return err
 			}
 
-			currentBackend, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+			currentBackend, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
 			if err != nil {
 				return err
 			}
@@ -105,10 +105,9 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 				launchConsole(cmd.OutOrStdout(), url)
 				return nil
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "This command is not available for your backend. "+
-				"To migrate to the Pulumi Cloud backend, "+
-				"please see https://www.pulumi.com/docs/intro/concepts/state/#pulumi-cloud-backend")
-			return nil
+			return errors.New("this command is not available for your backend. " +
+				"To migrate to the Pulumi Cloud backend, " +
+				"please see https://www.pulumi.com/docs/iac/concepts/state-and-backends/#pulumi-cloud-backend")
 		},
 	}
 
@@ -119,10 +118,13 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 	return cmd
 }
 
-// launchConsole attempts to open the console in the browser using the specified URL.
+// launchConsole prints the console URL and, in an interactive session, opens it in the browser.
 func launchConsole(out io.Writer, url string) {
+	fmt.Fprintln(out, url)
+	if !cmdutil.Interactive() {
+		return
+	}
 	if openErr := browser.OpenURL(url); openErr != nil {
-		fmt.Fprintf(out, "We couldn't launch your web browser for some reason. \n"+
-			"Please visit: %s", url)
+		fmt.Fprintln(out, "We couldn't launch your web browser for some reason. Please visit the URL above.")
 	}
 }
