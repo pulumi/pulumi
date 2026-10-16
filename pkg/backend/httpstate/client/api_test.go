@@ -826,3 +826,38 @@ func TestRetryWaitWarner(t *testing.T) {
 		w.onSuccess()
 	})
 }
+
+func TestDefaultHTTPClientWarnsWhileWaitingOutMaintenance(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		if tries == 1 {
+			// A zero Retry-After still parks the client for its backoff.
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	sink := &diag.MockSink{}
+	client := &defaultHTTPClient{
+		client: server.Client(),
+		warner: &retryWaitWarner{diag: sink, threshold: time.Millisecond},
+	}
+	req, err := http.NewRequest("GET", server.URL, nil)
+	require.NoError(t, err)
+
+	res, err := client.Do(req, retryGetMethod)
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	require.Len(t, sink.Messages[diag.Warning], 1)
+	assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "unavailable")
+	require.Len(t, sink.Messages[diag.Infoerr], 1)
+	assert.Contains(t, sink.Messages[diag.Infoerr][0].Diag.Message, "resuming")
+}

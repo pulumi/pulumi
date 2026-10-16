@@ -410,19 +410,25 @@ const (
 // shared across a client's requests so concurrent waiters warn once, not each.
 type retryWaitWarner struct {
 	diag diag.Sink
+	// threshold overrides serverWaitWarningThreshold when non-zero.
+	threshold time.Duration
 
 	mu       sync.Mutex
 	waited   time.Duration
 	lastWarn time.Time
 }
 
-func (w *retryWaitWarner) onRetryWait(delay time.Duration, res *http.Response) {
+func (w *retryWaitWarner) onRetryWait(wait time.Duration, res *http.Response) {
 	if w == nil || w.diag == nil {
 		return
 	}
+	threshold := w.threshold
+	if threshold == 0 {
+		threshold = serverWaitWarningThreshold
+	}
 	w.mu.Lock()
-	w.waited += delay
-	if w.waited < serverWaitWarningThreshold ||
+	w.waited += wait
+	if w.waited < threshold ||
 		(!w.lastWarn.IsZero() && time.Since(w.lastWarn) < serverWaitRewarnInterval) {
 		w.mu.Unlock()
 		return
@@ -435,8 +441,8 @@ func (w *retryWaitWarner) onRetryWait(delay time.Duration, res *http.Response) {
 		cause = "the request was rate-limited"
 	}
 	suffix := "; retrying... ^C to stop"
-	if delay >= serverWaitWarningThreshold {
-		suffix = fmt.Sprintf("; retrying in %v... ^C to stop", delay)
+	if wait >= threshold {
+		suffix = fmt.Sprintf("; retrying in %v... ^C to stop", wait)
 	}
 	w.diag.Warningf(diag.Message("" /*urn*/, cause+suffix))
 }

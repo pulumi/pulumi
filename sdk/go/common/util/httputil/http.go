@@ -84,10 +84,11 @@ type RetryOpts struct {
 	// signaling or the request context is cancelled. The X-Pulumi-Should-Retry response header is also honored.
 	PulumiServiceSignals bool
 
-	// OnRetryWait, if set, is called before honoring a positive server-directed delay: Retry-After on a 429
-	// (capped) or on a PulumiServiceSignals 503 (uncapped). res's body is already closed; only its status and
-	// headers are usable.
-	OnRetryWait func(delay time.Duration, res *http.Response)
+	// OnRetryWait, if set, is called before a server-directed wait with the time until the next attempt. On a
+	// PulumiServiceSignals 503 it is called every round, even when Retry-After is zero, and wait includes the
+	// client backoff that follows the Retry-After delay. On a 429 it is called only for a positive Retry-After,
+	// capped. res's body is already closed; only its status and headers are usable.
+	OnRetryWait func(wait time.Duration, res *http.Response)
 }
 
 // DoWithRetry calls client.Do, and in the case of an error, retries the operation again after a slight delay.
@@ -126,7 +127,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 		Backoff:  opts.Backoff,
 		MaxDelay: opts.MaxDelay,
 
-		Accept: func(try int, _ time.Duration) (bool, any, error) {
+		Accept: func(try int, nextRetry time.Duration) (bool, any, error) {
 			attempts := try - maintenanceRounds
 			if try > 0 && req.GetBody != nil {
 				// Reset request body, if present, for retries.
@@ -163,10 +164,10 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 				if delay, ok := retryAfterHeaderDelay(res, time.Now()); ok {
 					maintenanceRounds++
 					contract.IgnoreClose(res.Body)
+					if opts.OnRetryWait != nil {
+						opts.OnRetryWait(delay+nextRetry, res)
+					}
 					if delay > 0 {
-						if opts.OnRetryWait != nil {
-							opts.OnRetryWait(delay, res)
-						}
 						select {
 						case <-req.Context().Done():
 							return true, nil, req.Context().Err()
