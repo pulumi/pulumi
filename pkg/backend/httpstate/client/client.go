@@ -280,6 +280,17 @@ func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 	return pc
 }
 
+// forThirdPartyHost marks a client built around a URL that is not the Pulumi Cloud API, so its
+// requests get neither the trace context nor the service's retry signals.
+func (pc *Client) forThirdPartyHost() *Client {
+	if rc, ok := pc.restClient.(*defaultRESTClient); ok {
+		if hc, ok := rc.client.(*defaultHTTPClient); ok {
+			hc.apiHost = ""
+		}
+	}
+	return pc
+}
+
 // newDefaultHTTPClient returns a defaultHTTPClient that sends the trace context to the host of apiURL.
 func newDefaultHTTPClient(client *http.Client, apiURL string, d diag.Sink) *defaultHTTPClient {
 	var apiHost string
@@ -3392,7 +3403,7 @@ func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.
 	} else {
 		// Set pc to the new client. This only sets the local variable. It is very
 		// different from *pc = *NewClient().
-		pc = NewClient(downloadURL, "", pc.insecure, pc.diag)
+		pc = NewClient(downloadURL, "", pc.insecure, pc.diag).forThirdPartyHost()
 		downloadURL = ""
 	}
 

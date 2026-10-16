@@ -26,8 +26,10 @@ import (
 
 const maxRetryAfterDelay = 30 * time.Second
 
-// shouldRetryHeader lets the server override the caller's retry policy on
-// error responses: "true" forces a retry, "false" forbids one.
+// shouldRetryHeader, honored when RetryOpts.PulumiServiceSignals is set, lets the
+// server override the caller's retry policy on error responses: "true" makes the
+// response retryable under the normal rules (a 503 with Retry-After is then waited
+// out like any maintenance 503), "false" forbids any retry.
 const shouldRetryHeader = "X-Pulumi-Should-Retry"
 
 // retryAfterHeaderDelay returns the uncapped delay from a Retry-After header
@@ -74,15 +76,25 @@ type RetryOpts struct {
 	MaxRetryCount *int
 	// HandshakeTimeoutsOnly indicates whether we should only be retrying timeouts that occur during the TLS handshake.
 	// These timeouts are safe to retry even on POST requests, since we know the actual request hasn't been sent yet.
+	// With PulumiServiceSignals set, an X-Pulumi-Should-Retry: true response also makes the request retryable.
 	HandshakeTimeoutsOnly bool
 
-	// OnRetryWait, if set, is called before honoring a server-directed wait
-	// (Retry-After on a 429 or 503 response).
+	// PulumiServiceSignals opts into the Pulumi Cloud service's retry signals. Set it only for requests to the
+	// Pulumi Cloud API. When set, a 503 carrying Retry-After is planned unavailability: the delay is honored
+	// uncapped and does not count against the retry budget, so the call keeps retrying until the server stops
+	// signaling or the request context is cancelled. The X-Pulumi-Should-Retry response header is also honored.
+	// Under HandshakeTimeoutsOnly the 503 wait applies only when the response also carries
+	// X-Pulumi-Should-Retry: true.
+	PulumiServiceSignals bool
+
+	// OnRetryWait, if set, is called before honoring a positive server-directed delay: Retry-After on a 429
+	// (capped) or on a PulumiServiceSignals 503 (uncapped). res's body is already closed; only its status and
+	// headers are usable.
 	OnRetryWait func(delay time.Duration, res *http.Response)
 }
 
 // DoWithRetry calls client.Do, and in the case of an error, retries the operation again after a slight delay.
-// Uses the default retry delays, starting at 100ms and ramping up to ~1.3s.
+// Uses the default retry delays, starting at 100ms and ramping up to ~1.3s, for at most five attempts.
 func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error) {
 	var opts RetryOpts
 	return doWithRetry(req, client, opts)
@@ -108,7 +120,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 		maxRetryCount = *opts.MaxRetryCount
 	}
 
-	// Maintenance rounds (503 + Retry-After) don't count against the retry budget.
+	// With PulumiServiceSignals, maintenance rounds (503 + Retry-After) don't count against the retry budget.
 	maintenanceRounds := 0
 
 	acceptor := retry.Acceptor{
@@ -131,7 +143,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 			res, resErr := client.Do(req)
 
 			serverSaysRetry := false
-			if resErr == nil && res.StatusCode >= 400 {
+			if opts.PulumiServiceSignals && resErr == nil && res.StatusCode >= 400 {
 				switch res.Header.Get(shouldRetryHeader) {
 				case "true":
 					serverSaysRetry = true
@@ -150,7 +162,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 
 			// A 503 with Retry-After signals planned unavailability: honor the delay
 			// uncapped and keep retrying for as long as the server keeps signaling.
-			if resErr == nil && res.StatusCode == http.StatusServiceUnavailable {
+			if opts.PulumiServiceSignals && resErr == nil && res.StatusCode == http.StatusServiceUnavailable {
 				if delay, ok := retryAfterHeaderDelay(res, time.Now()); ok {
 					maintenanceRounds++
 					contract.IgnoreClose(res.Body)

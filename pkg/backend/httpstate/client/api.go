@@ -394,9 +394,12 @@ func (t *tracingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 // using the specified *http.Client, with retry support.
 type defaultHTTPClient struct {
 	client *http.Client
-	// apiHost is the host of the Pulumi Cloud API. Only requests to this host carry the trace context.
+	// apiHost is the host of the Pulumi Cloud API. Only requests to this host carry the trace context and
+	// honor the service's retry signals.
 	apiHost string
 	warner  *retryWaitWarner
+	// retryDelay overrides the initial retry delay (1s) when non-zero.
+	retryDelay time.Duration
 }
 
 const (
@@ -490,15 +493,24 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 
 	// Wait 1s before retrying on failure. Then increase by 2x until the
 	// maximum delay is reached. Stop after maxRetryCount requests have
-	// been made.
+	// been made, except that the Pulumi Cloud API's maintenance 503s are
+	// waited out for as long as it keeps sending them (for non-retryable
+	// requests, only when it also sends X-Pulumi-Should-Retry: true).
+	delay := time.Second
+	if c.retryDelay != 0 {
+		delay = c.retryDelay
+	}
 	opts := httputil.RetryOpts{
-		Delay:    new(time.Second),
+		Delay:    &delay,
 		Backoff:  new(2.0),
 		MaxDelay: new(30 * time.Second),
 
 		MaxRetryCount:         new(4),
 		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
-		OnRetryWait:           c.warner.onRetryWait,
+		// Only the Pulumi Cloud API speaks this contract; presigned S3 URLs and other hosts sent
+		// through this client keep the bounded retry.
+		PulumiServiceSignals: c.apiHost != "" && req.URL.Host == c.apiHost,
+		OnRetryWait:          c.warner.onRetryWait,
 	}
 	res, err := httputil.DoWithRetryOpts(req, &tracingClient, opts)
 	if err == nil && res.StatusCode < 400 {

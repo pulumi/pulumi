@@ -826,3 +826,63 @@ func TestRetryWaitWarner(t *testing.T) {
 		w.onSuccess()
 	})
 }
+
+func TestDefaultHTTPClientServiceSignalsOnlyForAPIHost(t *testing.T) {
+	t.Parallel()
+
+	newServer := func(maintenanceRounds int) (*httptest.Server, *atomic.Int32) {
+		var tries atomic.Int32
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if int(tries.Add(1)) <= maintenanceRounds {
+				w.Header().Set("Retry-After", "0")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		t.Cleanup(server.Close)
+		return server, &tries
+	}
+
+	t.Run("Pulumi Cloud API waits out maintenance past the retry budget", func(t *testing.T) {
+		t.Parallel()
+
+		server, tries := newServer(6)
+		c := newDefaultHTTPClient(server.Client(), server.URL, nil)
+		c.retryDelay = time.Millisecond
+		req, err := http.NewRequest("GET", server.URL+"/api/user", nil)
+		require.NoError(t, err)
+
+		res, err := c.Do(req, retryAllMethods)
+		require.NoError(t, err)
+		defer res.Body.Close()
+
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		assert.Equal(t, int32(7), tries.Load())
+	})
+
+	t.Run("other hosts keep the bounded retry", func(t *testing.T) {
+		t.Parallel()
+
+		server, tries := newServer(10)
+		c := newDefaultHTTPClient(server.Client(), "https://api.pulumi.example", nil)
+		c.retryDelay = time.Millisecond
+		req, err := http.NewRequest("GET", server.URL+"/template.tar.gz", nil)
+		require.NoError(t, err)
+
+		res, err := c.Do(req, retryAllMethods)
+		require.NoError(t, err)
+		defer res.Body.Close()
+
+		assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
+		assert.Equal(t, int32(4), tries.Load())
+	})
+}
+
+func TestForThirdPartyHostDropsAPIHost(t *testing.T) {
+	t.Parallel()
+
+	pc := NewClient("https://github.example/owner/repo/archive.tar.gz", "", false, nil).forThirdPartyHost()
+	hc := pc.restClient.(*defaultRESTClient).client.(*defaultHTTPClient)
+	assert.Empty(t, hc.apiHost, "a template host must not get the Pulumi Cloud retry signals or trace context")
+}

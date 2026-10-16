@@ -223,8 +223,9 @@ func TestRetry503MaintenanceRetriesBeyondMaxRetryCount(t *testing.T) {
 	delay := time.Millisecond
 	maxRetryCount := 3
 	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
-		Delay:         &delay,
-		MaxRetryCount: &maxRetryCount,
+		PulumiServiceSignals: true,
+		Delay:                &delay,
+		MaxRetryCount:        &maxRetryCount,
 	})
 	require.NoError(t, err)
 	defer res.Body.Close()
@@ -258,8 +259,9 @@ func TestRetry503MaintenanceRoundsPreserveRetryBudget(t *testing.T) {
 	delay := time.Millisecond
 	maxRetryCount := 3
 	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
-		Delay:         &delay,
-		MaxRetryCount: &maxRetryCount,
+		PulumiServiceSignals: true,
+		Delay:                &delay,
+		MaxRetryCount:        &maxRetryCount,
 	})
 	require.NoError(t, err)
 	defer res.Body.Close()
@@ -289,7 +291,7 @@ func TestRetry503HonorsRetryAfter(t *testing.T) {
 
 	delay := time.Millisecond
 	start := time.Now()
-	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay})
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay, PulumiServiceSignals: true})
 	require.NoError(t, err)
 	defer res.Body.Close()
 
@@ -314,6 +316,7 @@ func TestRetry503NotRetriedUnderHandshakeTimeoutsOnly(t *testing.T) {
 
 	delay := time.Millisecond
 	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		PulumiServiceSignals:  true,
 		Delay:                 &delay,
 		HandshakeTimeoutsOnly: true,
 	})
@@ -340,8 +343,9 @@ func TestRetry503WithoutRetryAfterUsesBudget(t *testing.T) {
 	delay := time.Millisecond
 	maxRetryCount := 3
 	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
-		Delay:         &delay,
-		MaxRetryCount: &maxRetryCount,
+		PulumiServiceSignals: true,
+		Delay:                &delay,
+		MaxRetryCount:        &maxRetryCount,
 	})
 	require.NoError(t, err)
 	defer res.Body.Close()
@@ -366,13 +370,14 @@ func TestRetry503ContextCanceledDuringWait(t *testing.T) {
 
 	delay := time.Millisecond
 	start := time.Now()
-	_, err = DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay}) //nolint:bodyclose // no response on error
+	opts := RetryOpts{Delay: &delay, PulumiServiceSignals: true}
+	_, err = DoWithRetryOpts(req, server.Client(), opts) //nolint:bodyclose // no response on error
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Less(t, time.Since(start), 5*time.Second)
 }
 
-func TestRetryHeaderTrueForcesRetryUnderHandshakeTimeoutsOnly(t *testing.T) {
+func TestRetryHeaderTrueMakesRetryableUnderHandshakeTimeoutsOnly(t *testing.T) {
 	t.Parallel()
 
 	tries := 0
@@ -392,6 +397,7 @@ func TestRetryHeaderTrueForcesRetryUnderHandshakeTimeoutsOnly(t *testing.T) {
 
 	delay := time.Millisecond
 	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		PulumiServiceSignals:  true,
 		Delay:                 &delay,
 		HandshakeTimeoutsOnly: true,
 	})
@@ -417,7 +423,7 @@ func TestRetryHeaderFalseSuppresses5xxRetry(t *testing.T) {
 	require.NoError(t, err)
 
 	delay := time.Millisecond
-	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay})
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay, PulumiServiceSignals: true})
 	require.NoError(t, err)
 	defer res.Body.Close()
 
@@ -441,7 +447,7 @@ func TestRetryHeaderFalseSuppresses429Retry(t *testing.T) {
 	require.NoError(t, err)
 
 	delay := time.Millisecond
-	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay})
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay, PulumiServiceSignals: true})
 	require.NoError(t, err)
 	defer res.Body.Close()
 
@@ -466,8 +472,9 @@ func TestRetryHeaderTrueOnNonServerErrorStillBudgeted(t *testing.T) {
 	delay := time.Millisecond
 	maxRetryCount := 3
 	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
-		Delay:         &delay,
-		MaxRetryCount: &maxRetryCount,
+		PulumiServiceSignals: true,
+		Delay:                &delay,
+		MaxRetryCount:        &maxRetryCount,
 	})
 	require.NoError(t, err)
 	defer res.Body.Close()
@@ -492,7 +499,7 @@ func TestRetryHeaderIgnoredOnSuccess(t *testing.T) {
 	require.NoError(t, err)
 
 	delay := time.Millisecond
-	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay})
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay, PulumiServiceSignals: true})
 	require.NoError(t, err)
 	defer res.Body.Close()
 
@@ -593,7 +600,8 @@ func TestRetryOnRetryWaitCalledForServerDirectedWaits(t *testing.T) {
 			var calls []waitCall
 			delay := time.Millisecond
 			res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
-				Delay: &delay,
+				PulumiServiceSignals: true,
+				Delay:                &delay,
 				OnRetryWait: func(delay time.Duration, res *http.Response) {
 					calls = append(calls, waitCall{delay: delay, status: res.StatusCode})
 				},
@@ -605,6 +613,80 @@ func TestRetryOnRetryWaitCalledForServerDirectedWaits(t *testing.T) {
 			require.Len(t, calls, 1)
 			assert.Equal(t, time.Second, calls[0].delay)
 			assert.Equal(t, status, calls[0].status)
+		})
+	}
+}
+
+func TestRetry503RetryAfterBoundedWithoutPulumiServiceSignals(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		w.Header().Set("Retry-After", "0")
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	// The deadline only turns an unbounded retry loop into a failure instead of a hang.
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", server.URL, nil)
+	require.NoError(t, err)
+
+	res, err := DoWithRetry(req, server.Client())
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	// Without the opt-in, a 503 carrying Retry-After is an ordinary 5xx.
+	assert.Equal(t, 5, tries)
+	assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
+}
+
+func TestRetryHeaderIgnoredWithoutPulumiServiceSignals(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name                  string
+		status                int
+		retryAfter            string
+		handshakeTimeoutsOnly bool
+	}{
+		{name: "true on a 400", status: http.StatusBadRequest},
+		{name: "true on a non-idempotent 503", status: http.StatusServiceUnavailable, handshakeTimeoutsOnly: true},
+		{
+			name: "true on a non-idempotent 503 with Retry-After", status: http.StatusServiceUnavailable,
+			retryAfter: "0", handshakeTimeoutsOnly: true,
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			tries := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				tries++
+				w.Header().Set("X-Pulumi-Should-Retry", "true")
+				if c.retryAfter != "" {
+					w.Header().Set("Retry-After", c.retryAfter)
+				}
+				w.WriteHeader(c.status)
+			}))
+			defer server.Close()
+
+			req, err := http.NewRequest("POST", server.URL, strings.NewReader("hello, server"))
+			require.NoError(t, err)
+
+			delay := time.Millisecond
+			res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+				Delay:                 &delay,
+				HandshakeTimeoutsOnly: c.handshakeTimeoutsOnly,
+			})
+			require.NoError(t, err)
+			defer res.Body.Close()
+
+			assert.Equal(t, 1, tries)
+			assert.Equal(t, c.status, res.StatusCode)
 		})
 	}
 }
