@@ -3132,21 +3132,25 @@ func unwrapResourcePropertySecretsAndOutputs(value resource.PropertyValue) resou
 func issueCheckErrors(deployment *Deployment, new *pkgresource.State, urn resource.URN,
 	failures []plugin.CheckFailure,
 ) bool {
-	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures)
+	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures, deployment.opts.ShowSecrets)
 }
 
-// issueCheckErrors prints any check errors to the given printer function.
+// issueCheckFailures prints any check failures to printf, redacting secret values unless showSecrets is set.
 func issueCheckFailures(printf func(*diag.Diag, ...any), new *pkgresource.State, urn resource.URN,
-	failures []plugin.CheckFailure,
+	failures []plugin.CheckFailure, showSecrets bool,
 ) bool {
 	if len(failures) == 0 {
 		return false
+	}
+	render := resource.PropertyValue.RedactSecrets
+	if showSecrets {
+		render = resource.PropertyValue.String
 	}
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
 			printf(diag.GetResourcePropertyInvalidValueError(urn),
-				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
+				new.Type, urn.Name(), failure.Property, render(inputs[failure.Property]), failure.Reason)
 		} else {
 			printf(
 				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason,
