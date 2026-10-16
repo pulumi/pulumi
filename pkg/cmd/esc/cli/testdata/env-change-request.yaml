@@ -7,6 +7,8 @@ run: |
   esc env change-request ls --env default/test --status applied
   esc env change-request ls --env default/test
   esc env change-request list --env default/test
+  esc env change-request get 00000000-0000-0000-0000-000000000000
+  esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
   esc env change-request ls
   esc env change-request ls --status all --output json
   esc env get default/test
@@ -44,6 +46,57 @@ Change request submitted
 ├──────────────────────────────────────┼───────────┤
 │ 00000000-0000-0000-0000-000000000000 │ test-user │
 └──────────────────────────────────────┴───────────┘
+> esc env change-request get 00000000-0000-0000-0000-000000000000
+ID: 00000000-0000-0000-0000-000000000000
+Environment: test-user/default/test
+Action: update
+Status: pending
+Author: Test User <test-user>
+Created: a long while ago
+Revision: 1
+Base environment revision: 2
+Current environment revision: 2
+Approved: false
+  Require approval (not satisfied): 0 of 1 approvals
+URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
+> esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "status": "pending",
+  "action": "update",
+  "description": "",
+  "createdAt": "0001-01-01T00:00:00Z",
+  "createdBy": {
+    "name": "Test User",
+    "githubLogin": "test-user"
+  },
+  "latestRevisionNumber": 1,
+  "entity": {
+    "entityType": "environment",
+    "project": "default",
+    "name": "test"
+  },
+  "gateEvaluation": {
+    "satisfied": false,
+    "applicableGates": [
+      {
+        "id": "gate-1",
+        "name": "Require approval",
+        "satisfied": false,
+        "ruleDetails": {
+          "ruleType": "approval_required",
+          "requiredApprovals": 1
+        }
+      }
+    ]
+  },
+  "draftStatus": {
+    "baseRevision": 2,
+    "environmentRevision": 2,
+    "draftRevisionNumber": 1
+  },
+  "url": "https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000"
+}
 > esc env change-request ls
 ┌──────────────────────────────────────┬──────────────┬───────────┐
 │ ID                                   │ ENVIRONMENT  │ AUTHOR    │
@@ -97,6 +150,8 @@ values:
 No change requests found.
 > esc env change-request ls --env default/test
 > esc env change-request list --env default/test
+> esc env change-request get 00000000-0000-0000-0000-000000000000
+> esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
 > esc env change-request ls
 > esc env change-request ls --status all --output json
 > esc env get default/test
