@@ -89,7 +89,7 @@ func filterProperties(m property.Map, opts FilterOptions, path property.Path) (p
 		if opts.SkipInternalKeys && strings.HasPrefix(k, "__") {
 			continue
 		}
-		nv, keep, err := filterValue(v, opts, path.AppendSegment(property.NewSegment(k)))
+		nv, keep, err := filterValue(v, opts, path.AppendKey(k))
 		if err != nil {
 			return property.Map{}, err
 		}
@@ -196,7 +196,7 @@ func filterValue(v property.Value, opts FilterOptions, path property.Path) (prop
 		arr := v.AsArray()
 		out := make([]property.Value, 0, arr.Len())
 		for i, elem := range arr.All {
-			nv, keep, err := filterValue(elem, opts, path.AppendSegment(property.NewSegment(i)))
+			nv, keep, err := filterValue(elem, opts, path.AppendIndex(i))
 			if err != nil {
 				return property.Value{}, false, err
 			}
