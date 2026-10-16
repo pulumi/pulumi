@@ -93,10 +93,15 @@ func (c *confirmedNew) saveConfig(
 	args newArgs, opts display.Options,
 ) error {
 	if c.createsStack() {
+		if args.escConfig {
+			return saveTemplateConfigToEnvironment(
+				ctx, sink, args.stdout, proj, s, c.config, c.commandLineConfig, "")
+		}
 		return saveTemplateConfig(ctx, sink, ssml, ws, proj, s, c.config, c.commandLineConfig, "")
 	}
 	return HandleConfig(ctx, sink, ssml, ws, args.prompt, proj, s,
-		args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts, "")
+		args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts, "",
+		args.escConfig)
 }
 
 func printPreamble(w io.Writer, opts display.Options) {
