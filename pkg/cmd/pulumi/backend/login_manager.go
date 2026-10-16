@@ -105,7 +105,7 @@ func (f *lm) Login(
 		Color: color,
 	}
 	consoleURL := client.CloudConsoleURL(httpstate.ValueOrDefaultURL(ws, url))
-	welcome := func(opts display.Options) { httpstate.WelcomeUser(opts, consoleURL) }
+	welcome := func(opts display.Options) { httpstate.WelcomeUser(ctx, opts, consoleURL) }
 	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", welcome, setCurrent, opts)
 	if err != nil {
 		return nil, err
