@@ -23,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
@@ -145,10 +144,11 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 			// rendered now even though they are technically out of order.
 			shown := map[operations.LogEntry]bool{}
 			for {
-				logs, err := backend.GetStackLogs(ctx, secrets.DefaultProvider, s, cfg, operations.LogQuery{
-					StartTime:      startTime,
-					ResourceFilter: resourceFilter,
-				})
+				logs, err := backend.GetStackLogs(ctx,
+					cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), s, cfg, operations.LogQuery{
+						StartTime:      startTime,
+						ResourceFilter: resourceFilter,
+					})
 				if err != nil {
 					return fmt.Errorf("failed to get logs: %w", err)
 				}

@@ -87,7 +87,9 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false,
+		NewClientSource(diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -126,7 +128,9 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false,
+		NewClientSource(diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -407,7 +411,9 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false)
+			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false,
+				NewClientSource(diagtest.LogSink(t)),
+			)
 			require.NoError(t, err)
 
 			// New spawns goroutines that may log to the test's diag sink;
@@ -452,7 +458,9 @@ func TestParseStackReferenceExplicitOrgBeatsEnvVar(t *testing.T) {
 	}, true)
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), server.URL, &workspace.Project{Name: "proj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), server.URL, &workspace.Project{Name: "proj"}, false,
+		NewClientSource(diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	// New spawns goroutines that may log to the test's diag sink;
@@ -481,7 +489,9 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false,
+		NewClientSource(diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -636,7 +646,9 @@ func TestListStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false,
+		NewClientSource(diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	// Create test stacks
@@ -751,7 +763,9 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false,
+		NewClientSource(diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	// Create a test stack
@@ -938,7 +952,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	defer server.Client()
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, server.URL, nil, false)
+	b, err := New(ctx, sink, server.URL, nil, false, NewClientSource(sink))
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -972,7 +986,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, sink, server.URL, nil, false)
+	b, err = New(ctx, sink, server.URL, nil, false, NewClientSource(sink))
 	require.NoError(t, err)
 
 	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
@@ -1043,7 +1057,7 @@ func TestCreateStackDisplaysBackendMessages(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, server.URL, nil, false)
+	b, err := New(ctx, sink, server.URL, nil, false, NewClientSource(sink))
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -1147,7 +1161,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	defer server.Client()
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, server.URL, nil, false)
+	b, err := New(ctx, sink, server.URL, nil, false, NewClientSource(sink))
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -1184,7 +1198,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, sink, server.URL, nil, false)
+	b, err = New(ctx, sink, server.URL, nil, false, NewClientSource(sink))
 	require.NoError(t, err)
 
 	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
