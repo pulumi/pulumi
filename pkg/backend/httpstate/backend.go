@@ -45,7 +45,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
-	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	esc_client "github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -250,23 +249,19 @@ type cloudBackend struct {
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
 var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
-// New creates a new Pulumi backend for the given cloud API URL and token.
+// New creates a Pulumi backend using the command's shared client source.
 func New(ctx context.Context, d diag.Sink,
-	cloudURL string, project *workspace.Project, insecure bool,
+	cloudURL string, project *workspace.Project, insecure bool, clients *ClientSource,
 ) (Backend, error) {
 	contract.Requiref(d != nil, "d", "expected a non-nil diag.Sink")
+	contract.Requiref(clients != nil, "clients", "expected a backend client source")
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
-	account, err := getBackendAccount(ctx, cloudURL)
+	resolved, err := clients.resolve(ctx, cloudURL, insecure)
 	if err != nil {
-		return nil, fmt.Errorf("getting stored credentials: %w", err)
+		return nil, err
 	}
+	account, apiClient := resolved.account, resolved.client
 	apiToken := account.AccessToken
-
-	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
-	apiClient.WithRefresh(account.RefreshToken, func(at string, expiresAt time.Time, rt string) error {
-		account.SetCredentials(at, expiresAt, rt)
-		return account.Save(cloudURL, false)
-	})
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
 	org := env.DefaultOrg.Value()
@@ -304,7 +299,7 @@ func New(ctx context.Context, d diag.Sink,
 		client:         apiClient,
 		escClient:      escClient,
 		capabilities:   detectCapabilities(ctx, d, apiClient),
-		userInfo:       detectUserInfo(ctx, d, cloudURL, apiClient),
+		userInfo:       detectUserInfo(ctx, d, apiClient, account),
 		defaultOrg:     defaultOrg,
 		currentProject: project,
 	}, nil
@@ -312,10 +307,10 @@ func New(ctx context.Context, d diag.Sink,
 
 // getBackendAccount returns account credentials for a backend, falling back to
 // the shared agent cache when an agent cannot read the default credentials.
-func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account, error) {
+func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account, bool, error) {
 	account, fromAgent, err := workspace.GetAccountWithAgentFallback(cloudURL)
 	if err != nil {
-		return workspace.Account{}, err
+		return workspace.Account{}, false, err
 	}
 	if fromAgent {
 		logging.V(7).Infof("Using backend account for %q from shared agent credentials", cloudURL)
@@ -325,7 +320,7 @@ func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account,
 	} else {
 		logging.V(7).Infof("No backend account for %q found", cloudURL)
 	}
-	return account, nil
+	return account, fromAgent, nil
 }
 
 // storeUserAccount stores credentials from a user-controlled source. In agent
@@ -2228,7 +2223,7 @@ func (b *cloudBackend) runEngineAction(
 		} else {
 			persister := b.newSnapshotPersister(ctx, update, tokenSource)
 			snapshotJournaler, err = backend.NewSnapshotJournaler(
-				ctx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot)
+				ctx, journalPersister, op.SecretsManager, op.SecretsProvider, u.Target.Snapshot)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -3146,12 +3141,11 @@ func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Clien
 func detectUserInfo(
 	ctx context.Context,
 	d diag.Sink,
-	cloudURL string,
 	client *client.Client,
+	account workspace.Account,
 ) *promise.Promise[userInfo] {
 	return promise.Run(func() (userInfo, error) {
-		account, err := workspace.GetAccount(cloudURL)
-		if err == nil && account.Username != "" {
+		if account.Username != "" {
 			logging.V(1).Infof("found cached username for access token")
 			return userInfo{
 				username:      account.Username,
