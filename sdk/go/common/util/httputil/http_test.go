@@ -594,7 +594,7 @@ func TestRetryOnRetryWaitCalledForServerDirectedWaits(t *testing.T) {
 			require.NoError(t, err)
 
 			type waitCall struct {
-				delay  time.Duration
+				wait   time.Duration
 				status int
 			}
 			var calls []waitCall
@@ -602,8 +602,8 @@ func TestRetryOnRetryWaitCalledForServerDirectedWaits(t *testing.T) {
 			res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
 				PulumiServiceSignals: true,
 				Delay:                &delay,
-				OnRetryWait: func(delay time.Duration, res *http.Response) {
-					calls = append(calls, waitCall{delay: delay, status: res.StatusCode})
+				OnRetryWait: func(wait time.Duration, res *http.Response) {
+					calls = append(calls, waitCall{wait: wait, status: res.StatusCode})
 				},
 			})
 			require.NoError(t, err)
@@ -611,10 +611,46 @@ func TestRetryOnRetryWaitCalledForServerDirectedWaits(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, res.StatusCode)
 			require.Len(t, calls, 1)
-			assert.Equal(t, time.Second, calls[0].delay)
+			// The reported wait includes the client backoff that follows the Retry-After delay.
+			assert.Equal(t, time.Second+delay, calls[0].wait)
 			assert.Equal(t, status, calls[0].status)
 		})
 	}
+}
+
+func TestRetryOnRetryWaitCalledForZeroRetryAfter(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		if tries <= 3 {
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	req, err := http.NewRequest("GET", server.URL, nil)
+	require.NoError(t, err)
+
+	var waits []time.Duration
+	delay := time.Millisecond
+	res, err := DoWithRetryOpts(req, server.Client(), RetryOpts{
+		PulumiServiceSignals: true,
+		Delay:                &delay,
+		OnRetryWait: func(wait time.Duration, _ *http.Response) {
+			waits = append(waits, wait)
+		},
+	})
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	// A zero Retry-After still waits out the client backoff, the caller hears about every round, and the reported
+	// wait tracks the backoff as it grows (default 1.5x).
+	assert.Equal(t, []time.Duration{time.Millisecond, 1500 * time.Microsecond, 2250 * time.Microsecond}, waits)
 }
 
 func TestRetry503RetryAfterBoundedWithoutPulumiServiceSignals(t *testing.T) {
@@ -628,7 +664,6 @@ func TestRetry503RetryAfterBoundedWithoutPulumiServiceSignals(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// The deadline only turns an unbounded retry loop into a failure instead of a hang.
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, "GET", server.URL, nil)
@@ -638,7 +673,6 @@ func TestRetry503RetryAfterBoundedWithoutPulumiServiceSignals(t *testing.T) {
 	require.NoError(t, err)
 	defer res.Body.Close()
 
-	// Without the opt-in, a 503 carrying Retry-After is an ordinary 5xx.
 	assert.Equal(t, 5, tries)
 	assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
 }

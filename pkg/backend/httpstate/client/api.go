@@ -403,34 +403,49 @@ type defaultHTTPClient struct {
 }
 
 const (
-	// Warn only once cumulative server-directed waits pass the threshold, then
-	// at most once per interval; shorter blips stay silent.
 	serverWaitWarningThreshold = 10 * time.Second
 	serverWaitRewarnInterval   = time.Minute
 )
 
-// retryWaitWarner tells the user about server-directed retry waits. State is
-// shared across a client's requests so concurrent waiters warn once, not each.
+// retryWaitWarner tells the user when the service makes the client wait to retry, during maintenance or
+// rate limiting. An episode runs from the first such wait until a request that waited ends; the warning
+// fires once the episode, counting the wait about to start, reaches the threshold. Episode state is shared
+// across a client's requests, so concurrent waiters neither add up nor warn once each.
 type retryWaitWarner struct {
 	diag diag.Sink
+	// threshold overrides serverWaitWarningThreshold when non-zero.
+	threshold time.Duration
+	// now overrides time.Now when non-nil.
+	now func() time.Time
 
-	mu       sync.Mutex
-	waited   time.Duration
-	lastWarn time.Time
+	mu           sync.Mutex
+	episodeStart time.Time
+	lastWarn     time.Time
 }
 
-func (w *retryWaitWarner) onRetryWait(delay time.Duration, res *http.Response) {
+func (w *retryWaitWarner) onRetryWait(wait time.Duration, res *http.Response) {
 	if w == nil || w.diag == nil {
 		return
 	}
+	threshold := w.threshold
+	if threshold == 0 {
+		threshold = serverWaitWarningThreshold
+	}
+	now := time.Now
+	if w.now != nil {
+		now = w.now
+	}
+	t := now()
 	w.mu.Lock()
-	w.waited += delay
-	if w.waited < serverWaitWarningThreshold ||
-		(!w.lastWarn.IsZero() && time.Since(w.lastWarn) < serverWaitRewarnInterval) {
+	if w.episodeStart.IsZero() {
+		w.episodeStart = t
+	}
+	if t.Sub(w.episodeStart)+wait < threshold ||
+		(!w.lastWarn.IsZero() && t.Sub(w.lastWarn) < serverWaitRewarnInterval) {
 		w.mu.Unlock()
 		return
 	}
-	w.lastWarn = time.Now()
+	w.lastWarn = t
 	w.mu.Unlock()
 
 	cause := "the service is temporarily unavailable"
@@ -438,8 +453,8 @@ func (w *retryWaitWarner) onRetryWait(delay time.Duration, res *http.Response) {
 		cause = "the request was rate-limited"
 	}
 	suffix := "; retrying... ^C to stop"
-	if delay >= serverWaitWarningThreshold {
-		suffix = fmt.Sprintf("; retrying in %v... ^C to stop", delay)
+	if wait >= threshold {
+		suffix = fmt.Sprintf("; retrying in %v... ^C to stop", wait)
 	}
 	w.diag.Warningf(diag.Message("" /*urn*/, cause+suffix))
 }
@@ -451,11 +466,22 @@ func (w *retryWaitWarner) onSuccess() {
 	w.mu.Lock()
 	warned := !w.lastWarn.IsZero()
 	w.lastWarn = time.Time{}
-	w.waited = 0
+	w.episodeStart = time.Time{}
 	w.mu.Unlock()
 	if warned {
 		w.diag.Infoerrf(diag.Message("" /*urn*/, "the service is available again; resuming"))
 	}
+}
+
+// onGiveUp ends the episode without announcing recovery, so a later wait is not timed from a request that
+// stopped waiting; repeat warnings stay paced by the last one.
+func (w *retryWaitWarner) onGiveUp() {
+	if w == nil {
+		return
+	}
+	w.mu.Lock()
+	w.episodeStart = time.Time{}
+	w.mu.Unlock()
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
@@ -510,11 +536,20 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 		// Only the Pulumi Cloud API speaks this contract; presigned S3 URLs and other hosts sent
 		// through this client keep the bounded retry.
 		PulumiServiceSignals: c.apiHost != "" && req.URL.Host == c.apiHost,
-		OnRetryWait:          c.warner.onRetryWait,
+	}
+	waited := false
+	opts.OnRetryWait = func(wait time.Duration, res *http.Response) {
+		waited = true
+		c.warner.onRetryWait(wait, res)
 	}
 	res, err := httputil.DoWithRetryOpts(req, &tracingClient, opts)
-	if err == nil && res.StatusCode < 400 {
-		c.warner.onSuccess()
+	// A request that never waited says nothing about another one still waiting out the service.
+	if waited {
+		if err == nil && res.StatusCode < 400 {
+			c.warner.onSuccess()
+		} else {
+			c.warner.onGiveUp()
+		}
 	}
 	return res, err
 }

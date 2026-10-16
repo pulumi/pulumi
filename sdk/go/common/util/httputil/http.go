@@ -87,14 +87,15 @@ type RetryOpts struct {
 	// X-Pulumi-Should-Retry: true.
 	PulumiServiceSignals bool
 
-	// OnRetryWait, if set, is called before honoring a positive server-directed delay: Retry-After on a 429
-	// (capped) or on a PulumiServiceSignals 503 (uncapped). res's body is already closed; only its status and
-	// headers are usable.
-	OnRetryWait func(delay time.Duration, res *http.Response)
+	// OnRetryWait, if set, is called before a server-directed wait with the time until the next attempt: the
+	// Retry-After delay plus the client backoff that follows it. On a PulumiServiceSignals 503 it is called every
+	// round, even when Retry-After is zero; on a 429 only for a positive Retry-After, which is capped. res's body
+	// is already closed; only its status and headers are usable.
+	OnRetryWait func(wait time.Duration, res *http.Response)
 }
 
 // DoWithRetry calls client.Do, and in the case of an error, retries the operation again after a slight delay.
-// Uses the default retry delays, starting at 100ms and ramping up to ~1.3s, for at most five attempts.
+// Uses the default retry delays, starting at 100ms, for at most five attempts.
 func DoWithRetry(req *http.Request, client *http.Client) (*http.Response, error) {
 	var opts RetryOpts
 	return doWithRetry(req, client, opts)
@@ -129,7 +130,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 		Backoff:  opts.Backoff,
 		MaxDelay: opts.MaxDelay,
 
-		Accept: func(try int, _ time.Duration) (bool, any, error) {
+		Accept: func(try int, nextRetry time.Duration) (bool, any, error) {
 			attempts := try - maintenanceRounds
 			if try > 0 && req.GetBody != nil {
 				// Reset request body, if present, for retries.
@@ -166,10 +167,10 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 				if delay, ok := retryAfterHeaderDelay(res, time.Now()); ok {
 					maintenanceRounds++
 					contract.IgnoreClose(res.Body)
+					if opts.OnRetryWait != nil {
+						opts.OnRetryWait(delay+nextRetry, res)
+					}
 					if delay > 0 {
-						if opts.OnRetryWait != nil {
-							opts.OnRetryWait(delay, res)
-						}
 						select {
 						case <-req.Context().Done():
 							return true, nil, req.Context().Err()
@@ -187,7 +188,7 @@ func doWithRetry(req *http.Request, client *http.Client, opts RetryOpts) (*http.
 				contract.IgnoreClose(res.Body)
 				if delay > 0 {
 					if opts.OnRetryWait != nil {
-						opts.OnRetryWait(delay, res)
+						opts.OnRetryWait(delay+nextRetry, res)
 					}
 					select {
 					case <-req.Context().Done():
