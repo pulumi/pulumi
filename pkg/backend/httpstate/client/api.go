@@ -403,14 +403,16 @@ type defaultHTTPClient struct {
 }
 
 const (
-	serverWaitWarningThreshold = 10 * time.Second
+	maxRetryDelay = 30 * time.Second
+	// serverWaitWarningThreshold equals the backoff cap, so a maintenance 503 with Retry-After: 0, whose waits
+	// are the client backoff, still warns once the backoff reaches the cap.
+	serverWaitWarningThreshold = maxRetryDelay
 	serverWaitRewarnInterval   = time.Minute
 )
 
-// retryWaitWarner tells the user when the service makes the client wait to retry, during maintenance or
-// rate limiting. An episode runs from the first such wait until a request that waited ends; the warning
-// fires once the episode, counting the wait about to start, reaches the threshold. Episode state is shared
-// across a client's requests, so concurrent waiters neither add up nor warn once each.
+// retryWaitWarner tells the user when the service makes the client wait at least serverWaitWarningThreshold
+// to retry, during maintenance or rate limiting, at most once per serverWaitRewarnInterval across a client's
+// requests.
 type retryWaitWarner struct {
 	diag diag.Sink
 	// threshold overrides serverWaitWarningThreshold when non-zero.
@@ -418,9 +420,8 @@ type retryWaitWarner struct {
 	// now overrides time.Now when non-nil.
 	now func() time.Time
 
-	mu           sync.Mutex
-	episodeStart time.Time
-	lastWarn     time.Time
+	mu       sync.Mutex
+	lastWarn time.Time
 }
 
 func (w *retryWaitWarner) onRetryWait(wait time.Duration, res *http.Response) {
@@ -431,17 +432,16 @@ func (w *retryWaitWarner) onRetryWait(wait time.Duration, res *http.Response) {
 	if threshold == 0 {
 		threshold = serverWaitWarningThreshold
 	}
+	if wait < threshold {
+		return
+	}
 	now := time.Now
 	if w.now != nil {
 		now = w.now
 	}
 	t := now()
 	w.mu.Lock()
-	if w.episodeStart.IsZero() {
-		w.episodeStart = t
-	}
-	if t.Sub(w.episodeStart)+wait < threshold ||
-		(!w.lastWarn.IsZero() && t.Sub(w.lastWarn) < serverWaitRewarnInterval) {
+	if !w.lastWarn.IsZero() && t.Sub(w.lastWarn) < serverWaitRewarnInterval {
 		w.mu.Unlock()
 		return
 	}
@@ -452,36 +452,7 @@ func (w *retryWaitWarner) onRetryWait(wait time.Duration, res *http.Response) {
 	if res.StatusCode != http.StatusServiceUnavailable {
 		cause = "the request was rate-limited"
 	}
-	suffix := "; retrying... ^C to stop"
-	if wait >= threshold {
-		suffix = fmt.Sprintf("; retrying in %v... ^C to stop", wait)
-	}
-	w.diag.Warningf(diag.Message("" /*urn*/, cause+suffix))
-}
-
-func (w *retryWaitWarner) onSuccess() {
-	if w == nil || w.diag == nil {
-		return
-	}
-	w.mu.Lock()
-	warned := !w.lastWarn.IsZero()
-	w.lastWarn = time.Time{}
-	w.episodeStart = time.Time{}
-	w.mu.Unlock()
-	if warned {
-		w.diag.Infoerrf(diag.Message("" /*urn*/, "the service is available again; resuming"))
-	}
-}
-
-// onGiveUp ends the episode without announcing recovery, so a later wait is not timed from a request that
-// stopped waiting; repeat warnings stay paced by the last one.
-func (w *retryWaitWarner) onGiveUp() {
-	if w == nil {
-		return
-	}
-	w.mu.Lock()
-	w.episodeStart = time.Time{}
-	w.mu.Unlock()
+	w.diag.Warningf(diag.Message("" /*urn*/, fmt.Sprintf("%s; retrying in %v... ^C to stop", cause, wait)))
 }
 
 func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Response, error) {
@@ -520,8 +491,8 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 	// Wait 1s before retrying on failure. Then increase by 2x until the
 	// maximum delay is reached. Stop after maxRetryCount requests have
 	// been made, except that the Pulumi Cloud API's maintenance 503s are
-	// waited out for as long as it keeps sending them (for non-retryable
-	// requests, only when it also sends X-Pulumi-Should-Retry: true).
+	// waited out for up to two hours (for non-retryable requests, only
+	// when it also sends X-Pulumi-Should-Retry: true).
 	delay := time.Second
 	if c.retryDelay != 0 {
 		delay = c.retryDelay
@@ -529,29 +500,16 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 	opts := httputil.RetryOpts{
 		Delay:    &delay,
 		Backoff:  new(2.0),
-		MaxDelay: new(30 * time.Second),
+		MaxDelay: new(maxRetryDelay),
 
 		MaxRetryCount:         new(4),
 		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
 		// Only the Pulumi Cloud API speaks this contract; presigned S3 URLs and other hosts sent
 		// through this client keep the bounded retry.
 		PulumiServiceSignals: c.apiHost != "" && req.URL.Host == c.apiHost,
+		OnRetryWait:          c.warner.onRetryWait,
 	}
-	waited := false
-	opts.OnRetryWait = func(wait time.Duration, res *http.Response) {
-		waited = true
-		c.warner.onRetryWait(wait, res)
-	}
-	res, err := httputil.DoWithRetryOpts(req, &tracingClient, opts)
-	// A request that never waited says nothing about another one still waiting out the service.
-	if waited {
-		if err == nil && res.StatusCode < 400 {
-			c.warner.onSuccess()
-		} else {
-			c.warner.onGiveUp()
-		}
-	}
-	return res, err
+	return httputil.DoWithRetryOpts(req, &tracingClient, opts)
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.

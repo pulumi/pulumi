@@ -748,17 +748,17 @@ func TestRetryWaitWarner(t *testing.T) {
 		t.Parallel()
 		sink := &diag.MockSink{}
 		w := &retryWaitWarner{diag: sink}
-		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
+		w.onRetryWait(45*time.Second, mkRes(http.StatusServiceUnavailable))
 		require.Len(t, sink.Messages[diag.Warning], 1)
 		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "unavailable")
-		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "retrying in")
+		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "retrying in 45s")
 	})
 
 	t.Run("warns on long rate-limit waits", func(t *testing.T) {
 		t.Parallel()
 		sink := &diag.MockSink{}
 		w := &retryWaitWarner{diag: sink}
-		w.onRetryWait(15*time.Second, mkRes(http.StatusTooManyRequests))
+		w.onRetryWait(45*time.Second, mkRes(http.StatusTooManyRequests))
 		require.Len(t, sink.Messages[diag.Warning], 1)
 		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "rate-limited")
 	})
@@ -767,37 +767,17 @@ func TestRetryWaitWarner(t *testing.T) {
 		t.Parallel()
 		sink := &diag.MockSink{}
 		w := &retryWaitWarner{diag: sink}
-		w.onRetryWait(time.Second, mkRes(http.StatusServiceUnavailable))
+		w.onRetryWait(serverWaitWarningThreshold-time.Second, mkRes(http.StatusServiceUnavailable))
 		assert.Empty(t, sink.Messages)
 	})
 
-	t.Run("short waits warn once the episode passes the threshold", func(t *testing.T) {
+	t.Run("warns once Retry-After: 0 waits reach the backoff cap", func(t *testing.T) {
 		t.Parallel()
 		sink := &diag.MockSink{}
-		clock := time.Unix(0, 0)
-		w := &retryWaitWarner{diag: sink, now: func() time.Time { return clock }}
-		for i := range 4 {
-			w.onRetryWait(3*time.Second, mkRes(http.StatusServiceUnavailable))
-			if i < 3 {
-				assert.Empty(t, sink.Messages[diag.Warning], "after %d rounds", i+1)
-			}
-			clock = clock.Add(3 * time.Second)
-		}
+		w := &retryWaitWarner{diag: sink}
+		// With Retry-After: 0 the wait is the client backoff, which grows to maxRetryDelay and stays there.
+		w.onRetryWait(maxRetryDelay, mkRes(http.StatusServiceUnavailable))
 		require.Len(t, sink.Messages[diag.Warning], 1)
-		assert.NotContains(t, sink.Messages[diag.Warning][0].Diag.Message, "retrying in")
-	})
-
-	t.Run("concurrent short waits stay silent", func(t *testing.T) {
-		t.Parallel()
-		sink := &diag.MockSink{}
-		clock := time.Unix(0, 0)
-		w := &retryWaitWarner{diag: sink, now: func() time.Time { return clock }}
-		var wg sync.WaitGroup
-		for range 10 {
-			wg.Go(func() { w.onRetryWait(time.Second, mkRes(http.StatusServiceUnavailable)) })
-		}
-		wg.Wait()
-		assert.Empty(t, sink.Messages[diag.Warning], "ten requests waiting one second is a one-second blip")
 	})
 
 	t.Run("repeat warnings are paced", func(t *testing.T) {
@@ -806,57 +786,21 @@ func TestRetryWaitWarner(t *testing.T) {
 		clock := time.Unix(0, 0)
 		w := &retryWaitWarner{diag: sink, now: func() time.Time { return clock }}
 		for range 5 {
-			w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
+			w.onRetryWait(45*time.Second, mkRes(http.StatusServiceUnavailable))
 		}
 		require.Len(t, sink.Messages[diag.Warning], 1)
 
-		clock = clock.Add(2 * serverWaitRewarnInterval)
-		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
+		clock = clock.Add(serverWaitRewarnInterval)
+		w.onRetryWait(45*time.Second, mkRes(http.StatusServiceUnavailable))
 		require.Len(t, sink.Messages[diag.Warning], 2)
-	})
-
-	t.Run("success after warning notes resumption and resets", func(t *testing.T) {
-		t.Parallel()
-		sink := &diag.MockSink{}
-		w := &retryWaitWarner{diag: sink}
-		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
-		w.onSuccess()
-		require.Len(t, sink.Messages[diag.Infoerr], 1)
-		assert.Contains(t, sink.Messages[diag.Infoerr][0].Diag.Message, "resuming")
-
-		w.onSuccess()
-		require.Len(t, sink.Messages[diag.Infoerr], 1)
-
-		w.onRetryWait(time.Second, mkRes(http.StatusServiceUnavailable))
-		require.Len(t, sink.Messages[diag.Warning], 1)
-
-		// A fresh episode is not paced by the previous episode's warning.
-		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
-		require.Len(t, sink.Messages[diag.Warning], 2)
-	})
-
-	t.Run("a request that gives up ends the episode", func(t *testing.T) {
-		t.Parallel()
-		sink := &diag.MockSink{}
-		clock := time.Unix(0, 0)
-		w := &retryWaitWarner{diag: sink, now: func() time.Time { return clock }}
-		w.onRetryWait(3*time.Second, mkRes(http.StatusServiceUnavailable))
-		w.onGiveUp()
-
-		clock = clock.Add(time.Hour)
-		w.onRetryWait(time.Second, mkRes(http.StatusServiceUnavailable))
-		assert.Empty(t, sink.Messages, "a short wait an hour later is a fresh blip")
 	})
 
 	t.Run("nil warner and nil sink are safe", func(t *testing.T) {
 		t.Parallel()
 		var w *retryWaitWarner
-		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
-		w.onSuccess()
-		w.onGiveUp()
+		w.onRetryWait(45*time.Second, mkRes(http.StatusServiceUnavailable))
 		w = &retryWaitWarner{}
-		w.onRetryWait(15*time.Second, mkRes(http.StatusServiceUnavailable))
-		w.onSuccess()
+		w.onRetryWait(45*time.Second, mkRes(http.StatusServiceUnavailable))
 	})
 }
 
@@ -920,32 +864,6 @@ func TestForThirdPartyHostDropsAPIHost(t *testing.T) {
 	assert.Empty(t, hc.apiHost, "a template host must not get the Pulumi Cloud retry signals or trace context")
 }
 
-func TestDefaultHTTPClientRequestThatNeverWaitedLeavesEpisode(t *testing.T) {
-	t.Parallel()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	sink := &diag.MockSink{}
-	client := newDefaultHTTPClient(server.Client(), server.URL, sink)
-	// Another request on this client is waiting out maintenance and has warned.
-	client.warner.onRetryWait(15*time.Second, &http.Response{StatusCode: http.StatusServiceUnavailable})
-	require.Len(t, sink.Messages[diag.Warning], 1)
-
-	req, err := http.NewRequest("GET", server.URL, nil)
-	require.NoError(t, err)
-	res, err := client.Do(req, retryGetMethod)
-	require.NoError(t, err)
-	defer res.Body.Close()
-
-	assert.Empty(t, sink.Messages[diag.Infoerr], "no recovery notice while the other request still waits")
-	client.warner.mu.Lock()
-	defer client.warner.mu.Unlock()
-	assert.False(t, client.warner.episodeStart.IsZero(), "the waiting request's episode continues")
-}
-
 func TestDefaultHTTPClientWarnsWhileWaitingOutMaintenance(t *testing.T) {
 	t.Parallel()
 
@@ -975,6 +893,4 @@ func TestDefaultHTTPClientWarnsWhileWaitingOutMaintenance(t *testing.T) {
 	require.Len(t, sink.Messages[diag.Warning], 1)
 	assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "unavailable")
 	assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "retrying in 1s")
-	require.Len(t, sink.Messages[diag.Infoerr], 1)
-	assert.Contains(t, sink.Messages[diag.Infoerr][0].Diag.Message, "resuming")
 }
