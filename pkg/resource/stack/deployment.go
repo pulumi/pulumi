@@ -555,13 +555,18 @@ func DecryptStackOutputs(
 		return nil, err
 	}
 
-	return BatchDecrypt(
-		ctx,
-		secretsManager,
-		func(ctx context.Context, dec config.Decrypter) (resource.PropertyMap, error) {
-			return DeserializeProperties(outputs, dec)
-		},
-	)
+	dec, err := primeDecrypter(ctx, secretsManager, func(ctx context.Context, dec BatchDecrypter) error {
+		for _, prop := range outputs {
+			if err := enqueueCiphertexts(ctx, dec, prop); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return DeserializeProperties(outputs, dec)
 }
 
 // DeserializeDeploymentV3 deserializes a typed DeploymentV3 into a `deploy.Snapshot`.
@@ -585,39 +590,55 @@ func DeserializeDeploymentV3(
 		return nil, err
 	}
 
-	type deserializedData struct {
-		resources []*pkgresource.State
-		ops       []pkgresource.Operation
+	// Pre-pass: walk the serialised deployment and prime the batch decrypter with every encrypted
+	// ciphertext in one round-trip. The subsequent per-value DecryptValue calls inside the normal
+	// deserialize walk are then served from the batch's local cache for free.
+	enqueueResource := func(ctx context.Context, dec BatchDecrypter, res apitype.ResourceV3) error {
+		for _, prop := range res.Inputs {
+			if err := enqueueCiphertexts(ctx, dec, prop); err != nil {
+				return err
+			}
+		}
+		for _, prop := range res.Outputs {
+			if err := enqueueCiphertexts(ctx, dec, prop); err != nil {
+				return err
+			}
+		}
+		return enqueueCiphertexts(ctx, dec, res.ReplacementTrigger)
 	}
-
-	data, err := BatchDecrypt(
-		ctx,
-		secretsManager,
-		func(ctx context.Context, dec config.Decrypter) (deserializedData, error) {
-			// For every serialized resource vertex, create a ResourceDeployment out of it.
-			resources := slice.Prealloc[*pkgresource.State](len(deployment.Resources))
-			for _, res := range deployment.Resources {
-				desres, err := DeserializeResource(res, dec)
-				if err != nil {
-					return deserializedData{}, err
-				}
-				resources = append(resources, desres)
+	dec, err := primeDecrypter(ctx, secretsManager, func(ctx context.Context, dec BatchDecrypter) error {
+		for _, res := range deployment.Resources {
+			if err := enqueueResource(ctx, dec, res); err != nil {
+				return err
 			}
-
-			ops := slice.Prealloc[pkgresource.Operation](len(deployment.PendingOperations))
-			for _, op := range deployment.PendingOperations {
-				desop, err := DeserializeOperation(op, dec)
-				if err != nil {
-					return deserializedData{}, err
-				}
-				ops = append(ops, desop)
+		}
+		for _, op := range deployment.PendingOperations {
+			if err := enqueueResource(ctx, dec, op.Resource); err != nil {
+				return err
 			}
-
-			return deserializedData{resources: resources, ops: ops}, nil
-		},
-	)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
+	}
+
+	resources := slice.Prealloc[*pkgresource.State](len(deployment.Resources))
+	for _, res := range deployment.Resources {
+		desres, err := DeserializeResource(res, dec)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, desres)
+	}
+
+	ops := slice.Prealloc[pkgresource.Operation](len(deployment.PendingOperations))
+	for _, op := range deployment.PendingOperations {
+		desop, err := DeserializeOperation(op, dec)
+		if err != nil {
+			return nil, err
+		}
+		ops = append(ops, desop)
 	}
 
 	metadata := deploy.SnapshotMetadata{}
@@ -637,7 +658,7 @@ func DeserializeDeploymentV3(
 		}
 	}
 	return deploy.NewSnapshot(
-		*manifest, secretsManager, data.resources, data.ops, metadata, snippets, deployment.Extensions,
+		*manifest, secretsManager, resources, ops, metadata, snippets, deployment.Extensions,
 	), nil
 }
 
@@ -1015,6 +1036,70 @@ func DeserializeProperties(props map[string]any, dec config.Decrypter,
 	return result, nil
 }
 
+// enqueueCiphertexts walks the untyped serialised property tree v and enqueues every encrypted
+// SecretV1 ciphertext it finds on dec. Shaped to mirror the secret-recognition logic in
+// deserializePropertyValue (which must stay in sync).
+func enqueueCiphertexts(ctx context.Context, dec BatchDecrypter, v any) error {
+	switch w := v.(type) {
+	case []any:
+		for _, elem := range w {
+			if err := enqueueCiphertexts(ctx, dec, elem); err != nil {
+				return err
+			}
+		}
+	case map[string]any:
+		if sig, hasSig := w[resource.SigKey]; hasSig {
+			if sig == resource.SecretSig {
+				if ct, ok := w["ciphertext"].(string); ok && ct != "" {
+					return dec.Enqueue(ctx, ct)
+				}
+			}
+			// Other signed shapes (assets, archives, resource references, byte strings, floats)
+			// don't carry nested secrets, so there's no need to recurse into them.
+			return nil
+		}
+		for _, elem := range w {
+			if err := enqueueCiphertexts(ctx, dec, elem); err != nil {
+				return err
+			}
+		}
+	case *apitype.SecretV1:
+		if w != nil && w.Ciphertext != "" {
+			return dec.Enqueue(ctx, w.Ciphertext)
+		}
+	}
+	return nil
+}
+
+// primeDecrypter prepares a config.Decrypter for a batched deserialize. When secretsManager
+// supports batching it begins a batch, invokes enqueue to register every ciphertext in the
+// serialised deployment, flushes the batch, and returns the batch decrypter - subsequent calls to
+// decrypter.DecryptValue serve those ciphertexts from the batch's local cache without issuing
+// another decrypt. If secretsManager is nil or does not support batching the enqueue callback is
+// skipped and the plain Decrypter is returned.
+func primeDecrypter(
+	ctx context.Context,
+	secretsManager secrets.Manager,
+	enqueue func(ctx context.Context, dec BatchDecrypter) error,
+) (config.Decrypter, error) {
+	if secretsManager == nil {
+		return config.NewErrorCrypter(
+			"snapshot contains encrypted secrets but no secrets manager could be found"), nil
+	}
+	bsm, ok := secretsManager.(BatchingSecretsManager)
+	if !ok {
+		return secretsManager.Decrypter(), nil
+	}
+	dec, completeBatch := bsm.BeginBatchDecryption()
+	if err := enqueue(ctx, dec); err != nil {
+		return nil, errors.Join(fmt.Errorf("enqueuing secret for decryption: %w", err), completeBatch(ctx))
+	}
+	if err := completeBatch(ctx); err != nil {
+		return nil, err
+	}
+	return dec, nil
+}
+
 // deserializeSecret deserializes a secret value from its SecretV1 representation.
 func deserializeSecret(
 	ctx context.Context, secret *apitype.SecretV1, dec config.Decrypter,
@@ -1029,31 +1114,23 @@ func deserializeSecret(
 		)
 	}
 
-	if secret.Plaintext != "" {
-		propertyValue, err := secretPropertyValueFromPlaintext(secret.Plaintext)
+	plaintext := secret.Plaintext
+	if plaintext == "" {
+		// Decrypt eagerly. When dec is a BatchDecrypter whose batch has been primed by a prior pass
+		// over the serialised deployment (see collectCiphertexts / primeBatchDecrypter), this call
+		// is served from the batch's local cache without issuing another decrypt.
+		pt, err := dec.DecryptValue(ctx, secret.Ciphertext)
 		if err != nil {
-			return resource.PropertyValue{}, err
+			return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
 		}
-		propSecret.Element = propertyValue
-	} else {
-		// If the decrypter supports batching, use the Enqueue method to asynchronously decrypt the secret value.
-		if batchDecrypter, ok := dec.(BatchDecrypter); ok {
-			err := batchDecrypter.Enqueue(ctx, secret.Ciphertext, propSecret)
-			if err != nil {
-				return resource.PropertyValue{}, fmt.Errorf("enqueuing secret value for decryption: %w", err)
-			}
-		} else {
-			unencryptedText, err := dec.DecryptValue(ctx, secret.Ciphertext)
-			if err != nil {
-				return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
-			}
-			ev, err := secretPropertyValueFromPlaintext(unencryptedText)
-			if err != nil {
-				return resource.PropertyValue{}, err
-			}
-			propSecret.Element = ev
-		}
+		plaintext = pt
 	}
+
+	propertyValue, err := secretPropertyValueFromPlaintext(plaintext)
+	if err != nil {
+		return resource.PropertyValue{}, err
+	}
+	propSecret.Element = propertyValue
 
 	return prop, nil
 }

@@ -102,13 +102,24 @@ func (t *testSecretsManager) BatchDecrypt(
 	return decrypted, nil
 }
 
-func deserializeProperty(v any, dec config.Decrypter) (resource.PropertyValue, error) {
+// deserializeProperty mirrors the production two-pass flow against a BatchDecrypter owned by the
+// test: it walks the serialised value for ciphertexts, enqueues them, flushes via complete, then
+// runs the standard deserialize - which hits the batch's cache for every secret.
+func deserializeProperty(
+	ctx context.Context, v any, dec BatchDecrypter, complete CompleteCrypterBatch,
+) (resource.PropertyValue, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return resource.PropertyValue{}, err
 	}
 	var v2 any
 	if err := json.Unmarshal(b, &v2); err != nil {
+		return resource.PropertyValue{}, err
+	}
+	if err := enqueueCiphertexts(ctx, dec, v2); err != nil {
+		return resource.PropertyValue{}, err
+	}
+	if err := complete(ctx); err != nil {
 		return resource.PropertyValue{}, err
 	}
 	return DeserializePropertyValue(v2, dec)
@@ -177,27 +188,24 @@ func TestCachingSecretsManager(t *testing.T) {
 
 	// Decrypt foo1Ser. Doesn't cache.
 	dec, completeDec := csm.BeginBatchDecryption()
-	foo1Dec, err := deserializeProperty(foo1Ser, dec)
+	foo1Dec, err := deserializeProperty(ctx, foo1Ser, dec, completeDec)
 	require.NoError(t, err, "deserialize")
-	require.NoError(t, completeDec(ctx), "complete")
 	assert.Equal(t, 1, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
 	assert.True(t, foo1.DeepEquals(foo1Dec))
 
 	// Decrypt foo2Ser. Shares cache from encrypt.
 	dec, completeDec = csm.BeginBatchDecryption()
-	foo2Dec, err := deserializeProperty(foo2Ser, dec)
+	foo2Dec, err := deserializeProperty(ctx, foo2Ser, dec, completeDec)
 	require.NoError(t, err, "deserialize")
-	require.NoError(t, completeDec(ctx), "complete")
 	assert.Equal(t, 2, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
 	assert.True(t, foo2.DeepEquals(foo2Dec))
 
 	// Decrypt barSer. Shares cache from encrypt.
 	dec, completeDec = csm.BeginBatchDecryption()
-	barDec, err := deserializeProperty(barSer, dec)
+	barDec, err := deserializeProperty(ctx, barSer, dec, completeDec)
 	require.NoError(t, err, "deserialize")
-	require.NoError(t, completeDec(ctx), "complete")
 	assert.Equal(t, 3, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
 	assert.True(t, bar.DeepEquals(barDec))
@@ -208,25 +216,22 @@ func TestCachingSecretsManager(t *testing.T) {
 
 	// Decrypt foo1Ser. Decrypt should be called.
 	dec, completeDec = csm.BeginBatchDecryption()
-	foo1Dec, err = deserializeProperty(foo1Ser, dec)
+	foo1Dec, err = deserializeProperty(ctx, foo1Ser, dec, completeDec)
 	require.NoError(t, err, "deserialize")
-	require.NoError(t, completeDec(ctx), "complete")
 	assert.Equal(t, 4, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.True(t, foo1.DeepEquals(foo1Dec))
 
 	// Decrypt foo2Ser. Decrypt should be called.
 	dec, completeDec = csm.BeginBatchDecryption()
-	foo2Dec, err = deserializeProperty(foo2Ser, dec)
+	foo2Dec, err = deserializeProperty(ctx, foo2Ser, dec, completeDec)
 	require.NoError(t, err, "deserialize")
-	require.NoError(t, completeDec(ctx), "complete")
 	assert.Equal(t, 5, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.True(t, foo2.DeepEquals(foo2Dec))
 
 	// Decrypt barSer. Decrypt should be called.
 	dec, completeDec = csm.BeginBatchDecryption()
-	barDec, err = deserializeProperty(barSer, dec)
+	barDec, err = deserializeProperty(ctx, barSer, dec, completeDec)
 	require.NoError(t, err, "deserialize")
-	require.NoError(t, completeDec(ctx), "complete")
 	assert.Equal(t, 6, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.True(t, bar.DeepEquals(barDec))
 
@@ -467,7 +472,7 @@ func TestBatchDecrypter(t *testing.T) {
 		ctx := t.Context()
 		sm := &testSecretsManager{}
 
-		_, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
+		_, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), 999)
 		require.NoError(t, complete(ctx), "complete")
 
 		assert.Equal(t, 0, sm.batchDecryptCalls)
@@ -477,13 +482,14 @@ func TestBatchDecrypter(t *testing.T) {
 		t.Parallel()
 		ctx := t.Context()
 		sm := &testSecretsManager{}
-		secret := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
 
-		dec, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
-		require.NoError(t, dec.Enqueue(ctx, "1-1:\"plaintext\"", secret), "enqueue")
+		dec, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), 999)
+		require.NoError(t, dec.Enqueue(ctx, "1-1:\"plaintext\""), "enqueue")
 		require.NoError(t, complete(ctx), "complete")
 
-		assert.Equal(t, resource.MakeSecret(resource.NewProperty("plaintext")).SecretValue(), secret)
+		pt, err := dec.DecryptValue(ctx, "1-1:\"plaintext\"")
+		require.NoError(t, err)
+		assert.Equal(t, "\"plaintext\"", pt)
 		assert.Equal(t, 1, sm.batchDecryptCalls)
 	})
 
@@ -491,17 +497,20 @@ func TestBatchDecrypter(t *testing.T) {
 		t.Parallel()
 		ctx := t.Context()
 		sm := &testSecretsManager{}
-		secret1 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
-		secret2 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
 
-		dec, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 1)
-		require.NoError(t, dec.Enqueue(ctx, "1-1:\"plaintext1\"", secret1), "enqueue 1")
-		require.NoError(t, dec.Enqueue(ctx, "2-1:\"plaintext2\"", secret2), "enqueue 2")
+		dec, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), 1)
+		require.NoError(t, dec.Enqueue(ctx, "1-1:\"plaintext1\""), "enqueue 1")
+		require.NoError(t, dec.Enqueue(ctx, "2-1:\"plaintext2\""), "enqueue 2")
 		assert.Equal(t, 1, sm.batchDecryptCalls, "first batch auto-sent on limit reached")
-		assert.Equal(t, resource.MakeSecret(resource.NewProperty("plaintext1")).SecretValue(), secret1)
+
+		pt1, err := dec.DecryptValue(ctx, "1-1:\"plaintext1\"")
+		require.NoError(t, err)
+		assert.Equal(t, "\"plaintext1\"", pt1)
 
 		require.NoError(t, complete(ctx), "complete")
-		assert.Equal(t, resource.MakeSecret(resource.NewProperty("plaintext2")).SecretValue(), secret2)
+		pt2, err := dec.DecryptValue(ctx, "2-1:\"plaintext2\"")
+		require.NoError(t, err)
+		assert.Equal(t, "\"plaintext2\"", pt2)
 		assert.Equal(t, 2, sm.batchDecryptCalls)
 	})
 
@@ -510,15 +519,16 @@ func TestBatchDecrypter(t *testing.T) {
 		ctx := t.Context()
 		sm := &testSecretsManager{}
 		cache := NewSecretCache()
-		secret := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
 
 		const ciphertext = "1-1:\"ciphertext\""
 		cache.Write("\"plaintext\"", ciphertext, secretID(&resource.Secret{})) // Pointer doesn't have to match for decryption
-		dec, complete := beginBatchDecryption(sm.Decrypter(), cache, secretPropertyValueFromPlaintext, 999)
-		require.NoError(t, dec.Enqueue(ctx, ciphertext, secret), "enqueue")
+		dec, complete := beginBatchDecryption(sm.Decrypter(), cache, 999)
+		require.NoError(t, dec.Enqueue(ctx, ciphertext), "enqueue")
 
 		require.NoError(t, complete(ctx), "complete")
-		assert.Equal(t, resource.MakeSecret(resource.NewProperty("plaintext")).SecretValue(), secret)
+		pt, err := dec.DecryptValue(ctx, ciphertext)
+		require.NoError(t, err)
+		assert.Equal(t, "\"plaintext\"", pt)
 		assert.Equal(t, 0, sm.batchDecryptCalls)
 	})
 
@@ -527,31 +537,48 @@ func TestBatchDecrypter(t *testing.T) {
 		ctx := t.Context()
 		sm := &testSecretsManager{}
 		cache := NewSecretCache()
-		secret1 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
-		secret2 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
 
 		const ciphertext1 = "1:\"plaintext 1\""
 		const ciphertext2 = "2:\"plaintext 2\""
 		cache.Write("\"plaintext from cache\"", ciphertext1, secretID(&resource.Secret{}))
-		dec, complete := beginBatchDecryption(sm.Decrypter(), cache, secretPropertyValueFromPlaintext, 999)
-		require.NoError(t, dec.Enqueue(ctx, ciphertext1, secret1), "enqueue 1")
-		require.NoError(t, dec.Enqueue(ctx, ciphertext2, secret2), "enqueue 2")
+		dec, complete := beginBatchDecryption(sm.Decrypter(), cache, 999)
+		require.NoError(t, dec.Enqueue(ctx, ciphertext1), "enqueue 1")
+		require.NoError(t, dec.Enqueue(ctx, ciphertext2), "enqueue 2")
 
 		require.NoError(t, complete(ctx), "complete")
-		assert.Equal(t, resource.MakeSecret(resource.NewProperty("plaintext 1")).SecretValue(), secret1)
-		assert.Equal(t, resource.MakeSecret(resource.NewProperty("plaintext 2")).SecretValue(), secret2)
+		pt1, err := dec.DecryptValue(ctx, ciphertext1)
+		require.NoError(t, err)
+		assert.Equal(t, "\"plaintext 1\"", pt1)
+		pt2, err := dec.DecryptValue(ctx, ciphertext2)
+		require.NoError(t, err)
+		assert.Equal(t, "\"plaintext 2\"", pt2)
 		assert.Equal(t, 1, sm.batchDecryptCalls)
+	})
+
+	t.Run("DecryptValue falls through when not pre-batched", func(t *testing.T) {
+		t.Parallel()
+		ctx := t.Context()
+		sm := &testSecretsManager{}
+
+		dec, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), 999)
+		pt, err := dec.DecryptValue(ctx, "9:\"plain\"")
+		require.NoError(t, err)
+		assert.Equal(t, "\"plain\"", pt)
+		assert.Equal(t, 1, sm.decryptCalls, "falls through to underlying decrypter")
+		assert.Equal(t, 0, sm.batchDecryptCalls)
+
+		require.NoError(t, complete(ctx), "complete")
 	})
 
 	t.Run("can't enqueue after complete", func(t *testing.T) {
 		t.Parallel()
 		ctx := t.Context()
 		sm := &testSecretsManager{}
-		dec, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), secretPropertyValueFromPlaintext, 999)
+		dec, complete := beginBatchDecryption(sm.Decrypter(), NewSecretCache(), 999)
 		require.NoError(t, complete(ctx), "complete")
 
 		assert.Panics(t, func() {
-			err := dec.Enqueue(ctx, "1-1:\"plaintext\"", resource.MakeSecret(resource.NewNullProperty()).SecretValue())
+			err := dec.Enqueue(ctx, "1-1:\"plaintext\"")
 			assert.Error(t, err) // Make lint happy
 		}, "can't write to completed batch")
 	})
