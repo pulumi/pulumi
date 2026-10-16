@@ -35,6 +35,7 @@ import (
 	"github.com/pgavlin/fx/v2"
 	fxm "github.com/pgavlin/fx/v2/maps"
 	fxs "github.com/pgavlin/fx/v2/slices"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -618,7 +619,7 @@ func newMockPersister(t testing.TB, server *httptest.Server) *cloudSnapshotPersi
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	backendGeneric, err := New(t.Context(), sink, server.URL, &workspace.Project{}, false,
-		NewClientSource(sink),
+		NewClientSource(credentialhelper.NewSession(), sink),
 	)
 	require.NoError(t, err)
 

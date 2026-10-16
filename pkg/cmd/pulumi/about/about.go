@@ -122,8 +122,16 @@ type summaryAbout struct {
 	Runtime       *projectRuntimeAbout     `json:"runtime"`
 	Dependencies  []programDependencyAbout `json:"dependencies"`
 	ErrorMessages []string                 `json:"errors"`
-	Errors        []error                  `json:"-"`
-	LogMessage    string                   `json:"-"`
+
+	CredentialHelper *credentialHelperAbout `json:"credentialHelper,omitempty"`
+
+	Errors     []error `json:"-"`
+	LogMessage string  `json:"-"`
+}
+
+type credentialHelperAbout struct {
+	Path   string `json:"path"`
+	Source string `json:"source"`
 }
 
 func getSummaryAbout(
@@ -144,6 +152,13 @@ func getSummaryAbout(
 		result.Errors = append(result.Errors, err)
 	}
 
+	session := lm.CredentialHelperSession()
+	if helper, source, err := session.Configuration(); err != nil {
+		addError(err, "Failed to discover credentials helper")
+	} else if helper != nil {
+		result.CredentialHelper = &credentialHelperAbout{Path: helper.Path, Source: source}
+	}
+
 	var host hostAbout
 	if host, err = getHostAbout(); err != nil {
 		addError(err, "Failed to get information about the host")
@@ -162,6 +177,11 @@ func getSummaryAbout(
 	if proj, pwd, err = ws.ReadProject(cwd); err != nil {
 		addError(err, "Failed to read project")
 	} else {
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, proj)
+		if err != nil {
+			addError(err, "Failed to prepare plugin credentials")
+			return result
+		}
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
 		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), cmdEnv.Global())
 		pluginHost, hostErr := pkghost.New(
@@ -172,8 +192,8 @@ func getSummaryAbout(
 		if hostErr != nil {
 			addError(hostErr, "Failed to create plugin host")
 		} else if pwd, program, pluginContext, err := engine.ProjectInfoContext(
-			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil, nil,
-		); err != nil {
+			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+			cloudCredentialEnv); err != nil {
 			addError(err, "Failed to create plugin context")
 			contract.IgnoreClose(pluginHost)
 		} else {
@@ -251,6 +271,9 @@ func (summary *summaryAbout) Print(w io.Writer) {
 	}
 	if summary.Runtime != nil {
 		fmt.Fprintln(w, summary.Runtime)
+	}
+	if summary.CredentialHelper != nil {
+		fmt.Fprintf(w, "Credentials helper: %s (%s)\n\n", summary.CredentialHelper.Path, summary.CredentialHelper.Source)
 	}
 	if summary.CurrentStack != nil {
 		fmt.Fprintln(w, summary.CurrentStack)

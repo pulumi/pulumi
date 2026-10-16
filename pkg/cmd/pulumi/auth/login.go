@@ -30,6 +30,7 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -46,6 +47,8 @@ import (
 )
 
 func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env) *cobra.Command {
+	var helperPath string
+	var helperArgs []string
 	var cloudURL string
 	var defaultOrg string
 	var localMode bool
@@ -90,6 +93,26 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			"`--local` is a shortcut for `file://~`, which stores state under `~/.pulumi`.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			session := lm.CredentialHelperSession()
+
+			if cmd.Flags().Changed("credential-helper-arg") && helperPath == "" {
+				return errors.New("--credential-helper-arg requires --credential-helper")
+			}
+			if helperPath != "" {
+				if err := session.Configure(helperPath, helperArgs); err != nil {
+					return err
+				}
+			}
+			if oidcToken != "" {
+				configured, _, err := session.Configuration()
+				if err != nil {
+					return err
+				}
+				if configured != nil {
+					return errors.New("--oidc-token cannot be used with a credentials helper; " +
+						"set PULUMI_CREDENTIAL_HELPER=none to disable it")
+				}
+			}
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -182,6 +205,24 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				}
 			}
 			if cloudURL == "" {
+				if u := store.GetString(env.BackendURL); u != "" {
+					cloudURL = u
+					urlSource = pkgWorkspace.CloudURLSourceEnv
+				} else if project != nil && project.Backend != nil && project.Backend.URL != "" {
+					cloudURL = project.Backend.URL
+					urlSource = pkgWorkspace.CloudURLSourceProject
+				}
+			}
+			var helperResult *credentialhelper.Result
+			if oidcToken == "" {
+				var helperErr error
+				helperResult, helperErr = session.Resolve(ctx, cloudURL)
+				if helperErr != nil {
+					return helperErr
+				}
+				cloudURL = helperResult.BackendURL()
+			}
+			if cloudURL == "" {
 				var err error
 				cloudURL, urlSource, err = pkgWorkspace.GetCurrentCloudURLWithSource(ws, store, project)
 				if err != nil {
@@ -200,6 +241,15 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			} else {
 				// Ensure we have the correct cloudurl type before logging in
 				if err := validateCloudBackendType(cloudURL); err != nil {
+					return err
+				}
+			}
+
+			if helperResult != nil && helperResult.Helper != nil {
+				if cloudURL == "" {
+					cloudURL = httpstate.ValueOrDefaultURL(ws, "")
+				}
+				if err := session.SelectBackend(helperResult, cloudURL); err != nil {
 					return err
 				}
 			}
@@ -262,6 +312,15 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				}
 			}
 
+			if helperPath != "" {
+				if err := session.SaveConfiguration(); err != nil {
+					return err
+				}
+			}
+			if helperResult != nil && helperResult.Helper != nil && helperResult.Contributed() {
+				fmt.Fprintf(cmd.OutOrStdout(), "Credentials helper: %s\n", helperResult.Helper.Path)
+			}
+
 			if currentUser, _, _, err := be.CurrentUser(); err == nil {
 				// TODO should we print the token information here? (via team MyTeam token MyToken)
 				fmt.Fprintf(cmd.OutOrStdout(), "Logged in to %s as %s (%s)\n", be.Name(), currentUser, be.URL())
@@ -280,6 +339,9 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 		Required: 0,
 	})
 
+	cmd.PersistentFlags().StringVar(&helperPath, "credential-helper", "", "Command to supply backend credentials")
+	cmd.PersistentFlags().StringArrayVar(&helperArgs, "credential-helper-arg", nil,
+		"Literal argument to pass to the credentials helper (repeatable)")
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "",
 		"The URL of the Pulumi Cloud API to log in with (e.g., 'https://api.pulumi.com')")
 	cmd.PersistentFlags().StringVar(&defaultOrg, "default-org", "", "A default org to associate with the login. "+
@@ -299,6 +361,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 		"The expiration for the cloud backend access token in duration format (e.g. '15m', '24h')",
 	)
 
+	cmd.MarkFlagsMutuallyExclusive("oidc-token", "credential-helper")
 	return cmd
 }
 

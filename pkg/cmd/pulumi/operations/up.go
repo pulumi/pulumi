@@ -470,9 +470,13 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("building plugin host: %w", err)
 		}
 		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, proj)
+		if err != nil {
+			return err
+		}
 		_, main, pctx, err := engine.ProjectInfoContext(
 			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
-			nil,
+			cloudCredentialEnv,
 		)
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
@@ -709,7 +713,7 @@ func NewUpCmd() *cobra.Command {
 				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Update, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ctx, cmdBackend.DefaultLoginManager, ws, opts.Display)
 			if err != nil {
 				return err
 			}

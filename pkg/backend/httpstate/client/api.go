@@ -37,6 +37,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -645,6 +646,7 @@ func (c *defaultRESTClient) HTTPClient() httpClient {
 func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
 	respObj any, tok accessToken, opts httpCallOptions,
 ) error {
+	ctx = credentialhelper.WithOperation(ctx)
 	requestSpan, ctx := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
 		opentracing.Tag{Key: "method", Value: method},
 		opentracing.Tag{Key: "path", Value: path},

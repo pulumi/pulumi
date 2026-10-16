@@ -912,7 +912,11 @@ func NewImportCmd() *cobra.Command {
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
-			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil, nil)
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			if err != nil {
+				return err
+			}
+			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil, cloudCredentialEnv)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -1095,7 +1099,7 @@ func NewImportCmd() *cobra.Command {
 				opts.Display.SuppressPermalink = false
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ctx, cmdBackend.DefaultLoginManager, ws, opts.Display)
 			if err != nil {
 				return err
 			}

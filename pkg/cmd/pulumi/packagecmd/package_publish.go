@@ -178,7 +178,8 @@ func (cmd *packagePublishCmd) Run(
 	}
 	// host is owned here, closed after the context
 	defer contract.IgnoreClose(pluginHost)
-	pctx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, wd, nil, false, nil, nil)
+	cloudCredentialEnv := cmdBackend.DefaultLoginManager.CredentialHelperSession().Current().PluginEnv()
+	pctx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, wd, nil, false, nil, cloudCredentialEnv)
 	if err != nil {
 		return err
 	}
