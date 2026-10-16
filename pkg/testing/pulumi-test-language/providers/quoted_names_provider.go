@@ -28,9 +28,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-// QuotedNamesProvider is used to test property names that are not identifiers in any language, such as `@top!`.
-// Resource inputs, resource outputs, function arguments and function results each carry such a name at the top
-// level and in a nested object.
+// QuotedNamesProvider is used to test names that are not identifiers in any language. The resource and function
+// tokens hold `.` and `/`. Resource inputs, resource outputs, function arguments and function results each carry a
+// property name such as `@top!` or `a.b/c` at the top level and in a nested object.
 type QuotedNamesProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -50,30 +50,30 @@ func (p *QuotedNamesProvider) Configure(
 func (p *QuotedNamesProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
-	inner := schema.TypeSpec{Ref: "#/types/quoted-names:index:Inner"}
+	inner := schema.TypeSpec{Ref: "#/types/quoted-names:my.module/sub:Inner.v1/thing"}
 	properties := map[string]schema.PropertySpec{
-		"plain":  {TypeSpec: schema.TypeSpec{Type: "string"}},
-		"@top!":  {TypeSpec: inner},
-		"$top.2": {TypeSpec: schema.TypeSpec{Type: "string"}},
+		"plain": {TypeSpec: schema.TypeSpec{Type: "string"}},
+		"@top!": {TypeSpec: inner},
+		"a.b/c": {TypeSpec: schema.TypeSpec{Type: "string"}},
 	}
-	required := []string{"plain", "@top!", "$top.2"}
+	required := []string{"plain", "@top!", "a.b/c"}
 
 	pkg := schema.PackageSpec{
 		Name:    "quoted-names",
 		Version: "58.0.0",
 		Types: map[string]schema.ComplexTypeSpec{
-			"quoted-names:index:Inner": {
+			"quoted-names:my.module/sub:Inner.v1/thing": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
-						"@inner!": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						"@in.ner/x": {TypeSpec: schema.TypeSpec{Type: "string"}},
 					},
-					Required: []string{"@inner!"},
+					Required: []string{"@in.ner/x"},
 				},
 			},
 		},
 		Resources: map[string]schema.ResourceSpec{
-			"quoted-names:index:Resource": {
+			"quoted-names:my.module/sub:Resource.v1/thing": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: properties,
@@ -84,7 +84,7 @@ func (p *QuotedNamesProvider) GetSchema(
 			},
 		},
 		Functions: map[string]schema.FunctionSpec{
-			"quoted-names:index:invoke": {
+			"quoted-names:my.module/sub:invoke.v1/thing": {
 				Inputs: &schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: properties,
@@ -134,7 +134,7 @@ func (p *QuotedNamesProvider) CheckConfig(
 
 // checkQuotedNames returns a failure unless props holds exactly the properties of the schema, by their exact names.
 func checkQuotedNames(props property.Map) []plugin.CheckFailure {
-	for _, name := range []string{"plain", "$top.2"} {
+	for _, name := range []string{"plain", "a.b/c"} {
 		if v, ok := props.GetOk(name); !ok || !v.IsString() {
 			return makeCheckFailure(resource.PropertyKey(name), fmt.Sprintf("missing string %q: %v", name, props))
 		}
@@ -143,8 +143,8 @@ func checkQuotedNames(props property.Map) []plugin.CheckFailure {
 	if !ok || !top.IsMap() {
 		return makeCheckFailure("@top!", fmt.Sprintf("missing object \"@top!\": %v", props))
 	}
-	if inner, ok := top.AsMap().GetOk("@inner!"); !ok || !inner.IsString() || top.AsMap().Len() != 1 {
-		return makeCheckFailure("@top!", fmt.Sprintf("\"@top!\" must hold only the string \"@inner!\": %v", top))
+	if inner, ok := top.AsMap().GetOk("@in.ner/x"); !ok || !inner.IsString() || top.AsMap().Len() != 1 {
+		return makeCheckFailure("@top!", fmt.Sprintf("\"@top!\" must hold only the string \"@in.ner/x\": %v", top))
 	}
 	if props.Len() != 3 {
 		return makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", props))
@@ -156,7 +156,7 @@ func (p *QuotedNamesProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
 	switch typ := req.URN.Type(); typ {
-	case "quoted-names:index:Resource":
+	case "quoted-names:my.module/sub:Resource.v1/thing":
 		if failures := checkQuotedNames(req.NewInputs); failures != nil {
 			return plugin.CheckResponse{Failures: failures}, nil
 		}
@@ -173,7 +173,7 @@ func (p *QuotedNamesProvider) Check(
 func (p *QuotedNamesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if typ := req.URN.Type(); typ != "quoted-names:index:Resource" {
+	if typ := req.URN.Type(); typ != "quoted-names:my.module/sub:Resource.v1/thing" {
 		return plugin.CreateResponse{Status: resource.StatusUnknown}, fmt.Errorf("invalid URN type: %s", typ)
 	}
 	id := "id"
@@ -190,7 +190,7 @@ func (p *QuotedNamesProvider) Create(
 func (p *QuotedNamesProvider) Invoke(
 	_ context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
-	if req.Tok != "quoted-names:index:invoke" {
+	if req.Tok != "quoted-names:my.module/sub:invoke.v1/thing" {
 		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
 	}
 	if failures := checkQuotedNames(req.Args); failures != nil {
