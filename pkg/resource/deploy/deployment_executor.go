@@ -705,6 +705,11 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		steps, err = ex.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received register resource outputs")
+		// A skipped resource was never operated on, so there's nothing to record its outputs against.
+		if ex.skipped.Contains(e.URN()) {
+			e.Done()
+			return nil
+		}
 		return ex.stepExec.ExecuteRegisterResourceOutputs(e)
 	}
 

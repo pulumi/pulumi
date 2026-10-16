@@ -26,6 +26,7 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
@@ -1634,4 +1635,105 @@ func TestUpContinueOnErrorExplicitProviderUpdateFailsKeepsDependent(t *testing.T
 	})
 	require.NotEqual(t, -1, i, "expected usesExplicit to be kept")
 	assert.Equal(t, resource.NewProperty("hello"), snap.Resources[i].Inputs["value"])
+}
+
+// A component that depends on a failed resource is skipped, but the program still registers its outputs. That
+// shouldn't stop the update, and an existing component should keep its old state.
+func TestUpContinueOnErrorSkippedComponentRegistersOutputs(t *testing.T) {
+	t.Parallel()
+
+	failCreate, failUpdate := true, false
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					if failCreate {
+						return plugin.CreateResponse{}, errors.New("intentionally failed create")
+					}
+					return plugin.CreateResponse{ID: "id", Properties: req.Properties, Status: resource.StatusOK}, nil
+				},
+				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResponse, error) {
+					return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					if failUpdate {
+						return plugin.UpdateResponse{}, errors.New("intentionally failed update")
+					}
+					return plugin.UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	run := 0
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		run++
+		failing, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  resource.PropertyMap{"run": resource.NewProperty(float64(run))},
+		})
+		require.NoError(t, err)
+
+		comp, err := monitor.RegisterResource("my:comp:Comp", "comp", false, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Dependencies:            []resource.URN{failing.URN},
+		})
+		require.NoError(t, err)
+
+		out := resource.NewProperty("known")
+		if failing.Result != pulumirpc.Result_SUCCESS {
+			out = resource.MakeComputed(resource.NewProperty(""))
+		}
+		err = monitor.RegisterResourceOutputs(comp.URN, resource.PropertyMap{"out": out})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "independent", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:                t,
+			SkipDisplayTests: true,
+			UpdateOptions:    UpdateOptions{ContinueOnError: true},
+			HostF:            hostF,
+		},
+	}
+	project := p.GetProject()
+	find := func(snap *deploy.Snapshot, name string) *pkgresource.State {
+		i := slices.IndexFunc(snap.Resources, func(rs *pkgresource.State) bool { return rs.URN.Name() == name })
+		if i == -1 {
+			return nil
+		}
+		return snap.Resources[i]
+	}
+
+	// A new component is skipped and not persisted, and later resources are still created.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.ErrorContains(t, err, "intentionally failed create")
+	assert.NotContains(t, err.Error(), "isn't pending")
+	assert.Nil(t, find(snap, "comp"))
+	assert.NotNil(t, find(snap, "independent"))
+
+	failCreate = false
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.NotNil(t, find(snap, "comp"))
+
+	// An existing component is skipped and keeps its old outputs.
+	failUpdate = true
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	require.ErrorContains(t, err, "intentionally failed update")
+	assert.NotContains(t, err.Error(), "isn't pending")
+	comp := find(snap, "comp")
+	require.NotNil(t, comp, "expected the existing component to be kept")
+	assert.Equal(t, resource.NewProperty("known"), comp.Outputs["out"])
 }

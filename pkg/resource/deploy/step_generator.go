@@ -1134,10 +1134,12 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 	// inputs may be missing values that the failed resources would have provided, and its provider may have failed.
 	if sg.dependsOnSkipped(new) {
 		sg.sames[urn] = true
-		sg.skippedCreates[urn] = true
 		if old != nil {
+			new.Inputs = old.Inputs
 			new.Outputs = old.Outputs
+			return []Step{NewSameStep(sg.deployment, event, old, new)}, false, nil
 		}
+		sg.skippedCreates[urn] = true
 		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
 	}
 
