@@ -1,0 +1,4 @@
+component: engine
+kind: feat
+body: Pass OutputValues through Check when the provider negotiates `accepts_outputs_in_check`
+time: 2026-10-14T12:30:00+00:00

@@ -749,6 +749,147 @@ func TestProvider_ConstructOptions(t *testing.T) {
 	}
 }
 
+// TestProvider_CheckOutputValues verifies the engine<->provider negotiation of OutputValues on Check.
+//
+// When both sides advertise AcceptsOutputsInCheck on Handshake, the provider receives OutputValues
+// nested in CheckRequest.news and the engine honors any OutputValues the provider returns in
+// CheckResponse.inputs.
+//
+// When the provider does not negotiate the capability, the engine strips OutputValues from the wire
+// and re-hydrates the response by wrapping each returned top-level value with the union of
+// dependencies collected from the input OutputValues.
+func TestProvider_CheckOutputValues(t *testing.T) {
+	t.Parallel()
+
+	depA := resource.URN("urn:pulumi:stack::project::pkg:index:T::depA")
+	depB := resource.URN("urn:pulumi:stack::project::pkg:index:T::depB")
+	resURN := resource.URN("urn:pulumi:stack::project::pkg:index:T::name")
+
+	// Input has two output-wrapped properties with different dependency sets.
+	buildInputs := func() property.Map {
+		return resource.FromResourcePropertyMap(resource.PropertyMap{
+			"a": resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("av"),
+				Known:        true,
+				Dependencies: []resource.URN{depA},
+			}),
+			"b": resource.NewProperty(resource.Output{
+				Element:      resource.NewProperty("bv"),
+				Known:        true,
+				Dependencies: []resource.URN{depB},
+			}),
+		})
+	}
+
+	t.Run("negotiated", func(t *testing.T) {
+		t.Parallel()
+
+		var gotNews *structpb.Struct
+		client := &stubClient{
+			HandshakeF: func(req *pulumirpc.ProviderHandshakeRequest) (*pulumirpc.ProviderHandshakeResponse, error) {
+				require.True(t, req.AcceptsOutputsInCheck, "engine must advertise AcceptsOutputsInCheck")
+				return &pulumirpc.ProviderHandshakeResponse{
+					AcceptSecrets:         true,
+					AcceptOutputs:         true,
+					AcceptsOutputsInCheck: true,
+				}, nil
+			},
+			ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+				return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+			},
+			CheckF: func(req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+				gotNews = req.GetNews()
+				// Echo the inputs back verbatim; a negotiated provider is expected to preserve OutputValues.
+				return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
+			},
+		}
+
+		p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+		_, err := p.Handshake(t.Context(), ProviderHandshakeRequest{AcceptsOutputsInCheck: true})
+		require.NoError(t, err)
+		_, err = p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+		require.NoError(t, err)
+
+		resp, err := p.Check(t.Context(), CheckRequest{
+			URN:           resURN,
+			NewInputs:     buildInputs(),
+			AllowUnknowns: true,
+		})
+		require.NoError(t, err)
+
+		// The provider must have seen OutputValues nested in `news`.
+		require.NotNil(t, gotNews)
+		decoded, err := UnmarshalProperties(
+			gotNews, MarshalOptions{KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true})
+		require.NoError(t, err)
+		for _, k := range []resource.PropertyKey{"a", "b"} {
+			require.True(t, decoded[k].IsOutput(), "provider should see OutputValue on %q", k)
+		}
+		require.Equal(t, []resource.URN{depA}, decoded["a"].OutputValue().Dependencies)
+		require.Equal(t, []resource.URN{depB}, decoded["b"].OutputValue().Dependencies)
+
+		// And the engine preserves OutputValues on the way back out.
+		props := resource.ToResourcePropertyMap(resp.Properties)
+		for _, k := range []resource.PropertyKey{"a", "b"} {
+			require.True(t, props[k].IsOutput(), "engine should preserve OutputValue on %q", k)
+		}
+		require.Equal(t, []resource.URN{depA}, props["a"].OutputValue().Dependencies)
+		require.Equal(t, []resource.URN{depB}, props["b"].OutputValue().Dependencies)
+	})
+
+	t.Run("fallback-rehydrate", func(t *testing.T) {
+		t.Parallel()
+
+		var gotNews *structpb.Struct
+		client := &stubClient{
+			// Provider refuses the capability.
+			HandshakeF: func(req *pulumirpc.ProviderHandshakeRequest) (*pulumirpc.ProviderHandshakeResponse, error) {
+				return &pulumirpc.ProviderHandshakeResponse{
+					AcceptSecrets:         true,
+					AcceptsOutputsInCheck: false,
+				}, nil
+			},
+			ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+				return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+			},
+			CheckF: func(req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+				gotNews = req.GetNews()
+				// A non-negotiated provider returns plain values.
+				return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
+			},
+		}
+
+		p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+		_, err := p.Handshake(t.Context(), ProviderHandshakeRequest{AcceptsOutputsInCheck: true})
+		require.NoError(t, err)
+		_, err = p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+		require.NoError(t, err)
+
+		resp, err := p.Check(t.Context(), CheckRequest{
+			URN:           resURN,
+			NewInputs:     buildInputs(),
+			AllowUnknowns: true,
+		})
+		require.NoError(t, err)
+
+		// Wire should carry plain values, not OutputValues.
+		require.NotNil(t, gotNews)
+		decoded, err := UnmarshalProperties(
+			gotNews, MarshalOptions{KeepUnknowns: true, KeepSecrets: true, KeepOutputValues: true})
+		require.NoError(t, err)
+		for _, k := range []resource.PropertyKey{"a", "b"} {
+			require.False(t, decoded[k].IsOutput(), "fallback should not send OutputValue on %q", k)
+		}
+
+		// And the engine should re-hydrate the response with the per-key input dependencies.
+		props := resource.ToResourcePropertyMap(resp.Properties)
+		require.True(t, props["a"].IsOutput(), "engine should rehydrate OutputValue on %q", "a")
+		assert.ElementsMatch(t, []resource.URN{depA}, props["a"].OutputValue().Dependencies)
+		require.True(t, props["b"].IsOutput(), "engine should rehydrate OutputValue on %q", "b")
+		assert.ElementsMatch(t, []resource.URN{depB}, props["b"].OutputValue().Dependencies)
+	})
+}
+
 // This test detects a data race between Configure and Delete
 // reported in https://github.com/pulumi/pulumi/issues/11971.
 //
@@ -840,7 +981,9 @@ func newTestContext(t testing.TB) *Context {
 type stubClient struct {
 	pulumirpc.ResourceProviderClient
 
+	HandshakeF     func(*pulumirpc.ProviderHandshakeRequest) (*pulumirpc.ProviderHandshakeResponse, error)
 	DiffConfigF    func(*pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error)
+	CheckF         func(*pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error)
 	ConstructF     func(*pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error)
 	ConfigureF     func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error)
 	CreateF        func(*pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error)
@@ -850,6 +993,28 @@ type stubClient struct {
 	ListF          func(context.Context, *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error)
 	ReadF          func(*pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error)
 	UpdateF        func(*pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error)
+}
+
+func (c *stubClient) Handshake(
+	ctx context.Context,
+	req *pulumirpc.ProviderHandshakeRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.ProviderHandshakeResponse, error) {
+	if f := c.HandshakeF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.Handshake(ctx, req, opts...)
+}
+
+func (c *stubClient) Check(
+	ctx context.Context,
+	req *pulumirpc.CheckRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.CheckResponse, error) {
+	if f := c.CheckF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.Check(ctx, req, opts...)
 }
 
 func (c *stubClient) DiffConfig(

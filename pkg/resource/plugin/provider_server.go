@@ -496,7 +496,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 	if err != nil {
 		return nil, err
 	}
-	state, err := FilterProperties(rawState, p.unmarshalFilterOptions(false /* keepDependencies */))
+	state, err := FilterProperties(rawState, p.unmarshalFilterOptions(p.checkOutputValues))
 	if err != nil {
 		return nil, err
 	}
@@ -505,7 +505,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 	if err != nil {
 		return nil, err
 	}
-	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(p.checkOutputValues))
 	if err != nil {
 		return nil, err
 	}
@@ -516,7 +516,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		if err != nil {
 			return nil, err
 		}
-		oldOutputs, err = FilterProperties(rawOldOutputs, p.unmarshalFilterOptions(false /* keepDependencies */))
+		oldOutputs, err = FilterProperties(rawOldOutputs, p.unmarshalFilterOptions(p.checkOutputValues))
 		if err != nil {
 			return nil, err
 		}
@@ -545,11 +545,15 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	filteredInputs, err := FilterProperties(resp.Properties, p.marshalFilterOptions())
+	outFilterOpts := p.marshalFilterOptions()
+	outFilterOpts.KeepDependencies = p.checkOutputValues
+	filteredInputs, err := FilterProperties(resp.Properties, outFilterOpts)
 	if err != nil {
 		return nil, err
 	}
-	rpcInputs := propertyrpc.Marshal(filteredInputs)
+	rpcInputs := propertyrpc.MarshalWithOptions(filteredInputs, propertyrpc.MarshalOptions{
+		PreferOutputValues: p.checkOutputValues,
+	})
 
 	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
 	for i, f := range resp.Failures {

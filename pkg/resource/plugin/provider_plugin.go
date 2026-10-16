@@ -1216,11 +1216,21 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		return CheckResponse{Properties: req.NewInputs}, nil
 	}
 
+	// If the provider does not accept OutputValues on Check we lose the per-value dependency information on the
+	// wire. Collect per-top-level-key dependencies from the inputs now so we can re-hydrate the response below.
+	// Check responses line up 1:1 with their inputs by top-level key, so per-key is the right granularity --
+	// this mirrors what the legacy propertyDependencies map would have carried.
+	var inputDepsByKey map[string][]resource.URN
+	if !protocol.acceptsOutputsInCheck {
+		inputDepsByKey = collectDependenciesByKey(req.NewInputs)
+	}
+
 	filteredOldInputs, err := FilterProperties(req.OldInputs, FilterOptions{
 		KeepUnknowns:         req.AllowUnknowns,
 		KeepSecrets:          protocol.acceptSecrets,
 		KeepResources:        protocol.acceptResources,
 		RejectNonUTF8Strings: !protocol.acceptsByteString,
+		KeepDependencies:     protocol.acceptsOutputsInCheck,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1230,18 +1240,23 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	// scenario for a resource with no set inputs). However, we have been unconditionally forcing this to empty
 	// instead of nil for a long time and at least the NodeJS provider implementation relies on this behavior, so we
 	// must continue to do so for compatibility.
-	moldInputs := propertyrpc.Marshal(filteredOldInputs)
+	moldInputs := propertyrpc.MarshalWithOptions(filteredOldInputs, propertyrpc.MarshalOptions{
+		PreferOutputValues: protocol.acceptsOutputsInCheck,
+	})
 
 	filteredNewInputs, err := FilterProperties(req.NewInputs, FilterOptions{
 		KeepUnknowns:         req.AllowUnknowns,
 		KeepSecrets:          protocol.acceptSecrets,
 		KeepResources:        protocol.acceptResources,
 		RejectNonUTF8Strings: !protocol.acceptsByteString,
+		KeepDependencies:     protocol.acceptsOutputsInCheck,
 	})
 	if err != nil {
 		return CheckResponse{}, err
 	}
-	mNewInputs := propertyrpc.Marshal(filteredNewInputs)
+	mNewInputs := propertyrpc.MarshalWithOptions(filteredNewInputs, propertyrpc.MarshalOptions{
+		PreferOutputValues: protocol.acceptsOutputsInCheck,
+	})
 
 	var autonaming *pulumirpc.CheckRequest_AutonamingOptions
 	if req.Autonaming != nil {
@@ -1263,11 +1278,14 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		KeepSecrets:          protocol.acceptSecrets,
 		KeepResources:        protocol.acceptResources,
 		RejectNonUTF8Strings: !protocol.acceptsByteString,
+		KeepDependencies:     protocol.acceptsOutputsInCheck,
 	})
 	if err != nil {
 		return CheckResponse{}, err
 	}
-	moldOutputs := propertyrpc.Marshal(filteredOldOutputs)
+	moldOutputs := propertyrpc.MarshalWithOptions(filteredOldOutputs, propertyrpc.MarshalOptions{
+		PreferOutputValues: protocol.acceptsOutputsInCheck,
+	})
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:        string(req.URN),
@@ -1293,10 +1311,11 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 			return CheckResponse{}, err
 		}
 		filtered, err := FilterProperties(raw, FilterOptions{
-			KeepUnknowns:   req.AllowUnknowns,
-			RejectUnknowns: !req.AllowUnknowns,
-			KeepSecrets:    true,
-			KeepResources:  true,
+			KeepUnknowns:     req.AllowUnknowns,
+			RejectUnknowns:   !req.AllowUnknowns,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepDependencies: protocol.acceptsOutputsInCheck,
 		})
 		if err != nil {
 			return CheckResponse{}, err
@@ -1309,6 +1328,17 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	// natively.
 	if !protocol.acceptSecrets {
 		annotateSecrets(inputs, resource.ToResourcePropertyMap(req.NewInputs))
+	}
+
+	// Re-hydrate OutputValues on the response with the per-key input dependencies when the provider did not
+	// support OutputValues on Check. See `inputDepsByKey` above. Keys that the provider added (and so have no
+	// corresponding input key) are left unwrapped, matching the legacy propertyDependencies behavior.
+	if !protocol.acceptsOutputsInCheck {
+		for k, v := range inputs {
+			if deps := inputDepsByKey[k]; len(deps) > 0 {
+				inputs[k] = wrapWithDependencies(v, deps)
+			}
+		}
 	}
 
 	// And now any properties that failed verification.
@@ -2268,6 +2298,39 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 }
 
 // Invoke dynamically executes a built-in function in the provider.
+// collectDependenciesByKey returns, for each top-level property in args, the union of dependencies carried by
+// OutputValues nested anywhere within that property's value. This mirrors the resolution of the legacy
+// propertyDependencies map and is the right granularity for RPCs whose response keys line up 1:1 with their
+// input keys (e.g. Check).
+func collectDependenciesByKey(args property.Map) map[string][]resource.URN {
+	if args.Len() == 0 {
+		return nil
+	}
+	result := map[string][]resource.URN{}
+	for k, v := range args.All {
+		var deps []resource.URN
+		var walk func(v property.Value)
+		walk = func(v property.Value) {
+			switch {
+			case v.IsMap():
+				for _, e := range v.AsMap().All {
+					walk(e)
+				}
+			case v.IsArray():
+				for _, e := range v.AsArray().All {
+					walk(e)
+				}
+			}
+			deps = append(deps, v.Dependencies()...)
+		}
+		walk(v)
+		if len(deps) > 0 {
+			result[k] = deps
+		}
+	}
+	return result
+}
+
 // collectArgDependencies returns the union of dependencies from every OutputValue nested in args (arrays, objects,
 // secrets, and other OutputValues are walked recursively).
 func collectArgDependencies(args resource.PropertyMap) []resource.URN {
