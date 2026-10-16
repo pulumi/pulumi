@@ -154,8 +154,11 @@ func (c *driftStatusCmd) renderJSON(status apitype.StackDriftStatus) error {
 
 func (c *driftStatusCmd) renderText(status apitype.StackDriftStatus) error {
 	driftDetected := "no"
-	if status.DriftDetected {
+	switch {
+	case status.DriftDetected:
 		driftDetected = "yes"
+	case status.LatestDriftRun == "":
+		driftDetected = "unknown (drift detection has never run)"
 	}
 	runInProgress := "no"
 	if status.RunInProgress {
