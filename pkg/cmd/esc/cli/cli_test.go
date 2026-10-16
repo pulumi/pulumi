@@ -269,6 +269,24 @@ type testChangeRequest struct {
 	orgName      string
 	baseRevision int
 	approvers    []client.ChangeRequestUser
+	events       []client.ChangeRequestEvent
+}
+
+func (c *testPulumiClient) addChangeRequestEvent(cr *testChangeRequest, e client.ChangeRequestEvent) {
+	e.ID = strconv.Itoa(len(cr.events) + 1)
+	e.RevisionNumber = cr.LatestRevisionNumber
+	e.CreatedBy = client.ChangeRequestUser{Name: "Test User", GithubLogin: c.user}
+	cr.events = append(cr.events, e)
+}
+
+func (c *testPulumiClient) setChangeRequestStatus(cr *testChangeRequest, status, comment string) {
+	c.addChangeRequestEvent(cr, client.ChangeRequestEvent{
+		EventType:      "status_changed",
+		PreviousStatus: cr.Status,
+		NewStatus:      status,
+		Comment:        comment,
+	})
+	cr.Status = status
 }
 
 type submittedChangeRequest struct {
@@ -752,6 +770,11 @@ func (c *testPulumiClient) CreateEnvironmentDraft(
 			orgName:      orgName,
 			baseRevision: latest.number,
 		}
+		c.addChangeRequestEvent(c.changeRequests[id], client.ChangeRequestEvent{
+			EventType: "status_changed",
+			NewStatus: "draft",
+		})
+		c.addChangeRequestEvent(c.changeRequests[id], client.ChangeRequestEvent{EventType: "revision_added"})
 		return id, []client.EnvironmentDiagnostic{}, nil
 	}
 	return "", diags, err
@@ -799,7 +822,7 @@ func (c *testPulumiClient) SubmitChangeRequest(
 		description:     description,
 	})
 	if cr, ok := c.changeRequests[changeRequestID]; ok {
-		cr.Status = "pending"
+		c.setChangeRequestStatus(cr, "pending", "")
 		if description != nil {
 			cr.Description = *description
 		}
@@ -881,7 +904,8 @@ func (c *testPulumiClient) ApproveChangeRequest(
 		}
 	}
 	cr.approvers = append(cr.approvers, client.ChangeRequestUser{Name: "Test User", GithubLogin: c.user})
-	cr.Status = "ready"
+	c.addChangeRequestEvent(cr, client.ChangeRequestEvent{EventType: "approved_by_user", Comment: comment})
+	c.setChangeRequestStatus(cr, "ready", "")
 	return nil
 }
 
@@ -893,7 +917,9 @@ func (c *testPulumiClient) UnapproveChangeRequest(ctx context.Context, orgName, 
 	if len(cr.approvers) == 0 {
 		return errors.New("not approved")
 	}
-	cr.approvers, cr.Status = nil, "pending"
+	cr.approvers = nil
+	c.addChangeRequestEvent(cr, client.ChangeRequestEvent{EventType: "unapproved_by_user"})
+	c.setChangeRequestStatus(cr, "pending", "")
 	return nil
 }
 
@@ -916,7 +942,7 @@ func (c *testPulumiClient) ApplyChangeRequest(
 	if _, _, err := c.UpdateEnvironment(ctx, orgName, cr.Entity.Project, cr.Entity.Name, yaml, ""); err != nil {
 		return nil, err
 	}
-	cr.Status = "applied"
+	c.setChangeRequestStatus(cr, "applied", "")
 	return &client.ChangeRequestApplyResult{EntityURL: "https://app.fake.pulumi.com/" + orgName}, nil
 }
 
@@ -928,7 +954,7 @@ func (c *testPulumiClient) CloseChangeRequest(ctx context.Context, orgName, chan
 	if cr.Status == "applied" || cr.Status == "closed" {
 		return errors.New("change request is not active")
 	}
-	cr.Status = "closed"
+	c.setChangeRequestStatus(cr, "closed", comment)
 	return nil
 }
 
@@ -938,8 +964,25 @@ func (c *testPulumiClient) AddChangeRequestComment(
 	changeRequestID string,
 	comment string,
 ) error {
-	_, err := c.getChangeRequest(orgName, changeRequestID)
-	return err
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return err
+	}
+	c.addChangeRequestEvent(cr, client.ChangeRequestEvent{EventType: "commented", Comment: comment})
+	return nil
+}
+
+func (c *testPulumiClient) ListChangeRequestEvents(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	continuationToken string,
+) ([]client.ChangeRequestEvent, string, error) {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return nil, "", err
+	}
+	return slices.Clone(cr.events), "", nil
 }
 
 func (c *testPulumiClient) GetEnvironmentDraftStatus(

@@ -28,6 +28,8 @@ run: |
   esc env change-request ls
   esc env change-request ls --status all --output json
   esc env change-request diff 00000000-0000-0000-0000-000000000000
+  esc env change-request log 00000000-0000-0000-0000-000000000000
+  esc env change-request log 00000000-0000-0000-0000-000000000000 --output json
   esc env get default/test
 
 ---
@@ -234,6 +236,148 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
  values:
 -  foo: baz
 +  foo: bar
+> esc env change-request log 00000000-0000-0000-0000-000000000000
+a long while ago  test-user created the change request
+a long while ago  test-user added revision 1
+a long while ago  test-user changed the status from draft to pending
+a long while ago  test-user commented
+    looks good
+a long while ago  test-user approved revision 1
+    lgtm
+a long while ago  test-user changed the status from pending to ready
+a long while ago  test-user removed their approval
+a long while ago  test-user changed the status from ready to pending
+a long while ago  test-user approved revision 1
+a long while ago  test-user changed the status from pending to ready
+a long while ago  test-user changed the status from ready to applied
+> esc env change-request log 00000000-0000-0000-0000-000000000000 --output json
+{
+  "events": [
+    {
+      "id": "1",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "newStatus": "draft"
+    },
+    {
+      "id": "2",
+      "eventType": "revision_added",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      }
+    },
+    {
+      "id": "3",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "previousStatus": "draft",
+      "newStatus": "pending"
+    },
+    {
+      "id": "4",
+      "eventType": "commented",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "comment": "looks good"
+    },
+    {
+      "id": "5",
+      "eventType": "approved_by_user",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "comment": "lgtm"
+    },
+    {
+      "id": "6",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "previousStatus": "pending",
+      "newStatus": "ready"
+    },
+    {
+      "id": "7",
+      "eventType": "unapproved_by_user",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      }
+    },
+    {
+      "id": "8",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "previousStatus": "ready",
+      "newStatus": "pending"
+    },
+    {
+      "id": "9",
+      "eventType": "approved_by_user",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      }
+    },
+    {
+      "id": "10",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "previousStatus": "pending",
+      "newStatus": "ready"
+    },
+    {
+      "id": "11",
+      "eventType": "status_changed",
+      "revisionNumber": 1,
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "previousStatus": "ready",
+      "newStatus": "applied"
+    }
+  ]
+}
 > esc env get default/test
 # Value
 ```json
@@ -294,4 +438,6 @@ Error: closing change request: change request is not active
 No change requests found.
 > esc env change-request ls --status all --output json
 > esc env change-request diff 00000000-0000-0000-0000-000000000000
+> esc env change-request log 00000000-0000-0000-0000-000000000000
+> esc env change-request log 00000000-0000-0000-0000-000000000000 --output json
 > esc env get default/test

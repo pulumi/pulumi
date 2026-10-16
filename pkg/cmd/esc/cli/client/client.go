@@ -221,6 +221,15 @@ type Client interface {
 	// AddChangeRequestComment adds a comment to a change request.
 	AddChangeRequestComment(ctx context.Context, orgName, changeRequestID, comment string) error
 
+	// ListChangeRequestEvents returns a page of a change request's events and the continuation token
+	// for the next page. The continuation token is empty when there are no more pages.
+	ListChangeRequestEvents(
+		ctx context.Context,
+		orgName string,
+		changeRequestID string,
+		continuationToken string,
+	) ([]ChangeRequestEvent, string, error)
+
 	// GetEnvironmentDraftStatus returns the draft's base revision and the environment's current revision.
 	GetEnvironmentDraftStatus(
 		ctx context.Context,
@@ -1012,6 +1021,24 @@ func (pc *client) CloseChangeRequest(ctx context.Context, orgName, changeRequest
 func (pc *client) AddChangeRequestComment(ctx context.Context, orgName, changeRequestID, comment string) error {
 	path := fmt.Sprintf("/api/change-requests/%v/%v/comments", orgName, changeRequestID)
 	return pc.restCall(ctx, http.MethodPost, path, nil, &ChangeRequestComment{Comment: comment}, nil)
+}
+
+func (pc *client) ListChangeRequestEvents(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	continuationToken string,
+) ([]ChangeRequestEvent, string, error) {
+	queryObj := struct {
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{ContinuationToken: continuationToken}
+
+	var resp ListChangeRequestEventsResponse
+	path := fmt.Sprintf("/api/change-requests/%v/%v/events", orgName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
+		return nil, "", err
+	}
+	return resp.Events, resp.ContinuationToken, nil
 }
 
 func (pc *client) GetEnvironmentDraftStatus(

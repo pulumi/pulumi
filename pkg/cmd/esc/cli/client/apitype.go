@@ -203,6 +203,26 @@ type ListChangeRequestsResponse struct {
 	ContinuationToken string          `json:"continuationToken"`
 }
 
+type ChangeRequestEvent struct {
+	ID                  string            `json:"id"`
+	EventType           string            `json:"eventType"`
+	ReplacedBy          string            `json:"replacedBy,omitempty"`
+	RevisionNumber      int               `json:"revisionNumber"`
+	CreatedAt           time.Time         `json:"createdAt"`
+	CreatedBy           ChangeRequestUser `json:"createdBy"`
+	Comment             string            `json:"comment,omitempty"`
+	PreviousStatus      string            `json:"previousStatus,omitempty"`
+	NewStatus           string            `json:"newStatus,omitempty"`
+	Reason              string            `json:"reason,omitempty"`
+	PreviousDescription string            `json:"previousDescription,omitempty"`
+	NewDescription      string            `json:"newDescription,omitempty"`
+}
+
+type ListChangeRequestEventsResponse struct {
+	Events            []ChangeRequestEvent `json:"events"`
+	ContinuationToken string               `json:"continuationToken"`
+}
+
 type ChangeGateRuleEvaluation struct {
 	RuleType          string              `json:"ruleType"`
 	RequiredApprovals int                 `json:"requiredApprovals,omitempty"`

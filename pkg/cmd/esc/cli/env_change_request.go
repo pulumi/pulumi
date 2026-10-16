@@ -51,8 +51,8 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 			"--draft, such as `env edit` and `env set`. Use `env open --draft=<id>`\n" +
 			"to open the draft version of an environment.\n" +
 			"\n" +
-			"Subcommands exist for listing, viewing, diffing, approving, applying, closing, commenting on, and\n" +
-			"rebasing change requests.",
+			"Subcommands exist for listing, viewing, diffing, approving, applying, closing, commenting on,\n" +
+			"rebasing, and showing the events of change requests.",
 		Example: fmt.Sprintf("  # Propose a change, then review and apply it\n"+
 			"  %[1]s env set my-project/prod app.replicas 3 --draft\n"+
 			"  %[1]s env change-request list --env my-project/prod\n"+
@@ -73,6 +73,7 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 	cmd.AddCommand(newEnvChangeRequestCloseCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestCommentCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestDiffCmd(cr))
+	cmd.AddCommand(newEnvChangeRequestLogCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestRebaseCmd(cr))
 
 	return cmd
@@ -710,6 +711,103 @@ func newEnvChangeRequestDiffCmd(cr *changeRequestCommand) *cobra.Command {
 	}
 
 	return cmd
+}
+
+func newEnvChangeRequestLogCmd(cr *changeRequestCommand) *cobra.Command {
+	var output string
+
+	cmd := &cobra.Command{
+		Use:   "log <change-request-id>",
+		Short: "[EXPERIMENTAL] Show a change request's events.",
+		Long: "[EXPERIMENTAL] Show a change request's events\n" +
+			"\n" +
+			"This command shows a change request's events, such as new revisions, approvals, comments, and\n" +
+			"status changes.\n",
+		Example: fmt.Sprintf("  # Show a change request's events\n"+
+			"  %[1]s env change-request log <change-request-id>\n\n"+
+			"  # Show a change request's events as JSON\n"+
+			"  %[1]s env change-request log <change-request-id> --output json", cr.env.esc.command),
+		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
+
+			orgName, err := cr.orgName(ctx)
+			if err != nil {
+				return err
+			}
+
+			events := []client.ChangeRequestEvent{}
+			token := ""
+			for {
+				page, next, err := cr.env.esc.client.ListChangeRequestEvents(ctx, orgName, args[0], token)
+				if err != nil {
+					return fmt.Errorf("listing change request events: %w", err)
+				}
+				for _, e := range page {
+					if e.ReplacedBy == "" {
+						events = append(events, e)
+					}
+				}
+				if next == "" || next == token {
+					break
+				}
+				token = next
+			}
+
+			if format == outputJSON {
+				return writeJSON(cr.env.esc.stdout, struct {
+					Events []client.ChangeRequestEvent `json:"events"`
+				}{events})
+			}
+
+			for _, e := range events {
+				printChangeRequestEvent(cr.env.esc.stdout, e)
+			}
+			return nil
+		},
+	}
+
+	addOutputFlag(cmd, &output)
+
+	return cmd
+}
+
+func printChangeRequestEvent(w io.Writer, e client.ChangeRequestEvent) {
+	var what, body string
+	switch e.EventType {
+	case "approved_by_user":
+		what = fmt.Sprintf("approved revision %v", e.RevisionNumber)
+	case "unapproved_by_user":
+		what = "removed their approval"
+	case "commented":
+		what = "commented"
+	case "description_updated":
+		what, body = "updated the description", e.NewDescription
+	case "revision_added":
+		what = fmt.Sprintf("added revision %v", e.RevisionNumber)
+	case "status_changed":
+		if e.PreviousStatus == "" && e.NewStatus == "draft" {
+			what = "created the change request"
+			break
+		}
+		what = fmt.Sprintf("changed the status from %v to %v", e.PreviousStatus, e.NewStatus)
+		if e.Reason != "" {
+			what += " (" + e.Reason + ")"
+		}
+	default:
+		what = e.EventType
+	}
+	fmt.Fprintf(w, "%v  %v %v\n", humanize.Time(e.CreatedAt), e.CreatedBy.GithubLogin, what)
+	for _, text := range []string{e.Comment, body} {
+		if text != "" {
+			fmt.Fprintf(w, "    %v\n", strings.ReplaceAll(text, "\n", "\n    "))
+		}
+	}
 }
 
 func newEnvChangeRequestRebaseCmd(cr *changeRequestCommand) *cobra.Command {
