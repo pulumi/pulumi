@@ -176,6 +176,33 @@ type SubmitChangeRequestRequest struct {
 	Description *string `json:"description,omitempty"`
 }
 
+type ChangeRequestUser struct {
+	Name        string `json:"name"`
+	GithubLogin string `json:"githubLogin"`
+}
+
+type ChangeRequestEntity struct {
+	EntityType string `json:"entityType"`
+	Project    string `json:"project,omitempty"`
+	Name       string `json:"name,omitempty"`
+}
+
+type ChangeRequest struct {
+	ID                   string              `json:"id"`
+	Status               string              `json:"status"`
+	Action               string              `json:"action"`
+	Description          string              `json:"description"`
+	CreatedAt            time.Time           `json:"createdAt"`
+	CreatedBy            ChangeRequestUser   `json:"createdBy"`
+	LatestRevisionNumber int                 `json:"latestRevisionNumber"`
+	Entity               ChangeRequestEntity `json:"entity"`
+}
+
+type ListChangeRequestsResponse struct {
+	ChangeRequests    []ChangeRequest `json:"changeRequests"`
+	ContinuationToken string          `json:"continuationToken"`
+}
+
 type EnvironmentTag struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`

@@ -1,0 +1,102 @@
+run: |
+  esc env init default/test
+  esc env set default/test foo baz
+  esc env set default/test foo bar --draft
+  esc env change-request ls
+  esc env change-request ls --env default/test --status pending
+  esc env change-request ls --env default/test --status applied
+  esc env change-request ls --env default/test
+  esc env change-request list --env default/test
+  esc env change-request ls
+  esc env change-request ls --status all --output json
+  esc env get default/test
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env set default/test foo baz
+> esc env set default/test foo bar --draft
+Change request created: 00000000-0000-0000-0000-000000000000
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
+Change request submitted
+> esc env change-request ls
+┌──────────────────────────────────────┬──────────────┬───────────┐
+│ ID                                   │ ENVIRONMENT  │ AUTHOR    │
+├──────────────────────────────────────┼──────────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ default/test │ test-user │
+└──────────────────────────────────────┴──────────────┴───────────┘
+> esc env change-request ls --env default/test --status pending
+┌──────────────────────────────────────┬─────────┬───────────┐
+│ ID                                   │ STATUS  │ AUTHOR    │
+├──────────────────────────────────────┼─────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ pending │ test-user │
+└──────────────────────────────────────┴─────────┴───────────┘
+> esc env change-request ls --env default/test --status applied
+> esc env change-request ls --env default/test
+┌──────────────────────────────────────┬───────────┐
+│ ID                                   │ AUTHOR    │
+├──────────────────────────────────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ test-user │
+└──────────────────────────────────────┴───────────┘
+> esc env change-request list --env default/test
+┌──────────────────────────────────────┬───────────┐
+│ ID                                   │ AUTHOR    │
+├──────────────────────────────────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ test-user │
+└──────────────────────────────────────┴───────────┘
+> esc env change-request ls
+┌──────────────────────────────────────┬──────────────┬───────────┐
+│ ID                                   │ ENVIRONMENT  │ AUTHOR    │
+├──────────────────────────────────────┼──────────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ default/test │ test-user │
+└──────────────────────────────────────┴──────────────┴───────────┘
+> esc env change-request ls --status all --output json
+{
+  "changeRequests": [
+    {
+      "id": "00000000-0000-0000-0000-000000000000",
+      "status": "pending",
+      "action": "update",
+      "description": "",
+      "createdAt": "0001-01-01T00:00:00Z",
+      "createdBy": {
+        "name": "Test User",
+        "githubLogin": "test-user"
+      },
+      "latestRevisionNumber": 1,
+      "entity": {
+        "entityType": "environment",
+        "project": "default",
+        "name": "test"
+      }
+    }
+  ]
+}
+> esc env get default/test
+# Value
+```json
+{
+  "foo": "baz"
+}
+```
+# Definition
+```yaml
+values:
+  foo: baz
+
+```
+
+
+---
+> esc env init default/test
+> esc env set default/test foo baz
+> esc env set default/test foo bar --draft
+> esc env change-request ls
+> esc env change-request ls --env default/test --status pending
+> esc env change-request ls --env default/test --status applied
+No change requests found.
+> esc env change-request ls --env default/test
+> esc env change-request list --env default/test
+> esc env change-request ls
+> esc env change-request ls --status all --output json
+> esc env get default/test

@@ -260,6 +260,13 @@ type testPulumiClient struct {
 	// submittedChangeRequests records submitted change requests in call order, so tests can assert
 	// that a command actually submits the change requests it creates.
 	submittedChangeRequests []submittedChangeRequest
+
+	changeRequests map[string]*testChangeRequest
+}
+
+type testChangeRequest struct {
+	client.ChangeRequest
+	orgName string
 }
 
 type submittedChangeRequest struct {
@@ -723,7 +730,26 @@ func (c *testPulumiClient) CreateEnvironmentDraft(
 	}
 	diags, _, err = c.UpdateEnvironment(ctx, orgName, projectName, envName, yaml, "")
 	if err == nil && len(diags) == 0 {
-		return "00000000-0000-0000-0000-000000000000", []client.EnvironmentDiagnostic{}, nil
+		id := "00000000-0000-0000-0000-000000000000"
+		if c.changeRequests == nil {
+			c.changeRequests = map[string]*testChangeRequest{}
+		}
+		c.changeRequests[id] = &testChangeRequest{
+			ChangeRequest: client.ChangeRequest{
+				ID:                   id,
+				Status:               "draft",
+				Action:               "update",
+				CreatedBy:            client.ChangeRequestUser{Name: "Test User", GithubLogin: c.user},
+				LatestRevisionNumber: 1,
+				Entity: client.ChangeRequestEntity{
+					EntityType: "environment",
+					Project:    projectName,
+					Name:       strings.TrimSuffix(envName, "_DRAFT"),
+				},
+			},
+			orgName: orgName,
+		}
+		return id, []client.EnvironmentDiagnostic{}, nil
 	}
 	return "", diags, err
 }
@@ -769,7 +795,28 @@ func (c *testPulumiClient) SubmitChangeRequest(
 		changeRequestID: changeRequestID,
 		description:     description,
 	})
+	if cr, ok := c.changeRequests[changeRequestID]; ok {
+		cr.Status = "pending"
+		if description != nil {
+			cr.Description = *description
+		}
+	}
 	return nil
+}
+
+func (c *testPulumiClient) ListChangeRequests(
+	ctx context.Context,
+	orgName string,
+	continuationToken string,
+) ([]client.ChangeRequest, string, error) {
+	var crs []client.ChangeRequest
+	for _, cr := range c.changeRequests {
+		if cr.orgName == orgName {
+			crs = append(crs, cr.ChangeRequest)
+		}
+	}
+	slices.SortFunc(crs, func(a, b client.ChangeRequest) int { return strings.Compare(a.ID, b.ID) })
+	return crs, "", nil
 }
 
 func (c *testPulumiClient) DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error {

@@ -195,6 +195,14 @@ type Client interface {
 		description *string,
 	) error
 
+	// ListChangeRequests returns a page of change requests in org orgName and the continuation token
+	// for the next page. The continuation token is empty when there are no more pages.
+	ListChangeRequests(
+		ctx context.Context,
+		orgName string,
+		continuationToken string,
+	) ([]ChangeRequest, string, error)
+
 	// DeleteEnvironment deletes the environment envName in org orgName.
 	DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error
 
@@ -897,6 +905,23 @@ func (pc *client) SubmitChangeRequest(
 	path := fmt.Sprintf("/api/change-requests/%v/%v/submit", orgName, changeRequestID)
 	err := pc.restCall(ctx, http.MethodPost, path, nil, &req, nil)
 	return err
+}
+
+func (pc *client) ListChangeRequests(
+	ctx context.Context,
+	orgName string,
+	continuationToken string,
+) ([]ChangeRequest, string, error) {
+	queryObj := struct {
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{ContinuationToken: continuationToken}
+
+	var resp ListChangeRequestsResponse
+	path := fmt.Sprintf("/api/change-requests/%v", orgName)
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
+		return nil, "", err
+	}
+	return resp.ChangeRequests, resp.ContinuationToken, nil
 }
 
 func (pc *client) DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error {
