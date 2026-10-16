@@ -212,6 +212,9 @@ type Client interface {
 	// UnapproveChangeRequest removes the caller's approval from a change request.
 	UnapproveChangeRequest(ctx context.Context, orgName, changeRequestID string) error
 
+	// ApplyChangeRequest applies an approved change request.
+	ApplyChangeRequest(ctx context.Context, orgName, changeRequestID string) (*ChangeRequestApplyResult, error)
+
 	// CloseChangeRequest closes a change request without applying it.
 	CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error
 
@@ -973,6 +976,19 @@ func (pc *client) ApproveChangeRequest(
 func (pc *client) UnapproveChangeRequest(ctx context.Context, orgName, changeRequestID string) error {
 	path := fmt.Sprintf("/api/change-requests/%v/%v/approve", orgName, changeRequestID)
 	return pc.restCall(ctx, http.MethodDelete, path, nil, &ChangeRequestComment{}, nil)
+}
+
+func (pc *client) ApplyChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+) (*ChangeRequestApplyResult, error) {
+	var resp ChangeRequestApplyResult
+	path := fmt.Sprintf("/api/change-requests/%v/%v/apply", orgName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 func (pc *client) CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error {

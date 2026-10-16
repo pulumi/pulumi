@@ -51,12 +51,13 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 			"--draft, such as `env edit` and `env set`. Use `env open --draft=<id>`\n" +
 			"to open the draft version of an environment.\n" +
 			"\n" +
-			"Subcommands exist for listing, viewing, diffing, approving, and closing change requests.",
+			"Subcommands exist for listing, viewing, diffing, approving, applying, and closing change requests.",
 		Example: fmt.Sprintf("  # Propose a change, then review and apply it\n"+
 			"  %[1]s env set my-project/prod app.replicas 3 --draft\n"+
 			"  %[1]s env change-request list --env my-project/prod\n"+
 			"  %[1]s env change-request get <change-request-id>\n"+
-			"  %[1]s env change-request approve <change-request-id> -m \"Looks good\"", env.esc.command),
+			"  %[1]s env change-request approve <change-request-id> -m \"Looks good\"\n"+
+			"  %[1]s env change-request apply <change-request-id>", env.esc.command),
 		Args: cobra.NoArgs,
 	}
 
@@ -67,6 +68,7 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 	cmd.AddCommand(newEnvChangeRequestGetCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestApproveCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestUnapproveCmd(cr))
+	cmd.AddCommand(newEnvChangeRequestApplyCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestCloseCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestDiffCmd(cr))
 
@@ -512,6 +514,80 @@ func newEnvChangeRequestUnapproveCmd(cr *changeRequestCommand) *cobra.Command {
 			return nil
 		},
 	}
+}
+
+func newEnvChangeRequestApplyCmd(cr *changeRequestCommand) *cobra.Command {
+	var output string
+	var yes, dryRun bool
+
+	cmd := &cobra.Command{
+		Use:   "apply <change-request-id>",
+		Short: "[EXPERIMENTAL] Apply a change request.",
+		Long: "[EXPERIMENTAL] Apply a change request\n" +
+			"\n" +
+			"This command shows the change that the change request proposes and asks for confirmation,\n" +
+			"then applies it to the environment. The change request must have all required approvals.\n",
+		Example: fmt.Sprintf("  # Apply a change request\n"+
+			"  %[1]s env change-request apply <change-request-id>\n\n"+
+			"  # Apply without a confirmation prompt\n"+
+			"  %[1]s env change-request apply <change-request-id> --yes\n\n"+
+			"  # Show the proposed change without applying it\n"+
+			"  %[1]s env change-request apply <change-request-id> --dry-run", cr.env.esc.command),
+		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
+
+			orgName, err := cr.orgName(ctx)
+			if err != nil {
+				return err
+			}
+
+			c, err := cr.env.esc.client.GetChangeRequest(ctx, orgName, args[0])
+			if err != nil {
+				return fmt.Errorf("getting change request: %w", err)
+			}
+			if c.Status == "applied" {
+				cr.warnNoop(fmt.Sprintf("Change request %v is already applied.", c.ID), "")
+				if format == outputJSON {
+					return writeJSON(cr.env.esc.stdout, &client.ChangeRequestApplyResult{})
+				}
+				return nil
+			}
+			w := cr.env.esc.stdout
+			if format == outputJSON {
+				w = cr.env.esc.stderr
+			}
+			if ok, err := cr.confirm(ctx, w, orgName, &c.ChangeRequest, "apply", yes, dryRun); !ok {
+				return err
+			}
+
+			result, err := cr.env.esc.client.ApplyChangeRequest(ctx, orgName, c.ID)
+			if err != nil {
+				return fmt.Errorf("applying change request: %w", err)
+			}
+
+			if format == outputJSON {
+				return writeJSON(cr.env.esc.stdout, result)
+			}
+
+			fmt.Fprintf(cr.env.esc.stderr, "Applied change request %v\n", c.ID)
+			if result.Message != "" {
+				fmt.Fprintln(cr.env.esc.stderr, result.Message)
+			}
+			return nil
+		},
+	}
+
+	addOutputFlag(cmd, &output)
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "skip the confirmation prompt")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show the proposed change without applying it")
+
+	return cmd
 }
 
 func newEnvChangeRequestCloseCmd(cr *changeRequestCommand) *cobra.Command {

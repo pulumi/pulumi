@@ -897,6 +897,29 @@ func (c *testPulumiClient) UnapproveChangeRequest(ctx context.Context, orgName, 
 	return nil
 }
 
+func (c *testPulumiClient) ApplyChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+) (*client.ChangeRequestApplyResult, error) {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return nil, err
+	}
+	if cr.Status != "ready" {
+		return nil, errors.New("change request is not approved")
+	}
+	yaml, _, err := c.GetEnvironmentDraft(ctx, orgName, cr.Entity.Project, cr.Entity.Name, changeRequestID)
+	if err != nil {
+		return nil, err
+	}
+	if _, _, err := c.UpdateEnvironment(ctx, orgName, cr.Entity.Project, cr.Entity.Name, yaml, ""); err != nil {
+		return nil, err
+	}
+	cr.Status = "applied"
+	return &client.ChangeRequestApplyResult{EntityURL: "https://app.fake.pulumi.com/" + orgName}, nil
+}
+
 func (c *testPulumiClient) CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error {
 	cr, err := c.getChangeRequest(orgName, changeRequestID)
 	if err != nil {

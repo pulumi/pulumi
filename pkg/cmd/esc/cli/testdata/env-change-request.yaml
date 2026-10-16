@@ -16,6 +16,11 @@ run: |
   esc env change-request unapprove 00000000-0000-0000-0000-000000000000
   esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes
   esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
+  esc env change-request apply 00000000-0000-0000-0000-000000000000 --dry-run
+  esc env change-request apply 00000000-0000-0000-0000-000000000000 || true
+  esc env change-request apply 00000000-0000-0000-0000-000000000000 --yes
+  esc env change-request apply 00000000-0000-0000-0000-000000000000
+  esc env change-request apply 00000000-0000-0000-0000-000000000000 --output json
   esc env change-request close 00000000-0000-0000-0000-000000000000 || true
   esc env change-request ls
   esc env change-request ls --status all --output json
@@ -152,6 +157,41 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
   },
   "url": "https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000"
 }
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --dry-run
+Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
+
+--- test-user/default/test
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+
+> esc env change-request apply 00000000-0000-0000-0000-000000000000
+Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
+
+--- test-user/default/test
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --yes
+Change request 00000000-0000-0000-0000-000000000000 will update environment test-user/default/test.
+
+--- test-user/default/test
++++ draft 00000000-0000-0000-0000-000000000000
+@@ -1,2 +1,2 @@
+ values:
+-  foo: baz
++  foo: bar
+
+> esc env change-request apply 00000000-0000-0000-0000-000000000000
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --output json
+{
+  "entityUrl": ""
+}
 > esc env change-request close 00000000-0000-0000-0000-000000000000
 > esc env change-request ls
 > esc env change-request ls --status all --output json
@@ -159,7 +199,7 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
   "changeRequests": [
     {
       "id": "00000000-0000-0000-0000-000000000000",
-      "status": "closed",
+      "status": "applied",
       "action": "update",
       "description": "",
       "createdAt": "0001-01-01T00:00:00Z",
@@ -187,13 +227,13 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
 # Value
 ```json
 {
-  "foo": "baz"
+  "foo": "bar"
 }
 ```
 # Definition
 ```yaml
 values:
-  foo: baz
+  foo: bar
 
 ```
 
@@ -222,8 +262,17 @@ warning: You have not approved change request 00000000-0000-0000-0000-0000000000
 > esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes
 Approved change request 00000000-0000-0000-0000-000000000000
 > esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --dry-run
+> esc env change-request apply 00000000-0000-0000-0000-000000000000
+Error: non-interactive mode requires --yes flag
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --yes
+Applied change request 00000000-0000-0000-0000-000000000000
+> esc env change-request apply 00000000-0000-0000-0000-000000000000
+warning: Change request 00000000-0000-0000-0000-000000000000 is already applied.
+> esc env change-request apply 00000000-0000-0000-0000-000000000000 --output json
+warning: Change request 00000000-0000-0000-0000-000000000000 is already applied.
 > esc env change-request close 00000000-0000-0000-0000-000000000000
-Closed change request 00000000-0000-0000-0000-000000000000
+Error: closing change request: change request is not active
 > esc env change-request ls
 No change requests found.
 > esc env change-request ls --status all --output json
