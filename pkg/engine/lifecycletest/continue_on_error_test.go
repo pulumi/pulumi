@@ -1721,7 +1721,7 @@ func TestUpContinueOnErrorSkippedComponentRegistersOutputs(t *testing.T) {
 	require.ErrorContains(t, err, "intentionally failed create")
 	assert.NotContains(t, err.Error(), "isn't pending")
 	assert.Nil(t, find(snap, "comp"))
-	assert.NotNil(t, find(snap, "independent"))
+	require.NotNil(t, find(snap, "independent"))
 
 	failCreate = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
