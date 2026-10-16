@@ -121,6 +121,66 @@ type PolicyExceptionMatch struct {
 	Targets []string `json:"targets"`
 }
 
+// CreatePolicyExceptionRequest creates a policy exception, or requests one as a draft change request.
+type CreatePolicyExceptionRequest struct {
+	PolicyPack string                 `json:"policyPack"`
+	Reason     string                 `json:"reason"`
+	Match      []PolicyExceptionMatch `json:"match"`
+}
+
+// PolicyExceptionInfo is a policy exception stored in Pulumi Cloud.
+type PolicyExceptionInfo struct {
+	ID              string                 `json:"id"`
+	PolicyPack      string                 `json:"policyPack"`
+	Reason          string                 `json:"reason"`
+	Match           []PolicyExceptionMatch `json:"match"`
+	Status          string                 `json:"status"`
+	ChangeRequestID *string                `json:"changeRequestId,omitempty"`
+	CreatedBy       *UserInfo              `json:"createdBy,omitempty"`
+	CreatedAt       string                 `json:"createdAt"`
+	RemovedBy       *UserInfo              `json:"removedBy,omitempty"`
+	RemovedAt       *string                `json:"removedAt,omitempty"`
+}
+
+type ListPolicyExceptionsResponse struct {
+	Exceptions        []PolicyExceptionInfo `json:"exceptions"`
+	ContinuationToken *string               `json:"continuationToken,omitempty"`
+}
+
+// PolicyExceptionMatchUsage is where one policy and target of an exception allowed a violation.
+type PolicyExceptionMatchUsage struct {
+	Policy            string  `json:"policy"`
+	URN               string  `json:"urn"`
+	FirstSeenAt       *string `json:"firstSeenAt,omitempty"`
+	LastSeenAt        *string `json:"lastSeenAt,omitempty"`
+	LastUpdateVersion *int    `json:"lastUpdateVersion,omitempty"`
+}
+
+type ListPolicyExceptionMatchUsageResponse struct {
+	Matches []PolicyExceptionMatchUsage `json:"matches"`
+}
+
+// PolicyExceptionDraft is a requested policy exception, staged in a change request.
+type PolicyExceptionDraft struct {
+	ChangeRequestID      string                 `json:"changeRequestId"`
+	LatestRevisionNumber int                    `json:"latestRevisionNumber"`
+	PolicyPack           string                 `json:"policyPack"`
+	Reason               string                 `json:"reason"`
+	Match                []PolicyExceptionMatch `json:"match"`
+}
+
+// ChangeRequest is the subset of a Pulumi Cloud change request that the CLI reads.
+type ChangeRequest struct {
+	ID          string `json:"id"`
+	Status      string `json:"status"`
+	Description string `json:"description"`
+}
+
+type ListChangeRequestsResponse struct {
+	ChangeRequests    []ChangeRequest `json:"changeRequests"`
+	ContinuationToken *string         `json:"continuationToken,omitempty"`
+}
+
 // Policy defines the metadata for an individual Policy within a Policy Pack.
 type Policy struct {
 	// Unique URL-safe name for the policy.  This is unique to a specific version

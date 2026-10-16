@@ -1967,6 +1967,142 @@ func (pc *Client) GetPolicyIssue(
 	return resp.PolicyIssue, nil
 }
 
+func policyExceptionsPath(orgName string, components ...string) string {
+	return path.Join(append([]string{"/api/orgs", url.PathEscape(orgName), "policyexceptions"}, components...)...)
+}
+
+// CreatePolicyException creates a policy exception. It fails with a 409 when the organization requires approval to
+// create exceptions; request one with CreatePolicyExceptionDraft instead.
+func (pc *Client) CreatePolicyException(
+	ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
+) (apitype.PolicyExceptionInfo, error) {
+	var resp apitype.PolicyExceptionInfo
+	if err := pc.restCall(ctx, http.MethodPost, policyExceptionsPath(orgName), nil, req, &resp); err != nil {
+		return apitype.PolicyExceptionInfo{}, err
+	}
+	return resp, nil
+}
+
+// ListPolicyExceptionsQuery filters ListPolicyExceptions. Empty fields don't filter.
+type ListPolicyExceptionsQuery struct {
+	PolicyPack string   `url:"policyPack,omitempty"`
+	Policy     string   `url:"policy,omitempty"`
+	Stack      string   `url:"stack,omitempty"`
+	Status     []string `url:"status,omitempty"`
+}
+
+// ListPolicyExceptions returns every policy exception in the organization that passes the query.
+func (pc *Client) ListPolicyExceptions(
+	ctx context.Context, orgName string, query ListPolicyExceptionsQuery,
+) ([]apitype.PolicyExceptionInfo, error) {
+	var exceptions []apitype.PolicyExceptionInfo
+	var token *string
+	for {
+		q := struct {
+			ListPolicyExceptionsQuery
+			ContinuationToken *string `url:"continuationToken,omitempty"`
+		}{query, token}
+		var resp apitype.ListPolicyExceptionsResponse
+		if err := pc.restCall(ctx, http.MethodGet, policyExceptionsPath(orgName), q, nil, &resp); err != nil {
+			return nil, err
+		}
+		exceptions = append(exceptions, resp.Exceptions...)
+		if resp.ContinuationToken == nil || *resp.ContinuationToken == "" {
+			return exceptions, nil
+		}
+		token = resp.ContinuationToken
+	}
+}
+
+// GetPolicyException returns a policy exception.
+func (pc *Client) GetPolicyException(ctx context.Context, orgName, id string) (apitype.PolicyExceptionInfo, error) {
+	var resp apitype.PolicyExceptionInfo
+	path := policyExceptionsPath(orgName, url.PathEscape(id))
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return apitype.PolicyExceptionInfo{}, err
+	}
+	return resp, nil
+}
+
+// ListPolicyExceptionMatchUsage returns where each of a policy exception's entries allowed a violation.
+func (pc *Client) ListPolicyExceptionMatchUsage(
+	ctx context.Context, orgName, id string,
+) ([]apitype.PolicyExceptionMatchUsage, error) {
+	var resp apitype.ListPolicyExceptionMatchUsageResponse
+	path := policyExceptionsPath(orgName, url.PathEscape(id), "matches")
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Matches, nil
+}
+
+// RemovePolicyException removes an active policy exception. It fails with a 409 when it's already removed.
+func (pc *Client) RemovePolicyException(ctx context.Context, orgName, id string) (apitype.PolicyExceptionInfo, error) {
+	var resp apitype.PolicyExceptionInfo
+	path := policyExceptionsPath(orgName, url.PathEscape(id))
+	if err := pc.restCall(ctx, http.MethodDelete, path, nil, nil, &resp); err != nil {
+		return apitype.PolicyExceptionInfo{}, err
+	}
+	return resp, nil
+}
+
+// CreatePolicyExceptionDraft requests a policy exception by staging it in a draft change request. Submit the
+// change request with SubmitChangeRequest.
+func (pc *Client) CreatePolicyExceptionDraft(
+	ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
+) (apitype.PolicyExceptionDraft, error) {
+	var resp apitype.PolicyExceptionDraft
+	if err := pc.restCall(ctx, http.MethodPost, policyExceptionsPath(orgName, "drafts"), nil, req, &resp); err != nil {
+		return apitype.PolicyExceptionDraft{}, err
+	}
+	return resp, nil
+}
+
+// GetPolicyExceptionDraft returns the latest revision of a requested policy exception.
+func (pc *Client) GetPolicyExceptionDraft(
+	ctx context.Context, orgName, changeRequestID string,
+) (apitype.PolicyExceptionDraft, error) {
+	var resp apitype.PolicyExceptionDraft
+	path := policyExceptionsPath(orgName, "drafts", url.PathEscape(changeRequestID))
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return apitype.PolicyExceptionDraft{}, err
+	}
+	return resp, nil
+}
+
+// ListChangeRequests returns the organization's change requests for the given entity type.
+func (pc *Client) ListChangeRequests(
+	ctx context.Context, orgName, entityType string,
+) ([]apitype.ChangeRequest, error) {
+	var requests []apitype.ChangeRequest
+	var token *string
+	for {
+		q := struct {
+			EntityType        string  `url:"entityType"`
+			ContinuationToken *string `url:"continuationToken,omitempty"`
+		}{entityType, token}
+		var resp apitype.ListChangeRequestsResponse
+		path := "/api/change-requests/" + url.PathEscape(orgName)
+		if err := pc.restCall(ctx, http.MethodGet, path, q, nil, &resp); err != nil {
+			return nil, err
+		}
+		requests = append(requests, resp.ChangeRequests...)
+		if resp.ContinuationToken == nil || *resp.ContinuationToken == "" {
+			return requests, nil
+		}
+		token = resp.ContinuationToken
+	}
+}
+
+// SubmitChangeRequest submits a draft change request for approval.
+func (pc *Client) SubmitChangeRequest(ctx context.Context, orgName, changeRequestID, description string) error {
+	path := fmt.Sprintf("/api/change-requests/%s/%s/submit", url.PathEscape(orgName), url.PathEscape(changeRequestID))
+	req := struct {
+		Description string `json:"description"`
+	}{description}
+	return pc.restCall(ctx, http.MethodPost, path, nil, req, nil)
+}
+
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
 func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContToken *string) (
 	apitype.ListPolicyPacksResponse, *string, error,

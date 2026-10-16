@@ -1,0 +1,4 @@
+component: cli/policy
+kind: feat
+body: Add experimental `pulumi policy exception new`, `list`, `get` and `remove` commands, which manage policy exceptions in Pulumi Cloud and create them from a run's violations
+time: 2026-10-16T12:00:00Z
