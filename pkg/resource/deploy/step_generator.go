@@ -370,6 +370,20 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 
 	sg.recordActualTargeting(sg.isIncludedInOperation(newState), newState)
 
+	// During preview, if any dependsOn target is being newly created or replaced in this run,
+	// the referenced resource doesn't actually exist yet — invoking the provider's Read against
+	// its id would fail in the real world. Skip the provider call and signal unknown outputs
+	// back to the SDK. See https://github.com/pulumi/pulumi/issues/16395.
+	skipProvider := false
+	if sg.deployment.opts.DryRun {
+		for _, dep := range event.Dependencies() {
+			if sg.creates[dep] || sg.replaces[dep] {
+				skipProvider = true
+				break
+			}
+		}
+	}
+
 	// If the snapshot has an old resource for this URN and it's not external, we're going
 	// to have to delete the old resource and conceptually replace it with the resource we
 	// are about to read.
@@ -389,7 +403,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		)
 		sg.replaces[urn] = true
 		return []Step{
-			NewReadReplacementStep(sg.deployment, event, old, newState),
+			NewReadReplacementStep(sg.deployment, event, old, newState, skipProvider),
 			NewReplaceStep(sg.deployment, old, newState, nil, nil, nil, true),
 		}, nil
 	}
@@ -405,7 +419,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 
 	sg.reads[urn] = true
 	return []Step{
-		NewReadStep(sg.deployment, event, old, newState),
+		NewReadStep(sg.deployment, event, old, newState, skipProvider),
 	}, nil
 }
 

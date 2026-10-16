@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gofmt -l codegen/go/gen_program_expressions.go)"
+    ]
+  }
+}
