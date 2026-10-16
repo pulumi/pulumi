@@ -19,13 +19,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
@@ -48,11 +51,12 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 			"--draft, such as `env edit` and `env set`. Use `env open --draft=<id>`\n" +
 			"to open the draft version of an environment.\n" +
 			"\n" +
-			"Subcommands exist for listing, viewing, diffing, and closing change requests.",
+			"Subcommands exist for listing, viewing, diffing, approving, and closing change requests.",
 		Example: fmt.Sprintf("  # Propose a change, then review and apply it\n"+
 			"  %[1]s env set my-project/prod app.replicas 3 --draft\n"+
 			"  %[1]s env change-request list --env my-project/prod\n"+
-			"  %[1]s env change-request get <change-request-id>", env.esc.command),
+			"  %[1]s env change-request get <change-request-id>\n"+
+			"  %[1]s env change-request approve <change-request-id> -m \"Looks good\"", env.esc.command),
 		Args: cobra.NoArgs,
 	}
 
@@ -61,6 +65,8 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 
 	cmd.AddCommand(newEnvChangeRequestLsCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestGetCmd(cr))
+	cmd.AddCommand(newEnvChangeRequestApproveCmd(cr))
+	cmd.AddCommand(newEnvChangeRequestUnapproveCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestCloseCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestDiffCmd(cr))
 
@@ -83,6 +89,62 @@ func (cr *changeRequestCommand) warnNoop(msg, comment string) {
 	}
 	fmt.Fprint(cr.env.esc.stderr,
 		cr.env.esc.colors.Colorize(fmt.Sprintf("%swarning: %v%s\n", colors.SpecWarning, msg, colors.Reset)))
+}
+
+func (cr *changeRequestCommand) hasApproved(ctx context.Context, c *client.GetChangeRequestResponse) (bool, error) {
+	user, _, _, err := cr.env.esc.client.GetPulumiAccountDetails(ctx)
+	if err != nil {
+		return false, fmt.Errorf("getting current user: %w", err)
+	}
+	for _, g := range c.GateEvaluation.ApplicableGates {
+		for _, a := range g.RuleDetails.Approvers {
+			if a.GithubLogin == user {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+// confirm shows the change a change request proposes and asks the user whether to proceed.
+// It returns false if the caller should stop, either because of --dry-run or because the user declined.
+func (cr *changeRequestCommand) confirm(
+	ctx context.Context, w io.Writer, orgName string, c *client.ChangeRequest, verb string, yes, dryRun bool,
+) (bool, error) {
+	if c.Status == "applied" || c.Status == "closed" {
+		return false, fmt.Errorf("change request %v is %v", c.ID, c.Status)
+	}
+
+	ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
+	fmt.Fprintf(w, "Change request %v will update environment %v.\n\n", c.ID, ref.String())
+	if err := cr.printDraftDiff(ctx, w, ref, c.ID, ""); err != nil {
+		return false, err
+	}
+	fmt.Fprintln(w)
+
+	if dryRun {
+		return false, nil
+	}
+	if yes || cmdutil.IsTruthy(os.Getenv(PulumiSkipConfirmationsEnvVar)) {
+		return true, nil
+	}
+	if !cmdutil.Interactive() {
+		return false, backenderr.ErrNonInteractiveRequiresYes
+	}
+	response, err := ui.PromptUserErr(
+		fmt.Sprintf("Do you want to %v this change request?", verb),
+		[]string{"yes", "no"},
+		"no",
+		cr.env.esc.colors,
+		ui.SurveyStdio(cr.env.esc.stdin, w)...,
+	)
+	if err != nil {
+		return false, fmt.Errorf("confirmation cancelled: %w", err)
+	}
+	if response != "yes" {
+		return false, errors.New("confirmation declined")
+	}
+	return true, nil
 }
 
 // printDraftDiff prints the difference between the given version of an environment and a change request's draft.
@@ -348,6 +410,107 @@ func printChangeRequest(
 
 	if url != "" {
 		fmt.Fprintf(w, "URL: %v\n", url)
+	}
+}
+
+func newEnvChangeRequestApproveCmd(cr *changeRequestCommand) *cobra.Command {
+	var comment string
+	var yes, dryRun bool
+
+	cmd := &cobra.Command{
+		Use:   "approve <change-request-id>",
+		Short: "[EXPERIMENTAL] Approve a change request.",
+		Long: "[EXPERIMENTAL] Approve a change request\n" +
+			"\n" +
+			"This command shows the change that the change request proposes and asks for confirmation,\n" +
+			"then approves its latest revision. Use `env change-request get` to see how many approvals\n" +
+			"are still required.\n",
+		Example: fmt.Sprintf("  # Approve a change request\n"+
+			"  %[1]s env change-request approve <change-request-id>\n\n"+
+			"  # Approve with a comment\n"+
+			"  %[1]s env change-request approve <change-request-id> -m \"Looks good\"\n\n"+
+			"  # Show the proposed change without approving it\n"+
+			"  %[1]s env change-request approve <change-request-id> --dry-run", cr.env.esc.command),
+		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			orgName, err := cr.orgName(ctx)
+			if err != nil {
+				return err
+			}
+
+			c, err := cr.env.esc.client.GetChangeRequest(ctx, orgName, args[0])
+			if err != nil {
+				return fmt.Errorf("getting change request: %w", err)
+			}
+			approved, err := cr.hasApproved(ctx, c)
+			if err != nil {
+				return err
+			}
+			if approved {
+				cr.warnNoop(fmt.Sprintf("You already approved change request %v.", c.ID), comment)
+				return nil
+			}
+			if ok, err := cr.confirm(ctx, cr.env.esc.stdout, orgName, &c.ChangeRequest, "approve", yes, dryRun); !ok {
+				return err
+			}
+
+			err = cr.env.esc.client.ApproveChangeRequest(ctx, orgName, c.ID, c.LatestRevisionNumber, comment)
+			if err != nil {
+				return fmt.Errorf("approving change request: %w", err)
+			}
+
+			fmt.Fprintf(cr.env.esc.stderr, "Approved change request %v\n", c.ID)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&comment, "message", "m", "", "a comment to add with the approval")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "skip the confirmation prompt")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "show the proposed change without approving it")
+
+	return cmd
+}
+
+func newEnvChangeRequestUnapproveCmd(cr *changeRequestCommand) *cobra.Command {
+	return &cobra.Command{
+		Use:   "unapprove <change-request-id>",
+		Short: "[EXPERIMENTAL] Remove your approval from a change request.",
+		Long: "[EXPERIMENTAL] Remove your approval from a change request\n" +
+			"\n" +
+			"This command withdraws an approval you gave earlier, for example if you approved by mistake.\n" +
+			"To reject a change request outright, use `env change-request close`.\n",
+		Example: fmt.Sprintf("  %[1]s env change-request unapprove <change-request-id>", cr.env.esc.command),
+		Args:    cmdutil.SpecificArgs([]string{"change-request-id"}),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			orgName, err := cr.orgName(ctx)
+			if err != nil {
+				return err
+			}
+
+			c, err := cr.env.esc.client.GetChangeRequest(ctx, orgName, args[0])
+			if err != nil {
+				return fmt.Errorf("getting change request: %w", err)
+			}
+			approved, err := cr.hasApproved(ctx, c)
+			if err != nil {
+				return err
+			}
+			if !approved {
+				cr.warnNoop(fmt.Sprintf("You have not approved change request %v.", c.ID), "")
+				return nil
+			}
+
+			if err := cr.env.esc.client.UnapproveChangeRequest(ctx, orgName, c.ID); err != nil {
+				return fmt.Errorf("removing approval: %w", err)
+			}
+
+			fmt.Fprintf(cr.env.esc.stderr, "Removed approval from change request %v\n", c.ID)
+			return nil
+		},
 	}
 }
 

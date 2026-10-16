@@ -858,6 +858,45 @@ func (c *testPulumiClient) GetChangeRequest(
 	}, nil
 }
 
+func (c *testPulumiClient) ApproveChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	revisionNumber int,
+	comment string,
+) error {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return err
+	}
+	if cr.Status == "applied" || cr.Status == "closed" {
+		return errors.New("change request is not active")
+	}
+	if revisionNumber != cr.LatestRevisionNumber {
+		return errors.New("revision mismatch")
+	}
+	for _, a := range cr.approvers {
+		if a.GithubLogin == c.user {
+			return errors.New("already approved")
+		}
+	}
+	cr.approvers = append(cr.approvers, client.ChangeRequestUser{Name: "Test User", GithubLogin: c.user})
+	cr.Status = "ready"
+	return nil
+}
+
+func (c *testPulumiClient) UnapproveChangeRequest(ctx context.Context, orgName, changeRequestID string) error {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return err
+	}
+	if len(cr.approvers) == 0 {
+		return errors.New("not approved")
+	}
+	cr.approvers, cr.Status = nil, "pending"
+	return nil
+}
+
 func (c *testPulumiClient) CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error {
 	cr, err := c.getChangeRequest(orgName, changeRequestID)
 	if err != nil {
