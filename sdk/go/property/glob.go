@@ -368,3 +368,7 @@ func (g Glob) Segments(yield func(GlobSegment) bool) {
 		}
 	}
 }
+
+func (g Glob) AppendSegment(seg GlobSegment) Glob {
+	return Glob{g.appendGlobSegment(seg)}
+}
