@@ -1,0 +1,257 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package providers
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/blang/semver"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+)
+
+// QuotedNamesProvider is used to test property names that are not identifiers in any language, such as `@top!`.
+// Resource inputs, resource outputs, function arguments and function results each carry such a name at the top
+// level and in a nested object.
+type QuotedNamesProvider struct {
+	plugin.UnimplementedProvider
+}
+
+var _ plugin.Provider = (*QuotedNamesProvider)(nil)
+
+func (p *QuotedNamesProvider) Close() error {
+	return nil
+}
+
+func (p *QuotedNamesProvider) Configure(
+	context.Context, plugin.ConfigureRequest,
+) (plugin.ConfigureResponse, error) {
+	return plugin.ConfigureResponse{}, nil
+}
+
+func (p *QuotedNamesProvider) GetSchema(
+	context.Context, plugin.GetSchemaRequest,
+) (plugin.GetSchemaResponse, error) {
+	inner := schema.TypeSpec{Ref: "#/types/quoted-names:index:Inner"}
+	properties := map[string]schema.PropertySpec{
+		"plain":  {TypeSpec: schema.TypeSpec{Type: "string"}},
+		"@top!":  {TypeSpec: inner},
+		"$top.2": {TypeSpec: schema.TypeSpec{Type: "string"}},
+	}
+	required := []string{"plain", "@top!", "$top.2"}
+
+	pkg := schema.PackageSpec{
+		Name:    "quoted-names",
+		Version: "58.0.0",
+		Types: map[string]schema.ComplexTypeSpec{
+			"quoted-names:index:Inner": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"@inner!": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+					Required: []string{"@inner!"},
+				},
+			},
+		},
+		Resources: map[string]schema.ResourceSpec{
+			"quoted-names:index:Resource": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: properties,
+					Required:   required,
+				},
+				InputProperties: properties,
+				RequiredInputs:  required,
+			},
+		},
+		Functions: map[string]schema.FunctionSpec{
+			"quoted-names:index:invoke": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: properties,
+					Required:   required,
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type:       "object",
+						Properties: properties,
+						Required:   required,
+					},
+				},
+			},
+		},
+	}
+
+	jsonBytes, err := json.Marshal(pkg)
+	return plugin.GetSchemaResponse{Schema: jsonBytes}, err
+}
+
+func (p *QuotedNamesProvider) CheckConfig(
+	_ context.Context, req plugin.CheckConfigRequest,
+) (plugin.CheckConfigResponse, error) {
+	version, ok := req.News.GetOk("version")
+	if !ok {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("version", "missing version"),
+		}, nil
+	}
+	if !version.IsString() {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("version", "version is not a string"),
+		}, nil
+	}
+	if version.AsString() != "58.0.0" {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("version", "version is not 58.0.0"),
+		}, nil
+	}
+	if req.News.Len() != 1 {
+		return plugin.CheckConfigResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+		}, nil
+	}
+	return plugin.CheckConfigResponse{Properties: req.News}, nil
+}
+
+// checkQuotedNames returns a failure unless props holds exactly the properties of the schema, by their exact names.
+func checkQuotedNames(props property.Map) []plugin.CheckFailure {
+	for _, name := range []string{"plain", "$top.2"} {
+		if v, ok := props.GetOk(name); !ok || !v.IsString() {
+			return makeCheckFailure(resource.PropertyKey(name), fmt.Sprintf("missing string %q: %v", name, props))
+		}
+	}
+	top, ok := props.GetOk("@top!")
+	if !ok || !top.IsMap() {
+		return makeCheckFailure("@top!", fmt.Sprintf("missing object \"@top!\": %v", props))
+	}
+	if inner, ok := top.AsMap().GetOk("@inner!"); !ok || !inner.IsString() || top.AsMap().Len() != 1 {
+		return makeCheckFailure("@top!", fmt.Sprintf("\"@top!\" must hold only the string \"@inner!\": %v", top))
+	}
+	if props.Len() != 3 {
+		return makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", props))
+	}
+	return nil
+}
+
+func (p *QuotedNamesProvider) Check(
+	_ context.Context, req plugin.CheckRequest,
+) (plugin.CheckResponse, error) {
+	switch typ := req.URN.Type(); typ {
+	case "quoted-names:index:Resource":
+		if failures := checkQuotedNames(req.NewInputs); failures != nil {
+			return plugin.CheckResponse{Failures: failures}, nil
+		}
+		return plugin.CheckResponse{Properties: req.NewInputs}, nil
+	case tokens.RootStackType:
+		return plugin.CheckResponse{Properties: req.NewInputs}, nil
+	default:
+		return plugin.CheckResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", typ)),
+		}, nil
+	}
+}
+
+func (p *QuotedNamesProvider) Create(
+	_ context.Context, req plugin.CreateRequest,
+) (plugin.CreateResponse, error) {
+	if typ := req.URN.Type(); typ != "quoted-names:index:Resource" {
+		return plugin.CreateResponse{Status: resource.StatusUnknown}, fmt.Errorf("invalid URN type: %s", typ)
+	}
+	id := "id"
+	if req.Preview {
+		id = ""
+	}
+	return plugin.CreateResponse{
+		ID:         resource.ID(id),
+		Properties: req.Properties,
+		Status:     resource.StatusOK,
+	}, nil
+}
+
+func (p *QuotedNamesProvider) Invoke(
+	_ context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	if req.Tok != "quoted-names:index:invoke" {
+		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
+	}
+	if failures := checkQuotedNames(req.Args); failures != nil {
+		return plugin.InvokeResponse{Failures: failures}, nil
+	}
+	return plugin.InvokeResponse{Properties: req.Args}, nil
+}
+
+func (p *QuotedNamesProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
+	ver := semver.Version{Major: 58}
+	return plugin.PluginInfo{
+		Version: &ver,
+	}, nil
+}
+
+func (p *QuotedNamesProvider) SignalCancellation(context.Context) error {
+	return nil
+}
+
+func (p *QuotedNamesProvider) GetMapping(
+	context.Context, plugin.GetMappingRequest,
+) (plugin.GetMappingResponse, error) {
+	return plugin.GetMappingResponse{}, nil
+}
+
+func (p *QuotedNamesProvider) GetMappings(
+	context.Context, plugin.GetMappingsRequest,
+) (plugin.GetMappingsResponse, error) {
+	return plugin.GetMappingsResponse{}, nil
+}
+
+func (p *QuotedNamesProvider) DiffConfig(
+	context.Context, plugin.DiffConfigRequest,
+) (plugin.DiffConfigResponse, error) {
+	return plugin.DiffResult{}, nil
+}
+
+func (p *QuotedNamesProvider) Diff(
+	context.Context, plugin.DiffRequest,
+) (plugin.DiffResponse, error) {
+	return plugin.DiffResult{}, nil
+}
+
+func (p *QuotedNamesProvider) Delete(
+	context.Context, plugin.DeleteRequest,
+) (plugin.DeleteResponse, error) {
+	return plugin.DeleteResponse{}, nil
+}
+
+func (p *QuotedNamesProvider) Read(
+	_ context.Context, req plugin.ReadRequest,
+) (plugin.ReadResponse, error) {
+	return plugin.ReadResponse{
+		Status: resource.StatusUnknown,
+	}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+}
+
+func (p *QuotedNamesProvider) Update(
+	_ context.Context, req plugin.UpdateRequest,
+) (plugin.UpdateResponse, error) {
+	return plugin.UpdateResponse{
+		Status: resource.StatusUnknown,
+	}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+}

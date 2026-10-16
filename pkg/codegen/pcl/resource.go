@@ -15,8 +15,8 @@
 package pcl
 
 import (
-	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -315,28 +316,42 @@ func (*ResourceProperty) SyntaxNode() hclsyntax.Node {
 }
 
 func (p *ResourceProperty) Value(*hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
-	var buffer bytes.Buffer
-	for _, t := range p.Path {
-		var err error
+	return cty.StringVal(propertyPathString(p.Path)), nil
+}
+
+// propertyPathString renders a property traversal as an engine property path. A name that the engine path syntax
+// cannot spell bare, such as `foo!`, is written as a quoted index.
+func propertyPathString(traversal hcl.Traversal) string {
+	var buffer strings.Builder
+	writeName := func(name string, first bool) {
+		switch {
+		case resource.PropertyPath{name}.String() != name:
+			fmt.Fprintf(&buffer, `["%s"]`, model.EscapeString(name))
+		case first:
+			buffer.WriteString(name)
+		default:
+			fmt.Fprintf(&buffer, ".%s", name)
+		}
+	}
+	for i, t := range traversal {
 		switch t := t.(type) {
 		case hcl.TraverseRoot:
-			_, err = fmt.Fprint(&buffer, t.Name)
+			writeName(t.Name, i == 0)
 		case hcl.TraverseAttr:
-			_, err = fmt.Fprintf(&buffer, ".%s", t.Name)
+			writeName(t.Name, i == 0)
 		case hcl.TraverseIndex:
 			switch t.Key.Type() {
 			case cty.String:
-				_, err = fmt.Fprintf(&buffer, `["%s"]`, model.EscapeString(t.Key.AsString()))
+				fmt.Fprintf(&buffer, `["%s"]`, model.EscapeString(t.Key.AsString()))
 			case cty.Number:
 				idx, _ := t.Key.AsBigFloat().Int64()
-				_, err = fmt.Fprintf(&buffer, "[%d]", idx)
+				fmt.Fprintf(&buffer, "[%d]", idx)
 			default:
 				contract.Failf("unexpected traversal index of type %v", t.Key.Type())
 			}
 		}
-		contract.IgnoreError(err)
 	}
-	return cty.StringVal(buffer.String()), nil
+	return buffer.String()
 }
 
 func (p *ResourceProperty) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
@@ -349,6 +364,34 @@ func (p *ResourceProperty) Traverse(traverser hcl.Traverser) (model.Traversable,
 
 func (p *ResourceProperty) Type() model.Type {
 	return ResourcePropertyType
+}
+
+// quotedResourceProperties is the QuotedPropertiesKey root of a property path. Indexing it by a property name gives
+// the ResourceProperty of that name, so `_["foo!"].bar` is the path `["foo!"].bar`.
+type quotedResourceProperties struct {
+	properties *model.ObjectType
+}
+
+func (*quotedResourceProperties) SyntaxNode() hclsyntax.Node {
+	return syntax.None
+}
+
+func (q *quotedResourceProperties) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
+	key, _ := model.GetTraverserKey(traverser)
+	if !key.IsKnown() || key.Type() != cty.String {
+		return model.DynamicType, hcl.Diagnostics{errorf(traverser.SourceRange(),
+			"'%v' must be indexed by a property name", QuotedPropertiesKey)}
+	}
+	propertyType, diagnostics := q.properties.Traverse(traverser)
+	return &ResourceProperty{
+		Path:         hcl.Traversal{hcl.TraverseRoot{Name: key.AsString(), SrcRange: traverser.SourceRange()}},
+		PropertyType: propertyType.(model.Type),
+	}, diagnostics
+}
+
+// Type is the type of the properties, so that `_` alone is not a property path.
+func (q *quotedResourceProperties) Type() model.Type {
+	return q.properties
 }
 
 // NeedsVersionResourceOption returns false if the version resource matches the version in the schema.
