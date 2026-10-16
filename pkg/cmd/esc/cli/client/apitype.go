@@ -246,6 +246,21 @@ type EnvironmentDraftStatus struct {
 	DraftRevisionNumber int `json:"draftRevisionNumber"`
 }
 
+// EnvironmentDraftConflict holds 1-based inclusive line ranges. StartLine and EndLine refer to the
+// environment's current definition; DraftStartLine and DraftEndLine refer to the draft.
+type EnvironmentDraftConflict struct {
+	StartLine      int `json:"startLine"`
+	EndLine        int `json:"endLine"`
+	DraftStartLine int `json:"draftStartLine"`
+	DraftEndLine   int `json:"draftEndLine"`
+}
+
+type EnvironmentDraftRebaseResponse struct {
+	ChangeRequestID     string                     `json:"changeRequestId"`
+	DraftRevisionNumber int                        `json:"draftRevisionNumber"`
+	Conflicts           []EnvironmentDraftConflict `json:"conflicts"`
+}
+
 type EnvironmentTag struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`

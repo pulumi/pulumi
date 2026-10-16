@@ -16,6 +16,8 @@ run: |
   esc env change-request unapprove 00000000-0000-0000-0000-000000000000
   esc env change-request unapprove 00000000-0000-0000-0000-000000000000
   esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes
+  esc env change-request rebase 00000000-0000-0000-0000-000000000000
+  esc env change-request rebase 00000000-0000-0000-0000-000000000000 --output json
   esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
   esc env change-request apply 00000000-0000-0000-0000-000000000000 --dry-run
   esc env change-request apply 00000000-0000-0000-0000-000000000000 || true
@@ -115,6 +117,13 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
 -  foo: baz
 +  foo: bar
 
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000 --output json
+{
+  "changeRequestId": "00000000-0000-0000-0000-000000000000",
+  "draftRevisionNumber": 1,
+  "conflicts": []
+}
 > esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
 {
   "id": "00000000-0000-0000-0000-000000000000",
@@ -265,6 +274,10 @@ Removed approval from change request 00000000-0000-0000-0000-000000000000
 warning: You have not approved change request 00000000-0000-0000-0000-000000000000.
 > esc env change-request approve 00000000-0000-0000-0000-000000000000 --yes
 Approved change request 00000000-0000-0000-0000-000000000000
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+warning: Change request 00000000-0000-0000-0000-000000000000 is already based on the current environment revision.
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000 --output json
+warning: Change request 00000000-0000-0000-0000-000000000000 is already based on the current environment revision.
 > esc env change-request get 00000000-0000-0000-0000-000000000000 --output json
 > esc env change-request apply 00000000-0000-0000-0000-000000000000 --dry-run
 > esc env change-request apply 00000000-0000-0000-0000-000000000000
