@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -480,7 +481,9 @@ func cloudCredentialEnvVars(ctx *Context) []string {
 	}
 	vars := make([]string, 0, len(ctx.CloudCredentialEnv))
 	for k, v := range ctx.CloudCredentialEnv {
-		vars = append(vars, k+"="+v)
+		if v != "" {
+			vars = append(vars, k+"="+v)
+		}
 	}
 	return vars
 }
@@ -511,6 +514,13 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		environment = append(environment, "PULUMI_LOG_OTLP_ENDPOINT="+logEP)
 	}
 
+	if ctx != nil {
+		environment = slices.DeleteFunc(environment, func(entry string) bool {
+			k, _, _ := strings.Cut(entry, "=")
+			v, ok := ctx.CloudCredentialEnv[k]
+			return ok && v == ""
+		})
+	}
 	// Appended last to win over ambient values.
 	environment = append(environment, cloudCredentialEnvVars(ctx)...)
 

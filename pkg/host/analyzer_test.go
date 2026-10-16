@@ -37,7 +37,7 @@ func TestAnalyzerSpawnBinary(t *testing.T) {
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil, nil)
 	require.NoError(t, err)
 
 	// Build a tiny go program that exits with a non-zero code; we only need to prove that
@@ -84,7 +84,7 @@ func TestAnalyzerBinaryVersionFromYaml(t *testing.T) {
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil, nil)
 	require.NoError(t, err)
 
 	binName := "pulumi-analyzer-binary"
@@ -109,7 +109,7 @@ func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil, nil)
 	require.NoError(t, err)
 
 	// Sanity test that from config.Map to property values we see what we expect to see
@@ -156,7 +156,7 @@ func TestAnalyzerSpawnViaLanguageNoConfig(t *testing.T) {
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil, nil)
 	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/analyzer-language")

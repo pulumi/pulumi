@@ -109,7 +109,7 @@ func preflightCloudCredentials(
 	}
 
 	// The check has its own plugin context so that the providers it launches are released when it is done.
-	pctx, err := plugin.NewContextWithHost(ctx, sink, sink, host, root, root, nil)
+	pctx, err := plugin.NewContextWithHost(ctx, sink, sink, host, root, root, nil, nil)
 	if err != nil {
 		slog.DebugContext(ctx, "skipping credentials check", "err", err)
 		return

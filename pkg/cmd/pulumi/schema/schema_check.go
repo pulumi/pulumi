@@ -81,7 +81,7 @@ or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.`,
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
-			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil)
+			pctx, err := plugin.NewContext(cmd.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil, nil)
 			if err != nil {
 				return err
 			}

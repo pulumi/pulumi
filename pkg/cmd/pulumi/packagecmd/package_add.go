@@ -147,7 +147,7 @@ quoted as a single shell-style string:
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
 			pctx, err := plugin.NewContext(cmd.Context(),
-				sink, sink, pluginHost, nil, target.installRoot, nil, false, nil)
+				sink, sink, pluginHost, nil, target.installRoot, nil, false, nil, nil)
 			if err != nil {
 				return err
 			}

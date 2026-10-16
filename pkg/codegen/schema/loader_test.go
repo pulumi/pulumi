@@ -40,7 +40,7 @@ func initLoader(b testing.TB, options pluginLoaderCacheOptions) ReferenceLoader 
 	require.NoError(b, err)
 	b.Cleanup(func() { require.NoError(b, pluginHost.Close()) })
 	ctx, err := plugin.NewContext(
-		b.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+		b.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil, nil)
 	require.NoError(b, err)
 	loader := newPluginLoaderWithOptions(ctx, options)
 
@@ -184,7 +184,7 @@ func TestLoadParameterized(t *testing.T) {
 		},
 	}
 
-	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil, nil)
 	require.NoError(t, err)
 	loader := newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,
@@ -248,7 +248,7 @@ func TestLoadNameMismatch(t *testing.T) {
 		},
 	}
 
-	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil, nil)
 	require.NoError(t, err)
 	loader := newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,
@@ -321,7 +321,7 @@ func TestLoadVersionMismatch(t *testing.T) {
 		},
 	}
 
-	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil, nil)
 	require.NoError(t, err)
 	loader := newPluginLoaderWithOptions(pctx, pluginLoaderCacheOptions{
 		disableEntryCache: true,

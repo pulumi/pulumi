@@ -188,9 +188,10 @@ func (ctx *Context) ProjectPlugins() []workspace.ProjectPlugin {
 // NewContext allocates a new context with a given sink and host. The host is required and is
 // owned by the caller: closing the context does not close the host, since a single host may be
 // shared by several contexts.
+// A nil cloudCredentialEnv uses the normal environment and stored credential lookup.
 func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSource,
 	pwd string, runtimeOptions map[string]any, disableProviderPreview bool,
-	parentSpan opentracing.Span,
+	parentSpan opentracing.Span, cloudCredentialEnv map[string]string,
 ) (*Context, error) {
 	// TODO: really this ought to just take plugins *workspace.Plugins and packages map[string]workspace.PackageSpec
 	// as args, but yaml depends on this function so *sigh*. For now just see if there's a project we should be using,
@@ -211,14 +212,16 @@ func NewContext(ctx context.Context, d, statusD diag.Sink, host Host, _ ConfigSo
 	}
 
 	return NewContextWithRoot(ctx, d, statusD, host, pwd, root, runtimeOptions,
-		disableProviderPreview, parentSpan, plugins, packages, nil)
+		disableProviderPreview, parentSpan, plugins, packages, nil, cloudCredentialEnv)
 }
 
 // NewContextWithRoot is a variation of NewContext that also sets known project Root. Additionally accepts Plugins
+// A nil cloudCredentialEnv uses the normal environment and stored credential lookup.
 func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	pwd, root string, runtimeOptions map[string]any, disableProviderPreview bool,
 	parentSpan opentracing.Span, plugins *workspace.Plugins, packages map[string]workspace.PackageSpec,
 	config map[config.Key]string,
+	cloudCredentialEnv map[string]string,
 ) (*Context, error) {
 	contract.Assertf(host != nil, "host cannot be nil")
 	if d == nil {
@@ -239,6 +242,9 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
+	if cloudCredentialEnv == nil {
+		cloudCredentialEnv = pulumiCloudCredentialEnv(env.Global(), project)
+	}
 
 	pctx := &Context{
 		Diag:                   d,
@@ -254,7 +260,7 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 		disableProviderPreview: disableProviderPreview,
 		config:                 config,
 		projectName:            projectName,
-		CloudCredentialEnv:     pulumiCloudCredentialEnv(env.Global(), project),
+		CloudCredentialEnv:     cloudCredentialEnv,
 	}
 
 	projectPlugins, err := projectPluginsFromProject(pctx, plugins, packages)
@@ -292,13 +298,14 @@ func NewContextWithRoot(ctx context.Context, d, statusD diag.Sink, host Host,
 // Unlike [NewContext] or [NewContextWithRoot], NewContextWithHost does not accept a nil host.
 // The host is owned by the caller: closing the returned context does not close the host.
 //
-// d, statusD and parentSpan may all be nil.
+// d, statusD, parentSpan, and cloudCredentialEnv may all be nil.
 func NewContextWithHost(
 	ctx context.Context,
 	d, statusD diag.Sink,
 	host Host,
 	pwd, root string,
 	parentSpan opentracing.Span,
+	cloudCredentialEnv map[string]string,
 ) (*Context, error) {
 	contract.Assertf(host != nil, "NewContextWithHost requires a non-nil host")
 	if d == nil {
@@ -320,6 +327,8 @@ func NewContextWithHost(
 		DebugTraceMutex: &sync.Mutex{},
 		cancel:          cancel,
 		baseContext:     ctx,
+
+		CloudCredentialEnv: cloudCredentialEnv,
 	}
 
 	if err := pctx.startServices(host); err != nil {

@@ -355,7 +355,7 @@ func NewPluginContext(cwd string, reg registry.Registry) (*plugin.Context, error
 	if err != nil {
 		return nil, err
 	}
-	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, pluginHost, nil, cwd, nil, true, nil, nil)
 	if err != nil {
 		return nil, errors.Join(err, pluginHost.Close())
 	}

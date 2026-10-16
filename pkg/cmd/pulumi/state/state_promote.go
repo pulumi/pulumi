@@ -279,7 +279,7 @@ func generateSnippetProgram(
 	}
 	defer contract.IgnoreClose(host)
 
-	pctx, err := plugin.NewContext(ctx, sink, sink, host, nil, wd, nil, true, nil)
+	pctx, err := plugin.NewContext(ctx, sink, sink, host, nil, wd, nil, true, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create plugin context: %w", err)
 	}

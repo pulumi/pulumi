@@ -912,7 +912,7 @@ func NewImportCmd() *cobra.Command {
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
-			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil)
+			pCtx, err := plugin.NewContext(ctx, sink, sink, pluginHost, nil, cwd, nil, true, nil, nil)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}
@@ -958,7 +958,8 @@ func NewImportCmd() *cobra.Command {
 						pCtx.Diag.Warningf(diag.Message("", "failed to create plugin spec for provider %q: %v"), pluginName, err)
 						return nil
 					}
-					version, err := pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromContext)
+					version, err := pkgWorkspace.InstallPlugin(
+						ctx, pluginSpec, log, schema.NewLoaderServerFromContext, pCtx.CloudCredentialEnv)
 					if err != nil {
 						pCtx.Diag.Warningf(diag.Message("", "failed to install provider %q: %v"), pluginName, err)
 						return nil
@@ -1157,7 +1158,7 @@ func NewImportCmd() *cobra.Command {
 				}
 				// host is owned here, closed after the context
 				defer contract.IgnoreClose(innerHost)
-				ctx, err := plugin.NewContext(ctx, sink, sink, innerHost, nil, cwd, nil, true, nil)
+				ctx, err := plugin.NewContext(ctx, sink, sink, innerHost, nil, cwd, nil, true, nil, pCtx.CloudCredentialEnv)
 				if err != nil {
 					return nil, nil, err
 				}

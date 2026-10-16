@@ -109,7 +109,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					reg := cmdCmd.NewDefaultRegistry(
 						ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
 					if _, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
-						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global()); err != nil {
+						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(), nil); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
 
@@ -145,6 +145,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				false,
 				span,
 				nil,
+				nil,
 			)
 			if err != nil {
 				return err
@@ -158,6 +159,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, pctx.Diag, env.Global())
 			continuation, err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
 				registry, parallel, useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
+				pctx.CloudCredentialEnv,
 			)
 			if err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)

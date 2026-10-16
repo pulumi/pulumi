@@ -89,7 +89,7 @@ func getProjectPlugins(ctx context.Context) ([]workspace.PluginDescriptor, error
 	}
 	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
 	pwd, main, pctx, err := engine.ProjectInfoContext(
-		ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil)
+		ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func resolvePlugins(ctx context.Context, plugins []workspace.PluginDescriptor) (
 		return nil, err
 	}
 	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
-	_, _, pctx, err := engine.ProjectInfoContext(ctx, projinfo, pluginHost, d, d, false, nil, nil)
+	_, _, pctx, err := engine.ProjectInfoContext(ctx, projinfo, pluginHost, d, d, false, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}

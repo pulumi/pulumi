@@ -87,6 +87,7 @@ func InstallPluginDependencies(
 		false,
 		span,
 		nil,
+		nil,
 	)
 	if err != nil {
 		return err

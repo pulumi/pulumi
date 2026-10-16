@@ -108,7 +108,7 @@ func newPolicyAnalyzeCmd(
 						return nil, nil, fmt.Errorf("creating plugin host: %w", err)
 					}
 					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
-						pluginHost, nil, cwd, nil, true, nil)
+						pluginHost, nil, cwd, nil, true, nil, nil)
 					if err != nil {
 						contract.IgnoreClose(pluginHost)
 						return nil, nil, fmt.Errorf("creating plugin context: %w", err)
