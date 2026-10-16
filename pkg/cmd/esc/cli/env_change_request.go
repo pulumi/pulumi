@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -47,7 +48,7 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 			"--draft, such as `env edit` and `env set`. Use `env open --draft=<id>`\n" +
 			"to open the draft version of an environment.\n" +
 			"\n" +
-			"Subcommands exist for listing, viewing, and diffing change requests.",
+			"Subcommands exist for listing, viewing, diffing, and closing change requests.",
 		Example: fmt.Sprintf("  # Propose a change, then review and apply it\n"+
 			"  %[1]s env set my-project/prod app.replicas 3 --draft\n"+
 			"  %[1]s env change-request list --env my-project/prod\n"+
@@ -60,6 +61,7 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 
 	cmd.AddCommand(newEnvChangeRequestLsCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestGetCmd(cr))
+	cmd.AddCommand(newEnvChangeRequestCloseCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestDiffCmd(cr))
 
 	return cmd
@@ -73,6 +75,14 @@ func (cr *changeRequestCommand) orgName(ctx context.Context) (string, error) {
 		return cr.org, nil
 	}
 	return cr.env.esc.account.DefaultOrg, nil
+}
+
+func (cr *changeRequestCommand) warnNoop(msg, comment string) {
+	if comment != "" {
+		msg += " The comment was not posted."
+	}
+	fmt.Fprint(cr.env.esc.stderr,
+		cr.env.esc.colors.Colorize(fmt.Sprintf("%swarning: %v%s\n", colors.SpecWarning, msg, colors.Reset)))
 }
 
 // printDraftDiff prints the difference between the given version of an environment and a change request's draft.
@@ -339,6 +349,53 @@ func printChangeRequest(
 	if url != "" {
 		fmt.Fprintf(w, "URL: %v\n", url)
 	}
+}
+
+func newEnvChangeRequestCloseCmd(cr *changeRequestCommand) *cobra.Command {
+	var comment string
+
+	cmd := &cobra.Command{
+		Use:   "close <change-request-id>",
+		Short: "[EXPERIMENTAL] Close a change request.",
+		Long: "[EXPERIMENTAL] Close a change request\n" +
+			"\n" +
+			"This command closes a change request without applying it. A closed change request cannot be\n" +
+			"reopened.\n",
+		Example: fmt.Sprintf("  # Close a change request\n"+
+			"  %[1]s env change-request close <change-request-id>\n\n"+
+			"  # Close with a comment explaining why\n"+
+			"  %[1]s env change-request close <change-request-id> -m \"Superseded by another change\"",
+			cr.env.esc.command),
+		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			orgName, err := cr.orgName(ctx)
+			if err != nil {
+				return err
+			}
+
+			c, err := cr.env.esc.client.GetChangeRequest(ctx, orgName, args[0])
+			if err != nil {
+				return fmt.Errorf("getting change request: %w", err)
+			}
+			if c.Status == "closed" {
+				cr.warnNoop(fmt.Sprintf("Change request %v is already closed.", c.ID), comment)
+				return nil
+			}
+
+			if err := cr.env.esc.client.CloseChangeRequest(ctx, orgName, c.ID, comment); err != nil {
+				return fmt.Errorf("closing change request: %w", err)
+			}
+
+			fmt.Fprintf(cr.env.esc.stderr, "Closed change request %v\n", c.ID)
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVarP(&comment, "message", "m", "", "a comment explaining why the change request was closed")
+
+	return cmd
 }
 
 func newEnvChangeRequestDiffCmd(cr *changeRequestCommand) *cobra.Command {

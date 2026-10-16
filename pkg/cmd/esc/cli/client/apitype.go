@@ -226,6 +226,10 @@ type GetChangeRequestResponse struct {
 	GateEvaluation ChangeRequestGateEvaluation `json:"gateEvaluation"`
 }
 
+type ChangeRequestComment struct {
+	Comment string `json:"comment,omitempty"`
+}
+
 type EnvironmentDraftStatus struct {
 	BaseRevision        int `json:"baseRevision"`
 	EnvironmentRevision int `json:"environmentRevision"`

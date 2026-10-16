@@ -206,6 +206,9 @@ type Client interface {
 	// GetChangeRequest returns the change request with the specified ID and its gate evaluation.
 	GetChangeRequest(ctx context.Context, orgName, changeRequestID string) (*GetChangeRequestResponse, error)
 
+	// CloseChangeRequest closes a change request without applying it.
+	CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error
+
 	// GetEnvironmentDraftStatus returns the draft's base revision and the environment's current revision.
 	GetEnvironmentDraftStatus(
 		ctx context.Context,
@@ -947,6 +950,11 @@ func (pc *client) GetChangeRequest(
 		return nil, err
 	}
 	return &resp, nil
+}
+
+func (pc *client) CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error {
+	path := fmt.Sprintf("/api/change-requests/%v/%v/close", orgName, changeRequestID)
+	return pc.restCall(ctx, http.MethodPost, path, nil, &ChangeRequestComment{Comment: comment}, nil)
 }
 
 func (pc *client) GetEnvironmentDraftStatus(
