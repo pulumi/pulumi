@@ -148,7 +148,7 @@ func (t *UnionType) Pretty() pretty.Formatter {
 	return t.pretty(seenFormatters)
 }
 
-// Traverse attempts to traverse the union type with the given traverser. This always fails.
+// Traverse returns the union of successful traversal results, or errors if no non-none member succeeds.
 func (t *UnionType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	var types []Type
 	var foundDiags hcl.Diagnostics
@@ -171,13 +171,14 @@ func (t *UnionType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnost
 		}
 	}
 
+	if len(types) == 0 || len(types) == 1 && types[0] == NoneType {
+		diag := unsupportedReceiverType(t, traverser.SourceRange())
+		diag.Extra = &UnionTraversalDiagnostic{Causes: foundDiags}
+		return DynamicType, foundDiags.Append(diag)
+	}
+
 	switch len(types) {
-	case 0:
-		return DynamicType, foundDiags.Append(unsupportedReceiverType(t, traverser.SourceRange()))
 	case 1:
-		if types[0] == NoneType {
-			return DynamicType, foundDiags.Append(unsupportedReceiverType(t, traverser.SourceRange()))
-		}
 		return types[0], nil
 	default:
 		return NewUnionType(types...), nil
