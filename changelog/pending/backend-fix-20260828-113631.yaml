@@ -1,0 +1,4 @@
+component: backend
+kind: fix
+body: Refuse to create a stack under a project name the service cannot store, and say which stack and project disagree when they do not match
+time: 2026-08-28T11:36:31.055158+02:00
