@@ -2,6 +2,14 @@ name: Update Automation APIs
 
 permissions:
   contents: read
+  id-token: write
+
+env:
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 
 on:
   push:
@@ -18,9 +26,12 @@ jobs:
     name: Regenerate automation APIs
     runs-on: ubuntu-latest
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@57e332b6dfb0d7edcf6cb813ee9a98b9665f12c2 # v3
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
       - uses: ./.github/actions/retry
         with:
           action: jdx/mise-action@v2
@@ -33,7 +44,7 @@ jobs:
       - name: Create or update PR
         id: pr
         env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
         run: |
           set -euo pipefail
           branch=automation/update-automation-api
@@ -71,7 +82,7 @@ jobs:
         uses: slackapi/slack-github-action@v2
         with:
           method: chat.postMessage
-          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          token: ${{ steps.esc-secrets.outputs.RELEASE_BOT_TOKEN }}
           payload: |
             channel: "#team-iac-core"
             text: "The `pulumi` automation APIs have drifted from the CLI; a regeneration PR is ready for review: ${{ steps.pr.outputs.url }}"
