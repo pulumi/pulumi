@@ -237,9 +237,9 @@ func (r registryTemplate) Name() string {
 	switch r.t.Source {
 	case "github", "gitlab":
 		parts := strings.SplitN(r.t.Name, "/", 3)
-		return parts[len(parts)-1]
+		return stripControlChars(parts[len(parts)-1])
 	default:
-		return r.t.Name
+		return stripControlChars(r.t.Name)
 	}
 }
 
@@ -254,27 +254,27 @@ func (r registryTemplate) DisplayName() string {
 		nameParts := strings.SplitN(r.t.Name, "/", 3)
 		name := nameParts[len(nameParts)-1]
 		if r.t.RepoSlug != nil {
-			return fmt.Sprintf("%s [%s]", name, *r.t.RepoSlug)
+			return stripControlChars(fmt.Sprintf("%s [%s]", name, *r.t.RepoSlug))
 		}
-		return name
+		return stripControlChars(name)
 	default:
 		if r.GetPublisher() != "" {
-			return fmt.Sprintf("%s [%s]", r.t.Name, r.GetPublisher())
+			return stripControlChars(fmt.Sprintf("%s [%s]", r.t.Name, r.GetPublisher()))
 		}
-		return r.t.Name
+		return stripControlChars(r.t.Name)
 	}
 }
 
 func (r registryTemplate) Description() string {
 	if r.t.Description != nil {
-		return *r.t.Description
+		return stripControlChars(*r.t.Description)
 	}
 	return ""
 }
 
 func (r registryTemplate) Error() error { return nil }
 
-func (r registryTemplate) Publisher() string { return r.GetPublisher() }
+func (r registryTemplate) Publisher() string { return stripControlChars(r.GetPublisher()) }
 
 func (r registryTemplate) Download(ctx context.Context) (ProjectTemplate, error) {
 	templateBytes, err := r.registry.DownloadTemplate(ctx, r.t.DownloadURL)
@@ -443,9 +443,9 @@ type orgTemplate struct {
 
 var _ Template = (*orgTemplate)(nil)
 
-func (t orgTemplate) Name() string        { return t.t.Name }
-func (t orgTemplate) DisplayName() string { return t.t.Name }
-func (t orgTemplate) Description() string { return t.t.Description }
+func (t orgTemplate) Name() string        { return stripControlChars(t.t.Name) }
+func (t orgTemplate) DisplayName() string { return stripControlChars(t.t.Name) }
+func (t orgTemplate) Description() string { return stripControlChars(t.t.Description) }
 func (t orgTemplate) Error() error        { return nil }
 func (t orgTemplate) Publisher() string   { return t.org }
 func (t orgTemplate) Download(ctx context.Context) (ProjectTemplate, error) {
