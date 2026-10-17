@@ -667,7 +667,16 @@ func (d deleteProtectedError) Error() string {
 		"because it is protected. To unprotect the resource, "+
 		"either remove the `protect` flag from the resource in your Pulumi "+
 		"program and run `pulumi up`, or use the command:\n"+
-		"`pulumi state unprotect %[2]s`", d.urn, d.urn.Quote())
+		"`%[2]s`", d.urn, unprotectCommand(d.urn))
+}
+
+// unprotectCommand returns the `pulumi state unprotect` command for urn, scoped to the urn's stack
+// so that it also works when a different stack is selected.
+func unprotectCommand(u resource.URN) string {
+	if !u.IsValid() {
+		return "pulumi state unprotect " + u.Quote()
+	}
+	return fmt.Sprintf("pulumi state unprotect --stack %s %s", u.Stack(), u.Quote())
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {

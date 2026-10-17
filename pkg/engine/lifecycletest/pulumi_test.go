@@ -2835,7 +2835,7 @@ func TestProtect(t *testing.T) {
 	expectedMessage = "<{%reset%}>resource \"urn:pulumi:test::test::pkgA:m:typA::resA\" cannot be deleted\n" +
 		"because it is protected. To unprotect the resource, either remove the `protect` flag " +
 		"from the resource in your Pulumi program and run `pulumi up`, or use the command:\n" +
-		"`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>\n"
+		"`pulumi state unprotect --stack test 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>\n"
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "3")
 	assert.Error(t, err)

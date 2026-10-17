@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Include `--stack` in the `pulumi state unprotect` hint shown for protected resources
+time: 2026-10-07T09:00:00Z
