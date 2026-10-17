@@ -41,6 +41,11 @@ import (
 const (
 	pulumiPackage          = "pulumi"
 	LogicalNamePropertyKey = "__logicalName"
+	// QuotedPropertiesKey names the attribute of a resource or component body that holds properties by quoted name,
+	// as in `_ = { "foo!" = 1 }`. HCL body attributes must be identifiers, so a property whose name is not an
+	// identifier can only be set this way. In a property path such as `ignoreChanges`, `_["foo!"]` refers to that
+	// property.
+	QuotedPropertiesKey = "_"
 )
 
 type ComponentProgramBinderArgs struct {
