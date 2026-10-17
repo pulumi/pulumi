@@ -586,6 +586,7 @@ type ReadResourceResponse struct {
 	Properties    *structpb.Struct       `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`                // the state of the resource read from the live environment.
 	Result        Result                 `protobuf:"varint,3,opt,name=result,proto3,enum=pulumirpc.Result" json:"result,omitempty"` // the reason, whether the read was successful or failed.
 	Unknown       bool                   `protobuf:"varint,4,opt,name=unknown,proto3" json:"unknown,omitempty"`                     // true if the result of the read is unknown, e.g. because the read was skipped as part of a --continue-on-error run; result is still SUCCESS and SDKs should resolve outputs as unknown.
+	Id            string                 `protobuf:"bytes,5,opt,name=id,proto3" json:"id,omitempty"`                                // the id resolved by the provider's Read. If empty, SDKs should treat the id as unknown during preview, otherwise fall back to the id supplied on the request for back-compat with older engines.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -646,6 +647,13 @@ func (x *ReadResourceResponse) GetUnknown() bool {
 		return x.Unknown
 	}
 	return false
+}
+
+func (x *ReadResourceResponse) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
 }
 
 // ExistsResourceRequest contains enough information to check whether a resource with a given ID exists.
@@ -3570,14 +3578,15 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x13accepts_byte_string\x18\x13 \x01(\bR\x11acceptsByteString\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01J\x04\b\v\x10\fR\aaliases\"\xa6\x01\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01J\x04\b\v\x10\fR\aaliases\"\xb6\x01\n" +
 	"\x14ReadResourceResponse\x12\x10\n" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
 	"properties\x12)\n" +
 	"\x06result\x18\x03 \x01(\x0e2\x11.pulumirpc.ResultR\x06result\x12\x18\n" +
-	"\aunknown\x18\x04 \x01(\bR\aunknown\"\xb5\x03\n" +
+	"\aunknown\x18\x04 \x01(\bR\aunknown\x12\x0e\n" +
+	"\x02id\x18\x05 \x01(\tR\x02id\"\xb5\x03\n" +
 	"\x15ExistsResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x16\n" +

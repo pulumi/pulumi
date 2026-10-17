@@ -916,7 +916,17 @@ def read_resource(
 
         log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn, True, False, None)
-        resolve_id(resolved_id, True, False, None)  # Read IDs are always known.
+        # Prefer the id returned by the provider's Read, which may differ from the id supplied
+        # on the request (e.g. a provider that normalizes it). An empty response id during preview
+        # means "unknown"; during update it indicates an older engine that did not populate the
+        # field, in which case we fall back to the request id for back-compat.
+        resp_id = getattr(resp, "id", "") or ""
+        if resp_id:
+            resolve_id(resp_id, True, False, None)
+        elif settings.is_dry_run():
+            resolve_id(None, False, False, None)
+        else:
+            resolve_id(resolved_id, True, False, None)
         # A skipped read reports unknown=true; resolve outputs as unknown so dependents
         # propagate unknowns instead of seeing empty values as real.
         unknown = not settings.is_dry_run() and resp.unknown
