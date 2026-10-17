@@ -37,7 +37,7 @@ func evaluateLocals(t *testing.T, source string) map[string]property.Value {
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), diags.Error())
 
-	ectx := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil)
+	ectx := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil, nil)
 	values := map[string]property.Value{}
 	for _, node := range program.Nodes {
 		local := node.(*pcl.LocalVariable)

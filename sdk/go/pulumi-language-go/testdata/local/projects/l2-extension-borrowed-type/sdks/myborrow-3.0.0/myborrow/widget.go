@@ -65,6 +65,12 @@ func (WidgetState) ElementType() reflect.Type {
 	return reflect.TypeOf((*widgetState)(nil)).Elem()
 }
 
+// WidgetExists checks whether an existing Widget resource with the given ID exists.
+func WidgetExists(ctx *pulumi.Context,
+	id pulumi.IDInput, state *WidgetState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	return ctx.ExistsResource("myborrow:index:Widget", id, state, "", opts...)
+}
+
 type widgetArgs struct {
 }
 

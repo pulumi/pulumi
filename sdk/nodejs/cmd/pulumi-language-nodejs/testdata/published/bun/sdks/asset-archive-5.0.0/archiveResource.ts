@@ -17,6 +17,16 @@ export class ArchiveResource extends pulumi.CustomResource {
         return new ArchiveResource(name, undefined as any, { ...opts, id: id });
     }
 
+    /**
+     * Check whether an existing ArchiveResource resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<pulumi.ID>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("asset-archive:index:ArchiveResource", id, {}, { ...opts }, undefined);
+    }
+
     /** @internal */
     public static readonly __pulumiType = 'asset-archive:index:ArchiveResource';
 

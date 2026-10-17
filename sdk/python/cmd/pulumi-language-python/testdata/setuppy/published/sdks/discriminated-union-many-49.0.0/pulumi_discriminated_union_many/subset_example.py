@@ -112,6 +112,15 @@ class SubsetExample(pulumi.CustomResource):
         __props__.__dict__["union_of"] = None
         return SubsetExample(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = SubsetExampleArgs.__new__(SubsetExampleArgs)
+
+        __props__.__dict__["union_of"] = None
+        __inst__ = SubsetExample.__new__(SubsetExample)
+        return pulumi.runtime.exists_resource(__inst__, 'discriminated-union-many:index:SubsetExample', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="unionOf")
     def union_of(self) -> pulumi.Output[Optional[Union['outputs.Variant1', 'outputs.Variant2', 'outputs.Variant3']]]:
