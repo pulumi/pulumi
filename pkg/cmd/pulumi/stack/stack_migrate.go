@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -50,7 +49,7 @@ type stackMigrateCmd struct {
 	yes             bool
 	force           bool
 
-	// Test seam: overrides backend_secrets.DefaultProvider during deployment deserialize.
+	// Test seam: overrides secrets reconstruction during deployment deserialization.
 	deploymentSecretsProvider secrets.Provider
 }
 
@@ -518,7 +517,7 @@ func (cmd *stackMigrateCmd) Run(
 	deploySP := cmd.deploymentSecretsProvider
 	if deploySP == nil {
 		// Reuse srcSM (built above for config decryption) so passphrase isn't prompted twice.
-		deploySP = &reusingSecretsProvider{cached: srcSM, fallback: backend_secrets.DefaultProvider}
+		deploySP = &reusingSecretsProvider{cached: srcSM, fallback: cmdBackend.SecretsProvider(lm)}
 	}
 	// Deserialize before rename so encrypted secrets are available to the shared rename path below.
 	snap, err := stack.DeserializeUntypedDeployment(ctx, sourceDeployment, deploySP)
