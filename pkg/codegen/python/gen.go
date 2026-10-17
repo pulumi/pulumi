@@ -1751,7 +1751,7 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 	propType func(prop *schema.Property) string,
 ) error {
 	for _, prop := range properties {
-		pname := PyName(prop.Name)
+		pname := pythonPropertyName(prop.Name)
 		ty := propType(prop)
 		fmt.Fprintf(w, "%s    @_builtins.property\n", indent)
 		if pname == prop.Name {
@@ -1772,12 +1772,13 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 			}
 			printComment(w, comment, indent+"        ")
 		}
-		fmt.Fprintf(w, "%s        return pulumi.get(self, %q)\n\n", indent, pname)
+		storageName := pythonPropertyStorageName(prop.Name)
+		fmt.Fprintf(w, "%s        return pulumi.get(self, %q)\n\n", indent, storageName)
 
 		if setters {
 			fmt.Fprintf(w, "%s    @%s.setter\n", indent, pname)
 			fmt.Fprintf(w, "%s    def %s(self, value: %s):\n", indent, pname, ty)
-			fmt.Fprintf(w, "%s        pulumi.set(self, %q, value)\n\n", indent, pname)
+			fmt.Fprintf(w, "%s        pulumi.set(self, %q, value)\n\n", indent, storageName)
 		}
 	}
 	return nil
@@ -3081,7 +3082,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	if resourceOutput {
 		var needsCaseWarning bool
 		for _, prop := range props {
-			pname := PyName(prop.Name)
+			pname := pythonPropertyName(prop.Name)
 			if pname != prop.Name {
 				needsCaseWarning = true
 				break
@@ -3093,7 +3094,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 			fmt.Fprintf(w, "        suggest = None\n")
 			prefix := "if"
 			for _, prop := range props {
-				pname := PyName(prop.Name)
+				pname := pythonPropertyName(prop.Name)
 				if pname == prop.Name {
 					continue
 				}
@@ -3116,14 +3117,20 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		}
 	}
 
-	// Generate an __init__ method.
+	// Generate an __init__ method. Name-mangled constant input properties are initialized below and are not arguments.
+	initProps := slice.Prealloc[*schema.Property](len(props))
+	for _, prop := range props {
+		if !input || prop.ConstValue == nil || !isNameMangled(PyName(prop.Name)) {
+			initProps = append(initProps, prop)
+		}
+	}
 	fmt.Fprintf(w, "    def __init__(__self__")
 	// Bare `*` argument to force callers to use named arguments.
-	if len(props) > 0 {
+	if len(initProps) > 0 {
 		fmt.Fprintf(w, ", *")
 	}
-	for _, prop := range props {
-		pname := PyName(prop.Name)
+	for _, prop := range initProps {
+		pname := pythonPropertyName(prop.Name)
 		ty := mod.propertyTypeString(prop, prop.Type, typeStringOpts{input: input})
 		if prop.DefaultValue != nil {
 			ty = mod.propertyTypeString(prop, codegen.OptionalType(prop), typeStringOpts{input: input})
@@ -3141,19 +3148,21 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	if err != nil {
 		return err
 	}
-	if err := mod.genTypeDocstring(w, initComment, props); err != nil {
+	if err := mod.genTypeDocstring(w, initComment, initProps); err != nil {
 		return err
 	}
-	if len(props) == 0 {
+	if len(initProps) == 0 && len(props) == 0 {
 		fmt.Fprintf(w, "        pass\n")
 	}
 	for _, prop := range props {
-		pname := PyName(prop.Name)
+		pname := pythonPropertyName(prop.Name)
 		var arg any
 		var err error
 
+		omitInitArg := input && prop.ConstValue != nil && isNameMangled(PyName(prop.Name))
+
 		// Check that the property isn't deprecated.
-		if input && prop.DeprecationMessage != "" {
+		if input && !omitInitArg && prop.DeprecationMessage != "" {
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
 			fmt.Fprintf(w, "            warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
@@ -3161,7 +3170,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		}
 
 		// Fill in computed defaults for arguments.
-		if prop.DefaultValue != nil {
+		if !omitInitArg && prop.DefaultValue != nil {
 			dv, err := getDefaultValue(prop.DefaultValue, codegen.UnwrapType(prop.Type))
 			if err != nil {
 				return err
@@ -3181,12 +3190,13 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		}
 
 		var indent string
-		if !prop.IsRequired() {
+		if !omitInitArg && !prop.IsRequired() {
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
 			indent = "    "
 		}
 
-		fmt.Fprintf(w, "%s        pulumi.set(__self__, \"%s\", %s)\n", indent, pname, arg)
+		storageName := pythonPropertyStorageName(prop.Name)
+		fmt.Fprintf(w, "%s        pulumi.set(__self__, \"%s\", %s)\n", indent, storageName, arg)
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -3216,12 +3226,44 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 	})
 
 	name = pythonCase(name)
-
-	fmt.Fprintf(w, "class %sDict(TypedDict):\n", name)
-
-	indent := "    "
+	functional := false
+	for _, prop := range props {
+		if isNameMangled(PyName(prop.Name)) {
+			functional = true
+			break
+		}
+	}
 
 	docRef := schema.DocRef{}
+	if functional {
+		if comment != "" {
+			typeComment, err := mod.genComment(comment, docRef, false /*filterExamples*/)
+			if err != nil {
+				return err
+			}
+			printComment(w, typeComment, "")
+		}
+		fmt.Fprintf(w, "%sDict = TypedDict(%q, {\n", name, name+"Dict")
+		for _, prop := range props {
+			pname := PyName(prop.Name)
+			ty := mod.propertyTypeString(prop, prop.Type, typeStringOpts{input: true, forDict: true})
+			fmt.Fprintf(w, "    %q: %s,\n", pname, ty)
+			if prop.Comment != "" {
+				propComment, err := mod.genComment(prop.Comment, docRef, false /*filterExamples*/)
+				if err != nil {
+					return err
+				}
+				for line := range strings.SplitSeq(propComment, "\n") {
+					fmt.Fprintf(w, "    # %s\n", line)
+				}
+			}
+		}
+		fmt.Fprintf(w, "})\n\n")
+		return nil
+	}
+
+	fmt.Fprintf(w, "class %sDict(TypedDict):\n", name)
+	indent := "    "
 	if comment != "" {
 		typeComment, err := mod.genComment(comment, docRef, false /*filterExamples*/)
 		if err != nil {
@@ -3229,7 +3271,6 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 		}
 		printComment(w, typeComment, indent)
 	}
-
 	for _, prop := range props {
 		pname := PyName(prop.Name)
 		ty := mod.propertyTypeString(prop, prop.Type, typeStringOpts{input: true, forDict: true})
@@ -3242,13 +3283,31 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 			printComment(w, propComment, indent)
 		}
 	}
-
 	if len(props) == 0 {
 		fmt.Fprintf(w, "%spass\n", indent)
 	}
-
 	fmt.Fprintf(w, "\n")
 	return nil
+}
+
+func isNameMangled(name string) bool {
+	return strings.HasPrefix(name, "__") && !strings.HasSuffix(name, "__")
+}
+
+func pythonPropertyName(name string) string {
+	name = PyName(name)
+	if isNameMangled(name) {
+		return strings.TrimPrefix(name, "_")
+	}
+	return name
+}
+
+func pythonPropertyStorageName(name string) string {
+	pythonName := PyName(name)
+	if isNameMangled(pythonName) {
+		return name
+	}
+	return pythonName
 }
 
 func getPrimitiveValue(value any) (string, error) {
