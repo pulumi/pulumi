@@ -293,7 +293,9 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 			"roles/viewer (required for Discovery), or any other role; prompted for when omitted")
 	cmd.Flags().StringArrayVar(&projectIDs, "project-id", nil,
 		"a GCP `project` to set up (repeatable; prompted for when omitted)")
+	cmd.Flags().StringVarP(&orgName, "organization", "o", "", "the Pulumi organization to configure OIDC for")
 	cmd.Flags().StringVar(&orgName, "org", "", "the Pulumi organization to configure OIDC for")
+	_ = cmd.Flags().MarkHidden("org")
 	cmd.Flags().BoolVar(&yes, "yes", false, "skip all confirmation prompts")
 	cmd.Flags().StringVar(&projectName, "project", "gcp-login",
 		"the ESC project that per-project environments are created in")
