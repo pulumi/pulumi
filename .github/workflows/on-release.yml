@@ -54,7 +54,7 @@ jobs:
     steps:
       - name: Fetch secrets from ESC
         id: esc-secrets
-        uses: pulumi/esc-action@6cf9520e68354d86f81c455e8d43eabd58f5c9f5 # v1
+        uses: pulumi/esc-action@197ccaa42ab49560ce838a3010eb8345ce086896 # v1
       - name: Trigger pulumi-dotnet automation API update
         env:
           GITHUB_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
