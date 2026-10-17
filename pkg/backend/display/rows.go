@@ -470,11 +470,11 @@ func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) strin
 		// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
 		// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
 		if step.Op != deploy.OpSame {
-			if step.DetailedDiff != nil {
-				diff, _ = engine.TranslateDetailedDiff(&step, false)
-			} else if step.Old.Inputs != nil && step.New.Inputs != nil {
-				diff = step.Old.Inputs.DiffWithOptions(step.New.Inputs,
-					resource.IgnoreKeyFunc(resource.IsInternalPropertyKey))
+			// The progress row lists property names only, and deliberately diffs
+			// inputs rather than outputs: it reports what the program changed.
+			if step.DetailedDiff != nil || (step.Old.Inputs != nil && step.New.Inputs != nil) {
+				diff, _ = stepObjectDiff(step, step.Old.Inputs, step.New.Inputs,
+					false /* refresh */, nil /* hidePaths */)
 			}
 		}
 

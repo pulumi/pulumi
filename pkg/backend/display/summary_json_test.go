@@ -123,7 +123,7 @@ func TestResourceJSONFromEvent_SkipsInternal(t *testing.T) {
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
 	payload := makePreEvent(deploy.OpCreate, urn, "parent-urn", "", true /* internal */)
 
-	got := resourceJSONFromEvent(payload, false)
+	got := resourceJSONFromEvent(payload, Options{})
 	assert.Nil(t, got, "internal events must not surface in the summary")
 }
 
@@ -133,7 +133,7 @@ func TestResourceJSONFromEvent_SkipsSameByDefault(t *testing.T) {
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
 	payload := makePreEvent(deploy.OpSame, urn, "parent-urn", "", false)
 
-	got := resourceJSONFromEvent(payload, false /* showSames */)
+	got := resourceJSONFromEvent(payload, Options{})
 	assert.Nil(t, got, "same resources are filtered out unless --show-sames is set")
 }
 
@@ -143,7 +143,7 @@ func TestResourceJSONFromEvent_IncludesSameWhenShowSames(t *testing.T) {
 	urn := resource.NewURN("dev", "myapp", "", "aws:s3/bucket:Bucket", "mybucket")
 	payload := makePreEvent(deploy.OpSame, urn, "parent-urn", "", false)
 
-	got := resourceJSONFromEvent(payload, true /* showSames */)
+	got := resourceJSONFromEvent(payload, Options{ShowSameResources: true})
 	require.NotNil(t, got)
 	assert.Equal(t, apitype.OpType("same"), got.Op)
 }
@@ -155,7 +155,7 @@ func TestResourceJSONFromEvent_ExtractsTypeAndName(t *testing.T) {
 	parentURN := resource.NewURN("dev", "myapp", "", "pulumi:pulumi:Stack", "myapp-dev")
 	payload := makePreEvent(deploy.OpUpdate, urn, parentURN, "", false)
 
-	got := resourceJSONFromEvent(payload, false)
+	got := resourceJSONFromEvent(payload, Options{})
 	require.NotNil(t, got)
 	assert.Equal(t, string(urn), got.URN)
 	assert.Equal(t, "aws:s3/bucket:Bucket", got.Type)
@@ -180,7 +180,7 @@ func TestResourceJSONFromEvent_ParentFallsBackToOldOnDelete(t *testing.T) {
 		},
 	}
 
-	got := resourceJSONFromEvent(payload, false)
+	got := resourceJSONFromEvent(payload, Options{})
 	require.NotNil(t, got)
 	assert.Equal(t, string(parentURN), got.Parent)
 	assert.Equal(t, apitype.OpType("delete"), got.Op)

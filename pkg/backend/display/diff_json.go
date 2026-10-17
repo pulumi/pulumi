@@ -1,0 +1,216 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package display
+
+import (
+	"cmp"
+	"context"
+	"slices"
+
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+)
+
+// ObjectDiffJSON is the JSON projection of a resource.ObjectDiff, emitted when
+// `--diff` and `--output json` are combined. It keeps the nesting the `--diff`
+// view renders as text, but reports only what changed: unchanged properties,
+// which that view prints as context, are omitted.
+type ObjectDiffJSON struct {
+	// Creates holds the properties present only in the new value.
+	Creates map[string]any `json:"creates,omitempty"`
+	// Deletes holds the properties present only in the old value.
+	Deletes map[string]any `json:"deletes,omitempty"`
+	// Updates holds the properties that changed, keyed by property name.
+	Updates map[string]ValueDiffJSON `json:"updates,omitempty"`
+	// Hidden lists property paths whose diffs were withheld from this object.
+	Hidden []string `json:"hidden,omitempty"`
+}
+
+// ValueDiffJSON is the JSON projection of a resource.ValueDiff. Exactly one of
+// Array, Object, or the Old/New pair is populated, matching the shape of the
+// value that changed.
+type ValueDiffJSON struct {
+	// Old is the previous value, for a change between two non-composite values.
+	Old *any `json:"old,omitempty"`
+	// New is the replacement value, for a change between two non-composite values.
+	New *any `json:"new,omitempty"`
+	// Array is the element-wise diff, when both values are arrays.
+	Array *ArrayDiffJSON `json:"array,omitempty"`
+	// Object is the property-wise diff, when both values are objects.
+	Object *ObjectDiffJSON `json:"object,omitempty"`
+}
+
+// ArrayDiffJSON is the JSON projection of a resource.ArrayDiff. Its maps are
+// keyed by array index.
+type ArrayDiffJSON struct {
+	// Creates holds the elements present only in the new array.
+	Creates map[int]any `json:"creates,omitempty"`
+	// Deletes holds the elements present only in the old array.
+	Deletes map[int]any `json:"deletes,omitempty"`
+	// Updates holds the elements that changed.
+	Updates map[int]ValueDiffJSON `json:"updates,omitempty"`
+}
+
+// diffJSONEncoder converts property values to their JSON representation, using
+// the same blinding encrypter the streaming `--json` event display uses so that
+// secrets do not leak into the output.
+type diffJSONEncoder struct {
+	ctx         context.Context
+	enc         config.Encrypter
+	showSecrets bool
+}
+
+func newDiffJSONEncoder(showSecrets bool) diffJSONEncoder {
+	return diffJSONEncoder{
+		ctx:         context.TODO(),
+		enc:         config.BlindingCrypter,
+		showSecrets: showSecrets,
+	}
+}
+
+func (e diffJSONEncoder) value(v resource.PropertyValue) *any {
+	out, err := stack.SerializePropertyValue(e.ctx, v, e.enc, e.showSecrets)
+	contract.IgnoreError(err)
+	return &out
+}
+
+func (e diffJSONEncoder) values(m resource.PropertyMap) map[string]any {
+	out, err := stack.SerializeProperties(e.ctx, m, e.enc, e.showSecrets)
+	contract.IgnoreError(err)
+	return out
+}
+
+func (e diffJSONEncoder) elements(m map[int]resource.PropertyValue) map[int]any {
+	if len(m) == 0 {
+		return nil
+	}
+	out := make(map[int]any, len(m))
+	for i, v := range m {
+		out[i] = *e.value(v)
+	}
+	return out
+}
+
+func (e diffJSONEncoder) objectDiff(diff *resource.ObjectDiff) *ObjectDiffJSON {
+	if diff == nil {
+		return nil
+	}
+	out := &ObjectDiffJSON{
+		Creates: e.values(diff.Adds),
+		Deletes: e.values(diff.Deletes),
+	}
+	if len(diff.Updates) > 0 {
+		out.Updates = make(map[string]ValueDiffJSON, len(diff.Updates))
+		for k, v := range diff.Updates {
+			out.Updates[string(k)] = e.valueDiff(v)
+		}
+	}
+	return out
+}
+
+func (e diffJSONEncoder) valueDiff(diff resource.ValueDiff) ValueDiffJSON {
+	switch {
+	case diff.Array != nil:
+		return ValueDiffJSON{Array: e.arrayDiff(diff.Array)}
+	case diff.Object != nil:
+		return ValueDiffJSON{Object: e.objectDiff(diff.Object)}
+	default:
+		return ValueDiffJSON{Old: e.value(diff.Old), New: e.value(diff.New)}
+	}
+}
+
+func (e diffJSONEncoder) arrayDiff(diff *resource.ArrayDiff) *ArrayDiffJSON {
+	out := &ArrayDiffJSON{
+		Creates: e.elements(diff.Adds),
+		Deletes: e.elements(diff.Deletes),
+	}
+	if len(diff.Updates) > 0 {
+		out.Updates = make(map[int]ValueDiffJSON, len(diff.Updates))
+		for i, v := range diff.Updates {
+			out.Updates[i] = e.valueDiff(v)
+		}
+	}
+	return out
+}
+
+// filterObjectDiff restricts a diff to the given top-level keys, matching the
+// filtering printObjectDiff applies when a step reports its changed keys.
+func filterObjectDiff(diff *resource.ObjectDiff, include []resource.PropertyKey) *resource.ObjectDiff {
+	if diff == nil || include == nil {
+		return diff
+	}
+
+	keep := make(map[resource.PropertyKey]bool, len(include))
+	for _, k := range include {
+		keep[k] = true
+	}
+
+	filterMap := func(m resource.PropertyMap) resource.PropertyMap {
+		out := make(resource.PropertyMap, len(m))
+		for k, v := range m {
+			if keep[k] {
+				out[k] = v
+			}
+		}
+		return out
+	}
+
+	out := &resource.ObjectDiff{
+		Adds:    filterMap(diff.Adds),
+		Deletes: filterMap(diff.Deletes),
+		Sames:   filterMap(diff.Sames),
+		Updates: make(map[resource.PropertyKey]resource.ValueDiff, len(diff.Updates)),
+	}
+	for k, v := range diff.Updates {
+		if keep[k] {
+			out.Updates[k] = v
+		}
+	}
+	return out
+}
+
+// stepDiffJSON renders a step's property diff as JSON, or nil when the step has
+// no diff to show.
+func stepDiffJSON(step engine.StepEventMetadata, showSecrets bool) *ObjectDiffJSON {
+	olds, news, include := stepDiffOperands(step)
+	diff, hidden := stepObjectDiff(step, olds, news, false /* refresh */, stepHidePaths(step))
+	diff = filterObjectDiff(diff, include)
+	if diff == nil && len(hidden) == 0 {
+		return nil
+	}
+
+	out := newDiffJSONEncoder(showSecrets).objectDiff(diff)
+	if out == nil {
+		out = &ObjectDiffJSON{}
+	}
+	for _, p := range hidden {
+		out.Hidden = append(out.Hidden, p.String())
+	}
+	return out
+}
+
+// sortedUniquePaths sorts property paths and removes duplicates, so that hidden
+// paths are reported deterministically.
+func sortedUniquePaths(paths []resource.PropertyPath) []resource.PropertyPath {
+	slices.SortFunc(paths, func(a, b resource.PropertyPath) int {
+		return cmp.Compare(a.String(), b.String())
+	})
+	return slices.CompactFunc(paths, func(a, b resource.PropertyPath) bool {
+		return a.String() == b.String()
+	})
+}
