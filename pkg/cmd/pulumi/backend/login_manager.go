@@ -69,6 +69,19 @@ type LoginManager interface {
 
 var DefaultLoginManager LoginManager = &lm{}
 
+type noNewProjectHintKey struct{}
+
+// WithoutNewProjectHint returns a context under which a first-time login omits the welcome message's suggestion to
+// run `pulumi new`, for use by `pulumi new` itself.
+func WithoutNewProjectHint(ctx context.Context) context.Context {
+	return context.WithValue(ctx, noNewProjectHintKey{}, true)
+}
+
+func showNewProjectHint(ctx context.Context) bool {
+	suppressed, _ := ctx.Value(noNewProjectHintKey{}).(bool)
+	return !suppressed
+}
+
 type lm struct{}
 
 func (f *lm) Current(
@@ -105,7 +118,8 @@ func (f *lm) Login(
 		Color: color,
 	}
 	consoleURL := client.CloudConsoleURL(httpstate.ValueOrDefaultURL(ws, url))
-	welcome := func(opts display.Options) { httpstate.WelcomeUser(opts, consoleURL) }
+	showHint := showNewProjectHint(ctx)
+	welcome := func(opts display.Options) { httpstate.WelcomeUser(opts, consoleURL, showHint) }
 	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", welcome, setCurrent, opts)
 	if err != nil {
 		return nil, err

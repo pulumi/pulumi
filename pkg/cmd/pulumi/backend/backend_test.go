@@ -78,3 +78,10 @@ func TestNonInteractiveCurrentBackendPassesDefaultURL(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "https://api.noninteractive.example.com", gotURL)
 }
+
+func TestShowNewProjectHint(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, showNewProjectHint(t.Context()))
+	assert.False(t, showNewProjectHint(WithoutNewProjectHint(t.Context())))
+}
