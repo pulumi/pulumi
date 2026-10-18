@@ -199,6 +199,9 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	cmdTemplate, err := resolveTemplate(templateSource, args, opts, args.selectOne)
 	if err != nil {
+		if _, ok := errors.AsType[cmdTemplates.TemplateNotFoundError](err); ok {
+			return fmt.Errorf("%w\n\nRun 'pulumi new --list-templates' to see available templates", err)
+		}
 		return err
 	}
 
@@ -685,7 +688,9 @@ func validateProjectName(ctx context.Context, b backend.Backend,
 	}
 	if !opts.IsInteractive {
 		handleExistingProjectName = func(projectName string) error {
-			return fmt.Errorf("a project with this name already exists: %s", projectName)
+			return fmt.Errorf("a project with this name already exists: %s\n\n"+
+				"choose a different name with --name, or run 'pulumi stack init' inside the existing project to add a stack.\n"+
+				"The --force flag only overwrites existing files; it does not resolve project-name conflicts", projectName)
 		}
 	}
 	return validateProjectNameInternal(

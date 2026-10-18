@@ -263,6 +263,9 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 
 	err := runNew(t.Context(), args)
 	assert.ErrorContains(t, err, "project with this name already exists")
+	assert.ErrorContains(t, err, "choose a different name with --name")
+	assert.ErrorContains(t, err, "pulumi stack init")
+	assert.ErrorContains(t, err, "--force flag only overwrites existing files")
 }
 
 //nolint:paralleltest // changes directory for process, mocks login manager
@@ -489,6 +492,7 @@ func TestInvalidTemplateName(t *testing.T) {
 
 		err := runNew(t.Context(), args)
 		assert.ErrorContains(t, err, "not found")
+		assert.ErrorContains(t, err, "pulumi new --list-templates")
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
@@ -510,6 +514,7 @@ func TestInvalidTemplateName(t *testing.T) {
 
 		err := runNew(t.Context(), args)
 		assert.ErrorContains(t, err, "not found")
+		assert.ErrorContains(t, err, "pulumi new --list-templates")
 	})
 }
 
