@@ -39,6 +39,7 @@ import (
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pkg/browser"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -226,6 +227,7 @@ type cachedUpdateData struct {
 }
 
 type cloudBackend struct {
+	helper       *credentialhelper.Result
 	d            diag.Sink
 	url          string
 	client       *client.Client
@@ -260,9 +262,9 @@ func New(ctx context.Context, d diag.Sink,
 	if err != nil {
 		return nil, err
 	}
-	account, apiClient := resolved.account, resolved.client
+	account, helper, apiClient := resolved.account, resolved.helper, resolved.client
 	apiToken := account.AccessToken
-	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
+	escClient := esc_client.NewWithCredentials(client.UserAgent(), cloudURL, apiToken, insecure, helper)
 
 	org := env.DefaultOrg.Value()
 	if org == "" {
@@ -294,6 +296,7 @@ func New(ctx context.Context, d diag.Sink,
 	}
 
 	return &cloudBackend{
+		helper:         helper,
 		d:              d,
 		url:            cloudURL,
 		client:         apiClient,
@@ -495,7 +498,15 @@ var newLoginManager = func() LoginManager {
 	return defaultLoginManager{}
 }
 
-type defaultLoginManager struct{}
+type defaultLoginManager struct{ helper *credentialhelper.Result }
+
+// NewLoginManagerWithCredentials uses the supplied helper credentials instead of stored tokens.
+func NewLoginManagerWithCredentials(helper *credentialhelper.Result) LoginManager {
+	if !helper.HasHTTP() {
+		return NewLoginManager()
+	}
+	return defaultLoginManager{helper: helper}
+}
 
 // validateStoredAccount checks whether a stored account can still authenticate, refreshing cached
 // user and token metadata when needed. An account that carries a refresh token but a stale (or
@@ -571,6 +582,16 @@ func (m defaultLoginManager) Current(
 	setCurrent bool,
 ) (*workspace.Account, error) {
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
+	if helper := m.helper; helper != nil && helper.HasHTTP() {
+		c := client.NewClientWithCredentials(helper, insecure, cmdutil.Diag())
+		username, orgs, info, err := c.GetPulumiAccountDetails(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return &workspace.Account{
+			AccessToken: helper.Token(), Username: username, Organizations: orgs, TokenInformation: info, Insecure: insecure,
+		}, nil
+	}
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
@@ -2144,6 +2165,9 @@ func (b *cloudBackend) runEngineAction(
 	callerEventsOpt chan<- engine.Event, dryRun bool, journalVersion int64,
 ) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
+	if b.helper != nil && b.helper.HasHTTP() {
+		op.Opts.Engine.CloudCredentialEnv = b.helper.PluginEnv()
+	}
 
 	// Send synchronously before anything can fail, so the caller always gets it and the send
 	// can't outlive the caller's channel. Not sent to the display: it would land in the event log.
@@ -3012,6 +3036,8 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 
 	events := make(chan engine.Event) // Note: unbuffered, but we assume it won't matter in practice.
 	done := make(chan bool)
+	stopHelperDiagnostics := b.routeHelperDiagnostics(events, done, opts)
+	defer stopHelperDiagnostics()
 
 	// Timings do not display correctly when rendering remote events, so suppress showing them.
 	opts.SuppressTimings = true
@@ -3052,6 +3078,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 				events <- engine.NewCancelEvent()
 			}
 
+			stopHelperDiagnostics()
 			close(events)
 			<-done
 			switch opResult {

@@ -16,10 +16,12 @@ package httpstate
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -28,7 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+//nolint:paralleltest // IsolateCredentials changes the process environment.
 func TestClientSourceKeepsRefreshedAccount(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -61,7 +63,7 @@ func TestClientSourceKeepsRefreshedAccount(t *testing.T) {
 			require.NoError(t, workspace.StoreAccount(test.accountURL, workspace.Account{
 				AccessToken: "stale", RefreshToken: "refresh",
 			}, true))
-			source := NewClientSource(nil)
+			source := NewClientSource(credentialhelper.NewSession(io.Discard), nil)
 			c, err := source.ClientForURL(t.Context(), test.accountURL, false)
 			require.NoError(t, err)
 			_, _, _, err = c.GetPulumiAccountDetails(t.Context())
@@ -83,11 +85,11 @@ func TestClientSourceKeepsRefreshedAccount(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+//nolint:paralleltest // IsolateCredentials changes the process environment.
 func TestClientSourceCachesAuthenticatedClients(t *testing.T) {
 	ptesting.IsolateCredentials(t)
 	const backendURL = "https://api.example.com"
-	source := NewClientSource(nil)
+	source := NewClientSource(credentialhelper.NewSession(io.Discard), nil)
 	_, err := source.ClientForURL(t.Context(), "", false)
 	require.ErrorContains(t, err, "requires a backend URL")
 	_, err = source.ClientForURL(t.Context(), backendURL, false)
@@ -115,7 +117,7 @@ func TestClientSourceFallsBackToAgentCredentials(t *testing.T) {
 	err := workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true)
 	require.NoError(t, err)
 
-	source := NewClientSource(nil)
+	source := NewClientSource(credentialhelper.NewSession(io.Discard), nil)
 	resolved, err := source.resolve(t.Context(), cloudURL, false)
 	account := resolved.account
 	require.NoError(t, err)
@@ -138,7 +140,7 @@ func TestClientSourceDoesNotFallbackWithExplicitPath(t *testing.T) {
 	err := workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true)
 	require.NoError(t, err)
 
-	resolved, err := NewClientSource(nil).resolve(t.Context(), cloudURL, false)
+	resolved, err := NewClientSource(credentialhelper.NewSession(io.Discard), nil).resolve(t.Context(), cloudURL, false)
 	account := resolved.account
 	require.NoError(t, err)
 	assert.Empty(t, account.AccessToken)

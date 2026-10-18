@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -87,6 +88,7 @@ func (b *cloudBackend) recordAndDisplayEvents(
 	// they see a CancelEvent, and when finished, close the "done" channel.
 	displayEvents := make(chan engine.Event) // Note: unbuffered, but we assume it won't matter in practice.
 	displayEventsDone := make(chan bool)
+	stopHelperDiagnostics := b.routeHelperDiagnostics(displayEvents, displayEventsDone, opts)
 
 	persistEvents := make(chan engine.Event, 100)
 	persistEventsDone := make(chan bool)
@@ -94,6 +96,7 @@ func (b *cloudBackend) recordAndDisplayEvents(
 	// We close our own done channel when both of the dependent components have finished.
 	defer func() {
 		<-displayEventsDone
+		stopHelperDiagnostics()
 		<-persistEventsDone
 		close(done)
 	}()
@@ -469,4 +472,32 @@ func (b *cloudBackend) persistEngineEvents(
 	// finally close the `done` channel so the caller knows we are finished processing the
 	// engine event stream.
 	close(batchesToTransmit)
+}
+
+func (b *cloudBackend) routeHelperDiagnostics(
+	events chan<- engine.Event, done <-chan bool, opts display.Options,
+) func() {
+	if b.helper == nil || !opts.IsInteractive || opts.JSONDisplay ||
+		opts.SummaryJSON || opts.Type != display.DisplayProgress {
+		return func() {}
+	}
+	messages := make(chan string)
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		// Keep receiving after display shutdown so in-flight sends can finish before detachment.
+		for message := range messages {
+			event := engine.NewEvent(engine.StdoutEventPayload{Message: message + "\n", Color: colors.Never})
+			select {
+			case events <- event:
+			case <-done:
+			}
+		}
+	}()
+	detach := b.helper.DisplayDiagnostics(messages)
+	return sync.OnceFunc(func() {
+		detach()
+		close(messages)
+		<-finished
+	})
 }
