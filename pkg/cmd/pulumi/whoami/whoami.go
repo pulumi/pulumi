@@ -93,6 +93,32 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 				return err
 			}
 
+			if verbose && output.String() == "default" {
+				source := "none"
+				if cloud, ok := b.(interface{ CloudURL() string }); ok {
+					if os.Getenv("PULUMI_ACCESS_TOKEN") != "" {
+						source = "PULUMI_ACCESS_TOKEN"
+					} else {
+						account, fromAgent, err := workspace.GetAccountWithAgentFallback(cloud.CloudURL())
+						if err == nil && account.HasCredential() {
+							source = "stored account"
+							if fromAgent {
+								source = "shared agent credentials"
+							}
+						}
+					}
+				}
+				if r := lm.CredentialHelperSession().Current(); r != nil && r.Helper != nil {
+					fmt.Fprintf(stdout, "Credentials helper: %s\n", r.Helper.Path)
+					if r.HasHTTP() {
+						source = "credentials helper"
+						if r.Token() == "" {
+							source = "none"
+						}
+					}
+				}
+				fmt.Fprintf(stdout, "Access token source: %s\n", source)
+			}
 			return output.Get()(stdout, b, name, orgs, tokenInfo)
 		},
 	}

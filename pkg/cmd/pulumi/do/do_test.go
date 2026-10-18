@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,15 +27,16 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -1423,6 +1425,58 @@ func TestPropertyValueToPCLLiteral(t *testing.T) {
 	require.ErrorContains(t, err, "computed/output")
 }
 
+// The provider is loaded before do opens a stack, so its context must already carry helper credentials.
+func TestDoProviderHelperCredentials(t *testing.T) {
+	for _, test := range []struct {
+		name, response, token string
+	}{
+		{"token", `{"version":1,"accessToken":"helper-token"}`, "helper-token"},
+		{"headers", `{"version":1,"headers":{"X-Session":["secret"]}}`, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")
+			t.Setenv("PULUMI_ACCESS_TOKEN", "ambient-token")
+			dir := t.TempDir()
+			child, err := os.Executable()
+			require.NoError(t, err)
+			helperArgs, err := json.Marshal([]string{"--", "-credential-helper-test", "credentials", test.response})
+			require.NoError(t, err)
+			t.Setenv("PULUMI_CREDENTIAL_HELPER", child)
+			t.Setenv("PULUMI_CREDENTIAL_HELPER_ARGS", string(helperArgs))
+			output := filepath.Join(dir, "env")
+			childArgs := []string{"-credential-helper-test", "environment", output}
+			stop := errors.New("stop after provider launch")
+			loader := func(_ context.Context, pctx *plugin.Context, _, _ string) (plugin.Provider, error) {
+				p, err := plugin.ExecPlugin(pctx, child, "test", apitype.ResourcePlugin, childArgs, dir, nil, false)
+				require.NoError(t, err)
+				defer p.Close()
+				code, err := p.Wait(t.Context())
+				require.NoError(t, err)
+				require.Zero(t, code)
+				return nil, stop
+			}
+			lm := cmdBackend.NewLoginManager(diagtest.LogSink(t), credentialhelper.NewSession(io.Discard))
+			cmd := NewDoCmd(lm, newTestWorkspace(t), loader, testHost, panicLoadConverterPlugin, nil)
+			cmd.SetContext(t.Context())
+			cmd.SetArgs([]string{"test:index:Thing"})
+			cmd.SetOut(&bytes.Buffer{})
+			cmd.SetErr(&bytes.Buffer{})
+			require.ErrorIs(t, cmd.Execute(), stop)
+			data, err := os.ReadFile(output)
+			require.NoError(t, err)
+			var credentials map[string]string
+			require.NoError(t, json.Unmarshal(data, &credentials))
+			assert.Equal(t, "https://api.example.com", credentials["PULUMI_API"])
+			if test.token == "" {
+				assert.NotContains(t, credentials, "PULUMI_ACCESS_TOKEN")
+			} else {
+				assert.Equal(t, test.token, credentials["PULUMI_ACCESS_TOKEN"])
+			}
+		})
+	}
+}
+
 // The provider is loaded before do opens a stack, so its context must already carry backend credentials.
 func TestDoProviderCredentials(t *testing.T) {
 	ptesting.IsolateCredentials(t)
@@ -1433,10 +1487,10 @@ func TestDoProviderCredentials(t *testing.T) {
 	output := filepath.Join(dir, "env")
 	child, err := os.Executable()
 	require.NoError(t, err)
-	childEnv := env.NewEnv(env.MapStore{"PULUMI_TEST_DO_PROVIDER_ENV_FILE": output})
+	childArgs := []string{"-credential-helper-test", "environment", output}
 	stop := errors.New("stop after provider launch")
 	loader := func(_ context.Context, pctx *plugin.Context, _, _ string) (plugin.Provider, error) {
-		p, err := plugin.ExecPlugin(pctx, child, "test", apitype.ResourcePlugin, nil, dir, childEnv, false)
+		p, err := plugin.ExecPlugin(pctx, child, "test", apitype.ResourcePlugin, childArgs, dir, nil, false)
 		require.NoError(t, err)
 		defer p.Close()
 		code, err := p.Wait(t.Context())
@@ -1453,5 +1507,9 @@ func TestDoProviderCredentials(t *testing.T) {
 	require.ErrorIs(t, cmd.Execute(), stop)
 	data, err := os.ReadFile(output)
 	require.NoError(t, err)
-	assert.Equal(t, "https://api.example.com\nstored-token\n", string(data))
+	var credentials map[string]string
+	require.NoError(t, json.Unmarshal(data, &credentials))
+	assert.Equal(t, map[string]string{
+		"PULUMI_API": "https://api.example.com", "PULUMI_ACCESS_TOKEN": "stored-token",
+	}, credentials)
 }

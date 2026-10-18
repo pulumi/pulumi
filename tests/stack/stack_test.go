@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -27,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -283,7 +285,8 @@ func TestStackCommands(t *testing.T) {
 		t.Setenv("PULUMI_CONFIG_PASSPHRASE", "correct horse battery staple")
 		snap, err := stack.DeserializeUntypedDeployment(
 			t.Context(),
-			&deployment, secrets.NewProvider(httpstate.NewClientSource(nil).ClientForURL))
+			&deployment,
+			secrets.NewProvider(httpstate.NewClientSource(credentialhelper.NewSession(io.Discard), nil).ClientForURL))
 		require.NoError(t, err)
 		// Let's say that the the CLI crashed during the deletion of the last resource and we've now got
 		// invalid resources in the snapshot.
@@ -354,7 +357,8 @@ func TestStackImportExportExtensionsAcrossBackends(t *testing.T) {
 		})
 
 		snap, err := stack.DeserializeDeploymentV3(
-			t.Context(), typed, secrets.NewProvider(httpstate.NewClientSource(nil).ClientForURL))
+			t.Context(), typed,
+			secrets.NewProvider(httpstate.NewClientSource(credentialhelper.NewSession(io.Discard), nil).ClientForURL))
 		require.NoError(t, err)
 		untyped, err := stack.SerializeUntypedDeployment(t.Context(), snap, nil)
 		require.NoError(t, err)
@@ -1081,7 +1085,8 @@ func TestStackImportExportSnippetsAcrossBackends(t *testing.T) {
 		}
 
 		snap, err := stack.DeserializeDeploymentV3(
-			t.Context(), typed, secrets.NewProvider(httpstate.NewClientSource(nil).ClientForURL))
+			t.Context(), typed,
+			secrets.NewProvider(httpstate.NewClientSource(credentialhelper.NewSession(io.Discard), nil).ClientForURL))
 		require.NoError(t, err)
 		untyped, err := stack.SerializeUntypedDeployment(t.Context(), snap, nil)
 		require.NoError(t, err)

@@ -41,6 +41,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 	"go.opentelemetry.io/otel"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -264,6 +265,21 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 			client: newDefaultHTTPClient(httpClient, apiURL),
 		},
 	}
+}
+
+// NewClientWithCredentials creates a client for the backend URL using in-memory helper credentials.
+func NewClientWithCredentials(r *credentialhelper.Result, insecure bool, d diag.Sink) *Client {
+	contract.Requiref(r != nil, "r", "expected credential helper credentials")
+	contract.Requiref(r.BackendURL() != "", "r", "expected a backend URL")
+	contract.Requiref(r.HasHTTP(), "r", "expected HTTP credentials")
+	c := NewClient(r.BackendURL(), "", insecure, d)
+	base := &http.Client{}
+	if insecure {
+		//nolint:gosec // The user explicitly requested insecure server connections.
+		base.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	}
+	c.WithHTTPClient(r.HTTPClient(base))
+	return c
 }
 
 // Returns true if this client is insecure (i.e. has TLS disabled).
@@ -3399,15 +3415,11 @@ func (pc *Client) GetTemplate(
 	return resp, err
 }
 
-// DownloadTemplate takes a downloadURL, which is a full URL (not a path). The URL can be
-// one of two situations:
+// DownloadTemplate downloads a template from a full URL.
 //
-// - An URL for the client: `api.pulumi.com/api/orgs/{org}/template/download?name={template-name}`
-// - A foreign URL: `api.github.com/blobs/4328791917840`
-//
-// We want to use the full method receiver with configured credentials if and only if we
-// are targeting the correct URL. If we are targeting another URL, we should use a fresh
-// client without tokens.
+// Requests to the backend use the normal client with configured credentials.
+// Requests to other destinations use a fresh client omitting credentials.
+// Presigned URLs bypass REST request processing to preserve their signatures.
 func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
 	// Presigned URLs need to be handled differently to avoid signature mismatches due to e.g. headers.
 	// See https://docs.aws.amazon.com/prescriptive-guidance/latest/presigned-url-best-practices/identifying-requests.html

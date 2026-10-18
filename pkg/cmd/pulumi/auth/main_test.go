@@ -20,7 +20,15 @@ import (
 	"testing"
 )
 
+// TestMain also runs this test executable as a credential helper subprocess.
+// Tests use os.Executable() with -credential-helper-test, a request log path, and a JSON response.
+// It records the request from stdin and writes the response to stdout. Other invocations run tests normally.
 func TestMain(m *testing.M) {
+	for i, arg := range os.Args {
+		if arg == "-credential-helper-test" {
+			os.Exit(runCredentialsLoginHelper(os.Args[i+1:]))
+		}
+	}
 	// The OS credential store holds one key for all credentials files. With a mode that the
 	// developer set, `pulumi logout --all` in a test deletes the key that protects the real
 	// credentials of the developer.
