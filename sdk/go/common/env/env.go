@@ -151,6 +151,12 @@ var CredentialStore = env.String("CREDENTIAL_STORE",
 		`system (macOS Keychain, Windows Credential Manager, Linux Secret Service, TPM) when such `+
 		`protection is usable, "os" requires it, and "plaintext" uses the plaintext credentials file.`)
 
+var CredentialHelper = env.String("CREDENTIAL_HELPER",
+	`[EXPERIMENTAL] Path to the credentials helper executable, or "none" to disable it.`)
+
+var CredentialHelperArgs = env.String("CREDENTIAL_HELPER_ARGS",
+	"[EXPERIMENTAL] JSON array of arguments passed to the credentials helper.", env.Secret)
+
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
 
