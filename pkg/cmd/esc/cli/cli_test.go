@@ -935,6 +935,16 @@ func (c *testPulumiClient) CloseChangeRequest(ctx context.Context, orgName, chan
 	return nil
 }
 
+func (c *testPulumiClient) AddChangeRequestComment(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	comment string,
+) error {
+	_, err := c.getChangeRequest(orgName, changeRequestID)
+	return err
+}
+
 func (c *testPulumiClient) GetEnvironmentDraftStatus(
 	ctx context.Context,
 	orgName string,
