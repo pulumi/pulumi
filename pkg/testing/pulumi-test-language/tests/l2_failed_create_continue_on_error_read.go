@@ -62,11 +62,16 @@ func init() {
 							"expected skipped read to be absent from snapshot, found %s", r.URN)
 					}
 
-					// The stack output derived from the skipped read's value must not have
-					// resolved to a known value, and so shouldn't have been saved in the snapshot.
+					// The stack outputs derived from the skipped read should surface as
+					// unknown/computed values: the SDK propagates failure as unknown rather than
+					// halting the program, so the outputs are registered but never resolve.
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					require.NotContains(l, stack.Outputs, resource.PropertyKey("readValue"))
-					require.NotContains(l, stack.Outputs, resource.PropertyKey("readPropDepValue"))
+					require.Contains(l, stack.Outputs, resource.PropertyKey("readValue"))
+					require.Contains(l, stack.Outputs, resource.PropertyKey("readPropDepValue"))
+					assert.True(l, stack.Outputs["readValue"].IsComputed(),
+						"expected readValue to be unknown, got %v", stack.Outputs["readValue"])
+					assert.True(l, stack.Outputs["readPropDepValue"].IsComputed(),
+						"expected readPropDepValue to be unknown, got %v", stack.Outputs["readPropDepValue"])
 				},
 			},
 		},
