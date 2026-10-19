@@ -75,7 +75,7 @@ func analyzeResource(
 					d.EnforcementLevel = apitype.Mandatory
 				}
 
-				if d.EnforcementLevel == apitype.Mandatory {
+				if d.EnforcementLevel == apitype.Mandatory && len(d.Exceptions) == 0 {
 					if !dryRun {
 						invalidAtomic.Store(true)
 					}
@@ -303,11 +303,12 @@ func AnalyzeSnapshot(
 					// Stack policies cannot be remediated, so treat the level as mandatory.
 					d.EnforcementLevel = apitype.Mandatory
 				}
-				if d.EnforcementLevel == apitype.Mandatory {
-					sawStackError.Store(true)
-				}
 				urn := resolveStackPolicyViolationURN(d.URN, rootStackURN,
 					func(u resource.URN) bool { _, ok := snapshotURNs[u]; return ok })
+				resourceanalyzer.ApplyStackPolicyExceptions(analyzer, &d, urn)
+				if d.EnforcementLevel == apitype.Mandatory && len(d.Exceptions) == 0 {
+					sawStackError.Store(true)
+				}
 				events.OnPolicyViolation(urn, d)
 			}
 

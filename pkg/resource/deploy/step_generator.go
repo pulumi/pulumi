@@ -3731,12 +3731,13 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 					d.EnforcementLevel = apitype.Mandatory
 				}
 
-				if d.EnforcementLevel == apitype.Mandatory {
-					sawError.Store(true)
-				}
 				urn := resolveStackPolicyViolationURN(d.URN,
 					resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project()),
 					func(u resource.URN) bool { _, ok := sg.deployment.news.Load(u); return ok })
+				resourceanalyzer.ApplyStackPolicyExceptions(analyzer, &d, urn)
+				if d.EnforcementLevel == apitype.Mandatory && len(d.Exceptions) == 0 {
+					sawError.Store(true)
+				}
 				sg.deployment.events.OnPolicyViolation(urn, d)
 			}
 

@@ -427,6 +427,7 @@ func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiag
 		PolicyPackVersion: d.PolicyPackVersion,
 		EnforcementLevel:  d.EnforcementLevel,
 		Severity:          d.Severity,
+		Exceptions:        d.Exceptions,
 	}))
 }
 

@@ -114,6 +114,7 @@ type AnalyzeDiagnostic struct {
 	EnforcementLevel  apitype.EnforcementLevel
 	URN               resource.URN
 	Severity          apitype.PolicySeverity
+	Exceptions        []apitype.PolicyEventException
 }
 
 // AnalyzeResponse is the response from the Analyze method, containing violations.

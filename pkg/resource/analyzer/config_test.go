@@ -17,6 +17,8 @@ package analyzer
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -171,9 +173,9 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
-			result, _, err := parsePolicyPackConfig([]byte(test.JSON))
+			result, err := parsePolicyPackConfig([]byte(test.JSON))
 			require.NoError(t, err)
-			assert.Equal(t, test.Expected, result)
+			assert.Equal(t, test.Expected, result.Config)
 		})
 	}
 }
@@ -204,7 +206,7 @@ func TestParsePolicyPackConfigFail(t *testing.T) {
 		t.Run(test, func(t *testing.T) {
 			t.Parallel()
 
-			result, _, err := parsePolicyPackConfig([]byte(test))
+			result, err := parsePolicyPackConfig([]byte(test))
 			assert.Nil(t, result)
 			assert.Error(t, err)
 		})
@@ -266,12 +268,13 @@ func TestParsePolicyPackConfigWithEnvironments(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			config, envs, err := parsePolicyPackConfig([]byte(tt.json))
+			file, err := parsePolicyPackConfig([]byte(tt.json))
 			if tt.wantErr != "" {
 				assert.ErrorContains(t, err, tt.wantErr)
 				return
 			}
 			require.NoError(t, err)
+			config, envs := file.Config, file.Environments
 			assert.Equal(t, tt.wantEnvs, envs)
 			if config == nil {
 				assert.Equal(t, 0, tt.wantPolicies)
@@ -1290,4 +1293,90 @@ func TestReconcilePolicyPackConfigValidationErrors(t *testing.T) {
 			assert.ElementsMatch(t, test.ExpectedValidationErrors, validationErrors)
 		})
 	}
+}
+
+func TestParsePolicyPackConfigV2(t *testing.T) {
+	t.Parallel()
+
+	file, err := parsePolicyPackConfig([]byte(`{
+		"version": 2,
+		"environments": ["policy/shared"],
+		"policies": {"all": "mandatory", "p": {"enforcementLevel": "advisory", "max": 3}},
+		"exceptions": {"a": {"reason": "r", "match": [
+			{"policies": ["p"], "targets": ["urn:pulumi:prod::web::pkg:index:R::r"]}
+		]}}
+	}`))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"policy/shared"}, file.Environments)
+	assert.Equal(t, map[string]plugin.AnalyzerPolicyConfig{
+		"all": {EnforcementLevel: apitype.Mandatory},
+		"p":   {EnforcementLevel: apitype.Advisory, Properties: map[string]any{"max": float64(3)}},
+	}, file.Config)
+	assert.Equal(t, 1, file.Exceptions.len())
+
+	file, err = parsePolicyPackConfig([]byte(`{"version": 2}`))
+	require.NoError(t, err)
+	assert.Empty(t, file.Config)
+	assert.Nil(t, file.Exceptions)
+
+	// An unversioned file is parsed as before.
+	file, err = parsePolicyPackConfig([]byte(`{"p": "advisory", "environments": ["policy/shared"]}`))
+	require.NoError(t, err)
+	assert.Equal(t, map[string]plugin.AnalyzerPolicyConfig{"p": {EnforcementLevel: apitype.Advisory}}, file.Config)
+	assert.Equal(t, []string{"policy/shared"}, file.Environments)
+}
+
+func TestParsePolicyPackConfigVersionErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name, js, err string
+	}{
+		{"exceptions need version 2", `{"exceptions": {}}`, `policy exceptions need "version": 2`},
+		{"newer version", `{"version": 3}`, "policy pack config version 3 isn't supported; try upgrading"},
+		{"older version", `{"version": 1}`, `"version" must be 2`},
+		{"version that isn't a number", `{"version": "mandatory"}`, `"version" must be 2`},
+		{"unknown key", `{"version": 2, "p": "advisory"}`, `unknown key "p"; try upgrading the Pulumi CLI`},
+		{
+			"invalid policy config", `{"version": 2, "policies": {"p": "loud"}}`,
+			`parsing enforcement level for "p": "loud" is not a valid enforcement level`,
+		},
+		{
+			"malformed exception", `{"version": 2, "exceptions": {"a": {"match": [
+				{"policies": ["p"], "targets": ["urn:pulumi:prod::web::pkg:index:R::r"]}]}}}`,
+			`policy exception "a": "reason" is required`,
+		},
+		{
+			"exception field this version doesn't recognize", `{"version": 2, "exceptions": {"a": {"reason": "r",
+				"tags": {}, "match": [{"policies": ["p"], "targets": ["urn:pulumi:prod::web::pkg:index:R::r"]}]}}}`,
+			`policy exception "a": unknown field "tags"`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := parsePolicyPackConfig([]byte(tt.js))
+			assert.ErrorContains(t, err, tt.err)
+		})
+	}
+}
+
+func TestLoadPolicyPackConfigFile(t *testing.T) {
+	t.Parallel()
+
+	file := filepath.Join(t.TempDir(), "config.json")
+	require.NoError(t, os.WriteFile(file, []byte(`{
+		"version": 2,
+		"policies": {"p": "advisory"},
+		"environments": ["policy/shared"],
+		"exceptions": {"a": {"reason": "r", "match": [
+			{"policies": ["p"], "targets": ["urn:pulumi:prod::web::pkg:index:R::r"]}
+		]}}
+	}`), 0o600))
+
+	f, err := LoadPolicyPackConfigFile(file)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]plugin.AnalyzerPolicyConfig{"p": {EnforcementLevel: apitype.Advisory}}, f.Config)
+	assert.Equal(t, []string{"policy/shared"}, f.Environments)
+	assert.Equal(t, 1, f.Exceptions.len())
 }
