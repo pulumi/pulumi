@@ -451,9 +451,21 @@ export function readResource(
                         };
                     }
 
-                    // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
+                    // Now resolve everything: the URN, the ID, and the output properties.
                     resop.resolveURN(resp.getUrn(), err);
-                    resop.resolveID!(resolvedID, resolvedID !== undefined, err);
+                    // Prefer the id returned by the provider's Read, which may differ from the id
+                    // supplied on the request (e.g. a provider that normalizes it to a canonical
+                    // form). An empty response id during preview means "unknown"; during update it
+                    // indicates an older engine that did not populate the field, in which case we
+                    // fall back to the request id for back-compat.
+                    const respID = resp.getId?.() || "";
+                    if (respID !== "") {
+                        resop.resolveID!(respID as ID, true, err);
+                    } else if (isDryRun()) {
+                        resop.resolveID!(undefined as any, false, err);
+                    } else {
+                        resop.resolveID!(resolvedID, resolvedID !== undefined, err);
+                    }
                     // A skipped read reports Unknown=true; resolve outputs as unknown so dependents
                     // propagate unknowns instead of seeing empty values as real.
                     const unknown = !isDryRun() && resp.getUnknown();
