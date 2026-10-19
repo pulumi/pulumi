@@ -42,7 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -243,7 +242,7 @@ func (a *analyzer) Analyze(ctx context.Context, r AnalyzerResource) (AnalyzeResp
 	if err != nil {
 		return AnalyzeResponse{}, err
 	}
-	mprops := propertyrpc.Marshal(filtered)
+	mprops := marshalAnalyzerProperties(filtered)
 
 	provider, err := marshalProvider(r.Provider)
 	if err != nil {
@@ -288,7 +287,7 @@ func (a *analyzer) AnalyzeStack(ctx context.Context, resources []AnalyzerStackRe
 		if err != nil {
 			return AnalyzeResponse{}, fmt.Errorf("filtering properties: %w", err)
 		}
-		props := propertyrpc.Marshal(filtered)
+		props := marshalAnalyzerProperties(filtered)
 
 		provider, err := marshalProvider(res.Provider)
 		if err != nil {
@@ -365,7 +364,7 @@ func (a *analyzer) Remediate(ctx context.Context, r AnalyzerResource) (Remediate
 	if err != nil {
 		return RemediateResponse{}, err
 	}
-	mprops := propertyrpc.Marshal(filtered)
+	mprops := marshalAnalyzerProperties(filtered)
 
 	provider, err := marshalProvider(r.Provider)
 	if err != nil {
@@ -396,7 +395,7 @@ func (a *analyzer) Remediate(ctx context.Context, r AnalyzerResource) (Remediate
 	remediations := resp.GetRemediations()
 	results := make([]Remediation, len(remediations))
 	for i, r := range remediations {
-		raw, err := propertyrpc.Unmarshal(r.GetProperties())
+		raw, err := unmarshalAnalyzerProperties(r.GetProperties())
 		if err != nil {
 			return RemediateResponse{}, err
 		}
@@ -719,7 +718,7 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 		Urn:        string(provider.URN),
 		Type:       string(provider.Type),
 		Name:       provider.Name,
-		Properties: propertyrpc.Marshal(filtered),
+		Properties: marshalAnalyzerProperties(filtered),
 	}, nil
 }
 

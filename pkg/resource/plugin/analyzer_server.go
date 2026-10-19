@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -41,7 +40,7 @@ func NewAnalyzerServer(analyzer Analyzer) pulumirpc.AnalyzerServer {
 func (a *analyzerServer) Analyze(
 	ctx context.Context, req *pulumirpc.AnalyzeRequest,
 ) (*pulumirpc.AnalyzeResponse, error) {
-	raw, err := propertyrpc.Unmarshal(req.GetProperties())
+	raw, err := unmarshalAnalyzerProperties(req.GetProperties())
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +81,7 @@ func (a *analyzerServer) AnalyzeStack(
 ) (*pulumirpc.AnalyzeResponse, error) {
 	resources, err := slice.MapError(req.GetResources(),
 		func(r *pulumirpc.AnalyzerResource) (AnalyzerStackResource, error) {
-			raw, err := propertyrpc.Unmarshal(r.GetProperties())
+			raw, err := unmarshalAnalyzerProperties(r.GetProperties())
 			if err != nil {
 				return AnalyzerStackResource{}, err
 			}
@@ -144,7 +143,7 @@ func (a *analyzerServer) AnalyzeStack(
 func (a *analyzerServer) Remediate(
 	ctx context.Context, req *pulumirpc.AnalyzeRequest,
 ) (*pulumirpc.RemediateResponse, error) {
-	raw, err := propertyrpc.Unmarshal(req.GetProperties())
+	raw, err := unmarshalAnalyzerProperties(req.GetProperties())
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +186,7 @@ func (a *analyzerServer) Remediate(
 			PolicyPackName:    r.PolicyPackName,
 			PolicyPackVersion: r.PolicyPackVersion,
 			Description:       r.Description,
-			Properties:        propertyrpc.Marshal(filtered),
+			Properties:        marshalAnalyzerProperties(filtered),
 			Diagnostic:        r.Diagnostic,
 		}, nil
 	})
@@ -389,7 +388,7 @@ func convertProvider(p *pulumirpc.AnalyzerProviderResource) (*AnalyzerProviderRe
 		return nil, nil
 	}
 
-	raw, err := propertyrpc.Unmarshal(p.Properties)
+	raw, err := unmarshalAnalyzerProperties(p.Properties)
 	if err != nil {
 		return nil, err
 	}
