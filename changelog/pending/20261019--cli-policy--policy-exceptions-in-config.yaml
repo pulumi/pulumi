@@ -1,3 +1,3 @@
 component: cli/policy
 kind: feat
-body: Create version 2 of the `--policy-pack-config` format, nesting policy configs under `policies` and adding an `exceptions` field.
+body: Create version 2 of the `--policy-pack-config` format, nesting policy configs under `policies` and adding an `exceptions` field
