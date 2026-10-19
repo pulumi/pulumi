@@ -1332,7 +1332,6 @@ func TestParsePolicyPackConfigVersionErrors(t *testing.T) {
 	tests := []struct {
 		name, js, err string
 	}{
-		{"exceptions need version 2", `{"exceptions": {}}`, `policy exceptions need "version": 2`},
 		{"newer version", `{"version": 3}`, "policy pack config version 3 isn't supported; try upgrading"},
 		{"older version", `{"version": 1}`, `"version" must be 2`},
 		{"version that isn't a number", `{"version": "mandatory"}`, `"version" must be 2`},

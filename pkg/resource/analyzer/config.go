@@ -124,9 +124,6 @@ func parsePolicyPackConfig(b []byte) (*PolicyPackConfigFile, error) {
 	if _, ok := fields["version"]; ok {
 		return parsePolicyPackConfigV2(b, fields)
 	}
-	if _, ok := fields[policyExceptionsKey]; ok {
-		return nil, errors.New(`policy exceptions need "version": 2, with the policy config under "policies"`)
-	}
 
 	config := make(map[string]any)
 	if err := json.Unmarshal(b, &config); err != nil {
