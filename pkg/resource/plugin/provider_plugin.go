@@ -127,6 +127,9 @@ type pluginProtocol struct {
 
 	// True if this plugin accepts OutputValues on Call args and may return OutputValues on Call.
 	acceptsOutputsInCall bool
+
+	// True if this plugin accepts OutputValues on Check olds/news/old_outputs and may return OutputValues on Check.
+	acceptsOutputsInCheck bool
 }
 
 // pluginConfig holds the configuration of the provider
@@ -223,6 +226,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SendsOldOutputsToCheck:      true,
 				AcceptsOutputsInInvoke:      true,
 				AcceptsOutputsInCall:        true,
+				AcceptsOutputsInCheck:       false,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -292,6 +296,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SendsOldOutputsToCheck:      true,
 				AcceptsOutputsInInvoke:      true,
 				AcceptsOutputsInCall:        true,
+				AcceptsOutputsInCheck:       false,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -335,6 +340,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			acceptsByteString:               handshakeRes.AcceptsByteString,
 			acceptsOutputsInInvoke:          handshakeRes.AcceptsOutputsInInvoke,
 			acceptsOutputsInCall:            handshakeRes.AcceptsOutputsInCall,
+			acceptsOutputsInCheck:           handshakeRes.AcceptsOutputsInCheck,
 		}
 	}
 
@@ -399,6 +405,7 @@ func handshake(
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
 		AcceptsOutputsInCall:        req.AcceptsOutputsInCall,
+		AcceptsOutputsInCheck:       req.AcceptsOutputsInCheck,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -419,6 +426,7 @@ func handshake(
 		AcceptsByteString:               res.GetAcceptsByteString(),
 		AcceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
 		AcceptsOutputsInCall:            res.GetAcceptsOutputsInCall(),
+		AcceptsOutputsInCheck:           res.GetAcceptsOutputsInCheck(),
 	}, nil
 }
 
@@ -470,6 +478,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			SendsOldOutputsToCheck:      true,
 			AcceptsOutputsInInvoke:      true,
 			AcceptsOutputsInCall:        true,
+			AcceptsOutputsInCheck:       false,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -504,6 +513,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			acceptsByteString:               handshakeRes.AcceptsByteString,
 			acceptsOutputsInInvoke:          handshakeRes.AcceptsOutputsInInvoke,
 			acceptsOutputsInCall:            handshakeRes.AcceptsOutputsInCall,
+			acceptsOutputsInCheck:           handshakeRes.AcceptsOutputsInCheck,
 		}
 	}
 
@@ -607,6 +617,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
 		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
 		AcceptsOutputsInCall:        req.AcceptsOutputsInCall,
+		AcceptsOutputsInCheck:       req.AcceptsOutputsInCheck,
 	})
 	if err != nil {
 		return nil, err
@@ -623,6 +634,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		acceptsByteString:               res.GetAcceptsByteString(),
 		acceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
 		acceptsOutputsInCall:            res.GetAcceptsOutputsInCall(),
+		acceptsOutputsInCheck:           res.GetAcceptsOutputsInCheck(),
 	}
 
 	return &ProviderHandshakeResponse{
@@ -633,6 +645,7 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		AcceptsByteString:               res.GetAcceptsByteString(),
 		AcceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
 		AcceptsOutputsInCall:            res.GetAcceptsOutputsInCall(),
+		AcceptsOutputsInCheck:           res.GetAcceptsOutputsInCheck(),
 	}, nil
 }
 

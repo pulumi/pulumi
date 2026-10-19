@@ -1801,9 +1801,7 @@ func (nopBatchDecrypter) BatchDecrypt(context.Context, []string) ([]string, erro
 	return nil, nil
 }
 
-func (nopBatchDecrypter) Enqueue(context.Context, string, *resource.Secret) error {
-	return nil
-}
+func (nopBatchDecrypter) Enqueue(context.Context, string) error { return nil }
 
 func TestShowDeploymentEventsResult(t *testing.T) {
 	t.Parallel()
