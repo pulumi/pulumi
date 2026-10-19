@@ -242,14 +242,16 @@ type exceptionDefinition struct {
 
 // configSnippet renders an exception as a version 2 policy pack config file.
 func configSnippet(id string, def exceptionDefinition) string {
-	b, err := yaml.Marshal(struct {
+	var b strings.Builder
+	enc := yaml.NewEncoder(&b)
+	enc.SetIndent(2)
+	if err := enc.Encode(struct {
 		Version    int                            `yaml:"version"`
 		Exceptions map[string]exceptionDefinition `yaml:"exceptions"`
-	}{2, map[string]exceptionDefinition{id: def}})
-	if err != nil {
+	}{2, map[string]exceptionDefinition{id: def}}); err != nil {
 		return err.Error()
 	}
-	return string(b)
+	return b.String()
 }
 
 func writeJSON(w io.Writer, v any) error {

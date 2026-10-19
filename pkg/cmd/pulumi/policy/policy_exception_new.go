@@ -81,8 +81,8 @@ type exceptionViolation struct {
 
 // policyExceptionNewResult is what the command outputs. A dry run fills in everything but the IDs.
 type policyExceptionNewResult struct {
-	Runs       []exceptionRun                       `json:"runs,omitempty"`
-	Violations []exceptionViolation                 `json:"violations,omitempty"`
+	Runs       []exceptionRun                       `json:"runs"`
+	Violations []exceptionViolation                 `json:"violations"`
 	Exception  apitype.CreatePolicyExceptionRequest `json:"exception"`
 	// Covered lists the exceptions and change requests that already allow the run's other violations.
 	Covered []string `json:"covered,omitempty"`
@@ -110,7 +110,7 @@ func newPolicyExceptionNewCmd(factory policyExceptionEnvFactory) *cobra.Command 
 		Long: "[EXPERIMENTAL] Create a policy exception from a run's violations.\n" +
 			"\n" +
 			"Reads the policy violations of the stack's latest run, update or preview, so you don't have to re-run\n" +
-			"it or copy URNs. In a terminal, you pick the violations to except and enter a reason. --policy and\n" +
+			"it or copy URNs. In a terminal, you pick the violations to allow and enter a reason. --policy and\n" +
 			"--target select violations without prompting, and --file - reads a whole definition from stdin.\n" +
 			"\n" +
 			"The exception gets one entry per resource, listing the resource's selected policies. If the org\n" +
@@ -161,7 +161,7 @@ func newPolicyExceptionNewCmd(factory policyExceptionEnvFactory) *cobra.Command 
 
 	flags := cmd.Flags()
 	flags.StringArrayVarP(&args.stacks, "stack", "s", nil,
-		"The stack whose violations to except; repeatable, and * matches any characters. Defaults to the current stack")
+		"The stack whose violations to allow; repeatable, and * matches any characters. Defaults to the current stack")
 	flags.StringVar(&args.update, "update", "", "Read the violations of this update version (default: the latest)")
 	flags.Lookup("update").NoOptDefVal = latestRun
 	flags.StringVar(&args.preview, "preview", "", "Read the violations of this preview ID (default: the latest)")
@@ -170,8 +170,11 @@ func newPolicyExceptionNewCmd(factory policyExceptionEnvFactory) *cobra.Command 
 	flags.StringArrayVar(&args.targets, "target", nil, "Only except violations on this resource URN; repeatable")
 	flags.StringVar(&args.file, "file", "",
 		"Read the exception's reason and match entries from this JSON or YAML file, or from stdin with -")
-	flags.StringVar(&args.reason, "reason", "", "Why the violations should be allowed")
-	flags.StringVar(&args.note, "note", "", "A note for the reviewer, when the org requires approval")
+	flags.StringVar(&args.reason, "reason", "",
+		"Why it's safe to allow the violations. It's kept with the exception, for auditors")
+	flags.StringVar(&args.note, "note", "",
+		"A note to the approver, when the org requires approval. It starts the change request, "+
+			"and isn't kept with the exception")
 	flags.BoolVar(&args.dryRun, "dry-run", false, "Show the violations and the exception, without creating it")
 	flags.BoolVarP(&args.force, "force", "f", false, "Don't prompt or ask for confirmation")
 	flags.BoolVar(&args.force, "yes", false, "Alias for --force")
@@ -190,7 +193,7 @@ func runPolicyExceptionNew(
 		return err
 	}
 
-	var result policyExceptionNewResult
+	result := policyExceptionNewResult{Runs: []exceptionRun{}, Violations: []exceptionViolation{}}
 	if args.file != "" {
 		if pack == "" {
 			return cmdCmd.ConfigurationError{Message: "a policy pack is required with --file"}
@@ -222,10 +225,10 @@ func runPolicyExceptionNew(
 		}
 		if len(result.Violations) == 0 {
 			if len(result.Covered) > 0 {
-				fmt.Fprintf(stderr, "Nothing to except: the violations are already allowed by %s\n",
+				fmt.Fprintf(stderr, "Nothing to do: the violations are already allowed by %s\n",
 					strings.Join(result.Covered, ", "))
 			} else {
-				fmt.Fprintln(stderr, "Nothing to except: the run has no matching violations")
+				fmt.Fprintln(stderr, "Nothing to do: the run has no matching violations")
 			}
 			return args.output.Get()(stdout, result)
 		}
@@ -256,9 +259,11 @@ func runPolicyExceptionNew(
 		if !interactive {
 			return cmdCmd.ConfigurationError{Message: "--reason is required when not running interactively"}
 		}
-		if result.Exception.Reason, err = promptText("Reason", true, opts); err != nil {
+		reason, err := promptText("Exception reason (kept with the exception, for auditors)", true, opts)
+		if err != nil {
 			return err
 		}
+		result.Exception.Reason = reason
 	}
 
 	if interactive {
@@ -282,7 +287,7 @@ func runPolicyExceptionNew(
 
 	note := args.note
 	if note == "" && interactive {
-		if note, err = promptText("This org requires approval. Note for the reviewer (optional)", false, opts); err != nil {
+		if note, err = promptText("This org requires approval. Note to the approver (optional)", false, opts); err != nil {
 			return err
 		}
 	}
@@ -541,7 +546,7 @@ func violationLabel(v exceptionViolation, withStack bool) string {
 	return label
 }
 
-// pickViolations lets the user select the violations to except. Mandatory violations start selected.
+// pickViolations lets the user select the violations to allow. Mandatory violations start selected.
 func pickViolations(
 	violations []exceptionViolation, withStack bool, opts display.Options,
 ) ([]exceptionViolation, error) {
@@ -556,7 +561,7 @@ func pickViolations(
 			preselected = append(preselected, labels[i])
 		}
 	}
-	picked := ui.PromptUserMulti("Violations to except", labels, preselected, opts.Color)
+	picked := ui.PromptUserMulti("Violations to allow", labels, preselected, opts.Color)
 	if len(picked) == 0 {
 		return nil, backenderr.CancelledError{Operation: "creating the policy exception"}
 	}
@@ -628,7 +633,7 @@ func renderPolicyExceptionNewText(w io.Writer, r policyExceptionNewResult) error
 	for _, run := range r.Runs {
 		fmt.Fprintf(w, "%s: %s %s\n", run.Stack, run.Kind, run.ID)
 	}
-	fmt.Fprintln(w, "\nViolations to except:")
+	fmt.Fprintln(w, "\nThe exception will allow:")
 	for _, v := range r.Violations {
 		fmt.Fprintf(w, "  %s\n    %s\n", violationLabel(v, len(r.Runs) > 1), v.URN)
 	}

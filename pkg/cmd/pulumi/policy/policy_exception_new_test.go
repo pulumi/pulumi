@@ -93,7 +93,7 @@ func TestPolicyExceptionNewDryRunText(t *testing.T) {
 		"new", "aws", "--policy", "required-tags", "--dry-run")
 	require.Equal(t, 0, code, stderr)
 	assert.Contains(t, stdout, "aws/required-tags  aws:s3/bucket:Bucket logs  (mandatory)\n    "+logsURN)
-	assert.Contains(t, stdout, "version: 2\nexceptions:\n    EXC-?:\n")
+	assert.Contains(t, stdout, "version: 2\nexceptions:\n  EXC-?:\n")
 	assert.Empty(t, c.created)
 }
 
