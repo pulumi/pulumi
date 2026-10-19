@@ -204,6 +204,18 @@ type Client interface {
 		continuationToken string,
 	) ([]ChangeRequest, string, error)
 
+	// GetChangeRequest returns the change request with the specified ID and its gate evaluation.
+	GetChangeRequest(ctx context.Context, orgName, changeRequestID string) (*GetChangeRequestResponse, error)
+
+	// GetEnvironmentDraftStatus returns the draft's base revision and the environment's current revision.
+	GetEnvironmentDraftStatus(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		changeRequestID string,
+	) (*EnvironmentDraftStatus, error)
+
 	// DeleteEnvironment deletes the environment envName in org orgName.
 	DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error
 
@@ -923,6 +935,34 @@ func (pc *client) ListChangeRequests(
 		return nil, "", err
 	}
 	return resp.ChangeRequests, resp.ContinuationToken, nil
+}
+
+func (pc *client) GetChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+) (*GetChangeRequestResponse, error) {
+	var resp GetChangeRequestResponse
+	path := fmt.Sprintf("/api/change-requests/%v/%v", orgName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (pc *client) GetEnvironmentDraftStatus(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) (*EnvironmentDraftStatus, error) {
+	var resp EnvironmentDraftStatus
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/status", orgName, projectName, envName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 func (pc *client) DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error {

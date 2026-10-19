@@ -203,6 +203,35 @@ type ListChangeRequestsResponse struct {
 	ContinuationToken string          `json:"continuationToken"`
 }
 
+type ChangeGateRuleEvaluation struct {
+	RuleType          string              `json:"ruleType"`
+	RequiredApprovals int                 `json:"requiredApprovals,omitempty"`
+	Approvers         []ChangeRequestUser `json:"approvers,omitempty"`
+}
+
+type ChangeGateEvaluation struct {
+	ID          string                   `json:"id"`
+	Name        string                   `json:"name"`
+	Satisfied   bool                     `json:"satisfied"`
+	RuleDetails ChangeGateRuleEvaluation `json:"ruleDetails"`
+}
+
+type ChangeRequestGateEvaluation struct {
+	Satisfied       bool                   `json:"satisfied"`
+	ApplicableGates []ChangeGateEvaluation `json:"applicableGates"`
+}
+
+type GetChangeRequestResponse struct {
+	ChangeRequest
+	GateEvaluation ChangeRequestGateEvaluation `json:"gateEvaluation"`
+}
+
+type EnvironmentDraftStatus struct {
+	BaseRevision        int `json:"baseRevision"`
+	EnvironmentRevision int `json:"environmentRevision"`
+	DraftRevisionNumber int `json:"draftRevisionNumber"`
+}
+
 type EnvironmentTag struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`

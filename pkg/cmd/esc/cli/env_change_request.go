@@ -18,11 +18,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 type changeRequestCommand struct {
@@ -43,10 +46,11 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 			"--draft, such as `env edit` and `env set`. Use `env open --draft=<id>`\n" +
 			"to open the draft version of an environment.\n" +
 			"\n" +
-			"Subcommands exist for listing change requests.",
+			"Subcommands exist for listing and viewing change requests.",
 		Example: fmt.Sprintf("  # Propose a change, then review and apply it\n"+
 			"  %[1]s env set my-project/prod app.replicas 3 --draft\n"+
-			"  %[1]s env change-request list --env my-project/prod", env.esc.command),
+			"  %[1]s env change-request list --env my-project/prod\n"+
+			"  %[1]s env change-request get <change-request-id>", env.esc.command),
 		Args: cobra.NoArgs,
 	}
 
@@ -54,6 +58,7 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 		"the organization that owns the change request (defaults to your default organization)")
 
 	cmd.AddCommand(newEnvChangeRequestLsCmd(cr))
+	cmd.AddCommand(newEnvChangeRequestGetCmd(cr))
 
 	return cmd
 }
@@ -196,5 +201,113 @@ func matchesStatusFilter(c client.ChangeRequest, filter string) bool {
 		return c.Status == "draft" || c.Status == "pending" || c.Status == "ready"
 	default:
 		return strings.EqualFold(c.Status, filter)
+	}
+}
+
+func newEnvChangeRequestGetCmd(cr *changeRequestCommand) *cobra.Command {
+	var output string
+
+	cmd := &cobra.Command{
+		Use:   "get <change-request-id>",
+		Short: "[EXPERIMENTAL] Show a change request.",
+		Long: "[EXPERIMENTAL] Show a change request\n" +
+			"\n" +
+			"This command shows a change request's status, description, and approvals, and the environment\n" +
+			"revision the draft is based on.\n",
+		Example: fmt.Sprintf("  # Show a change request\n"+
+			"  %[1]s env change-request get <change-request-id>\n\n"+
+			"  # Show a change request as JSON\n"+
+			"  %[1]s env change-request get <change-request-id> --output json", cr.env.esc.command),
+		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
+
+			orgName, err := cr.orgName(ctx)
+			if err != nil {
+				return err
+			}
+
+			c, err := cr.env.esc.client.GetChangeRequest(ctx, orgName, args[0])
+			if err != nil {
+				return fmt.Errorf("getting change request: %w", err)
+			}
+			if c.Action != "update" {
+				return fmt.Errorf("change request %v is not an environment draft", c.ID)
+			}
+			ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
+
+			draftStatus, err := cr.env.esc.client.GetEnvironmentDraftStatus(
+				ctx, orgName, ref.projectName, ref.envName, c.ID)
+			if err != nil {
+				return fmt.Errorf("getting draft status: %w", err)
+			}
+			url := cr.env.esc.changeRequestURL(ref, c.ID)
+
+			if format == outputJSON {
+				return writeJSON(cr.env.esc.stdout, struct {
+					*client.GetChangeRequestResponse
+					DraftStatus *client.EnvironmentDraftStatus `json:"draftStatus"`
+					URL         string                         `json:"url,omitempty"`
+				}{c, draftStatus, url})
+			}
+
+			printChangeRequest(cr.env.esc.stdout, ref, c, draftStatus, cr.env.esc.colors.Hyperlink(url, url))
+			return nil
+		},
+	}
+
+	addOutputFlag(cmd, &output)
+
+	return cmd
+}
+
+func printChangeRequest(
+	w io.Writer,
+	ref environmentRef,
+	c *client.GetChangeRequestResponse,
+	draftStatus *client.EnvironmentDraftStatus,
+	url string,
+) {
+	fmt.Fprintf(w, "ID: %v\n", c.ID)
+	fmt.Fprintf(w, "Environment: %v\n", ref.String())
+	fmt.Fprintf(w, "Action: %v\n", c.Action)
+	fmt.Fprintf(w, "Status: %v\n", c.Status)
+	fmt.Fprintf(w, "Author: %v <%v>\n", c.CreatedBy.Name, c.CreatedBy.GithubLogin)
+	fmt.Fprintf(w, "Created: %v\n", humanize.Time(c.CreatedAt))
+	fmt.Fprintf(w, "Revision: %v\n", c.LatestRevisionNumber)
+	fmt.Fprintf(w, "Base environment revision: %v\n", draftStatus.BaseRevision)
+	fmt.Fprintf(w, "Current environment revision: %v\n", draftStatus.EnvironmentRevision)
+	if c.Description != "" {
+		fmt.Fprintf(w, "Description:\n  %v\n", strings.ReplaceAll(c.Description, "\n", "\n  "))
+	}
+
+	gates := c.GateEvaluation
+	fmt.Fprintf(w, "Approved: %v\n", gates.Satisfied)
+	for _, g := range gates.ApplicableGates {
+		state := "satisfied"
+		if !g.Satisfied {
+			state = "not satisfied"
+		}
+		fmt.Fprintf(w, "  %v (%v)", g.Name, state)
+		if g.RuleDetails.RuleType == "approval_required" {
+			approvers := make([]string, len(g.RuleDetails.Approvers))
+			for i, a := range g.RuleDetails.Approvers {
+				approvers[i] = a.GithubLogin
+			}
+			fmt.Fprintf(w, ": %v of %v approvals", len(approvers), g.RuleDetails.RequiredApprovals)
+			if len(approvers) != 0 {
+				fmt.Fprintf(w, " (%v)", strings.Join(approvers, ", "))
+			}
+		}
+		fmt.Fprintln(w)
+	}
+
+	if url != "" {
+		fmt.Fprintf(w, "URL: %v\n", url)
 	}
 }
