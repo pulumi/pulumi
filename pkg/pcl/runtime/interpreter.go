@@ -2016,8 +2016,20 @@ func (i *Interpreter) registerReadResource(ctx context.Context, res *pcl.ReadRes
 		return err
 	}
 
+	// Prefer the id returned by the provider's Read, which may differ from the id supplied on
+	// the request. An empty response id during preview means "unknown"; during update it
+	// indicates an older engine that did not populate the field, so fall back to the request id.
+	var idValue property.Value
+	switch {
+	case resp.GetId() != "":
+		idValue = property.New(resp.GetId())
+	case i.info.DryRun:
+		idValue = property.New(property.Computed)
+	default:
+		idValue = property.New(request.Id)
+	}
 	outputs = outputs.
-		Set("id", property.New(request.Id)).
+		Set("id", idValue).
 		Set("urn", property.New(resp.GetUrn())).
 		Set("__name", property.New(logicalName)).
 		Set("__type", property.New(token))

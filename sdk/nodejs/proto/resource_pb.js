@@ -2259,7 +2259,8 @@ proto.pulumirpc.ReadResourceResponse.toObject = function(includeInstance, msg) {
 urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
 properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 result: jspb.Message.getFieldWithDefault(msg, 3, 0),
-unknown: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+unknown: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+id: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -2312,6 +2313,10 @@ proto.pulumirpc.ReadResourceResponse.deserializeBinaryFromReader = function(msg,
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setUnknown(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setId(value);
       break;
     default:
       reader.skipField();
@@ -2368,6 +2373,13 @@ proto.pulumirpc.ReadResourceResponse.serializeBinaryToWriter = function(message,
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getId();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
       f
     );
   }
@@ -2462,6 +2474,24 @@ proto.pulumirpc.ReadResourceResponse.prototype.getUnknown = function() {
  */
 proto.pulumirpc.ReadResourceResponse.prototype.setUnknown = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * optional string id = 5;
+ * @return {string}
+ */
+proto.pulumirpc.ReadResourceResponse.prototype.getId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.ReadResourceResponse} returns this
+ */
+proto.pulumirpc.ReadResourceResponse.prototype.setId = function(value) {
+  return jspb.Message.setProto3StringField(this, 5, value);
 };
 
 

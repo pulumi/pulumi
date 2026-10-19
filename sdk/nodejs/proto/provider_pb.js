@@ -1151,7 +1151,8 @@ resolverTarget: (f = jspb.Message.getField(msg, 10)) == null ? undefined : f,
 acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
 sendsOldOutputsToCheck: jspb.Message.getBooleanFieldWithDefault(msg, 12, false),
 acceptsOutputsInInvoke: jspb.Message.getBooleanFieldWithDefault(msg, 13, false),
-acceptsOutputsInCall: jspb.Message.getBooleanFieldWithDefault(msg, 14, false)
+acceptsOutputsInCall: jspb.Message.getBooleanFieldWithDefault(msg, 14, false),
+acceptsOutputsInCheck: jspb.Message.getBooleanFieldWithDefault(msg, 15, false)
   };
 
   if (includeInstance) {
@@ -1243,6 +1244,10 @@ proto.pulumirpc.ProviderHandshakeRequest.deserializeBinaryFromReader = function(
     case 14:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsOutputsInCall(value);
+      break;
+    case 15:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsOutputsInCheck(value);
       break;
     default:
       reader.skipField();
@@ -1368,6 +1373,13 @@ proto.pulumirpc.ProviderHandshakeRequest.serializeBinaryToWriter = function(mess
   if (f) {
     writer.writeBool(
       14,
+      f
+    );
+  }
+  f = message.getAcceptsOutputsInCheck();
+  if (f) {
+    writer.writeBool(
+      15,
       f
     );
   }
@@ -1716,6 +1728,24 @@ proto.pulumirpc.ProviderHandshakeRequest.prototype.setAcceptsOutputsInCall = fun
 };
 
 
+/**
+ * optional bool accepts_outputs_in_check = 15;
+ * @return {boolean}
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.getAcceptsOutputsInCheck = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 15, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ProviderHandshakeRequest} returns this
+ */
+proto.pulumirpc.ProviderHandshakeRequest.prototype.setAcceptsOutputsInCheck = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 15, value);
+};
+
+
 
 
 
@@ -1754,7 +1784,8 @@ acceptOutputs: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
 supportsAutonamingConfiguration: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
 acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 6, false),
 acceptsOutputsInInvoke: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
-acceptsOutputsInCall: jspb.Message.getBooleanFieldWithDefault(msg, 8, false)
+acceptsOutputsInCall: jspb.Message.getBooleanFieldWithDefault(msg, 8, false),
+acceptsOutputsInCheck: jspb.Message.getBooleanFieldWithDefault(msg, 9, false)
   };
 
   if (includeInstance) {
@@ -1818,6 +1849,10 @@ proto.pulumirpc.ProviderHandshakeResponse.deserializeBinaryFromReader = function
     case 8:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptsOutputsInCall(value);
+      break;
+    case 9:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptsOutputsInCheck(value);
       break;
     default:
       reader.skipField();
@@ -1894,6 +1929,13 @@ proto.pulumirpc.ProviderHandshakeResponse.serializeBinaryToWriter = function(mes
   if (f) {
     writer.writeBool(
       8,
+      f
+    );
+  }
+  f = message.getAcceptsOutputsInCheck();
+  if (f) {
+    writer.writeBool(
+      9,
       f
     );
   }
@@ -2023,6 +2065,24 @@ proto.pulumirpc.ProviderHandshakeResponse.prototype.getAcceptsOutputsInCall = fu
  */
 proto.pulumirpc.ProviderHandshakeResponse.prototype.setAcceptsOutputsInCall = function(value) {
   return jspb.Message.setProto3BooleanField(this, 8, value);
+};
+
+
+/**
+ * optional bool accepts_outputs_in_check = 9;
+ * @return {boolean}
+ */
+proto.pulumirpc.ProviderHandshakeResponse.prototype.getAcceptsOutputsInCheck = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 9, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ProviderHandshakeResponse} returns this
+ */
+proto.pulumirpc.ProviderHandshakeResponse.prototype.setAcceptsOutputsInCheck = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 9, value);
 };
 
 

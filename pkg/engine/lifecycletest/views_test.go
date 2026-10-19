@@ -682,7 +682,7 @@ func TestViewsRefreshSame(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -954,7 +954,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1221,7 +1221,7 @@ func TestViewsRefreshDelete(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1967,7 +1967,7 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -2303,7 +2303,7 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil

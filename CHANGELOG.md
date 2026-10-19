@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.270.0 (2026-10-16)
+
+### Bug Fixes
+
+- [cli/env] Fix `pulumi env edit`, `env set`, `env rm` and `env provider` overwriting changes made after they read the environment; on a conflict, `env edit` reopens the editor with your edits and the current definition, and the others fail [#24983](https://github.com/pulumi/pulumi/pull/24983)
+- [cli] Report an unknown drift status in `pulumi stack drift status` when drift detection has never run [#25172](https://github.com/pulumi/pulumi/pull/25172)
 ## 3.269.0 (2026-10-16)
 
 ### Features

@@ -662,7 +662,10 @@ func (c *testPulumiClient) UpdateEnvironment(
 	}
 
 	if etag != "" && etag != latest.etag {
-		return nil, 0, errors.New("etag mismatch")
+		return nil, 0, &client.EnvironmentErrorResponse{
+			Code:    http.StatusConflict,
+			Message: "Conflict: the environment has changed since it was read",
+		}
 	}
 
 	envId := projectName + "/" + envName
@@ -1706,6 +1709,11 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 				}
 				if flag&os.O_TRUNC != 0 {
 					f.Data = f.Data[:0]
+				}
+				if flag&(os.O_WRONLY|os.O_RDWR) == 0 {
+					// The interpreter copies non-*os.File input redirects through a pipe on another
+					// goroutine, so reads must not share Data with later writes.
+					return &testFile{f: &fstest.MapFile{Data: bytes.Clone(f.Data)}}, nil
 				}
 				return &testFile{f: f}, nil
 			},
