@@ -469,19 +469,19 @@ func (se *stepExecutor) cancelDueToError(err error, step Step) {
 		case *CreateStep:
 			if !se.ignoreErrors {
 				se.awaited.Store(true)
-				s.Await()
 				se.erroredStepLock.Lock()
-				defer se.erroredStepLock.Unlock()
 				se.erroredSteps = append(se.erroredSteps, step)
+				se.erroredStepLock.Unlock()
+				s.Await()
 			}
 			return
 		case *UpdateStep:
 			if !se.ignoreErrors {
 				se.awaited.Store(true)
-				s.Await()
 				se.erroredStepLock.Lock()
-				defer se.erroredStepLock.Unlock()
 				se.erroredSteps = append(se.erroredSteps, step)
+				se.erroredStepLock.Unlock()
+				s.Await()
 			}
 			return
 		}
