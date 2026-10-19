@@ -108,7 +108,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 				Resources: []*pkgresource.State{
 					{
 						Type:    resource.RootStackType,
-						Outputs: tt.outputs,
+						Outputs: resource.FromResourcePropertyMap(tt.outputs),
 					},
 				},
 			}
@@ -219,7 +219,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 				Resources: []*pkgresource.State{
 					{
 						Type:    resource.RootStackType,
-						Outputs: tt.outputs,
+						Outputs: resource.FromResourcePropertyMap(tt.outputs),
 					},
 				},
 			}
@@ -340,7 +340,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 				Resources: []*pkgresource.State{
 					{
 						Type:    resource.RootStackType,
-						Outputs: tt.outputs,
+						Outputs: resource.FromResourcePropertyMap(tt.outputs),
 					},
 				},
 			}

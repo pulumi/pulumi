@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
@@ -76,8 +75,8 @@ func init() {
 							"t": property.New(true), "f": property.New(false),
 						}),
 					})
-					require.Equal(l, expectedPlain, resource.FromResourcePropertyMap(plain.Inputs))
-					require.Equal(l, expectedPlain, resource.FromResourcePropertyMap(plain.Outputs))
+					require.Equal(l, expectedPlain, plain.Inputs)
+					require.Equal(l, expectedPlain, plain.Outputs)
 
 					expectedSecret := property.NewMap(map[string]property.Value{
 						"boolean": property.New(false).WithSecret(true),
@@ -91,8 +90,8 @@ func init() {
 							"t": property.New(true), "f": property.New(false),
 						}),
 					})
-					require.Equal(l, expectedSecret, resource.FromResourcePropertyMap(secret.Inputs))
-					require.Equal(l, expectedSecret, resource.FromResourcePropertyMap(secret.Outputs))
+					require.Equal(l, expectedSecret, secret.Inputs)
+					require.Equal(l, expectedSecret, secret.Outputs)
 				},
 			},
 		},

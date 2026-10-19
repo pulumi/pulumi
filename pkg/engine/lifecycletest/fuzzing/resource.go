@@ -197,9 +197,9 @@ func (r *ResourceSpec) AsResource() *pkgresource.State {
 	// In order to allow us to control generated resource IDs (e.g. such as those returned by a provider Create call),
 	// we'll set the ResourceSpec's ID field as an input property.
 	if !providers.IsProviderType(r.Type) {
-		s.Inputs = resource.PropertyMap{
+		s.Inputs = resource.FromResourcePropertyMap(resource.PropertyMap{
 			"__id": resource.NewProperty(r.ID.String()),
-		}
+		})
 	}
 
 	return s

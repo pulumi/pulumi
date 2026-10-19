@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,17 +48,17 @@ func init() {
 					wantNames := property.NewMap(map[string]property.Value{
 						"value": property.New(true),
 					})
-					assert.Equal(l, wantNames, resource.FromResourcePropertyMap(namesResource.Inputs),
+					assert.Equal(l, wantNames, namesResource.Inputs,
 						"expected names resource inputs to be %v", wantNames)
-					assert.Equal(l, wantNames, resource.FromResourcePropertyMap(namesResource.Outputs),
+					assert.Equal(l, wantNames, namesResource.Outputs,
 						"expected names resource outputs to be %v", wantNames)
 
 					wantMod := property.NewMap(map[string]property.Value{
 						"text": property.New("module-format"),
 					})
-					assert.Equal(l, wantMod, resource.FromResourcePropertyMap(modResource.Inputs),
+					assert.Equal(l, wantMod, modResource.Inputs,
 						"expected module-format resource inputs to be %v", wantMod)
-					assert.Equal(l, wantMod, resource.FromResourcePropertyMap(modResource.Outputs),
+					assert.Equal(l, wantMod, modResource.Outputs,
 						"expected module-format resource outputs to be %v", wantMod)
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
@@ -69,7 +68,7 @@ func init() {
 						"namesResourceVal": property.New(true),
 						"nameVariables":    property.New(true),
 					})
-					assert.Equal(l, wantOutputs, resource.FromResourcePropertyMap(stack.Outputs),
+					assert.Equal(l, wantOutputs, stack.Outputs,
 						"expected stack outputs to be %v", wantOutputs)
 				},
 			},

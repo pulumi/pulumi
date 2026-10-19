@@ -57,6 +57,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -87,7 +88,7 @@ func (snapshotBackendClient) GetStackResourceOutputs(
 type snapshotBenchProvider struct {
 	deploytest.Provider
 
-	outputs gsync.Map[resource.URN, resource.PropertyMap]
+	outputs gsync.Map[resource.URN, property.Map]
 }
 
 // Implement Parameterize so that we can return legal results for arbitrary parameterizations.
@@ -127,7 +128,7 @@ func (p *snapshotBenchProvider) Create(ctx context.Context, req plugin.CreateReq
 	}
 	return plugin.CreateResponse{
 		ID:         "id",
-		Properties: resource.FromResourcePropertyMap(outputs),
+		Properties: outputs,
 	}, nil
 }
 
@@ -139,7 +140,7 @@ func (p *snapshotBenchProvider) Read(ctx context.Context, req plugin.ReadRequest
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      "id",
-			Outputs: new(resource.FromResourcePropertyMap(outputs)),
+			Outputs: &outputs,
 		},
 	}, nil
 }
@@ -150,7 +151,7 @@ func (p *snapshotBenchProvider) Update(ctx context.Context, req plugin.UpdateReq
 		return plugin.UpdateResponse{}, fmt.Errorf("unknown resource %v", req.URN)
 	}
 	return plugin.UpdateResponse{
-		Properties: resource.FromResourcePropertyMap(outputs),
+		Properties: outputs,
 	}, nil
 }
 
@@ -292,9 +293,9 @@ func (c dynamicStackCase) getRun(
 						urn := resource.NewURN("test", "test", "", "test:dummy:Dummy", name)
 
 						deadweight := c.pseudoRandomString(r, c.resourcePayloadBytes)
-						provider.outputs.Store(urn, resource.PropertyMap{
-							"deadweight": resource.NewProperty(deadweight),
-						})
+						provider.outputs.Store(urn, property.NewMap(map[string]property.Value{
+							"deadweight": property.New(deadweight),
+						}))
 
 						var dummy Dummy
 						return ctx.RegisterResource("test:dummy:Dummy", name, pulumi.Map{}, &dummy)
@@ -497,13 +498,7 @@ func (r *registrar) registerResource(ctx context.Context, res apitype.ResourceV3
 			if err != nil {
 				return "", "", fmt.Errorf("deserializing inputs for %v: %w", res.URN, err)
 			}
-			inputObject, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
-				KeepSecrets:   true,
-				KeepResources: true,
-			})
-			if err != nil {
-				return "", "", fmt.Errorf("marshaling inputs for %v: %w", res.URN, err)
-			}
+			inputObject := propertyrpc.Marshal(inputs)
 
 			outputs, err := stack.DeserializeProperties(res.Outputs, r)
 			if err != nil {
@@ -590,17 +585,9 @@ func (r *registrar) registerResource(ctx context.Context, res apitype.ResourceV3
 			}
 
 			if !res.Custom {
-				outputObject, oerr := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
-					KeepSecrets:   true,
-					KeepResources: true,
-				})
-				if oerr != nil {
-					return "", "", fmt.Errorf("marshaling outputs for %v: %w", res.URN, oerr)
-				}
-
 				_, err = r.monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 					Urn:     urn,
-					Outputs: outputObject,
+					Outputs: propertyrpc.Marshal(outputs),
 				})
 			}
 			return urn, id, err

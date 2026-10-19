@@ -58,15 +58,15 @@ func init() {
 
 					assert.Truef(l, strings.HasPrefix(withV2.Provider, string(providerV2URN)),
 						"expected %s to prefix %s", providerV2URN, withV2.Provider)
-					assert.True(l, withV2.Outputs["value"].BoolValue())
+					assert.True(l, withV2.Outputs.Get("value").AsBool())
 
 					assert.Truef(l, strings.HasPrefix(withV26.Provider, string(providerV26URN)),
 						"expected %s to prefix %s", providerV26URN, withV26.Provider)
-					assert.False(l, withV26.Outputs["value"].BoolValue())
+					assert.False(l, withV26.Outputs.Get("value").AsBool())
 
 					assert.Truef(l, strings.HasPrefix(withDefault.Provider, string(providerV26URN)),
 						"expected %s to prefix %s", providerV26URN, withDefault.Provider)
-					assert.True(l, withDefault.Outputs["value"].BoolValue())
+					assert.True(l, withDefault.Outputs.Get("value").AsBool())
 				},
 			},
 		},

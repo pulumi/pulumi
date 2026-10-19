@@ -381,7 +381,7 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 
 		switch urn {
 		case "urn:pulumi:test::test::pkgB:m:typB::failing", "urn:pulumi:test::test::pkgB:m:typB::failing2":
-			assert.Equal(t, resource.NewProperty("bar"), snap.Resources[idx].Inputs["foo"])
+			assert.Equal(t, resource.NewProperty("bar"), resource.ToResourcePropertyMap(snap.Resources[idx].Inputs)["foo"])
 		}
 	}
 }
@@ -496,7 +496,7 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent3"), snap.Resources[4].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgB:m:typB::failing"), snap.Resources[5].URN)
 	// Refresh didn't return the input so we expect it to be empty
-	assert.Equal(t, resource.PropertyValue{}, snap.Resources[5].Inputs["foo"])
+	assert.Equal(t, resource.PropertyValue{}, resource.ToResourcePropertyMap(snap.Resources[5].Inputs)["foo"])
 }
 
 func TestUpContinueOnErrorNoSDKSupport(t *testing.T) {
@@ -664,7 +664,7 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent2"), snap.Resources[3].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::independent3"), snap.Resources[4].URN)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgB:m:typB::failing"), snap.Resources[5].URN)
-	assert.Equal(t, resource.NewProperty("bar"), snap.Resources[5].Inputs["foo"])
+	assert.Equal(t, resource.NewProperty("bar"), resource.ToResourcePropertyMap(snap.Resources[5].Inputs)["foo"])
 }
 
 func TestDestroyContinueOnErrorDeleteAfterFailedUp(t *testing.T) {
@@ -1419,7 +1419,7 @@ func TestUpContinueOnErrorSkipsDiffForFailedDependency(t *testing.T) {
 		return rs.URN.Name() == "dependent"
 	})
 	require.NotEqual(t, -1, i, "expected dependent's old state to be kept")
-	assert.Equal(t, resource.NewProperty("hello"), snap.Resources[i].Inputs["value"],
+	assert.Equal(t, property.New("hello"), snap.Resources[i].Inputs.Get("value"),
 		"expected dependent's old inputs to be kept")
 	assert.False(t, diffed.Contains("dependent"), "expected dependent never to be diffed")
 }
@@ -1639,7 +1639,7 @@ func TestUpContinueOnErrorExplicitProviderUpdateFailsKeepsDependent(t *testing.T
 		return rs.URN.Name() == "usesExplicit"
 	})
 	require.NotEqual(t, -1, i, "expected usesExplicit to be kept")
-	assert.Equal(t, resource.NewProperty("hello"), snap.Resources[i].Inputs["value"])
+	assert.Equal(t, property.New("hello"), snap.Resources[i].Inputs.Get("value"))
 }
 
 // A component that depends on a failed resource is skipped, but the program still registers its outputs. That
@@ -1742,7 +1742,7 @@ func TestUpContinueOnErrorSkippedComponentRegistersOutputs(t *testing.T) {
 	assert.NotContains(t, err.Error(), "isn't pending")
 	comp := find(snap, "comp")
 	require.NotNil(t, comp, "expected the existing component to be kept")
-	assert.Equal(t, resource.NewProperty("known"), comp.Outputs["out"])
+	assert.Equal(t, property.New("known"), comp.Outputs.Get("out"))
 }
 
 // TestUpContinueOnErrorSkippedCreatePreviewPropagatesMixedOutputs verifies that when a new

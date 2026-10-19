@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +43,7 @@ func init() {
 							"field1":           property.New("v1 array(union)"),
 						}),
 					}),
-				}), resource.FromResourcePropertyMap(example1.Outputs))
+				}), example1.Outputs)
 
 				example2 := RequireSingleNamedResource(l, snapshot.Resources, "example2")
 				require.Equal(l, property.NewMap(map[string]property.Value{
@@ -62,7 +61,7 @@ func init() {
 							"field1":           property.New("v1 array(union)"),
 						}),
 					}),
-				}), resource.FromResourcePropertyMap(example2.Outputs))
+				}), example2.Outputs)
 			},
 		}},
 	}

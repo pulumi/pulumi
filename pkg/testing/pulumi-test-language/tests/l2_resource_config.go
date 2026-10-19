@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
@@ -51,8 +50,8 @@ func init() {
 					expectedInputs := expectedOutputs.Set("__internal", property.New(map[string]property.Value{
 						"pluginDownloadURL": property.New("http://example.com"),
 					}))
-					require.Equal(l, expectedInputs, resource.FromResourcePropertyMap(explicitProvider.Inputs))
-					require.Equal(l, expectedOutputs, resource.FromResourcePropertyMap(explicitProvider.Outputs))
+					require.Equal(l, expectedInputs, explicitProvider.Inputs)
+					require.Equal(l, expectedOutputs, explicitProvider.Outputs)
 
 					defaultProvider := RequireSingleNamedResource(l, snap.Resources, "default_9_0_0_http_/example.com")
 					require.Equal(l, "pulumi:providers:config", defaultProvider.Type.String(), "expected default provider resource")
@@ -63,8 +62,8 @@ func init() {
 					expectedInputs = expectedOutputs.Set("__internal", property.New(map[string]property.Value{
 						"pluginDownloadURL": property.New("http://example.com"),
 					}))
-					require.Equal(l, expectedInputs, resource.FromResourcePropertyMap(defaultProvider.Inputs))
-					require.Equal(l, expectedOutputs, resource.FromResourcePropertyMap(defaultProvider.Outputs))
+					require.Equal(l, expectedInputs, defaultProvider.Inputs)
+					require.Equal(l, expectedOutputs, defaultProvider.Outputs)
 				},
 			},
 		},

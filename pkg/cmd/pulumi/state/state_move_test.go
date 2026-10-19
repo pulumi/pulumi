@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -543,9 +544,9 @@ func TestMoveWithExistingProvider(t *testing.T) {
 			Type:   "pulumi:providers:a::default_1_0_0",
 			ID:     "provider_id",
 			Custom: true,
-			Inputs: resource.PropertyMap{
-				"key": resource.NewProperty("value"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"key": property.New("value"),
+			}),
 		},
 		{
 			URN:      resource.NewURN("destStack", "test", "", "a:b:c", "name"),
@@ -560,9 +561,9 @@ func TestMoveWithExistingProvider(t *testing.T) {
 			Type:   "pulumi:providers:a::default_1_0_0",
 			ID:     "other_provider_id",
 			Custom: true,
-			Inputs: resource.PropertyMap{
-				"key": resource.NewProperty("different value"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"key": property.New("different value"),
+			}),
 		},
 	}
 
@@ -1198,7 +1199,9 @@ func TestMoveSecret(t *testing.T) {
 			Type:     "a:b:c",
 			Provider: string(providerURN) + "::provider_id",
 			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
+			Outputs: property.NewMap(map[string]property.Value{
+				"secret": property.New("secret").WithSecret(true),
+			}),
 		},
 	}
 
@@ -1272,8 +1275,10 @@ runtime: mock
 		destSnapshot.Resources[2].Provider)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[2].Parent)
-	assert.True(t, destSnapshot.Resources[2].Outputs["secret"].IsSecret())
-	assert.Equal(t, "secret", destSnapshot.Resources[2].Outputs["secret"].SecretValue().Element.V)
+	secretOut, ok := destSnapshot.Resources[2].Outputs.GetOk("secret")
+	require.True(t, ok)
+	assert.True(t, secretOut.Secret())
+	assert.Equal(t, "secret", secretOut.AsString())
 }
 
 func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
@@ -1297,7 +1302,9 @@ func TestMoveSecretOutsideOfProjectDir(t *testing.T) {
 			Type:     "a:b:c",
 			Provider: string(providerURN) + "::provider_id",
 			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
+			Outputs: property.NewMap(map[string]property.Value{
+				"secret": property.New("secret").WithSecret(true),
+			}),
 		},
 	}
 
@@ -1370,7 +1377,9 @@ func TestMoveSecretNotInDestProjectDir(t *testing.T) {
 			Type:     "a:b:c",
 			Provider: string(providerURN) + "::provider_id",
 			Parent:   resource.DefaultRootStackURN("sourceStack", "test"),
-			Outputs:  resource.PropertyMap{"secret": resource.MakeSecret(resource.NewProperty("secret"))},
+			Outputs: property.NewMap(map[string]property.Value{
+				"secret": property.New("secret").WithSecret(true),
+			}),
 		},
 	}
 
@@ -1444,9 +1453,9 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 			Type:   "pulumi:providers:a::default_1_0_0",
 			ID:     "provider_id",
 			Custom: true,
-			Inputs: resource.PropertyMap{
-				"key": resource.NewProperty("value"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"key": property.New("value"),
+			}),
 		},
 		{
 			URN:      resource.NewURN("sourceStack", "test", "", "a:b:c", "name"),
@@ -1462,9 +1471,9 @@ func TestMoveProviderWithSameInputs(t *testing.T) {
 			Type:   "pulumi:providers:a::default_1_0_0",
 			ID:     "another_provider_id",
 			Custom: true,
-			Inputs: resource.PropertyMap{
-				"key": resource.NewProperty("value"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"key": property.New("value"),
+			}),
 		},
 	}
 

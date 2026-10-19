@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -96,7 +97,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 			{
 				URN:     resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
 				Type:    resource.RootStackType,
-				Outputs: resource.PropertyMap{},
+				Outputs: property.NewMap(map[string]property.Value{}),
 			},
 		},
 	}
@@ -206,9 +207,9 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 			{
 				URN:  resource.NewURN("testStack", "testProject", "", resource.RootStackType, "testStack"),
 				Type: resource.RootStackType,
-				Outputs: resource.PropertyMap{
-					"foo": resource.MakeSecret(resource.NewProperty("bar")),
-				},
+				Outputs: property.NewMap(map[string]property.Value{
+					"foo": property.New("bar").WithSecret(true),
+				}),
 			},
 		},
 	}
@@ -300,9 +301,10 @@ runtime: mock
 	assert.Equal(t, "passphrase", snapshot.SecretsManager.Type())
 	passphraseDecrypter := snapshot.SecretsManager.Decrypter()
 	// Check that the snapshot still records the secret value with the same value
-	foo := snapshot.Resources[0].Outputs["foo"]
-	assert.True(t, foo.IsSecret())
-	assert.Equal(t, resource.NewProperty("bar"), foo.SecretValue().Element)
+	foo, ok := snapshot.Resources[0].Outputs.GetOk("foo")
+	require.True(t, ok)
+	assert.True(t, foo.Secret())
+	assert.Equal(t, "bar", foo.AsString())
 	// Check the config has been updated to the new secret
 	project, err := workspace.LoadProject("Pulumi.yaml")
 	require.NoError(t, err)

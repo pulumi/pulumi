@@ -103,10 +103,10 @@ func TestRegisterUsesOutputValues(t *testing.T) {
 	assert.Empty(t, child.Dependencies)
 	// Inputs should be downgraded to plain values before being persisted to state (step_generator
 	// does not yet understand OutputValues).
-	assert.Equal(t, resource.PropertyMap{
-		"foo": resource.NewProperty("a"),
-		"bar": resource.NewProperty("b"),
-	}, child.Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"foo": property.New("a"),
+		"bar": property.New("b"),
+	}), child.Inputs)
 }
 
 // Tests that a resource transform registered on a uses_output_values RegisterResource receives the
@@ -219,14 +219,14 @@ func TestRegisterUsesOutputValuesTransforms(t *testing.T) {
 	// child.Dependencies reflects only explicit depends_on, which is empty here. Engine consumers that
 	// want the combined set go through State.GetAllDependencies().
 	assert.Empty(t, child.Dependencies)
-	assert.Equal(t, resource.PropertyMap{
-		"both": resource.NewProperty(resource.PropertyMap{
-			"x": resource.NewProperty("a"),
-			"y": resource.NewProperty("b"),
-		}),
-		"first":  resource.NewProperty("a"),
-		"second": resource.NewProperty("b"),
-	}, child.Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"both": property.New(property.NewMap(map[string]property.Value{
+			"x": property.New("a"),
+			"y": property.New("b"),
+		})),
+		"first":  property.New("a"),
+		"second": property.New("b"),
+	}), child.Inputs)
 }
 
 // Tests that the engine rejects a RegisterResourceRequest that sets uses_output_values=true alongside a

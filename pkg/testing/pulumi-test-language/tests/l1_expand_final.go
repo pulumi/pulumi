@@ -15,7 +15,6 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,7 +30,7 @@ func init() {
 					assert.Equal(l, property.NewMap(map[string]property.Value{
 						"expandedMax":           property.New(3.0),
 						"expandedMaxWithPrefix": property.New(3.0),
-					}), resource.FromResourcePropertyMap(stack.Outputs))
+					}), stack.Outputs)
 				},
 			},
 		},

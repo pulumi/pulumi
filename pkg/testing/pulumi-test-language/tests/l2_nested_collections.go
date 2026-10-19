@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,11 +58,11 @@ func init() {
 							}),
 						}),
 					})
-					assert.Equal(l, want, resource.FromResourcePropertyMap(foo.Outputs),
+					assert.Equal(l, want, foo.Outputs,
 						"expected the computed nested collection outputs")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					stackOutputs := stack.Outputs
 					AssertPropertyMapMember(l, stackOutputs, "secondProp", property.New("second"))
 					AssertPropertyMapMember(l, stackOutputs, "leaf", property.New("deep"))
 				},
