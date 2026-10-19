@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
@@ -51,7 +50,7 @@ func init() {
 					assert.Equal(l, property.NewMap(map[string]property.Value{
 						"invokeResult": expected,
 						"callResult":   expected,
-					}), resource.FromResourcePropertyMap(stack.Outputs))
+					}), stack.Outputs)
 				},
 			},
 		},

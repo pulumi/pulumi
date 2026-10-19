@@ -15,7 +15,6 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +31,7 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					outputs := stack.Outputs
 
 					require.Equal(l, 1, outputs.Len(), "expected 1 outputs")
 					// TODO(https://github.com/pulumi/pulumi/issues/19015): Ideally we'd allow for nulls in the output

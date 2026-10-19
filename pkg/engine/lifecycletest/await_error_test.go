@@ -97,9 +97,9 @@ func TestAwaitErrorCreate(t *testing.T) {
 func TestAwaitErrorUpdate(t *testing.T) {
 	t.Parallel()
 
-	priorOutputs := resource.PropertyMap{
-		"kept": resource.NewProperty("prior-value"),
-	}
+	priorOutputs := property.NewMap(map[string]property.Value{
+		"kept": property.New("prior-value"),
+	})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -122,7 +122,7 @@ func TestAwaitErrorUpdate(t *testing.T) {
 				URN:     resURN,
 				Custom:  true,
 				ID:      "existing-id",
-				Inputs:  resource.PropertyMap{"in": resource.NewProperty("v1")},
+				Inputs:  property.NewMap(map[string]property.Value{"in": property.New("v1")}),
 				Outputs: priorOutputs,
 			},
 		},
@@ -157,6 +157,6 @@ func TestAwaitErrorUpdate(t *testing.T) {
 	require.NotNil(t, found, "prior resource should still be present in state")
 	assert.Equal(t, resource.ID("existing-id"), found.ID)
 	assert.Equal(t, priorOutputs, found.Outputs, "outputs must be preserved unchanged on Update await")
-	assert.Equal(t, resource.PropertyMap{"in": resource.NewProperty("v1")}, found.Inputs,
+	assert.Equal(t, property.NewMap(map[string]property.Value{"in": property.New("v1")}), found.Inputs,
 		"inputs must be preserved unchanged on Update await")
 }

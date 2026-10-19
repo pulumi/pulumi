@@ -465,8 +465,8 @@ func rewriteStateMigrationReferences(
 			}
 			fixed.Provider = providerRef.String()
 		}
-		fixed.Inputs = rewritePropertyMap(fixed.Inputs)
-		fixed.Outputs = rewritePropertyMap(fixed.Outputs)
+		fixed.Inputs = resource.FromResourcePropertyMap(rewritePropertyMap(resource.ToResourcePropertyMap(fixed.Inputs)))
+		fixed.Outputs = resource.FromResourcePropertyMap(rewritePropertyMap(resource.ToResourcePropertyMap(fixed.Outputs)))
 		fixed.ReplacementTrigger = resource.FromResourcePropertyValue(
 			rewritePropertyValue(resource.ToResourcePropertyValue(fixed.ReplacementTrigger)))
 		if stateMigrationReferenceFieldsEqual(fixed, state) {
@@ -487,7 +487,7 @@ func stateMigrationReferenceFieldsEqual(a, b *pkgresource.State) bool {
 		reflect.DeepEqual(a.ReplaceWith, b.ReplaceWith) &&
 		a.ViewOf == b.ViewOf &&
 		a.Provider == b.Provider &&
-		a.Inputs.DeepEquals(b.Inputs) &&
-		a.Outputs.DeepEquals(b.Outputs) &&
+		a.Inputs.Equals(b.Inputs) &&
+		a.Outputs.Equals(b.Outputs) &&
 		a.ReplacementTrigger.Equals(b.ReplacementTrigger)
 }

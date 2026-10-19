@@ -60,6 +60,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // buildImportFile takes an event stream from the engine and builds an import file from it for every create.
@@ -245,16 +246,16 @@ func buildImportFile(
 					// cloud, so they are declared with their full inputs instead of an ID.
 					contract.Assertf(preEvent.Metadata.Res.State != nil,
 						"%s: expected State to be non-nil for provider", urn)
-					if fullInputs := preEvent.Metadata.Res.State.Inputs; len(fullInputs) > 0 {
+					if fullInputs := preEvent.Metadata.Res.State.Inputs; fullInputs.Len() > 0 {
 						// Anything not known during the preview would be written out as the unknown
 						// placeholder, which is not a value the import system can use.
-						known, unknown := resource.PropertyMap{}, []string{}
-						for _, k := range fullInputs.StableKeys() {
-							if fullInputs[k].ContainsUnknowns() {
-								unknown = append(unknown, string(k))
+						known, unknown := map[string]property.Value{}, []string{}
+						for k, v := range fullInputs.AllStable() {
+							if v.HasComputed() {
+								unknown = append(unknown, k)
 								continue
 							}
-							known[k] = fullInputs[k]
+							known[k] = v
 						}
 						if len(unknown) > 0 {
 							cmdutil.Diag().Warningf(diag.Message(urn,
@@ -264,7 +265,7 @@ func buildImportFile(
 						}
 						if len(known) > 0 {
 							var serErr error
-							inputs, serErr = stack.SerializeProperties(ctx, known, enc, false)
+							inputs, serErr = stack.SerializeProperties(ctx, property.NewMap(known), enc, false)
 							if serErr != nil {
 								return importFile{}, fmt.Errorf(
 									"could not serialize provider inputs for %s: %w", urn, serErr)

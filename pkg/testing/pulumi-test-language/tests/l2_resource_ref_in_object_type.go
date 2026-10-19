@@ -40,13 +40,13 @@ func init() {
 					referencing := RequireSingleNamedResource(l, res.Snap.Resources, c.referencing)
 					assert.Equal(l, property.NewMap(map[string]property.Value{
 						"settings": property.New(map[string]property.Value{"name": property.New(c.referenced)}),
-					}), resource.FromResourcePropertyMap(referenced.Inputs))
+					}), referenced.Inputs)
 
 					ref := resource.FromResourcePropertyValue(
 						resource.MakeCustomResourceReference(referenced.URN, referenced.ID, ""))
 					assert.Equal(l, property.NewMap(map[string]property.Value{
 						c.refProp: property.New(map[string]property.Value{c.prop: ref}),
-					}), resource.FromResourcePropertyMap(referencing.Inputs))
+					}), referencing.Inputs)
 				}
 			},
 		}},

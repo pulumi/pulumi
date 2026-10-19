@@ -17,7 +17,6 @@ package tests
 import (
 	"maps"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
@@ -75,7 +74,7 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					outputs := stack.Outputs
 					outputs = assertJSONOutput(l, outputs, "optionalList", `null`)
 					outputs = assertJSONOutput(l, outputs, "optionalMap", `null`)
 					outputs = assertJSONOutput(l, outputs, "optionalObject", `null`)
@@ -90,7 +89,7 @@ func init() {
 					assert.Nil(l, res.Err, "expected no error, got %v", res.Err)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					outputs := stack.Outputs
 					outputs = assertJSONOutput(l, outputs, "optionalList", `["a","b"]`)
 					outputs = assertJSONOutput(l, outputs, "optionalMap", `{"key":"value"}`)
 					outputs = assertJSONOutput(l, outputs, "optionalObject", `{"prop":"value1","other":2}`)

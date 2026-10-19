@@ -15,7 +15,6 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,7 +35,7 @@ func init() {
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					outputs := stack.Outputs
 
 					require.Equal(l, 2, outputs.Len(), "expected 2 outputs")
 
@@ -61,11 +60,11 @@ func init() {
 						"input":  expectedStash,
 						"output": expectedStash,
 					})
-					assert.Equal(l, want, resource.FromResourcePropertyMap(myStash.Outputs), "expected myStash outputs to be %v", want)
+					assert.Equal(l, want, myStash.Outputs, "expected myStash outputs to be %v", want)
 					want = property.NewMap(map[string]property.Value{
 						"input": expectedStash,
 					})
-					assert.Equal(l, want, resource.FromResourcePropertyMap(myStash.Inputs), "expected myStash inputs to be %v", want)
+					assert.Equal(l, want, myStash.Inputs, "expected myStash inputs to be %v", want)
 				},
 			},
 		},

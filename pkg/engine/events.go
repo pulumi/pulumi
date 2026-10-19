@@ -594,13 +594,11 @@ func makeStepEventStateMetadata(state *pkgresource.State, debug bool, showSecret
 		Taint:          state.Taint,
 		External:       state.External,
 		RetainOnDelete: state.RetainOnDelete,
-		Inputs: filterResourceProperties(
-			resource.FromResourcePropertyMap(state.Inputs), debug, showSecrets),
-		Outputs: filterResourceProperties(
-			resource.FromResourcePropertyMap(state.Outputs), debug, showSecrets),
-		Provider:   state.Provider,
-		InitErrors: state.InitErrors,
-		HideDiffs:  state.HideDiff,
+		Inputs:         filterResourceProperties(state.Inputs, debug, showSecrets),
+		Outputs:        filterResourceProperties(state.Outputs, debug, showSecrets),
+		Provider:       state.Provider,
+		InitErrors:     state.InitErrors,
+		HideDiffs:      state.HideDiff,
 	}
 }
 

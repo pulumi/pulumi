@@ -17,7 +17,6 @@ package tests
 import (
 	"maps"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
@@ -63,7 +62,7 @@ func init() {
 						property.New("single"),
 					})
 
-					assert.Equal(l, property.NewMap(want), resource.FromResourcePropertyMap(stack.Outputs))
+					assert.Equal(l, property.NewMap(want), stack.Outputs)
 				},
 			},
 			{
@@ -95,7 +94,7 @@ func init() {
 						property.New(property.Null),
 					})
 
-					assert.Equal(l, property.NewMap(want), resource.FromResourcePropertyMap(stack.Outputs))
+					assert.Equal(l, property.NewMap(want), stack.Outputs)
 				},
 			},
 		},

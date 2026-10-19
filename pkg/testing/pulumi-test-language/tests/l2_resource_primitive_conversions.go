@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
@@ -68,8 +67,8 @@ func init() {
 							"fromBool": property.New(true), "fromString": property.New(true),
 						}),
 					})
-					require.Equal(l, expectedPlainValues, resource.FromResourcePropertyMap(plainValues.Inputs))
-					require.Equal(l, expectedPlainValues, resource.FromResourcePropertyMap(plainValues.Outputs))
+					require.Equal(l, expectedPlainValues, plainValues.Inputs)
+					require.Equal(l, expectedPlainValues, plainValues.Outputs)
 
 					expectedSecretValues := property.NewMap(map[string]property.Value{
 						"boolean": property.New(false).WithSecret(true),
@@ -83,8 +82,8 @@ func init() {
 							"fromBool": property.New(true), "fromString": property.New(true),
 						}),
 					})
-					require.Equal(l, expectedSecretValues, resource.FromResourcePropertyMap(secretValues.Inputs))
-					require.Equal(l, expectedSecretValues, resource.FromResourcePropertyMap(secretValues.Outputs))
+					require.Equal(l, expectedSecretValues, secretValues.Inputs)
+					require.Equal(l, expectedSecretValues, secretValues.Outputs)
 
 					expectedInvokeValues := property.NewMap(map[string]property.Value{
 						"boolean": property.New(true),
@@ -98,8 +97,8 @@ func init() {
 							"fromBool": property.New(true), "fromString": property.New(true),
 						}),
 					})
-					require.Equal(l, expectedInvokeValues, resource.FromResourcePropertyMap(invokeValues.Inputs))
-					require.Equal(l, expectedInvokeValues, resource.FromResourcePropertyMap(invokeValues.Outputs))
+					require.Equal(l, expectedInvokeValues, invokeValues.Inputs)
+					require.Equal(l, expectedInvokeValues, invokeValues.Outputs)
 				},
 			},
 		},

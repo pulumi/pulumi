@@ -60,11 +60,11 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 
 					stack := RequireSingleResource(l, res.Snap.Resources, resource.RootStackType)
-					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					stackOutputs := stack.Outputs
 					for _, name := range []string{"topLevelElided", "topLevelNotElided"} {
 						topLevel := RequireSingleNamedResource(l, res.Snap.Resources, name)
 						assert.Contains(l, topLevel.AdditionalSecretOutputs, resource.PropertyKey("secretOutput"))
-						topLevelOutputs := resource.FromResourcePropertyMap(topLevel.Outputs)
+						topLevelOutputs := topLevel.Outputs
 						assert.True(l, topLevelOutputs.Get("secretOutput").HasSecrets(),
 							"expected %s schema-secret output to be secret", name)
 						assert.True(l, stackOutputs.Get(name).HasSecrets(),

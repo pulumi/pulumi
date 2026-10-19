@@ -367,14 +367,14 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 	prov := snap.Resources[2]
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgExt"), prov.Type)
 	assert.Equal(t, "default_0_5_0", prov.URN.Name())
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+	assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 		"version": "0.5.0",
 		"__internal": map[string]any{
 			"name":             "pkgA",
 			"version":          "1.0.0",
 			"parameterization": "cmVwbGFjZW1lbnQ=",
 		},
-	}), prov.Inputs)
+	})), prov.Inputs)
 
 	snap, err = lt.TestOp(Refresh).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
@@ -491,7 +491,7 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 	// Check the state of the parameterized provider is what we expect
 	prov := snap.Resources[2]
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgExt"), prov.Type)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+	assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 		"version": "0.5.0",
 		"name":    "testingExt",
 		"__internal": map[string]any{
@@ -499,7 +499,7 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 			"version":          "1.0.0",
 			"parameterization": "cmVwbGFjZW1lbnQ=",
 		},
-	}), prov.Inputs)
+	})), prov.Inputs)
 
 	snap, err = lt.TestOp(Refresh).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "refresh")
@@ -636,43 +636,43 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 	prov := snap.Resources[2]
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgExt"), prov.Type)
 	assert.Equal(t, "default_0_5_0", prov.URN.Name())
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+	assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 		"version": "0.5.0",
 		"__internal": map[string]any{
 			"name":             "pkgA",
 			"version":          "1.0.0",
 			"parameterization": "cmVwbGFjZW1lbnQ=",
 		},
-	}), prov.Inputs)
+	})), prov.Inputs)
 
 	// Check the state of the imported resources is what we expect
 	resA := snap.Resources[1]
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), resA.Type)
 	assert.Equal(t, "resA", resA.URN.Name())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("input"),
-	}, resA.Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"output": resource.NewProperty("output"),
-	}, resA.Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("input"),
+	}), resA.Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"output": property.New("output"),
+	}), resA.Outputs)
 
 	resB := snap.Resources[3]
 	assert.Equal(t, tokens.Type("pkgExt:m:typA"), resB.Type)
 	assert.Equal(t, "resB", resB.URN.Name())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("input"),
-	}, resB.Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"output": resource.NewProperty("output"),
-	}, resB.Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("input"),
+	}), resB.Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"output": property.New("output"),
+	}), resB.Outputs)
 
 	resC := snap.Resources[5]
 	assert.Equal(t, tokens.Type("pkgExt:m:typA"), resC.Type)
 	assert.Equal(t, "resC", resC.URN.Name())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("input"),
-	}, resC.Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"output": resource.NewProperty("output"),
-	}, resC.Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("input"),
+	}), resC.Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"output": property.New("output"),
+	}), resC.Outputs)
 }

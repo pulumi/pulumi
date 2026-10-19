@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,11 +37,13 @@ func TestJournalByteStringRoundTrip(t *testing.T) {
 	const raw = "\x00hello \x80\xfe\xff world\xf0\x28"
 
 	state := &pkgresource.State{
-		Type:    tokens.Type("pkgA:index:res"),
-		URN:     resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
-		Custom:  true,
-		Inputs:  resource.PropertyMap{},
-		Outputs: resource.PropertyMap{"out": resource.MakeSecret(resource.NewProperty(raw))},
+		Type:   tokens.Type("pkgA:index:res"),
+		URN:    resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
+		Custom: true,
+		Inputs: property.Map{},
+		Outputs: property.NewMap(map[string]property.Value{
+			"out": property.New(raw).WithSecret(true),
+		}),
 	}
 
 	engineEntry := engine.JournalEntry{
