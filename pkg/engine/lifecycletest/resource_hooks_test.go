@@ -1004,7 +1004,7 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	require.Equal(t, snap.Resources[0].URN.Name(), "default")
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
-	require.Equal(t, snap.Resources[1].Outputs.Mappable(), map[string]any{
+	require.Equal(t, resource.ToResourcePropertyMap(snap.Resources[1].Outputs).Mappable(), map[string]any{
 		"foo": "bar",
 	}, "the resource was not updated")
 }
@@ -1884,7 +1884,7 @@ func TestResourceHookByteString(t *testing.T) {
 
 	require.True(t, hookCalled)
 	require.Len(t, snap.Resources, 2)
-	require.Equal(t, resource.PropertyMap{
-		"foo": resource.NewProperty(rawBytes),
-	}, snap.Resources[1].Outputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"foo": property.New(rawBytes),
+	}), snap.Resources[1].Outputs)
 }

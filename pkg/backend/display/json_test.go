@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -100,7 +101,8 @@ func TestPreviewMetadataStepRedactsSecretMaps(t *testing.T) {
 		// JSON event replay does not populate the engine's internal resource state.
 		state.State = pkgresource.NewState{ //nolint:requiredfield // Only properties and identity matter here.
 			Type: state.Type, URN: state.URN,
-			Inputs: state.Inputs, Outputs: state.Inputs,
+			Inputs:  resource.FromResourcePropertyMap(state.Inputs),
+			Outputs: resource.FromResourcePropertyMap(state.Inputs),
 		}.Make()
 	}
 

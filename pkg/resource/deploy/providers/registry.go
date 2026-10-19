@@ -827,25 +827,26 @@ func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck b
 	if !ok {
 		// Else we need to load it fresh
 		providerPkg := providers.GetProviderPackage(urn.Type())
+		inputsLegacy := resource.ToResourcePropertyMap(res.Inputs)
 
 		// Parse the provider version, then load, configure, and register the provider.
-		name, err := GetProviderName(providerPkg, res.Inputs)
+		name, err := GetProviderName(providerPkg, inputsLegacy)
 		if err != nil {
 			return fmt.Errorf("parse name for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		version, err := GetProviderVersion(res.Inputs)
+		version, err := GetProviderVersion(inputsLegacy)
 		if err != nil {
 			return fmt.Errorf("parse version for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		downloadURL, err := GetProviderDownloadURL(res.Inputs)
+		downloadURL, err := GetProviderDownloadURL(inputsLegacy)
 		if err != nil {
 			return fmt.Errorf("parse download URL for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		parameter, err := GetProviderParameterization(providerPkg, res.Inputs)
+		parameter, err := GetProviderParameterization(providerPkg, inputsLegacy)
 		if err != nil {
 			return fmt.Errorf("parse parameter for %v provider '%v': %w", providerPkg, urn, err)
 		}
-		envVarMappings, err := GetEnvironmentVariableMappings(res.Inputs)
+		envVarMappings, err := GetEnvironmentVariableMappings(inputsLegacy)
 		if err != nil {
 			return fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -865,7 +866,7 @@ func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck b
 	name := urn.Name()
 	typ := urn.Type()
 
-	filteredInputs := FilterProviderConfig(res.Inputs)
+	filteredInputs := FilterProviderConfig(resource.ToResourcePropertyMap(res.Inputs))
 	if _, err := provider.Configure(context.Background(), plugin.ConfigureRequest{
 		URN:    &urn,
 		Name:   &name,

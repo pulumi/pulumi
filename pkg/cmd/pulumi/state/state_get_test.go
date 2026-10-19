@@ -25,6 +25,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func stateGetSnap(states ...*pkgresource.State) *deploy.Snapshot {
@@ -149,11 +150,11 @@ func TestPrintResourceState_MasksSecrets(t *testing.T) {
 	urn := resource.URN("urn:pulumi:dev::proj::aws:s3/bucket:Bucket::my-bucket")
 	res := customState(urn)
 	res.ID = "bucket-1234"
-	res.Outputs = resource.PropertyMap{
-		"public": resource.NewProperty("visible"),
-		"token":  resource.MakeSecret(resource.NewProperty("hunter2")),
-		"__meta": resource.NewProperty("internal"),
-	}
+	res.Outputs = property.NewMap(map[string]property.Value{
+		"public": property.New("visible"),
+		"token":  property.New("hunter2").WithSecret(true),
+		"__meta": property.New("internal"),
+	})
 
 	render := func(showSecrets bool) string {
 		cmd := &cobra.Command{}

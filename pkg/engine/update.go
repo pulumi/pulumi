@@ -1247,7 +1247,7 @@ func newUpdateSource(ctx context.Context,
 			}
 			for _, r := range target.Snapshot.Resources {
 				if r != nil && !r.Delete && !slices.Contains(opts.TargetSnippets, r.SnippetID) {
-					observer.Resolve(r.URN, r.ID, resource.FromResourcePropertyMap(r.Outputs))
+					observer.Resolve(r.URN, r.ID, r.Outputs)
 				}
 			}
 		}
@@ -1504,8 +1504,7 @@ func (acts *updateActions) OnResourceStepPost(
 		old := step.Old()
 		contract.Assertf(new != nil, "new state should not be nil for partially-failed update")
 		contract.Assertf(old != nil, "old state should not be nil for partially-failed update")
-		new.Inputs = make(resource.PropertyMap)
-		maps.Copy(new.Inputs, old.Inputs)
+		new.Inputs = old.Inputs
 	}
 
 	// Write out the current snapshot. Note that even if a failure has occurred, we should still have a
@@ -1592,8 +1591,8 @@ func shouldRecordReadStep(step deploy.Step) bool {
 	// app did any 'reads' these don't show up in the resource summary at the end.
 	return step.Old() != nil &&
 		step.New() != nil &&
-		step.Old().Outputs != nil &&
-		step.New().Outputs != nil &&
+		step.Old().Outputs.Len() != 0 &&
+		step.New().Outputs.Len() != 0 &&
 		step.Old().Outputs.Diff(step.New().Outputs) != nil
 }
 

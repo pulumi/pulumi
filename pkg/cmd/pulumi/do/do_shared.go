@@ -1012,7 +1012,7 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 				providerURN, res.Type, expectedType,
 			)
 		}
-		return resource.FromResourcePropertyMap(res.Inputs), nil
+		return res.Inputs, nil
 	}
 	return property.Map{}, fmt.Errorf("no resource named %s in the current stack", providerURN)
 }

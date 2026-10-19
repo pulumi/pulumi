@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -54,10 +53,10 @@ func init() {
 					}
 
 					component1 := RequireSingleNamedResource(l, snap.Resources, "component1")
-					assertOutput(resource.FromResourcePropertyMap(component1.Outputs), "propertyDeps")
+					assertOutput(component1.Outputs, "propertyDeps")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					assertOutput(resource.FromResourcePropertyMap(stack.Outputs), "propertyDepsFromCall")
+					assertOutput(stack.Outputs, "propertyDepsFromCall")
 				},
 			},
 		},

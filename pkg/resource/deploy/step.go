@@ -351,9 +351,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		nil, /* oldOptions */
 		resourceOptionsFromState(s.new),
 		s.new.Inputs,
-		nil, /* oldInputs */
-		nil, /* newOutputs */
-		nil, /* oldOutputs */
+		property.Map{}, /* oldInputs */
+		property.Map{}, /* newOutputs */
+		property.Map{}, /* oldOutputs */
 	); err != nil {
 		return resource.StatusOK, nil, err
 	}
@@ -396,7 +396,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 						URN:                   s.URN(),
 						Name:                  s.new.URN.Name(),
 						Type:                  s.new.URN.Type(),
-						Properties:            resource.FromResourcePropertyMap(s.new.Inputs),
+						Properties:            s.new.Inputs,
 						Timeout:               s.new.CustomTimeouts.Create,
 						Preview:               s.deployment.opts.DryRun,
 						ResourceStatusAddress: resourceStatusAddress,
@@ -409,9 +409,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 						Name:                  s.new.URN.Name(),
 						Type:                  s.new.URN.Type(),
 						ID:                    partial.ID,
-						OldInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
+						OldInputs:             s.new.Inputs,
 						OldOutputs:            partial.Properties,
-						NewInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
+						NewInputs:             s.new.Inputs,
 						Timeout:               s.new.CustomTimeouts.Create,
 						Preview:               s.deployment.opts.DryRun,
 						ResourceStatusAddress: resourceStatusAddress,
@@ -457,8 +457,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					nil, /* oldOptions */
 					resourceOptionsFromState(s.new),
 					s.new.Inputs,
-					nil, /* oldInputs */
-					nil, /* oldOutputs */
+					property.Map{}, /* oldInputs */
+					property.Map{}, /* oldOutputs */
 					"create",
 					failures,
 				)
@@ -496,7 +496,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		if err == nil || resourceStatus == resource.StatusPartialFailure {
 			id = resp.ID
-			outs = resource.ToResourcePropertyMap(resp.Properties)
+			outs = resp.Properties
 			refreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 			if err == nil && !s.deployment.opts.DryRun && id == "" {
@@ -548,9 +548,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			nil, /* oldOptions */
 			resourceOptionsFromState(s.new),
 			s.new.Inputs,
-			nil, /* oldInputs */
+			property.Map{}, /* oldInputs */
 			s.new.Outputs,
-			nil, /* oldOutputs */
+			property.Map{}, /* oldOutputs */
 		); err != nil {
 			// The cloud resource was created successfully, only the after-hook failed. Surface the error as a
 			// diagnostic and record it as a deployment-level failure, but let the step's snapshot commit go through so
@@ -572,7 +572,7 @@ func (s *CreateStep) Skip() {
 	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
 	// The snapshot is not affected: no create happened, so s.new is not persisted.
 	skipState := s.new.Copy()
-	skipState.Outputs = dryRunOutputs(s, s.provider, nil, s.new, resource.FromResourcePropertyMap(s.new.Inputs), nil)
+	skipState.Outputs = dryRunOutputs(s, s.provider, nil, s.new, s.new.Inputs, nil)
 	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
@@ -580,15 +580,15 @@ func (s *CreateStep) Skip() {
 // If that isn't possible, everything is unknown.
 func dryRunOutputs(
 	s Step, provider plugin.Provider, old, new *pkgresource.State, inputs property.Map, ignoreChanges []string,
-) resource.PropertyMap {
+) property.Map {
 	if !new.Custom {
-		return resource.PropertyMap{}
+		return property.Map{}
 	}
 	prov, err := getProvider(s, provider)
 	if err != nil {
 		logging.V(5).Infof("could not resolve provider for skipped %s, falling back to fully unknown outputs: %v",
 			s.URN(), err)
-		return resource.PropertyMap{}
+		return property.Map{}
 	}
 
 	var outputs property.Map
@@ -610,8 +610,8 @@ func dryRunOutputs(
 			Name:          new.URN.Name(),
 			Type:          new.URN.Type(),
 			ID:            old.ID,
-			OldInputs:     resource.FromResourcePropertyMap(old.Inputs),
-			OldOutputs:    resource.FromResourcePropertyMap(old.Outputs),
+			OldInputs:     old.Inputs,
+			OldOutputs:    old.Outputs,
 			NewInputs:     inputs,
 			Timeout:       new.CustomTimeouts.Update,
 			IgnoreChanges: ignoreChanges,
@@ -621,9 +621,9 @@ func dryRunOutputs(
 	}
 	if err != nil {
 		logging.V(5).Infof("dry-run failed for skipped %s, falling back to fully unknown outputs: %v", s.URN(), err)
-		return resource.PropertyMap{}
+		return property.Map{}
 	}
-	return resource.ToResourcePropertyMap(outputs)
+	return outputs
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -749,10 +749,10 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.URN().Name(),
 		s.Type(),
 		resourceOptionsFromState(s.old),
-		nil, /* newOptions */
-		nil, /* newInputs */
+		nil,            /* newOptions */
+		property.Map{}, /* newInputs */
 		s.old.Inputs,
-		nil, /* newOutputs */
+		property.Map{}, /* newOutputs */
 		s.old.Outputs,
 	); err != nil {
 		return resource.StatusOK, nil, err
@@ -807,8 +807,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Name:                  s.URN().Name(),
 					Type:                  s.URN().Type(),
 					ID:                    s.old.ID,
-					Inputs:                resource.FromResourcePropertyMap(s.old.Inputs),
-					Outputs:               resource.FromResourcePropertyMap(s.old.Outputs),
+					Inputs:                s.old.Inputs,
+					Outputs:               s.old.Outputs,
 					Timeout:               s.old.CustomTimeouts.Delete,
 					ResourceStatusAddress: resourceStatusAddress,
 					ResourceStatusToken:   resourceStatusToken,
@@ -835,8 +835,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.URN().Name(),
 					s.Type(),
 					resourceOptionsFromState(s.old),
-					nil, /* newOptions */
-					nil, /* newInputs */
+					nil,            /* newOptions */
+					property.Map{}, /* newInputs */
 					s.old.Inputs,
 					s.old.Outputs,
 					"delete",
@@ -914,10 +914,10 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.URN.Name(),
 		s.Type(),
 		resourceOptionsFromState(s.old),
-		nil, /* newOptions */
-		nil, /* newInputs */
+		nil,            /* newOptions */
+		property.Map{}, /* newInputs */
 		s.old.Inputs,
-		nil, /* newOutputs */
+		property.Map{}, /* newOutputs */
 		s.old.Outputs,
 	); err != nil {
 		// The cloud resource was deleted successfully, only the after-hook failed. Surface the error and record it as a
@@ -1093,7 +1093,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		resourceOptionsFromState(s.new),
 		s.new.Inputs,
 		s.old.Inputs,
-		nil, /* newOutputs */
+		property.Map{}, /* newOutputs */
 		s.old.Outputs,
 	); err != nil {
 		return resource.StatusOK, nil, err
@@ -1127,9 +1127,9 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Name:                  s.URN().Name(),
 					Type:                  s.URN().Type(),
 					ID:                    s.old.ID,
-					OldInputs:             resource.FromResourcePropertyMap(s.old.Inputs),
-					OldOutputs:            resource.FromResourcePropertyMap(s.old.Outputs),
-					NewInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
+					OldInputs:             s.old.Inputs,
+					OldOutputs:            s.old.Outputs,
+					NewInputs:             s.new.Inputs,
 					Timeout:               s.new.CustomTimeouts.Update,
 					IgnoreChanges:         s.ignoreChanges,
 					Preview:               s.deployment.opts.DryRun,
@@ -1208,7 +1208,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		defer s.new.Lock.Unlock()
 
 		// Now copy any output state back in case the update triggered cascading updates to other properties.
-		s.new.Outputs = resource.ToResourcePropertyMap(resp.Properties)
+		s.new.Outputs = resp.Properties
 		s.new.RefreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 		// UpdateStep doesn't create, but does modify state.
@@ -1264,7 +1264,7 @@ func (s *UpdateStep) Skip() {
 	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
 	// The snapshot still writes s.new with its prior outputs; only the SDK response is affected.
 	skipState := s.new.Copy()
-	skipState.Outputs = dryRunOutputs(s, s.provider, s.old, s.new, resource.FromResourcePropertyMap(s.new.Inputs),
+	skipState.Outputs = dryRunOutputs(s, s.provider, s.old, s.new, s.new.Inputs,
 		s.ignoreChanges)
 	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
@@ -1449,7 +1449,7 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
 
-		s.new.Outputs = resource.PropertyMap{}
+		s.new.Outputs = property.Map{}
 		// The read never happened. Clear the id so downstream signals (the response id SDKs
 		// surface via .id, and trackSettledResource's "did this resource settle" check) all
 		// agree the resource didn't exist.
@@ -1476,8 +1476,8 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			Name:                  urn.Name(),
 			Type:                  urn.Type(),
 			ID:                    id,
-			Inputs:                resource.FromResourcePropertyMap(s.new.Inputs),
-			State:                 resource.FromResourcePropertyMap(s.new.Inputs),
+			Inputs:                s.new.Inputs,
+			State:                 s.new.Inputs,
 			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
@@ -1503,7 +1503,7 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		if result.Outputs == nil {
 			return resource.StatusOK, nil, fmt.Errorf("resource '%s' does not exist", id)
 		}
-		s.new.Outputs = resource.ToResourcePropertyMap(*result.Outputs)
+		s.new.Outputs = *result.Outputs
 
 		if result.ID != "" {
 			s.new.ID = result.ID
@@ -1522,8 +1522,8 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 	var inputsChange, outputsChange bool
 	if s.old != nil {
-		inputsChange = !s.new.Inputs.DeepEquals(s.old.Inputs)
-		outputsChange = !s.new.Outputs.DeepEquals(s.old.Outputs)
+		inputsChange = !s.new.Inputs.Equals(s.old.Inputs)
+		outputsChange = !s.new.Outputs.Equals(s.old.Outputs)
 	}
 	// Only update the Modified timestamp if read provides new values that differ
 	// from the old state.
@@ -1554,7 +1554,7 @@ func (s *ReadStep) Skip() {
 	if s.old != nil {
 		skipState.Outputs = s.old.Outputs
 	} else {
-		skipState.Outputs = resource.PropertyMap{}
+		skipState.Outputs = property.Map{}
 		unknown = true
 	}
 	s.event.Done(&ReadResult{State: skipState, Result: ResultStateSkipped, Unknown: unknown})
@@ -1731,8 +1731,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		Name:                  s.new.URN.Name(),
 		Type:                  s.new.URN.Type(),
 		ID:                    resourceID,
-		Inputs:                resource.FromResourcePropertyMap(s.old.Inputs),
-		State:                 resource.FromResourcePropertyMap(s.old.Outputs),
+		Inputs:                s.old.Inputs,
+		State:                 s.old.Outputs,
 		Timeout:               s.old.CustomTimeouts.Read,
 		ResourceStatusAddress: resourceStatusAddress,
 		ResourceStatusToken:   resourceStatusToken,
@@ -1759,18 +1759,18 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 	}
 
-	var refreshedInputs, refreshedOutputs resource.PropertyMap
+	var refreshedInputs, refreshedOutputs property.Map
 	if refreshed.Inputs != nil {
-		refreshedInputs = resource.ToResourcePropertyMap(*refreshed.Inputs)
+		refreshedInputs = *refreshed.Inputs
 	}
 	if refreshed.Outputs != nil {
-		refreshedOutputs = resource.ToResourcePropertyMap(*refreshed.Outputs)
+		refreshedOutputs = *refreshed.Outputs
 	}
 	logging.V(10).Infof("Refreshed resource ID: %q, Inputs: #%d, Outputs: #%d",
-		refreshed.ID, len(refreshedInputs), len(refreshedOutputs))
+		refreshed.ID, refreshedInputs.Len(), refreshedOutputs.Len())
 
 	// If the ID is blank treat this as a delete, and leave outputs blank.
-	var outputs resource.PropertyMap
+	var outputs property.Map
 	if refreshed.ID != "" {
 		outputs = refreshedOutputs
 	}
@@ -1781,7 +1781,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		inputs = refreshedInputs
 	}
 
-	if outputs != nil {
+	if refreshed.Outputs != nil && refreshed.ID != "" {
 		contract.Assertf(refreshed.ID != "", "refreshed.ID can not be empty")
 
 		// There is a chance that the ID has changed. We want to allow this change to happen
@@ -1815,11 +1815,11 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// * The user has explicitly opted into this legacy behaviour by setting
 			//   the `UseLegacyRefreshDiff` option to true.
 			if s.old.External || s.deployment.opts.UseLegacyRefreshDiff {
-				inputsChange = !refreshedInputs.DeepEquals(s.old.Inputs)
-				outputsChange = !refreshedOutputs.DeepEquals(s.old.Outputs)
+				inputsChange = !refreshedInputs.Equals(s.old.Inputs)
+				outputsChange = !refreshedOutputs.Equals(s.old.Outputs)
 			} else {
-				inputsChange = !inputs.DeepEquals(s.old.Inputs)
-				outputsChange = !outputs.DeepEquals(s.old.Outputs)
+				inputsChange = !inputs.Equals(s.old.Inputs)
+				outputsChange = !outputs.Equals(s.old.Outputs)
 			}
 		}
 
@@ -1856,9 +1856,9 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				s.deployment.Diag(),
 				s.new.URN, s.new.ID,
 				// pass new inputs/outputs as old inputs/outputs
-				s.new.Inputs, s.new.Outputs,
+				resource.ToResourcePropertyMap(s.new.Inputs), resource.ToResourcePropertyMap(s.new.Outputs),
 				// pass old inputs as new inputs
-				s.old.Inputs,
+				resource.ToResourcePropertyMap(s.old.Inputs),
 				prov, s.deployment.opts.DryRun, s.old.IgnoreChanges,
 			)
 			if err != nil {
@@ -2073,16 +2073,16 @@ func (s *ImportStep) IsUntargeted() bool           { return false }
 // importer cannot return (e.g. write-only attributes) survive, while the provider stays authoritative
 // for everything it does return. A value that was supplied as a secret stays secret even if the
 // provider returns it in plain text.
-func mergeSuppliedProperties(read, supplied resource.PropertyMap) resource.PropertyMap {
-	if len(supplied) == 0 {
+func mergeSuppliedProperties(read, supplied property.Map) property.Map {
+	if supplied.Len() == 0 {
 		return read
 	}
-	merged := read.Copy()
-	for k, v := range supplied {
-		if r, has := read[k]; !has || r.IsNull() {
-			merged[k] = v
-		} else if v.IsSecret() && !r.IsSecret() {
-			merged[k] = resource.MakeSecret(r)
+	merged := read
+	for k, v := range supplied.All {
+		if r, has := read.GetOk(k); !has || r.IsNull() {
+			merged = merged.Set(k, v)
+		} else if v.Secret() && !r.Secret() {
+			merged = merged.Set(k, r.WithSecret(true))
 		}
 	}
 	return merged
@@ -2127,11 +2127,11 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 
 	suppliedInputs := s.new.Inputs
 	suppliedOutputs := s.new.Outputs
-	inputs := resource.PropertyMap{}
-	outputs := resource.PropertyMap{}
+	inputs := property.Map{}
+	outputs := property.Map{}
 	var prov plugin.Provider
 	rst := resource.StatusOK
-	if len(suppliedOutputs) > 0 {
+	if suppliedOutputs.Len() > 0 {
 		// The import supplied the resource's full state (e.g. from a state converter): trust it rather
 		// than reading from the provider, so the import can run without access to the underlying cloud.
 		contract.Assertf(s.planned, "only planned imports may supply outputs")
@@ -2147,7 +2147,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
 
-		if suppliedInputs != nil {
+		if suppliedInputs.Len() > 0 {
 			inputs = suppliedInputs
 		}
 		outputs = suppliedOutputs
@@ -2209,9 +2209,9 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		} else {
 			s.new.ID = s.new.ImportID
 		}
-		readInputs := resource.ToResourcePropertyMap(*read.Inputs)
+		readInputs := *read.Inputs
 		inputs = readInputs
-		outputs = resource.ToResourcePropertyMap(*read.Outputs)
+		outputs = *read.Outputs
 		if s.planned {
 			inputs = mergeSuppliedProperties(readInputs, suppliedInputs)
 		}
@@ -2221,7 +2221,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		defer s.new.Lock.Unlock()
 
 		// Local components have no state to read; keep any inputs the import supplied.
-		if s.planned && suppliedInputs != nil {
+		if s.planned && suppliedInputs.Len() > 0 {
 			inputs = suppliedInputs
 		}
 	}
@@ -2302,13 +2302,12 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 
 		if len(inputProperties) == 0 {
 			logging.V(9).Infof("Importing %v with all properties", s.URN())
-			s.new.Inputs = s.old.Inputs.Copy()
+			s.new.Inputs = s.old.Inputs
 		} else {
 			logging.V(9).Infof("Importing %v with supplied properties: %v", s.URN(), inputProperties)
 			for _, p := range inputProperties {
-				k := resource.PropertyKey(p)
-				if value, has := s.old.Inputs[k]; has {
-					s.new.Inputs[k] = value
+				if value, has := s.old.Inputs.GetOk(p); has {
+					s.new.Inputs = s.new.Inputs.Set(p, value)
 				}
 			}
 		}
@@ -2320,8 +2319,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			URN:           s.new.URN,
 			Name:          s.URN().Name(),
 			Type:          s.URN().Type(),
-			OldInputs:     resource.FromResourcePropertyMap(s.old.Inputs),
-			NewInputs:     resource.FromResourcePropertyMap(s.new.Inputs),
+			OldInputs:     s.old.Inputs,
+			NewInputs:     s.new.Inputs,
 			AllowUnknowns: s.deployment.opts.DryRun,
 			RandomSeed:    s.randomSeed,
 		})
@@ -2355,8 +2354,9 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 	}
 
 	// Set inputs back to their old values (if any) for any "ignored" properties
-	processedInputs := processIgnoreChanges(s.deployment.Diag(), s.new.URN, s.new.Inputs, s.old.Inputs, s.ignoreChanges)
-	s.new.Inputs = processedInputs
+	processedInputs := processIgnoreChanges(s.deployment.Diag(), s.new.URN,
+		resource.ToResourcePropertyMap(s.new.Inputs), resource.ToResourcePropertyMap(s.old.Inputs), s.ignoreChanges)
+	s.new.Inputs = resource.FromResourcePropertyMap(processedInputs)
 
 	// If we were asked to replace an existing, non-External resource, pend the deletion here.
 	if s.replacing {
@@ -2378,7 +2378,7 @@ func (s *ImportStep) Skip() {
 	}
 	// Imports have no dry-run analogue, so a skipped import surfaces as fully unknown.
 	skipState := s.new.Copy()
-	skipState.Outputs = resource.PropertyMap{}
+	skipState.Outputs = property.Map{}
 	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
@@ -2642,7 +2642,10 @@ func (s *DiffStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	diff, err := diffResource(
 		s.deployment.Diag(),
-		s.new.URN, s.old.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, s.deployment.opts.DryRun, s.ignoreChanges,
+		s.new.URN, s.old.ID,
+		resource.ToResourcePropertyMap(s.old.Inputs), resource.ToResourcePropertyMap(s.old.Outputs),
+		resource.ToResourcePropertyMap(s.new.Inputs),
+		prov, s.deployment.opts.DryRun, s.ignoreChanges,
 	)
 	if err != nil {
 		s.pcs.Reject(err)

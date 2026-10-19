@@ -204,11 +204,7 @@ func TestCreateStep(t *testing.T) {
 						CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
 							return plugin.CreateResponse{
 								Status: resource.StatusPartialFailure,
-							}, &plugin.InitError{
-								Reasons: []string{
-									"intentional error",
-								},
-							}
+							}, &plugin.InitError{Reasons: []string{"intentional error"}}
 						},
 					},
 				}
@@ -460,11 +456,7 @@ func TestUpdateStep(t *testing.T) {
 								"key": property.New("expected-value"),
 							}),
 							Status: resource.StatusPartialFailure,
-						}, &plugin.InitError{
-							Reasons: []string{
-								"intentional error",
-							},
-						}
+						}, &plugin.InitError{Reasons: []string{"intentional error"}}
 					},
 				},
 			}
@@ -474,9 +466,9 @@ func TestUpdateStep(t *testing.T) {
 
 			// News should be updated.
 			require.Len(t, s.new.InitErrors, 1)
-			assert.Equal(t, resource.PropertyMap{
-				"key": resource.NewProperty("expected-value"),
-			}, s.new.Outputs)
+			assert.Equal(t, property.NewMap(map[string]property.Value{
+				"key": property.New("expected-value"),
+			}), s.new.Outputs)
 		})
 	})
 }
@@ -570,11 +562,7 @@ func TestReadStep(t *testing.T) {
 								})),
 							},
 							Status: resource.StatusPartialFailure,
-						}, &plugin.InitError{
-							Reasons: []string{
-								"intentional error",
-							},
-						}
+						}, &plugin.InitError{Reasons: []string{"intentional error"}}
 					},
 				},
 			}
@@ -584,10 +572,10 @@ func TestReadStep(t *testing.T) {
 
 			// News should be updated.
 			require.Len(t, s.new.InitErrors, 1)
-			assert.Equal(t, resource.PropertyMap(nil), s.new.Inputs)
-			assert.Equal(t, resource.PropertyMap{
-				"outputs-key": resource.NewProperty("expected-value"),
-			}, s.new.Outputs)
+			assert.Equal(t, property.Map{}, s.new.Inputs)
+			assert.Equal(t, property.NewMap(map[string]property.Value{
+				"outputs-key": property.New("expected-value"),
+			}), s.new.Outputs)
 			assert.Equal(t, resource.ID("new-id"), s.new.ID)
 		})
 		t.Run("unknown id", func(t *testing.T) {
@@ -611,7 +599,7 @@ func TestReadStep(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, resource.StatusOK, status)
 			// News should be updated.
-			assert.Equal(t, resource.PropertyMap{}, s.new.Outputs)
+			assert.Equal(t, property.Map{}, s.new.Outputs)
 		})
 	})
 }
@@ -815,8 +803,8 @@ func TestRefreshStepPatterns(t *testing.T) {
 			Type:     "some-type",
 			Custom:   true,
 			Provider: "urn:pulumi:stack::project::pulumi:providers:aws::default_5_42_0::denydefaultprovider",
-			Inputs:   tc.inputs,
-			Outputs:  tc.outputs,
+			Inputs:   resource.FromResourcePropertyMap(tc.inputs),
+			Outputs:  resource.FromResourcePropertyMap(tc.outputs),
 		}
 		s := &RefreshStep{
 			old: state,
@@ -925,11 +913,7 @@ func TestRefreshStep(t *testing.T) {
 							})),
 						},
 						Status: resource.StatusPartialFailure,
-					}, &plugin.InitError{
-						Reasons: []string{
-							"intentional error",
-						},
-					}
+					}, &plugin.InitError{Reasons: []string{"intentional error"}}
 				},
 			}
 			status, _, err := s.Apply()
@@ -938,9 +922,9 @@ func TestRefreshStep(t *testing.T) {
 
 			// News should be updated.
 			require.Len(t, s.new.InitErrors, 1)
-			assert.Equal(t, resource.PropertyMap{
-				"outputs-key": resource.NewProperty("expected-value"),
-			}, s.new.Outputs)
+			assert.Equal(t, property.NewMap(map[string]property.Value{
+				"outputs-key": property.New("expected-value"),
+			}), s.new.Outputs)
 			assert.Equal(t, resource.ID("new-id"), s.new.ID)
 		})
 	})

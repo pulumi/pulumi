@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -107,20 +108,20 @@ func (t *testSecretsManager) BatchDecrypt(
 // runs the standard deserialize - which hits the batch's cache for every secret.
 func deserializeProperty(
 	ctx context.Context, v any, dec BatchDecrypter, complete CompleteCrypterBatch,
-) (resource.PropertyValue, error) {
+) (property.Value, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return resource.PropertyValue{}, err
+		return property.Value{}, err
 	}
 	var v2 any
 	if err := json.Unmarshal(b, &v2); err != nil {
-		return resource.PropertyValue{}, err
+		return property.Value{}, err
 	}
 	if err := enqueueCiphertexts(ctx, dec, v2); err != nil {
-		return resource.PropertyValue{}, err
+		return property.Value{}, err
 	}
 	if err := complete(ctx); err != nil {
-		return resource.PropertyValue{}, err
+		return property.Value{}, err
 	}
 	return DeserializePropertyValue(v2, dec)
 }
@@ -132,9 +133,9 @@ func TestCachingSecretsManager(t *testing.T) {
 	sm := &testSecretsManager{}
 	csm := NewBatchingCachingSecretsManager(sm)
 
-	foo1 := resource.MakeSecret(resource.NewProperty("foo"))
-	foo2 := resource.MakeSecret(resource.NewProperty("foo"))
-	bar := resource.MakeSecret(resource.NewProperty("bar"))
+	foo1 := property.New("foo").WithSecret(true)
+	foo2 := property.New("foo").WithSecret(true)
+	bar := property.New("bar").WithSecret(true)
 
 	// Serialize the first copy of "foo". Encrypt should be called once, as this value has not yet been encrypted.
 	enc, completeEnc := csm.BeginBatchEncryption()
@@ -192,7 +193,7 @@ func TestCachingSecretsManager(t *testing.T) {
 	require.NoError(t, err, "deserialize")
 	assert.Equal(t, 1, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
-	assert.True(t, foo1.DeepEquals(foo1Dec))
+	assert.True(t, foo1.Equals(foo1Dec))
 
 	// Decrypt foo2Ser. Shares cache from encrypt.
 	dec, completeDec = csm.BeginBatchDecryption()
@@ -200,7 +201,7 @@ func TestCachingSecretsManager(t *testing.T) {
 	require.NoError(t, err, "deserialize")
 	assert.Equal(t, 2, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
-	assert.True(t, foo2.DeepEquals(foo2Dec))
+	assert.True(t, foo2.Equals(foo2Dec))
 
 	// Decrypt barSer. Shares cache from encrypt.
 	dec, completeDec = csm.BeginBatchDecryption()
@@ -208,7 +209,7 @@ func TestCachingSecretsManager(t *testing.T) {
 	require.NoError(t, err, "deserialize")
 	assert.Equal(t, 3, sm.batchDecryptCalls, "batch decrypt calls")
 	assert.Equal(t, 0, sm.decryptCalls, "decrypt calls")
-	assert.True(t, bar.DeepEquals(barDec))
+	assert.True(t, bar.Equals(barDec))
 
 	// Create a new CachingSecretsManager and re-run the decrypts. Each decrypt should insert the plain- and
 	// ciphertext into the cache with the associated secret.
@@ -219,21 +220,21 @@ func TestCachingSecretsManager(t *testing.T) {
 	foo1Dec, err = deserializeProperty(ctx, foo1Ser, dec, completeDec)
 	require.NoError(t, err, "deserialize")
 	assert.Equal(t, 4, sm.batchDecryptCalls, "batch decrypt calls")
-	assert.True(t, foo1.DeepEquals(foo1Dec))
+	assert.True(t, foo1.Equals(foo1Dec))
 
 	// Decrypt foo2Ser. Decrypt should be called.
 	dec, completeDec = csm.BeginBatchDecryption()
 	foo2Dec, err = deserializeProperty(ctx, foo2Ser, dec, completeDec)
 	require.NoError(t, err, "deserialize")
 	assert.Equal(t, 5, sm.batchDecryptCalls, "batch decrypt calls")
-	assert.True(t, foo2.DeepEquals(foo2Dec))
+	assert.True(t, foo2.Equals(foo2Dec))
 
 	// Decrypt barSer. Decrypt should be called.
 	dec, completeDec = csm.BeginBatchDecryption()
 	barDec, err = deserializeProperty(ctx, barSer, dec, completeDec)
 	require.NoError(t, err, "deserialize")
 	assert.Equal(t, 6, sm.batchDecryptCalls, "batch decrypt calls")
-	assert.True(t, bar.DeepEquals(barDec))
+	assert.True(t, bar.Equals(barDec))
 
 	// Serialize the first copy of "foo" again. Encrypt should not be called, as this value has already been
 	// cached by the earlier calls to Decrypt.

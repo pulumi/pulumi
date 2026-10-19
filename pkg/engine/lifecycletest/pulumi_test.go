@@ -775,8 +775,8 @@ func TestPreviewWithPendingOperations(t *testing.T) {
 			Custom:       true,
 			Delete:       del,
 			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
+			Inputs:       property.Map{},
+			Outputs:      property.Map{},
 			Dependencies: dependencies,
 		}
 	}
@@ -829,8 +829,8 @@ func TestRefreshWithPendingOperations(t *testing.T) {
 			Custom:       true,
 			Delete:       del,
 			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
+			Inputs:       property.Map{},
+			Outputs:      property.Map{},
 			Dependencies: dependencies,
 		}
 	}
@@ -896,8 +896,8 @@ func TestRefreshPreservesPendingCreateOperations(t *testing.T) {
 			Custom:       true,
 			Delete:       del,
 			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
+			Inputs:       property.Map{},
+			Outputs:      property.Map{},
 			Dependencies: dependencies,
 		}
 	}
@@ -977,8 +977,8 @@ func TestUpdateShowsWarningWithPendingOperations(t *testing.T) {
 			Custom:       true,
 			Delete:       del,
 			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
+			Inputs:       property.Map{},
+			Outputs:      property.Map{},
 			Dependencies: dependencies,
 		}
 	}
@@ -1103,8 +1103,8 @@ func TestUpdatePartialFailure(t *testing.T) {
 					case TestJournalEntryBegin:
 						continue
 					case TestJournalEntrySuccess:
-						inputs := entry.Step.New().Inputs
-						outputs := entry.Step.New().Outputs
+						inputs := resource.ToResourcePropertyMap(entry.Step.New().Inputs)
+						outputs := resource.ToResourcePropertyMap(entry.Step.New().Outputs)
 						require.Len(t, inputs, 1)
 						require.Len(t, outputs, 1)
 						assert.Equal(t,
@@ -1128,12 +1128,12 @@ func TestUpdatePartialFailure(t *testing.T) {
 				URN:    resURN,
 				Custom: true,
 				ID:     "1",
-				Inputs: resource.NewPropertyMapFromMap(map[string]any{
+				Inputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"input_prop": "old inputs",
-				}),
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				})),
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"output_prop": 1,
-				}),
+				})),
 			},
 		},
 	}
@@ -1188,13 +1188,13 @@ func TestStackReference(t *testing.T) {
 				Custom:   true,
 				ID:       "1",
 				External: true,
-				Inputs: resource.NewPropertyMapFromMap(map[string]any{
+				Inputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"name": "other2",
-				}),
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				})),
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"name":    "other2",
 					"outputs": resource.PropertyMap{},
-				}),
+				})),
 			},
 		},
 	}
@@ -1345,13 +1345,13 @@ func TestStackReferenceRegister(t *testing.T) {
 				URN:    resURN,
 				Custom: true,
 				ID:     "1",
-				Inputs: resource.NewPropertyMapFromMap(map[string]any{
+				Inputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"name": "other2",
-				}),
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				})),
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"name":    "other2",
 					"outputs": resource.PropertyMap{},
-				}),
+				})),
 			},
 		},
 	}
@@ -2141,7 +2141,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 	providerURN := p.NewProviderURN("pkgA", "default", "")
 	for _, r := range snap.Resources {
 		if r.URN == providerURN {
-			r.Outputs = nil
+			r.Outputs = property.Map{}
 		}
 	}
 
@@ -2153,7 +2153,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 	p.Config[config.MustMakeKey("pkgA", "foo")] = config.NewValue("baz")
 	for _, r := range snap.Resources {
 		if r.URN == providerURN {
-			r.Outputs = nil
+			r.Outputs = property.Map{}
 		}
 	}
 	p.Steps = []lt.TestStep{{
@@ -2797,8 +2797,8 @@ func TestConfigSecrets(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 
 	provider := snap.Resources[0]
-	assert.True(t, provider.Inputs["secret"].IsSecret())
-	assert.True(t, provider.Outputs["secret"].IsSecret())
+	assert.True(t, resource.ToResourcePropertyMap(provider.Inputs)["secret"].IsSecret())
+	assert.True(t, resource.ToResourcePropertyMap(provider.Outputs)["secret"].IsSecret())
 }
 
 func TestComponentOutputs(t *testing.T) {
@@ -3501,8 +3501,9 @@ func TestAdditionalSecretOutputs(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	resA := snap.Resources[1]
 	assert.Equal(t, []resource.PropertyKey{"a", "b"}, resA.AdditionalSecretOutputs)
-	assert.True(t, resA.Outputs["a"].IsSecret())
-	assert.True(t, resA.Outputs["c"].IsSecret())
+	resAOutputs := resource.ToResourcePropertyMap(resA.Outputs)
+	assert.True(t, resAOutputs["a"].IsSecret())
+	assert.True(t, resAOutputs["c"].IsSecret())
 }
 
 func TestDefaultParents(t *testing.T) {
@@ -4152,15 +4153,15 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	resA := snap.Resources[1]
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), resA.Type)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+	assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 		"foo":     "bar",
 		"default": "default",
-	}), resA.Inputs)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+	})), resA.Inputs)
+	assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 		"foo":      "bar",
 		"default":  "default",
 		"computed": "computed",
-	}), resA.Outputs)
+	})), resA.Outputs)
 
 	// Now run another update with new inputs
 	insA = property.NewMap(map[string]property.Value{
@@ -4173,15 +4174,15 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	resA = snap.Resources[1]
 	assert.Equal(t, tokens.Type("pkgA:m:typA"), resA.Type)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+	assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 		"foo":     "baz",
 		"default": "default",
-	}), resA.Inputs)
-	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+	})), resA.Inputs)
+	assert.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 		"foo":      "baz",
 		"default":  "default",
 		"computed": "computed",
-	}), resA.Outputs)
+	})), resA.Outputs)
 
 	// Now run a destroy to delete the resource and check the stored inputs and outputs are sent
 	snap, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
@@ -4622,7 +4623,8 @@ func TestProviderChecksums(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	// Check the checksum was saved in the provider resource
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[0].Type)
-	checksums := snap.Resources[0].Inputs["__internal"].ObjectValue()["pluginChecksums"].ObjectValue()
+	inputs := resource.ToResourcePropertyMap(snap.Resources[0].Inputs)
+	checksums := inputs["__internal"].ObjectValue()["pluginChecksums"].ObjectValue()
 	assert.Equal(t, "0001020304", checksums["windows-x64"].StringValue())
 
 	// Delete the resource and ensure the checksums are passed to EnsurePlugins
@@ -4756,7 +4758,7 @@ func TestStackOutputsProgramError(t *testing.T) {
 	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedOutputs resource.PropertyMap) {
 		require.Len(t, snap.Resources, expectedResourceCount)
 		assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
-		assert.Equal(t, expectedOutputs, snap.Resources[0].Outputs)
+		assert.Equal(t, resource.FromResourcePropertyMap(expectedOutputs), snap.Resources[0].Outputs)
 	}
 
 	// Run the initial update which sets some stack outputs.
@@ -4860,7 +4862,7 @@ func TestStackOutputsResourceError(t *testing.T) {
 	validateSnapshot := func(snap *deploy.Snapshot, expectedResourceCount int, expectedOutputs resource.PropertyMap) {
 		require.Len(t, snap.Resources, expectedResourceCount)
 		assert.Equal(t, resource.RootStackType, snap.Resources[0].Type)
-		assert.Equal(t, expectedOutputs, snap.Resources[0].Outputs)
+		assert.Equal(t, resource.FromResourcePropertyMap(expectedOutputs), snap.Resources[0].Outputs)
 	}
 
 	// Run the initial update which sets some stack outputs.

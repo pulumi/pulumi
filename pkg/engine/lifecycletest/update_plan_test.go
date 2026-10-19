@@ -150,7 +150,7 @@ func TestPlannedUpdate(t *testing.T) {
 		},
 		"zed": "grr",
 	})
-	assert.Equal(t, expected, snap.Resources[1].Outputs)
+	assert.Equal(t, resource.FromResourcePropertyMap(expected), snap.Resources[1].Outputs)
 }
 
 func TestPlanViolationSecrets(t *testing.T) {
@@ -790,7 +790,7 @@ func TestResoucesWithSames(t *testing.T) {
 	expected := resource.NewPropertyMapFromMap(map[string]any{
 		"X": "Y",
 	})
-	assert.Equal(t, expected, snap.Resources[1].Outputs)
+	assert.Equal(t, resource.FromResourcePropertyMap(expected), snap.Resources[1].Outputs)
 
 	// Attempt to run an update with the plan on the stack that creates A and sames B
 	createA = true
@@ -809,13 +809,13 @@ func TestResoucesWithSames(t *testing.T) {
 	expected = resource.NewPropertyMapFromMap(map[string]any{
 		"X": "Y",
 	})
-	assert.Equal(t, expected, snap.Resources[2].Outputs)
+	assert.Equal(t, resource.FromResourcePropertyMap(expected), snap.Resources[2].Outputs)
 
 	expected = resource.NewPropertyMapFromMap(map[string]any{
 		"foo": "bar",
 		"zed": 24,
 	})
-	assert.Equal(t, expected, snap.Resources[1].Outputs)
+	assert.Equal(t, resource.FromResourcePropertyMap(expected), snap.Resources[1].Outputs)
 }
 
 func TestPlannedPreviews(t *testing.T) {
@@ -1001,7 +1001,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		"foo": "bar",
 		"zed": 26,
 	})
-	assert.Equal(t, expected, snap.Resources[1].Outputs)
+	assert.Equal(t, resource.FromResourcePropertyMap(expected), snap.Resources[1].Outputs)
 }
 
 func TestPlannedOutputChanges(t *testing.T) {
@@ -1340,8 +1340,8 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 3)
 
-	assert.Equal(t, partialPropertySet, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
-	assert.Equal(t, partialPropertySet, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
+	assert.Equal(t, partialPropertySet, snap.Resources[1].Outputs)
+	assert.Equal(t, partialPropertySet, snap.Resources[2].Outputs)
 
 	// Now run an update to set the values of the computed properties...
 	resourceInputs = fullPropertySet
@@ -1352,8 +1352,8 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 3)
 
-	assert.Equal(t, fullPropertySet, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
-	assert.Equal(t, fullPropertySet, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
+	assert.Equal(t, fullPropertySet, snap.Resources[1].Outputs)
+	assert.Equal(t, fullPropertySet, snap.Resources[2].Outputs)
 
 	// ...and then build a new plan where they're computed updates (vs above where its computed creates)
 	resourceInputs = computedPropertySet
@@ -1369,8 +1369,8 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 3)
 
-	assert.Equal(t, partialPropertySet, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
-	assert.Equal(t, partialPropertySet, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
+	assert.Equal(t, partialPropertySet, snap.Resources[1].Outputs)
+	assert.Equal(t, partialPropertySet, snap.Resources[2].Outputs)
 }
 
 func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
@@ -1533,7 +1533,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 		"foo": property.New("bad"),
 	})
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
-		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>\n"))
+		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {<nil> [] bad} has a problem: Bad foo<{%reset%}>\n"))
 	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, validate, "0")
 	assert.Nil(t, plan)
 	require.NoError(t, err)
@@ -1555,7 +1555,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 	})
 	p.Options.Plan = plan.Clone()
 	validate = ExpectDiagMessage(t, regexp.QuoteMeta(
-		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>\n"))
+		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {<nil> [] bad} has a problem: Bad foo<{%reset%}>\n"))
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "2")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
@@ -1685,8 +1685,8 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, expectedName, snap.Resources[1].Inputs["name"])
-	assert.Equal(t, expectedName, snap.Resources[1].Outputs["name"])
+	assert.Equal(t, expectedName, resource.ToResourcePropertyMap(snap.Resources[1].Inputs)["name"])
+	assert.Equal(t, expectedName, resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["name"])
 
 	// Run a new update which will cause a replace and check we get a new name
 	ins = property.NewMap(map[string]property.Value{
@@ -1697,8 +1697,8 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
-	assert.NotEqual(t, expectedName, snap.Resources[1].Inputs["name"])
-	assert.NotEqual(t, expectedName, snap.Resources[1].Outputs["name"])
+	assert.NotEqual(t, expectedName, resource.ToResourcePropertyMap(snap.Resources[1].Inputs)["name"])
+	assert.NotEqual(t, expectedName, resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["name"])
 }
 
 func TestPlannedUpdateWithDependentDelete(t *testing.T) {

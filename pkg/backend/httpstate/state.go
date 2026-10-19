@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/channel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -253,15 +252,13 @@ func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
 			return property.Map{}, err
 		}
 		if resp.Unknown {
-			for name, value := range outputs {
-				unknown := resource.MakeComputed(resource.NewProperty(""))
-				if value.IsSecret() {
-					unknown = resource.MakeSecret(unknown)
-				}
-				outputs[name] = unknown
+			rewritten := map[string]property.Value{}
+			for name, value := range outputs.AsMap() {
+				rewritten[name] = property.New(property.Computed).WithSecret(value.Secret())
 			}
+			outputs = property.NewMap(rewritten)
 		}
-		return resource.FromResourcePropertyMap(outputs), nil
+		return outputs, nil
 	}
 
 	untypedDeployment, err := b.exportDeployment(ctx, stackRef, nil /* get latest */)
@@ -279,7 +276,7 @@ func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
 		return property.Map{}, err
 	}
 
-	return resource.FromResourcePropertyMap(outputs), nil
+	return outputs, nil
 }
 
 func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Provider, stackRef backend.StackReference,

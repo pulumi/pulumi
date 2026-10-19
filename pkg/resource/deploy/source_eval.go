@@ -1522,7 +1522,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	rm.trackSettledResource(result.State, parent, true)
 
 	filteredOutputs, err := plugin.FilterProperties(
-		resource.FromResourcePropertyMap(result.State.Outputs),
+		result.State.Outputs,
 		plugin.FilterOptions{
 			KeepUnknowns:         true,
 			KeepSecrets:          req.GetAcceptSecrets(),
@@ -3090,7 +3090,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		result = &RegisterResult{
 			State: &pkgresource.State{
 				URN:     constructResult.URN,
-				Outputs: resource.ToResourcePropertyMap(constructResult.Outputs),
+				Outputs: constructResult.Outputs,
 			},
 		}
 
@@ -3100,9 +3100,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		if constructResult.OutputDependencies == nil {
 			constructResult.OutputDependencies = map[resource.PropertyKey][]resource.URN{}
 		}
-		for k, v := range result.State.Outputs {
-			pv := resource.FromResourcePropertyValue(v)
-			constructResult.OutputDependencies[k] = extendOutputDependencies(constructResult.OutputDependencies[k], pv)
+		for k, v := range result.State.Outputs.All {
+			key := resource.PropertyKey(k)
+			constructResult.OutputDependencies[key] = extendOutputDependencies(constructResult.OutputDependencies[key], v)
 		}
 
 		outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
@@ -3245,7 +3245,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	// Filter out partially-known values if the requestor does not support them.
-	outputs := result.State.Outputs
+	outputs := resource.ToResourcePropertyMap(result.State.Outputs)
 
 	// Local ComponentResources may contain unresolved resource refs, so ignore those outputs.
 	if !req.GetCustom() && !remote {

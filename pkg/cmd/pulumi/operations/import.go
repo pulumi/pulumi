@@ -102,8 +102,7 @@ func makeImportFileFromResourceList(ctx context.Context, resources []plugin.Reso
 		if props == nil {
 			return nil, nil
 		}
-		mprops := resource.ToResourcePropertyMap(*props)
-		serialized, err := resourcestack.SerializeProperties(ctx, mprops, sdkconfig.NopEncrypter, true /*showSecrets*/)
+		serialized, err := resourcestack.SerializeProperties(ctx, *props, sdkconfig.NopEncrypter, true /*showSecrets*/)
 		if err != nil {
 			return nil, fmt.Errorf("serializing %s for resource %q: %w", kind, name, err)
 		}
@@ -589,7 +588,7 @@ func parseImportFile(
 					pusherrf("could not deserialize provider inputs for %v: %w",
 						describeResource(i, spec), err)
 				} else {
-					imp.ProviderInputs = resource.FromResourcePropertyMap(providerInputs)
+					imp.ProviderInputs = providerInputs
 				}
 			}
 		}
@@ -605,7 +604,7 @@ func parseImportFile(
 					pusherrf("could not deserialize provider inputs for %v: %w",
 						describeResource(i, spec), err)
 				} else {
-					imp.Inputs = resource.FromResourcePropertyMap(inputs)
+					imp.Inputs = inputs
 				}
 			}
 		} else {
@@ -614,7 +613,7 @@ func parseImportFile(
 				if err != nil {
 					pusherrf("could not deserialize inputs for %v: %w", describeResource(i, spec), err)
 				} else {
-					imp.Inputs = resource.FromResourcePropertyMap(inputs)
+					imp.Inputs = inputs
 				}
 			}
 			if spec.Outputs != nil {
@@ -622,7 +621,7 @@ func parseImportFile(
 				if err != nil {
 					pusherrf("could not deserialize outputs for %v: %w", describeResource(i, spec), err)
 				} else {
-					imp.Outputs = resource.FromResourcePropertyMap(outputs)
+					imp.Outputs = outputs
 				}
 			}
 		}

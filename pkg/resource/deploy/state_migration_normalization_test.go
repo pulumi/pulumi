@@ -48,17 +48,17 @@ func TestDeploymentNormalizesStateAcrossMigrations(t *testing.T) {
 	state := &pkgresource.State{
 		URN:     "urn:pulumi:test::test::consumer:m:Resource::consumer",
 		Protect: true,
-		Outputs: resource.PropertyMap{
+		Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 			"reference": resource.MakeSecret(resource.MakeCustomResourceReference(aURN, "physical-id", "1.2.3")),
-		},
+		}),
 	}
 
 	rewritten, err := d.rewriteStateMigrationState(state)
 	require.NoError(t, err)
 	assert.NotSame(t, state, rewritten)
-	ref := rewritten.Outputs["reference"].SecretValue().Element.ResourceReferenceValue()
+	ref := rewritten.Outputs.Get("reference").AsResourceReference()
 	assert.Equal(t, cURN, ref.URN)
-	assert.Equal(t, "physical-id", ref.ID.StringValue())
+	assert.Equal(t, "physical-id", ref.ID.AsString())
 	assert.Empty(t, ref.PackageVersion)
 	assert.True(t, rewritten.Protect)
 	assert.Equal(t, cURN, d.rewriteStateMigrationURN(aURN))
@@ -231,7 +231,7 @@ func TestGenerateResourceStepsNormalizesGoalAfterMigration(t *testing.T) {
 	assert.Equal(t, []resource.URN{successorURN}, newState.PropertyDependencies["reference"])
 	assert.Equal(t, successorURN, newState.DeletedWith)
 	assert.Equal(t, []resource.URN{successorURN}, newState.ReplaceWith)
-	assert.Equal(t, successorURN, newState.Inputs["reference"].ResourceReferenceValue().URN)
+	assert.Equal(t, successorURN, newState.Inputs.Get("reference").AsResourceReference().URN)
 	assert.Equal(t, successorURN,
 		resource.ToResourcePropertyValue(newState.ReplacementTrigger).ResourceReferenceValue().URN)
 	provider, err := sdkproviders.ParseReference(newState.Provider)

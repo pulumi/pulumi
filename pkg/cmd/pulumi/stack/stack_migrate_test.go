@@ -1501,9 +1501,9 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 			{
 				URN:  resource.NewURN("dev", "proj", "", resource.RootStackType, "dev"),
 				Type: resource.RootStackType,
-				Outputs: resource.PropertyMap{
-					"stateSecret": resource.MakeSecret(resource.NewProperty("state-plaintext")),
-				},
+				Outputs: property.NewMap(map[string]property.Value{
+					"stateSecret": property.New("state-plaintext").WithSecret(true),
+				}),
 			},
 		},
 	}
@@ -2150,8 +2150,8 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 				Parent:               rootURN,
 				Aliases:              []resource.URN{aliasURN},
 				ViewOf:               viewURN,
-				Inputs:               inputs,
-				Outputs:              outputs,
+				Inputs:               resource.FromResourcePropertyMap(inputs),
+				Outputs:              resource.FromResourcePropertyMap(outputs),
 				Dependencies:         []resource.URN{depURN},
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{"k": {propDepURN}},
 				DeletedWith:          deletedWithURN,

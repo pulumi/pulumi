@@ -90,7 +90,7 @@ func init() {
 					}
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					stackOutputs := stack.Outputs
 					fv, ok := stackOutputs.GetOk("failingValue")
 					require.True(l, ok)
 					assert.True(l, fv.IsComputed(),

@@ -198,11 +198,11 @@ func namedResourceURNs(snap *deploy.Snapshot, name string) []resource.URN {
 }
 
 func renderResourceStateJSON(cmd *cobra.Command, res *pkgresource.State, showSecrets bool) error {
-	inputs, err := renderProperties(cmd.Context(), resource.FromResourcePropertyMap(res.Inputs), showSecrets)
+	inputs, err := renderProperties(cmd.Context(), res.Inputs, showSecrets)
 	if err != nil {
 		return err
 	}
-	outputs, err := renderProperties(cmd.Context(), resource.FromResourcePropertyMap(res.Outputs), showSecrets)
+	outputs, err := renderProperties(cmd.Context(), res.Outputs, showSecrets)
 	if err != nil {
 		return err
 	}
@@ -234,8 +234,8 @@ func renderResourceStateText(cmd *cobra.Command, res *pkgresource.State, showSec
 		title string
 		props resource.PropertyMap
 	}{
-		{"Inputs", res.Inputs},
-		{"Outputs", res.Outputs},
+		{"Inputs", resource.ToResourcePropertyMap(res.Inputs)},
+		{"Outputs", resource.ToResourcePropertyMap(res.Outputs)},
 	} {
 		if len(section.props) == 0 {
 			continue
@@ -259,6 +259,6 @@ func renderProperties(ctx context.Context, props property.Map, showSecrets bool)
 		}
 	}
 	return stack.SerializeProperties(ctx,
-		resource.ToResourcePropertyMap(display.MassageSecrets(property.NewMap(visible), showSecrets)),
+		display.MassageSecrets(property.NewMap(visible), showSecrets),
 		config.NewPanicCrypter(), showSecrets)
 }

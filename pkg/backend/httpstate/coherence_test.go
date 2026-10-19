@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/sig"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func outputsEvent(urn resource.URN, typ tokens.Type, outputs resource.PropertyMap) engine.Event {
@@ -42,7 +43,7 @@ func outputsEvent(urn resource.URN, typ tokens.Type, outputs resource.PropertyMa
 			New: &engine.StepEventStateMetadata{
 				URN:     urn,
 				Type:    typ,
-				State:   &pkgresource.State{URN: urn, Type: typ, Outputs: outputs},
+				State:   &pkgresource.State{URN: urn, Type: typ, Outputs: resource.FromResourcePropertyMap(outputs)},
 				Outputs: outputs,
 			},
 		},
@@ -158,9 +159,11 @@ func TestStackOutputsRecorder(t *testing.T) {
 	t.Run("keeps the stack's outputs when the stack never registered any", func(t *testing.T) {
 		t.Parallel()
 		r := newStackOutputsRecorder(&deploy.Snapshot{Resources: []*pkgresource.State{{
-			Type:    resource.RootStackType,
-			URN:     stackURN,
-			Outputs: resource.PropertyMap{"kept": resource.NewProperty("value")},
+			Type: resource.RootStackType,
+			URN:  stackURN,
+			Outputs: property.NewMap(map[string]property.Value{
+				"kept": property.New("value"),
+			}),
 		}}})
 		r.record(outputsEvent(otherURN, "pkg:index:Thing", resource.PropertyMap{}))
 

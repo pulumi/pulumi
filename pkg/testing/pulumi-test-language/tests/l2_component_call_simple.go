@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -66,7 +65,7 @@ func init() {
 					//
 					// * Its value output should be "bar".
 					require.Equal(
-						l, "bar", component1.Outputs["value"].StringValue(),
+						l, "bar", component1.Outputs.Get("value").AsString(),
 						"expected component1 to have correct value output",
 					)
 
@@ -74,7 +73,7 @@ func init() {
 					//
 					// * from_identity, whose value should be the value output of component1
 					// * from_prefixed, whose value should be the value output of component1, prefixed with "foo-".
-					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					outputs := stack.Outputs
 					require.Equal(l, 2, outputs.Len(), "expected 2 outputs")
 					AssertPropertyMapMember(l, outputs, "from_identity", property.New("bar"))
 					AssertPropertyMapMember(l, outputs, "from_prefixed", property.New("foo-bar"))

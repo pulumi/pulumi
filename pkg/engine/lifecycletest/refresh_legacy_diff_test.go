@@ -16,7 +16,6 @@ package lifecycletest
 
 import (
 	"context"
-	"reflect"
 	"strconv"
 	"testing"
 
@@ -92,8 +91,8 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 			Custom:       true,
 			Delete:       del,
 			ID:           id,
-			Inputs:       resource.PropertyMap{},
-			Outputs:      resource.PropertyMap{},
+			Inputs:       property.Map{},
+			Outputs:      property.Map{},
 			Dependencies: dependencies,
 		}
 	}
@@ -182,7 +181,7 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 				} else {
 					// If there were changes to the outputs, we want the result op to be an OpUpdate. Otherwise we want
 					// an OpSame.
-					if reflect.DeepEqual(old.Outputs, resource.ToResourcePropertyMap(*expected.Outputs)) {
+					if old.Outputs.Equals(*expected.Outputs) {
 						assert.Equal(t, deploy.OpSame, resultOp)
 					} else {
 						assert.Equal(t, deploy.OpUpdate, resultOp)
@@ -192,8 +191,8 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 					new = new.Copy()
 
 					// Only the inputs and outputs should have changed (if anything changed).
-					old.Inputs = resource.ToResourcePropertyMap(*expected.Inputs)
-					old.Outputs = resource.ToResourcePropertyMap(*expected.Outputs)
+					old.Inputs = *expected.Inputs
+					old.Outputs = *expected.Outputs
 
 					// Discard timestamps for refresh test.
 					new.Modified = nil
@@ -241,8 +240,8 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 		// and timestamp.
 		old := oldResources[int(idx)]
 		if targetedForRefresh {
-			old.Inputs = resource.ToResourcePropertyMap(*expected.Inputs)
-			old.Outputs = resource.ToResourcePropertyMap(*expected.Outputs)
+			old.Inputs = *expected.Inputs
+			old.Outputs = *expected.Outputs
 			old.Modified = r.Modified
 		}
 		assert.Equal(t, old, r)

@@ -28,7 +28,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
@@ -192,7 +191,7 @@ func (b *diyBackend) getSnapshotStackOutputs(ctx context.Context,
 	if err != nil {
 		return property.Map{}, err
 	}
-	return resource.FromResourcePropertyMap(outputs), nil
+	return outputs, nil
 }
 
 // getCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace,

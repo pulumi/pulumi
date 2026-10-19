@@ -45,10 +45,10 @@ func init() {
 
 					names := make([]string, 0, len(targets))
 					for _, target := range targets {
-						name, ok := target.Inputs["name"]
+						name, ok := target.Inputs.GetOk("name")
 						require.True(l, ok, "expected target to have 'name' input")
 						require.True(l, name.IsString(), "expected 'name' to be a string")
-						names = append(names, name.StringValue())
+						names = append(names, name.AsString())
 					}
 					assert.ElementsMatch(l, []string{"item-0", "item-1"}, names)
 				},

@@ -125,13 +125,13 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("value-1"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("value-1"),
-		"result": resource.NewProperty("value-1"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("value-1"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input":  property.New("value-1"),
+		"result": property.New("value-1"),
+	}), snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
 	// Second update.
@@ -144,13 +144,13 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("value-2"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("value-2"),
-		"result": resource.NewProperty("value-2"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("value-2"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input":  property.New("value-2"),
+		"result": property.New("value-2"),
+	}), snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
 	// Third update (same).
@@ -161,13 +161,13 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("value-2"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("value-2"),
-		"result": resource.NewProperty("value-2"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("value-2"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input":  property.New("value-2"),
+		"result": property.New("value-2"),
+	}), snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
 	// Fourth update with refresh (same).
@@ -179,13 +179,13 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("value-2"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("value-2"),
-		"result": resource.NewProperty("value-2"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("value-2"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input":  property.New("value-2"),
+		"result": property.New("value-2"),
+	}), snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
 	// Refresh.
@@ -197,13 +197,13 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("<FRESH-INPUT-3>"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("<FRESH-INPUT-3>"),
-		"result": resource.NewProperty("<FRESH-RESULT-3>"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("<FRESH-INPUT-3>"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input":  property.New("<FRESH-INPUT-3>"),
+		"result": property.New("<FRESH-RESULT-3>"),
+	}), snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
 	// Import.
@@ -218,22 +218,22 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	assert.Equal(t, tokens.Type("pulumi:pulumi:Stack"), snap.Resources[0].URN.Type())
 	assert.Equal(t, "default", snap.Resources[1].URN.Name())
 	assert.Equal(t, "resA", snap.Resources[2].URN.Name())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("<FRESH-INPUT-3>"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("<FRESH-INPUT-3>"),
-		"result": resource.NewProperty("<FRESH-RESULT-3>"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("<FRESH-INPUT-3>"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input":  property.New("<FRESH-INPUT-3>"),
+		"result": property.New("<FRESH-RESULT-3>"),
+	}), snap.Resources[2].Outputs)
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 	assert.Equal(t, "resB", snap.Resources[3].URN.Name())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("<FRESH-INPUT-42>"),
-	}, snap.Resources[3].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"input":  resource.NewProperty("<FRESH-INPUT-42>"),
-		"result": resource.NewProperty("<FRESH-RESULT-42>"),
-	}, snap.Resources[3].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("<FRESH-INPUT-42>"),
+	}), snap.Resources[3].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input":  property.New("<FRESH-INPUT-42>"),
+		"result": property.New("<FRESH-RESULT-42>"),
+	}), snap.Resources[3].Outputs)
 	assert.True(t, snap.Resources[3].RefreshBeforeUpdate)
 }
 

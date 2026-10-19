@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,9 +44,9 @@ func init() {
 					"stringEnum": property.New("two"),
 				})
 
-				assert.Equal(l, expect, resource.FromResourcePropertyMap(sink1.Outputs))
-				assert.Equal(l, expect, resource.FromResourcePropertyMap(sink2.Outputs))
-				assert.Equal(l, expect, resource.FromResourcePropertyMap(sink3.Outputs))
+				assert.Equal(l, expect, sink1.Outputs)
+				assert.Equal(l, expect, sink2.Outputs)
+				assert.Equal(l, expect, sink3.Outputs)
 
 				assert.Equal(l, property.NewMap(map[string]property.Value{
 					"numberEnum": property.New(0.1),
@@ -65,7 +64,7 @@ func init() {
 						"color": property.New("one"),
 					}),
 					"unionEnum": property.New("A Value With Spaces."),
-				}), resource.FromResourcePropertyMap(sink4.Outputs))
+				}), sink4.Outputs)
 			},
 		}},
 	}

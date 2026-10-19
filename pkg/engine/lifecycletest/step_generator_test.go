@@ -159,7 +159,7 @@ func TestSecretMasked(t *testing.T) {
 
 	require.NotNil(t, snap)
 	if snap != nil {
-		assert.True(t, snap.Resources[1].Outputs["shouldBeSecret"].IsSecret())
+		assert.True(t, resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["shouldBeSecret"].IsSecret())
 	}
 }
 
@@ -340,8 +340,8 @@ func TestInitErrorsStep(t *testing.T) {
 				Custom:  true,
 				Delete:  false,
 				ID:      "935b2216-aec5-4810-96fd-5f6eae57ac88",
-				Outputs: resource.PropertyMap{},
-				Inputs:  resource.PropertyMap{},
+				Outputs: property.Map{},
+				Inputs:  property.Map{},
 			},
 			{
 				Type:     "pkgA:m:typA",
@@ -352,8 +352,8 @@ func TestInitErrorsStep(t *testing.T) {
 				InitErrors: []string{
 					`errors should yield an empty update to "continue" awaiting initialization.`,
 				},
-				Outputs: resource.PropertyMap{},
-				Inputs:  resource.PropertyMap{},
+				Outputs: property.Map{},
+				Inputs:  property.Map{},
 			},
 		},
 	}).
@@ -394,8 +394,8 @@ func TestInitErrorsIgnoreChanges(t *testing.T) {
 				Custom:  true,
 				Delete:  false,
 				ID:      "935b2216-aec5-4810-96fd-5f6eae57ac88",
-				Outputs: resource.PropertyMap{},
-				Inputs:  resource.PropertyMap{},
+				Outputs: property.Map{},
+				Inputs:  property.Map{},
 			},
 			{
 				Type:     "pkgA:m:typA",
@@ -406,8 +406,8 @@ func TestInitErrorsIgnoreChanges(t *testing.T) {
 				InitErrors: []string{
 					`errors should yield an empty update to "continue" awaiting initialization.`,
 				},
-				Outputs: resource.PropertyMap{},
-				Inputs:  resource.PropertyMap{},
+				Outputs: property.Map{},
+				Inputs:  property.Map{},
 			},
 		},
 	}).

@@ -60,7 +60,7 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 
 					stack := RequireSingleResource(l, res.Snap.Resources, resource.RootStackType)
-					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					stackOutputs := stack.Outputs
 					wrapped, ok := stackOutputs.GetOk("wrapped")
 					require.True(l, ok, "expected stack output 'wrapped'")
 					assert.True(l, wrapped.HasSecrets(),

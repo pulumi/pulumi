@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,13 +47,13 @@ func init() {
 							"elementType": property.New("nested"),
 						}),
 					})
-					assert.Equal(l, want, resource.FromResourcePropertyMap(elem.Inputs),
+					assert.Equal(l, want, elem.Inputs,
 						"expected the elementType input")
-					assert.Equal(l, want, resource.FromResourcePropertyMap(elem.Outputs),
+					assert.Equal(l, want, elem.Outputs,
 						"expected the echoed elementType output")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					stackOutputs := stack.Outputs
 					// The whole object checks that languages serialize typed objects in
 					// stack outputs with their wire-format (camelCase) keys.
 					AssertPropertyMapMember(l, stackOutputs, "elementType", property.New(map[string]property.Value{

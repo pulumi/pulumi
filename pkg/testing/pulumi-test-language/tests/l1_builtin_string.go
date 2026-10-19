@@ -17,7 +17,6 @@ package tests
 import (
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/rivo/uniseg"
@@ -48,7 +47,7 @@ func init() {
 					"splitResult":       property.New(splitResult),
 					"joinResult":        property.New(strings.Join(parts, "|")),
 					"interpolateResult": property.New("prefix-" + input),
-				}), resource.FromResourcePropertyMap(stack.Outputs))
+				}), stack.Outputs)
 			},
 		}
 	}

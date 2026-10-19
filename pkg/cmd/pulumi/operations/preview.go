@@ -244,7 +244,7 @@ func buildImportFile(
 					// cloud, so they are declared with their full inputs instead of an ID.
 					contract.Assertf(preEvent.Metadata.Res.State != nil,
 						"%s: expected State to be non-nil for provider", urn)
-					if fullInputs := preEvent.Metadata.Res.State.Inputs; len(fullInputs) > 0 {
+					if fullInputs := resource.ToResourcePropertyMap(preEvent.Metadata.Res.State.Inputs); len(fullInputs) > 0 {
 						// Anything not known during the preview would be written out as the unknown
 						// placeholder, which is not a value the import system can use.
 						known, unknown := resource.PropertyMap{}, []string{}
@@ -263,7 +263,7 @@ func buildImportFile(
 						}
 						if len(known) > 0 {
 							var serErr error
-							inputs, serErr = stack.SerializeProperties(ctx, known, enc, false)
+							inputs, serErr = stack.SerializeProperties(ctx, resource.FromResourcePropertyMap(known), enc, false)
 							if serErr != nil {
 								return importFile{}, fmt.Errorf(
 									"could not serialize provider inputs for %s: %w", urn, serErr)

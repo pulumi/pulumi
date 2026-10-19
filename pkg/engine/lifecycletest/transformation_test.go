@@ -249,21 +249,21 @@ func TestRemoteTransforms(t *testing.T) {
 	res := snap.Resources[1]
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), res.URN)
 	// Check it's final input properties match what we expected from the transformations
-	assert.Equal(t, resource.PropertyMap{
-		"foo":  resource.NewProperty(3.0),
-		"bar":  resource.NewProperty("barbaz"),
-		"frob": resource.NewProperty("nofrob"),
-	}, res.Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"foo":  property.New(3.0),
+		"bar":  property.New("barbaz"),
+		"frob": property.New("nofrob"),
+	}), res.Inputs)
 
 	// Check Resources[2] is the resB resource
 	res = snap.Resources[2]
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB"), res.URN)
 	// Check it's final input properties match what we expected from the transformations
-	assert.Equal(t, resource.PropertyMap{
-		"foo":  resource.NewProperty(13.0),
-		"bar":  resource.NewProperty("barbaz"),
-		"frob": resource.MakeSecret(resource.NewProperty("frob")),
-	}, res.Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"foo":  property.New(13.0),
+		"bar":  property.New("barbaz"),
+		"frob": property.New("frob").WithSecret(true),
+	}), res.Inputs)
 }
 
 func TestRemoteTransformSecretOutput(t *testing.T) {
@@ -483,9 +483,9 @@ func TestRemoteTransformationsConstruct(t *testing.T) {
 	res := snap.Resources[2]
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::resA"), res.URN)
 	// Check it's final input properties match what we expected from the transformations
-	assert.Equal(t, resource.PropertyMap{
-		"foo": resource.NewProperty(2.0),
-	}, res.Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"foo": property.New(2.0),
+	}), res.Inputs)
 }
 
 // Test that all options are passed and can be modified by a transformation function.
@@ -701,9 +701,9 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 	res := snap.Resources[3]
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resC"), res.URN)
 	// Check it's final input properties match what we expected from the transformations
-	assert.Equal(t, resource.PropertyMap{
-		"foo": resource.NewProperty(1.0),
-	}, res.Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"foo": property.New(1.0),
+	}), res.Inputs)
 	// Check the dependencies are as expected. The transform rewired foo from resB to resA, so the per-property
 	// dependency reflects that. Dependencies (the user's explicit depends_on list) is empty — source_eval does
 	// not fold value-flow deps into it.
@@ -790,9 +790,9 @@ func TestRemoteComponentTransforms(t *testing.T) {
 	res := snap.Resources[2]
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::resA"), res.URN)
 	// Check it's final input properties match what we expected from the transformations
-	assert.Equal(t, resource.PropertyMap{
-		"foo": resource.NewProperty(2.0),
-	}, res.Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"foo": property.New(2.0),
+	}), res.Inputs)
 }
 
 func TestRemoteComponentTransformNestedDependencies(t *testing.T) {
@@ -1329,10 +1329,10 @@ func TestRemoteTransformByteString(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	res := snap.Resources[1]
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), res.URN)
-	assert.Equal(t, resource.PropertyMap{
-		"foo": resource.NewProperty(rawBytes),
-		"bar": resource.NewProperty(rawBytes),
-	}, res.Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"foo": property.New(rawBytes),
+		"bar": property.New(rawBytes),
+	}), res.Inputs)
 }
 
 // Test that a transform declared on an ancestor component is still applied to a custom resource whose parent
@@ -1405,7 +1405,7 @@ func TestTransformInheritedThroughReadParent(t *testing.T) {
 
 	inputsByName := map[string]resource.PropertyMap{}
 	for _, r := range snap.Resources {
-		inputsByName[r.URN.Name()] = r.Inputs
+		inputsByName[r.URN.Name()] = resource.ToResourcePropertyMap(r.Inputs)
 	}
 
 	// The transform declared on the ancestor component should still apply: 10 + 1 = 11.

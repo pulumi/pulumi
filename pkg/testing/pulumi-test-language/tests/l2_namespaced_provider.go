@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -56,7 +55,7 @@ func init() {
 							"",
 						)),
 					})
-					require.Equal(l, want, resource.FromResourcePropertyMap(namespaced.Inputs))
+					require.Equal(l, want, namespaced.Inputs)
 					require.Equal(l, namespaced.Inputs, namespaced.Outputs, "expected inputs and outputs to match")
 
 					component := RequireSingleResource(l, snap.Resources, "component:index:Custom")

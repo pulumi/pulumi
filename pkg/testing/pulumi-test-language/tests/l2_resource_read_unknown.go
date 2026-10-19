@@ -71,9 +71,9 @@ func init() {
 						}
 						reads++
 						assert.Equal(l, resource.ID("created"), r.ID)
-						assert.Equal(l, "existing-key", r.Inputs["lookup"].StringValue())
-						assert.Equal(l, "existing-key", r.Outputs["lookup"].StringValue())
-						assert.Equal(l, true, r.Outputs["value"].BoolValue())
+						assert.Equal(l, "existing-key", r.Inputs.Get("lookup").AsString())
+						assert.Equal(l, "existing-key", r.Outputs.Get("lookup").AsString())
+						assert.Equal(l, true, r.Outputs.Get("value").AsBool())
 					}
 					assert.Equal(l, 1, reads, "expected exactly one external read resource")
 				},

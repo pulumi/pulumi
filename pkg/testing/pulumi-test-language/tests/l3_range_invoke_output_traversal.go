@@ -41,9 +41,9 @@ func init() {
 					names := map[string]string{}
 					targets := RequireNResources(l, res.Snap.Resources, "nestedobject:index:Target", 3)
 					for _, target := range targets {
-						name, ok := target.Inputs["name"]
+						name, ok := target.Inputs.GetOk("name")
 						require.True(l, ok && name.IsString(), "expected target to have 'name' input of type string")
-						names[target.URN.Name()] = name.StringValue()
+						names[target.URN.Name()] = name.AsString()
 					}
 					assert.Equal(l, map[string]string{
 						"routes-0": "alpha",

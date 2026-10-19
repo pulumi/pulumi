@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +41,7 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:builtin-info-component")
 					component := RequireSingleResource(l, snap.Resources, "builtin-info-component:index:BuiltinInfo")
 
-					outputs := resource.FromResourcePropertyMap(component.Outputs)
+					outputs := component.Outputs
 
 					AssertPropertyMapMember(l, outputs, "organization", property.New("organization"))
 					AssertPropertyMapMember(l, outputs, "project", property.New("provider-builtin-info-component"))
