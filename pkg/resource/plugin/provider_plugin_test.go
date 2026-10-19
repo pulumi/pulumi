@@ -1592,3 +1592,50 @@ func TestProvider_RestoresElidedAssetsFromState(t *testing.T) {
 		assertRestored(t, resource.ToResourcePropertyMap(resp.Properties))
 	})
 }
+
+// An unknown output returned by a component provider must stay unknown in a real (non-dry-run) update.
+func TestProvider_ConstructKeepsUnknownOutputs(t *testing.T) {
+	t.Parallel()
+
+	for _, dryRun := range []bool{true, false} {
+		t.Run(fmt.Sprintf("dryRun=%v", dryRun), func(t *testing.T) {
+			t.Parallel()
+
+			state, err := MarshalProperties(
+				resource.PropertyMap{
+					"known":   resource.NewProperty("a"),
+					"unknown": resource.MakeComputed(resource.NewProperty("")),
+				},
+				MarshalOptions{KeepUnknowns: true},
+			)
+			require.NoError(t, err)
+
+			client := &stubClient{
+				ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+					return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+				},
+				ConstructF: func(req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+					return &pulumirpc.ConstructResponse{
+						Urn:   "urn:pulumi:stack::project::type::name",
+						State: state,
+					}, nil
+				},
+			}
+			p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+			_, err = p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+			require.NoError(t, err)
+
+			res, err := p.Construct(t.Context(), ConstructRequest{
+				Info:   ConstructInfo{Project: "project", Stack: "stack", DryRun: dryRun},
+				Type:   "type",
+				Name:   "name",
+				Inputs: property.Map{},
+			})
+			require.NoError(t, err)
+
+			outs := resource.ToResourcePropertyMap(res.Outputs)
+			assert.Equal(t, resource.NewProperty("a"), outs["known"])
+			assert.True(t, outs["unknown"].IsComputed(), "unknown output was dropped or made known: %v", outs["unknown"])
+		})
+	}
+}

@@ -17,6 +17,7 @@ package pulumi
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -27,7 +28,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	rarchive "github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	rasset "github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/internal"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -2103,4 +2106,36 @@ func TestCall_await(t *testing.T) {
 		})
 		require.NoError(t, err, "failed to call")
 	})
+}
+
+// An unknown output of a component must reach the engine as unknown in a real (non-dry-run) update.
+func TestConstruct_unknownOutput(t *testing.T) {
+	t.Parallel()
+
+	for _, dryRun := range []bool{true, false} {
+		t.Run(fmt.Sprintf("dryRun=%v", dryRun), func(t *testing.T) {
+			t.Parallel()
+
+			resp, err := construct(t.Context(), &pulumirpc.ConstructRequest{
+				Stack:   "mystack",
+				Project: "myproject",
+				DryRun:  dryRun,
+			}, nil, func(
+				ctx *Context, typ, name string, inputs map[string]any, opts ResourceOption,
+			) (URNInput, Input, error) {
+				urn := resource.NewURN(
+					tokens.QName(ctx.Stack()), tokens.PackageName(ctx.Project()), "", tokens.Type(typ), name,
+				)
+				unknown, _, _ := ctx.NewOutput()
+				internal.ResolveOutput(unknown, nil, false /* known */, false, nil)
+				return URN(urn), Map{"known": String("a"), "unknown": unknown}, nil
+			})
+			require.NoError(t, err)
+
+			props, err := plugin.UnmarshalProperties(resp.State, plugin.MarshalOptions{KeepUnknowns: true})
+			require.NoError(t, err)
+			assert.Equal(t, resource.NewProperty("a"), props["known"])
+			assert.True(t, props["unknown"].IsComputed(), "unknown output was dropped or made known: %v", props["unknown"])
+		})
+	}
 }
