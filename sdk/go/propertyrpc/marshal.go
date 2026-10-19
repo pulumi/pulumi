@@ -35,7 +35,7 @@ func Marshal(m property.Map) *structpb.Struct {
 
 func MarshalValue(v property.Value) *structpb.Value {
 	// If we have dependencies, this must be an output
-	if deps := v.Dependencies(); len(deps) > 0 || (v.Secret() && v.IsComputed()) {
+	if deps := v.Dependencies(); len(deps) > 0 {
 		fields := map[string]*structpb.Value{
 			sig.Key: structpb.NewStringValue(sig.OutputValue),
 		}
