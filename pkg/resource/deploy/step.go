@@ -238,7 +238,15 @@ func (s *SameStep) Fail() {
 }
 
 func (s *SameStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped, Unknown: s.skippedCreate})
+	// The resource depends on one that failed, so ask the provider what a dry-run of the create or update that the
+	// program asked for would produce. The snapshot is not affected: nothing happened, so s.new is not persisted.
+	var old *pkgresource.State
+	if !s.skippedCreate {
+		old = s.old
+	}
+	skipState := s.new.Copy()
+	skipState.Outputs = dryRunOutputs(s, nil, old, s.new, s.reg.Goal().Properties, s.reg.Goal().IgnoreChanges)
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
@@ -562,29 +570,58 @@ func (s *CreateStep) Skip() {
 	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
 	// The snapshot is not affected: no create happened, so s.new is not persisted.
 	skipState := s.new.Copy()
-	skipState.Outputs = resource.PropertyMap{}
-	if s.new.Custom {
-		if prov, err := getProvider(s, s.provider); err == nil {
-			resp, previewErr := prov.Create(context.TODO(), plugin.CreateRequest{
-				URN:        s.URN(),
-				Name:       s.new.URN.Name(),
-				Type:       s.new.URN.Type(),
-				Properties: resource.FromResourcePropertyMap(s.new.Inputs),
-				Timeout:    s.new.CustomTimeouts.Create,
-				Preview:    true,
-			})
-			if previewErr == nil {
-				skipState.Outputs = resource.ToResourcePropertyMap(resp.Properties)
-			} else {
-				logging.V(5).Infof("CreateStep.Skip: preview Create failed for %s, "+
-					"falling back to fully unknown outputs: %v", s.URN(), previewErr)
-			}
-		} else {
-			logging.V(5).Infof("CreateStep.Skip: could not resolve provider %s for %s, "+
-				"falling back to fully unknown outputs: %v", s.provider, s.URN(), err)
-		}
-	}
+	skipState.Outputs = dryRunOutputs(s, s.provider, nil, s.new, resource.FromResourcePropertyMap(s.new.Inputs), nil)
 	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
+}
+
+// dryRunOutputs asks the provider for the outputs of a dry-run create (if old is nil) or update of a skipped resource.
+// If that isn't possible, everything is unknown.
+func dryRunOutputs(
+	s Step, provider plugin.Provider, old, new *pkgresource.State, inputs property.Map, ignoreChanges []string,
+) resource.PropertyMap {
+	if !new.Custom {
+		return resource.PropertyMap{}
+	}
+	prov, err := getProvider(s, provider)
+	if err != nil {
+		logging.V(5).Infof("could not resolve provider for skipped %s, falling back to fully unknown outputs: %v",
+			s.URN(), err)
+		return resource.PropertyMap{}
+	}
+
+	var outputs property.Map
+	if old == nil {
+		var resp plugin.CreateResponse
+		resp, err = prov.Create(context.TODO(), plugin.CreateRequest{
+			URN:        s.URN(),
+			Name:       new.URN.Name(),
+			Type:       new.URN.Type(),
+			Properties: inputs,
+			Timeout:    new.CustomTimeouts.Create,
+			Preview:    true,
+		})
+		outputs = resp.Properties
+	} else {
+		var resp plugin.UpdateResponse
+		resp, err = prov.Update(context.TODO(), plugin.UpdateRequest{
+			URN:           s.URN(),
+			Name:          new.URN.Name(),
+			Type:          new.URN.Type(),
+			ID:            old.ID,
+			OldInputs:     resource.FromResourcePropertyMap(old.Inputs),
+			OldOutputs:    resource.FromResourcePropertyMap(old.Outputs),
+			NewInputs:     inputs,
+			Timeout:       new.CustomTimeouts.Update,
+			IgnoreChanges: ignoreChanges,
+			Preview:       true,
+		})
+		outputs = resp.Properties
+	}
+	if err != nil {
+		logging.V(5).Infof("dry-run failed for skipped %s, falling back to fully unknown outputs: %v", s.URN(), err)
+		return resource.PropertyMap{}
+	}
+	return resource.ToResourcePropertyMap(outputs)
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -1225,32 +1262,8 @@ func (s *UpdateStep) Skip() {
 	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
 	// The snapshot still writes s.new with its prior outputs; only the SDK response is affected.
 	skipState := s.new.Copy()
-	skipState.Outputs = resource.PropertyMap{}
-	if s.new.Custom {
-		if prov, err := getProvider(s, s.provider); err == nil {
-			resp, previewErr := prov.Update(context.TODO(), plugin.UpdateRequest{
-				URN:           s.URN(),
-				Name:          s.new.URN.Name(),
-				Type:          s.new.URN.Type(),
-				ID:            s.old.ID,
-				OldInputs:     resource.FromResourcePropertyMap(s.old.Inputs),
-				OldOutputs:    resource.FromResourcePropertyMap(s.old.Outputs),
-				NewInputs:     resource.FromResourcePropertyMap(s.new.Inputs),
-				Timeout:       s.new.CustomTimeouts.Update,
-				IgnoreChanges: s.ignoreChanges,
-				Preview:       true,
-			})
-			if previewErr == nil {
-				skipState.Outputs = resource.ToResourcePropertyMap(resp.Properties)
-			} else {
-				logging.V(5).Infof("UpdateStep.Skip: preview Update failed for %s, "+
-					"falling back to fully unknown outputs: %v", s.URN(), previewErr)
-			}
-		} else {
-			logging.V(5).Infof("UpdateStep.Skip: could not resolve provider %s for %s, "+
-				"falling back to fully unknown outputs: %v", s.provider, s.URN(), err)
-		}
-	}
+	skipState.Outputs = dryRunOutputs(s, s.provider, s.old, s.new, resource.FromResourcePropertyMap(s.new.Inputs),
+		s.ignoreChanges)
 	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
