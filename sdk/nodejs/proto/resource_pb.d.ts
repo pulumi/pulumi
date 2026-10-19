@@ -197,6 +197,8 @@ export class ReadResourceResponse extends jspb.Message {
     setResult(value: Result): ReadResourceResponse;
     getUnknown(): boolean;
     setUnknown(value: boolean): ReadResourceResponse;
+    getId(): string;
+    setId(value: string): ReadResourceResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadResourceResponse.AsObject;
@@ -214,6 +216,7 @@ export namespace ReadResourceResponse {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         result: Result,
         unknown: boolean,
+        id: string,
     }
 }
 
