@@ -246,6 +246,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	// these events back to the step gen in the main loop with program events.
 	stepGenEvents := make(chan SourceEvent)
 	ex.stepGen = newStepGenerator(ex.deployment, refresh, mode, stepGenEvents)
+	ex.stepGen.skipped = ex.skipped
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
 	// deployment's execution fails.
@@ -623,10 +624,21 @@ func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
 	if res == nil {
 		return false
 	}
-	_, allDeps := res.GetAllDependencies()
+	return doesResourceDependOn(res, skipped)
+}
+
+func doesResourceDependOn(res *pkgresource.State, skipped mapset.Set[urn.URN]) bool {
+	provider, allDeps := res.GetAllDependencies()
 	for _, dep := range allDeps {
 		if skipped.Contains(dep.URN) {
 			return true
+		}
+	}
+	if provider != "" {
+		if ref, err := sdkproviders.ParseReference(provider); err == nil {
+			if skipped.Contains(ref.URN()) {
+				return true
+			}
 		}
 	}
 
@@ -644,6 +656,12 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		return err
 	}
 	event = normalizedEvent
+
+	// Record errored steps before generating new ones, so that the step generator doesn't send
+	// resources that depend on them (or on a failed provider) to providers or analyzers.
+	for _, errored := range ex.stepExec.GetErroredSteps() {
+		ex.skipped.Add(errored.Res().URN)
+	}
 
 	var steps []Step
 	switch e := event.(type) {
@@ -687,6 +705,11 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		steps, err = ex.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
 		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received register resource outputs")
+		// A skipped resource was never operated on, so there's nothing to record its outputs against.
+		if ex.skipped.Contains(e.URN()) {
+			e.Done()
+			return nil
+		}
 		return ex.stepExec.ExecuteRegisterResourceOutputs(e)
 	}
 

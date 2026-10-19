@@ -104,6 +104,11 @@ type stepGenerator struct {
 	// the set of resources that need to be destroyed in this deployment after running other steps on them.
 	toDelete []*pkgresource.State
 
+	// the set of resources that failed or were skipped under --continue-on-error. Resources that depend on
+	// these will be skipped too, so they aren't sent to providers or analyzers: their inputs may be missing
+	// values that the failed resources would have provided.
+	skipped mapset.Set[resource.URN]
+
 	// untargeted same steps queued for old-state dependencies of resources in a constrained
 	// operation, prepended to the next validated batch so they precede their consumers in the snapshot
 	pendingUntargetedSames    []Step
@@ -226,6 +231,12 @@ func (sg *stepGenerator) recordActualTargeting(isTargeted bool, res *pkgresource
 	} else if isTargeted && sg.isTargetedForUpdate(res) {
 		sg.targetsActual.addLiteral(res.URN)
 	}
+}
+
+// dependsOnSkipped returns true if the given resource depends on a resource that failed or was skipped
+// under --continue-on-error, in which case it will be skipped too.
+func (sg *stepGenerator) dependsOnSkipped(res *pkgresource.State) bool {
+	return sg.skipped != nil && doesResourceDependOn(res, sg.skipped)
 }
 
 func (sg *stepGenerator) isTargetedReplace(urn resource.URN, old *pkgresource.State) bool {
@@ -1116,6 +1127,20 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 		// All other resources are handled as normal but need to be tagged as 'toDelete' for after we
 		// create/update them. We can use the new inputs for these so that providers get fresh configuration.
 		sg.toDelete = append(sg.toDelete, new)
+	}
+
+	// If this resource depends on a resource (or provider) that failed or was skipped under --continue-on-error, the
+	// executor will skip its step too. Generate that step now, without involving its provider or any analyzers: its
+	// inputs may be missing values that the failed resources would have provided, and its provider may have failed.
+	if sg.dependsOnSkipped(new) {
+		sg.sames[urn] = true
+		if old != nil {
+			new.Inputs = old.Inputs
+			new.Outputs = old.Outputs
+			return []Step{NewSameStep(sg.deployment, event, old, new)}, false, nil
+		}
+		sg.skippedCreates[urn] = true
+		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
 	}
 
 	// Fetch the provider for this resource.
