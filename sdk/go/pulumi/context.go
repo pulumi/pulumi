@@ -1508,7 +1508,7 @@ func (ctx *Context) readPackageResource(
 			logging.V(9).Infof("ReadResource(%s, %s): success: %s %s ...", t, name, resp.Urn, id)
 		}
 		if resp != nil {
-			urn, resID = resp.Urn, string(idToRead)
+			urn = resp.Urn
 			state = resp.Properties
 			// A skipped read reports Unknown=true and a failed read reports a non-success result;
 			// resolve outputs as unknown in both cases so dependents propagate unknowns instead of
@@ -1517,6 +1517,18 @@ func (ctx *Context) readPackageResource(
 				state = nil
 			}
 			keepUnknowns = resp.Result != pulumirpc.Result_SUCCESS || resp.Unknown
+			// Prefer the id returned by the provider's Read, which may differ from the id
+			// supplied on the request. An empty response id during preview means "unknown"
+			// (resolve() will mark the output as computed); during update it indicates an
+			// older engine that did not populate the field, so fall back to the request id.
+			switch {
+			case resp.Id != "":
+				resID = resp.Id
+			case ctx.DryRun():
+				resID = ""
+			default:
+				resID = string(idToRead)
+			}
 		}
 	}()
 

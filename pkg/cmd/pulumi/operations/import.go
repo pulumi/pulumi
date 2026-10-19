@@ -1179,7 +1179,7 @@ func NewImportCmd() *cobra.Command {
 				// a parent resource or a provider
 				strict := false
 				files, diagnostics, err := languagePlugin.GenerateProgram(
-					pCtx.Request(), program.Source(), grpcServer.Addr(), strict)
+					pCtx.Request(), program.Source(), grpcServer.Addr(), pCtx.MapperAddr(), strict)
 				if err != nil {
 					return nil, nil, err
 				}

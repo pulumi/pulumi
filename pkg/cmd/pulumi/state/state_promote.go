@@ -303,6 +303,7 @@ func generateSnippetProgram(
 		pctx.Request(),
 		map[string]string{"promote.pp": snippetPCLSource(snippet)},
 		grpcServer.Addr(),
+		pctx.MapperAddr(),
 		false,
 	)
 	if err != nil {

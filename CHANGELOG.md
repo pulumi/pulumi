@@ -1,5 +1,56 @@
 # Changelog
 
+## 3.270.0 (2026-10-16)
+
+### Bug Fixes
+
+- [cli/env] Fix `pulumi env edit`, `env set`, `env rm` and `env provider` overwriting changes made after they read the environment; on a conflict, `env edit` reopens the editor with your edits and the current definition, and the others fail [#24983](https://github.com/pulumi/pulumi/pull/24983)
+- [cli] Report an unknown drift status in `pulumi stack drift status` when drift detection has never run [#25172](https://github.com/pulumi/pulumi/pull/25172)
+## 3.269.0 (2026-10-16)
+
+### Features
+
+- [sdk] Add runtime functions to the Go, Node.js and Python SDKs that check whether a resource with a given ID exists without adopting it into the stack [#24808](https://github.com/pulumi/pulumi/pull/24808)
+- [engine] Negotiate OutputValues on Call so SDKs receive per-value return dependencies [#25017](https://github.com/pulumi/pulumi/pull/25017)
+- [auto] Add `convert` to the generated automation APIs for NodeJS, Python and Go [#25050](https://github.com/pulumi/pulumi/pull/25050)
+- [auto] Add `refresh` to the generated automation APIs for NodeJS, Python and Go [#25052](https://github.com/pulumi/pulumi/pull/25052)
+- [auto] Add `about` commands to the generated automation APIs for NodeJS, Python and Go [#25066](https://github.com/pulumi/pulumi/pull/25066)
+- [auto] Add `config` commands to the generated automation APIs for NodeJS, Python and Go [#25072](https://github.com/pulumi/pulumi/pull/25072)
+
+### Bug Fixes
+
+- [pcl] Accept a `lookup` default of any type and type the result as the unification of the element type and the default [#24771](https://github.com/pulumi/pulumi/pull/24771)
+- [pcl] Report a missing `lookup` default at bind time instead of failing when the program runs [#24772](https://github.com/pulumi/pulumi/pull/24772)
+- [pcl] Accept a tuple literal that holds an output where a function or property expects the input form of a tuple, such as `length([secret(x)])` [#24782](https://github.com/pulumi/pulumi/pull/24782)
+- [pcl] Fix a panic in the PCL interpreter's `entries` built-in on a map whose values have different shapes or on an empty map [#24783](https://github.com/pulumi/pulumi/pull/24783)
+- [cli/policy] Fix `pulumi policy group edit` so that it adds and removes stacks, Policy Packs, and Insights accounts [#24996](https://github.com/pulumi/pulumi/pull/24996)
+- [pcl] Stop lifting a prompt operand's type-conversion wrapper into an unnecessary apply, which produced invalid Go code [#25021](https://github.com/pulumi/pulumi/pull/25021)
+- [cli/new] Fix switching template source when prefixes match [#25087](https://github.com/pulumi/pulumi/pull/25087)
+- [cli] Redact secrets carried on output values in plaintext log output and in `pulumi logs share` [#25092](https://github.com/pulumi/pulumi/pull/25092)
+- [cli/new] Fix template fetching when changing branches [#25088](https://github.com/pulumi/pulumi/pull/25088)
+- [cli] Log in through the browser on `pulumi login` in agent mode instead of creating a new agent account [#25107](https://github.com/pulumi/pulumi/pull/25107)
+- [programgen/go] Remove redundant `ToIDOutput().ToStringOutput()` conversions when passing resource IDs to string inputs [#25101](https://github.com/pulumi/pulumi/pull/25101)
+- [programgen/go] Type object literals of outputs as `pulumi.StringMap` and friends so they compile and export without a cast [#25108](https://github.com/pulumi/pulumi/pull/25108)
+- [cli/neo] Honor optional refresh settings in agent previews without persisting refreshed state [#25117](https://github.com/pulumi/pulumi/pull/25117)
+- [cli] Stop finished download and unpack progress bars from reappearing below later output, such as the `pulumi new` success message [#25150](https://github.com/pulumi/pulumi/pull/25150)
+- [sdk/python] Fix `Output.recover` failing to catch faults that arrive through `apply` or after the program body has returned [#25164](https://github.com/pulumi/pulumi/pull/25164)
+- [pcl] Recover from failed function calls with `recover` in the PCL interpreter [#25167](https://github.com/pulumi/pulumi/pull/25167)
+- [pcl] Check assignability of recursive types, such as a schema object that nests itself, without overflowing the stack [#25176](https://github.com/pulumi/pulumi/pull/25176)
+- [pcl] Fix `Equals` on recursive object types that differ under a cycle [#25177](https://github.com/pulumi/pulumi/pull/25177)
+- [backend/diy] Only create the PostgreSQL state table when it doesn't already exist, so roles with read-only access to the table can use the backend [#25217](https://github.com/pulumi/pulumi/pull/25217)
+- [codegen/go] Fix Go program generation for `split` and string `length` so they produce compilable, Unicode-correct code [#25214](https://github.com/pulumi/pulumi/pull/25214)
+
+### Improvements
+
+- [cli/env] Add `--reason` to `pulumi env` commands that support `--draft` to set the change request description [#24936](https://github.com/pulumi/pulumi/pull/24936)
+- [engine] Download the Java language runtime on demand instead of bundling it with the CLI [#25205](https://github.com/pulumi/pulumi/pull/25205)
+- [cli/policy] Run OPA policy packs through the `pulumi-language-opa` language plugin, which the CLI downloads on demand, and stop falling back to a `pulumi-analyzer-policy-<runtime>` plugin for policy packs whose runtime has no language plugin [#24784](https://github.com/pulumi/pulumi/pull/24784)
+- [cli/new] Mark npm as the recommended package manager when prompting in `pulumi new` [#25098](https://github.com/pulumi/pulumi/pull/25098)
+- [sdk/go] Make `IDInput` and `URNInput` satisfy `StringInput`, and `AssetInput` and `ArchiveInput` satisfy `AssetOrArchiveInput` [#25101](https://github.com/pulumi/pulumi/pull/25101)
+- [cli/new] Skip the package manager prompt for new Node.js projects when only one package manager is installed [#25151](https://github.com/pulumi/pulumi/pull/25151)
+- [cli/new] Use pip without prompting for a toolchain in `pulumi new` when neither Poetry nor uv is installed [#25158](https://github.com/pulumi/pulumi/pull/25158)
+- [cli] Make `pulumi watch` error by default before its removal [#25202](https://github.com/pulumi/pulumi/pull/25202)
+- [cli] Make `pulumi logs` error by default before its removal [#25201](https://github.com/pulumi/pulumi/pull/25201)
 ## 3.268.0 (2026-10-07)
 
 ### Features

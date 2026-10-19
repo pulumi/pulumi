@@ -96,6 +96,10 @@ type ProviderHandshakeRequest struct {
 	// True if the engine can send OutputValues nested in Call args and will accept OutputValues in Call return
 	// values. Providers that opt in should set AcceptsOutputsInCall on the response.
 	AcceptsOutputsInCall bool
+
+	// True if the engine can send OutputValues nested in Check olds/news/old_outputs and will accept OutputValues
+	// in Check return values. Providers that opt in should set AcceptsOutputsInCheck on the response.
+	AcceptsOutputsInCheck bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -128,6 +132,11 @@ type ProviderHandshakeResponse struct {
 	// True if and only if the provider accepts OutputValues nested in Call args and may return OutputValues in
 	// Call return values. Only meaningful when the engine advertised AcceptsOutputsInCall on the handshake request.
 	AcceptsOutputsInCall bool
+
+	// True if and only if the provider accepts OutputValues nested in Check olds/news/old_outputs and may return
+	// OutputValues in Check return values. Only meaningful when the engine advertised AcceptsOutputsInCheck on
+	// the handshake request.
+	AcceptsOutputsInCheck bool
 }
 
 // ParameterizeParameters can either be of concrete type ParameterizeArgs or ParameterizeValue, for when parameterizing

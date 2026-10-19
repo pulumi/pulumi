@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
@@ -186,17 +186,17 @@ func TestConverterServer_State(t *testing.T) {
 	assert.Equal(t, []string{"prop1", "prop2"}, res.Properties)
 	assert.Equal(t, "test:provider", res.Provider)
 
-	inputs, err := UnmarshalProperties(res.Inputs, MarshalOptions{KeepSecrets: true})
+	inputs, err := propertyrpc.Unmarshal(res.Inputs)
 	require.NoError(t, err)
-	assert.Equal(t, resource.PropertyMap{
-		"region": resource.NewProperty("us-east-1"),
-		"secret": resource.MakeSecret(resource.NewProperty("shh")),
-	}, inputs)
-	outputs, err := UnmarshalProperties(res.Outputs, MarshalOptions{KeepSecrets: true})
+	assert.True(t, inputs.Equals(property.NewMap(map[string]property.Value{
+		"region": property.New("us-east-1"),
+		"secret": property.New("shh").WithSecret(true),
+	})))
+	outputs, err := propertyrpc.Unmarshal(res.Outputs)
 	require.NoError(t, err)
-	assert.Equal(t, resource.PropertyMap{
-		"arn": resource.NewProperty("test:arn"),
-	}, outputs)
+	assert.True(t, outputs.Equals(property.NewMap(map[string]property.Value{
+		"arn": property.New("test:arn"),
+	})))
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, codegenrpc.DiagnosticSeverity_DIAG_ERROR, diag.Severity)
