@@ -443,7 +443,9 @@ func (f formattingHandler) Handle(ctx context.Context, r slog.Record) error {
 
 	msg := r.Message
 	if len(fmtArgs) > 0 {
-		msg = fmt.Sprintf(r.Message, fmtArgs...)
+		// The filtering handler only saw the format string and the arguments, so filter the
+		// formatted message for secrets carried by non-string arguments.
+		msg = FilterString(fmt.Sprintf(r.Message, fmtArgs...))
 	}
 
 	newRec := slog.NewRecord(r.Time, r.Level, msg, r.PC)
@@ -601,6 +603,17 @@ func (f filteringHandler) WithGroup(name string) slog.Handler {
 func filterAttr(a slog.Attr) slog.Attr {
 	if a.Value.Kind() == slog.KindString {
 		a.Value = slog.StringValue(FilterString(a.Value.String()))
+	} else if a.Value.Kind() == slog.KindAny {
+		// Errors and Stringers are written out as their text, so filter that text too. Values that
+		// carry no registered secret keep their original type for the sink.
+		switch v := a.Value.Any().(type) {
+		case logRedactable:
+		case error, fmt.Stringer:
+			s := fmt.Sprint(v)
+			if filtered := FilterString(s); filtered != s {
+				a.Value = slog.StringValue(filtered)
+			}
+		}
 	}
 	return a
 }
