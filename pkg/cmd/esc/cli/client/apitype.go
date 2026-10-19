@@ -235,6 +235,11 @@ type ApproveChangeRequestRequest struct {
 	Comment        string `json:"comment,omitempty"`
 }
 
+type ChangeRequestApplyResult struct {
+	EntityURL string `json:"entityUrl"`
+	Message   string `json:"message,omitempty"`
+}
+
 type EnvironmentDraftStatus struct {
 	BaseRevision        int `json:"baseRevision"`
 	EnvironmentRevision int `json:"environmentRevision"`
