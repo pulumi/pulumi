@@ -230,6 +230,11 @@ type ChangeRequestComment struct {
 	Comment string `json:"comment,omitempty"`
 }
 
+type ApproveChangeRequestRequest struct {
+	RevisionNumber int    `json:"revisionNumber"`
+	Comment        string `json:"comment,omitempty"`
+}
+
 type EnvironmentDraftStatus struct {
 	BaseRevision        int `json:"baseRevision"`
 	EnvironmentRevision int `json:"environmentRevision"`
