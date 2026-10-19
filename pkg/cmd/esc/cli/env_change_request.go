@@ -51,8 +51,8 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 			"--draft, such as `env edit` and `env set`. Use `env open --draft=<id>`\n" +
 			"to open the draft version of an environment.\n" +
 			"\n" +
-			"Subcommands exist for listing, viewing, diffing, approving, applying, closing, and commenting on\n" +
-			"change requests.",
+			"Subcommands exist for listing, viewing, diffing, approving, applying, closing, commenting on, and\n" +
+			"rebasing change requests.",
 		Example: fmt.Sprintf("  # Propose a change, then review and apply it\n"+
 			"  %[1]s env set my-project/prod app.replicas 3 --draft\n"+
 			"  %[1]s env change-request list --env my-project/prod\n"+
@@ -73,6 +73,7 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 	cmd.AddCommand(newEnvChangeRequestCloseCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestCommentCmd(cr))
 	cmd.AddCommand(newEnvChangeRequestDiffCmd(cr))
+	cmd.AddCommand(newEnvChangeRequestRebaseCmd(cr))
 
 	return cmd
 }
@@ -302,7 +303,8 @@ func newEnvChangeRequestGetCmd(cr *changeRequestCommand) *cobra.Command {
 		Long: "[EXPERIMENTAL] Show a change request\n" +
 			"\n" +
 			"This command shows a change request's status, description, and approvals, and the environment\n" +
-			"revision the draft is based on.\n",
+			"revision the draft is based on. If the environment has changed since then, use\n" +
+			"`env change-request rebase` to bring the draft up to date.\n",
 		Example: fmt.Sprintf("  # Show a change request\n"+
 			"  %[1]s env change-request get <change-request-id>\n\n"+
 			"  # Show a change request as JSON\n"+
@@ -674,4 +676,134 @@ func newEnvChangeRequestDiffCmd(cr *changeRequestCommand) *cobra.Command {
 	}
 
 	return cmd
+}
+
+func newEnvChangeRequestRebaseCmd(cr *changeRequestCommand) *cobra.Command {
+	var output string
+
+	cmd := &cobra.Command{
+		Use:   "rebase <change-request-id>",
+		Short: "[EXPERIMENTAL] Rebase a draft onto the environment's current revision.",
+		Long: "[EXPERIMENTAL] Rebase a draft onto the environment's current revision\n" +
+			"\n" +
+			"This command replays a draft's changes onto the environment's current revision.\n" +
+			"If the draft conflicts with the current revision, the draft is left unchanged and\n" +
+			"each conflict is shown in the revision the draft is based on, the draft, and the current\n" +
+			"revision.\n",
+		Example: fmt.Sprintf("  %[1]s env change-request rebase <change-request-id>", cr.env.esc.command),
+		Args:    cmdutil.SpecificArgs([]string{"change-request-id"}),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
+
+			orgName, err := cr.orgName(ctx)
+			if err != nil {
+				return err
+			}
+
+			c, err := cr.env.esc.client.GetChangeRequest(ctx, orgName, args[0])
+			if err != nil {
+				return fmt.Errorf("getting change request: %w", err)
+			}
+			if c.Action != "update" {
+				return fmt.Errorf("change request %v is not an environment draft", c.ID)
+			}
+			ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
+
+			status, err := cr.env.esc.client.GetEnvironmentDraftStatus(ctx, orgName, ref.projectName, ref.envName, c.ID)
+			if err != nil {
+				return fmt.Errorf("getting draft status: %w", err)
+			}
+			if status.BaseRevision == status.EnvironmentRevision {
+				cr.warnNoop(fmt.Sprintf("Change request %v is already based on the current environment revision.", c.ID), "")
+				if format == outputJSON {
+					return writeJSON(cr.env.esc.stdout, &client.EnvironmentDraftRebaseResponse{
+						ChangeRequestID:     c.ID,
+						DraftRevisionNumber: status.DraftRevisionNumber,
+						Conflicts:           []client.EnvironmentDraftConflict{},
+					})
+				}
+				return nil
+			}
+
+			resp, err := cr.env.esc.client.RebaseEnvironmentDraft(ctx, orgName, ref.projectName, ref.envName, c.ID)
+			if err != nil {
+				return fmt.Errorf("rebasing draft: %w", err)
+			}
+
+			if format == outputJSON {
+				if err := writeJSON(cr.env.esc.stdout, resp); err != nil {
+					return err
+				}
+			} else if len(resp.Conflicts) == 0 {
+				fmt.Fprintf(cr.env.esc.stderr, "Rebased change request %v (revision %v)\n", c.ID, resp.DraftRevisionNumber)
+			} else {
+				base, _, _, err := cr.env.esc.client.GetEnvironment(
+					ctx, orgName, ref.projectName, ref.envName, strconv.Itoa(status.BaseRevision), false)
+				if err != nil {
+					return fmt.Errorf("getting base definition: %w", err)
+				}
+				current, _, _, err := cr.env.esc.client.GetEnvironment(
+					ctx, orgName, ref.projectName, ref.envName, "", false)
+				if err != nil {
+					return fmt.Errorf("getting environment definition: %w", err)
+				}
+				draft, _, err := cr.env.esc.client.GetEnvironmentDraft(ctx, orgName, ref.projectName, ref.envName, c.ID)
+				if err != nil {
+					return fmt.Errorf("getting draft definition: %w", err)
+				}
+				printRebaseConflicts(cr.env.esc.stdout, resp.Conflicts, status, string(base), string(current),
+					string(draft))
+			}
+
+			if len(resp.Conflicts) != 0 {
+				return fmt.Errorf("rebase of change request %v has %v conflict(s); the draft was not changed",
+					c.ID, len(resp.Conflicts))
+			}
+			return nil
+		},
+	}
+
+	addOutputFlag(cmd, &output)
+
+	return cmd
+}
+
+// printRebaseConflicts shows the lines of each conflict in the base revision, the draft, and the
+// current revision.
+func printRebaseConflicts(
+	w io.Writer,
+	conflicts []client.EnvironmentDraftConflict,
+	status *client.EnvironmentDraftStatus,
+	base, current, draft string,
+) {
+	printSection := func(label, src string, start, end int, empty string) {
+		fmt.Fprintf(w, "  %v:\n", label)
+
+		// Print empty message when range is empty (represented by range end == start)
+		if end <= start {
+			fmt.Fprintf(w, "    %v\n", empty)
+			return
+		}
+
+		lines := strings.Split(strings.TrimSuffix(src, "\n"), "\n")
+		for i := max(start, 1); i < end && i <= len(lines); i++ {
+			fmt.Fprintf(w, "    %v\n", lines[i-1])
+		}
+	}
+
+	for i, c := range conflicts {
+		if i > 0 {
+			fmt.Fprintln(w)
+		}
+		fmt.Fprintf(w, "Conflict %v:\n", i+1)
+		printSection(fmt.Sprintf("Base (revision %v)", status.BaseRevision), base, c.StartLine, c.EndLine, "(no lines)")
+		printSection("Your draft", draft, c.DraftStartLine, c.DraftEndLine, "(deleted)")
+		printSection(fmt.Sprintf("Current (revision %v)", status.EnvironmentRevision), current,
+			c.HeadStartLine, c.HeadEndLine, "(deleted)")
+	}
 }

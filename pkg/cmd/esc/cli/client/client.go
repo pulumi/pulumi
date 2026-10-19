@@ -231,6 +231,16 @@ type Client interface {
 		changeRequestID string,
 	) (*EnvironmentDraftStatus, error)
 
+	// RebaseEnvironmentDraft replays a draft onto the environment's current revision. If the rebase
+	// conflicts, the draft is unchanged and the conflicts are returned.
+	RebaseEnvironmentDraft(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		changeRequestID string,
+	) (*EnvironmentDraftRebaseResponse, error)
+
 	// DeleteEnvironment deletes the environment envName in org orgName.
 	DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error
 
@@ -1015,6 +1025,21 @@ func (pc *client) GetEnvironmentDraftStatus(
 	var resp EnvironmentDraftStatus
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/status", orgName, projectName, envName, changeRequestID)
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (pc *client) RebaseEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) (*EnvironmentDraftRebaseResponse, error) {
+	var resp EnvironmentDraftRebaseResponse
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/rebase", orgName, projectName, envName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, nil, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil

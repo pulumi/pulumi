@@ -246,6 +246,23 @@ type EnvironmentDraftStatus struct {
 	DraftRevisionNumber int `json:"draftRevisionNumber"`
 }
 
+// EnvironmentDraftConflict holds 1-based line ranges [start, end) in the revision the draft is based on,
+// the environment's current revision, and the draft. An empty range has end equal to start.
+type EnvironmentDraftConflict struct {
+	StartLine      int `json:"startLine"`
+	EndLine        int `json:"endLine"`
+	HeadStartLine  int `json:"headStartLine"`
+	HeadEndLine    int `json:"headEndLine"`
+	DraftStartLine int `json:"draftStartLine"`
+	DraftEndLine   int `json:"draftEndLine"`
+}
+
+type EnvironmentDraftRebaseResponse struct {
+	ChangeRequestID     string                     `json:"changeRequestId"`
+	DraftRevisionNumber int                        `json:"draftRevisionNumber"`
+	Conflicts           []EnvironmentDraftConflict `json:"conflicts"`
+}
+
 type EnvironmentTag struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`

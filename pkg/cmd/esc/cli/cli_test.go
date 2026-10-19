@@ -967,6 +967,36 @@ func (c *testPulumiClient) GetEnvironmentDraftStatus(
 	}, nil
 }
 
+// RebaseEnvironmentDraft reports a conflict over the whole definition whenever the environment has
+// moved past the draft's base revision.
+func (c *testPulumiClient) RebaseEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) (*client.EnvironmentDraftRebaseResponse, error) {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return nil, err
+	}
+	_, latest, err := c.getEnvironment(orgName, projectName, envName, "")
+	if err != nil {
+		return nil, err
+	}
+	resp := &client.EnvironmentDraftRebaseResponse{
+		ChangeRequestID:     changeRequestID,
+		DraftRevisionNumber: cr.LatestRevisionNumber,
+		Conflicts:           []client.EnvironmentDraftConflict{},
+	}
+	if latest.number != cr.baseRevision {
+		resp.Conflicts = append(resp.Conflicts, client.EnvironmentDraftConflict{
+			StartLine: 1, EndLine: 3, HeadStartLine: 1, HeadEndLine: 4, DraftStartLine: 1, DraftEndLine: 3,
+		})
+	}
+	return resp, nil
+}
+
 func (c *testPulumiClient) DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error {
 	name := path.Join(orgName, projectName, envName)
 	env, ok := c.environments[name]
