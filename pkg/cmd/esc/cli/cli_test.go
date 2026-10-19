@@ -861,6 +861,18 @@ func (c *testPulumiClient) GetChangeRequest(
 	}, nil
 }
 
+func (c *testPulumiClient) CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil {
+		return err
+	}
+	if cr.Status == "applied" || cr.Status == "closed" {
+		return errors.New("change request is not active")
+	}
+	cr.Status = "closed"
+	return nil
+}
+
 func (c *testPulumiClient) GetEnvironmentDraftStatus(
 	ctx context.Context,
 	orgName string,
