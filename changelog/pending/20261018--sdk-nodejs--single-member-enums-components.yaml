@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: fix
+body: Support single-member enums and `as const` objects in Node.js component inputs and outputs
+time: 2026-10-18T23:30:00+05:30

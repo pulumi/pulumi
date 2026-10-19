@@ -622,7 +622,10 @@ Please ensure these components are properly imported to your package's entry poi
             return this.analyzeType(context, optionalType, location, true, docString);
         }
 
-        if (type.isUnion()) {
+        // A single-member enum (or `as const` object) is a lone literal type rather than a union, so treat it as a
+        // union of one.
+        const isSingleLiteral = type.isStringLiteral() || type.isNumberLiteral();
+        if (type.isUnion() || isSingleLiteral) {
             // Enums are unions of string or number literals. We support two cases:
             //
             //   enum MyEnum { Value1 = "Value1", Value2 = "Value2" }
@@ -630,11 +633,11 @@ Please ensure these components are properly imported to your package's entry poi
             //   const MyEnum = { Value1: "Value1", Value2: "Value2" } as const;
             //   type MyEnum = typeof MyEnum[keyof typeof MyEnum];
             //
-            const unionType = type as typescript.UnionType;
-            const isStringLiteralUnion = unionType.types.every(
+            const memberTypes = getLiteralMemberTypes(type);
+            const isStringLiteralUnion = memberTypes.every(
                 (t) => t.isStringLiteral() || (t.flags & ts.TypeFlags.Undefined) !== 0,
             );
-            const isNumberLiteralUnion = unionType.types.every(
+            const isNumberLiteralUnion = memberTypes.every(
                 (t) => t.isNumberLiteral() || (t.flags & ts.TypeFlags.Undefined) !== 0,
             );
 
@@ -678,6 +681,11 @@ Please ensure these components are properly imported to your package's entry poi
                 }
             }
 
+            if (isSingleLiteral) {
+                throw new Error(
+                    `Unsupported type for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'. Use an enum or an \`as const\` object for literal values.`,
+                );
+            }
             throw new Error(
                 `Union types are not supported for ${this.formatErrorContext(context)}: type '${this.checker.typeToString(type)}'`,
             );
@@ -735,6 +743,11 @@ Please ensure these components are properly imported to your package's entry poi
             if (importedSymbol?.declarations?.[0]) {
                 declaration = importedSymbol.declarations[0];
             }
+        }
+        // The type of a single-member enum is the type of its only member, so we end up at the member's
+        // declaration. Use the enum itself in that case, but not for a member of a larger enum (`MyEnum.Value1`).
+        if (ts.isEnumMember(declaration) && declaration.parent.members.length === 1) {
+            declaration = declaration.parent;
         }
 
         if (ts.isEnumDeclaration(declaration)) {
@@ -802,7 +815,7 @@ Please ensure these components are properly imported to your package's entry poi
                 initializer = initializer.expression;
             }
 
-            if (initializer && ts.isObjectLiteralExpression(initializer) && type.isUnion()) {
+            if (initializer && ts.isObjectLiteralExpression(initializer)) {
                 const valueToMember = new Map<string | number, { key: string; description?: string }>();
 
                 for (const property of initializer.properties) {
@@ -832,7 +845,7 @@ Please ensure these components are properly imported to your package's entry poi
                 }
 
                 const members: Array<{ name: string; value: string | number; description?: string }> = [];
-                for (const t of type.types) {
+                for (const t of getLiteralMemberTypes(type)) {
                     let literalValue: string | number | undefined;
                     if (t.isStringLiteral()) {
                         literalValue = (t as typescript.StringLiteralType).value;
@@ -1282,6 +1295,14 @@ function unwrapOutputIntersection(type: typescript.Type): typescript.Type {
         }
     }
     return type;
+}
+
+/**
+ * Returns the members of a union type, or the type itself for a non-union (a single-member enum or `as const`
+ * object is a lone literal type).
+ */
+function getLiteralMemberTypes(type: typescript.Type): typescript.Type[] {
+    return type.isUnion() ? type.types : [type];
 }
 
 /**
