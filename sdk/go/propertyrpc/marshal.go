@@ -45,13 +45,13 @@ func MarshalValue(v property.Value) *structpb.Value {
 		if v.Secret() {
 			fields["secret"] = trueValue
 		}
-		if len(deps) > 0 {
-			urns := make([]*structpb.Value, len(deps))
-			for i, urn := range deps {
-				urns[i] = structpb.NewStringValue(string(urn))
-			}
-			fields["dependencies"] = structpb.NewListValue(&structpb.ListValue{Values: urns})
+
+		urns := make([]*structpb.Value, len(deps))
+		for i, urn := range deps {
+			urns[i] = structpb.NewStringValue(string(urn))
 		}
+		fields["dependencies"] = structpb.NewListValue(&structpb.ListValue{Values: urns})
+
 		return structpb.NewStructValue(&structpb.Struct{Fields: fields})
 	}
 
