@@ -69,6 +69,9 @@ func (h *L1MainLanguageHost) GenerateProject(
 	if !req.Strict {
 		return nil, errors.New("expected strict to be true")
 	}
+	if req.MapperTarget == "" {
+		return nil, errors.New("expected a mapper target")
+	}
 	if filepath.Base(req.SourceDirectory) != "subdir" {
 		return nil, fmt.Errorf("unexpected source directory %s", req.SourceDirectory)
 	}

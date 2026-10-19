@@ -1,0 +1,4 @@
+component: protobuf
+kind: improvement
+body: Pass a mapper target to language hosts in `GenerateProgram` and `GenerateProject` requests
+time: 2026-10-19T12:00:00+00:00
