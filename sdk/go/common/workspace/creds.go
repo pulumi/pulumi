@@ -253,11 +253,18 @@ type TokenInformation struct {
 	ExpiresAt    *time.Time `json:"expiresAt,omitempty"`    // The time when this token expires.
 }
 
-// Credentials hold the information necessary for authenticating Pulumi Cloud API requests.  It contains
-// a map from the backend URL to the associated account.
+// CredentialHelper configures a local command that supplies backend credentials.
+type CredentialHelper struct {
+	Path string   `json:"path"`
+	Args []string `json:"args,omitempty"`
+}
+
+// Credentials hold backend accounts, the current backend, and optional helper configuration.
 type Credentials struct {
-	Current  string             `json:"current,omitempty"`  // the currently selected key.
-	Accounts map[string]Account `json:"accounts,omitempty"` // a map of backend URLs to account info.
+	Version          int                `json:"version,omitempty"`
+	CredentialHelper *CredentialHelper  `json:"credentialHelper,omitempty"`
+	Current          string             `json:"current,omitempty"`  // the currently selected key.
+	Accounts         map[string]Account `json:"accounts,omitempty"` // a map of backend URLs to account info.
 }
 
 func (c Credentials) MarshalJSON() ([]byte, error) {
@@ -269,10 +276,13 @@ func (c Credentials) MarshalJSON() ([]byte, error) {
 		accessTokens[key] = account.AccessToken
 	}
 	return json.Marshal(struct {
-		Current      string             `json:"current,omitempty"`
-		AccessTokens map[string]string  `json:"accessTokens,omitempty"`
-		Accounts     map[string]Account `json:"accounts,omitempty"`
+		Version          int                `json:"version,omitempty"`
+		CredentialHelper *CredentialHelper  `json:"credentialHelper,omitempty"`
+		Current          string             `json:"current,omitempty"`
+		AccessTokens     map[string]string  `json:"accessTokens,omitempty"`
+		Accounts         map[string]Account `json:"accounts,omitempty"`
 	}{
+		Version: c.Version, CredentialHelper: c.CredentialHelper,
 		Current:      c.Current,
 		AccessTokens: accessTokens,
 		Accounts:     c.Accounts,
@@ -455,7 +465,7 @@ func decryptCredentials(credsFile string, data []byte) ([]byte, error) {
 // Agent credentials go through here too — all agent processes share one OS
 // user and one key.
 func writeCredentialsFile(credsFile string, creds Credentials) error {
-	if len(creds.Accounts) == 0 {
+	if len(creds.Accounts) == 0 && creds.Current == "" && creds.CredentialHelper == nil {
 		err := os.Remove(credsFile)
 		if err != nil && !os.IsNotExist(err) {
 			return err
