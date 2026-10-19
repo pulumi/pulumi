@@ -662,7 +662,10 @@ func (c *testPulumiClient) UpdateEnvironment(
 	}
 
 	if etag != "" && etag != latest.etag {
-		return nil, 0, errors.New("etag mismatch")
+		return nil, 0, &client.EnvironmentErrorResponse{
+			Code:    http.StatusConflict,
+			Message: "Conflict: the environment has changed since it was read",
+		}
 	}
 
 	envId := projectName + "/" + envName
@@ -1707,6 +1710,11 @@ func (c *testExec) runScript(script string, cmd *exec.Cmd) error {
 				if flag&os.O_TRUNC != 0 {
 					f.Data = f.Data[:0]
 				}
+				if flag&(os.O_WRONLY|os.O_RDWR) == 0 {
+					// The interpreter copies non-*os.File input redirects through a pipe on another
+					// goroutine, so reads must not share Data with later writes.
+					return &testFile{f: &fstest.MapFile{Data: bytes.Clone(f.Data)}}, nil
+				}
 				return &testFile{f: f}, nil
 			},
 		),
@@ -2162,4 +2170,28 @@ func TestEnvOpenRequestSubmits(t *testing.T) {
 	assert.Nil(t, client.submittedChangeRequests[1].description)
 	require.NotNil(t, client.submittedChangeRequests[2].description)
 	assert.Equal(t, "Need prod access for incident 1234", *client.submittedChangeRequests[2].description)
+}
+
+func TestEnvDraftReasonSubmits(t *testing.T) {
+	t.Setenv("PULUMI_API", "")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	_, testcase, err := loadTestcase(filepath.Join("testdata", "env-draft-reason.yaml"))
+	require.NoError(t, err)
+
+	var stdout, stderr bytes.Buffer
+	err = testcase.exec.runScript(testcase.script, &exec.Cmd{
+		Path:   "<script>",
+		Args:   []string{"<script>"},
+		Stdin:  bytes.NewReader(nil),
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	require.NoError(t, err)
+
+	subs := testcase.exec.client.submittedChangeRequests
+	require.Len(t, subs, 2)
+	require.NotNil(t, subs[0].description)
+	assert.Equal(t, "Rotate foo", *subs[0].description)
+	assert.Nil(t, subs[1].description)
 }

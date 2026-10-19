@@ -479,6 +479,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					} else {
 						g.Fgenf(w, "%.v.(%s)", from, typeName)
 					}
+				} else if conv, ok := plainCollectionConverter(g, fromType, typeName); ok && !isFromOutput {
+					// `pulumi.StringArray` is `[]pulumi.String`, not `[]string`, so a plain
+					// `[]string` value (e.g. from `strings.Split`) can't be wrapped with the
+					// input type directly. Use the SDK's `pulumi.ToStringArray` helper
+					// (and similarly for other scalar array/map types).
+					g.Fgenf(w, "%s(%.v)", conv, from)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}
@@ -649,7 +655,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "join":
 		g.Fgenf(w, "strings.Join(%v, %v)", expr.Args[1], expr.Args[0])
 	case "length":
-		g.Fgenf(w, "len(%.20v)", expr.Args[0])
+		// PCL's `length` on a string returns the Unicode grapheme cluster
+		// count (so "🕹️" is 1), not the byte or rune length, so use
+		// uniseg.GraphemeClusterCount for strings.
+		argType := model.ResolveOutputs(expr.Args[0].Type())
+		if argType.Equals(model.StringType) {
+			g.Fgenf(w, "uniseg.GraphemeClusterCount(%.20v)", expr.Args[0])
+		} else {
+			g.Fgenf(w, "len(%.20v)", expr.Args[0])
+		}
 	case "readFile":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "readFileOrPanic(%v)", expr.Args[0])
@@ -1945,6 +1959,26 @@ func pulumiConverterSuffix(goType string) (string, bool) {
 	return pulumiScalarSuffix(goType)
 }
 
+// plainCollectionConverter returns the `pulumi.To<Suffix>` helper that
+// converts a plain Go slice/map value (e.g. `[]string`) into the matching
+// Pulumi input type (e.g. `pulumi.StringArray`). Returns ok=false if the
+// source isn't a convertible slice/map or the destination doesn't name the
+// corresponding input container type.
+func plainCollectionConverter(g *generator, fromType model.Type, destTypeName string) (string, bool) {
+	argGoType := g.argumentTypeName(fromType, false)
+	suffix, ok := pulumiConverterSuffix(argGoType)
+	if !ok {
+		return "", false
+	}
+	if destTypeName != "pulumi."+suffix {
+		return "", false
+	}
+	if !strings.HasSuffix(suffix, "Array") && !strings.HasSuffix(suffix, "Map") {
+		return "", false
+	}
+	return "pulumi.To" + suffix, true
+}
+
 // pulumiScalarSuffix returns the Pulumi suffix for a scalar Go type. Only
 // primitive scalars have generated Ptr/Map/Array containers in the SDK, so
 // callers use this to gate composition of the compound suffixes above.
@@ -2368,6 +2402,11 @@ var functionPackages = map[string][]string{
 }
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {
+	if x.Name == "length" && len(x.Args) == 1 {
+		if model.ResolveOutputs(x.Args[0].Type()).Equals(model.StringType) {
+			return []string{"github.com/rivo/uniseg"}
+		}
+	}
 	return functionPackages[x.Name]
 }
 

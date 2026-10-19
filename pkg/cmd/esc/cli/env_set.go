@@ -37,6 +37,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	var plaintext bool
 	var rawString bool
 	var draft string
+	var reason string
 	var file string
 
 	cmd := &cobra.Command{
@@ -203,7 +204,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("marshaling definition: %w", err)
 			}
 
-			diags, err := env.esc.updateEnvironment(ctx, ref, draft, newYAML, tag, "")
+			diags, err := env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "")
 			if err != nil {
 				return err
 			}
@@ -232,6 +233,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 		"set flag without a value (--draft) to create a draft rather than saving changes directly. --draft=<change-request-id> to update an existing change request.") //nolint:lll
 	// Allow no value to be specified with the flag and create a new change request in that case
 	cmd.Flag("draft").NoOptDefVal = "new"
+	cmd.Flags().StringVar(&reason, "reason", "", "the description for the change request created by --draft")
 
 	return cmd
 }

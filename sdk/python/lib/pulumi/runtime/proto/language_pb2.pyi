@@ -898,10 +898,13 @@ class GenerateProgramRequest(google.protobuf.message.Message):
     SOURCE_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     STRICT_FIELD_NUMBER: builtins.int
+    MAPPER_TARGET_FIELD_NUMBER: builtins.int
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
     strict: builtins.bool
     """True if [PCL binding](pcl-binding) should be strict."""
+    mapper_target: builtins.str
+    """The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi."""
     @property
     def source(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """The source of the project, represented as a map of file names to [PCL](pcl) source code."""
@@ -912,8 +915,9 @@ class GenerateProgramRequest(google.protobuf.message.Message):
         source: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
         loader_target: builtins.str = ...,
         strict: builtins.bool = ...,
+        mapper_target: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["loader_target", b"loader_target", "source", b"source", "strict", b"strict"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["loader_target", b"loader_target", "mapper_target", b"mapper_target", "source", b"source", "strict", b"strict"]) -> None: ...
 
 global___GenerateProgramRequest = GenerateProgramRequest
 
@@ -987,6 +991,7 @@ class GenerateProjectRequest(google.protobuf.message.Message):
     STRICT_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
     LOCAL_DEPENDENCIES_FIELD_NUMBER: builtins.int
+    MAPPER_TARGET_FIELD_NUMBER: builtins.int
     source_directory: builtins.str
     """The directory containing [PCL](pcl) source code, from which the project should be generated."""
     target_directory: builtins.str
@@ -999,6 +1004,8 @@ class GenerateProjectRequest(google.protobuf.message.Message):
     """True if [PCL binding](pcl-binding) should be strict."""
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
+    mapper_target: builtins.str
+    """The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi."""
     @property
     def local_dependencies(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
         """Local dependencies that the generated project should reference explicitly, instead of e.g. using the language's
@@ -1017,8 +1024,9 @@ class GenerateProjectRequest(google.protobuf.message.Message):
         strict: builtins.bool = ...,
         loader_target: builtins.str = ...,
         local_dependencies: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        mapper_target: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "project", b"project", "source_directory", b"source_directory", "strict", b"strict", "target_directory", b"target_directory"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["loader_target", b"loader_target", "local_dependencies", b"local_dependencies", "mapper_target", b"mapper_target", "project", b"project", "source_directory", b"source_directory", "strict", b"strict", "target_directory", b"target_directory"]) -> None: ...
 
 global___GenerateProjectRequest = GenerateProjectRequest
 

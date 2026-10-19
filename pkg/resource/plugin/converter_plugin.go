@@ -22,7 +22,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -157,20 +157,26 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 			}
 		}
 		if res.Inputs != nil {
-			inputs, err := UnmarshalProperties(res.Inputs, MarshalOptions{Label: label, KeepSecrets: true})
+			raw, err := propertyrpc.Unmarshal(res.Inputs)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling inputs for resource %q: %w", res.Name, err)
 			}
-			minputs := resource.FromResourcePropertyMap(inputs)
-			resources[i].Inputs = &minputs
+			inputs, err := FilterProperties(raw, FilterOptions{KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("filtering inputs for resource %q: %w", res.Name, err)
+			}
+			resources[i].Inputs = &inputs
 		}
 		if res.Outputs != nil {
-			outputs, err := UnmarshalProperties(res.Outputs, MarshalOptions{Label: label, KeepSecrets: true})
+			raw, err := propertyrpc.Unmarshal(res.Outputs)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling outputs for resource %q: %w", res.Name, err)
 			}
-			moutputs := resource.FromResourcePropertyMap(outputs)
-			resources[i].Outputs = &moutputs
+			outputs, err := FilterProperties(raw, FilterOptions{KeepSecrets: true})
+			if err != nil {
+				return nil, fmt.Errorf("filtering outputs for resource %q: %w", res.Name, err)
+			}
+			resources[i].Outputs = &outputs
 		}
 	}
 

@@ -99,12 +99,22 @@ func NewPostgresBucket(ctx context.Context, u *url.URL) (*Bucket, error) {
 		return nil, fmt.Errorf("failed to ping PostgreSQL: %w", err)
 	}
 
-	// Create table if it doesn't exist
-	// SECURITY NOTE: tableName is from connection string config, not user input - safe from SQL injection
-	createTableSQL := fmt.Sprintf(tableSchema, tableName, tableName, tableName)
-	if _, err := db.ExecContext(ctx, createTableSQL); err != nil {
+	// Create the table if it doesn't exist. We check for the table first, rather than always running the schema's
+	// CREATE ... IF NOT EXISTS statements, because those require CREATE privileges even when the table already exists.
+	// This allows roles that only have read access to an existing table (e.g. for `pulumi preview`) to use the backend.
+	// to_regclass resolves the name the same way the queries below do, honoring search_path and schema-qualified names.
+	var existingTable sql.NullString
+	if err := db.QueryRowContext(ctx, "SELECT to_regclass($1)::text", tableName).Scan(&existingTable); err != nil {
 		db.Close()
-		return nil, fmt.Errorf("failed to create table %s: %w", tableName, err)
+		return nil, fmt.Errorf("failed to check for table %s: %w", tableName, err)
+	}
+	if !existingTable.Valid {
+		// SECURITY NOTE: tableName is from connection string config, not user input - safe from SQL injection
+		createTableSQL := fmt.Sprintf(tableSchema, tableName, tableName, tableName)
+		if _, err := db.ExecContext(ctx, createTableSQL); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("failed to create table %s: %w", tableName, err)
+		}
 	}
 
 	bucket := &Bucket{

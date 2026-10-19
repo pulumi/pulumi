@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -237,11 +238,12 @@ func (a *analyzer) Analyze(ctx context.Context, r AnalyzerResource) (AnalyzeResp
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, props.Len())
-	mprops, err := MarshalProperties(resource.ToResourcePropertyMap(props),
-		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+	filtered, err := FilterProperties(props,
+		FilterOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
 		return AnalyzeResponse{}, err
 	}
+	mprops := propertyrpc.Marshal(filtered)
 
 	provider, err := marshalProvider(r.Provider)
 	if err != nil {
@@ -281,11 +283,12 @@ func (a *analyzer) AnalyzeStack(ctx context.Context, resources []AnalyzerStackRe
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
 	for idx, res := range resources {
-		props, err := MarshalProperties(resource.ToResourcePropertyMap(res.Properties),
-			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+		filtered, err := FilterProperties(res.Properties,
+			FilterOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 		if err != nil {
-			return AnalyzeResponse{}, fmt.Errorf("marshalling properties: %w", err)
+			return AnalyzeResponse{}, fmt.Errorf("filtering properties: %w", err)
 		}
+		props := propertyrpc.Marshal(filtered)
 
 		provider, err := marshalProvider(res.Provider)
 		if err != nil {
@@ -357,11 +360,12 @@ func (a *analyzer) Remediate(ctx context.Context, r AnalyzerResource) (Remediate
 
 	label := fmt.Sprintf("%s.Remediate(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, props.Len())
-	mprops, err := MarshalProperties(resource.ToResourcePropertyMap(props),
-		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
+	filtered, err := FilterProperties(props,
+		FilterOptions{KeepUnknowns: true, KeepSecrets: true})
 	if err != nil {
 		return RemediateResponse{}, err
 	}
+	mprops := propertyrpc.Marshal(filtered)
 
 	provider, err := marshalProvider(r.Provider)
 	if err != nil {
@@ -392,8 +396,11 @@ func (a *analyzer) Remediate(ctx context.Context, r AnalyzerResource) (Remediate
 	remediations := resp.GetRemediations()
 	results := make([]Remediation, len(remediations))
 	for i, r := range remediations {
-		tprops, err := UnmarshalProperties(r.GetProperties(),
-			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
+		raw, err := propertyrpc.Unmarshal(r.GetProperties())
+		if err != nil {
+			return RemediateResponse{}, err
+		}
+		tprops, err := FilterProperties(raw, FilterOptions{KeepUnknowns: true, KeepSecrets: true})
 		if err != nil {
 			return RemediateResponse{}, err
 		}
@@ -409,7 +416,7 @@ func (a *analyzer) Remediate(ctx context.Context, r AnalyzerResource) (Remediate
 			Description:       r.GetDescription(),
 			PolicyPackName:    r.GetPolicyPackName(),
 			PolicyPackVersion: policyPackVersion,
-			Properties:        resource.FromResourcePropertyMap(tprops),
+			Properties:        tprops,
 			Diagnostic:        r.GetDiagnostic(),
 		}
 	}
@@ -702,17 +709,17 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 		return nil, nil
 	}
 
-	props, err := MarshalProperties(resource.ToResourcePropertyMap(provider.Properties),
-		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+	filtered, err := FilterProperties(provider.Properties,
+		FilterOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
-		return nil, fmt.Errorf("marshalling properties: %w", err)
+		return nil, fmt.Errorf("filtering properties: %w", err)
 	}
 
 	return &pulumirpc.AnalyzerProviderResource{
 		Urn:        string(provider.URN),
 		Type:       string(provider.Type),
 		Name:       provider.Name,
-		Properties: props,
+		Properties: propertyrpc.Marshal(filtered),
 	}, nil
 }
 

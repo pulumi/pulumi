@@ -194,6 +194,7 @@ message ReadResourceResponse {
     google.protobuf.Struct properties = 2; // the state of the resource read from the live environment.
     Result result = 3;                     // the reason, whether the read was successful or failed.
     bool unknown = 4;                      // true if the result of the read is unknown, e.g. because the read was skipped as part of a --continue-on-error run; result is still SUCCESS and SDKs should resolve outputs as unknown.
+    string id = 5;                         // the id resolved by the provider's Read. If empty, SDKs should treat the id as unknown during preview, otherwise fall back to the id supplied on the request for back-compat with older engines.
 }
 
 // ExistsResourceRequest contains enough information to check whether a resource with a given ID exists.

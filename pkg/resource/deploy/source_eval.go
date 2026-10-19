@@ -1553,6 +1553,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		Properties: marshaled,
 		Result:     reason,
 		Unknown:    result.Unknown,
+		Id:         string(result.State.ID),
 	}, nil
 }
 
