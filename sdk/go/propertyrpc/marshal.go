@@ -133,11 +133,9 @@ func marshalResourceReference(ref property.ResourceReference) *structpb.Value {
 	return structpb.NewStructValue(&structpb.Struct{Fields: fields})
 }
 
-var computedValue = structpb.NewStructValue(&structpb.Struct{
-	Fields: map[string]*structpb.Value{
-		sig.Key: structpb.NewStringValue(sig.OutputValue),
-	},
-})
+// N.B. While there are similar sentinel values for other types of unknown values in practice we only ever use the
+// string one, and the non-Go SDKs have only _ever_ sent the unknown string sentinel.
+var computedValue = structpb.NewStringValue(sig.UnknownStringValue)
 
 var trueValue = structpb.NewBoolValue(true)
 
