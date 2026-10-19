@@ -178,7 +178,8 @@ func safePclBindDirectory(sourceDirectory string, loader schema.ReferenceLoader,
 
 // pclGenerateProject writes out a pcl.Program directly as .pp files
 func pclGenerateProject(
-	sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader, strict bool,
+	sourceDirectory, targetDirectory string, proj *workspace.Project, loader schema.ReferenceLoader,
+	_ convert.Mapper, strict bool,
 ) (hcl.Diagnostics, error) {
 	_, diagnostics, bindErr := safePclBindDirectory(sourceDirectory, loader, strict)
 	// We always try to copy the source directory to the target directory even if binding failed
@@ -192,7 +193,7 @@ func pclGenerateProject(
 }
 
 type projectGeneratorFunction func(
-	string, string, *workspace.Project, schema.ReferenceLoader, bool,
+	string, string, *workspace.Project, schema.ReferenceLoader, convert.Mapper, bool,
 ) (hcl.Diagnostics, error)
 
 func runConvert(
@@ -263,6 +264,7 @@ func runConvert(
 			sourceDirectory, targetDirectory string,
 			proj *workspace.Project,
 			loader schema.ReferenceLoader,
+			mapper convert.Mapper,
 			strict bool,
 		) (hcl.Diagnostics, error) {
 			contract.Requiref(proj != nil, "proj", "must not be nil")
@@ -273,7 +275,10 @@ func runConvert(
 			}
 
 			loaderServer := schema.NewLoaderServer(loader)
-			grpcServer, err := plugin.NewServer(pCtx, schema.LoaderRegistration(loaderServer))
+			mapperServer := convert.NewMapperServer(mapper)
+			grpcServer, err := plugin.NewServer(pCtx,
+				schema.LoaderRegistration(loaderServer),
+				convert.MapperRegistration(mapperServer))
 			if err != nil {
 				return nil, err
 			}
@@ -288,7 +293,7 @@ func runConvert(
 			var diags hcl.Diagnostics
 			ds, err := languagePlugin.GenerateProject(ctx,
 				sourceDirectory, targetDirectory, projectJSON,
-				strict, grpcServer.Addr(), nil /*localDependencies*/)
+				strict, grpcServer.Addr(), grpcServer.Addr(), nil /*localDependencies*/)
 			diags = append(diags, ds...)
 			if err != nil {
 				return nil, err
@@ -474,7 +479,7 @@ func runConvert(
 	}
 
 	pCtx.Diag.Infof(diag.Message("", "Converting to %s..."), language)
-	diagnostics, err := projectGenerator(pclDirectory, outDir, proj, loader, strict)
+	diagnostics, err := projectGenerator(pclDirectory, outDir, proj, loader, mapper, strict)
 	// If we have error diagnostics then program generation failed, print an error to the user that they
 	// should raise an issue about this
 	if diagnostics.HasErrors() {
