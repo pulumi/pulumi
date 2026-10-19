@@ -1,0 +1,4 @@
+component: sdk/python
+kind: fix
+body: Add Python 3.15 support except for dynamic providers and drop support for end-of-life Python 3.10
+time: 2026-10-14T16:07:43.132712+02:00

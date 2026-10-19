@@ -15,6 +15,7 @@
 import base64
 import pickle
 import sys
+from types import ModuleType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -23,8 +24,6 @@ from typing import (
     cast,
     no_type_check,
 )
-
-import dill
 
 import pulumi
 
@@ -36,6 +35,19 @@ if TYPE_CHECKING:
     from ..output import Inputs
 
 PROVIDER_KEY = "__provider"
+
+
+def _load_dill() -> ModuleType:
+    try:
+        import dill
+    except ModuleNotFoundError as error:
+        if error.name != "dill":
+            raise
+        raise RuntimeError(
+            "Dynamic providers require dill, which does not yet support Python 3.15. "
+            "Use Python 3.14 or earlier for dynamic providers."
+        ) from error
+    return dill
 
 
 class ConfigureRequest:
@@ -277,6 +289,8 @@ class ResourceProvider:
 # multiple errors related to the type assignment we're doing in this method eg 'Picker = _Pickler'
 @no_type_check
 def serialize_provider(provider: ResourceProvider) -> str:
+    dill = _load_dill()
+
     # We need to customize our Pickler to ensure we sort dictionaries before serializing to try to
     # ensure we get a deterministic result.  Without this we would see changes to our serialized
     # provider even when there are no actual changes.

@@ -412,6 +412,7 @@ func TestConfigSecretsWarnPython(t *testing.T) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestResourceWithSecretSerializationPython(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("secret_outputs", "python"),
 		Dependencies: []string{
@@ -488,6 +489,7 @@ func TestPython3NotInstalled(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python-resource-type-name"),
 		Dependencies: []string{
@@ -506,6 +508,7 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDynamicPythonDisableSerializationAsSecret(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	dir := filepath.Join("dynamic", "python-disable-serialization-as-secret")
 	var randomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -545,6 +548,7 @@ func TestDynamicPythonDisableSerializationAsSecret(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDynamicProviderSecretsPython(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python-secrets"),
 		Dependencies: []string{
@@ -576,6 +580,7 @@ func TestDynamicProviderSecretsPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestDynamicProviderConfig(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	tests := []string{
 		"python-config",
 		"python-config-separate-module",
@@ -608,6 +613,7 @@ func TestDynamicProviderConfig(t *testing.T) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestPartialValuesPython(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("partial_values", "python"),
 		Dependencies: []string{
@@ -621,6 +627,7 @@ func TestPartialValuesPython(t *testing.T) {
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestEnumOutputsPython(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("enums", "python"),
 		Dependencies: []string{
@@ -868,6 +875,7 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int, localP
 
 // Test remote component inputs properly handle unknowns.
 func TestConstructUnknownPython(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	t.Parallel()
 	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python"))
 }
@@ -1022,6 +1030,7 @@ func TestConstructProviderPython(t *testing.T) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestGetResourcePython(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("get_resource", "python"),
 		Dependencies: []string{
@@ -1093,6 +1102,7 @@ func TestPythonAwaitOutputs(t *testing.T) {
 
 	//nolint:paralleltest // ProgramTest calls t.Parallel()
 	t.Run("CreateWithinApply", func(t *testing.T) {
+		testutil.SkipPythonDynamicProviders(t)
 		integration.ProgramTest(t, &integration.ProgramTestOptions{
 			Dir: filepath.Join("python_await", "create_inside_apply"),
 			Dependencies: []string{
@@ -1935,6 +1945,7 @@ func TestLogDebugPython(t *testing.T) {
 }
 
 func TestDynamicProviderPython(t *testing.T) {
+	testutil.SkipPythonDynamicProviders(t)
 	t.Parallel()
 
 	// TODO[pulumi/pulumi#18439]: Unskip this test on windows
