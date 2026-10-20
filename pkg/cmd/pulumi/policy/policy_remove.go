@@ -19,29 +19,52 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
 const allKeyword = "all"
 
+type policyRemoveJSON struct {
+	Organization string  `json:"organization"`
+	PolicyPack   string  `json:"policyPack"`
+	VersionTag   *string `json:"versionTag"`
+}
+
+// policyRemoveRender is a marker type for outputflag; the output mode is read back from the flag value.
+type policyRemoveRender func()
+
 func newPolicyRemoveCmd() *cobra.Command {
+	return newPolicyRemoveCmdWith(defaultPolicyPackCmdDeps)
+}
+
+func newPolicyRemoveCmdWith(deps policyPackCmdDeps) *cobra.Command {
+	contract.Assertf(deps != nil, "policyPackCmdDeps must not be nil")
 	var yes bool
+	outputFormat := outputflag.OutputFlag[policyRemoveRender]{
+		RenderForTerminal: func() {},
+		RenderJSON:        func() {},
+	}
 	cmd := &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"rm", "delete"},
 		Short:   "Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
-			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
+			"The Policy Pack must be disabled from all Policy Groups before it can be removed.\n" +
+			"\n" +
+			"Examples:\n" +
+			"  pulumi policy rm acme/aws-guardrails 3\n" +
+			"  pulumi policy rm acme/aws-guardrails all --yes --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			yes = yes || env.SkipConfirmations.Value()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			policyPack, err := requirePolicyPack(ctx, args[0], cmdBackend.DefaultLoginManager)
+			policyPack, _, err := deps(ctx, args[0])
 			if err != nil {
 				return err
 			}
@@ -66,11 +89,15 @@ func newPolicyRemoveCmd() *cobra.Command {
 			err = policyPack.Remove(ctx, backend.PolicyPackOperation{
 				VersionTag: version, Scopes: backend.CancellationScopes,
 			})
-			if err != nil {
+			if err != nil || outputFormat.String() != "json" {
 				return err
 			}
 
-			return nil
+			return writeJSON(cmd.OutOrStdout(), policyRemoveJSON{
+				Organization: policyPack.Ref().OrgName(),
+				PolicyPack:   string(policyPack.Ref().Name()),
+				VersionTag:   version,
+			})
 		},
 	}
 
@@ -86,5 +113,6 @@ func newPolicyRemoveCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
 
+	outputflag.VarP(cmd.Flags(), &outputFormat)
 	return cmd
 }

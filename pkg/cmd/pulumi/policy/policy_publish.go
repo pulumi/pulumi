@@ -16,7 +16,6 @@ package policy
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -207,10 +206,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	}
 
 	if cmd.json {
-		enc := json.NewEncoder(cmd.stdout)
-		enc.SetEscapeHTML(false)
-		enc.SetIndent("", "  ")
-		return enc.Encode(policyPublishJSON{
+		return writeJSON(cmd.stdout, policyPublishJSON{
 			Organization: orgName,
 			Name:         result.Name,
 			VersionTag:   result.VersionTag,

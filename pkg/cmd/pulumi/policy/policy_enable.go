@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"slices"
 
@@ -68,6 +69,13 @@ type policyEnableJSON struct {
 
 // policyEnableRender is a marker type for outputflag; the output mode is read back from the flag value.
 type policyEnableRender func()
+
+func writeJSON(w io.Writer, v any) error {
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
+}
 
 func newPolicyEnableCmd() *cobra.Command {
 	return newPolicyEnableCmdWith(defaultPolicyPackCmdDeps)
@@ -141,10 +149,7 @@ func newPolicyEnableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 			if idx < 0 {
 				return fmt.Errorf("policy pack %q not found in policy group %q after enabling", name, group)
 			}
-			enc := json.NewEncoder(cmd.OutOrStdout())
-			enc.SetEscapeHTML(false)
-			enc.SetIndent("", "  ")
-			return enc.Encode(policyEnableJSON{
+			return writeJSON(cmd.OutOrStdout(), policyEnableJSON{
 				Organization: org,
 				PolicyGroup:  group,
 				PolicyPack:   resp.AppliedPolicyPacks[idx],
