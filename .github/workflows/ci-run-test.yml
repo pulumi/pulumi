@@ -90,10 +90,7 @@ env:
   DOTNET_ROLL_FORWARD: "Major"
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
   OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
-  ESC_ACTION_OIDC_AUTH: true
-  ESC_ACTION_OIDC_ORGANIZATION: pulumi
-  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
-  ESC_ACTION_ENVIRONMENT: github-secrets/pulumi-pulumi
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
   ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: PULUMI_ACCESS_TOKEN=PULUMI_PROD_ACCESS_TOKEN
 
 jobs:
@@ -118,9 +115,18 @@ jobs:
     timeout-minutes: 70
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@02d44afe1135b29046b54235b145ce7951ca1fd9 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
       - name: Fetch secrets from ESC
         id: esc-secrets
-        uses: pulumi/esc-action@57e332b6dfb0d7edcf6cb813ee9a98b9665f12c2 # v3
+        uses: pulumi/esc-action@986bd666a9c58efbb3157521b583d161b101fff7 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       # Create a coverage file to register a testing job was started.
       # This artifact will be overwritten with "OK" at the end of the job.
       - name: Write test started file
