@@ -89,9 +89,8 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   DOTNET_ROLL_FORWARD: "Major"
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
-  OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
   ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
-  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: PULUMI_ACCESS_TOKEN=PULUMI_PROD_ACCESS_TOKEN
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: PULUMI_ACCESS_TOKEN=PULUMI_PROD_ACCESS_TOKEN,OTEL_EXPORTER_OTLP_ENDPOINT
 
 jobs:
   test:
@@ -124,7 +123,7 @@ jobs:
           export-environment-variables: false
       - name: Fetch secrets from ESC
         id: esc-secrets
-        uses: pulumi/esc-action@986bd666a9c58efbb3157521b583d161b101fff7 # v4
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
         with:
           pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       # Create a coverage file to register a testing job was started.
@@ -417,7 +416,7 @@ jobs:
         run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
       - name: Create GCP service account key file
         run: |
-          echo -n '${{ secrets.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
+          echo -n '${{ steps.esc-secrets.outputs.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
       - if: contains(inputs.platform, 'ubuntu')
         name: Wait for disk cleanup (Ubuntu)
         run: ./.github/scripts/free-disk-space wait
