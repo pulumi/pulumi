@@ -305,11 +305,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 				defer func() { close(events); <-done }()
 				var plan *deploy.Plan
 				var err error
-				if preview {
-					plan, changes, err = backend.PreviewStack(ctx, s, op, events)
-				} else {
-					changes, err = backend.UpdateStack(ctx, s, op, events)
-				}
+				plan, changes, err = operations.RunUpdateOperation(ctx, s, op, events, preview)
 				return plan, changes, err
 			},
 		},
@@ -320,7 +316,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		name = "preview"
 	}
 	args := []string{
-		name, "--stack=" + a.StackName, "--cwd=" + dir, "--non-interactive",
+		name, "--stack=" + a.StackName, "--non-interactive",
 		"--suppress-progress", "--suppress-outputs", "--show-secrets=false", "--exec-kind=neo",
 		"--neo=false", "--neo-task-on-failure=false",
 	}

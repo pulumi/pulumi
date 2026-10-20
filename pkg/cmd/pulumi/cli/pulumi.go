@@ -205,7 +205,7 @@ func parseRootPersistentFlags(rootPersistent *pflag.FlagSet, args []string) {
 
 // Options configures a root command hosted in another process.
 type Options struct {
-	// Embedded skips process-wide logging, tracing, and update-check initialization.
+	// Embedded skips process-wide logging, tracing, update-check, and --cwd handling; the host sets cwd.
 	// Embedded commands must be serialized; cleanup restores their process-global flag values.
 	Embedded   bool
 	Operations operations.CommandOptions
@@ -220,7 +220,7 @@ func NewPulumiCmd(options ...Options) (*cobra.Command, func()) {
 	}
 	oldEmoji, oldQualified := cmdutil.Emoji, cmdutil.FullyQualifyStackNames
 	oldInteractive, oldIntegrity := cmdutil.DisableInteractive, backend.DisableIntegrityChecking
-	var cwd, originalCwd string
+	var cwd string
 	var logFlow bool
 	var logToStderr bool
 	var tracingFlag string
@@ -240,9 +240,6 @@ func NewPulumiCmd(options ...Options) (*cobra.Command, func()) {
 	var cmd *cobra.Command
 	cleanup := func() {
 		if opts.Embedded {
-			if originalCwd != "" {
-				_ = os.Chdir(originalCwd)
-			}
 			cmdutil.Emoji, cmdutil.FullyQualifyStackNames = oldEmoji, oldQualified
 			cmdutil.DisableInteractive, backend.DisableIntegrityChecking = oldInteractive, oldIntegrity
 			return
@@ -306,16 +303,6 @@ func NewPulumiCmd(options ...Options) (*cobra.Command, func()) {
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if opts.Embedded {
-				if cwd != "" {
-					var err error
-					originalCwd, err = os.Getwd()
-					if err != nil {
-						return err
-					}
-					if err := os.Chdir(cwd); err != nil {
-						return err
-					}
-				}
 				ctx := httpstate.ContextWithAgentCredentialUse(cmd.Context())
 				cmd.SetContext(httpstate.ContextWithCommandName(ctx, cmd.CommandPath()))
 				return nil

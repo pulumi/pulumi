@@ -37,15 +37,18 @@ func commandOptions(opts CommandOptions) CommandOptions {
 		opts.Workspace = pkgWorkspace.Instance
 	}
 	if opts.Run == nil {
-		opts.Run = func(
-			ctx context.Context, s backend.Stack, op backend.UpdateOperation, events chan engine.Event, preview bool,
-		) (*deploy.Plan, display.ResourceChanges, error) {
-			if preview {
-				return backend.PreviewStack(ctx, s, op, events)
-			}
-			changes, err := backend.UpdateStack(ctx, s, op, events)
-			return nil, changes, err
-		}
+		opts.Run = RunUpdateOperation
 	}
 	return opts
+}
+
+// RunUpdateOperation runs a preview or an update; it is the default CommandOptions.Run.
+func RunUpdateOperation(
+	ctx context.Context, s backend.Stack, op backend.UpdateOperation, events chan engine.Event, preview bool,
+) (*deploy.Plan, display.ResourceChanges, error) {
+	if preview {
+		return backend.PreviewStack(ctx, s, op, events)
+	}
+	changes, err := backend.UpdateStack(ctx, s, op, events)
+	return nil, changes, err
 }
