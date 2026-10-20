@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -24,8 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-
-	"context"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -49,7 +48,9 @@ type Component struct {
 }
 
 func main() {
-	err := pulumiprovider.Main("awaitcomp", func(host *pulumiprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+	err := pulumiprovider.Main("awaitcomp", func(
+		host *pulumiprovider.HostClient,
+	) (pulumirpc.ResourceProviderServer, error) {
 		return &provider{host: host}, nil
 	})
 	if err != nil {
@@ -63,7 +64,9 @@ type provider struct {
 	host *pulumiprovider.HostClient
 }
 
-func (p *provider) Construct(ctx context.Context, req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+func (p *provider) Construct(
+	ctx context.Context, req *pulumirpc.ConstructRequest,
+) (*pulumirpc.ConstructResponse, error) {
 	return pulumiprovider.Construct(ctx, req, p.host.EngineConn(), func(ctx *pulumi.Context, typ, name string,
 		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption,
 	) (*pulumiprovider.ConstructResult, error) {
@@ -99,7 +102,9 @@ func (p *provider) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (
 	return &pulumirpc.DiffResponse{}, nil
 }
 
-func (p *provider) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+func (p *provider) Configure(
+	ctx context.Context, req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
 	return &pulumirpc.ConfigureResponse{AcceptSecrets: true, AcceptResources: true, AcceptOutputs: true}, nil
 }
 

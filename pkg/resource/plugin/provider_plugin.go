@@ -2248,7 +2248,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 
 	outputs, err := UnmarshalProperties(resp.GetState(), MarshalOptions{
 		Label:            label + ".outputs",
-		KeepUnknowns:     req.Info.DryRun,
+		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepOutputValues: true,

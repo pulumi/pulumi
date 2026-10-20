@@ -2084,6 +2084,7 @@ func (ctx *Context) registerResource(
 				Transforms:                 transforms,
 				StateMigrations:            stateMigrations,
 				SupportsResultReporting:    true,
+				SupportsPartialValues:      true,
 				PackageRef:                 packageRef,
 				Hooks:                      hooks,
 				EnvVarMappings:             inputs.envVarMappings,
@@ -2575,7 +2576,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		}
 
 		known := true
-		if v.IsNull() || v.IsComputed() || v.IsOutput() {
+		if v.ContainsUnknowns() {
+			known = false
+		} else if v.IsNull() || v.IsOutput() {
 			known = !keepUnknowns
 		}
 
