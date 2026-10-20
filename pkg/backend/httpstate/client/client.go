@@ -39,6 +39,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -1693,10 +1694,10 @@ func (pc *Client) BeginUpdate(
 
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
 func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string, inContToken *string) (
-	apitype.ListPolicyGroupsResponse, *string, error,
+	cloudapitype.AppListPolicyGroupsResponse, *string, error,
 ) {
 	// NOTE: The ListPolicyGroups API on the Pulumi Service is not currently paginated.
-	var resp apitype.ListPolicyGroupsResponse
+	var resp cloudapitype.AppListPolicyGroupsResponse
 	err := pc.restCall(ctx, "GET", listPolicyGroupsPath(orgName), nil, nil, &resp)
 	if err != nil {
 		return resp, nil, fmt.Errorf("List Policy Groups failed: %w", err)
@@ -1706,7 +1707,7 @@ func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string, inContTo
 
 // CreatePolicyGroup creates a new Policy Group in the given organization.
 func (pc *Client) CreatePolicyGroup(
-	ctx context.Context, orgName string, req apitype.CreatePolicyGroupRequest,
+	ctx context.Context, orgName string, req cloudapitype.NewPolicyGroupRequest,
 ) error {
 	if err := pc.restCall(ctx, "POST", listPolicyGroupsPath(orgName), nil, req, nil); err != nil {
 		return fmt.Errorf("creating policy group: %w", err)
@@ -1719,8 +1720,8 @@ func (pc *Client) CreatePolicyGroup(
 // cloud accounts that are members of the group.
 func (pc *Client) GetPolicyGroup(
 	ctx context.Context, orgName, policyGroup string,
-) (apitype.GetPolicyGroupResponse, error) {
-	var resp apitype.GetPolicyGroupResponse
+) (cloudapitype.PolicyGroup, error) {
+	var resp cloudapitype.PolicyGroup
 	err := pc.restCall(ctx, "GET", updatePolicyGroupPath(orgName, policyGroup), nil, nil, &resp)
 	if err != nil {
 		return resp, fmt.Errorf("getting policy group: %w", err)
@@ -1732,7 +1733,7 @@ func (pc *Client) GetPolicyGroup(
 // request. Each update carries one mutation: a rename, or the addition or
 // removal of one stack, Policy Pack, or Insights account.
 func (pc *Client) BatchUpdatePolicyGroup(
-	ctx context.Context, orgName, policyGroup string, reqs []apitype.UpdatePolicyGroupRequest,
+	ctx context.Context, orgName, policyGroup string, reqs []cloudapitype.UpdatePolicyGroupRequest,
 ) error {
 	if err := pc.restCall(
 		ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup)+"/batch", nil, reqs, nil,

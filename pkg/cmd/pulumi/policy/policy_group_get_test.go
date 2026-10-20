@@ -20,16 +20,15 @@ import (
 	"errors"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // mockPolicyGroupGetClient stubs policyGroupGetClient. It returns a fixed
 // response (or error) and records the arguments it was called with.
 type mockPolicyGroupGetClient struct {
-	resp     apitype.GetPolicyGroupResponse
+	resp     cloudapitype.PolicyGroup
 	err      error
 	gotOrg   string
 	gotGroup string
@@ -37,11 +36,11 @@ type mockPolicyGroupGetClient struct {
 
 func (m *mockPolicyGroupGetClient) GetPolicyGroup(
 	_ context.Context, org, group string,
-) (apitype.GetPolicyGroupResponse, error) {
+) (cloudapitype.PolicyGroup, error) {
 	m.gotOrg = org
 	m.gotGroup = group
 	if m.err != nil {
-		return apitype.GetPolicyGroupResponse{}, m.err
+		return cloudapitype.PolicyGroup{}, m.err
 	}
 	return m.resp, nil
 }
@@ -58,22 +57,22 @@ func failingPolicyGroupGetFactory(err error) policyGroupGetClientFactory {
 	}
 }
 
-func samplePolicyGroupResponse() apitype.GetPolicyGroupResponse {
-	return apitype.GetPolicyGroupResponse{
+func samplePolicyGroupResponse() cloudapitype.PolicyGroup {
+	return cloudapitype.PolicyGroup{
 		Name:         "prod-policies",
 		IsOrgDefault: false,
-		EntityType:   apitype.Stacks,
-		Mode:         apitype.PolicyGroupModePreventative,
-		Stacks: []apitype.PulumiStackReference{
+		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		Mode:         cloudapitype.PolicyGroupModePreventative,
+		Stacks: []cloudapitype.AppPulumiStackReference{
 			{Name: "prod", RoutingProject: "web"},
 			{Name: "staging", RoutingProject: "web"},
 		},
-		AppliedPolicyPacks: []apitype.PolicyPackMetadata{
+		AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{
 			{Name: "aws-guardrails", DisplayName: "AWS Guardrails", Version: 3, VersionTag: "1.2.0"},
 			{Name: "tagging", DisplayName: "Tagging", Version: 1, VersionTag: ""},
 		},
 		Accounts:    []string{},
-		AgentPoolID: "pool-1",
+		AgentPoolID: new("pool-1"),
 	}
 }
 
@@ -108,11 +107,11 @@ func TestPolicyGroupGet_DefaultOutput_Empty(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	resp := apitype.GetPolicyGroupResponse{
+	resp := cloudapitype.PolicyGroup{
 		Name:         "default-policy-group",
 		IsOrgDefault: true,
-		EntityType:   apitype.Stacks,
-		Mode:         apitype.PolicyGroupModeAudit,
+		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		Mode:         cloudapitype.PolicyGroupModeAudit,
 	}
 	c := &mockPolicyGroupGetClient{resp: resp}
 	err := runPolicyGroupGet(t.Context(), &buf,
@@ -162,11 +161,11 @@ func TestPolicyGroupGet_JSONOutput(t *testing.T) {
 func TestPolicyGroupGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 	t.Parallel()
 
-	resp := apitype.GetPolicyGroupResponse{
+	resp := cloudapitype.PolicyGroup{
 		Name:         "bare",
 		IsOrgDefault: true,
-		EntityType:   apitype.Stacks,
-		Mode:         apitype.PolicyGroupModeAudit,
+		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		Mode:         cloudapitype.PolicyGroupModeAudit,
 	}
 
 	var buf bytes.Buffer

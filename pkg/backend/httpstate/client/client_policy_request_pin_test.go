@@ -21,6 +21,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+	"github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -53,12 +55,12 @@ func rawJSONPtr(s string) *json.RawMessage {
 	return &raw
 }
 
-func pinCreatePolicyGroupRequest() apitype.CreatePolicyGroupRequest {
-	return apitype.CreatePolicyGroupRequest{
+func pinCreatePolicyGroupRequest() cloudapitype.NewPolicyGroupRequest {
+	return cloudapitype.NewPolicyGroupRequest{
 		Name:        "prod-policies",
-		EntityType:  "stacks",
-		Mode:        "preventative",
-		AgentPoolID: "pool-123",
+		EntityType:  new(cloudapitype.PolicyGroupEntityTypeStacks), //nolint:staticcheck
+		Mode:        new(cloudapitype.PolicyGroupModePreventative),
+		AgentPoolID: jsonvalue.NotNull("pool-123"),
 	}
 }
 
@@ -79,22 +81,34 @@ func TestPin_CreatePolicyGroup_Body(t *testing.T) {
 	}`, got.body)
 }
 
-func pinBatchUpdatePolicyGroupRequests() []apitype.UpdatePolicyGroupRequest {
+func pinBatchUpdatePolicyGroupRequests() []cloudapitype.UpdatePolicyGroupRequest {
 	newName := "renamed"
-	return []apitype.UpdatePolicyGroupRequest{
-		{NewName: &newName},
-		{AddStack: &apitype.PulumiStackReference{Name: "dev", RoutingProject: "web"}},
-		{RemoveStack: &apitype.PulumiStackReference{Name: "old", RoutingProject: "api"}},
-		{AddPolicyPack: &apitype.PolicyPackMetadata{
-			Name:       "aws-pack",
-			VersionTag: "1.2.3",
-			Config: map[string]*json.RawMessage{
-				"s3-no-public": rawJSONPtr(`{"enforcementLevel":"mandatory","tags":["a","b"]}`),
+	return []cloudapitype.UpdatePolicyGroupRequest{
+		{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{NewName: &newName}},
+		{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+			AddStack: &cloudapitype.AppPulumiStackReference{Name: "dev", RoutingProject: "web"},
+		}},
+		{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+			RemoveStack: &cloudapitype.AppPulumiStackReference{Name: "old", RoutingProject: "api"},
+		}},
+		{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+			AddPolicyPack: &cloudapitype.AppPolicyPackMetadata{
+				Name:       "aws-pack",
+				VersionTag: "1.2.3",
+				Config: map[string]*json.RawMessage{
+					"s3-no-public": rawJSONPtr(`{"enforcementLevel":"mandatory","tags":["a","b"]}`),
+				},
 			},
 		}},
-		{RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "legacy-pack", VersionTag: "0.9.0"}},
-		{AddInsightsAccount: &apitype.InsightsAccountReference{Name: "prod-aws"}},
-		{RemoveInsightsAccount: &apitype.InsightsAccountReference{Name: "stale-gcp"}},
+		{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+			RemovePolicyPack: &cloudapitype.AppPolicyPackMetadata{Name: "legacy-pack", VersionTag: "0.9.0"},
+		}},
+		{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+			AddInsightsAccount: &cloudapitype.AppInsightsAccountReference{Name: "prod-aws"},
+		}},
+		{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+			RemoveInsightsAccount: &cloudapitype.AppInsightsAccountReference{Name: "stale-gcp"},
+		}},
 	}
 }
 
@@ -113,10 +127,12 @@ func TestPin_BatchUpdatePolicyGroup_Body(t *testing.T) {
 		{"removeStack": {"name": "old", "routingProject": "api"}},
 		{"addPolicyPack": {
 			"name": "aws-pack",
+			"displayName": "",
+			"version": 0,
 			"versionTag": "1.2.3",
 			"config": {"s3-no-public": {"enforcementLevel": "mandatory", "tags": ["a", "b"]}}
 		}},
-		{"removePolicyPack": {"name": "legacy-pack", "versionTag": "0.9.0"}},
+		{"removePolicyPack": {"name": "legacy-pack", "displayName": "", "version": 0, "versionTag": "0.9.0"}},
 		{"addInsightsAccount": {"name": "prod-aws"}},
 		{"removeInsightsAccount": {"name": "stale-gcp"}}
 	]`, got.body)

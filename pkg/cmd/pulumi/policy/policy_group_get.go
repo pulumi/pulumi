@@ -22,6 +22,7 @@ import (
 	"io"
 	"slices"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -30,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -41,7 +41,7 @@ import (
 type policyGroupGetClient interface {
 	GetPolicyGroup(
 		ctx context.Context, orgName, policyGroup string,
-	) (apitype.GetPolicyGroupResponse, error)
+	) (cloudapitype.PolicyGroup, error)
 }
 
 // policyGroupGetClientFactory resolves a cloud client and the organization
@@ -170,9 +170,9 @@ func runPolicyGroupGet(
 	return args.outputFormat.Get()(w, resp)
 }
 
-type policyGroupGetRenderFunc func(w io.Writer, resp apitype.GetPolicyGroupResponse) error
+type policyGroupGetRenderFunc func(w io.Writer, resp cloudapitype.PolicyGroup) error
 
-func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) error {
+func renderPolicyGroupGetText(w io.Writer, resp cloudapitype.PolicyGroup) error {
 	isDefault := "no"
 	if resp.IsOrgDefault {
 		isDefault = "yes"
@@ -180,10 +180,10 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 
 	fmt.Fprintf(w, "%-22s %s\n", "Name:", resp.Name)
 	fmt.Fprintf(w, "%-22s %s\n", "Org default:", isDefault)
-	fmt.Fprintf(w, "%-22s %s\n", "Entity type:", string(resp.EntityType))
+	fmt.Fprintf(w, "%-22s %s\n", "Entity type:", string(resp.EntityType)) //nolint:staticcheck // still part of the output
 	fmt.Fprintf(w, "%-22s %s\n", "Mode:", string(resp.Mode))
-	if resp.AgentPoolID != "" {
-		fmt.Fprintf(w, "%-22s %s\n", "Agent pool:", resp.AgentPoolID)
+	if resp.AgentPoolID != nil && *resp.AgentPoolID != "" {
+		fmt.Fprintf(w, "%-22s %s\n", "Agent pool:", *resp.AgentPoolID)
 	}
 
 	fmt.Fprintf(w, "%-22s %d\n", "Applied policy packs:", len(resp.AppliedPolicyPacks))
@@ -215,42 +215,69 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 // `pulumi policy group get --output=json`. Nil slices are normalized to empty
 // arrays so scripts can rely on the array keys always existing.
 type policyGroupGetJSON struct {
-	Name               string                         `json:"name"`
-	IsOrgDefault       bool                           `json:"isOrgDefault"`
-	EntityType         apitype.EntityType             `json:"entityType"`
-	Mode               apitype.PolicyGroupMode        `json:"mode"`
-	Stacks             []apitype.PulumiStackReference `json:"stacks"`
-	AppliedPolicyPacks []apitype.PolicyPackMetadata   `json:"appliedPolicyPacks"`
-	Accounts           []string                       `json:"accounts"`
-	AgentPoolID        string                         `json:"agentPoolId,omitempty"`
+	Name               string                             `json:"name"`
+	IsOrgDefault       bool                               `json:"isOrgDefault"`
+	EntityType         cloudapitype.PolicyGroupEntityType `json:"entityType"`
+	Mode               cloudapitype.PolicyGroupMode       `json:"mode"`
+	Stacks             []policyGroupStackJSON             `json:"stacks"`
+	AppliedPolicyPacks []policyGroupPolicyPackJSON        `json:"appliedPolicyPacks"`
+	Accounts           []string                           `json:"accounts"`
+	AgentPoolID        string                             `json:"agentPoolId,omitempty"`
 }
 
-func toPolicyGroupGetJSON(resp apitype.GetPolicyGroupResponse) policyGroupGetJSON {
-	stacks := resp.Stacks
-	if stacks == nil {
-		stacks = []apitype.PulumiStackReference{}
+// policyGroupStackJSON and policyGroupPolicyPackJSON keep the omitempty tags
+// this output has always had; the API types serialize every field.
+type policyGroupStackJSON struct {
+	Name           string `json:"name"`
+	RoutingProject string `json:"routingProject,omitempty"`
+}
+
+type policyGroupPolicyPackJSON struct {
+	Name         string                      `json:"name"`
+	DisplayName  string                      `json:"displayName,omitempty"`
+	Version      int                         `json:"version,omitempty"`
+	VersionTag   string                      `json:"versionTag,omitempty"`
+	Config       map[string]*json.RawMessage `json:"config,omitempty"`
+	Environments []string                    `json:"environments,omitempty"`
+}
+
+func toPolicyGroupGetJSON(resp cloudapitype.PolicyGroup) policyGroupGetJSON {
+	stacks := make([]policyGroupStackJSON, len(resp.Stacks))
+	for i, s := range resp.Stacks {
+		stacks[i] = policyGroupStackJSON{Name: s.Name, RoutingProject: s.RoutingProject}
 	}
-	packs := resp.AppliedPolicyPacks
-	if packs == nil {
-		packs = []apitype.PolicyPackMetadata{}
+	packs := make([]policyGroupPolicyPackJSON, len(resp.AppliedPolicyPacks))
+	for i, p := range resp.AppliedPolicyPacks {
+		packs[i] = policyGroupPolicyPackJSON{
+			Name:         p.Name,
+			DisplayName:  p.DisplayName,
+			Version:      p.Version,
+			VersionTag:   p.VersionTag,
+			Config:       p.Config,
+			Environments: p.Environments,
+		}
 	}
 	accounts := resp.Accounts
 	if accounts == nil {
 		accounts = []string{}
 	}
+	var agentPoolID string
+	if resp.AgentPoolID != nil {
+		agentPoolID = *resp.AgentPoolID
+	}
 	return policyGroupGetJSON{
 		Name:               resp.Name,
 		IsOrgDefault:       resp.IsOrgDefault,
-		EntityType:         resp.EntityType,
+		EntityType:         resp.EntityType, //nolint:staticcheck // still part of the output
 		Mode:               resp.Mode,
 		Stacks:             stacks,
 		AppliedPolicyPacks: packs,
 		Accounts:           accounts,
-		AgentPoolID:        resp.AgentPoolID,
+		AgentPoolID:        agentPoolID,
 	}
 }
 
-func renderPolicyGroupGetJSON(w io.Writer, resp apitype.GetPolicyGroupResponse) error {
+func renderPolicyGroupGetJSON(w io.Writer, resp cloudapitype.PolicyGroup) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")

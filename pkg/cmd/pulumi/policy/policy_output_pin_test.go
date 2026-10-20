@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -30,15 +31,15 @@ func pinRawJSONPtr(s string) *json.RawMessage {
 	return &raw
 }
 
-func pinGroupSummariesFull() []apitype.PolicyGroupSummary {
-	return []apitype.PolicyGroupSummary{
+func pinGroupSummariesFull() []cloudapitype.AppPolicyGroupSummary {
+	return []cloudapitype.AppPolicyGroupSummary{
 		{
 			Name:                  "default-policy-group",
 			IsOrgDefault:          true,
 			NumStacks:             42,
 			NumAccounts:           3,
-			EntityType:            apitype.Stacks,
-			Mode:                  apitype.PolicyGroupModePreventative,
+			EntityType:            cloudapitype.AppEntityTypeStacks,
+			Mode:                  cloudapitype.PolicyGroupModePreventative,
 			NumEnabledPolicyPacks: 5,
 		},
 		{
@@ -46,28 +47,28 @@ func pinGroupSummariesFull() []apitype.PolicyGroupSummary {
 			IsOrgDefault:          false,
 			NumStacks:             0,
 			NumAccounts:           7,
-			EntityType:            apitype.Accounts,
-			Mode:                  apitype.PolicyGroupModeAudit,
+			EntityType:            cloudapitype.AppEntityTypeAccounts,
+			Mode:                  cloudapitype.PolicyGroupModeAudit,
 			NumEnabledPolicyPacks: 2,
 		},
 	}
 }
 
-func pinGroupSummariesMinimal() []apitype.PolicyGroupSummary {
-	return []apitype.PolicyGroupSummary{{Name: "bare", EntityType: apitype.Stacks}}
+func pinGroupSummariesMinimal() []cloudapitype.AppPolicyGroupSummary {
+	return []cloudapitype.AppPolicyGroupSummary{{Name: "bare", EntityType: cloudapitype.AppEntityTypeStacks}}
 }
 
-func pinGroupFull() apitype.GetPolicyGroupResponse {
-	return apitype.GetPolicyGroupResponse{
+func pinGroupFull() cloudapitype.PolicyGroup {
+	return cloudapitype.PolicyGroup{
 		Name:         "prod-policies",
 		IsOrgDefault: true,
-		EntityType:   apitype.Stacks,
-		Mode:         apitype.PolicyGroupModePreventative,
-		Stacks: []apitype.PulumiStackReference{
+		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		Mode:         cloudapitype.PolicyGroupModePreventative,
+		Stacks: []cloudapitype.AppPulumiStackReference{
 			{Name: "prod", RoutingProject: "web"},
 			{Name: "standalone"},
 		},
-		AppliedPolicyPacks: []apitype.PolicyPackMetadata{
+		AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{
 			{
 				Name:        "aws-guardrails",
 				DisplayName: "AWS Guardrails",
@@ -81,15 +82,15 @@ func pinGroupFull() apitype.GetPolicyGroupResponse {
 			{Name: "tagging", Version: 7},
 		},
 		Accounts:    []string{"prod-aws", "prod-gcp"},
-		AgentPoolID: "pool-123",
+		AgentPoolID: new("pool-123"),
 	}
 }
 
-func pinGroupMinimal() apitype.GetPolicyGroupResponse {
-	return apitype.GetPolicyGroupResponse{
+func pinGroupMinimal() cloudapitype.PolicyGroup {
+	return cloudapitype.PolicyGroup{
 		Name:       "bare",
-		EntityType: apitype.Accounts,
-		Mode:       apitype.PolicyGroupModeAudit,
+		EntityType: cloudapitype.PolicyGroupEntityTypeAccounts, //nolint:staticcheck
+		Mode:       cloudapitype.PolicyGroupModeAudit,
 	}
 }
 

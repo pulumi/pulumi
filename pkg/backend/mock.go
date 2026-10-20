@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -137,7 +138,7 @@ func (be *MockBackend) SetCurrentProject(project *workspace.Project) {
 }
 
 func (be *MockBackend) ListPolicyGroups(context.Context, string, ContinuationToken) (
-	apitype.ListPolicyGroupsResponse, ContinuationToken, error,
+	cloudapitype.AppListPolicyGroupsResponse, ContinuationToken, error,
 ) {
 	panic("not implemented")
 }

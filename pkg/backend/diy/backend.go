@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 
 	"gocloud.dev/blob"
 	"gocloud.dev/blob/azureblob"  // driver for azblob://
@@ -796,9 +797,9 @@ func (b *diyBackend) GetPolicyPack(ctx context.Context, policyPack string,
 }
 
 func (b *diyBackend) ListPolicyGroups(ctx context.Context, orgName string, _ backend.ContinuationToken) (
-	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error,
+	cloudapitype.AppListPolicyGroupsResponse, backend.ContinuationToken, error,
 ) {
-	return apitype.ListPolicyGroupsResponse{}, nil, errors.New("DIY backend does not support resource policy")
+	return cloudapitype.AppListPolicyGroupsResponse{}, nil, errors.New("DIY backend does not support resource policy")
 }
 
 func (b *diyBackend) ListPolicyPacks(ctx context.Context, orgName string, _ backend.ContinuationToken) (
