@@ -1,0 +1,4 @@
+component: sdkgen
+kind: improvement
+body: Reject schema property names that are empty or collide after reduction to lower-case ASCII letters and digits
+time: 2026-10-20T18:25:00.000000+01:00

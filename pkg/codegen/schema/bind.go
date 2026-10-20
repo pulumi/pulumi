@@ -109,6 +109,20 @@ func validatePrintableName(path, kind, name string) *hcl.Diagnostic {
 	return nil
 }
 
+// ReducePropertyName lower-cases name and drops every character that is not an ASCII letter or digit. It also drops
+// leading digits. Two property names in the same property bag must not reduce to the same string.
+func ReducePropertyName(name string) string {
+	var reduced strings.Builder
+	for _, r := range name {
+		isLetter := ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z')
+		isDigit := '0' <= r && r <= '9'
+		if isLetter || (isDigit && reduced.Len() > 0) {
+			reduced.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return reduced.String()
+}
+
 func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 	bytes, err := json.Marshal(spec)
 	if err != nil {
@@ -1399,13 +1413,25 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 	inputShape bool, options ValidationOptions,
 ) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
-	for name := range properties {
+	reducedNames := map[string]string{}
+	for _, name := range slices.Sorted(maps.Keys(properties)) {
 		propertyPath := path + "/" + url.PathEscape(name)
 		if diag := validatePrintableName(propertyPath, "property name", name); diag != nil {
 			diags = diags.Append(diag)
 		}
 		if isReservedKeyword(name) {
 			diags = diags.Append(errorf(propertyPath, "%s", name+" is a reserved property name"))
+		}
+		// Each SDK derives its own name for a property, so the names must stay unique after the most aggressive
+		// reduction that any SDK can apply.
+		reduced := ReducePropertyName(name)
+		if reduced == "" {
+			diags = diags.Append(errorf(propertyPath, "property name must contain an ASCII letter"))
+		} else if other, ok := reducedNames[reduced]; ok {
+			diags = diags.Append(errorf(propertyPath,
+				"property name conflicts with %q: both reduce to %q", other, reduced))
+		} else {
+			reducedNames[reduced] = name
 		}
 	}
 	if diags.HasErrors() {
