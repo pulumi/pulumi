@@ -17,7 +17,6 @@ package analyzer
 import (
 	"bytes"
 	"cmp"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,15 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-)
-
-// policyExceptionsKey is the reserved top-level key of a policy pack config file that holds its exceptions.
-const policyExceptionsKey = "exceptions"
-
-var (
-	// The fields of an exception, and of one of its match entries.
-	policyExceptionFields = []string{"reason", "match"}
-	matchEntryFields      = []string{"policies", "targets"}
 )
 
 // PolicyExceptions is the set of active policy exceptions for one policy pack.
@@ -71,9 +61,9 @@ func (s *PolicyExceptions) len() int {
 	return len(s.exceptions)
 }
 
-// match returns the exceptions that except a violation of the given policy, reported against the given URN, lowest
+// Match returns the exceptions that except a violation of the given policy, reported against the given URN, lowest
 // ID first.
-func (s *PolicyExceptions) match(policy string, urn resource.URN) []apitype.PolicyEventException {
+func (s *PolicyExceptions) Match(policy string, urn resource.URN) []apitype.PolicyEventException {
 	if s == nil {
 		return nil
 	}
@@ -149,9 +139,6 @@ func parsePolicyException(id string, raw json.RawMessage) (policyException, erro
 	if err != nil {
 		return result, err
 	}
-	if err := checkFields(fields, policyExceptionFields); err != nil {
-		return result, err
-	}
 	var rawMatch []json.RawMessage
 	if m, ok := fields["match"]; ok {
 		if err := json.Unmarshal(m, &rawMatch); err != nil {
@@ -159,11 +146,7 @@ func parsePolicyException(id string, raw json.RawMessage) (policyException, erro
 		}
 	}
 	for i, m := range rawMatch {
-		entryFields, err := objectFields(m)
-		if err == nil {
-			err = checkFields(entryFields, matchEntryFields)
-		}
-		if err != nil {
+		if _, err := objectFields(m); err != nil {
 			return result, fmt.Errorf("match[%d]: %w", i, err)
 		}
 	}
@@ -234,16 +217,6 @@ func objectFields(raw json.RawMessage) (map[string]json.RawMessage, error) {
 	return fields, nil
 }
 
-// checkFields returns an error for the first field that isn't in known.
-func checkFields(fields map[string]json.RawMessage, known []string) error {
-	for _, f := range slices.Sorted(maps.Keys(fields)) {
-		if !slices.Contains(known, f) {
-			return fmt.Errorf("unknown field %q", f)
-		}
-	}
-	return nil
-}
-
 // compareExceptionIDs orders IDs naturally, so that runs of digits compare as numbers: EXC-2 comes before EXC-10.
 // IDs that only differ in leading zeros, such as EXC-7 and EXC-007, are ordered byte by byte.
 func compareExceptionIDs(a, b string) int {
@@ -287,44 +260,3 @@ func leadingRun(s string) string {
 func isDigits(s string) bool { return s != "" && isDigit(s[0]) }
 
 func isDigit(c byte) bool { return '0' <= c && c <= '9' }
-
-// exceptionAnalyzer runs its policy pack's analyzer unchanged, and marks the resource violations that one of the
-// pack's exceptions match by setting their Exceptions. The engine attributes stack violations to a URN after
-// AnalyzeStack returns, so it matches them with ApplyStackPolicyExceptions.
-type exceptionAnalyzer struct {
-	plugin.Analyzer
-	exceptions *PolicyExceptions
-}
-
-// WithPolicyExceptions applies a policy pack's exceptions to the violations its analyzer reports.
-func WithPolicyExceptions(a plugin.Analyzer, exceptions *PolicyExceptions) plugin.Analyzer {
-	if exceptions.len() == 0 {
-		return a
-	}
-	return &exceptionAnalyzer{Analyzer: a, exceptions: exceptions}
-}
-
-func (a *exceptionAnalyzer) Analyze(ctx context.Context, r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
-	resp, err := a.Analyzer.Analyze(ctx, r)
-	if err != nil {
-		return resp, err
-	}
-	// The engine reports these violations against the analyzed resource.
-	for i := range resp.Diagnostics {
-		a.apply(&resp.Diagnostics[i], r.URN)
-	}
-	return resp, nil
-}
-
-// ApplyStackPolicyExceptions matches a stack policy violation, which the engine attributes to urn, against the
-// exceptions of the analyzer that reported it. The analyzer must be the one WithPolicyExceptions returned, not
-// another wrapper around it.
-func ApplyStackPolicyExceptions(a plugin.Analyzer, d *plugin.AnalyzeDiagnostic, urn resource.URN) {
-	if a, ok := a.(*exceptionAnalyzer); ok {
-		a.apply(d, urn)
-	}
-}
-
-func (a *exceptionAnalyzer) apply(d *plugin.AnalyzeDiagnostic, urn resource.URN) {
-	d.Exceptions = a.exceptions.match(d.PolicyName, urn)
-}

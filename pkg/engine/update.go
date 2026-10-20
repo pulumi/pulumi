@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -300,10 +301,6 @@ func LoadLocalPolicyPackAnalyzers(
 				return nil, err
 			}
 			configFromFile = file.Config
-			for _, w := range file.Exceptions.UnknownPolicyWarnings(info.Name, info.Policies) {
-				plugctx.Diag.Warningf(diag.Message("", "%s"), w)
-			}
-			analyzer = resourceanalyzer.WithPolicyExceptions(analyzer, file.Exceptions)
 		}
 		// Exceptions apply to every pack, but other config needs the pack's support.
 		if !info.SupportsConfig {
@@ -328,6 +325,39 @@ func LoadLocalPolicyPackAnalyzers(
 		analyzers = append(analyzers, analyzer)
 	}
 	return analyzers, nil
+}
+
+// LocalPolicyPackExceptions reads the policy exceptions from the local policy packs' config files, keyed by pack
+// name, and warns about exceptions that name policies the pack doesn't have. analyzers[i] must be the analyzer of
+// packs[i], as LoadLocalPolicyPackAnalyzers returns them.
+func LocalPolicyPackExceptions(
+	ctx context.Context,
+	sink diag.Sink,
+	packs []LocalPolicyPack,
+	analyzers []plugin.Analyzer,
+) (map[string]*resourceanalyzer.PolicyExceptions, error) {
+	result := map[string]*resourceanalyzer.PolicyExceptions{}
+	for i, pack := range packs {
+		if pack.Config == "" {
+			continue
+		}
+		file, err := resourceanalyzer.LoadPolicyPackConfigFile(pack.Config)
+		if err != nil {
+			return nil, err
+		}
+		if file.Exceptions == nil {
+			continue
+		}
+		info, err := analyzers[i].GetAnalyzerInfo(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, w := range file.Exceptions.UnknownPolicyWarnings(info.Name, info.Policies) {
+			sink.Warningf(diag.Message("", "%s"), w)
+		}
+		result[info.Name] = file.Exceptions
+	}
+	return result, nil
 }
 
 // HostFactory constructs the plugin host for a deployment.
@@ -852,14 +882,18 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 	}
 
 	var (
-		wg              sync.WaitGroup
-		analyzersMu     sync.Mutex
-		loadedAnalyzers []plugin.Analyzer
+		wg               sync.WaitGroup
+		analyzersMu      sync.Mutex
+		loadedAnalyzers  []plugin.Analyzer
+		policyExceptions = map[string]*resourceanalyzer.PolicyExceptions{}
 	)
-	addAnalyzer := func(a plugin.Analyzer) {
+	addAnalyzer := func(a plugin.Analyzer, name string, exceptions *resourceanalyzer.PolicyExceptions) {
 		analyzersMu.Lock()
+		defer analyzersMu.Unlock()
 		loadedAnalyzers = append(loadedAnalyzers, a)
-		analyzersMu.Unlock()
+		if exceptions != nil {
+			policyExceptions[name] = exceptions
+		}
 	}
 	errs := make(chan error, len(deployOpts.RequiredPolicies)+len(deployOpts.LocalPolicyPacks))
 
@@ -920,7 +954,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				if len(mergedConfig) > 0 {
 					logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
 				}
-				addAnalyzer(analyzer)
+				addAnalyzer(analyzer, analyzerInfo.Name, nil)
 				return
 			}
 			configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(mergedConfig)
@@ -939,7 +973,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				errs <- fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
 				return
 			}
-			addAnalyzer(analyzer)
+			addAnalyzer(analyzer, analyzerInfo.Name, nil)
 		}(policy)
 	}
 
@@ -1018,7 +1052,6 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			for _, w := range exceptions.UnknownPolicyWarnings(analyzerInfo.Name, analyzerInfo.Policies) {
 				plugctx.Diag.Warningf(diag.Message("", "%s"), w)
 			}
-			analyzer = resourceanalyzer.WithPolicyExceptions(analyzer, exceptions)
 
 			// Load config, reconcile & validate it, and pass it to the policy pack. Exceptions apply to every
 			// pack, but other config needs the pack's support.
@@ -1027,7 +1060,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 					errs <- fmt.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
 					return
 				}
-				addAnalyzer(analyzer)
+				addAnalyzer(analyzer, analyzerInfo.Name, exceptions)
 				return
 			}
 
@@ -1057,7 +1090,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
 				return
 			}
-			addAnalyzer(analyzer)
+			addAnalyzer(analyzer, analyzerInfo.Name, exceptions)
 		}(i, pack)
 	}
 
@@ -1079,6 +1112,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 	}
 
 	deployOpts.LoadedAnalyzers = loadedAnalyzers
+	deployOpts.PolicyExceptions = policyExceptions
 	return nil
 }
 
@@ -1475,8 +1509,10 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	return acts.Context.SnapshotManager.RegisterResourceOutputs(step)
 }
 
-func (acts *updateActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
-	acts.Opts.Events.policyViolationEvent(urn, d)
+func (acts *updateActions) OnPolicyViolation(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
+	acts.Opts.Events.policyViolationEvent(urn, d, exceptions)
 }
 
 func (acts *updateActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,
@@ -1650,8 +1686,10 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	return nil
 }
 
-func (acts *previewActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
-	acts.Opts.Events.policyViolationEvent(urn, d)
+func (acts *previewActions) OnPolicyViolation(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
+	acts.Opts.Events.policyViolationEvent(urn, d, exceptions)
 }
 
 func (acts *previewActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,

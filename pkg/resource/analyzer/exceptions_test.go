@@ -15,9 +15,7 @@
 package analyzer
 
 import (
-	"context"
 	"encoding/json"
-	"slices"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -48,7 +46,7 @@ func entry(policy string, target resource.URN) string {
 
 // matchIDs returns the IDs of the exceptions that match, in order.
 func matchIDs(set *PolicyExceptions, policy string, urn resource.URN) []string {
-	matches := set.match(policy, urn)
+	matches := set.Match(policy, urn)
 	if len(matches) == 0 {
 		return nil
 	}
@@ -119,19 +117,6 @@ func TestParsePolicyExceptionsInvalid(t *testing.T) {
 			"error in a later entry", `{"a": {"reason": "r", "match": [` + valid + `, {"policies": ["p"]}]}}`,
 			`policy exception "a": match[1]: "targets" must list at least one`,
 		},
-		{
-			"unknown field in an entry", `{"a": {"reason": "r", "match": [{"policies": ["p"], "resources": []}]}}`,
-			`policy exception "a": match[0]: unknown field "resources"`,
-		},
-		{
-			"unknown field in an entry", `{"a": {"reason": "r", "match": [
-			{"policies": ["p"], "targets": ["` + string(accessLogsURN) + `"], "type": "aws:s3/bucket:Bucket"}]}}`,
-			`policy exception "a": match[0]: unknown field "type"`,
-		},
-		{
-			"unknown field in an exception", `{"a": {"reason": "r", "expires": "2027-01-01", "match": [` + valid + `]}}`,
-			`policy exception "a": unknown field "expires"`,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -141,6 +126,16 @@ func TestParsePolicyExceptionsInvalid(t *testing.T) {
 			assert.ErrorContains(t, err, tt.err)
 		})
 	}
+}
+
+// Unknown fields in an exception or a match entry are ignored.
+func TestParsePolicyExceptionsUnknownFields(t *testing.T) {
+	t.Parallel()
+
+	set := mustParseExceptions(t, `{"a": {"reason": "r", "expires": "2027-01-01", "match": [
+		{"policies": ["p"], "targets": ["`+string(accessLogsURN)+`"], "type": "aws:s3/bucket:Bucket"}
+	]}}`)
+	assert.Equal(t, []string{"a"}, matchIDs(set, "p", accessLogsURN))
 }
 
 func TestPolicyExceptionsMatch(t *testing.T) {
@@ -189,10 +184,10 @@ func TestPolicyExceptionsMatch(t *testing.T) {
 	}
 
 	assert.Equal(t, []apitype.PolicyEventException{{ID: "flow-logs", Reason: "Only in prod"}},
-		set.match("vpc-flow-logs", webStackURN))
+		set.Match("vpc-flow-logs", webStackURN))
 
 	var empty *PolicyExceptions
-	assert.Empty(t, empty.match("p", accessLogsURN))
+	assert.Empty(t, empty.Match("p", accessLogsURN))
 }
 
 // Every matching exception is returned, lowest ID first, with digits compared as numbers.
@@ -209,7 +204,7 @@ func TestPolicyExceptionsMatchOrder(t *testing.T) {
 		{ID: "EXC-9", Reason: "nine"},
 		{ID: "EXC-10", Reason: "ten"},
 		{ID: "EXC-100", Reason: "hundred"},
-	}, set.match("p", accessLogsURN))
+	}, set.Match("p", accessLogsURN))
 
 	assert.Equal(t, -1, compareExceptionIDs("EXC-2", "EXC-10"))
 	assert.Equal(t, -1, compareExceptionIDs("EXC-2", "EXC-02a"))
@@ -231,67 +226,4 @@ func TestPolicyExceptionsUnknownPolicyWarnings(t *testing.T) {
 
 	var empty *PolicyExceptions
 	assert.Empty(t, empty.UnknownPolicyWarnings("pack", nil))
-}
-
-// stubAnalyzer reports the same diagnostics from Analyze and AnalyzeStack. Its other methods aren't called.
-type stubAnalyzer struct {
-	plugin.Analyzer
-	diags []plugin.AnalyzeDiagnostic
-}
-
-func (a *stubAnalyzer) Analyze(context.Context, plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
-	return plugin.AnalyzeResponse{Diagnostics: slices.Clone(a.diags)}, nil
-}
-
-func (a *stubAnalyzer) AnalyzeStack(
-	context.Context, []plugin.AnalyzerStackResource,
-) (plugin.AnalyzeResponse, error) {
-	return plugin.AnalyzeResponse{Diagnostics: slices.Clone(a.diags)}, nil
-}
-
-func TestWithPolicyExceptions(t *testing.T) {
-	t.Parallel()
-
-	set := mustParseExceptions(t, `{"EXC-1": {"reason": "because", "match": [`+entry("p", accessLogsURN)+`]}}`)
-	excepted := []apitype.PolicyEventException{{ID: "EXC-1", Reason: "because"}}
-
-	// No exceptions: the analyzer is returned unchanged.
-	inner := &stubAnalyzer{}
-	assert.Same(t, inner, WithPolicyExceptions(inner, nil))
-
-	t.Run("Analyze matches the analyzed resource", func(t *testing.T) {
-		t.Parallel()
-		a := WithPolicyExceptions(&stubAnalyzer{diags: []plugin.AnalyzeDiagnostic{
-			{PolicyName: "p", EnforcementLevel: apitype.Mandatory},
-			{PolicyName: "other", EnforcementLevel: apitype.Mandatory},
-		}}, set)
-
-		resp, err := a.Analyze(t.Context(), plugin.AnalyzerResource{URN: accessLogsURN})
-		require.NoError(t, err)
-		assert.Equal(t, excepted, resp.Diagnostics[0].Exceptions)
-		assert.Empty(t, resp.Diagnostics[1].Exceptions)
-
-		resp, err = a.Analyze(t.Context(), plugin.AnalyzerResource{URN: cfLogsURN})
-		require.NoError(t, err)
-		assert.Empty(t, resp.Diagnostics[0].Exceptions)
-	})
-
-	t.Run("stack violations are matched at the URN the engine attributes them to", func(t *testing.T) {
-		t.Parallel()
-		a := WithPolicyExceptions(&stubAnalyzer{diags: []plugin.AnalyzeDiagnostic{{PolicyName: "p"}}}, set)
-
-		resp, err := a.AnalyzeStack(t.Context(), nil)
-		require.NoError(t, err)
-		d := resp.Diagnostics[0]
-		assert.Empty(t, d.Exceptions, "AnalyzeStack leaves matching to the engine")
-
-		ApplyStackPolicyExceptions(a, &d, cfLogsURN)
-		assert.Empty(t, d.Exceptions)
-		ApplyStackPolicyExceptions(a, &d, accessLogsURN)
-		assert.Equal(t, excepted, d.Exceptions)
-
-		d.Exceptions = nil
-		ApplyStackPolicyExceptions(inner, &d, accessLogsURN)
-		assert.Empty(t, d.Exceptions, "an analyzer without exceptions matches nothing")
-	})
 }

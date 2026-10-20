@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -680,10 +679,10 @@ func (a *fakeAnalyzer) Configure(context.Context, map[string]plugin.AnalyzerPoli
 func (a *fakeAnalyzer) Cancel(context.Context) error { return nil }
 func (a *fakeAnalyzer) Close() error                 { return nil }
 
-// exceptedAnalyzer returns a fake analyzer with a mandatory violation on the analyze snapshot's resource, and an
-// exception that matches it.
-func exceptedAnalyzer(t *testing.T) plugin.Analyzer {
-	t.Helper()
+// An excepted violation is reported with its exceptions, and doesn't fail the run.
+func TestPolicyAnalyzeCmd_ExceptedViolation(t *testing.T) {
+	t.Parallel()
+
 	path := filepath.Join(t.TempDir(), "config.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{"version": 2, "exceptions": {
 		"EXC-42": {
@@ -691,22 +690,14 @@ func exceptedAnalyzer(t *testing.T) plugin.Analyzer {
 			"match": [{"policies": ["test-policy"], "targets": ["urn:pulumi:stack::project::pkg:index:MyResource::res"]}]
 		}
 	}}`), 0o600))
-	config, err := resourceanalyzer.LoadPolicyPackConfigFile(path)
-	require.NoError(t, err)
-	return resourceanalyzer.WithPolicyExceptions(&fakeAnalyzer{mandatory: true}, config.Exceptions)
-}
-
-// An excepted violation is reported with its exceptions.
-func TestPolicyAnalyzeCmd_ExceptedViolation(t *testing.T) {
-	t.Parallel()
 
 	be, stk := newMockBackendForAnalyze()
 	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
 		return makeAnalyzeSnapshot(), nil
 	}
 	ws, lm := newMockWsAndLm(be)
-	stdout, _, err := runAnalyzeCmd(t, ws, lm,
-		stubLoadAnalyzers([]plugin.Analyzer{exceptedAnalyzer(t)}), "--stack", "my-stack", "--json")
+	stdout, _, err := runAnalyzeCmd(t, ws, lm, stubLoadAnalyzers([]plugin.Analyzer{&fakeAnalyzer{mandatory: true}}),
+		"--stack", "my-stack", "--policy-pack-config", path, "--json")
 	require.NoError(t, err)
 
 	events := decodeEngineEventsJSON(t, stdout)

@@ -39,6 +39,7 @@ import (
 type recordingPolicyEvents struct {
 	violations    []plugin.AnalyzeDiagnostic
 	violationURNs []resource.URN
+	exceptions    [][]apitype.PolicyEventException
 	remediations  []remediationRecord
 	analyzeSumm   []plugin.PolicySummary
 	remediateSumm []plugin.PolicySummary
@@ -51,9 +52,12 @@ type remediationRecord struct {
 	after  property.Map
 }
 
-func (r *recordingPolicyEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+func (r *recordingPolicyEvents) OnPolicyViolation(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
 	r.violations = append(r.violations, d)
 	r.violationURNs = append(r.violationURNs, urn)
+	r.exceptions = append(r.exceptions, exceptions)
 }
 
 func (r *recordingPolicyEvents) OnPolicyRemediation(
@@ -93,7 +97,7 @@ func TestAnalyzeSnapshot_NilSnapshot(t *testing.T) {
 		Info: plugin.AnalyzerInfo{Name: "test"},
 	}
 
-	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), nil, []plugin.Analyzer{analyzer}, events)
+	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), nil, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	assert.False(t, hasMandatory)
 	assert.Empty(t, events.violations)
@@ -109,7 +113,7 @@ func TestAnalyzeSnapshot_NoAnalyzers(t *testing.T) {
 	}
 	events := &recordingPolicyEvents{}
 
-	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, nil, events)
+	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, nil, nil, events)
 	require.NoError(t, err)
 	assert.False(t, hasMandatory)
 	assert.Empty(t, events.violations)
@@ -124,7 +128,7 @@ func TestAnalyzeSnapshot_EmptySnapshot(t *testing.T) {
 		Info: plugin.AnalyzerInfo{Name: "test"},
 	}
 
-	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	assert.False(t, hasMandatory)
 }
@@ -153,7 +157,7 @@ func TestAnalyzeSnapshot_AdvisoryViolationReturnsFalse(t *testing.T) {
 		},
 	}
 
-	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	assert.False(t, hasMandatory, "advisory violations should not return true")
 	require.Len(t, events.violations, 1)
@@ -185,7 +189,7 @@ func TestAnalyzeSnapshot_MandatoryViolationReturnsTrue(t *testing.T) {
 		},
 	}
 
-	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	assert.True(t, hasMandatory)
 	require.Len(t, events.violations, 1)
@@ -211,7 +215,7 @@ func TestAnalyzeSnapshot_SkipsDeletedResources(t *testing.T) {
 		},
 	}
 
-	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	assert.Equal(t, []resource.URN{live.URN}, analyzed)
 }
@@ -249,7 +253,7 @@ func TestAnalyzeSnapshot_RemediationReportedNotApplied(t *testing.T) {
 		},
 	}
 
-	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	assert.False(t, hasMandatory)
 	require.Len(t, events.remediations, 1, "should report one remediation")
@@ -277,7 +281,7 @@ func TestAnalyzeSnapshot_RemediationDiagnosticReportedAsAdvisory(t *testing.T) {
 		},
 	}
 
-	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	require.Len(t, events.violations, 1)
 	assert.Equal(t, apitype.Advisory, events.violations[0].EnforcementLevel)
@@ -305,7 +309,7 @@ func TestAnalyzeSnapshot_StackLevelViolation(t *testing.T) {
 		},
 	}
 
-	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	assert.True(t, hasMandatory)
 	require.Len(t, events.violations, 1)
@@ -344,7 +348,7 @@ func TestAnalyzeSnapshot_StackLevelViolationUsesRootStackResource(t *testing.T) 
 		},
 	}
 
-	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	require.Len(t, events.violationURNs, 1)
 	assert.Equal(t, rootStack.URN, events.violationURNs[0])
@@ -373,7 +377,7 @@ func TestAnalyzeSnapshot_StackLevelViolationResourcelessSnapshot(t *testing.T) {
 		},
 	}
 
-	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	require.Len(t, events.violationURNs, 1)
 	assert.Empty(t, events.violationURNs[0])
@@ -408,7 +412,7 @@ func TestAnalyzeSnapshot_StackLevelViolationDeletedTargetFallsBackToRoot(t *test
 		},
 	}
 
-	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	require.Len(t, events.violationURNs, 1)
 	assert.Equal(t, rootStack.URN, events.violationURNs[0])
@@ -438,7 +442,7 @@ func TestAnalyzeSnapshot_StackLevelViolationResourceScopedURNPreserved(t *testin
 		},
 	}
 
-	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	require.Len(t, events.violationURNs, 1)
 	assert.Equal(t, res.URN, events.violationURNs[0])
@@ -472,7 +476,7 @@ func TestAnalyzeSnapshot_StackLevelViolationSkipsInvalidRootStackURN(t *testing.
 		},
 	}
 
-	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	require.Len(t, events.violationURNs, 1)
 	assert.True(t, events.violationURNs[0].IsValid())
@@ -494,7 +498,7 @@ func TestAnalyzeSnapshot_AnalyzeErrorPropagated(t *testing.T) {
 		},
 	}
 
-	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "failed to run policy")
 }
@@ -514,7 +518,7 @@ func TestAnalyzeSnapshot_RemediateErrorPropagated(t *testing.T) {
 		},
 	}
 
-	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "failed to run remediation")
 }
@@ -542,7 +546,7 @@ func TestAnalyzeSnapshot_MultipleResources(t *testing.T) {
 		},
 	}
 
-	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	assert.True(t, hasMandatory)
 	require.Len(t, events.violations, 2, "both resources should be analyzed")
@@ -559,7 +563,7 @@ func TestAnalyzeSnapshot_SummaryEventsEmitted(t *testing.T) {
 		Info: plugin.AnalyzerInfo{Name: "test-pack"},
 	}
 
-	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
 	require.NoError(t, err)
 	require.Len(t, events.analyzeSumm, 1, "one analyze summary per resource×analyzer")
 	require.Len(t, events.remediateSumm, 1, "one remediate summary per resource×analyzer")
@@ -579,7 +583,7 @@ func TestAnalyzeSnapshot_ExceptedViolations(t *testing.T) {
 		EnforcementLevel: apitype.Mandatory,
 		Message:          "violates policy",
 	}
-	inner := &deploytest.Analyzer{
+	analyzer := &deploytest.Analyzer{
 		Info: plugin.AnalyzerInfo{Name: "test-pack"},
 		AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
 			return plugin.AnalyzeResponse{Diagnostics: []plugin.AnalyzeDiagnostic{diagnostic}}, nil
@@ -597,20 +601,21 @@ func TestAnalyzeSnapshot_ExceptedViolations(t *testing.T) {
 	require.NoError(t, err)
 
 	events := &recordingPolicyEvents{}
-	analyzer := resourceanalyzer.WithPolicyExceptions(inner, config.Exceptions)
-	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, events)
+	exceptions := map[string]*resourceanalyzer.PolicyExceptions{"test-pack": config.Exceptions}
+	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, exceptions, events)
 	require.NoError(t, err)
 	assert.False(t, hasMandatory)
 
 	require.Len(t, events.violations, 2)
 	assert.Equal(t, urn, events.violationURNs[0])
 	assert.Equal(t, resource.RootStackType, events.violationURNs[1].QualifiedType())
-	for _, v := range events.violations {
-		assert.Equal(t, []apitype.PolicyEventException{{ID: "EXC-1", Reason: "r"}}, v.Exceptions)
+	for _, e := range events.exceptions {
+		assert.Equal(t, []apitype.PolicyEventException{{ID: "EXC-1", Reason: "r"}}, e)
 	}
 
 	// Without the exceptions, the same violations fail.
-	hasMandatory, err = deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{inner}, &recordingPolicyEvents{})
+	hasMandatory, err = deploy.AnalyzeSnapshot(
+		t.Context(), snap, []plugin.Analyzer{analyzer}, nil, &recordingPolicyEvents{})
 	require.NoError(t, err)
 	assert.True(t, hasMandatory)
 }

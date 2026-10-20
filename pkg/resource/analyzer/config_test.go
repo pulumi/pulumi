@@ -1324,6 +1324,12 @@ func TestParsePolicyPackConfigV2(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, map[string]plugin.AnalyzerPolicyConfig{"p": {EnforcementLevel: apitype.Advisory}}, file.Config)
 	assert.Equal(t, []string{"policy/shared"}, file.Environments)
+
+	// So is one where "version" isn't a number: it's the name of a policy.
+	file, err = parsePolicyPackConfig([]byte(`{"version": {"enforcementLevel": "advisory"}}`))
+	require.NoError(t, err)
+	assert.Equal(t,
+		map[string]plugin.AnalyzerPolicyConfig{"version": {EnforcementLevel: apitype.Advisory}}, file.Config)
 }
 
 func TestParsePolicyPackConfigVersionErrors(t *testing.T) {
@@ -1334,8 +1340,6 @@ func TestParsePolicyPackConfigVersionErrors(t *testing.T) {
 	}{
 		{"newer version", `{"version": 3}`, "policy pack config version 3 isn't supported; try upgrading"},
 		{"older version", `{"version": 1}`, `"version" must be 2`},
-		{"version that isn't a number", `{"version": "mandatory"}`, `"version" must be 2`},
-		{"unknown key", `{"version": 2, "p": "advisory"}`, `unknown key "p"; try upgrading the Pulumi CLI`},
 		{
 			"invalid policy config", `{"version": 2, "policies": {"p": "loud"}}`,
 			`parsing enforcement level for "p": "loud" is not a valid enforcement level`,
@@ -1344,11 +1348,6 @@ func TestParsePolicyPackConfigVersionErrors(t *testing.T) {
 			"malformed exception", `{"version": 2, "exceptions": {"a": {"match": [
 				{"policies": ["p"], "targets": ["urn:pulumi:prod::web::pkg:index:R::r"]}]}}}`,
 			`policy exception "a": "reason" is required`,
-		},
-		{
-			"exception field this version doesn't recognize", `{"version": 2, "exceptions": {"a": {"reason": "r",
-				"tags": {}, "match": [{"policies": ["p"], "targets": ["urn:pulumi:prod::web::pkg:index:R::r"]}]}}}`,
-			`policy exception "a": unknown field "tags"`,
 		},
 	}
 	for _, tt := range tests {

@@ -666,7 +666,9 @@ func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Du
 	}))
 }
 
-func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+func (e *eventEmitter) policyViolationEvent(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	// Write prefix.
@@ -704,7 +706,7 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 		EnforcementLevel:  d.EnforcementLevel,
 		Prefix:            logging.FilterString(prefix.String()),
 		Severity:          d.Severity,
-		Exceptions:        d.Exceptions,
+		Exceptions:        exceptions,
 	}))
 }
 

@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -117,17 +116,13 @@ func parsePolicyPackConfig(b []byte) (*PolicyPackConfigFile, error) {
 		return &PolicyPackConfigFile{}, nil
 	}
 
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(b, &fields); err != nil {
-		return nil, err
-	}
-	if _, ok := fields["version"]; ok {
-		return parsePolicyPackConfigV2(b, fields)
-	}
-
 	config := make(map[string]any)
 	if err := json.Unmarshal(b, &config); err != nil {
 		return nil, err
+	}
+	// A numeric "version" marks a versioned file. Otherwise, "version" is the name of a policy.
+	if version, ok := config["version"].(float64); ok {
+		return parsePolicyPackConfigV2(b, version)
 	}
 
 	// Extract ESC environment references if present.
@@ -156,30 +151,20 @@ func parsePolicyPackConfig(b []byte) (*PolicyPackConfigFile, error) {
 }
 
 // parsePolicyPackConfigV2 parses a versioned config file, which nests the policy config under "policies".
-func parsePolicyPackConfigV2(b []byte, fields map[string]json.RawMessage) (*PolicyPackConfigFile, error) {
+func parsePolicyPackConfigV2(b []byte, version float64) (*PolicyPackConfigFile, error) {
+	switch {
+	case version > 2:
+		return nil, fmt.Errorf("policy pack config version %v isn't supported; try upgrading the Pulumi CLI", version)
+	case version != 2:
+		return nil, errors.New(`"version" must be 2`)
+	}
 	var file struct {
-		Version      int             `json:"version"`
 		Environments []string        `json:"environments"`
 		Policies     map[string]any  `json:"policies"`
 		Exceptions   json.RawMessage `json:"exceptions"`
 	}
-	if err := json.Unmarshal(fields["version"], &file.Version); err != nil {
-		return nil, errors.New(`"version" must be 2`)
-	}
 	if err := json.Unmarshal(b, &file); err != nil {
 		return nil, fmt.Errorf("parsing policy pack config: %w", err)
-	}
-	switch {
-	case file.Version > 2:
-		return nil, fmt.Errorf(
-			"policy pack config version %d isn't supported; try upgrading the Pulumi CLI", file.Version)
-	case file.Version < 2:
-		return nil, errors.New(`"version" must be 2`)
-	}
-	for k := range fields {
-		if !slices.Contains([]string{"version", "environments", "policies", policyExceptionsKey}, k) {
-			return nil, fmt.Errorf("unknown key %q; try upgrading the Pulumi CLI", k)
-		}
 	}
 
 	result, err := parsePolicyConfigs(file.Policies)
