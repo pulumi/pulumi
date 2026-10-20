@@ -476,10 +476,20 @@ func (pack *cloudPolicyPack) Publish(
 
 	fmt.Fprintln(progress, "Uploading policy pack to Pulumi service")
 
+	// Older versions of pulumi/policy don't provide a version tag; the service assigns one.
+	var versionMsg string
+	if analyzerInfo.Version != "" {
+		versionMsg = " - version " + analyzerInfo.Version
+	}
+	fmt.Fprintf(progress, "Publishing %q%s to %q\n", analyzerInfo.Name, versionMsg, pack.ref.orgName)
+
 	publishedVersion, err := pack.cl.PublishPolicyPack(
 		ctx, pack.ref.orgName, runtime, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
 	if err != nil {
 		return backend.PublishResult{}, err
+	}
+	if analyzerInfo.Version == "" {
+		fmt.Fprintf(progress, "Published as version %s\n", publishedVersion)
 	}
 
 	permalink := fmt.Sprintf("%s/%s", pack.ref.CloudConsoleURL(), publishedVersion)
