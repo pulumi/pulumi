@@ -54,6 +54,7 @@ type LoginManager interface {
 		setCurrent bool,
 		insecure bool,
 		color colors.Colorization,
+		opts ...LoginOption,
 	) (backend.Backend, error)
 
 	LoginFromAuthContext(
@@ -65,6 +66,21 @@ type LoginManager interface {
 		insecure bool,
 		authContext pkgauth.AuthContext,
 	) (backend.Backend, error)
+}
+
+// LoginOption configures a LoginManager.Login call.
+type LoginOption func(*loginOptions)
+
+type loginOptions struct {
+	omitNewProjectHint bool
+}
+
+// WithoutNewProjectHint leaves the suggestion to run `pulumi new` out of the first-login welcome message. Used by
+// `pulumi new`, where the suggestion is redundant.
+func WithoutNewProjectHint() LoginOption {
+	return func(o *loginOptions) {
+		o.omitNewProjectHint = true
+	}
 }
 
 var DefaultLoginManager LoginManager = &lm{}
@@ -89,8 +105,13 @@ func (f *lm) Current(
 
 func (f *lm) Login(
 	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
-	insecure bool, color colors.Colorization,
+	insecure bool, color colors.Colorization, opts ...LoginOption,
 ) (backend.Backend, error) {
+	var o loginOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	if diy.IsDIYBackendURL(url) {
 		if setCurrent {
 			return diy.Login(ctx, sink, url, project)
@@ -101,12 +122,12 @@ func (f *lm) Login(
 	lm := httpstate.NewLoginManager()
 	// Color is the only thing used by lm.Login, so we can just request a colors.Colorization and only fill that part of
 	// the display options in. It's hard to change Login itself because it's circularly depended on by esc.
-	opts := display.Options{
+	displayOpts := display.Options{
 		Color: color,
 	}
 	consoleURL := client.CloudConsoleURL(httpstate.ValueOrDefaultURL(ws, url))
-	welcome := func(opts display.Options) { httpstate.WelcomeUser(ctx, opts, consoleURL) }
-	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", welcome, setCurrent, opts)
+	welcome := func(opts display.Options) { httpstate.WelcomeUser(opts, consoleURL, !o.omitNewProjectHint) }
+	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", welcome, setCurrent, displayOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -157,6 +178,7 @@ type MockLoginManager struct {
 		setCurrent bool,
 		insecure bool,
 		color colors.Colorization,
+		opts ...LoginOption,
 	) (backend.Backend, error)
 
 	LoginFromAuthContextF func(
@@ -181,9 +203,10 @@ func (lm *MockLoginManager) Login(
 	setCurrent bool,
 	insecure bool,
 	color colors.Colorization,
+	opts ...LoginOption,
 ) (backend.Backend, error) {
 	if lm.LoginF != nil {
-		return lm.LoginF(ctx, ws, sink, url, project, setCurrent, insecure, color)
+		return lm.LoginF(ctx, ws, sink, url, project, setCurrent, insecure, color, opts...)
 	}
 	panic("not implemented")
 }

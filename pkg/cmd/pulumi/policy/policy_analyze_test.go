@@ -94,7 +94,7 @@ func newMockWsAndLm(be backend.Backend) (pkgWorkspace.Context, cmdBackend.LoginM
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			_ string, _ *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			_ string, _ *workspace.Project, _ bool, _ bool, _ colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return be, nil
 		},
