@@ -2606,3 +2606,22 @@ func TestGetPolicyComplianceResults(t *testing.T) {
 	assert.Equal(t, "/api/orgs/acme/policyresults/compliance", path)
 	assert.JSONEq(t, `{"entity": "stack", "size": 50, "continuationToken": "next-page-token"}`, body)
 }
+
+func TestGetPolicyPack(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		assert.Equal(t, http.MethodGet, req.Method)
+		assert.Equal(t, "/api/orgs/acme/policypacks/aws-guardrails/versions/1.2.0", req.URL.Path)
+		return `{"name":"aws-guardrails","displayName":"AWS Guardrails","version":3,"versionTag":"1.2.0","applied":true,` +
+			`"policies":[{"name":"s3-no-public","enforcementLevel":"mandatory","severity":"high","description":"d"}]}`
+	})
+	defer server.Close()
+
+	resp, err := newMockClient(server).GetPolicyPack(t.Context(), "acme", "aws-guardrails", "1.2.0")
+	require.NoError(t, err)
+
+	assert.Equal(t, 3, resp.Version)
+	require.Len(t, resp.Policies, 1)
+	assert.Equal(t, cloudapitype.AppEnforcementLevelMandatory, resp.Policies[0].EnforcementLevel)
+}
