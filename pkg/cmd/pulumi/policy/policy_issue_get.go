@@ -88,11 +88,16 @@ func newPolicyIssueGetCmdWith(factory policyIssueGetClientFactory) *cobra.Comman
 			"\n" +
 			"Returns the details of a single policy issue, including the violating\n" +
 			"resource, the Policy Pack and policy that flagged the violation, the\n" +
-			"enforcement level, severity, and the human-readable message produced\n" +
-			"by the policy.\n" +
+			"enforcement level, severity, kind, priority, assignee, policy group,\n" +
+			"and the message produced by the policy. When available, also shows\n" +
+			"the policy description, remediation steps, framework, and URL.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"full response as JSON.",
+		Example: "  # Show a policy issue\n" +
+			"  pulumi policy issue get <issue-id>\n\n" +
+			"  # Show a policy issue as JSON\n" +
+			"  pulumi policy issue get <issue-id> -o json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runPolicyIssueGet(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
@@ -228,10 +233,10 @@ func renderPolicyIssueGetText(w io.Writer, resp cloudapitype.GetPolicyIssueRespo
 	}
 	if policy := resp.Policy; policy != nil {
 		if policy.Description != "" {
-			fmt.Fprintf(w, "%-20s %s\n", "Description:", policy.Description)
+			printPolicyIssueMultiline(w, "Description:", policy.Description)
 		}
 		if policy.RemediationSteps != "" {
-			fmt.Fprintf(w, "%-20s %s\n", "Remediation:", policy.RemediationSteps)
+			printPolicyIssueMultiline(w, "Remediation:", policy.RemediationSteps)
 		}
 		if framework := formatPolicyFramework(policy.Framework); framework != "" {
 			fmt.Fprintf(w, "%-20s %s\n", "Framework:", framework)
@@ -248,6 +253,11 @@ func formatPolicyIssueTime(t *time.Time) string {
 		return ""
 	}
 	return t.Format(time.RFC3339Nano)
+}
+
+func printPolicyIssueMultiline(w io.Writer, label, value string) {
+	value = strings.ReplaceAll(value, "\n", "\n"+strings.Repeat(" ", 21))
+	fmt.Fprintf(w, "%-20s %s\n", label, value)
 }
 
 func policyIssueAssignee(issue cloudapitype.PolicyIssue) string {

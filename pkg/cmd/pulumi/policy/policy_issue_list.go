@@ -87,15 +87,20 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "[EXPERIMENTAL] List all policy issues for an organization",
-		Long: "[EXPERIMENTAL] List all policy issues for an organization.\n" +
+		Long: "[EXPERIMENTAL] List policy issues for an organization.\n" +
 			"\n" +
-			"Returns a list of policy issues for the organization. Each issue\n" +
+			"Lists the active policy issues for the organization, or the closed\n" +
+			"issues when --closed is passed. Each issue\n" +
 			"represents a violation detected by a Policy Pack during a stack update\n" +
 			"or a continuous-compliance scan, and includes the violating resource,\n" +
 			"policy details, and enforcement level.\n" +
 			"\n" +
 			"Default output is a human-readable table; pass --output=json for the\n" +
 			"full response as a JSON envelope.",
+		Example: "  # List active policy issues\n" +
+			"  pulumi policy issue ls\n\n" +
+			"  # List all closed policy issues as JSON\n" +
+			"  pulumi policy issue ls --closed --all -o json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runPolicyIssueList(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},

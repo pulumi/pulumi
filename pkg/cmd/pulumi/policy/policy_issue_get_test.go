@@ -432,6 +432,15 @@ func TestPolicyIssueGet_Unassigned(t *testing.T) {
 	}
 }
 
+func TestPolicyIssueGet_MultilineRemediationIndented(t *testing.T) {
+	t.Parallel()
+
+	resp := sampleFullPolicyIssueResponse()
+	resp.Policy.RemediationSteps = "1. Open the bucket\n2. Block public access"
+	text := renderPolicyIssueGetWith(t, resp, "")
+	assert.Contains(t, text, "Remediation:         1. Open the bucket\n                     2. Block public access\n")
+}
+
 func TestFormatPolicyFramework(t *testing.T) {
 	t.Parallel()
 
