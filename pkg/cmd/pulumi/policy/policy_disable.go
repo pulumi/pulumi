@@ -15,9 +15,13 @@
 package policy
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
@@ -26,25 +30,68 @@ type policyDisableArgs struct {
 	version     string
 }
 
+type policyDisableJSON struct {
+	Organization string  `json:"organization"`
+	PolicyGroup  string  `json:"policyGroup"`
+	PolicyPack   string  `json:"policyPack"`
+	VersionTag   *string `json:"versionTag"`
+}
+
+// policyDisableRender is a marker type for outputflag; the output mode is read back from the flag value.
+type policyDisableRender func()
+
 func newPolicyDisableCmd() *cobra.Command {
+	return newPolicyDisableCmdWith(defaultPolicyPackCmdDeps)
+}
+
+func newPolicyDisableCmdWith(deps policyPackCmdDeps) *cobra.Command {
+	contract.Assertf(deps != nil, "policyPackCmdDeps must not be nil")
 	args := policyDisableArgs{}
+	outputFormat := outputflag.OutputFlag[policyDisableRender]{
+		RenderForTerminal: func() {},
+		RenderJSON:        func() {},
+	}
 
 	cmd := &cobra.Command{
 		Use:   "disable",
 		Short: "Disable a Policy Pack for a Pulumi organization",
-		Long:  "Disable a Policy Pack for a Pulumi organization",
+		Long: "Disable a Policy Pack for a Pulumi organization\n" +
+			"\n" +
+			"Examples:\n" +
+			"  pulumi policy disable acme/aws-guardrails\n" +
+			"  pulumi policy disable acme/aws-guardrails --policy-group prod --output json",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			var err error
-			policyPack, err := requirePolicyPack(ctx, cliArgs[0], cmdBackend.DefaultLoginManager)
+			policyPack, _, err := deps(ctx, cliArgs[0])
 			if err != nil {
 				return err
 			}
 
 			// Attempt to disable the Policy Pack.
-			return policyPack.Disable(ctx, args.policyGroup, backend.PolicyPackOperation{
+			err = policyPack.Disable(ctx, args.policyGroup, backend.PolicyPackOperation{
 				VersionTag: &args.version, Scopes: backend.CancellationScopes,
+			})
+			if err != nil || outputFormat.String() != "json" {
+				return err
+			}
+
+			group := args.policyGroup
+			if group == "" {
+				group = apitype.DefaultPolicyGroup
+			}
+			var versionTag *string
+			if args.version != "" {
+				versionTag = &args.version
+			}
+			enc := json.NewEncoder(cmd.OutOrStdout())
+			enc.SetEscapeHTML(false)
+			enc.SetIndent("", "  ")
+			return enc.Encode(policyDisableJSON{
+				Organization: policyPack.Ref().OrgName(),
+				PolicyGroup:  group,
+				PolicyPack:   string(policyPack.Ref().Name()),
+				VersionTag:   versionTag,
 			})
 		},
 	}
@@ -65,5 +112,6 @@ func newPolicyDisableCmd() *cobra.Command {
 		"The version of the Policy Pack that will be disabled; "+
 			"if not specified, any enabled version of the Policy Pack will be disabled")
 
+	outputflag.VarP(cmd.Flags(), &outputFormat)
 	return cmd
 }
