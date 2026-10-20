@@ -354,6 +354,7 @@ func newAnalyzeEvents(
 		Color:                  colorization,
 		Type:                   displayType,
 		ShowPolicyRemediations: true,
+		ShowPolicyExceptions:   true,
 		IsInteractive:          cmdutil.Interactive(),
 		JSONDisplay:            jsonDisplay,
 		Stdout:                 out,
