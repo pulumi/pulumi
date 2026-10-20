@@ -2428,7 +2428,7 @@ func TestListPolicyIssues(t *testing.T) {
 	_, err := newMockClient(server).ListPolicyIssues(t.Context(), "acme", cloudapitype.AngularGridGetRowsRequest{
 		StartRow: 100,
 		EndRow:   200,
-	})
+	}, false)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.MethodPost, method)
@@ -2451,7 +2451,7 @@ func TestListPolicyIssues_FirstPageSendsZeroStartRow(t *testing.T) {
 	defer server.Close()
 
 	_, err := newMockClient(server).ListPolicyIssues(t.Context(), "acme",
-		cloudapitype.AngularGridGetRowsRequest{EndRow: 100})
+		cloudapitype.AngularGridGetRowsRequest{EndRow: 100}, false)
 	require.NoError(t, err)
 
 	var fields map[string]json.RawMessage
@@ -2486,4 +2486,34 @@ func TestGetPolicyComplianceResults(t *testing.T) {
 	assert.Equal(t, http.MethodPost, method)
 	assert.Equal(t, "/api/orgs/acme/policyresults/compliance", path)
 	assert.JSONEq(t, `{"entity": "stack", "size": 50, "continuationToken": "next-page-token"}`, body)
+}
+
+func TestListPolicyIssues_ClosedQuery(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		closed   bool
+		rawQuery string
+	}{
+		{"active", false, ""},
+		{"closed", true, "closed=true"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var rawQuery string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				rawQuery = r.URL.RawQuery
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte("{}"))
+			}))
+			defer server.Close()
+
+			c := newMockClient(server)
+			_, err := c.ListPolicyIssues(t.Context(), "acme", cloudapitype.AngularGridGetRowsRequest{EndRow: 100}, tt.closed)
+			require.NoError(t, err)
+			assert.Equal(t, tt.rawQuery, rawQuery)
+		})
+	}
 }

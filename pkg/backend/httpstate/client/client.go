@@ -1925,7 +1925,7 @@ func (pc *Client) RemoveOrganizationMember(ctx context.Context, orgName, userLog
 // because the request body carries pagination parameters in an AngularGrid
 // format.
 func (pc *Client) ListPolicyIssues(
-	ctx context.Context, orgName string, req cloudapitype.AngularGridGetRowsRequest,
+	ctx context.Context, orgName string, req cloudapitype.AngularGridGetRowsRequest, closed bool,
 ) (cloudapitype.ListPolicyIssuesResponse, error) {
 	// Send startRow and endRow even when zero; the generated type omits them.
 	body := struct {
@@ -1934,9 +1934,12 @@ func (pc *Client) ListPolicyIssues(
 		EndRow   int `json:"endRow"`
 	}{req, req.StartRow, req.EndRow}
 	path := fmt.Sprintf("/api/orgs/%s/policyresults/issues", url.PathEscape(orgName))
+	query := struct {
+		Closed bool `url:"closed,omitempty"`
+	}{closed}
 
 	var resp cloudapitype.ListPolicyIssuesResponse
-	if err := pc.restCall(ctx, http.MethodPost, path, nil, body, &resp); err != nil {
+	if err := pc.restCall(ctx, http.MethodPost, path, query, body, &resp); err != nil {
 		return cloudapitype.ListPolicyIssuesResponse{}, fmt.Errorf("listing policy issues: %w", err)
 	}
 	return resp, nil
