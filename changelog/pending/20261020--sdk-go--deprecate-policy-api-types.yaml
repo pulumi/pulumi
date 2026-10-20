@@ -1,0 +1,3 @@
+component: sdk/go
+kind: improvement
+body: Deprecate the policy group, policy issue, compliance and Insights account types in `sdk/go/common/apitype` in favor of `github.com/pulumi/pulumi-cloud-sdk/go/apitype`
