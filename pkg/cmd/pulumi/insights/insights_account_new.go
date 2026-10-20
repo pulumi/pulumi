@@ -28,6 +28,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -42,11 +43,11 @@ import (
 // touching the full HTTP client surface.
 type insightsAccountNewClient interface {
 	CreateInsightsAccount(
-		ctx context.Context, org, account string, req apitype.CreateInsightsAccountRequest,
+		ctx context.Context, org, account string, req cloudapitype.CreateInsightsAccountRequest,
 	) error
 	GetInsightsAccount(
 		ctx context.Context, org, account string,
-	) (apitype.InsightsAccount, error)
+	) (cloudapitype.InsightsAccount, error)
 	// ListESCEnvironments backs the interactive environment picker. Returns
 	// a single page; the picker doesn't paginate — if a user has more envs
 	// than fit on a page, the "Enter manually" option covers them.
@@ -322,12 +323,14 @@ func runInsightsAccountNew(
 		return err
 	}
 
-	req := apitype.CreateInsightsAccountRequest{
-		Provider:       args.provider,
-		Environment:    args.environment,
-		ScanSchedule:   args.scanSchedule,
-		AgentPoolID:    args.agentPoolID,
-		ProviderConfig: providerConfig,
+	req := cloudapitype.CreateInsightsAccountRequest{
+		Provider:     cloudapitype.InsightsAccountProvider(args.provider),
+		Environment:  args.environment,
+		ScanSchedule: cloudapitype.ScanSchedule(args.scanSchedule),
+		AgentPoolID:  args.agentPoolID,
+	}
+	if providerConfig != nil {
+		req.ProviderConfig = providerConfig
 	}
 	if err := c.CreateInsightsAccount(ctx, org, name, req); err != nil {
 		return fmt.Errorf("creating insights account: %w", err)
@@ -367,22 +370,30 @@ func parseProviderConfig(raw string) (json.RawMessage, error) {
 // insightsAccountRenderFunc is the renderer signature shared by `new` and
 // (when it lands) `get`. Both produce a single account in the same shape, so
 // the renderers belong with the first command that needs them.
-type insightsAccountRenderFunc func(w io.Writer, account apitype.InsightsAccount) error
+type insightsAccountRenderFunc func(w io.Writer, account cloudapitype.InsightsAccount) error
 
 // renderInsightsAccountJSON writes the account as indented JSON. Indentation
 // matches the rest of the cli/cloud commands so jq-style scripting feels
 // consistent.
-func renderInsightsAccountJSON(w io.Writer, account apitype.InsightsAccount) error {
+func renderInsightsAccountJSON(w io.Writer, account cloudapitype.InsightsAccount) error {
+	view, err := toInsightsAccountJSON(account)
+	if err != nil {
+		return err
+	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(account)
+	return enc.Encode(view)
 }
 
 // renderInsightsAccountText writes a human-readable key/value view of the
 // account to w. The layout intentionally mirrors `stack schedule get` for
 // visual consistency across the cli/cloud command family.
-func renderInsightsAccountText(w io.Writer, a apitype.InsightsAccount) error {
+func renderInsightsAccountText(w io.Writer, account cloudapitype.InsightsAccount) error {
+	a, err := toInsightsAccountJSON(account)
+	if err != nil {
+		return err
+	}
 	line := func(label, value string) {
 		fmt.Fprintf(w, "%-22s %s\n", label+":", value)
 	}
@@ -438,7 +449,7 @@ func renderInsightsAccountText(w io.Writer, a apitype.InsightsAccount) error {
 			line("Last scan finished", a.ScanStatus.FinishedAt.UTC().Format(time.RFC3339))
 		}
 		if a.ScanStatus.ResourceCount > 0 {
-			line("Resources discovered", strconv.FormatInt(a.ScanStatus.ResourceCount, 10))
+			line("Resources discovered", strconv.Itoa(a.ScanStatus.ResourceCount))
 		}
 	}
 	return nil

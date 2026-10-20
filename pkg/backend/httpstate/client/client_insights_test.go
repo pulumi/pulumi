@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -438,31 +439,51 @@ func TestSearchInsightsResources(t *testing.T) {
 func TestListInsightsAccounts(t *testing.T) {
 	t.Parallel()
 
+	t.Run("tolerates an unknown scan status", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"accounts":[{"id":"acc-1","name":"prod-aws","provider":"aws",` +
+				`"scanStatus":{"id":"scan-1","status":"cancelled"}},{"id":"acc-2","name":"new","provider":"gcp"}]}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.ListInsightsAccounts(t.Context(), "acme", apitype.ListInsightsAccountsParams{})
+		require.NoError(t, err)
+		require.Len(t, got.Accounts, 2)
+		assert.Equal(t, cloudapitype.WorkflowRunStatus("cancelled"), got.Accounts[0].ScanStatus.Status)
+		assert.Zero(t, got.Accounts[1].ScanStatus)
+	})
+
 	t.Run("returns parsed response", func(t *testing.T) {
 		t.Parallel()
 
 		finished := time.Date(2026, 5, 12, 16, 7, 24, 0, time.UTC)
-		want := apitype.ListInsightsAccountsResponse{
-			Accounts: []apitype.InsightsAccount{
+		want := cloudapitype.ListInsightsAccountsResponse{
+			Accounts: []cloudapitype.InsightsAccount{
 				{
 					ID:                   "79440e1c-089f-4a02-9ad7-0b7effb971b5",
 					Name:                 "prod-aws",
 					Provider:             "aws",
-					ProviderEnvRef:       "team/prod-aws@4",
+					Environment:          "team/prod-aws@4",
 					ScheduledScanEnabled: true,
-					OwnedBy: apitype.InsightsAccountOwner{
+					OwnedBy: cloudapitype.UserInfo{
 						Name:        "Ada Lovelace",
 						GitHubLogin: "ada-pulumi-corp",
 						AvatarURL:   "https://api.pulumi.com/static/avatars/A.png",
 					},
-					ScanStatus: &apitype.InsightsAccountScanStatus{
-						ID:            "scan-1",
-						OrgID:         "org-1",
-						UserID:        "user-1",
-						Status:        "succeeded",
-						StartedAt:     time.Date(2026, 5, 12, 16, 6, 1, 0, time.UTC),
-						FinishedAt:    &finished,
-						LastUpdatedAt: time.Date(2026, 5, 12, 16, 7, 24, 0, time.UTC),
+					ScanStatus: cloudapitype.ScanStatus{
+						WorkflowRun: cloudapitype.WorkflowRun{
+							ID:            "scan-1",
+							OrgID:         "org-1",
+							UserID:        "user-1",
+							Status:        "succeeded",
+							StartedAt:     time.Date(2026, 5, 12, 16, 6, 1, 0, time.UTC),
+							FinishedAt:    &finished,
+							LastUpdatedAt: time.Date(2026, 5, 12, 16, 7, 24, 0, time.UTC),
+						},
 						ResourceCount: 42,
 					},
 				},
@@ -741,7 +762,7 @@ func TestCreateInsightsAccount(t *testing.T) {
 	t.Run("sends request and returns nil on 204", func(t *testing.T) {
 		t.Parallel()
 
-		req := apitype.CreateInsightsAccountRequest{
+		req := cloudapitype.CreateInsightsAccountRequest{
 			Provider:       "aws",
 			Environment:    "infra/prod-aws-creds",
 			ScanSchedule:   "daily",
@@ -752,7 +773,7 @@ func TestCreateInsightsAccount(t *testing.T) {
 		var (
 			capturedMethod string
 			capturedPath   string
-			capturedBody   apitype.CreateInsightsAccountRequest
+			capturedBody   cloudapitype.CreateInsightsAccountRequest
 		)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			capturedMethod = r.Method
@@ -772,6 +793,8 @@ func TestCreateInsightsAccount(t *testing.T) {
 		// orgName is single-encoded ("acme" has no special chars to encode);
 		// accountName is double-encoded — same convention as ReadResource.
 		assert.Equal(t, "/api/preview/insights/acme/accounts/prod-aws", capturedPath)
+		assert.Equal(t, map[string]any{"regions": []any{"us-east-1"}}, capturedBody.ProviderConfig)
+		capturedBody.ProviderConfig = req.ProviderConfig
 		assert.Equal(t, req, capturedBody)
 	})
 
@@ -790,7 +813,7 @@ func TestCreateInsightsAccount(t *testing.T) {
 
 		client := newMockClient(server)
 		err := client.CreateInsightsAccount(t.Context(), "acme", "team/a",
-			apitype.CreateInsightsAccountRequest{Provider: "aws", Environment: "infra/creds"})
+			cloudapitype.CreateInsightsAccountRequest{Provider: "aws", Environment: "infra/creds"})
 		require.NoError(t, err)
 		assert.Equal(t, "/api/preview/insights/acme/accounts/team%252Fa", capturedPath)
 	})
@@ -809,7 +832,7 @@ func TestCreateInsightsAccount(t *testing.T) {
 
 		client := newMockClient(server)
 		err := client.CreateInsightsAccount(t.Context(), "acme", "prod-aws",
-			apitype.CreateInsightsAccountRequest{Provider: "aws", Environment: "infra/creds"})
+			cloudapitype.CreateInsightsAccountRequest{Provider: "aws", Environment: "infra/creds"})
 		require.NoError(t, err)
 
 		var decoded map[string]any
@@ -835,7 +858,7 @@ func TestCreateInsightsAccount(t *testing.T) {
 
 		client := newMockClient(server)
 		err := client.CreateInsightsAccount(t.Context(), "nonexistent", "prod-aws",
-			apitype.CreateInsightsAccountRequest{Provider: "aws", Environment: "infra/creds"})
+			cloudapitype.CreateInsightsAccountRequest{Provider: "aws", Environment: "infra/creds"})
 		require.Error(t, err)
 	})
 }
@@ -843,34 +866,56 @@ func TestCreateInsightsAccount(t *testing.T) {
 func TestGetInsightsAccount(t *testing.T) {
 	t.Parallel()
 
+	t.Run("tolerates an unknown scan status", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id":"acc-1","name":"prod-aws","provider":"aws",` +
+				`"providerConfig":{"regions":["us-east-1"]},` +
+				`"scanStatus":{"id":"scan-1","status":"cancelled","resourceCount":7}}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.GetInsightsAccount(t.Context(), "acme", "prod-aws")
+		require.NoError(t, err)
+		assert.Equal(t, cloudapitype.WorkflowRunStatus("cancelled"), got.ScanStatus.Status)
+		assert.Equal(t, "scan-1", got.ScanStatus.ID)
+		assert.Equal(t, 7, got.ScanStatus.ResourceCount)
+		assert.JSONEq(t, `{"regions":["us-east-1"]}`, string(got.ProviderConfig.(json.RawMessage)))
+	})
+
 	t.Run("returns parsed account", func(t *testing.T) {
 		t.Parallel()
 
 		finished := time.Date(2026, 5, 13, 10, 0, 0, 0, time.UTC)
-		want := apitype.InsightsAccount{
+		want := cloudapitype.InsightsAccount{
 			ID:                   "acc-123",
 			Name:                 "prod-aws",
 			Provider:             "aws",
-			ProviderVersion:      "6.0.0",
-			ProviderEnvRef:       "infra/prod-aws-creds",
+			ProviderVersion:      "6.0.0", //nolint:staticcheck
+			Environment:          "infra/prod-aws-creds",
 			ScheduledScanEnabled: true,
 			AgentPoolID:          "pool-1",
 			ProviderConfig:       json.RawMessage(`{"regions":["us-east-1"]}`),
-			OwnedBy: apitype.InsightsAccountOwner{
+			OwnedBy: cloudapitype.UserInfo{
 				Name:        "Jane Doe",
 				GitHubLogin: "jdoe",
 				AvatarURL:   "https://example.com/avatar.png",
 			},
-			ScanStatus: &apitype.InsightsAccountScanStatus{
-				ID:            "scan-1",
-				OrgID:         "org-1",
-				UserID:        "user-1",
-				Status:        "succeeded",
+			ScanStatus: cloudapitype.ScanStatus{
+				WorkflowRun: cloudapitype.WorkflowRun{
+					ID:            "scan-1",
+					OrgID:         "org-1",
+					UserID:        "user-1",
+					Status:        "succeeded",
+					StartedAt:     time.Date(2026, 5, 13, 9, 30, 0, 0, time.UTC),
+					FinishedAt:    &finished,
+					LastUpdatedAt: finished,
+					JobTimeout:    time.Date(2026, 5, 13, 11, 30, 0, 0, time.UTC),
+				},
 				ResourceCount: 42,
-				StartedAt:     time.Date(2026, 5, 13, 9, 30, 0, 0, time.UTC),
-				FinishedAt:    &finished,
-				LastUpdatedAt: finished,
-				JobTimeout:    time.Date(2026, 5, 13, 11, 30, 0, 0, time.UTC),
 			},
 		}
 
@@ -886,7 +931,7 @@ func TestGetInsightsAccount(t *testing.T) {
 		// ProviderConfig is `json.RawMessage`, so the encoder may re-emit
 		// the bytes with normalized whitespace. Compare it semantically and
 		// the rest of the struct field-by-field.
-		assert.JSONEq(t, string(want.ProviderConfig), string(got.ProviderConfig))
+		assert.JSONEq(t, string(want.ProviderConfig.(json.RawMessage)), string(got.ProviderConfig.(json.RawMessage)))
 		want.ProviderConfig, got.ProviderConfig = nil, nil
 		assert.Equal(t, want, got)
 	})

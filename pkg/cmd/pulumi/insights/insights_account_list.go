@@ -26,6 +26,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
@@ -43,7 +44,7 @@ const listPageLimit = 1000
 type insightsAccountListClient interface {
 	ListInsightsAccounts(
 		ctx context.Context, org string, params apitype.ListInsightsAccountsParams,
-	) (apitype.ListInsightsAccountsResponse, error)
+	) (cloudapitype.ListInsightsAccountsResponse, error)
 }
 
 // accountListClientFactory resolves the cloud client and the effective org for
@@ -56,7 +57,7 @@ type accountListClientFactory func(
 // accountListRender is the function signature stored in the OutputFlag — one
 // per supported output format. Sharing the signature keeps the renderer table
 // in [defaultAccountListOutputFormat] readable.
-type accountListRender func(*insightsAccountListCmd, io.Writer, []apitype.InsightsAccount) error
+type accountListRender func(*insightsAccountListCmd, io.Writer, []cloudapitype.InsightsAccount) error
 
 // defaultAccountListOutputFormat wires the output flag up with every supported
 // format. Sharing this between the cobra constructor and the tests keeps the
@@ -172,7 +173,7 @@ func collectInsightsAccounts(
 	client insightsAccountListClient,
 	org string,
 	args insightsAccountListArgs,
-) ([]apitype.InsightsAccount, error) {
+) ([]cloudapitype.InsightsAccount, error) {
 	// Derive the two booleans the loop actually cares about.
 	limit := 0
 	exhaust := args.all
@@ -185,7 +186,7 @@ func collectInsightsAccounts(
 	}
 
 	var (
-		accounts []apitype.InsightsAccount
+		accounts []cloudapitype.InsightsAccount
 		cursor   string
 	)
 	for range listPageLimit {
@@ -218,7 +219,7 @@ func collectInsightsAccounts(
 // columns identify each row (Name/Provider/Owner) and surface the most useful
 // operational context (Scheduled Scan, Last Scan, Resources). The full record
 // is reachable via --output json.
-func (c *insightsAccountListCmd) renderTable(w io.Writer, accounts []apitype.InsightsAccount) error {
+func (c *insightsAccountListCmd) renderTable(w io.Writer, accounts []cloudapitype.InsightsAccount) error {
 	if len(accounts) == 0 {
 		fmt.Fprintln(w, "No accounts found.")
 		return nil
@@ -235,20 +236,17 @@ func (c *insightsAccountListCmd) renderTable(w io.Writer, accounts []apitype.Ins
 			scheduled = "yes"
 		}
 		lastScan, resources := "-", "-"
-		if account.ScanStatus != nil {
-			if account.ScanStatus.Status != "" {
-				lastScan = account.ScanStatus.Status
-				// Append the finish time when available — a stale "succeeded" is
-				// much less useful without the date attached.
-				if account.ScanStatus.FinishedAt != nil && !account.ScanStatus.FinishedAt.IsZero() {
-					lastScan = fmt.Sprintf("%s (%s)",
-						account.ScanStatus.Status,
-						account.ScanStatus.FinishedAt.UTC().Format("2006-01-02"))
-				}
+		scan := account.ScanStatus
+		if scan.Status != "" {
+			lastScan = string(scan.Status)
+			// Append the finish time when available — a stale "succeeded" is
+			// much less useful without the date attached.
+			if scan.FinishedAt != nil && !scan.FinishedAt.IsZero() {
+				lastScan = fmt.Sprintf("%s (%s)", scan.Status, scan.FinishedAt.UTC().Format("2006-01-02"))
 			}
-			if account.ScanStatus.ResourceCount > 0 {
-				resources = strconv.FormatInt(account.ScanStatus.ResourceCount, 10)
-			}
+		}
+		if scan.ResourceCount > 0 {
+			resources = strconv.Itoa(scan.ResourceCount)
 		}
 		t.AppendRow(table.Row{
 			account.Name,
@@ -264,17 +262,25 @@ func (c *insightsAccountListCmd) renderTable(w io.Writer, accounts []apitype.Ins
 }
 
 // renderJSON writes the accounts as a indented JSON
-func (c *insightsAccountListCmd) renderJSON(w io.Writer, accounts []apitype.InsightsAccount) error {
+func (c *insightsAccountListCmd) renderJSON(w io.Writer, accounts []cloudapitype.InsightsAccount) error {
 	// Make the JSON shape stable: an empty list serialises to `[]`, not `null`,
 	// so consumers can iterate without a nil-check.
 	if accounts == nil {
-		accounts = []apitype.InsightsAccount{}
+		accounts = []cloudapitype.InsightsAccount{}
+	}
+	views := make([]insightsAccountJSON, len(accounts))
+	for i, account := range accounts {
+		view, err := toInsightsAccountJSON(account)
+		if err != nil {
+			return err
+		}
+		views[i] = view
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(struct {
-		Accounts []apitype.InsightsAccount `json:"accounts"`
-	}{Accounts: accounts})
+		Accounts []insightsAccountJSON `json:"accounts"`
+	}{Accounts: views})
 }
 
 func defaultAccountListClientFactory(
