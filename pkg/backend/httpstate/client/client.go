@@ -3653,28 +3653,17 @@ func (pc *Client) ListInsightsAccounts(
 	return result, nil
 }
 
-// insightsAccountWire decodes an Insights account without the generated scan status validation, which rejects
-// statuses newer than this CLI; the raw status is kept so it can still be shown. The provider config is kept as raw
-// JSON so that it is shown exactly as the service sent it.
+// insightsAccountWire decodes an Insights account keeping the provider config as raw JSON, so that it is shown
+// exactly as the service sent it rather than re-ordered through a generic map.
 type insightsAccountWire struct {
 	cloudapitype.InsightsAccount
-	ScanStatus     *insightsScanStatusWire `json:"scanStatus"`
-	ProviderConfig json.RawMessage         `json:"providerConfig"`
-}
-
-type insightsScanStatusWire struct {
-	cloudapitype.ScanStatus
-	Status string `json:"status"`
+	ProviderConfig json.RawMessage `json:"providerConfig"`
 }
 
 func (w insightsAccountWire) toInsightsAccount() cloudapitype.InsightsAccount {
 	account := w.InsightsAccount
 	if len(w.ProviderConfig) > 0 {
 		account.ProviderConfig = w.ProviderConfig
-	}
-	if w.ScanStatus != nil {
-		account.ScanStatus = w.ScanStatus.ScanStatus
-		account.ScanStatus.Status = cloudapitype.WorkflowRunStatus(w.ScanStatus.Status)
 	}
 	return account
 }
