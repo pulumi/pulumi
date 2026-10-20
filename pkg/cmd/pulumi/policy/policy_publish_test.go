@@ -15,7 +15,9 @@
 package policy
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,8 +37,8 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 	t.Parallel()
 
 	mockPolicyPack := &backend.MockPolicyPack{
-		PublishF: func(ctx context.Context, opts backend.PublishOperation) error {
-			return nil
+		PublishF: func(ctx context.Context, opts backend.PublishOperation) (backend.PublishResult, error) {
+			return backend.PublishResult{}, nil
 		},
 	}
 
@@ -79,8 +81,8 @@ func TestPolicyPublishCmd_orgNamePassedIn(t *testing.T) {
 	t.Parallel()
 
 	mockPolicyPack := &backend.MockPolicyPack{
-		PublishF: func(ctx context.Context, opts backend.PublishOperation) error {
-			return nil
+		PublishF: func(ctx context.Context, opts backend.PublishOperation) (backend.PublishResult, error) {
+			return backend.PublishResult{}, nil
 		},
 	}
 
@@ -142,9 +144,9 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 	var metadata map[string]string
 
 	mockPolicyPack := &backend.MockPolicyPack{
-		PublishF: func(ctx context.Context, opts backend.PublishOperation) error {
+		PublishF: func(ctx context.Context, opts backend.PublishOperation) (backend.PublishResult, error) {
 			metadata = opts.Metadata
-			return nil
+			return backend.PublishResult{}, nil
 		},
 	}
 
@@ -192,4 +194,81 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 	assertEnvValue(metadata, backend.GitCommitterEmail, "repo-user@example.com")
 	assertEnvValue(metadata, backend.GitAuthor, "repo-user")
 	assertEnvValue(metadata, backend.GitAuthorEmail, "repo-user@example.com")
+}
+
+func publishTestLoginManager(t *testing.T, pack backend.PolicyPack) *cmdBackend.MockLoginManager {
+	t.Helper()
+	return &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			ctx context.Context,
+			ws pkgWorkspace.Context,
+			sink diag.Sink,
+			url string,
+			project *workspace.Project,
+			setCurrent bool,
+		) (backend.Backend, error) {
+			return &backend.MockBackend{
+				GetPolicyPackF: func(ctx context.Context, name string, d diag.Sink) (backend.PolicyPack, error) {
+					return pack, nil
+				},
+				GetDefaultOrgF: func(ctx context.Context) (string, error) {
+					return "org1", nil
+				},
+			}, nil
+		},
+	}
+}
+
+func testdataGetwd() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(cwd, "testdata"), nil
+}
+
+func TestPolicyPublish_JSONOutputIsPureJSON(t *testing.T) {
+	t.Parallel()
+
+	pack := &backend.MockPolicyPack{
+		PublishF: func(ctx context.Context, op backend.PublishOperation) (backend.PublishResult, error) {
+			_, err := op.Progress.Write([]byte("Obtaining policy metadata from policy plugin\n"))
+			require.NoError(t, err)
+			return backend.PublishResult{
+				Name:       "pack",
+				VersionTag: "1.2.0",
+				URL:        "https://app.pulumi.com/org1/insights/policypacks/pack/1.2.0",
+			}, nil
+		},
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd := policyPublishCmd{getwd: testdataGetwd, stdout: &stdout, stderr: &stderr, json: true}
+	require.NoError(t, cmd.Run(t.Context(), publishTestLoginManager(t, pack), []string{}))
+
+	var got policyPublishJSON
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &got))
+	assert.Equal(t, policyPublishJSON{
+		Organization: "org1",
+		Name:         "pack",
+		VersionTag:   "1.2.0",
+		URL:          "https://app.pulumi.com/org1/insights/policypacks/pack/1.2.0",
+	}, got)
+	assert.Contains(t, stderr.String(), "Obtaining policy metadata from policy plugin")
+}
+
+func TestPolicyPublish_DefaultProgressOnStdout(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	pack := &backend.MockPolicyPack{
+		PublishF: func(ctx context.Context, op backend.PublishOperation) (backend.PublishResult, error) {
+			assert.Same(t, &stdout, op.Progress)
+			return backend.PublishResult{}, nil
+		},
+	}
+
+	cmd := policyPublishCmd{getwd: testdataGetwd, stdout: &stdout, stderr: &stderr}
+	require.NoError(t, cmd.Run(t.Context(), publishTestLoginManager(t, pack), []string{"org1"}))
+	assert.Empty(t, stdout.String())
 }
