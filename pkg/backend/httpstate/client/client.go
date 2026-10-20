@@ -1938,47 +1938,61 @@ func (pc *Client) RemoveOrganizationMember(ctx context.Context, orgName, userLog
 	return nil
 }
 
-// ListPolicyIssuesOptions are the optional pagination parameters accepted by
-// ListPolicyIssues. Zero values mean "let the server pick the default":
-// Page < 1 → 1, PageSize ≤ 0 → server default, Asc false → descending order.
-// ListPolicyIssuesOptions configures the policy issues list request.
-type ListPolicyIssuesOptions struct {
-	// StartRow is the 0-based offset of the first result.
-	StartRow int
-	// EndRow is the exclusive upper bound (startRow + pageSize).
-	EndRow int
-}
-
 // ListPolicyIssues returns a paginated list of policy issues for the given
 // organization, wrapping the `ListPolicyIssues` Pulumi Cloud REST endpoint
 // (POST /api/orgs/{orgName}/policyresults/issues). The endpoint uses POST
 // because the request body carries pagination parameters in an AngularGrid
 // format.
 func (pc *Client) ListPolicyIssues(
-	ctx context.Context, orgName string, opts ListPolicyIssuesOptions,
-) (apitype.ListPolicyIssuesResponse, error) {
-	req := apitype.ListPolicyIssuesRequest{
-		StartRow: opts.StartRow,
-		EndRow:   opts.EndRow,
-	}
+	ctx context.Context, orgName string, req cloudapitype.AngularGridGetRowsRequest,
+) (cloudapitype.ListPolicyIssuesResponse, error) {
+	// Send startRow and endRow even when zero; the generated type omits them.
+	body := struct {
+		cloudapitype.AngularGridGetRowsRequest
+		StartRow int `json:"startRow"`
+		EndRow   int `json:"endRow"`
+	}{req, req.StartRow, req.EndRow}
 	path := fmt.Sprintf("/api/orgs/%s/policyresults/issues", url.PathEscape(orgName))
 
-	var resp apitype.ListPolicyIssuesResponse
-	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
-		return apitype.ListPolicyIssuesResponse{}, fmt.Errorf("listing policy issues: %w", err)
+	var resp struct {
+		cloudapitype.ListPolicyIssuesResponse
+		PolicyIssues []policyIssueWire `json:"policyIssues"`
 	}
-	return resp, nil
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, body, &resp); err != nil {
+		return cloudapitype.ListPolicyIssuesResponse{}, fmt.Errorf("listing policy issues: %w", err)
+	}
+	result := resp.ListPolicyIssuesResponse
+	if resp.PolicyIssues != nil {
+		result.PolicyIssues = make([]cloudapitype.PolicyIssue, len(resp.PolicyIssues))
+		for i, issue := range resp.PolicyIssues {
+			result.PolicyIssues[i] = issue.toPolicyIssue()
+		}
+	}
+	return result, nil
+}
+
+// policyIssueWire decodes a policy issue without the generated Kind validation, which rejects kinds newer than this
+// CLI; the raw kind is kept so it can still be shown.
+type policyIssueWire struct {
+	cloudapitype.PolicyIssue
+	Kind string `json:"kind"`
+}
+
+func (w policyIssueWire) toPolicyIssue() cloudapitype.PolicyIssue {
+	issue := w.PolicyIssue
+	issue.Kind = cloudapitype.PolicyIssueKind(w.Kind)
+	return issue
 }
 
 // GetPolicyComplianceResults returns compliance results for policy issues
 // grouped by entity.
 func (pc *Client) GetPolicyComplianceResults(
-	ctx context.Context, orgName string, req apitype.GetPolicyComplianceResultsRequest,
-) (apitype.GetPolicyComplianceResultsResponse, error) {
+	ctx context.Context, orgName string, req cloudapitype.GetPolicyComplianceResultsRequest,
+) (cloudapitype.GetPolicyComplianceResultsResponse, error) {
 	path := fmt.Sprintf("/api/orgs/%s/policyresults/compliance", url.PathEscape(orgName))
-	var resp apitype.GetPolicyComplianceResultsResponse
+	var resp cloudapitype.GetPolicyComplianceResultsResponse
 	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
-		return apitype.GetPolicyComplianceResultsResponse{},
+		return cloudapitype.GetPolicyComplianceResultsResponse{},
 			fmt.Errorf("getting policy compliance results: %w", err)
 	}
 	return resp, nil
@@ -1989,16 +2003,18 @@ func (pc *Client) GetPolicyComplianceResults(
 // (GET /api/orgs/{orgName}/policyresults/issues/{issueId}).
 func (pc *Client) GetPolicyIssue(
 	ctx context.Context, orgName, issueID string,
-) (apitype.PolicyIssue, error) {
+) (cloudapitype.PolicyIssue, error) {
 	path := fmt.Sprintf(
 		"/api/orgs/%s/policyresults/issues/%s",
 		url.PathEscape(orgName), url.PathEscape(issueID))
 
-	var resp apitype.GetPolicyIssueResponse
-	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
-		return apitype.PolicyIssue{}, fmt.Errorf("getting policy issue: %w", err)
+	var resp struct {
+		PolicyIssue policyIssueWire `json:"policyIssue"`
 	}
-	return resp.PolicyIssue, nil
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return cloudapitype.PolicyIssue{}, fmt.Errorf("getting policy issue: %w", err)
+	}
+	return resp.PolicyIssue.toPolicyIssue(), nil
 }
 
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.

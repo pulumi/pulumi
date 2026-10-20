@@ -22,8 +22,6 @@ import (
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 func pinRawJSONPtr(s string) *json.RawMessage {
@@ -93,32 +91,32 @@ func pinGroupMinimal() cloudapitype.PolicyGroup {
 	}
 }
 
-func pinIssueFull() apitype.PolicyIssue {
-	return apitype.PolicyIssue{
+func pinIssueFull() cloudapitype.PolicyIssue {
+	return cloudapitype.PolicyIssue{
 		ID:               "issue-1",
-		EntityType:       "stack",
+		EntityType:       cloudapitype.IssueEntityTypeStack,
 		EntityProject:    "web",
 		EntityID:         "prod",
 		PolicyPack:       "aws-guardrails",
 		PolicyPackTag:    "3.1.0",
 		PolicyName:       "s3-no-public",
 		Level:            "mandatory",
-		Severity:         apitype.PolicySeverityCritical,
+		Severity:         cloudapitype.AppPolicySeverityCritical,
 		ResourceURN:      "urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets",
 		ResourceProvider: "aws",
 		ResourceType:     "aws:s3/bucket:Bucket",
 		ResourceName:     "assets",
 		Message:          "Bucket must not allow public access & <must> be \"private\".",
-		ObservedAt:       "2026-03-04T05:06:07.123456Z",
-		LastModified:     "2026-03-05T06:07:08.5Z",
-		Status:           "open",
-		Kind:             "audit",
+		ObservedAt:       mustParseTime("2026-03-04T05:06:07.123456Z"),
+		LastModified:     mustParseTime("2026-03-05T06:07:08.5Z"),
+		Status:           cloudapitype.PolicyIssueStatusOpen,
+		Kind:             cloudapitype.PolicyIssueKindAudit,
 		Priority:         "P1",
 	}
 }
 
-func pinIssueMinimal() apitype.PolicyIssue {
-	return apitype.PolicyIssue{
+func pinIssueMinimal() cloudapitype.PolicyIssue {
+	return cloudapitype.PolicyIssue{
 		ID:         "issue-2",
 		PolicyPack: "tagging",
 		PolicyName: "require-owner",
@@ -142,8 +140,8 @@ func pinComplianceColumns() []string {
 	return []string{"default-policy-group", "audit-accounts", "aws-guardrails"}
 }
 
-func pinComplianceRows() []apitype.PolicyComplianceResult {
-	return []apitype.PolicyComplianceResult{
+func pinComplianceRows() []cloudapitype.PolicyComplianceResult {
+	return []cloudapitype.PolicyComplianceResult{
 		{EntityName: "web/prod", Scores: []int{100, 85, -1}},
 		{EntityName: "web/dev", Scores: []int{0, -2, 50}},
 	}
@@ -437,9 +435,9 @@ func TestPin_PolicyGroupRemove_Table(t *testing.T) {
 
 func TestPin_PolicyIssueList_JSON_Full(t *testing.T) {
 	t.Parallel()
-	resp := apitype.ListPolicyIssuesResponse{
-		Issues: []apitype.PolicyIssue{pinIssueFull(), pinIssueMinimal()},
-		Total:  250,
+	resp := cloudapitype.ListPolicyIssuesResponse{
+		PolicyIssues: []cloudapitype.PolicyIssue{pinIssueFull(), pinIssueMinimal()},
+		RowCount:     new(250),
 	}
 	got := renderPin(t, func(w *bytes.Buffer) error { return renderPolicyIssueListJSON(w, resp) })
 	assert.JSONEq(t, `{
@@ -480,7 +478,7 @@ func TestPin_PolicyIssueList_JSON_Full(t *testing.T) {
 func TestPin_PolicyIssueList_JSON_Minimal(t *testing.T) {
 	t.Parallel()
 	got := renderPin(t, func(w *bytes.Buffer) error {
-		return renderPolicyIssueListJSON(w, apitype.ListPolicyIssuesResponse{})
+		return renderPolicyIssueListJSON(w, cloudapitype.ListPolicyIssuesResponse{})
 	})
 	assert.JSONEq(t, `{
   "issues": [],
@@ -491,9 +489,9 @@ func TestPin_PolicyIssueList_JSON_Minimal(t *testing.T) {
 
 func TestPin_PolicyIssueList_Table(t *testing.T) {
 	t.Parallel()
-	resp := apitype.ListPolicyIssuesResponse{
-		Issues: []apitype.PolicyIssue{pinIssueFull(), pinIssueMinimal()},
-		Total:  250,
+	resp := cloudapitype.ListPolicyIssuesResponse{
+		PolicyIssues: []cloudapitype.PolicyIssue{pinIssueFull(), pinIssueMinimal()},
+		RowCount:     new(250),
 	}
 	got := renderPin(t, func(w *bytes.Buffer) error { return renderPolicyIssueListTable(w, resp) })
 	assert.Equal(t, ""+

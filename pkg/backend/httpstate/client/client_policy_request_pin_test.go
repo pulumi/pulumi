@@ -199,12 +199,17 @@ func TestPin_ListPolicyIssues_Body(t *testing.T) {
 
 	var got capturedRequest
 	c := newCapturingClient(t, &got)
-	_, err := c.ListPolicyIssues(t.Context(), "acme", ListPolicyIssuesOptions{StartRow: 100, EndRow: 200})
+	_, err := c.ListPolicyIssues(t.Context(), "acme", cloudapitype.AngularGridGetRowsRequest{
+		StartRow: 100,
+		EndRow:   200,
+	})
 	require.NoError(t, err)
 
 	assert.Equal(t, http.MethodPost, got.method)
 	assert.Equal(t, "/api/orgs/acme/policyresults/issues", got.path)
-	assert.JSONEq(t, `{"startRow": 100, "endRow": 200, "sortModel": null}`, got.body)
+	assert.JSONEq(t, `{
+		"startRow": 100, "endRow": 200, "sortModel": null,
+		"rowGroupCols": null, "valueCols": null, "groupKeys": null, "filterModel": null}`, got.body)
 }
 
 func TestPin_GetPolicyComplianceResults_Body(t *testing.T) {
@@ -214,8 +219,8 @@ func TestPin_GetPolicyComplianceResults_Body(t *testing.T) {
 	c := newCapturingClient(t, &got)
 	size := 50
 	token := "next-page-token"
-	_, err := c.GetPolicyComplianceResults(t.Context(), "acme", apitype.GetPolicyComplianceResultsRequest{
-		Entity:            "stack",
+	_, err := c.GetPolicyComplianceResults(t.Context(), "acme", cloudapitype.GetPolicyComplianceResultsRequest{
+		Entity:            cloudapitype.PolicyComplianceEntityTypeStack,
 		Size:              &size,
 		ContinuationToken: &token,
 	})

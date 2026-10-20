@@ -17,9 +17,12 @@ package policy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -29,7 +32,7 @@ import (
 // mockPolicyIssueGetClient stubs policyIssueGetClient. It returns a fixed
 // response (or error) and records the arguments it was called with.
 type mockPolicyIssueGetClient struct {
-	resp       apitype.PolicyIssue
+	resp       cloudapitype.PolicyIssue
 	err        error
 	gotOrg     string
 	gotIssueID string
@@ -37,11 +40,11 @@ type mockPolicyIssueGetClient struct {
 
 func (m *mockPolicyIssueGetClient) GetPolicyIssue(
 	_ context.Context, org, issueID string,
-) (apitype.PolicyIssue, error) {
+) (cloudapitype.PolicyIssue, error) {
 	m.gotOrg = org
 	m.gotIssueID = issueID
 	if m.err != nil {
-		return apitype.PolicyIssue{}, m.err
+		return cloudapitype.PolicyIssue{}, m.err
 	}
 	return m.resp, nil
 }
@@ -58,20 +61,20 @@ func failingPolicyIssueGetFactory(err error) policyIssueGetClientFactory {
 	}
 }
 
-func samplePolicyIssue() apitype.PolicyIssue {
-	return apitype.PolicyIssue{
+func samplePolicyIssue() cloudapitype.PolicyIssue {
+	return cloudapitype.PolicyIssue{
 		ID:            "issue-1",
 		PolicyName:    "no-public-buckets",
 		PolicyPack:    "aws-guardrails",
 		PolicyPackTag: "1.2.0",
 		Level:         string(apitype.Mandatory),
-		Severity:      apitype.PolicySeverityHigh,
+		Severity:      cloudapitype.AppPolicySeverityHigh,
 		ResourceURN:   "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
 		ResourceType:  "aws:s3/bucket:Bucket",
 		EntityID:      "prod",
 		EntityProject: "web",
 		Message:       "S3 bucket must not allow public access",
-		ObservedAt:    "2026-05-01T12:00:00Z",
+		ObservedAt:    mustParseTime("2026-05-01T12:00:00Z"),
 	}
 }
 
@@ -148,4 +151,55 @@ func TestPolicyIssueGet_FactoryError(t *testing.T) {
 		"issue-1", policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
+}
+
+func runPolicyIssueGetAgainstServer(t *testing.T, issueJSON string, args policyIssueGetArgs) string {
+	t.Helper()
+	c := newPolicyIssueServerClient(t, func(*http.Request) string {
+		return `{"policyIssue": ` + issueJSON + `}`
+	})
+	buf := &bytes.Buffer{}
+	require.NoError(t, runPolicyIssueGet(t.Context(), buf, stubPolicyIssueGetFactory(c, "acme"), "issue-1", args))
+	return buf.String()
+}
+
+func TestPolicyIssueGet_UnknownEnumValues(t *testing.T) {
+	t.Parallel()
+
+	jsonArgs := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
+	require.NoError(t, jsonArgs.outputFormat.Set("json"))
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(runPolicyIssueGetAgainstServer(t, unknownEnumIssueJSON, jsonArgs)), &got))
+	assert.Equal(t, "future_status", got["status"])
+	assert.Equal(t, "future", got["severity"])
+
+	text := runPolicyIssueGetAgainstServer(t, unknownEnumIssueJSON,
+		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
+	assert.Contains(t, text, "Severity:            future\n")
+	assert.Contains(t, text, "Status:              future_status\n")
+}
+
+func TestPolicyIssueGet_Timestamps(t *testing.T) {
+	t.Parallel()
+
+	jsonArgs := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
+	require.NoError(t, jsonArgs.outputFormat.Set("json"))
+	out := runPolicyIssueGetAgainstServer(t, fractionalTimestampIssueJSON, jsonArgs)
+	assert.Contains(t, out, `"observedAt": "2026-10-01T12:34:56.789123Z"`)
+	assert.NotContains(t, out, "lastModified")
+
+	text := runPolicyIssueGetAgainstServer(t, fractionalTimestampIssueJSON,
+		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
+	assert.Equal(t, `ID:                  issue-1
+Policy pack:         aws-guardrails@3.1.0
+Policy:              s3-no-public
+Enforcement level:   mandatory
+Severity:            critical
+Status:              open
+Stack:               web/prod
+Resource URN:        urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets
+Resource type:       aws:s3/bucket:Bucket
+Observed at:         2026-10-01T12:34:56.789123Z
+Message:             Bucket must not allow public access & <must> be "private".
+`, text)
 }

@@ -25,6 +25,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -34,15 +35,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type complianceListClient interface {
 	GetPolicyComplianceResults(
-		ctx context.Context, orgName string, req apitype.GetPolicyComplianceResultsRequest,
-	) (apitype.GetPolicyComplianceResultsResponse, error)
+		ctx context.Context, orgName string, req cloudapitype.GetPolicyComplianceResultsRequest,
+	) (cloudapitype.GetPolicyComplianceResultsResponse, error)
 }
 
 type complianceListClientFactory func(
@@ -51,7 +51,7 @@ type complianceListClientFactory func(
 
 type complianceListRender func(
 	cmd *complianceListCmd,
-	columns []string, rows []apitype.PolicyComplianceResult,
+	columns []string, rows []cloudapitype.PolicyComplianceResult,
 ) error
 
 var validGroupByValues = []string{"stack", "account", "severity"}
@@ -167,7 +167,7 @@ func (c *complianceListCmd) run(ctx context.Context, factory complianceListClien
 	}
 
 	// Fetch all pages.
-	var allRows []apitype.PolicyComplianceResult
+	var allRows []cloudapitype.PolicyComplianceResult
 	var columns []string
 	var continuationToken *string
 
@@ -179,8 +179,8 @@ func (c *complianceListCmd) run(ctx context.Context, factory complianceListClien
 		size := pageSize
 
 		resp, err := cl.GetPolicyComplianceResults(ctx, org,
-			apitype.GetPolicyComplianceResultsRequest{
-				Entity:            c.groupBy,
+			cloudapitype.GetPolicyComplianceResultsRequest{
+				Entity:            cloudapitype.PolicyComplianceEntityType(c.groupBy),
 				ContinuationToken: continuationToken,
 				Size:              &size,
 			})
@@ -216,7 +216,7 @@ func scoreString(score int) string {
 }
 
 func (c *complianceListCmd) renderTable(
-	columns []string, rows []apitype.PolicyComplianceResult,
+	columns []string, rows []cloudapitype.PolicyComplianceResult,
 ) error {
 	if len(rows) == 0 {
 		fmt.Fprintln(c.w, "No compliance results found.")
@@ -264,7 +264,7 @@ type complianceJSONRow struct {
 }
 
 func (c *complianceListCmd) renderJSON(
-	columns []string, rows []apitype.PolicyComplianceResult,
+	columns []string, rows []cloudapitype.PolicyComplianceResult,
 ) error {
 	jsonRows := make([]complianceJSONRow, 0, len(rows))
 	for _, row := range rows {
