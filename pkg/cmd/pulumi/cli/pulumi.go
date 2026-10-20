@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cli
 
 import (
 	"bytes"
@@ -34,6 +34,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -67,7 +68,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
@@ -203,9 +203,24 @@ func parseRootPersistentFlags(rootPersistent *pflag.FlagSet, args []string) {
 	_ = pf.Parse(args)
 }
 
+// Options configures a root command hosted in another process.
+type Options struct {
+	// Embedded skips process-wide logging, tracing, and update-check initialization.
+	// Embedded commands must be serialized; cleanup restores their process-global flag values.
+	Embedded   bool
+	Operations operations.CommandOptions
+	AICommands []*cobra.Command
+}
+
 // NewPulumiCmd creates a new Pulumi Cmd instance.
-func NewPulumiCmd() (*cobra.Command, func()) {
-	var cwd string
+func NewPulumiCmd(options ...Options) (*cobra.Command, func()) {
+	var opts Options
+	if len(options) > 0 {
+		opts = options[0]
+	}
+	oldEmoji, oldQualified := cmdutil.Emoji, cmdutil.FullyQualifyStackNames
+	oldInteractive, oldIntegrity := cmdutil.DisableInteractive, backend.DisableIntegrityChecking
+	var cwd, originalCwd string
 	var logFlow bool
 	var logToStderr bool
 	var tracingFlag string
@@ -224,6 +239,14 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 	var cmd *cobra.Command
 	cleanup := func() {
+		if opts.Embedded {
+			if originalCwd != "" {
+				_ = os.Chdir(originalCwd)
+			}
+			cmdutil.Emoji, cmdutil.FullyQualifyStackNames = oldEmoji, oldQualified
+			cmdutil.DisableInteractive, backend.DisableIntegrityChecking = oldInteractive, oldIntegrity
+			return
+		}
 		// Logger.Close is a no-op when autoLogger is nil.
 		if err := autoLogger.Close(); err != nil {
 			slog.Info("automatic log close error", "err", err)
@@ -255,7 +278,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 	// We run this method for its side-effects. On windows, this will enable the windows terminal
 	// to understand ANSI escape codes.
-	_, _, _ = term.StdStreams()
+	if !opts.Embedded {
+		_, _, _ = term.StdStreams()
+	}
 
 	cmd = &cobra.Command{
 		Use:           "pulumi",
@@ -280,6 +305,21 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			"\n" +
 			"For more information, please visit the project page: https://www.pulumi.com/docs/",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if opts.Embedded {
+				if cwd != "" {
+					var err error
+					originalCwd, err = os.Getwd()
+					if err != nil {
+						return err
+					}
+					if err := os.Chdir(cwd); err != nil {
+						return err
+					}
+				}
+				ctx := httpstate.ContextWithAgentCredentialUse(cmd.Context())
+				cmd.SetContext(httpstate.ContextWithCommandName(ctx, cmd.CommandPath()))
+				return nil
+			}
 			// If we fail before we start the async update check, go ahead and close the
 			// channel since we know it will never receive a value.
 			var waitForUpdateCheck bool
@@ -423,6 +463,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			if opts.Embedded {
+				return
+			}
 			agentauth.MaybePrintClaimWarning(cmd.Context(), cmd.ErrOrStderr())
 
 			// Before exiting, if there is a new version of the CLI available, print it out.
@@ -494,9 +537,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Deployment Commands",
 			Commands: []*cobra.Command{
-				operations.NewUpCmd(),
+				operations.NewUpCmdWithOptions(opts.Operations),
 				operations.NewDestroyCmd(),
-				operations.NewPreviewCmd(),
+				operations.NewPreviewCmdWithOptions(opts.Operations),
 				cancel.NewCancelCmd(pkgWorkspace.Instance),
 			},
 		},
@@ -576,10 +619,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			},
 		},
 		{
-			Name: "AI Commands",
-			Commands: []*cobra.Command{
-				neo.NewNeoCmd(),
-			},
+			Name:     "AI Commands",
+			Commands: opts.AICommands,
 		},
 	})
 
@@ -1098,6 +1139,11 @@ func isDevVersion(s semver.Version) bool {
 	return !s.Pre[0].IsNum && devRegex.MatchString(s.Pre[0].VersionStr)
 }
 
+var flagEnvironment = struct {
+	sync.Mutex
+	values map[[3]string]declared.Value
+}{values: map[[3]string]declared.Value{}}
+
 // We want to expose all the flags on all the commands as configurable with
 // environment variables. To do this, we walk the Cobra command tree, and
 // declare an environment variable for each flag. Because the Cobra arguments
@@ -1114,15 +1160,21 @@ func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 	exposeAsEnvironmentVariable := func(f *pflag.Flag) {
 		name := convertToEnvironmentVariable(f.Name)
 
-		var env declared.Value
-		switch f.Value.Type() {
-		case "int", "int32":
-			env = declared.Int(name, f.Usage)
-		case "bool":
-			env = declared.Bool(name, f.Usage)
-		default:
-			env = declared.String(name, f.Usage)
+		flagEnvironment.Lock()
+		key := [3]string{name, f.Value.Type(), f.Usage}
+		env, exists := flagEnvironment.values[key]
+		if !exists {
+			switch f.Value.Type() {
+			case "int", "int32":
+				env = declared.Int(name, f.Usage)
+			case "bool":
+				env = declared.Bool(name, f.Usage)
+			default:
+				env = declared.String(name, f.Usage)
+			}
+			flagEnvironment.values[key] = env
 		}
+		flagEnvironment.Unlock()
 
 		value, present := env.Underlying()
 		if f.Changed || !present {
@@ -1146,13 +1198,8 @@ func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 			for _, v := range csv {
 				_ = f.Value.Set(v)
 			}
-		case "string", "int":
-			_ = f.Value.Set(value)
 		default:
-			// Hello! If you're reading this, you've found a new CLI type and we don't
-			// know how to express it as an environment variable. Please add a case
-			// above to handle it.
-			panic("unexpected CLI type: " + f.Value.Type())
+			_ = f.Value.Set(value)
 		}
 
 		f.Changed = true

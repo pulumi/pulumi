@@ -304,6 +304,12 @@ func buildImportFile(
 }
 
 func NewPreviewCmd() *cobra.Command {
+	return NewPreviewCmdWithOptions(CommandOptions{})
+}
+
+// NewPreviewCmdWithOptions creates the command with an embedded operation executor.
+func NewPreviewCmdWithOptions(options CommandOptions) *cobra.Command {
+	commandOpts := commandOptions(options)
 	var debug bool
 	var expectNop bool
 	var message string
@@ -376,7 +382,7 @@ func NewPreviewCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
+			ws := commandOpts.Workspace
 
 			var proj *workspace.Project
 			var root string
@@ -613,7 +619,7 @@ func NewPreviewCmd() *cobra.Command {
 				maps.Copy(m.Environment, metadata)
 			}
 
-			plan, changes, res := backend.PreviewStack(ctx, s, backend.UpdateOperation{
+			plan, changes, res := commandOpts.Run(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -623,7 +629,7 @@ func NewPreviewCmd() *cobra.Command {
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
-			}, events)
+			}, events, true)
 			// If we made an events channel then we need to close it to trigger the exit of the import goroutine above.
 			// The engine doesn't close the channel for us, but once its returned here we know it won't append any more
 			// events.

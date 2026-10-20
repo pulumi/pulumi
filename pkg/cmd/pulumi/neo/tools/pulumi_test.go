@@ -19,7 +19,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -28,8 +30,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -428,7 +429,7 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, resolved, "freshly resolved backend was never consulted")
 	assert.Equal(t, "live-token", capturedToken)
-	assertFailedResult(t, value, "parsing stack reference")
+	assertFailedResult(t, value, "stop after resolution")
 	// The injected env var is restored after the call.
 	_, present := os.LookupEnv("PULUMI_ACCESS_TOKEN")
 	assert.False(t, present, "PULUMI_ACCESS_TOKEN should be restored after the tool call")
@@ -485,12 +486,12 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 			value, err := p.Invoke(t.Context(), method, args)
 			require.Error(t, err)
 			assert.True(t, resolved, "backend was not resolved via CurrentBackend")
-			assertFailedResult(t, value, "parsing stack reference")
+			assertFailedResult(t, value, "stop after resolution")
 		})
 	}
 }
 
-func TestPulumi_Run_PreviewRefresh(t *testing.T) {
+func TestPulumi_Run_CLIOptions(t *testing.T) {
 	plain := func(value string) *envVal { return &envVal{Plain: value} }
 	for _, tt := range []struct {
 		name           string
@@ -498,10 +499,58 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 		value          *envVal
 		ambient        string
 		projectOptions *workspace.ProjectOptions
+		runProgram     *envVal
+		runAmbient     string
+		wantRunProgram bool
 		wantRefresh    bool
 		wantError      bool
+		secretError    bool
+		missingStack   bool
+		extra          map[string]envVal
+		wantParallel   int32
+		wantTargets    []resource.URN
+		wantDependents bool
+		importFile     bool
+		cancel         bool
 	}{
 		{name: "default"},
+		{name: "preview missing stack", missingStack: true, wantError: true},
+		{name: "up missing stack", method: "pulumi_up", missingStack: true, wantError: true},
+		{
+			name: "CLI validation redacts secret option", wantError: true, secretError: true,
+			extra: map[string]envVal{"PULUMI_OPTION_OUTPUT": {Secret: "private-option-value"}},
+		},
+		{name: "preview forwards CLI options", extra: map[string]envVal{
+			"PULUMI_OPTION_PARALLEL": {Plain: "7"},
+			"PULUMI_OPTION_TARGET": {Plain: "urn:pulumi:dev::p::test:index:Resource::first," +
+				"urn:pulumi:dev::p::test:index:Resource::second"},
+			"PULUMI_OPTION_TARGET_DEPENDENTS": {Plain: "true"},
+		}, wantParallel: 7, wantDependents: true, wantTargets: []resource.URN{
+			"urn:pulumi:dev::p::test:index:Resource::first", "urn:pulumi:dev::p::test:index:Resource::second",
+		}},
+		{name: "up forwards CLI options", method: "pulumi_up", extra: map[string]envVal{
+			"PULUMI_OPTION_PARALLEL":          {Plain: "5"},
+			"PULUMI_OPTION_TARGET_DEPENDENTS": {Plain: "true"},
+		}, wantParallel: 5, wantDependents: true},
+		{name: "preview import file and tool events", importFile: true},
+		{name: "preview cancellation", cancel: true},
+		{name: "up cancellation", method: "pulumi_up", cancel: true},
+		{
+			name: "run program with refresh", value: plain("true"), runProgram: plain("true"),
+			wantRefresh: true, wantRunProgram: true,
+		},
+		{name: "run program false", value: plain("true"), runProgram: plain("false"), wantRefresh: true},
+		{name: "run program without refresh", runProgram: plain("true"), wantRunProgram: true},
+		{name: "run program one", runProgram: plain("1"), wantRunProgram: true},
+		{name: "run program zero", runProgram: plain("0")},
+		{name: "run program empty", runProgram: plain("")},
+		{name: "run program secret", runProgram: &envVal{Secret: "true"}, wantRunProgram: true},
+		{name: "run program ambient", runAmbient: "true", wantRunProgram: true},
+		{name: "run program override ambient", runAmbient: "true", runProgram: plain("false")},
+		{name: "run program invalid uses CLI default", runProgram: plain("invalid-run-value")},
+		{name: "run program invalid secret uses CLI default", runProgram: &envVal{Secret: "secret-run-value"}},
+		{name: "up run program", method: "pulumi_up", runProgram: plain("true"), wantRunProgram: true},
+		{name: "up ignores invalid run program", method: "pulumi_up", runProgram: plain("invalid-run-value")},
 		{name: "true", value: plain("true"), wantRefresh: true},
 		{name: "false", value: plain("false")},
 		{name: "one", value: plain("1"), wantRefresh: true},
@@ -520,12 +569,16 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 		},
 		{name: "invalid", value: plain("invalid-refresh-value"), wantError: true},
 		{name: "invalid secret", value: &envVal{Secret: "secret-refresh-value"}, wantError: true},
-		{name: "up ignores option", method: "pulumi_up", value: plain("true")},
-		{name: "up ignores invalid", method: "pulumi_up", value: plain("invalid-refresh-value")},
-		{name: "up ignores project", method: "pulumi_up", projectOptions: &workspace.ProjectOptions{Refresh: "always"}},
+		{name: "up refresh", method: "pulumi_up", value: plain("true"), wantRefresh: true},
+		{name: "up invalid refresh", method: "pulumi_up", value: plain("invalid-refresh-value"), wantError: true},
+		{
+			name: "up project refresh", method: "pulumi_up",
+			projectOptions: &workspace.ProjectOptions{Refresh: "always"}, wantRefresh: true,
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PULUMI_OPTION_REFRESH", tt.ambient)
+			t.Setenv("PULUMI_OPTION_RUN_PROGRAM", tt.runAmbient)
 			t.Setenv("PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER", "false")
 			dir := newProjectDir(t)
 			beforeDir, err := os.Getwd()
@@ -534,7 +587,7 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 				NameV:               tokens.MustParseStackName("dev"),
 				FullyQualifiedNameV: "organization/p/dev",
 			}
-			be := &backend.MockBackend{}
+			be := &eventBackend{MockBackend: &backend.MockBackend{}}
 			stk := &backend.MockStack{
 				RefF:     func() backend.StackReference { return ref },
 				BackendF: func() backend.Backend { return be },
@@ -542,21 +595,39 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 					return b64.NewBase64SecretsManager(), nil
 				},
 			}
-			be.ParseStackReferenceF = func(string) (backend.StackReference, error) { return ref, nil }
-			be.GetStackF = func(context.Context, backend.StackReference) (backend.Stack, error) { return stk, nil }
+			be.ParseStackReferenceF = func(name string) (backend.StackReference, error) {
+				assert.Equal(t, "dev", name)
+				return ref, nil
+			}
+			be.GetStackF = func(context.Context, backend.StackReference) (backend.Stack, error) {
+				if tt.missingStack {
+					return nil, nil
+				}
+				return stk, nil
+			}
 			var invoked string
 			var options backend.UpdateOptions
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
 			be.PreviewF = func(_ context.Context, _ backend.Stack, op backend.UpdateOperation) (
 				*deploy.Plan, display.ResourceChanges, error,
 			) {
 				invoked, options = "pulumi_preview", op.Opts
-				return nil, nil, nil
+				if tt.cancel {
+					cancel()
+					return nil, nil, ctx.Err()
+				}
+				return nil, display.ResourceChanges{deploy.OpUpdate: 1}, nil
 			}
 			be.UpdateF = func(_ context.Context, _ backend.Stack, op backend.UpdateOperation) (
 				display.ResourceChanges, error,
 			) {
 				invoked, options = "pulumi_up", op.Opts
-				return nil, nil
+				if tt.cancel {
+					cancel()
+					return nil, ctx.Err()
+				}
+				return display.ResourceChanges{deploy.OpUpdate: 1}, nil
 			}
 			previous := cmdBackend.DefaultLoginManager
 			cmdBackend.DefaultLoginManager = &cmdBackend.MockLoginManager{
@@ -572,31 +643,66 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 				},
 			}
 			t.Cleanup(func() { cmdBackend.DefaultLoginManager = previous })
-			p := &Pulumi{Cwd: dir, Workspace: &pkgWorkspace.MockContext{
+			rec := &sinkRecorder{}
+			p := &Pulumi{Cwd: dir, Sink: rec.sink(), Workspace: &pkgWorkspace.MockContext{
 				ReadProjectF: func(string) (*workspace.Project, string, error) {
 					return &workspace.Project{Name: "p", Options: tt.projectOptions}, dir, nil
 				},
 			}}
 			args := pulumiArgs{ProjectName: "p", StackName: "dev", LocalPulumiDir: dir}
+			args.EnvironmentVariables = map[string]envVal{
+				"PRIVATE_TEST_SECRET":           {Secret: "private-diagnostic-value"},
+				"PULUMI_OPTION_STACK":           {Plain: "unapproved-stack"},
+				"PULUMI_OPTION_CWD":             {Plain: t.TempDir()},
+				"PULUMI_OPTION_SHOW_SECRETS":    {Plain: "true"},
+				"PULUMI_OPTION_NON_INTERACTIVE": {Plain: "false"},
+				"PULUMI_OPTION_SKIP_PREVIEW":    {Plain: "false"},
+			}
+			maps.Copy(args.EnvironmentVariables, tt.extra)
+			importPath := filepath.Join(dir, "imports.json")
+			if tt.importFile {
+				args.EnvironmentVariables["PULUMI_OPTION_IMPORT_FILE"] = envVal{Plain: importPath}
+			}
 			if tt.value != nil {
-				args.EnvironmentVariables = map[string]envVal{"PULUMI_OPTION_REFRESH": *tt.value}
+				args.EnvironmentVariables["PULUMI_OPTION_REFRESH"] = *tt.value
+			}
+			if tt.runProgram != nil {
+				args.EnvironmentVariables["PULUMI_OPTION_RUN_PROGRAM"] = *tt.runProgram
 			}
 			method := tt.method
 			if method == "" {
 				method = "pulumi_preview"
 			}
-			result, err := p.run(t.Context(), args, method == "pulumi_preview")
+			result, err := p.run(ctx, args, method == "pulumi_preview")
 			if result.EventsFile != "" {
 				t.Cleanup(func() { require.NoError(t, os.Remove(result.EventsFile)) })
 			}
 			assert.Equal(t, tt.ambient, os.Getenv("PULUMI_OPTION_REFRESH"))
+			assert.Equal(t, tt.runAmbient, os.Getenv("PULUMI_OPTION_RUN_PROGRAM"))
 			afterDir, cwdErr := os.Getwd()
 			require.NoError(t, cwdErr)
 			assert.Equal(t, beforeDir, afterDir)
+			if tt.cancel {
+				require.Error(t, err)
+				assert.Equal(t, "cancelled", result.Status)
+				assert.Equal(t, method, invoked)
+				require.Len(t, rec.ends, 1)
+				return
+			}
 			if tt.wantError {
 				require.Error(t, err)
-				assertFailedResult(t, result, "unable to determine value for --refresh")
-				assert.NotContains(t, result.Logs, tt.value.Value())
+				if tt.secretError {
+					assertFailedResult(t, result, "invalid --output value")
+					assert.Contains(t, result.Logs, "[secret]")
+					assert.NotContains(t, result.Logs, "private-option-value")
+					require.Len(t, rec.ends, 1)
+					assert.NotContains(t, rec.ends[0].err, "private-option-value")
+				} else if tt.missingStack {
+					assertFailedResult(t, result, "dev")
+				} else {
+					assertFailedResult(t, result, "unable to determine value for --refresh")
+					assert.NotContains(t, result.Logs, tt.value.Value())
+				}
 				assert.Empty(t, invoked)
 				return
 			}
@@ -604,7 +710,39 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 			assert.Equal(t, "succeeded", result.Status)
 			assert.Equal(t, method, invoked)
 			assert.Equal(t, tt.wantRefresh, options.Engine.Refresh)
+			assert.Equal(t, tt.wantRunProgram, options.Engine.RefreshProgram)
 			assert.Equal(t, method == "pulumi_up", options.SkipPreview)
+			assert.False(t, options.Display.ShowSecrets)
+			assert.False(t, options.Display.IsInteractive)
+			assert.Equal(t, "p", result.ProjectName)
+			assert.Equal(t, "dev", result.StackName)
+			assert.Equal(t, "test-update", result.UpdateID)
+			assert.Equal(t, "https://example.com/update", result.ConsoleURL)
+			if method == "pulumi_preview" {
+				assert.Zero(t, result.Version)
+			} else {
+				assert.Equal(t, 42, result.Version)
+			}
+			assert.Contains(t, result.Logs, "test diagnostic")
+			assert.NotContains(t, result.Logs, "private-diagnostic-value")
+			require.Len(t, rec.diags, 1)
+			assert.NotContains(t, rec.diags[0].message, "private-diagnostic-value")
+			assert.Contains(t, result.Logs, "1 update")
+			require.Len(t, rec.starts, 1)
+			require.Len(t, rec.ends, 1)
+			require.Len(t, rec.permalinks, 1)
+			events, readErr := os.ReadFile(result.EventsFile)
+			require.NoError(t, readErr)
+			assert.Contains(t, string(events), "diagnosticEvent")
+			assert.NotContains(t, string(events), "private-diagnostic-value")
+			if tt.wantParallel != 0 {
+				assert.Equal(t, tt.wantParallel, options.Engine.Parallel)
+			}
+			assert.ElementsMatch(t, tt.wantTargets, options.Engine.Targets.Literals())
+			assert.Equal(t, tt.wantDependents, options.Engine.TargetDependents)
+			if tt.importFile {
+				require.FileExists(t, importPath)
+			}
 		})
 	}
 }
@@ -1058,66 +1196,45 @@ func TestNewPulumiResultUsesParsedNames(t *testing.T) {
 	assert.Equal(t, "/tmp/events.ndjson", res.EventsFile)
 }
 
-func TestAutonamingStackContextFor_NonHTTPStateStack(t *testing.T) {
-	t.Parallel()
+type eventBackend struct{ *backend.MockBackend }
 
-	// A plain backend.Stack (not the cloud httpstate.Stack) cannot supply an
-	// org name — autonamingStackContextFor must fall back to the placeholder
-	// "organization" so autonaming config still loads.
-	proj := &workspace.Project{Name: tokens.PackageName("my-proj")}
-	stk := &backend.MockStack{
-		RefF: func() backend.StackReference {
-			return &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
-		},
+func emitToolTestEvents(events chan<- engine.Event) {
+	events <- engine.NewEvent(engine.UpdateStartedEventPayload{
+		UpdateID: "test-update", Version: 42, Permalink: "https://example.com/update",
+	})
+	events <- engine.NewEvent(engine.DiagEventPayload{
+		Message: "test diagnostic private-diagnostic-value", Severity: diag.Warning,
+	})
+}
+
+func (b *eventBackend) Preview(
+	ctx context.Context, stack backend.Stack, op backend.UpdateOperation, events chan<- engine.Event,
+) (*deploy.Plan, display.ResourceChanges, error) {
+	emitToolTestEvents(events)
+	return b.MockBackend.Preview(ctx, stack, op, events)
+}
+
+func (b *eventBackend) Update(
+	ctx context.Context, stack backend.Stack, op backend.UpdateOperation, events chan<- engine.Event,
+) (display.ResourceChanges, error) {
+	emitToolTestEvents(events)
+	return b.MockBackend.Update(ctx, stack, op, events)
+}
+
+func TestPulumi_DiagnosticSinkSurvivesToolCall(t *testing.T) {
+	const marker = "diagnostic after embedded operation"
+	if os.Getenv("PULUMI_TEST_DIAGNOSTIC_CHILD") == "1" {
+		t.Run("operation", TestPulumi_Run_CLIOptions)
+		cmdutil.Diag().Warningf(diag.Message("", marker))
+		return
 	}
-
-	got := autonamingStackContextFor(proj, stk)
-	assert.Equal(t, "organization", got.Organization)
-	assert.Equal(t, "my-proj", got.Project)
-	assert.Equal(t, "dev", got.Stack)
-}
-
-func TestAutonamingStackContextFor_HTTPStateStackUsesOrgName(t *testing.T) {
 	t.Parallel()
-
-	// httpstate.Stack callers expose the real organization via OrgName(); that
-	// value must propagate into the autonaming context.
-	proj := &workspace.Project{Name: tokens.PackageName("my-proj")}
-	stk := &fakeHTTPStack{
-		MockStack: &backend.MockStack{
-			RefF: func() backend.StackReference {
-				return &backend.MockStackReference{NameV: tokens.MustParseStackName("prod")}
-			},
-		},
-		orgName: "my-org",
-	}
-
-	got := autonamingStackContextFor(proj, stk)
-	assert.Equal(t, "my-org", got.Organization)
-	assert.Equal(t, "my-proj", got.Project)
-	assert.Equal(t, "prod", got.Stack)
+	executable, err := os.Executable()
+	require.NoError(t, err)
+	command := exec.CommandContext(t.Context(), executable,
+		"-test.run=^TestPulumi_DiagnosticSinkSurvivesToolCall$/^operation$/^default$")
+	command.Env = append(os.Environ(), "PULUMI_TEST_DIAGNOSTIC_CHILD=1")
+	output, err := command.CombinedOutput()
+	require.NoError(t, err, string(output))
+	require.Contains(t, string(output), marker)
 }
-
-// fakeHTTPStack satisfies httpstate.Stack so tests can exercise the
-// type-assertion branch in autonamingStackContextFor. Methods other than the
-// two cloud-only ones delegate to the embedded MockStack.
-type fakeHTTPStack struct {
-	*backend.MockStack
-	orgName string
-}
-
-func (f *fakeHTTPStack) OrgName() string {
-	return f.orgName
-}
-
-func (f *fakeHTTPStack) CurrentOperation() *apitype.OperationStatus {
-	return nil
-}
-
-func (f *fakeHTTPStack) StackIdentifier() client.StackIdentifier {
-	return client.StackIdentifier{}
-}
-
-// Compile-time assertion: fakeHTTPStack must satisfy httpstate.Stack so the
-// type assertion in autonamingStackContextFor succeeds.
-var _ httpstate.Stack = (*fakeHTTPStack)(nil)

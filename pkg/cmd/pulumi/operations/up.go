@@ -89,6 +89,12 @@ func defaultParallel() int32 {
 }
 
 func NewUpCmd() *cobra.Command {
+	return NewUpCmdWithOptions(CommandOptions{})
+}
+
+// NewUpCmdWithOptions creates the command with an embedded operation executor.
+func NewUpCmdWithOptions(options CommandOptions) *cobra.Command {
+	commandOpts := commandOptions(options)
 	var debug bool
 	var expectNop bool
 	var message string
@@ -288,7 +294,7 @@ func NewUpCmd() *cobra.Command {
 			maps.Copy(m.Environment, metadata)
 		}
 
-		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
+		_, changes, err := commandOpts.Run(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
 			M:                  m,
@@ -298,7 +304,7 @@ func NewUpCmd() *cobra.Command {
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 			CoherenceWindow:    coherenceWindow,
-		}, nil /* events */)
+		}, nil /* events */, false)
 		switch {
 		case err == context.Canceled:
 			return backenderr.CancelledError{Operation: "update"}
@@ -562,7 +568,7 @@ func NewUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
-		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
+		_, changes, err := commandOpts.Run(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
 			M:                  m,
@@ -572,7 +578,7 @@ func NewUpCmd() *cobra.Command {
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 			CoherenceWindow:    coherenceWindow,
-		}, nil /* events */)
+		}, nil /* events */, false)
 		switch {
 		case err == context.Canceled:
 			return backenderr.CancelledError{Operation: "update"}
@@ -606,7 +612,7 @@ func NewUpCmd() *cobra.Command {
 			" project is created, deployed, and then deleted, leaving only the stack state.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			ws := pkgWorkspace.Instance
+			ws := commandOpts.Workspace
 
 			var meta *promise.Promise[map[string]string]
 			if !remoteArgs.Remote {
