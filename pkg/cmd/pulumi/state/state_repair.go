@@ -140,7 +140,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 		return err
 	}
 
-	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
+	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmd.LoginManager))
 	if err != nil {
 		return err
 	} else if snap == nil {

@@ -38,6 +38,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -111,6 +112,7 @@ func NewRefreshCmd() *cobra.Command {
 			"The program to run is loaded from the project in the current directory. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			lm := cmdBackend.DefaultLoginManager
 			ctx := cmd.Context()
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			ws := pkgWorkspace.Instance
@@ -206,7 +208,7 @@ func NewRefreshCmd() *cobra.Command {
 				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Refresh, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ctx, cmdBackend.DefaultLoginManager, ws, opts.Display)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ctx, lm, ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -223,7 +225,7 @@ func NewRefreshCmd() *cobra.Command {
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				stackName,
 				cmdStack.OfferNew,
 				opts.Display,
@@ -282,13 +284,17 @@ func NewRefreshCmd() *cobra.Command {
 				return errors.New("cannot set both --skip-pending-creates and --clear-pending-creates")
 			}
 
+			secretsProvider := cmdBackend.SecretsProvider(lm)
+
 			// First we handle explicit create->imports we were given
 			if importPendingCreates != nil && len(*importPendingCreates) > 0 {
 				stderr := opts.Display.Stderr
 				if stderr == nil {
 					stderr = cmd.ErrOrStderr()
 				}
-				if unused, err := pendingCreatesToImports(ctx, s, yes, opts.Display, *importPendingCreates); err != nil {
+				if unused, err := pendingCreatesToImports(
+					ctx, s, secretsProvider, yes, opts.Display, *importPendingCreates,
+				); err != nil {
 					return err
 				} else if len(unused) > 1 {
 					fmt.Fprintf(stderr, "%s\n- \"%s\"\n", opts.Display.Color.Colorize(colors.Highlight(
@@ -302,14 +308,14 @@ func NewRefreshCmd() *cobra.Command {
 				}
 			}
 
-			snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
+			snap, err := s.Snapshot(ctx, secretsProvider)
 			if err != nil {
 				return fmt.Errorf("getting snapshot: %w", err)
 			}
 
 			// We then allow the user to interactively handle remaining pending creates.
 			if interactive && hasPendingCreates(snap) && !skipPendingCreates {
-				if err := filterMapPendingCreates(ctx, s, opts.Display,
+				if err := filterMapPendingCreates(ctx, s, secretsProvider, opts.Display,
 					yes, interactiveFixPendingCreate); err != nil {
 					return err
 				}
@@ -321,7 +327,7 @@ func NewRefreshCmd() *cobra.Command {
 				removePendingCreates := func(op pkgresource.Operation) (*pkgresource.Operation, error) {
 					return nil, nil
 				}
-				err := filterMapPendingCreates(ctx, s, opts.Display, yes, removePendingCreates)
+				err := filterMapPendingCreates(ctx, s, secretsProvider, opts.Display, yes, removePendingCreates)
 				if err != nil {
 					return err
 				}
@@ -333,7 +339,7 @@ func NewRefreshCmd() *cobra.Command {
 			excludeUrns := slice.Prealloc[string](len(*excludes))
 			excludeUrns = append(excludeUrns, *excludes...)
 
-			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, proj)
 			if err != nil {
 				return err
 			}
@@ -364,7 +370,7 @@ func NewRefreshCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
+				SecretsProvider:    secretsProvider,
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
 			})
@@ -544,9 +550,9 @@ type editPendingOp = func(op pkgresource.Operation) (*pkgresource.Operation, err
 // filterMapPendingCreates applies f to each pending create. If f returns nil, then the op
 // is deleted. Otherwise is replaced by the returned op.
 func filterMapPendingCreates(
-	ctx context.Context, s backend.Stack, opts display.Options, yes bool, f editPendingOp,
+	ctx context.Context, s backend.Stack, provider secrets.Provider, opts display.Options, yes bool, f editPendingOp,
 ) error {
-	return state.TotalStateEdit(ctx, s, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
+	return state.TotalStateEdit(ctx, s, provider, yes, opts, func(opts display.Options, snap *deploy.Snapshot) error {
 		var pending []pkgresource.Operation
 		for _, op := range snap.PendingOperations {
 			if op.Resource == nil {
@@ -572,8 +578,9 @@ func filterMapPendingCreates(
 // Apply the CLI args from --import-pending-creates [[URN ID]...]. If an error was found,
 // it is returned. The list of URNs that were not mapped to a pending create is also
 // returned.
-func pendingCreatesToImports(ctx context.Context, s backend.Stack, yes bool, opts display.Options,
-	importToCreates []string,
+func pendingCreatesToImports(
+	ctx context.Context, s backend.Stack, provider secrets.Provider,
+	yes bool, opts display.Options, importToCreates []string,
 ) ([]string, error) {
 	// A map from URN to ID
 	if len(importToCreates)%2 != 0 {
@@ -583,7 +590,9 @@ func pendingCreatesToImports(ctx context.Context, s backend.Stack, yes bool, opt
 	for i := 0; i < len(importToCreates); i += 2 {
 		alteredOps[importToCreates[i]] = importToCreates[i+1]
 	}
-	err := filterMapPendingCreates(ctx, s, opts, yes, func(op pkgresource.Operation) (*pkgresource.Operation, error) {
+	err := filterMapPendingCreates(ctx, s, provider, opts, yes, func(
+		op pkgresource.Operation,
+	) (*pkgresource.Operation, error) {
 		if id, ok := alteredOps[string(op.Resource.URN)]; ok {
 			op.Resource.ID = resource.ID(id)
 			op.Type = pkgresource.OperationTypeImporting
