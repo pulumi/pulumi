@@ -1317,7 +1317,7 @@ func TestParsePolicyPackConfigV2(t *testing.T) {
 	file, err = parsePolicyPackConfig([]byte(`{"version": 2}`))
 	require.NoError(t, err)
 	assert.Empty(t, file.Config)
-	assert.Nil(t, file.Exceptions)
+	assert.Equal(t, 0, file.Exceptions.len())
 
 	// An unversioned file is parsed as before.
 	file, err = parsePolicyPackConfig([]byte(`{"p": "advisory", "environments": ["policy/shared"]}`))

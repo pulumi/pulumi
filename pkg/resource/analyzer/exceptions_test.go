@@ -32,7 +32,7 @@ const (
 	webStackURN   = resource.URN("urn:pulumi:prod::web::pulumi:pulumi:Stack::web-prod")
 )
 
-func mustParseExceptions(t *testing.T, js string) *PolicyExceptions {
+func mustParseExceptions(t *testing.T, js string) PolicyExceptions {
 	t.Helper()
 	set, err := parsePolicyExceptionsBlock(json.RawMessage(js))
 	require.NoError(t, err)
@@ -45,7 +45,7 @@ func entry(policy string, target resource.URN) string {
 }
 
 // matchIDs returns the IDs of the exceptions that match, in order.
-func matchIDs(set *PolicyExceptions, policy string, urn resource.URN) []string {
+func matchIDs(set PolicyExceptions, policy string, urn resource.URN) []string {
 	matches := set.Match(policy, urn)
 	if len(matches) == 0 {
 		return nil
@@ -186,7 +186,7 @@ func TestPolicyExceptionsMatch(t *testing.T) {
 	assert.Equal(t, []apitype.PolicyEventException{{ID: "flow-logs", Reason: "Only in prod"}},
 		set.Match("vpc-flow-logs", webStackURN))
 
-	var empty *PolicyExceptions
+	var empty PolicyExceptions
 	assert.Empty(t, empty.Match("p", accessLogsURN))
 }
 
@@ -224,6 +224,6 @@ func TestPolicyExceptionsUnknownPolicyWarnings(t *testing.T) {
 	require.Len(t, warnings, 1)
 	assert.Contains(t, warnings[0], `"gone"`)
 
-	var empty *PolicyExceptions
+	var empty PolicyExceptions
 	assert.Empty(t, empty.UnknownPolicyWarnings("pack", nil))
 }

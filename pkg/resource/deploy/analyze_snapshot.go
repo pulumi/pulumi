@@ -40,7 +40,7 @@ import (
 func analyzeResource(
 	ctx context.Context,
 	analyzers []plugin.Analyzer,
-	policyExceptions map[string]*resourceanalyzer.PolicyExceptions,
+	policyExceptions map[string]resourceanalyzer.PolicyExceptions,
 	r plugin.AnalyzerResource,
 	events PolicyEvents,
 	dryRun bool,
@@ -191,7 +191,7 @@ func AnalyzeSnapshot(
 	ctx context.Context,
 	snap *Snapshot,
 	analyzers []plugin.Analyzer,
-	policyExceptions map[string]*resourceanalyzer.PolicyExceptions,
+	policyExceptions map[string]resourceanalyzer.PolicyExceptions,
 	events PolicyEvents,
 ) (bool, error) {
 	if snap == nil || len(analyzers) == 0 {

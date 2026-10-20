@@ -191,7 +191,7 @@ type deploymentOptions struct {
 	LoadedAnalyzers []plugin.Analyzer
 
 	// PolicyExceptions is populated by loadPolicyPlugins with the loaded policy packs' exceptions, keyed by pack name.
-	PolicyExceptions map[string]*resourceanalyzer.PolicyExceptions
+	PolicyExceptions map[string]resourceanalyzer.PolicyExceptions
 }
 
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.

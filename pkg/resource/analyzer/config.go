@@ -35,8 +35,8 @@ type PolicyPackConfigFile struct {
 	Config map[string]plugin.AnalyzerPolicyConfig
 	// Environments are the ESC environments named by the "environments" key.
 	Environments []string
-	// Exceptions are the policy exceptions of a version 2 file's "exceptions" key, or nil if there are none.
-	Exceptions *PolicyExceptions
+	// Exceptions are the policy exceptions of a version 2 file's "exceptions" key.
+	Exceptions PolicyExceptions
 }
 
 // LoadPolicyPackConfigFromFile loads the JSON config from a file.

@@ -126,7 +126,7 @@ type Options struct {
 	// Analyzers is the list of policy analyzers to run during this deployment.
 	Analyzers []plugin.Analyzer
 	// PolicyExceptions are the policy exceptions to apply to the analyzers' violations, keyed by policy pack name.
-	PolicyExceptions map[string]*resourceanalyzer.PolicyExceptions
+	PolicyExceptions map[string]resourceanalyzer.PolicyExceptions
 	// StateMigrationSerializer converts resource states to and from the checkpoint representation used by state
 	// migration callbacks. The engine injects it because the serialization logic lives in pkg/resource/stack, which
 	// already imports this package and therefore cannot be imported here.
@@ -364,7 +364,7 @@ type Deployment struct {
 	// the policy analyzers to run during this deployment.
 	analyzers []plugin.Analyzer
 	// the policy exceptions to apply to the analyzers' violations, keyed by policy pack name.
-	policyExceptions map[string]*resourceanalyzer.PolicyExceptions
+	policyExceptions map[string]resourceanalyzer.PolicyExceptions
 	// the dependency graph of the old snapshot.
 	depGraph *graph.DependencyGraph
 	// the provider registry for this deployment.

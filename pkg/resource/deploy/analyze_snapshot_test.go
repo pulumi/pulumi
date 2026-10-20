@@ -601,7 +601,7 @@ func TestAnalyzeSnapshot_ExceptedViolations(t *testing.T) {
 	require.NoError(t, err)
 
 	events := &recordingPolicyEvents{}
-	exceptions := map[string]*resourceanalyzer.PolicyExceptions{"test-pack": config.Exceptions}
+	exceptions := map[string]resourceanalyzer.PolicyExceptions{"test-pack": config.Exceptions}
 	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, exceptions, events)
 	require.NoError(t, err)
 	assert.False(t, hasMandatory)

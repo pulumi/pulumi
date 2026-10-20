@@ -54,19 +54,13 @@ func (m policyExceptionMatcher) matches(policy string, urn resource.URN) bool {
 }
 
 // len returns the number of exceptions in the set.
-func (s *PolicyExceptions) len() int {
-	if s == nil {
-		return 0
-	}
+func (s PolicyExceptions) len() int {
 	return len(s.exceptions)
 }
 
 // Match returns the exceptions that except a violation of the given policy, reported against the given URN, lowest
 // ID first.
-func (s *PolicyExceptions) Match(policy string, urn resource.URN) []apitype.PolicyEventException {
-	if s == nil {
-		return nil
-	}
+func (s PolicyExceptions) Match(policy string, urn resource.URN) []apitype.PolicyEventException {
 	var result []apitype.PolicyEventException
 	for _, e := range s.exceptions {
 		if slices.ContainsFunc(e.match, func(m policyExceptionMatcher) bool { return m.matches(policy, urn) }) {
@@ -78,10 +72,7 @@ func (s *PolicyExceptions) Match(policy string, urn resource.URN) []apitype.Poli
 
 // UnknownPolicyWarnings returns a warning for each policy named by an exception that isn't in the pack. That isn't
 // an error, because a newer version of the pack may have removed the policy.
-func (s *PolicyExceptions) UnknownPolicyWarnings(packName string, policies []plugin.AnalyzerPolicyInfo) []string {
-	if s == nil {
-		return nil
-	}
+func (s PolicyExceptions) UnknownPolicyWarnings(packName string, policies []plugin.AnalyzerPolicyInfo) []string {
 	var warnings []string
 	for _, e := range s.exceptions {
 		var names []string
@@ -105,25 +96,22 @@ func (s *PolicyExceptions) UnknownPolicyWarnings(packName string, policies []plu
 
 // parsePolicyExceptionsBlock parses and validates the raw value of the "exceptions" key of a policy pack config file,
 // which maps exception IDs to exceptions.
-func parsePolicyExceptionsBlock(raw json.RawMessage) (*PolicyExceptions, error) {
+func parsePolicyExceptionsBlock(raw json.RawMessage) (PolicyExceptions, error) {
 	if len(bytes.TrimSpace(raw)) == 0 || string(bytes.TrimSpace(raw)) == "null" {
-		return nil, nil
+		return PolicyExceptions{}, nil
 	}
 	var entries map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &entries); err != nil {
-		return nil, errors.New(`"exceptions" must be an object that maps exception IDs to exceptions`)
+		return PolicyExceptions{}, errors.New(`"exceptions" must be an object that maps exception IDs to exceptions`)
 	}
 
-	set := &PolicyExceptions{}
+	var set PolicyExceptions
 	for _, id := range slices.SortedFunc(maps.Keys(entries), compareExceptionIDs) {
 		e, err := parsePolicyException(id, entries[id])
 		if err != nil {
-			return nil, fmt.Errorf("policy exception %q: %w", id, err)
+			return PolicyExceptions{}, fmt.Errorf("policy exception %q: %w", id, err)
 		}
 		set.exceptions = append(set.exceptions, e)
-	}
-	if set.len() == 0 {
-		return nil, nil
 	}
 	return set, nil
 }
