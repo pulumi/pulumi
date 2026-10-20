@@ -75,6 +75,21 @@ func TestCommandNameContext(t *testing.T) {
 	assert.Equal(t, "pulumi new", name)
 }
 
+func TestWelcomeUserNewProjectHint(t *testing.T) {
+	t.Parallel()
+
+	for _, newProjectHint := range []bool{true, false} {
+		t.Run(fmt.Sprintf("newProjectHint=%v", newProjectHint), func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			welcomeUser(&buf, display.Options{Color: colors.Never}, "https://app.pulumi.com", newProjectHint)
+			assert.Contains(t, buf.String(), "Welcome to Pulumi!")
+			assert.Equal(t, newProjectHint, strings.Contains(buf.String(), "New to Pulumi?"))
+		})
+	}
+}
+
 //nolint:paralleltest // mutates global configuration
 func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	// Arrange

@@ -70,6 +70,14 @@ func CurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
 	opts display.Options,
 ) (backend.Backend, error) {
+	return CurrentBackendWithOptions(ctx, ws, lm, project, opts)
+}
+
+// CurrentBackendWithOptions is CurrentBackend with LoginOptions that are passed on to LoginManager.Login.
+func CurrentBackendWithOptions(
+	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
+	opts display.Options, loginOpts ...LoginOption,
+) (backend.Backend, error) {
 	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
@@ -79,5 +87,5 @@ func CurrentBackend(
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 
 	// Only set current if we don't currently have a cloud URL set.
-	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, opts.Color)
+	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, opts.Color, loginOpts...)
 }

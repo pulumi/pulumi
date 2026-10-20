@@ -168,7 +168,8 @@ func runNew(ctx context.Context, args newArgs) error {
 	var b backend.Backend
 	if !args.generateOnly {
 		// There is no current project at this point to pass into currentBackend
-		b, err = cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, nil, opts)
+		b, err = cmdBackend.CurrentBackendWithOptions(
+			ctx, ws, cmdBackend.DefaultLoginManager, nil, opts, cmdBackend.WithoutNewProjectHint())
 		if err != nil {
 			return err
 		}

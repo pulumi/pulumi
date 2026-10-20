@@ -101,7 +101,7 @@ func TestStackImport_ChangeServiceSecrets(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -234,7 +234,7 @@ func TestStackImport_ServiceSecrets_DefaultSecretManagerMutatesProjectStack(t *t
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return be, nil
 		},

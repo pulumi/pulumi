@@ -307,7 +307,7 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 		},
 		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
 			string, *workspace.Project, bool,
-			bool, colors.Colorization,
+			bool, colors.Colorization, ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -459,7 +459,7 @@ func installNeoTestEnv(t *testing.T, srv *neoFakeServer, interactive bool) {
 		},
 		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
 			string, *workspace.Project, bool,
-			bool, colors.Colorization,
+			bool, colors.Colorization, ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -674,7 +674,7 @@ func TestRunNeoIntegration_RequiresCloudBackend(t *testing.T) {
 		},
 		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
 			string, *workspace.Project, bool,
-			bool, colors.Colorization,
+			bool, colors.Colorization, ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -810,7 +810,7 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 		},
 		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
 			string, *workspace.Project, bool,
-			bool, colors.Colorization,
+			bool, colors.Colorization, ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -877,7 +877,7 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 		},
 		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
 			string, *workspace.Project, bool,
-			bool, colors.Colorization,
+			bool, colors.Colorization, ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return be, nil
 		},
