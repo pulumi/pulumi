@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 	"time"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
@@ -42,7 +43,7 @@ import (
 type policyIssueGetClient interface {
 	GetPolicyIssue(
 		ctx context.Context, orgName, issueID string,
-	) (cloudapitype.PolicyIssue, error)
+	) (cloudapitype.GetPolicyIssueResponse, error)
 }
 
 // policyIssueGetClientFactory resolves a cloud client and the organization
@@ -172,9 +173,10 @@ func runPolicyIssueGet(
 	return args.outputFormat.Get()(w, resp)
 }
 
-type policyIssueGetRenderFunc func(w io.Writer, resp cloudapitype.PolicyIssue) error
+type policyIssueGetRenderFunc func(w io.Writer, resp cloudapitype.GetPolicyIssueResponse) error
 
-func renderPolicyIssueGetText(w io.Writer, issue cloudapitype.PolicyIssue) error {
+func renderPolicyIssueGetText(w io.Writer, resp cloudapitype.GetPolicyIssueResponse) error {
+	issue := resp.PolicyIssue
 	pack := issue.PolicyPack
 	if issue.PolicyPackTag != "" {
 		pack = fmt.Sprintf("%s@%s", issue.PolicyPack, issue.PolicyPackTag)
@@ -194,6 +196,21 @@ func renderPolicyIssueGetText(w io.Writer, issue cloudapitype.PolicyIssue) error
 	if issue.Status != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Status:", issue.Status)
 	}
+	if issue.Priority != "" {
+		fmt.Fprintf(w, "%-20s %s\n", "Priority:", issue.Priority)
+	}
+	if assignee := policyIssueAssignee(issue); assignee != "" {
+		fmt.Fprintf(w, "%-20s %s\n", "Assignee:", assignee)
+	}
+	if group := policyIssueGroupName(issue); group != "" {
+		if groupType := policyIssueGroupType(issue); groupType != "" {
+			group = fmt.Sprintf("%s (%s)", group, groupType)
+		}
+		fmt.Fprintf(w, "%-20s %s\n", "Policy group:", group)
+	}
+	if issue.Kind != "" {
+		fmt.Fprintf(w, "%-20s %s\n", "Kind:", issue.Kind)
+	}
 	if stack != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Stack:", stack)
 	}
@@ -209,6 +226,20 @@ func renderPolicyIssueGetText(w io.Writer, issue cloudapitype.PolicyIssue) error
 	if issue.Message != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Message:", issue.Message)
 	}
+	if policy := resp.Policy; policy != nil {
+		if policy.Description != "" {
+			fmt.Fprintf(w, "%-20s %s\n", "Description:", policy.Description)
+		}
+		if policy.RemediationSteps != "" {
+			fmt.Fprintf(w, "%-20s %s\n", "Remediation:", policy.RemediationSteps)
+		}
+		if framework := formatPolicyFramework(policy.Framework); framework != "" {
+			fmt.Fprintf(w, "%-20s %s\n", "Framework:", framework)
+		}
+		if policy.URL != "" {
+			fmt.Fprintf(w, "%-20s %s\n", "More info:", policy.URL)
+		}
+	}
 	return nil
 }
 
@@ -219,9 +250,45 @@ func formatPolicyIssueTime(t *time.Time) string {
 	return t.Format(time.RFC3339Nano)
 }
 
-func renderPolicyIssueGetJSON(w io.Writer, issue cloudapitype.PolicyIssue) error {
+func policyIssueAssignee(issue cloudapitype.PolicyIssue) string {
+	if issue.AssignedTo == nil {
+		return ""
+	}
+	return issue.AssignedTo.GitHubLogin
+}
+
+func policyIssueGroupName(issue cloudapitype.PolicyIssue) string {
+	if issue.PolicyGroupName == nil {
+		return ""
+	}
+	return *issue.PolicyGroupName
+}
+
+func policyIssueGroupType(issue cloudapitype.PolicyIssue) string {
+	if issue.PolicyGroupType == nil {
+		return ""
+	}
+	return string(*issue.PolicyGroupType)
+}
+
+func formatPolicyFramework(framework *cloudapitype.AppPolicyComplianceFramework) string {
+	if framework == nil {
+		return ""
+	}
+	text := strings.TrimSpace(framework.Name + " " + framework.Version)
+	switch {
+	case framework.Reference == "":
+		return text
+	case text == "":
+		return framework.Reference
+	default:
+		return text + " — " + framework.Reference
+	}
+}
+
+func renderPolicyIssueGetJSON(w io.Writer, resp cloudapitype.GetPolicyIssueResponse) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(issue)
+	return enc.Encode(resp)
 }
