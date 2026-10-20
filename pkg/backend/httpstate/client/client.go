@@ -1721,12 +1721,41 @@ func (pc *Client) CreatePolicyGroup(
 func (pc *Client) GetPolicyGroup(
 	ctx context.Context, orgName, policyGroup string,
 ) (cloudapitype.PolicyGroup, error) {
-	var resp cloudapitype.PolicyGroup
-	err := pc.restCall(ctx, "GET", updatePolicyGroupPath(orgName, policyGroup), nil, nil, &resp)
+	var body []byte
+	err := pc.restCall(ctx, "GET", updatePolicyGroupPath(orgName, policyGroup), nil, nil, &body)
 	if err != nil {
-		return resp, fmt.Errorf("getting policy group: %w", err)
+		return cloudapitype.PolicyGroup{}, fmt.Errorf("getting policy group: %w", err)
+	}
+	resp, err := decodePolicyGroup(body)
+	if err != nil {
+		return cloudapitype.PolicyGroup{}, fmt.Errorf("getting policy group: unmarshalling response object: %w", err)
 	}
 	return resp, nil
+}
+
+// decodePolicyGroup ignores match rules it cannot decode: the generated decoder rejects rule types newer than
+// this CLI, and the CLI never reads the rules.
+func decodePolicyGroup(body []byte) (cloudapitype.PolicyGroup, error) {
+	var group cloudapitype.PolicyGroup
+	err := json.Unmarshal(body, &group)
+	if err == nil {
+		return group, nil
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil {
+		return cloudapitype.PolicyGroup{}, err
+	}
+	delete(fields, "stackMatchRule")
+	delete(fields, "accountMatchRule")
+	stripped, marshalErr := json.Marshal(fields)
+	if marshalErr != nil {
+		return cloudapitype.PolicyGroup{}, err
+	}
+	group = cloudapitype.PolicyGroup{}
+	if json.Unmarshal(stripped, &group) != nil {
+		return cloudapitype.PolicyGroup{}, err
+	}
+	return group, nil
 }
 
 // BatchUpdatePolicyGroup applies the given updates to a Policy Group in one

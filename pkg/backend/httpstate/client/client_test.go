@@ -2387,3 +2387,50 @@ func TestBatchUpdatePolicyGroup(t *testing.T) {
 		{"addInsightsAccount": {"name": "prod-aws"}}
 	]`, body)
 }
+
+func TestGetPolicyGroup_UnknownMatchRuleType(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServer(http.StatusOK, `{
+		"name": "prod-policies",
+		"isOrgDefault": false,
+		"entityType": "stacks",
+		"mode": "audit",
+		"stacks": [{"name": "prod", "routingProject": "web"}],
+		"appliedPolicyPacks": [{"name": "aws-guardrails", "displayName": "AWS", "version": 3, "versionTag": "3.0.0"}],
+		"accounts": ["prod-aws"],
+		"agentPoolId": "pool-1",
+		"stackMatchRule": {"__type": "PermissionExpressionFutureThing"},
+		"accountMatchRule": {"__type": "PermissionExpressionFutureThing"}
+	}`)
+	defer server.Close()
+
+	group, err := newMockClient(server).GetPolicyGroup(t.Context(), "acme", "prod-policies")
+	require.NoError(t, err)
+
+	assert.Equal(t, cloudapitype.PolicyGroup{
+		Name:       "prod-policies",
+		EntityType: cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		Mode:       cloudapitype.PolicyGroupModeAudit,
+		Stacks:     []cloudapitype.AppPulumiStackReference{{Name: "prod", RoutingProject: "web"}},
+		AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{
+			{Name: "aws-guardrails", DisplayName: "AWS", Version: 3, VersionTag: "3.0.0"},
+		},
+		Accounts:    []string{"prod-aws"},
+		AgentPoolID: new("pool-1"),
+	}, group)
+}
+
+func TestGetPolicyGroup_MalformedFieldStillErrors(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServer(http.StatusOK, `{
+		"name": "prod-policies",
+		"stacks": "not-a-list",
+		"stackMatchRule": {"__type": "PermissionExpressionFutureThing"}
+	}`)
+	defer server.Close()
+
+	_, err := newMockClient(server).GetPolicyGroup(t.Context(), "acme", "prod-policies")
+	assert.ErrorContains(t, err, "getting policy group: unmarshalling response object")
+}
