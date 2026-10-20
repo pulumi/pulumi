@@ -17,6 +17,7 @@ package insights
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -224,4 +225,35 @@ Scan status:           succeeded
 Last scan finished:    2026-03-05T06:07:08Z
 Resources discovered:  1234
 `, buf.String())
+}
+
+func decodeAccountWithZeroScanStatus(t *testing.T) cloudapitype.InsightsAccount {
+	t.Helper()
+	zeroScan, err := json.Marshal(cloudapitype.ScanStatus{})
+	require.NoError(t, err)
+	var account cloudapitype.InsightsAccount
+	require.NoError(t, json.Unmarshal(
+		[]byte(`{"id":"acct-2","name":"fresh-gcp","provider":"gcp","scanStatus":`+string(zeroScan)+`}`), &account))
+	return account
+}
+
+func TestInsightsAccountList_ZeroScanStatusFromServer(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	c := &insightsAccountListCmd{}
+	require.NoError(t, c.renderJSON(&buf, []cloudapitype.InsightsAccount{decodeAccountWithZeroScanStatus(t)}))
+	assert.NotContains(t, buf.String(), "scanStatus")
+}
+
+func TestInsightsAccountNew_ZeroScanStatusFromServer(t *testing.T) {
+	t.Parallel()
+	account := decodeAccountWithZeroScanStatus(t)
+
+	var jsonBuf bytes.Buffer
+	require.NoError(t, renderInsightsAccountJSON(&jsonBuf, account))
+	assert.NotContains(t, jsonBuf.String(), "scanStatus")
+
+	var textBuf bytes.Buffer
+	require.NoError(t, renderInsightsAccountText(&textBuf, account))
+	assert.False(t, strings.Contains(textBuf.String(), "Scan status:"), textBuf.String())
 }

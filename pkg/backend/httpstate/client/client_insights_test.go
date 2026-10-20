@@ -863,6 +863,34 @@ func TestCreateInsightsAccount(t *testing.T) {
 	})
 }
 
+func TestInsightsAccount_ZeroScanStatusFromServer(t *testing.T) {
+	t.Parallel()
+
+	zeroScan, err := json.Marshal(cloudapitype.ScanStatus{})
+	require.NoError(t, err)
+	account := `{"id":"acc-1","name":"new","provider":"gcp","scanStatus":` + string(zeroScan) + `}`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodGet && r.URL.Path == "/api/preview/insights/acme/accounts" {
+			_, _ = w.Write([]byte(`{"accounts":[` + account + `]}`))
+			return
+		}
+		_, _ = w.Write([]byte(account))
+	}))
+	defer server.Close()
+	client := newMockClient(server)
+
+	got, err := client.GetInsightsAccount(t.Context(), "acme", "new")
+	require.NoError(t, err)
+	assert.Zero(t, got.ScanStatus)
+
+	list, err := client.ListInsightsAccounts(t.Context(), "acme", apitype.ListInsightsAccountsParams{})
+	require.NoError(t, err)
+	require.Len(t, list.Accounts, 1)
+	assert.Zero(t, list.Accounts[0].ScanStatus)
+}
+
 func TestGetInsightsAccount(t *testing.T) {
 	t.Parallel()
 

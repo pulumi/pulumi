@@ -334,7 +334,7 @@ func parsePolicyPackRefs(
 	return parsedAdds, parsedRemoves, nil
 }
 
-// parseStackReference splits "project/stack" into a PulumiStackReference. A
+// parseStackReference splits "project/stack" into an AppPulumiStackReference. A
 // bare "stack" leaves RoutingProject empty.
 func parseStackReference(s string) cloudapitype.AppPulumiStackReference {
 	if before, after, ok := strings.Cut(s, "/"); ok {
