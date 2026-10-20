@@ -18,13 +18,13 @@ import (
 	"context"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -44,9 +44,9 @@ func TestPolicyLsCmd_QueriesPolicyPacksByOrgNameNotUserName(t *testing.T) {
 		},
 		ListPolicyPacksF: func(
 			_ context.Context, orgName string, _ backend.ContinuationToken,
-		) (apitype.ListPolicyPacksResponse, backend.ContinuationToken, error) {
+		) (cloudapitype.AppListPolicyPacksResponse, backend.ContinuationToken, error) {
 			queriedOrgName = orgName
-			return apitype.ListPolicyPacksResponse{}, nil, nil
+			return cloudapitype.AppListPolicyPacksResponse{}, nil, nil
 		},
 	}
 

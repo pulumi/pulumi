@@ -2003,10 +2003,10 @@ func (pc *Client) GetPolicyIssue(
 
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
 func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContToken *string) (
-	apitype.ListPolicyPacksResponse, *string, error,
+	cloudapitype.AppListPolicyPacksResponse, *string, error,
 ) {
 	// NOTE: The ListPolicyPacks API on the Pulumi Service is not currently paginated.
-	var resp apitype.ListPolicyPacksResponse
+	var resp cloudapitype.AppListPolicyPacksResponse
 	err := pc.restCall(ctx, "GET", listPolicyPacksPath(orgName), nil, nil, &resp)
 	if err != nil {
 		return resp, nil, fmt.Errorf("List Policy Packs failed: %w", err)
@@ -2268,11 +2268,13 @@ func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName, policyGroup,
 		policyGroup = apitype.DefaultPolicyGroup
 	}
 
-	req := apitype.UpdatePolicyGroupRequest{
-		AddPolicyPack: &apitype.PolicyPackMetadata{
-			Name:       policyPackName,
-			VersionTag: versionTag,
-			Config:     policyPackConfig,
+	req := cloudapitype.UpdatePolicyGroupRequest{
+		AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+			AddPolicyPack: &cloudapitype.AppPolicyPackMetadata{
+				Name:       policyPackName,
+				VersionTag: versionTag,
+				Config:     policyPackConfig,
+			},
 		},
 	}
 
@@ -2306,10 +2308,12 @@ func (pc *Client) DisablePolicyPack(ctx context.Context, orgName string, policyG
 		policyGroup = apitype.DefaultPolicyGroup
 	}
 
-	req := apitype.UpdatePolicyGroupRequest{
-		RemovePolicyPack: &apitype.PolicyPackMetadata{
-			Name:       policyPackName,
-			VersionTag: versionTag,
+	req := cloudapitype.UpdatePolicyGroupRequest{
+		AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+			RemovePolicyPack: &cloudapitype.AppPolicyPackMetadata{
+				Name:       policyPackName,
+				VersionTag: versionTag,
+			},
 		},
 	}
 

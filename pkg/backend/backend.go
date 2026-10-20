@@ -150,7 +150,7 @@ type Backend interface {
 
 	// ListPolicyPacks returns all Policy Packs for an organization in this backend, or an error if it cannot be found.
 	ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
-		apitype.ListPolicyPacksResponse, ContinuationToken, error)
+		cloudapitype.AppListPolicyPacksResponse, ContinuationToken, error)
 
 	// GetStackPolicyPacks gets the required policy packs currently applicable to the stack.
 	GetStackPolicyPacks(ctx context.Context, stackRef StackReference) ([]engine.RequiredPolicy, error)

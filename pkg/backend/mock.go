@@ -71,7 +71,7 @@ type MockBackend struct {
 	ListStacksF  func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
 	ListPolicyPacksF func(context.Context, string, ContinuationToken) (
-		apitype.ListPolicyPacksResponse, ContinuationToken, error)
+		cloudapitype.AppListPolicyPacksResponse, ContinuationToken, error)
 	ListStackNamesF func(context.Context, ListStackNamesFilter, ContinuationToken) (
 		[]StackReference, ContinuationToken, error)
 	RenameStackF                    func(context.Context, Stack, tokens.QName) (StackReference, error)
@@ -144,7 +144,7 @@ func (be *MockBackend) ListPolicyGroups(context.Context, string, ContinuationTok
 }
 
 func (be *MockBackend) ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
-	apitype.ListPolicyPacksResponse, ContinuationToken, error,
+	cloudapitype.AppListPolicyPacksResponse, ContinuationToken, error,
 ) {
 	if be.ListPolicyPacksF != nil {
 		return be.ListPolicyPacksF(ctx, orgName, inContToken)

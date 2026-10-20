@@ -1046,7 +1046,7 @@ func (b *cloudBackend) ListPolicyGroups(ctx context.Context, orgName string, inC
 }
 
 func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inContToken backend.ContinuationToken) (
-	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error,
+	cloudapitype.AppListPolicyPacksResponse, backend.ContinuationToken, error,
 ) {
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
 }

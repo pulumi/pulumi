@@ -803,9 +803,9 @@ func (b *diyBackend) ListPolicyGroups(ctx context.Context, orgName string, _ bac
 }
 
 func (b *diyBackend) ListPolicyPacks(ctx context.Context, orgName string, _ backend.ContinuationToken) (
-	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error,
+	cloudapitype.AppListPolicyPacksResponse, backend.ContinuationToken, error,
 ) {
-	return apitype.ListPolicyPacksResponse{}, nil, errors.New("DIY backend does not support resource policy")
+	return cloudapitype.AppListPolicyPacksResponse{}, nil, errors.New("DIY backend does not support resource policy")
 }
 
 func (b *diyBackend) GetStackPolicyPacks(

@@ -155,6 +155,8 @@ func TestPin_ApplyPolicyPack_Body(t *testing.T) {
 	assert.JSONEq(t, `{
 		"addPolicyPack": {
 			"name": "aws-pack",
+			"displayName": "",
+			"version": 0,
 			"versionTag": "1.2.3",
 			"config": {
 				"s3-no-public": {"enforcementLevel": "mandatory"},
@@ -176,7 +178,8 @@ func TestPin_DisablePolicyPack_Body(t *testing.T) {
 
 		assert.Equal(t, http.MethodPatch, got.method)
 		assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies", got.path)
-		assert.JSONEq(t, `{"removePolicyPack": {"name": "aws-pack", "versionTag": "1.2.3"}}`, got.body)
+		assert.JSONEq(t, `{"removePolicyPack": {
+			"name": "aws-pack", "displayName": "", "version": 0, "versionTag": "1.2.3"}}`, got.body)
 	})
 
 	t.Run("without versionTag", func(t *testing.T) {
@@ -186,7 +189,8 @@ func TestPin_DisablePolicyPack_Body(t *testing.T) {
 		c := newCapturingClient(t, &got)
 		require.NoError(t, c.DisablePolicyPack(t.Context(), "acme", "prod-policies", "aws-pack", ""))
 
-		assert.JSONEq(t, `{"removePolicyPack": {"name": "aws-pack"}}`, got.body)
+		assert.JSONEq(t, `{"removePolicyPack": {
+			"name": "aws-pack", "displayName": "", "version": 0, "versionTag": ""}}`, got.body)
 	})
 }
 

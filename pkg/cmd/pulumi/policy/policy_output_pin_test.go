@@ -126,8 +126,8 @@ func pinIssueMinimal() apitype.PolicyIssue {
 	}
 }
 
-func pinPolicyPacks() []apitype.PolicyPackWithVersions {
-	return []apitype.PolicyPackWithVersions{
+func pinPolicyPacks() []cloudapitype.AppPolicyPackWithVersions {
+	return []cloudapitype.AppPolicyPackWithVersions{
 		{
 			Name:        "aws-guardrails",
 			DisplayName: "AWS Guardrails",
