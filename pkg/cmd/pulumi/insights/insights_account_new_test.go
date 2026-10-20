@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,7 @@ import (
 type capturedAccountCall struct {
 	org     string
 	account string
-	req     apitype.CreateInsightsAccountRequest
+	req     cloudapitype.CreateInsightsAccountRequest
 }
 
 // mockInsightsAccountNewClient stubs insightsAccountNewClient. Each instance
@@ -43,7 +44,7 @@ type capturedAccountCall struct {
 // listEnvs / listEnvsErr drive the optional environment-picker path used by
 // resolveAccountNewArgs.
 type mockInsightsAccountNewClient struct {
-	getAccount   apitype.InsightsAccount
+	getAccount   cloudapitype.InsightsAccount
 	createErr    error
 	getErr       error
 	listEnvs     []apitype.ESCEnvironment
@@ -53,7 +54,7 @@ type mockInsightsAccountNewClient struct {
 }
 
 func (m *mockInsightsAccountNewClient) CreateInsightsAccount(
-	_ context.Context, org, account string, req apitype.CreateInsightsAccountRequest,
+	_ context.Context, org, account string, req cloudapitype.CreateInsightsAccountRequest,
 ) error {
 	if m.captured != nil {
 		*m.captured = capturedAccountCall{org: org, account: account, req: req}
@@ -63,9 +64,9 @@ func (m *mockInsightsAccountNewClient) CreateInsightsAccount(
 
 func (m *mockInsightsAccountNewClient) GetInsightsAccount(
 	_ context.Context, _, _ string,
-) (apitype.InsightsAccount, error) {
+) (cloudapitype.InsightsAccount, error) {
 	if m.getErr != nil {
-		return apitype.InsightsAccount{}, m.getErr
+		return cloudapitype.InsightsAccount{}, m.getErr
 	}
 	return m.getAccount, nil
 }
@@ -106,29 +107,31 @@ func failingAccountNewFactory(err error) accountNewClientFactory {
 
 // sampleNewAccount is a representative successful read-back. Tests that don't
 // care about the renderer reuse it to keep test setup compact.
-func sampleNewAccount() apitype.InsightsAccount {
+func sampleNewAccount() cloudapitype.InsightsAccount {
 	finished := time.Date(2026, 5, 13, 10, 0, 0, 0, time.UTC)
-	return apitype.InsightsAccount{
+	return cloudapitype.InsightsAccount{
 		ID:                   "acc-123",
 		Name:                 "prod-aws",
 		Provider:             "aws",
-		ProviderVersion:      "6.0.0",
-		ProviderEnvRef:       "infra/prod-aws-creds",
+		ProviderVersion:      "6.0.0", //nolint:staticcheck
+		Environment:          "infra/prod-aws-creds",
 		ScheduledScanEnabled: true,
 		AgentPoolID:          "pool-1",
 		ProviderConfig:       json.RawMessage(`{"regions":["us-east-1"]}`),
-		OwnedBy: apitype.InsightsAccountOwner{
+		OwnedBy: cloudapitype.UserInfo{
 			Name:        "Jane Doe",
 			GitHubLogin: "jdoe",
 			AvatarURL:   "https://example.com/avatar.png",
 		},
-		ScanStatus: &apitype.InsightsAccountScanStatus{
-			ID:            "scan-1",
-			OrgID:         "org-1",
-			UserID:        "user-1",
-			Status:        "succeeded",
+		ScanStatus: cloudapitype.ScanStatus{
+			WorkflowRun: cloudapitype.WorkflowRun{
+				ID:         "scan-1",
+				OrgID:      "org-1",
+				UserID:     "user-1",
+				Status:     "succeeded",
+				FinishedAt: &finished,
+			},
 			ResourceCount: 42,
-			FinishedAt:    &finished,
 		},
 	}
 }
@@ -173,13 +176,15 @@ func TestRunInsightsAccountNew_JSONOutput(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	var got apitype.InsightsAccount
+	var got cloudapitype.InsightsAccount
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	// ProviderConfig is `json.RawMessage`, so the encoder may re-emit the
 	// bytes with normalized whitespace. Compare it semantically and the
 	// rest of the struct field-by-field.
 	want := sampleNewAccount()
-	assert.JSONEq(t, string(want.ProviderConfig), string(got.ProviderConfig))
+	gotConfig, err := json.Marshal(got.ProviderConfig)
+	require.NoError(t, err)
+	assert.JSONEq(t, string(want.ProviderConfig.(json.RawMessage)), string(gotConfig))
 	want.ProviderConfig, got.ProviderConfig = nil, nil
 	assert.Equal(t, want, got)
 }
@@ -208,7 +213,7 @@ func TestRunInsightsAccountNew_RequestPropagation(t *testing.T) {
 	assert.Equal(t, capturedAccountCall{
 		org:     "acme",
 		account: "prod-aws",
-		req: apitype.CreateInsightsAccountRequest{
+		req: cloudapitype.CreateInsightsAccountRequest{
 			Provider:       "gcp",
 			Environment:    "infra/gcp-creds@2",
 			ScanSchedule:   "12h",
@@ -356,12 +361,12 @@ func TestNewInsightsAccountNewCmd_FactoryError(t *testing.T) {
 func TestRenderInsightsAccountText_OmitsAbsentFields(t *testing.T) {
 	t.Parallel()
 
-	account := apitype.InsightsAccount{
+	account := cloudapitype.InsightsAccount{
 		ID:       "acc-123",
 		Name:     "prod-aws",
 		Provider: "aws",
 		// No ProviderVersion, ProviderEnvRef, ProviderConfig, ScanStatus.
-		OwnedBy: apitype.InsightsAccountOwner{Name: "Jane Doe"},
+		OwnedBy: cloudapitype.UserInfo{Name: "Jane Doe"},
 	}
 	var out bytes.Buffer
 	require.NoError(t, renderInsightsAccountText(&out, account))
@@ -462,7 +467,7 @@ func TestNewInsightsAccountNewCmd_FlagBinding(t *testing.T) {
 	assert.Equal(t, capturedAccountCall{
 		org:     "other-co",
 		account: "prod-aws",
-		req: apitype.CreateInsightsAccountRequest{
+		req: cloudapitype.CreateInsightsAccountRequest{
 			Provider:       "aws",
 			Environment:    "infra/prod-aws-creds@3",
 			ScanSchedule:   "daily",
@@ -472,7 +477,7 @@ func TestNewInsightsAccountNewCmd_FlagBinding(t *testing.T) {
 	}, captured)
 
 	// Output is JSON, so the buffer parses cleanly back to InsightsAccount.
-	var got apitype.InsightsAccount
+	var got cloudapitype.InsightsAccount
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	assert.Equal(t, "prod-aws", got.Name)
 }

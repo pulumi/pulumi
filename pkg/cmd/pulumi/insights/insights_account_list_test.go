@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,22 +39,22 @@ type capturedAccountListCall struct {
 // invocations return the next entry of `pages`, simulating server-side
 // pagination via continuationToken/nextToken.
 type mockInsightsAccountListClient struct {
-	pages []apitype.ListInsightsAccountsResponse
+	pages []cloudapitype.ListInsightsAccountsResponse
 	calls []capturedAccountListCall
 	err   error
 }
 
 func (m *mockInsightsAccountListClient) ListInsightsAccounts(
 	_ context.Context, org string, params apitype.ListInsightsAccountsParams,
-) (apitype.ListInsightsAccountsResponse, error) {
+) (cloudapitype.ListInsightsAccountsResponse, error) {
 	m.calls = append(m.calls, capturedAccountListCall{org: org, params: params})
 	if m.err != nil {
-		return apitype.ListInsightsAccountsResponse{}, m.err
+		return cloudapitype.ListInsightsAccountsResponse{}, m.err
 	}
 	if len(m.pages) == 0 {
 		// Caller exhausted the available pages; return an empty terminal page so
 		// the loop in collectInsightsAccounts can finish cleanly.
-		return apitype.ListInsightsAccountsResponse{}, nil
+		return cloudapitype.ListInsightsAccountsResponse{}, nil
 	}
 	resp := m.pages[0]
 	m.pages = m.pages[1:]
@@ -99,27 +100,29 @@ func withOutput(args insightsAccountListArgs, format string) insightsAccountList
 	return args
 }
 
-func sampleAccount(name string) apitype.InsightsAccount {
+func sampleAccount(name string) cloudapitype.InsightsAccount {
 	finished := time.Date(2026, 5, 12, 16, 7, 24, 0, time.UTC)
-	return apitype.InsightsAccount{
+	return cloudapitype.InsightsAccount{
 		ID:                   "id-" + name,
 		Name:                 name,
 		Provider:             "aws",
-		ProviderEnvRef:       "team/" + name + "@1",
+		Environment:          "team/" + name + "@1",
 		ScheduledScanEnabled: true,
-		OwnedBy: apitype.InsightsAccountOwner{
+		OwnedBy: cloudapitype.UserInfo{
 			Name:        "Ada Lovelace",
 			GitHubLogin: "ada-pulumi-corp",
 			AvatarURL:   "https://api.pulumi.com/static/avatars/A.png",
 		},
-		ScanStatus: &apitype.InsightsAccountScanStatus{
-			ID:            "scan-" + name,
-			OrgID:         "org-1",
-			UserID:        "user-1",
-			Status:        "succeeded",
-			StartedAt:     time.Date(2026, 5, 12, 16, 6, 1, 0, time.UTC),
-			FinishedAt:    &finished,
-			LastUpdatedAt: time.Date(2026, 5, 12, 16, 7, 24, 0, time.UTC),
+		ScanStatus: cloudapitype.ScanStatus{
+			WorkflowRun: cloudapitype.WorkflowRun{
+				ID:            "scan-" + name,
+				OrgID:         "org-1",
+				UserID:        "user-1",
+				Status:        "succeeded",
+				StartedAt:     time.Date(2026, 5, 12, 16, 6, 1, 0, time.UTC),
+				FinishedAt:    &finished,
+				LastUpdatedAt: time.Date(2026, 5, 12, 16, 7, 24, 0, time.UTC),
+			},
 			ResourceCount: 42,
 		},
 	}
@@ -129,8 +132,8 @@ func TestInsightsAccountListCmd_DefaultOutput(t *testing.T) {
 	t.Parallel()
 
 	client := &mockInsightsAccountListClient{
-		pages: []apitype.ListInsightsAccountsResponse{{
-			Accounts: []apitype.InsightsAccount{sampleAccount("prod-aws"), sampleAccount("dev-aws")},
+		pages: []cloudapitype.ListInsightsAccountsResponse{{
+			Accounts: []cloudapitype.InsightsAccount{sampleAccount("prod-aws"), sampleAccount("dev-aws")},
 		}},
 	}
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
@@ -159,7 +162,7 @@ func TestInsightsAccountListCmd_DefaultOutput_NoResults(t *testing.T) {
 	t.Parallel()
 
 	client := &mockInsightsAccountListClient{
-		pages: []apitype.ListInsightsAccountsResponse{{Accounts: nil}},
+		pages: []cloudapitype.ListInsightsAccountsResponse{{Accounts: nil}},
 	}
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
@@ -176,10 +179,10 @@ func TestInsightsAccountListCmd_DefaultOutput_NoScanStatus(t *testing.T) {
 	t.Parallel()
 
 	account := sampleAccount("fresh-aws")
-	account.ScanStatus = nil
+	account.ScanStatus = cloudapitype.ScanStatus{}
 	account.ScheduledScanEnabled = false
 	client := &mockInsightsAccountListClient{
-		pages: []apitype.ListInsightsAccountsResponse{{Accounts: []apitype.InsightsAccount{account}}},
+		pages: []cloudapitype.ListInsightsAccountsResponse{{Accounts: []cloudapitype.InsightsAccount{account}}},
 	}
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
@@ -198,9 +201,9 @@ func TestInsightsAccountListCmd_DefaultOutput_NoScanStatus(t *testing.T) {
 func TestInsightsAccountListCmd_JSONOutput(t *testing.T) {
 	t.Parallel()
 
-	want := []apitype.InsightsAccount{sampleAccount("prod-aws"), sampleAccount("dev-aws")}
+	want := []cloudapitype.InsightsAccount{sampleAccount("prod-aws"), sampleAccount("dev-aws")}
 	client := &mockInsightsAccountListClient{
-		pages: []apitype.ListInsightsAccountsResponse{{Accounts: want}},
+		pages: []cloudapitype.ListInsightsAccountsResponse{{Accounts: want}},
 	}
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
@@ -209,7 +212,7 @@ func TestInsightsAccountListCmd_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	var got struct {
-		Accounts []apitype.InsightsAccount `json:"accounts"`
+		Accounts []cloudapitype.InsightsAccount `json:"accounts"`
 	}
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	assert.Equal(t, want, got.Accounts)
@@ -222,7 +225,7 @@ func TestInsightsAccountListCmd_JSONOutput_EmptyList(t *testing.T) {
 	t.Parallel()
 
 	client := &mockInsightsAccountListClient{
-		pages: []apitype.ListInsightsAccountsResponse{{Accounts: nil}},
+		pages: []cloudapitype.ListInsightsAccountsResponse{{Accounts: nil}},
 	}
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
@@ -240,15 +243,15 @@ func TestInsightsAccountListCmd_DefaultStopsAfterFirstPage(t *testing.T) {
 	t.Parallel()
 
 	client := &mockInsightsAccountListClient{
-		pages: []apitype.ListInsightsAccountsResponse{
+		pages: []cloudapitype.ListInsightsAccountsResponse{
 			{
-				Accounts:  []apitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
+				Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
 				NextToken: "cursor-1",
 			},
 			// A second page is available but must not be consumed when --count
 			// and --all are both unset.
 			{
-				Accounts:  []apitype.InsightsAccount{sampleAccount("a3")},
+				Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a3")},
 				NextToken: "",
 			},
 		},
@@ -260,7 +263,7 @@ func TestInsightsAccountListCmd_DefaultStopsAfterFirstPage(t *testing.T) {
 	require.NoError(t, err)
 
 	var got struct {
-		Accounts []apitype.InsightsAccount `json:"accounts"`
+		Accounts []cloudapitype.InsightsAccount `json:"accounts"`
 	}
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	require.Len(t, got.Accounts, 2)
@@ -277,17 +280,17 @@ func TestInsightsAccountListCmd_AllFollowsPagination(t *testing.T) {
 	t.Parallel()
 
 	client := &mockInsightsAccountListClient{
-		pages: []apitype.ListInsightsAccountsResponse{
+		pages: []cloudapitype.ListInsightsAccountsResponse{
 			{
-				Accounts:  []apitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
+				Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
 				NextToken: "cursor-1",
 			},
 			{
-				Accounts:  []apitype.InsightsAccount{sampleAccount("a3")},
+				Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a3")},
 				NextToken: "cursor-2",
 			},
 			{
-				Accounts:  []apitype.InsightsAccount{sampleAccount("a4")},
+				Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a4")},
 				NextToken: "",
 			},
 		},
@@ -302,7 +305,7 @@ func TestInsightsAccountListCmd_AllFollowsPagination(t *testing.T) {
 	require.NoError(t, err)
 
 	var got struct {
-		Accounts []apitype.InsightsAccount `json:"accounts"`
+		Accounts []cloudapitype.InsightsAccount `json:"accounts"`
 	}
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	require.Len(t, got.Accounts, 4)
@@ -324,19 +327,19 @@ func TestInsightsAccountListCmd_CountPaginatesUntilSatisfied(t *testing.T) {
 	t.Parallel()
 
 	client := &mockInsightsAccountListClient{
-		pages: []apitype.ListInsightsAccountsResponse{
+		pages: []cloudapitype.ListInsightsAccountsResponse{
 			{
-				Accounts:  []apitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
+				Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
 				NextToken: "cursor-1",
 			},
 			{
-				Accounts:  []apitype.InsightsAccount{sampleAccount("a3"), sampleAccount("a4")},
+				Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a3"), sampleAccount("a4")},
 				NextToken: "cursor-2",
 			},
 			// A third page is available but should not be requested because
 			// --count=3 is already satisfied at the end of page 2.
 			{
-				Accounts:  []apitype.InsightsAccount{sampleAccount("a5")},
+				Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a5")},
 				NextToken: "",
 			},
 		},
@@ -352,7 +355,7 @@ func TestInsightsAccountListCmd_CountPaginatesUntilSatisfied(t *testing.T) {
 	require.NoError(t, err)
 
 	var got struct {
-		Accounts []apitype.InsightsAccount `json:"accounts"`
+		Accounts []cloudapitype.InsightsAccount `json:"accounts"`
 	}
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	require.Len(t, got.Accounts, 3, "result should be truncated to --count")
@@ -367,13 +370,13 @@ func TestInsightsAccountListCmd_CountZeroEqualsAll(t *testing.T) {
 	t.Parallel()
 
 	client := &mockInsightsAccountListClient{
-		pages: []apitype.ListInsightsAccountsResponse{
+		pages: []cloudapitype.ListInsightsAccountsResponse{
 			{
-				Accounts:  []apitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
+				Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
 				NextToken: "cursor-1",
 			},
 			{
-				Accounts:  []apitype.InsightsAccount{sampleAccount("a3")},
+				Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a3")},
 				NextToken: "",
 			},
 		},
@@ -389,7 +392,7 @@ func TestInsightsAccountListCmd_CountZeroEqualsAll(t *testing.T) {
 	require.NoError(t, err)
 
 	var got struct {
-		Accounts []apitype.InsightsAccount `json:"accounts"`
+		Accounts []cloudapitype.InsightsAccount `json:"accounts"`
 	}
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	require.Len(t, got.Accounts, 3)
@@ -403,9 +406,9 @@ func TestInsightsAccountListCmd_CountLargerThanAvailable(t *testing.T) {
 	t.Parallel()
 
 	client := &mockInsightsAccountListClient{
-		pages: []apitype.ListInsightsAccountsResponse{
+		pages: []cloudapitype.ListInsightsAccountsResponse{
 			{
-				Accounts:  []apitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
+				Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
 				NextToken: "",
 			},
 		},
@@ -421,7 +424,7 @@ func TestInsightsAccountListCmd_CountLargerThanAvailable(t *testing.T) {
 	require.NoError(t, err)
 
 	var got struct {
-		Accounts []apitype.InsightsAccount `json:"accounts"`
+		Accounts []cloudapitype.InsightsAccount `json:"accounts"`
 	}
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	require.Len(t, got.Accounts, 2)
@@ -466,7 +469,7 @@ func TestInsightsAccountListCmd_FilterPropagation(t *testing.T) {
 			t.Parallel()
 
 			client := &mockInsightsAccountListClient{
-				pages: []apitype.ListInsightsAccountsResponse{{Accounts: nil}},
+				pages: []cloudapitype.ListInsightsAccountsResponse{{Accounts: nil}},
 			}
 			c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, tt.defaultOrg)}
 
@@ -538,10 +541,10 @@ func TestInsightsAccountListCmd_PaginationLimit(t *testing.T) {
 	// A server that always reports a next page must not spin us forever.
 	// Generate listPageLimit+1 pages of nonempty cursors so the safety guard
 	// trips deterministically.
-	pages := make([]apitype.ListInsightsAccountsResponse, 0, listPageLimit+1)
+	pages := make([]cloudapitype.ListInsightsAccountsResponse, 0, listPageLimit+1)
 	for i := 0; i <= listPageLimit; i++ {
-		pages = append(pages, apitype.ListInsightsAccountsResponse{
-			Accounts:  []apitype.InsightsAccount{sampleAccount("a")},
+		pages = append(pages, cloudapitype.ListInsightsAccountsResponse{
+			Accounts:  []cloudapitype.InsightsAccount{sampleAccount("a")},
 			NextToken: "always-more",
 		})
 	}
@@ -561,8 +564,8 @@ func TestNewInsightsAccountListCmd_FlagBinding(t *testing.T) {
 	t.Parallel()
 
 	client := &mockInsightsAccountListClient{
-		pages: []apitype.ListInsightsAccountsResponse{
-			{Accounts: []apitype.InsightsAccount{sampleAccount("prod-aws")}},
+		pages: []cloudapitype.ListInsightsAccountsResponse{
+			{Accounts: []cloudapitype.InsightsAccount{sampleAccount("prod-aws")}},
 		},
 	}
 	cmd := newInsightsAccountListCmd(stubAccountListFactory(client, "acme"))
@@ -586,7 +589,7 @@ func TestNewInsightsAccountListCmd_FlagBinding(t *testing.T) {
 	assert.Equal(t, "role-42", client.calls[0].params.RoleID)
 
 	var got struct {
-		Accounts []apitype.InsightsAccount `json:"accounts"`
+		Accounts []cloudapitype.InsightsAccount `json:"accounts"`
 	}
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	require.Len(t, got.Accounts, 1)
