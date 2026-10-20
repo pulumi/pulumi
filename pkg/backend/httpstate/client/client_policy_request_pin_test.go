@@ -39,7 +39,9 @@ func newCapturingClient(t *testing.T, captured *capturedRequest) *Client {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
-		assert.NoError(t, err)
+		if err != nil {
+			t.Errorf("reading request body: %v", err)
+		}
 		captured.method = r.Method
 		captured.path = r.URL.EscapedPath()
 		captured.body = string(body)
@@ -51,8 +53,7 @@ func newCapturingClient(t *testing.T, captured *capturedRequest) *Client {
 }
 
 func rawJSONPtr(s string) *json.RawMessage {
-	raw := json.RawMessage(s)
-	return &raw
+	return new(json.RawMessage(s))
 }
 
 func pinCreatePolicyGroupRequest() cloudapitype.NewPolicyGroupRequest {

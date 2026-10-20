@@ -27,8 +27,7 @@ import (
 )
 
 func pinRawJSONPtr(s string) *json.RawMessage {
-	raw := json.RawMessage(s)
-	return &raw
+	return new(json.RawMessage(s))
 }
 
 func pinGroupSummariesFull() []cloudapitype.AppPolicyGroupSummary {
@@ -497,15 +496,21 @@ func TestPin_PolicyIssueList_Table(t *testing.T) {
 		Total:  250,
 	}
 	got := renderPin(t, func(w *bytes.Buffer) error { return renderPolicyIssueListTable(w, resp) })
-	assert.Equal(t, `┌─────────┬──────────────────────┬───────────────┬─────────────┬──────────┬────────────────────────────────────────────────────────────┐
-│ ID      │ POLICY PACK          │ POLICY        │ ENFORCEMENT │ STACK    │ MESSAGE                                                    │
-├─────────┼──────────────────────┼───────────────┼─────────────┼──────────┼────────────────────────────────────────────────────────────┤
-│ issue-1 │ aws-guardrails@3.1.0 │ s3-no-public  │ mandatory   │ web/prod │ Bucket must not allow public access & <must> be "private". │
-│ issue-2 │ tagging              │ require-owner │ advisory    │ -        │                                                            │
-└─────────┴──────────────────────┴───────────────┴─────────────┴──────────┴────────────────────────────────────────────────────────────┘
-
-Showing 2 of 250 policy issue(s)
-`, got)
+	assert.Equal(t, ""+
+		`┌─────────┬──────────────────────┬───────────────┬─────────────┬──────`+
+		`────┬────────────────────────────────────────────────────────────┐`+"\n"+
+		`│ ID      │ POLICY PACK          │ POLICY        │ ENFORCEMENT │ STACK`+
+		`    │ MESSAGE                                                    │`+"\n"+
+		`├─────────┼──────────────────────┼───────────────┼─────────────┼──────`+
+		`────┼────────────────────────────────────────────────────────────┤`+"\n"+
+		`│ issue-1 │ aws-guardrails@3.1.0 │ s3-no-public  │ mandatory   │ web/p`+
+		`rod │ Bucket must not allow public access & <must> be "private". │`+"\n"+
+		`│ issue-2 │ tagging              │ require-owner │ advisory    │ -    `+
+		`    │                                                            │`+"\n"+
+		`└─────────┴──────────────────────┴───────────────┴─────────────┴──────`+
+		`────┴────────────────────────────────────────────────────────────┘`+"\n"+
+		"\n"+
+		"Showing 2 of 250 policy issue(s)\n", got)
 }
 
 func TestPin_PolicyIssueGet_JSON_Full(t *testing.T) {
