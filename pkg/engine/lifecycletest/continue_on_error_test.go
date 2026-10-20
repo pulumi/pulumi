@@ -1739,8 +1739,8 @@ func TestUpContinueOnErrorSkippedComponentRegistersOutputs(t *testing.T) {
 	assert.Equal(t, resource.NewProperty("known"), comp.Outputs["out"])
 }
 
-// TestUpContinueOnErrorSkippedCreatePreviewPropagatesMixedOutputs verifies that when a
-// CreateStep is skipped because its dependency failed, the engine invokes the provider's
+// TestUpContinueOnErrorSkippedCreatePreviewPropagatesMixedOutputs verifies that when a new
+// resource is skipped because its dependency failed, the engine invokes the provider's
 // Create with Preview=true and forwards the returned per-property mix of known and unknown
 // values back to the SDK, rather than returning an everything-unknown map.
 func TestUpContinueOnErrorSkippedCreatePreviewPropagatesMixedOutputs(t *testing.T) {
@@ -1824,7 +1824,7 @@ func TestUpContinueOnErrorSkippedCreatePreviewPropagatesMixedOutputs(t *testing.
 
 // TestUpContinueOnErrorSkippedUpdatePreviewPropagatesMixedOutputs is the Update analogue: on
 // the second run, the pkgB resource's update fails, the pkgA dependent's update is skipped, and
-// UpdateStep.Skip should call the provider's Update with Preview=true to populate mixed
+// the engine should call the provider's Update with Preview=true to populate mixed
 // known/unknown outputs in the response.
 func TestUpContinueOnErrorSkippedUpdatePreviewPropagatesMixedOutputs(t *testing.T) {
 	t.Parallel()
