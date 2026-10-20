@@ -146,6 +146,7 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+			_ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -260,6 +261,7 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+			_ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},

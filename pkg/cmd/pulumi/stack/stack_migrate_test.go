@@ -317,9 +317,10 @@ func (lm *migrationLoginManager) Login(
 	setCurrent bool,
 	insecure bool,
 	color colors.Colorization,
+	opts ...cmdBackend.LoginOption,
 ) (backend.Backend, error) {
 	if url == lm.sourceURL {
-		return lm.LoginManager.Login(ctx, ws, sink, url, project, setCurrent, insecure, color)
+		return lm.LoginManager.Login(ctx, ws, sink, url, project, setCurrent, insecure, color, opts...)
 	}
 	if url == lm.targetURL {
 		return lm.targetBE, nil
@@ -339,7 +340,7 @@ func TestMigrationLoginManagerRoutesExactURLs(t *testing.T) {
 	sourceLM := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project,
-			bool, bool, colors.Colorization,
+			bool, bool, colors.Colorization, ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			sourceCalls++
 			return sourceBE, nil
@@ -535,6 +536,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) {
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+				_ ...cmdBackend.LoginOption,
 			) (backend.Backend, error) {
 				return nil, errors.New("login boom")
 			}},
@@ -548,6 +550,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) {
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+				_ ...cmdBackend.LoginOption,
 			) (backend.Backend, error) {
 				sourceBE := newSourceBackend()
 				sourceBE.ParseStackReferenceF = func(s string) (backend.StackReference, error) {
@@ -565,6 +568,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) {
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+				_ ...cmdBackend.LoginOption,
 			) (backend.Backend, error) {
 				sourceBE := newSourceBackend()
 				sourceBE.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
@@ -582,6 +586,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) {
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+				_ ...cmdBackend.LoginOption,
 			) (backend.Backend, error) {
 				sourceBE := newSourceBackend()
 				sourceBE.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
@@ -599,6 +604,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) {
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+				_ ...cmdBackend.LoginOption,
 			) (backend.Backend, error) {
 				return newSourceBackend(), nil
 			}},
@@ -616,6 +622,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) {
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+				_ ...cmdBackend.LoginOption,
 			) (backend.Backend, error) {
 				return newSourceBackend(), nil
 			}},
@@ -635,6 +642,7 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) {
 			}},
 			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+				_ ...cmdBackend.LoginOption,
 			) (backend.Backend, error) {
 				return newSourceBackend(), nil
 			}},
@@ -709,7 +717,7 @@ func TestStackMigrate_PromptsAndCancelsSameNameMigration(t *testing.T) { //nolin
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -747,7 +755,7 @@ func TestStackMigrate_RejectsSameBackend(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, loginURL string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
 				URLF:  func() string { return url },
@@ -827,7 +835,7 @@ func TestStackMigrate_RejectsExistingTargetStack(t *testing.T) { //nolint: paral
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -967,7 +975,7 @@ func TestStackMigrate_RollsBackOnImportFailure(t *testing.T) { //nolint: paralle
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -1112,7 +1120,7 @@ func TestStackMigrate_RollsBackTargetConfigOnImportFailure(t *testing.T) { //nol
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -1236,7 +1244,7 @@ func TestStackMigrate_DoesNotRollbackOnAlreadyExistsRace(t *testing.T) { //nolin
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -1381,7 +1389,7 @@ func TestStackMigrate_ReencryptsConfigSecret(t *testing.T) { //nolint: parallelt
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -1575,7 +1583,7 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -1724,7 +1732,7 @@ func TestStackMigrate_BacksUpSameNameConfigFile(t *testing.T) { //nolint: parall
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -1852,7 +1860,7 @@ func TestStackMigrate_BackupAvoidsClobberingExistingBak(t *testing.T) { //nolint
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -2011,7 +2019,7 @@ func TestStackMigrate_RewritesURNsOnRename(t *testing.T) { //nolint: paralleltes
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -2221,7 +2229,7 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -2410,7 +2418,7 @@ func TestStackMigrate_RewritesProjectOnTargetWithNewProject(t *testing.T) { //no
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -2561,7 +2569,7 @@ func TestStackMigrate_RollsBackOnSaveStackConfigError(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -2682,7 +2690,7 @@ func TestStackMigrate_WarnsWhenSaveStackConfigCleanupProbeFails(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -2834,7 +2842,7 @@ func TestStackMigrate_RenameLegacyRefFallsBackToLocalProject(t *testing.T) { //n
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -2969,7 +2977,7 @@ func TestStackMigrate_RefusesLegacyRenameWithoutProject(t *testing.T) { //nolint
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},
@@ -3101,7 +3109,7 @@ func TestStackMigrate_ReplacesPreExistingTargetConfig(t *testing.T) { //nolint: 
 	}
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
-			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return sourceBE, nil
 		},

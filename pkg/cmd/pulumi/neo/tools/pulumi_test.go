@@ -400,7 +400,7 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool,
-			insecure bool, color colors.Colorization,
+			insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -461,7 +461,7 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 				},
 				LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 					url string, project *workspace.Project, setCurrent bool,
-					insecure bool, color colors.Colorization,
+					insecure bool, color colors.Colorization, _ ...cmdBackend.LoginOption,
 				) (backend.Backend, error) {
 					return be, nil
 				},
@@ -566,7 +566,7 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 					return be, nil
 				},
 				LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project,
-					bool, bool, colors.Colorization,
+					bool, bool, colors.Colorization, ...cmdBackend.LoginOption,
 				) (backend.Backend, error) {
 					return be, nil
 				},

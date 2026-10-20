@@ -198,7 +198,7 @@ func TestLoginURLResolution(t *testing.T) {
 					project *workspace.Project,
 					setCurrent bool,
 					insecure bool,
-					color colors.Colorization,
+					color colors.Colorization, _ ...backend.LoginOption,
 				) (pkgBackend.Backend, error) {
 					captured.calls++
 					captured.url = url
@@ -504,7 +504,7 @@ func TestLoginEnvConflict(t *testing.T) {
 			project *workspace.Project,
 			setCurrent bool,
 			insecure bool,
-			color colors.Colorization,
+			color colors.Colorization, _ ...backend.LoginOption,
 		) (pkgBackend.Backend, error) {
 			return &pkgBackend.MockBackend{
 				URLF:  func() string { return url },
@@ -628,7 +628,7 @@ func TestLoginErrorMessage(t *testing.T) {
 					project *workspace.Project,
 					setCurrent bool,
 					insecure bool,
-					color colors.Colorization,
+					color colors.Colorization, _ ...backend.LoginOption,
 				) (pkgBackend.Backend, error) {
 					// Mirror how the DIY backend reports a bucket it cannot open: the wrapper
 					// names the normalized URL, which carries internal query parameters, and
