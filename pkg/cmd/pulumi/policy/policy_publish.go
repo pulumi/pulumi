@@ -16,8 +16,10 @@ package policy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -32,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -40,15 +43,38 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type policyPublishJSON struct {
+	Organization string `json:"organization"`
+	Name         string `json:"name"`
+	VersionTag   string `json:"versionTag"`
+	URL          string `json:"url"`
+}
+
+// policyPublishRender is a marker type for outputflag; the output mode is read back from the flag value.
+type policyPublishRender func()
+
 func newPolicyPublishCmd() *cobra.Command {
 	var policyPublishCmd policyPublishCmd
+	outputFormat := outputflag.OutputFlag[policyPublishRender]{
+		RenderForTerminal: func() {},
+		RenderJSON:        func() {},
+	}
 	cmd := &cobra.Command{
 		Use:   "publish",
 		Short: "Publish a Policy Pack to the Pulumi Cloud",
 		Long: "Publish a Policy Pack to the Pulumi Cloud\n" +
 			"\n" +
-			"If an organization name is not specified, the default org (if set) or the current user account is used.",
+			"If an organization name is not specified, the default org (if set) or the current user account is used.\n" +
+			"\n" +
+			"With --output json, progress messages are written to stderr and the result is written to stdout.\n" +
+			"\n" +
+			"Examples:\n" +
+			"  pulumi policy publish acme\n" +
+			"  pulumi policy publish acme --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			policyPublishCmd.json = outputFormat.String() == "json"
+			policyPublishCmd.stdout = cmd.OutOrStdout()
+			policyPublishCmd.stderr = cmd.ErrOrStderr()
 			return policyPublishCmd.Run(cmd.Context(), cmdBackend.DefaultLoginManager, args)
 		},
 	}
@@ -60,16 +86,26 @@ func newPolicyPublishCmd() *cobra.Command {
 		Required: 0,
 	})
 
+	outputflag.VarP(cmd.Flags(), &outputFormat)
 	return cmd
 }
 
 type policyPublishCmd struct {
-	getwd func() (string, error)
+	getwd  func() (string, error)
+	stdout io.Writer
+	stderr io.Writer
+	json   bool
 }
 
 func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
 	if cmd.getwd == nil {
 		cmd.getwd = os.Getwd
+	}
+	if cmd.stdout == nil {
+		cmd.stdout = io.Discard
+	}
+	if cmd.stderr == nil {
+		cmd.stderr = io.Discard
 	}
 
 	b, err := loginToCloudBackend(ctx, lm)
@@ -153,15 +189,33 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	// Attempt to publish the PolicyPack.
 	//
 
-	err = policyPack.Publish(ctx, backend.PublishOperation{
+	progress := cmd.stdout
+	if cmd.json {
+		progress = cmd.stderr
+	}
+
+	result, err := policyPack.Publish(ctx, backend.PublishOperation{
 		Root:       root,
 		PlugCtx:    plugctx,
 		PolicyPack: proj,
 		Scopes:     backend.CancellationScopes,
 		Metadata:   m,
+		Progress:   progress,
 	})
 	if err != nil {
 		return err
+	}
+
+	if cmd.json {
+		enc := json.NewEncoder(cmd.stdout)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "  ")
+		return enc.Encode(policyPublishJSON{
+			Organization: orgName,
+			Name:         result.Name,
+			VersionTag:   result.VersionTag,
+			URL:          result.URL,
+		})
 	}
 
 	return nil
