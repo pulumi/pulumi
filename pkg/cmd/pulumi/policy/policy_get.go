@@ -16,7 +16,6 @@ package policy
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -229,10 +228,7 @@ func runPolicyGet(
 }
 
 func renderPolicyGetJSON(w io.Writer, pack cloudapitype.AppGetPolicyPackResponse) error {
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	return enc.Encode(pack)
+	return writeJSON(w, pack)
 }
 
 func renderPolicyGetText(w io.Writer, pack cloudapitype.AppGetPolicyPackResponse) error {

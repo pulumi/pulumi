@@ -19,22 +19,46 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
+type policyValidateJSON struct {
+	Organization string `json:"organization"`
+	PolicyPack   string `json:"policyPack"`
+	VersionTag   string `json:"versionTag"`
+	Valid        bool   `json:"valid"`
+}
+
+// policyValidateRender is a marker type for outputflag; the output mode is read back from the flag value.
+type policyValidateRender func()
+
 func newPolicyValidateCmd() *cobra.Command {
+	return newPolicyValidateCmdWith(defaultPolicyPackCmdDeps)
+}
+
+func newPolicyValidateCmdWith(deps policyPackCmdDeps) *cobra.Command {
+	contract.Assertf(deps != nil, "policyPackCmdDeps must not be nil")
 	var argConfig string
+	outputFormat := outputflag.OutputFlag[policyValidateRender]{
+		RenderForTerminal: func() {},
+		RenderJSON:        func() {},
+	}
 
 	cmd := &cobra.Command{
 		Use:   "validate-config",
 		Short: "Validate a Policy Pack configuration",
-		Long:  "Validate a Policy Pack configuration against the configuration schema of the specified version.",
+		Long: "Validate a Policy Pack configuration against the configuration schema of the specified version.\n" +
+			"\n" +
+			"Examples:\n" +
+			"  pulumi policy validate-config acme/aws-guardrails 3 --config config.json\n" +
+			"  pulumi policy validate-config acme/aws-guardrails 3 --config config.json --output json",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			policyPack, err := requirePolicyPack(ctx, cliArgs[0], cmdBackend.DefaultLoginManager)
+			policyPack, _, err := deps(ctx, cliArgs[0])
 			if err != nil {
 				return err
 			}
@@ -60,6 +84,14 @@ func newPolicyValidateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if outputFormat.String() == "json" {
+				return writeJSON(cmd.OutOrStdout(), policyValidateJSON{
+					Organization: policyPack.Ref().OrgName(),
+					PolicyPack:   string(policyPack.Ref().Name()),
+					VersionTag:   *version,
+					Valid:        true,
+				})
+			}
 			fmt.Fprintln(cmd.OutOrStdout(), "Policy Pack configuration is valid.")
 			return nil
 		},
@@ -77,5 +109,6 @@ func newPolicyValidateCmd() *cobra.Command {
 		"The file path for the Policy Pack configuration file")
 	cmd.MarkFlagRequired("config") //nolint:errcheck
 
+	outputflag.VarP(cmd.Flags(), &outputFormat)
 	return cmd
 }

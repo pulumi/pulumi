@@ -15,8 +15,6 @@
 package policy
 
 import (
-	"encoding/json"
-
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
@@ -84,10 +82,7 @@ func newPolicyDisableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 			if args.version != "" {
 				versionTag = &args.version
 			}
-			enc := json.NewEncoder(cmd.OutOrStdout())
-			enc.SetEscapeHTML(false)
-			enc.SetIndent("", "  ")
-			return enc.Encode(policyDisableJSON{
+			return writeJSON(cmd.OutOrStdout(), policyDisableJSON{
 				Organization: policyPack.Ref().OrgName(),
 				PolicyGroup:  group,
 				PolicyPack:   string(policyPack.Ref().Name()),

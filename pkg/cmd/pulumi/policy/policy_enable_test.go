@@ -62,6 +62,17 @@ func runPolicyPackCmd(t *testing.T, cmd *cobra.Command, args ...string) (string,
 	return out.String(), err
 }
 
+func runPolicyPackCmdSplit(t *testing.T, cmd *cobra.Command, args ...string) (string, error) {
+	t.Helper()
+	var stdout, stderr bytes.Buffer
+	cmd.SilenceUsage = true
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs(args)
+	err := cmd.ExecuteContext(t.Context())
+	return stdout.String(), err
+}
+
 func TestPolicyEnable_JSONReadsBackGroup(t *testing.T) {
 	t.Parallel()
 
