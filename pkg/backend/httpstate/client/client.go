@@ -2279,6 +2279,19 @@ func (pc *Client) GetPolicyPackSchema(ctx context.Context, orgName,
 	return &resp, nil
 }
 
+// GetPolicyPack returns the details of a single version of a Policy Pack in the given organization.
+func (pc *Client) GetPolicyPack(
+	ctx context.Context, orgName, policyPackName, versionTag string,
+) (cloudapitype.AppGetPolicyPackResponse, error) {
+	path := fmt.Sprintf("/api/orgs/%s/policypacks/%s/versions/%s",
+		url.PathEscape(orgName), url.PathEscape(policyPackName), url.PathEscape(versionTag))
+	var resp cloudapitype.AppGetPolicyPackResponse
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return cloudapitype.AppGetPolicyPackResponse{}, fmt.Errorf("getting policy pack: %w", err)
+	}
+	return resp, nil
+}
+
 // DisablePolicyPack disables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,
 // it will disable the PolicyPack on the default PolicyGroup.
 func (pc *Client) DisablePolicyPack(ctx context.Context, orgName string, policyGroup string,
