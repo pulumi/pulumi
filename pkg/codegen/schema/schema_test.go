@@ -1425,7 +1425,7 @@ func TestBindSpecReducedPropertyNames(t *testing.T) {
 				},
 			},
 		}, noOpLoader{}, ValidationOptions{AllowDanglingReferences: true})
-		summaries := []string{}
+		summaries := make([]string, 0, len(diags))
 		for _, d := range diags {
 			summaries = append(summaries, d.Summary)
 		}
