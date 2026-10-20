@@ -25,6 +25,8 @@ import (
 //
 // Both required fields (Provider, Environment) are server-validated; the CLI
 // surfaces the validation error rather than re-checking the enum locally.
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.CreateInsightsAccountRequest.
 type CreateInsightsAccountRequest struct {
 	// Provider is the cloud provider the account discovers resources from.
 	// Server-side enum: aws, gcp, azure-native, oci, kubernetes.
@@ -188,6 +190,8 @@ type ListInsightsAccountsParams struct {
 
 // ListInsightsAccountsResponse is the envelope returned by the ListAccounts
 // endpoint. NextToken is empty on the last page.
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.ListInsightsAccountsResponse.
 type ListInsightsAccountsResponse struct {
 	Accounts  []InsightsAccount `json:"accounts"`
 	NextToken string            `json:"nextToken,omitempty"`
@@ -215,6 +219,8 @@ type ListInsightsAccountScansResponse struct {
 // InsightsAccount describes a single Pulumi Insights account as returned by
 // the ListAccounts endpoint. The shape mirrors the OpenAPI schema of the same
 // name in the Pulumi Cloud REST API.
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.InsightsAccount.
 type InsightsAccount struct {
 	// ID is the unique identifier of the account.
 	ID string `json:"id"`
@@ -247,6 +253,8 @@ type InsightsAccount struct {
 // InsightsAccountOwner is the display information for an Insights account's
 // owner. Mirrors the cloud `UserInfo` schema, restricted to the fields the
 // ListAccounts response includes.
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.UserInfo.
 type InsightsAccountOwner struct {
 	Name        string `json:"name"`
 	GitHubLogin string `json:"githubLogin"`
