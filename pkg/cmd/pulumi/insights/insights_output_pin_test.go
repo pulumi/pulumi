@@ -17,52 +17,55 @@ package insights
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 )
 
-func pinInsightsAccountFull() apitype.InsightsAccount {
+func pinInsightsAccountFull() cloudapitype.InsightsAccount {
 	finished := time.Date(2026, 3, 5, 6, 7, 8, 500_000_000, time.UTC)
-	return apitype.InsightsAccount{
+	return cloudapitype.InsightsAccount{
 		ID:                   "acct-1",
 		Name:                 "prod-aws",
 		Provider:             "aws",
-		ProviderVersion:      "6.1.0",
-		ProviderEnvRef:       "infra/aws-prod@v3",
+		ProviderVersion:      "6.1.0", //nolint:staticcheck
+		Environment:          "infra/aws-prod@v3",
 		ScheduledScanEnabled: true,
 		AgentPoolID:          "pool-123",
 		ProviderConfig:       json.RawMessage(`{"regions":["us-west-2","eu-west-1"],"options":{"deep":true,"limit":2.5}}`),
-		OwnedBy: apitype.InsightsAccountOwner{
+		OwnedBy: cloudapitype.UserInfo{
 			Name:        "Ada Lovelace",
 			GitHubLogin: "ada",
 			AvatarURL:   "https://avatars.example.com/ada.png",
 		},
-		ScanStatus: &apitype.InsightsAccountScanStatus{
+		ScanStatus: cloudapitype.ScanStatus{
+			WorkflowRun: cloudapitype.WorkflowRun{
+				ID:            "scan-9",
+				OrgID:         "org-1",
+				UserID:        "user-1",
+				Status:        "succeeded",
+				StartedAt:     time.Date(2026, 3, 5, 6, 0, 0, 123_456_000, time.UTC),
+				FinishedAt:    &finished,
+				LastUpdatedAt: time.Date(2026, 3, 5, 6, 7, 9, 250_000_000, time.UTC),
+				JobTimeout:    time.Date(2026, 3, 5, 7, 0, 0, 0, time.UTC),
+			},
 			AccountName:   "prod-aws",
-			ID:            "scan-9",
-			OrgID:         "org-1",
 			ResourceCount: 1234,
-			UserID:        "user-1",
-			Status:        "succeeded",
-			StartedAt:     time.Date(2026, 3, 5, 6, 0, 0, 123_456_000, time.UTC),
-			FinishedAt:    &finished,
-			LastUpdatedAt: time.Date(2026, 3, 5, 6, 7, 9, 250_000_000, time.UTC),
-			JobTimeout:    time.Date(2026, 3, 5, 7, 0, 0, 0, time.UTC),
 		},
 	}
 }
 
-func pinInsightsAccountNoScanStatus() apitype.InsightsAccount {
-	return apitype.InsightsAccount{
+func pinInsightsAccountNoScanStatus() cloudapitype.InsightsAccount {
+	return cloudapitype.InsightsAccount{
 		ID:       "acct-2",
 		Name:     "fresh-gcp",
 		Provider: "gcp",
-		OwnedBy:  apitype.InsightsAccountOwner{Name: "Grace Hopper", GitHubLogin: "grace"},
+		OwnedBy:  cloudapitype.UserInfo{Name: "Grace Hopper", GitHubLogin: "grace"},
 	}
 }
 
@@ -70,7 +73,7 @@ func TestPin_InsightsAccountList_JSON_Full(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	c := &insightsAccountListCmd{}
-	require.NoError(t, c.renderJSON(&buf, []apitype.InsightsAccount{pinInsightsAccountFull()}))
+	require.NoError(t, c.renderJSON(&buf, []cloudapitype.InsightsAccount{pinInsightsAccountFull()}))
 	assert.JSONEq(t, `{
   "accounts": [
     {
@@ -118,7 +121,7 @@ func TestPin_InsightsAccountList_JSON_NoScanStatus(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	c := &insightsAccountListCmd{}
-	require.NoError(t, c.renderJSON(&buf, []apitype.InsightsAccount{pinInsightsAccountNoScanStatus()}))
+	require.NoError(t, c.renderJSON(&buf, []cloudapitype.InsightsAccount{pinInsightsAccountNoScanStatus()}))
 	assert.JSONEq(t, `{
   "accounts": [
     {
@@ -141,7 +144,7 @@ func TestPin_InsightsAccountList_Table(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
 	c := &insightsAccountListCmd{}
-	require.NoError(t, c.renderTable(&buf, []apitype.InsightsAccount{
+	require.NoError(t, c.renderTable(&buf, []cloudapitype.InsightsAccount{
 		pinInsightsAccountFull(), pinInsightsAccountNoScanStatus(),
 	}))
 	assert.Equal(t, `┌───────────┬──────────┬───────┬────────────────┬────────────────────────┬───────────┐
@@ -222,4 +225,35 @@ Scan status:           succeeded
 Last scan finished:    2026-03-05T06:07:08Z
 Resources discovered:  1234
 `, buf.String())
+}
+
+func decodeAccountWithZeroScanStatus(t *testing.T) cloudapitype.InsightsAccount {
+	t.Helper()
+	zeroScan, err := json.Marshal(cloudapitype.ScanStatus{})
+	require.NoError(t, err)
+	var account cloudapitype.InsightsAccount
+	require.NoError(t, json.Unmarshal(
+		[]byte(`{"id":"acct-2","name":"fresh-gcp","provider":"gcp","scanStatus":`+string(zeroScan)+`}`), &account))
+	return account
+}
+
+func TestInsightsAccountList_ZeroScanStatusFromServer(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	c := &insightsAccountListCmd{}
+	require.NoError(t, c.renderJSON(&buf, []cloudapitype.InsightsAccount{decodeAccountWithZeroScanStatus(t)}))
+	assert.NotContains(t, buf.String(), "scanStatus")
+}
+
+func TestInsightsAccountNew_ZeroScanStatusFromServer(t *testing.T) {
+	t.Parallel()
+	account := decodeAccountWithZeroScanStatus(t)
+
+	var jsonBuf bytes.Buffer
+	require.NoError(t, renderInsightsAccountJSON(&jsonBuf, account))
+	assert.NotContains(t, jsonBuf.String(), "scanStatus")
+
+	var textBuf bytes.Buffer
+	require.NoError(t, renderInsightsAccountText(&textBuf, account))
+	assert.False(t, strings.Contains(textBuf.String(), "Scan status:"), textBuf.String())
 }

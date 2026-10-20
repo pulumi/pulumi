@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 )
 
 func TestPin_CreateInsightsAccount_Body(t *testing.T) {
@@ -30,7 +30,7 @@ func TestPin_CreateInsightsAccount_Body(t *testing.T) {
 
 	var got capturedRequest
 	c := newCapturingClient(t, &got)
-	err := c.CreateInsightsAccount(t.Context(), "acme", "prod-aws", apitype.CreateInsightsAccountRequest{
+	err := c.CreateInsightsAccount(t.Context(), "acme", "prod-aws", cloudapitype.CreateInsightsAccountRequest{
 		Provider:       "aws",
 		Environment:    "infra/aws-prod@v3",
 		ScanSchedule:   "daily",
