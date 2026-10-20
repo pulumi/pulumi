@@ -1,0 +1,4 @@
+component: sdk
+kind: fix
+body: Resolve the outputs of a read that fails under `--continue-on-error` as unknown instead of as known empty values
+time: 2026-10-09T23:29:09.919667+02:00

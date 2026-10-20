@@ -1510,9 +1510,13 @@ func (ctx *Context) readPackageResource(
 		if resp != nil {
 			urn = resp.Urn
 			state = resp.Properties
-			// A skipped read reports Unknown=true; resolve outputs as unknown so dependents
-			// propagate unknowns instead of seeing empty values as real.
-			keepUnknowns = resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown
+			// A skipped read reports Unknown=true and a failed read reports a non-success result;
+			// resolve outputs as unknown in both cases so dependents propagate unknowns instead of
+			// seeing empty values as real.
+			if resp.Result != pulumirpc.Result_SUCCESS {
+				state = nil
+			}
+			keepUnknowns = resp.Result != pulumirpc.Result_SUCCESS || resp.Unknown
 			// Prefer the id returned by the provider's Read, which may differ from the id
 			// supplied on the request. An empty response id during preview means "unknown"
 			// (resolve() will mark the output as computed); during update it indicates an
