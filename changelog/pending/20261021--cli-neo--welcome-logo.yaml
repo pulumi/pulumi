@@ -1,0 +1,3 @@
+component: cli/neo
+kind: improvement
+body: Update the Neo welcome logo and place the title and greeting below it
