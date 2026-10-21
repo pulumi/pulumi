@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,61 +45,67 @@ func init() {
 					unsetRes := RequireSingleNamedResource(l, snap.Resources, "unsetRes")
 					fromNestedOptional := RequireSingleNamedResource(l, snap.Resources, "fromNestedOptional")
 
-					setWant := resource.NewPropertyMapFromMap(map[string]any{
-						"data": resource.NewPropertyMapFromMap(map[string]any{
-							"boolean":     true,
-							"float":       3.14,
-							"integer":     42,
-							"string":      "hello",
-							"numberArray": []any{-1.0, 0.0, 1.0},
-							"booleanMap":  map[string]any{"t": true, "f": false},
+					setWant := property.NewMap(map[string]property.Value{
+						"data": property.New(map[string]property.Value{
+							"boolean": property.New(true),
+							"float":   property.New(3.14),
+							"integer": property.New(42.0),
+							"string":  property.New("hello"),
+							"numberArray": property.New([]property.Value{
+								property.New(-1.0), property.New(0.0), property.New(1.0),
+							}),
+							"booleanMap": property.New(map[string]property.Value{
+								"t": property.New(true), "f": property.New(false),
+							}),
 						}),
-						"optionalData": resource.NewPropertyMapFromMap(map[string]any{
-							"string": "optional parent",
+						"optionalData": property.New(map[string]property.Value{
+							"string": property.New("optional parent"),
 						}),
 					})
-					assert.Equal(l, setWant, setRes.Inputs, "setRes inputs")
-					assert.Equal(l, setWant, setRes.Outputs, "setRes outputs")
+					assert.Equal(l, setWant, resource.FromResourcePropertyMap(setRes.Inputs), "setRes inputs")
+					assert.Equal(l, setWant, resource.FromResourcePropertyMap(setRes.Outputs), "setRes outputs")
 
-					unsetWant := resource.NewPropertyMapFromMap(map[string]any{
-						"data": resource.NewPropertyMapFromMap(map[string]any{}),
+					unsetWant := property.NewMap(map[string]property.Value{
+						"data": property.New(property.Map{}),
 					})
-					assert.Equal(l, unsetWant, unsetRes.Inputs, "unsetRes inputs")
-					assert.Equal(l, unsetWant, unsetRes.Outputs, "unsetRes outputs")
+					assert.Equal(l, unsetWant, resource.FromResourcePropertyMap(unsetRes.Inputs), "unsetRes inputs")
+					assert.Equal(l, unsetWant, resource.FromResourcePropertyMap(unsetRes.Outputs), "unsetRes outputs")
 
-					fromNestedOptionalWant := resource.NewPropertyMapFromMap(map[string]any{
-						"data": resource.NewPropertyMapFromMap(map[string]any{
-							"string": "optional parent",
+					fromNestedOptionalWant := property.NewMap(map[string]property.Value{
+						"data": property.New(map[string]property.Value{
+							"string": property.New("optional parent"),
 						}),
 					})
-					assert.Equal(l, fromNestedOptionalWant, fromNestedOptional.Inputs, "fromNestedOptional inputs")
-					assert.Equal(l, fromNestedOptionalWant, fromNestedOptional.Outputs, "fromNestedOptional outputs")
+					assert.Equal(l, fromNestedOptionalWant,
+						resource.FromResourcePropertyMap(fromNestedOptional.Inputs), "fromNestedOptional inputs")
+					assert.Equal(l, fromNestedOptionalWant,
+						resource.FromResourcePropertyMap(fromNestedOptional.Outputs), "fromNestedOptional outputs")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
 					// Traversal of populated output object -> optional scalar yields the value.
-					AssertPropertyMapMember(l, outputs, "setBoolean", resource.NewProperty(true))
-					AssertPropertyMapMember(l, outputs, "setFloat", resource.NewProperty(3.14))
-					AssertPropertyMapMember(l, outputs, "setInteger", resource.NewProperty(42.0))
-					AssertPropertyMapMember(l, outputs, "setString", resource.NewProperty("hello"))
-					AssertPropertyMapMember(l, outputs, "setNumberArray", resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty(-1.0),
-						resource.NewProperty(0.0),
-						resource.NewProperty(1.0),
+					AssertPropertyMapMember(l, outputs, "setBoolean", property.New(true))
+					AssertPropertyMapMember(l, outputs, "setFloat", property.New(3.14))
+					AssertPropertyMapMember(l, outputs, "setInteger", property.New(42.0))
+					AssertPropertyMapMember(l, outputs, "setString", property.New("hello"))
+					AssertPropertyMapMember(l, outputs, "setNumberArray", property.New([]property.Value{
+						property.New(-1.0),
+						property.New(0.0),
+						property.New(1.0),
 					}))
-					AssertPropertyMapMember(l, outputs, "setBooleanMap", resource.NewProperty(resource.PropertyMap{
-						"t": resource.NewProperty(true),
-						"f": resource.NewProperty(false),
+					AssertPropertyMapMember(l, outputs, "setBooleanMap", property.New(map[string]property.Value{
+						"t": property.New(true),
+						"f": property.New(false),
 					}))
 
 					// Traversal of an output object with all unset inner fields yields null at each leaf.
-					AssertPropertyMapMember(l, outputs, "unsetBoolean", resource.NewProperty("null"))
-					AssertPropertyMapMember(l, outputs, "unsetFloat", resource.NewProperty("null"))
-					AssertPropertyMapMember(l, outputs, "unsetInteger", resource.NewProperty("null"))
-					AssertPropertyMapMember(l, outputs, "unsetString", resource.NewProperty("null"))
-					AssertPropertyMapMember(l, outputs, "unsetNumberArray", resource.NewProperty("null"))
-					AssertPropertyMapMember(l, outputs, "unsetBooleanMap", resource.NewProperty("null"))
+					AssertPropertyMapMember(l, outputs, "unsetBoolean", property.New("null"))
+					AssertPropertyMapMember(l, outputs, "unsetFloat", property.New("null"))
+					AssertPropertyMapMember(l, outputs, "unsetInteger", property.New("null"))
+					AssertPropertyMapMember(l, outputs, "unsetString", property.New("null"))
+					AssertPropertyMapMember(l, outputs, "unsetNumberArray", property.New("null"))
+					AssertPropertyMapMember(l, outputs, "unsetBooleanMap", property.New("null"))
 				},
 			},
 		},
