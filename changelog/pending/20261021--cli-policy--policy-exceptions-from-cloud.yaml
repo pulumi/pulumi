@@ -1,0 +1,3 @@
+component: cli/policy
+kind: feat
+body: Apply the policy exceptions Pulumi Cloud sends for required policy packs
