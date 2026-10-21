@@ -572,6 +572,7 @@ func (srv *analyzerServer) AnalyzeStack(ctx context.Context, req *pulumirpc.Anal
 				Urn:               urn,
 			})
 		}
+
 		args := StackValidationArgs{
 			Manager:   policyManager,
 			Resources: resources,
