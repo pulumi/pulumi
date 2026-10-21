@@ -35,7 +35,7 @@ func Marshal(m property.Map) *structpb.Struct {
 
 func MarshalValue(v property.Value) *structpb.Value {
 	// If we have dependencies, this must be an output
-	if deps := v.Dependencies(); len(deps) > 0 || (v.Secret() && v.IsComputed()) {
+	if deps := v.Dependencies(); len(deps) > 0 {
 		fields := map[string]*structpb.Value{
 			sig.Key: structpb.NewStringValue(sig.OutputValue),
 		}
@@ -45,13 +45,13 @@ func MarshalValue(v property.Value) *structpb.Value {
 		if v.Secret() {
 			fields["secret"] = trueValue
 		}
-		if len(deps) > 0 {
-			urns := make([]*structpb.Value, len(deps))
-			for i, urn := range deps {
-				urns[i] = structpb.NewStringValue(string(urn))
-			}
-			fields["dependencies"] = structpb.NewListValue(&structpb.ListValue{Values: urns})
+
+		urns := make([]*structpb.Value, len(deps))
+		for i, urn := range deps {
+			urns[i] = structpb.NewStringValue(string(urn))
 		}
+		fields["dependencies"] = structpb.NewListValue(&structpb.ListValue{Values: urns})
+
 		return structpb.NewStructValue(&structpb.Struct{Fields: fields})
 	}
 
@@ -133,11 +133,9 @@ func marshalResourceReference(ref property.ResourceReference) *structpb.Value {
 	return structpb.NewStructValue(&structpb.Struct{Fields: fields})
 }
 
-var computedValue = structpb.NewStructValue(&structpb.Struct{
-	Fields: map[string]*structpb.Value{
-		sig.Key: structpb.NewStringValue(sig.OutputValue),
-	},
-})
+// N.B. While there are similar sentinel values for other types of unknown values in practice we only ever use the
+// string one, and the non-Go SDKs have only _ever_ sent the unknown string sentinel.
+var computedValue = structpb.NewStringValue(sig.UnknownStringValue)
 
 var trueValue = structpb.NewBoolValue(true)
 

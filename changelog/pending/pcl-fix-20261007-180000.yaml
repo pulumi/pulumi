@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Make the PCL interpreter's `lookup` return the default unchanged when the key is absent from a map
+time: 2026-10-07T18:00:00.000000+02:00
