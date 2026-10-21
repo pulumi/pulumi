@@ -54,6 +54,8 @@ type Options struct {
 	OtelTraces string
 	// Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
 	Profiling string
+	// the description for the change request created by --draft
+	Reason string
 	// Show static secrets in plaintext rather than ciphertext
 	ShowSecrets bool
 	// Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
@@ -162,6 +164,13 @@ func OtelTraces(v string) Option {
 func Profiling(v string) Option {
 	return func(o *Options) {
 		o.Profiling = v
+	}
+}
+
+// Reason returns an Option that sets Reason.
+func Reason(v string) Option {
+	return func(o *Options) {
+		o.Reason = v
 	}
 }
 

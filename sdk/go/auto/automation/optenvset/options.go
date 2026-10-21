@@ -54,6 +54,8 @@ type Options struct {
 	Plaintext bool
 	// Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
 	Profiling string
+	// the description for the change request created by --draft
+	Reason string
 	// true to mark the value as secret
 	Secret bool
 	// true to treat the value as a string rather than attempting to parse it as YAML
@@ -164,6 +166,13 @@ func Plaintext(v bool) Option {
 func Profiling(v string) Option {
 	return func(o *Options) {
 		o.Profiling = v
+	}
+}
+
+// Reason returns an Option that sets Reason.
+func Reason(v string) Option {
+	return func(o *Options) {
+		o.Reason = v
 	}
 }
 

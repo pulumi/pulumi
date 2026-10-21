@@ -56,6 +56,8 @@ type Options struct {
 	Path string
 	// Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
 	Profiling string
+	// the description for the change request created by --draft
+	Reason string
 	// optional GCP service account to impersonate
 	ServiceAccount string
 	// optional lifetime for impersonated credentials, e.g. 1h30m
@@ -173,6 +175,13 @@ func Path(v string) Option {
 func Profiling(v string) Option {
 	return func(o *Options) {
 		o.Profiling = v
+	}
+}
+
+// Reason returns an Option that sets Reason.
+func Reason(v string) Option {
+	return func(o *Options) {
+		o.Reason = v
 	}
 }
 

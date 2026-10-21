@@ -58,6 +58,8 @@ type Options struct {
 	Profiling string
 	// GCP workload identity pool provider ID (required)
 	ProviderId string
+	// the description for the change request created by --draft
+	Reason string
 	// optional GCP region for the workload identity pool
 	Region string
 	// GCP service account to impersonate (required)
@@ -188,6 +190,13 @@ func Profiling(v string) Option {
 func ProviderId(v string) Option {
 	return func(o *Options) {
 		o.ProviderId = v
+	}
+}
+
+// Reason returns an Option that sets Reason.
+func Reason(v string) Option {
+	return func(o *Options) {
+		o.Reason = v
 	}
 }
 
