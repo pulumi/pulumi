@@ -1266,9 +1266,11 @@ func TestImportCheckFailureRedactsSecrets(t *testing.T) {
 					}, nil
 				},
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					inputs := resource.PropertyMap{"foo": resource.MakeSecret(resource.NewProperty("secret-input-value"))}
+					inputs := property.NewMap(map[string]property.Value{
+						"foo": property.New("secret-input-value").WithSecret(true),
+					})
 					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{Inputs: inputs, Outputs: inputs.Copy()},
+						ReadResult: plugin.ReadResult{Inputs: &inputs, Outputs: &inputs},
 						Status:     resource.StatusOK,
 					}, nil
 				},
