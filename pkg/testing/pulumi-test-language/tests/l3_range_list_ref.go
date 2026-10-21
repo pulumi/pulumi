@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,16 +45,20 @@ func init() {
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:nestedobject")
 
 					numTarget := RequireSingleNamedResource(l, res.Snap.Resources, "numTarget")
-					AssertPropertyMapMember(l, numTarget.Inputs, "name", resource.NewProperty("num-0+"))
+					AssertPropertyMapMember(l, resource.FromResourcePropertyMap(numTarget.Inputs),
+						"name", property.New("num-0+"))
 
 					listTarget := RequireSingleNamedResource(l, res.Snap.Resources, "listTarget")
-					AssertPropertyMapMember(l, listTarget.Inputs, "name", resource.NewProperty("1:b+"))
+					AssertPropertyMapMember(l, resource.FromResourcePropertyMap(listTarget.Inputs),
+						"name", property.New("1:b+"))
 
 					listDynTarget0 := RequireSingleNamedResource(l, res.Snap.Resources, "listDynTarget-0")
-					AssertPropertyMapMember(l, listDynTarget0.Inputs, "name", resource.NewProperty("0:a!"))
+					AssertPropertyMapMember(l, resource.FromResourcePropertyMap(listDynTarget0.Inputs),
+						"name", property.New("0:a!"))
 
 					listDynTarget1 := RequireSingleNamedResource(l, res.Snap.Resources, "listDynTarget-1")
-					AssertPropertyMapMember(l, listDynTarget1.Inputs, "name", resource.NewProperty("1:b!"))
+					AssertPropertyMapMember(l, resource.FromResourcePropertyMap(listDynTarget1.Inputs),
+						"name", property.New("1:b!"))
 				},
 			},
 		},
