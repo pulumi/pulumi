@@ -25,6 +25,7 @@ run: |
   esc env change-request apply 00000000-0000-0000-0000-000000000000
   esc env change-request apply 00000000-0000-0000-0000-000000000000 --output json
   esc env change-request close 00000000-0000-0000-0000-000000000000 || true
+  esc env change-request rebase 00000000-0000-0000-0000-000000000000 || true
   esc env change-request ls
   esc env change-request ls --status all --output json
   esc env change-request diff 00000000-0000-0000-0000-000000000000
@@ -215,6 +216,7 @@ Change request 00000000-0000-0000-0000-000000000000 will update environment test
   "entityUrl": ""
 }
 > esc env change-request close 00000000-0000-0000-0000-000000000000
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
 > esc env change-request ls
 > esc env change-request ls --status all --output json
 {
@@ -449,6 +451,8 @@ warning: Change request 00000000-0000-0000-0000-000000000000 is already applied.
 warning: Change request 00000000-0000-0000-0000-000000000000 is already applied.
 > esc env change-request close 00000000-0000-0000-0000-000000000000
 Error: closing change request: change request is not active
+> esc env change-request rebase 00000000-0000-0000-0000-000000000000
+Error: change request 00000000-0000-0000-0000-000000000000 is applied
 > esc env change-request ls
 No change requests found.
 > esc env change-request ls --status all --output json

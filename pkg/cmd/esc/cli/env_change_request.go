@@ -821,6 +821,9 @@ func newEnvChangeRequestRebaseCmd(cr *changeRequestCommand) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("getting change request: %w", err)
 			}
+			if c.Status == "applied" || c.Status == "closed" {
+				return fmt.Errorf("change request %v is %v", c.ID, c.Status)
+			}
 			if c.Action != "update" {
 				return fmt.Errorf("change request %v is not an environment draft", c.ID)
 			}
