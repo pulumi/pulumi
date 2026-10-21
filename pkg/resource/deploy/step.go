@@ -238,8 +238,10 @@ func (s *SameStep) Fail() {
 }
 
 func (s *SameStep) Skip() {
-	// The resource depends on one that failed, so ask the provider what a dry-run of the create or update that the
-	// program asked for would produce. The snapshot is not affected: nothing happened, so s.new is not persisted.
+	// A skipped same step stands in for a create or update that isn't attempted because a dependency failed (see
+	// continueStepsFromRefresh), so its old outputs aren't what the program asked for. Instead, ask the provider
+	// what a dry-run of that create or update would produce. The snapshot is not affected: nothing happened, so
+	// s.new is not persisted.
 	var old *pkgresource.State
 	if !s.skippedCreate {
 		old = s.old
