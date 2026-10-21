@@ -678,3 +678,32 @@ func (a *fakeAnalyzer) Configure(context.Context, map[string]plugin.AnalyzerPoli
 }
 func (a *fakeAnalyzer) Cancel(context.Context) error { return nil }
 func (a *fakeAnalyzer) Close() error                 { return nil }
+
+// An excepted violation is reported with its exceptions, and doesn't fail the run.
+func TestPolicyAnalyzeCmd_ExceptedViolation(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "config.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"version": 2, "exceptions": {
+		"EXC-42": {
+			"reason": "Needed for the CDN",
+			"match": [{"policies": ["test-policy"], "targets": ["urn:pulumi:stack::project::pkg:index:MyResource::res"]}]
+		}
+	}}`), 0o600))
+
+	be, stk := newMockBackendForAnalyze()
+	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+		return makeAnalyzeSnapshot(), nil
+	}
+	ws, lm := newMockWsAndLm(be)
+	stdout, _, err := runAnalyzeCmd(t, ws, lm, stubLoadAnalyzers([]plugin.Analyzer{&fakeAnalyzer{mandatory: true}}),
+		"--stack", "my-stack", "--policy-pack-config", path, "--json")
+	require.NoError(t, err)
+
+	events := decodeEngineEventsJSON(t, stdout)
+	require.NotEmpty(t, events)
+	require.NotNil(t, events[0].PolicyEvent)
+	assert.Equal(t, "mandatory", events[0].PolicyEvent.EnforcementLevel)
+	assert.Equal(t, []apitype.PolicyEventException{{ID: "EXC-42", Reason: "Needed for the CDN"}},
+		events[0].PolicyEvent.Exceptions)
+}

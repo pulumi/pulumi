@@ -42,8 +42,7 @@ jobs:
         with:
           action: jdx/mise-action@v2
           with: |
-            # Pin mise: the latest advertised version, 2026.9.3, has no release assets.
-            version: 2026.9.2
+            version: 2026.10.3
             experimental: true
       - name: Regenerate
         run: make generate-automation-apis
