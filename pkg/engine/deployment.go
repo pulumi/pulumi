@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -188,6 +189,9 @@ type deploymentOptions struct {
 	// LoadedAnalyzers is populated by loadPolicyPlugins after policy packs are loaded
 	// and configured. This is the list that the step generator will run for policy checks.
 	LoadedAnalyzers []plugin.Analyzer
+
+	// PolicyExceptions is populated by loadPolicyPlugins with the loaded policy packs' exceptions, keyed by pack name.
+	PolicyExceptions map[string]resourceanalyzer.PolicyExceptions
 }
 
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
@@ -322,6 +326,7 @@ func newDeployment(
 		Autonamer:                 opts.Autonamer,
 		ShowSecrets:               opts.ShowSecrets,
 		Analyzers:                 opts.LoadedAnalyzers,
+		PolicyExceptions:          opts.PolicyExceptions,
 		StateMigrationSerializer:  stateMigrationResourceSerializer{},
 	}
 
