@@ -105,7 +105,7 @@ func parsePolicyExceptionsBlock(raw json.RawMessage) (PolicyExceptions, error) {
 	}
 	set, errs := ParsePolicyExceptions(entries)
 	if len(errs) > 0 {
-		return PolicyExceptions{}, errs[0]
+		return PolicyExceptions{}, errors.Join(errs...)
 	}
 	return set, nil
 }
