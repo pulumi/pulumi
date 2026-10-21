@@ -256,7 +256,12 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			} else {
 				// if the user has specified a default org to associate with the backend
 				if defaultOrg != "" {
-					if err := workspace.SetBackendConfigDefaultOrg(be.URL(), defaultOrg); err != nil {
+					// Reads of the default org look it up by cloud URL; be.URL() is the console URL.
+					currentURL, err := pkgWorkspace.GetCurrentCloudURL(ws, store, project)
+					if err != nil {
+						return err
+					}
+					if err := workspace.SetBackendConfigDefaultOrg(currentURL, defaultOrg); err != nil {
 						return err
 					}
 				}
