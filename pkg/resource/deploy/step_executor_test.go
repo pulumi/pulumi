@@ -23,6 +23,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
@@ -222,7 +223,7 @@ type mockEvents struct {
 	OnResourceStepPostF  func(ctx any, step Step, status resource.Status, err error) error
 	OnResourceOutputsF   func(step Step) error
 	OnStateMigrationF    func(transaction *StateMigrationTransaction) error
-	OnPolicyViolationF   func(resource.URN, plugin.AnalyzeDiagnostic)
+	OnPolicyViolationF   func(resource.URN, plugin.AnalyzeDiagnostic, []apitype.PolicyEventException)
 	OnPolicyRemediationF func(resource.URN, plugin.Remediation, resource.PropertyMap, resource.PropertyMap)
 }
 
@@ -247,7 +248,7 @@ func (e *mockEvents) OnResourceOutputs(step Step) error {
 	panic("unimplemented")
 }
 
-func (e *mockEvents) OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic) {
+func (e *mockEvents) OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic, []apitype.PolicyEventException) {
 	panic("unimplemented")
 }
 
