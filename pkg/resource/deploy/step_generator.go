@@ -3735,7 +3735,7 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 				urn := resolveStackPolicyViolationURN(d.URN,
 					resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project()),
 					func(u resource.URN) bool { _, ok := sg.deployment.news.Load(u); return ok })
-				exceptions := sg.deployment.policyExceptions[info.Name].Match(d.PolicyName, urn)
+				exceptions := sg.deployment.policyExceptions[analyzer].Match(d.PolicyName, urn)
 				if d.EnforcementLevel == apitype.Mandatory && len(exceptions) == 0 {
 					sawError.Store(true)
 				}

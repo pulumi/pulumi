@@ -94,8 +94,7 @@ func (s PolicyExceptions) UnknownPolicyWarnings(packName string, policies []plug
 	return warnings
 }
 
-// parsePolicyExceptionsBlock parses and validates the raw value of the "exceptions" key of a policy pack config file,
-// which maps exception IDs to exceptions.
+// parsePolicyExceptionsBlock parses and validates the raw value of the "exceptions" key of a policy pack config file.
 func parsePolicyExceptionsBlock(raw json.RawMessage) (PolicyExceptions, error) {
 	if len(bytes.TrimSpace(raw)) == 0 || string(bytes.TrimSpace(raw)) == "null" {
 		return PolicyExceptions{}, nil
@@ -104,16 +103,27 @@ func parsePolicyExceptionsBlock(raw json.RawMessage) (PolicyExceptions, error) {
 	if err := json.Unmarshal(raw, &entries); err != nil {
 		return PolicyExceptions{}, errors.New(`"exceptions" must be an object that maps exception IDs to exceptions`)
 	}
+	set, errs := ParsePolicyExceptions(entries)
+	if len(errs) > 0 {
+		return PolicyExceptions{}, errs[0]
+	}
+	return set, nil
+}
 
+// ParsePolicyExceptions parses and validates policy exceptions.
+// It returns the valid exceptions, and an error for each invalid one, in ID order.
+func ParsePolicyExceptions(entries map[string]json.RawMessage) (PolicyExceptions, []error) {
 	var set PolicyExceptions
+	var errs []error
 	for _, id := range slices.SortedFunc(maps.Keys(entries), compareExceptionIDs) {
 		e, err := parsePolicyException(id, entries[id])
 		if err != nil {
-			return PolicyExceptions{}, fmt.Errorf("policy exception %q: %w", id, err)
+			errs = append(errs, fmt.Errorf("policy exception %q: %w", id, err))
+			continue
 		}
 		set.exceptions = append(set.exceptions, e)
 	}
-	return set, nil
+	return set, errs
 }
 
 // parsePolicyException decodes and validates one exception.
@@ -139,10 +149,7 @@ func parsePolicyException(id string, raw json.RawMessage) (policyException, erro
 		}
 	}
 
-	var e struct {
-		Reason string                 `json:"reason"`
-		Match  []policyExceptionMatch `json:"match"`
-	}
+	var e apitype.PolicyException
 	if err := json.Unmarshal(raw, &e); err != nil {
 		return result, err
 	}
@@ -163,14 +170,8 @@ func parsePolicyException(id string, raw json.RawMessage) (policyException, erro
 	return result, nil
 }
 
-// policyExceptionMatch is a match entry as written in a config file.
-type policyExceptionMatch struct {
-	Policies []string `json:"policies"`
-	Targets  []string `json:"targets"`
-}
-
 // parsePolicyExceptionMatch validates a match entry. Its targets are URNs, compared exactly.
-func parsePolicyExceptionMatch(m policyExceptionMatch) (policyExceptionMatcher, error) {
+func parsePolicyExceptionMatch(m apitype.PolicyExceptionMatch) (policyExceptionMatcher, error) {
 	result := policyExceptionMatcher{policies: m.Policies}
 	if len(m.Policies) == 0 {
 		return result, errors.New(`"policies" must list at least one policy`)
