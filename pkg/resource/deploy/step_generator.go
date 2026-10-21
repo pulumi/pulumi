@@ -1535,7 +1535,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 					Message:           tresult.Diagnostic,
 					EnforcementLevel:  apitype.Advisory,
 					URN:               new.URN,
-				})
+				}, nil)
 			} else {
 				// Emit a nice message so users know what was remediated.
 				sg.deployment.events.OnPolicyRemediation(new.URN, tresult,
@@ -3608,7 +3608,8 @@ func (sg *stepGenerator) analyzeAll(
 		}
 	}
 
-	invalid, sawError, err := analyzeResource(ctx, analyzers, r, sg.deployment.events, sg.deployment.opts.DryRun)
+	invalid, sawError, err := analyzeResource(
+		ctx, analyzers, sg.deployment.policyExceptions, r, sg.deployment.events, sg.deployment.opts.DryRun)
 	if err != nil {
 		return false, err
 	}
@@ -3731,13 +3732,14 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 					d.EnforcementLevel = apitype.Mandatory
 				}
 
-				if d.EnforcementLevel == apitype.Mandatory {
-					sawError.Store(true)
-				}
 				urn := resolveStackPolicyViolationURN(d.URN,
 					resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project()),
 					func(u resource.URN) bool { _, ok := sg.deployment.news.Load(u); return ok })
-				sg.deployment.events.OnPolicyViolation(urn, d)
+				exceptions := sg.deployment.policyExceptions[info.Name].Match(d.PolicyName, urn)
+				if d.EnforcementLevel == apitype.Mandatory && len(exceptions) == 0 {
+					sawError.Store(true)
+				}
+				sg.deployment.events.OnPolicyViolation(urn, d, exceptions)
 			}
 
 			summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)

@@ -58,13 +58,10 @@ jobs:
           cache-dependency-path: pkg/go.sum
           go-version-file: pkg/go.mod
       - uses: ./.github/actions/retry
-        env:
-          MISE_NPM_SHELL_OUT: "true"
         with:
           action: jdx/mise-action@v2
           with: |
-            # Pin mise: the latest advertised version, 2026.9.3, has no release assets.
-            version: 2026.9.2
+            version: 2026.10.3
             experimental: true
             cache_key_prefix: mise-npm-shell-out-v0
       - name: Install CLI
