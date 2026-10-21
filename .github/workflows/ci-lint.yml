@@ -101,8 +101,8 @@ jobs:
         with:
           action: jdx/mise-action@v2
           with: |
-            # Pin mise: the latest advertised version, 2026.9.3, has no release assets.
-            version: 2026.9.2
+            # Pin mise: mise.lock uses lockfile format v3, which older versions cannot read.
+            version: 2026.10.3
             experimental: true
             cache_key_prefix: mise-npm-shell-out-v1
       - name: Check Protobufs
@@ -208,8 +208,8 @@ jobs:
         with:
           action: jdx/mise-action@v2
           with: |
-            # Pin mise: the latest advertised version, 2026.9.3, has no release assets.
-            version: 2026.9.2
+            # Pin mise: mise.lock uses lockfile format v3, which older versions cannot read.
+            version: 2026.10.3
             experimental: true
       - run: make lint_changelog
       - name: Lint changelog message style (advisory)
