@@ -970,12 +970,9 @@ func (b *cloudBackend) Name() string {
 	return b.url
 }
 
+// URL returns the root of the Pulumi Cloud console, which opens the user's default organization.
 func (b *cloudBackend) URL() string {
-	user, _, _, err := b.CurrentUser()
-	if err != nil {
-		return client.CloudConsoleURL(b.url)
-	}
-	return client.CloudConsoleURL(b.url, user)
+	return client.CloudConsoleURL(b.url)
 }
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {

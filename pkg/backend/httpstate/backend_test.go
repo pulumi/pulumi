@@ -168,6 +168,17 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestURLIsConsoleRoot(t *testing.T) {
+	t.Parallel()
+
+	// A new user's orgs aren't named after their login, so a URL ending in the login would 404.
+	user := &promise.CompletionSource[userInfo]{}
+	user.MustFulfill(userInfo{username: "jane", organizations: []string{"jane-org"}})
+	b := &cloudBackend{url: "https://api.pulumi.com", userInfo: user.Promise()}
+
+	assert.Equal(t, "https://app.pulumi.com", b.URL())
+}
+
 func TestValueOrDefaultURL(t *testing.T) {
 	t.Run("TestValueOrDefault", func(t *testing.T) {
 		current := ""
