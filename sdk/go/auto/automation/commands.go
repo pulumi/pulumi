@@ -3307,7 +3307,7 @@ func (a *API) EnvRotate(
 // references in the command are not expanded by default. You should invoke the command
 // inside a shell if you need environment variable expansion:
 //
-//	run <environment-name> -- zsh -c '"echo $MY_ENV_VAR"'
+//	run <environment-name> -- bash -c '"echo $MY_ENV_VAR"'
 //
 // The command to run is assumed to be non-interactive by default and its output
 // streams are filtered to remove any secret values. Use the -i flag to run interactive
