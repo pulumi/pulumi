@@ -15,6 +15,7 @@
 package policy
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
@@ -71,4 +72,38 @@ func TestPolicyLsCmd_QueriesPolicyPacksByOrgNameNotUserName(t *testing.T) {
 	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, "default-org", queriedOrgName)
+}
+
+func samplePolicyPacks() []apitype.PolicyPackWithVersions {
+	return []apitype.PolicyPackWithVersions{
+		{
+			Name:        "aws-guardrails",
+			DisplayName: "AWS Guardrails",
+			Versions:    []int{1, 2, 3},
+			VersionTags: []string{"1.0.0", "2.0.0", "3.1.0"},
+		},
+		{Name: "tagging", DisplayName: "Tagging", Versions: []int{7}, VersionTags: []string{"7.0.0"}},
+	}
+}
+
+func TestPolicyList_DefaultOutput(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	require.NoError(t, formatPolicyPacksConsole(&buf, samplePolicyPacks()))
+	assert.Equal(t, `NAME            VERSIONS
+aws-guardrails  1.0.0, 2.0.0, 3.1.0
+tagging         7.0.0
+`, buf.String())
+}
+
+func TestPolicyList_JSONOutput(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	require.NoError(t, formatPolicyPacksJSON(&buf, samplePolicyPacks()))
+	assert.JSONEq(t, `[
+		{"name": "aws-guardrails", "versions": ["1.0.0", "2.0.0", "3.1.0"]},
+		{"name": "tagging", "versions": ["7.0.0"]}
+	]`, buf.String())
 }

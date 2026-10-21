@@ -2351,6 +2351,37 @@ func TestGetStackOutputsInCoherenceWindow(t *testing.T) {
 	assert.Equal(t, "readingUpdateID=d333a711-4aa0-402f-be6d-72af9665fc37", gotQuery)
 }
 
+func TestCreatePolicyGroup(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).CreatePolicyGroup(t.Context(), "acme", apitype.CreatePolicyGroupRequest{
+		Name:        "prod-policies",
+		EntityType:  "stacks",
+		Mode:        "preventative",
+		AgentPoolID: "pool-123",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups", path)
+	assert.JSONEq(t, `{
+		"name": "prod-policies",
+		"entityType": "stacks",
+		"mode": "preventative",
+		"agentPoolId": "pool-123"
+	}`, body)
+}
+
 func TestBatchUpdatePolicyGroup(t *testing.T) {
 	t.Parallel()
 
@@ -2366,18 +2397,38 @@ func TestBatchUpdatePolicyGroup(t *testing.T) {
 
 	err := newMockClient(server).BatchUpdatePolicyGroup(t.Context(), "acme", "prod-policies",
 		[]apitype.UpdatePolicyGroupRequest{
+			{NewName: new("renamed")},
 			{AddStack: &apitype.PulumiStackReference{Name: "prod", RoutingProject: "web"}},
+			{AddStack: &apitype.PulumiStackReference{Name: "standalone"}},
+			{RemoveStack: &apitype.PulumiStackReference{Name: "old", RoutingProject: "api"}},
+			{AddPolicyPack: &apitype.PolicyPackMetadata{
+				Name:       "aws-pack",
+				VersionTag: "1.2.3",
+				Config: map[string]*json.RawMessage{
+					"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory","tags":["a","b"]}`)),
+				},
+			}},
 			{RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "tagging", VersionTag: "1.0.0"}},
 			{AddInsightsAccount: &apitype.InsightsAccountReference{Name: "prod-aws"}},
+			{RemoveInsightsAccount: &apitype.InsightsAccountReference{Name: "stale-gcp"}},
 		})
 	require.NoError(t, err)
 
 	assert.Equal(t, http.MethodPatch, method)
 	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies/batch", path)
 	assert.JSONEq(t, `[
+		{"newName": "renamed"},
 		{"addStack": {"name": "prod", "routingProject": "web"}},
+		{"addStack": {"name": "standalone"}},
+		{"removeStack": {"name": "old", "routingProject": "api"}},
+		{"addPolicyPack": {
+			"name": "aws-pack",
+			"versionTag": "1.2.3",
+			"config": {"s3-no-public": {"enforcementLevel": "mandatory", "tags": ["a", "b"]}}
+		}},
 		{"removePolicyPack": {"name": "tagging", "versionTag": "1.0.0"}},
-		{"addInsightsAccount": {"name": "prod-aws"}}
+		{"addInsightsAccount": {"name": "prod-aws"}},
+		{"removeInsightsAccount": {"name": "stale-gcp"}}
 	]`, body)
 }
 
@@ -2409,4 +2460,53 @@ func TestAuditLogsQueryParams(t *testing.T) {
 		"/api/orgs/org/auditlogs/v2?endTime=2&eventFilter=stack.create&startTime=1&userFilter=alice",
 		"/api/orgs/org/auditlogs/v2/export?endTime=2&eventFilter=stack.create&format=csv&startTime=1&userFilter=alice",
 	}, gotURLs)
+}
+
+func TestApplyPolicyPack(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).ApplyPolicyPack(t.Context(), "acme", "prod-policies", "aws-pack", "1.2.3",
+		map[string]*json.RawMessage{
+			"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory"}`)),
+		})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPatch, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies", path)
+	assert.JSONEq(t, `{"addPolicyPack": {
+		"name": "aws-pack",
+		"versionTag": "1.2.3",
+		"config": {"s3-no-public": {"enforcementLevel": "mandatory"}}
+	}}`, body)
+}
+
+func TestDisablePolicyPack(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).DisablePolicyPack(t.Context(), "acme", "prod-policies", "aws-pack", "")
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPatch, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies", path)
+	assert.JSONEq(t, `{"removePolicyPack": {"name": "aws-pack"}}`, body)
 }

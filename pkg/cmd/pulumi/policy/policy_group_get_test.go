@@ -17,6 +17,7 @@ package policy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -66,13 +67,20 @@ func samplePolicyGroupResponse() apitype.GetPolicyGroupResponse {
 		Mode:         apitype.PolicyGroupModePreventative,
 		Stacks: []apitype.PulumiStackReference{
 			{Name: "prod", RoutingProject: "web"},
-			{Name: "staging", RoutingProject: "web"},
+			{Name: "standalone"},
 		},
 		AppliedPolicyPacks: []apitype.PolicyPackMetadata{
-			{Name: "aws-guardrails", DisplayName: "AWS Guardrails", Version: 3, VersionTag: "1.2.0"},
-			{Name: "tagging", DisplayName: "Tagging", Version: 1, VersionTag: ""},
+			{
+				Name:         "aws-guardrails",
+				DisplayName:  "AWS Guardrails",
+				Version:      3,
+				VersionTag:   "1.2.0",
+				Config:       map[string]*json.RawMessage{"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory"}`))},
+				Environments: []string{"infra/policy-secrets"},
+			},
+			{Name: "tagging", Version: 1},
 		},
-		Accounts:    []string{},
+		Accounts:    []string{"prod-aws"},
 		AgentPoolID: "pool-1",
 	}
 }
@@ -97,8 +105,9 @@ Applied policy packs:  2
   - tagging (v1)
 Stacks:                2
   - web/prod
-  - web/staging
-Accounts:              0
+  - standalone
+Accounts:              1
+  - prod-aws
 `, buf.String())
 	assert.Equal(t, "acme", c.gotOrg)
 	assert.Equal(t, "prod-policies", c.gotGroup)
@@ -148,13 +157,20 @@ func TestPolicyGroupGet_JSONOutput(t *testing.T) {
 		"mode": "preventative",
 		"stacks": [
 			{"name": "prod", "routingProject": "web"},
-			{"name": "staging", "routingProject": "web"}
+			{"name": "standalone"}
 		],
 		"appliedPolicyPacks": [
-			{"name": "aws-guardrails", "displayName": "AWS Guardrails", "version": 3, "versionTag": "1.2.0"},
-			{"name": "tagging", "displayName": "Tagging", "version": 1}
+			{
+				"name": "aws-guardrails",
+				"displayName": "AWS Guardrails",
+				"version": 3,
+				"versionTag": "1.2.0",
+				"config": {"s3-no-public": {"enforcementLevel": "mandatory"}},
+				"environments": ["infra/policy-secrets"]
+			},
+			{"name": "tagging", "version": 1}
 		],
-		"accounts": [],
+		"accounts": ["prod-aws"],
 		"agentPoolId": "pool-1"
 	}`, buf.String())
 }
