@@ -1,0 +1,12 @@
+{
+  "name": "mise-npm-install",
+  "private": true,
+  "aube": {
+    "allowBuilds": {
+      "protoc-gen-js": true
+    }
+  },
+  "dependencies": {
+    "protoc-gen-js": "3.21.4"
+  }
+}
