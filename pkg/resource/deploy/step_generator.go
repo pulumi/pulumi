@@ -1145,7 +1145,10 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 
 	// If this resource depends on a resource (or provider) that failed or was skipped under --continue-on-error, the
 	// executor will skip its step too. Generate that step now, without involving its provider or any analyzers: its
-	// inputs may be missing values that the failed resources would have provided, and its provider may have failed.
+	// inputs may be missing values that the failed resources would have provided, which Check would reject, and its
+	// provider may have failed. It's a same step rather than a create or update, because nothing happens to the
+	// resource: any existing state is kept, and an update plan allows a same step wherever it allows a create or
+	// update. SameStep.Skip reports what the create or update would have produced.
 	if sg.dependsOnSkipped(new) {
 		sg.sames[urn] = true
 		if old != nil {

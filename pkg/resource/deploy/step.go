@@ -238,7 +238,17 @@ func (s *SameStep) Fail() {
 }
 
 func (s *SameStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped, Unknown: s.skippedCreate})
+	// A skipped same step stands in for a create or update that isn't attempted because a dependency failed (see
+	// continueStepsFromRefresh), so its old outputs aren't what the program asked for. Instead, ask the provider
+	// what a dry-run of that create or update would produce. The snapshot is not affected: nothing happened, so
+	// s.new is not persisted.
+	var old *pkgresource.State
+	if !s.skippedCreate {
+		old = s.old
+	}
+	skipState := s.new.Copy()
+	skipState.Outputs = dryRunOutputs(s, nil, old, s.new, s.reg.Goal().Properties, s.reg.Goal().IgnoreChanges)
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
@@ -558,7 +568,62 @@ func (s *CreateStep) Fail() {
 }
 
 func (s *CreateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Ask the provider what a dry-run of this create would produce so dependents get precise
+	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
+	// The snapshot is not affected: no create happened, so s.new is not persisted.
+	skipState := s.new.Copy()
+	skipState.Outputs = dryRunOutputs(s, s.provider, nil, s.new, resource.FromResourcePropertyMap(s.new.Inputs), nil)
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
+}
+
+// dryRunOutputs asks the provider for the outputs of a dry-run create (if old is nil) or update of a skipped resource.
+// If that isn't possible, everything is unknown.
+func dryRunOutputs(
+	s Step, provider plugin.Provider, old, new *pkgresource.State, inputs property.Map, ignoreChanges []string,
+) resource.PropertyMap {
+	if !new.Custom {
+		return resource.PropertyMap{}
+	}
+	prov, err := getProvider(s, provider)
+	if err != nil {
+		logging.V(5).Infof("could not resolve provider for skipped %s, falling back to fully unknown outputs: %v",
+			s.URN(), err)
+		return resource.PropertyMap{}
+	}
+
+	var outputs property.Map
+	if old == nil {
+		var resp plugin.CreateResponse
+		resp, err = prov.Create(context.TODO(), plugin.CreateRequest{
+			URN:        s.URN(),
+			Name:       new.URN.Name(),
+			Type:       new.URN.Type(),
+			Properties: inputs,
+			Timeout:    new.CustomTimeouts.Create,
+			Preview:    true,
+		})
+		outputs = resp.Properties
+	} else {
+		var resp plugin.UpdateResponse
+		resp, err = prov.Update(context.TODO(), plugin.UpdateRequest{
+			URN:           s.URN(),
+			Name:          new.URN.Name(),
+			Type:          new.URN.Type(),
+			ID:            old.ID,
+			OldInputs:     resource.FromResourcePropertyMap(old.Inputs),
+			OldOutputs:    resource.FromResourcePropertyMap(old.Outputs),
+			NewInputs:     inputs,
+			Timeout:       new.CustomTimeouts.Update,
+			IgnoreChanges: ignoreChanges,
+			Preview:       true,
+		})
+		outputs = resp.Properties
+	}
+	if err != nil {
+		logging.V(5).Infof("dry-run failed for skipped %s, falling back to fully unknown outputs: %v", s.URN(), err)
+		return resource.PropertyMap{}
+	}
+	return resource.ToResourcePropertyMap(outputs)
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -1195,7 +1260,13 @@ func (s *UpdateStep) Fail() {
 }
 
 func (s *UpdateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Ask the provider what a dry-run of this update would produce so dependents get precise
+	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
+	// The snapshot still writes s.new with its prior outputs; only the SDK response is affected.
+	skipState := s.new.Copy()
+	skipState.Outputs = dryRunOutputs(s, s.provider, s.old, s.new, resource.FromResourcePropertyMap(s.new.Inputs),
+		s.ignoreChanges)
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
