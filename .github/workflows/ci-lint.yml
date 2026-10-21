@@ -96,8 +96,6 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - uses: ./.github/actions/retry
-        env:
-          MISE_NPM_SHELL_OUT: "true"
         with:
           action: jdx/mise-action@v2
           with: |

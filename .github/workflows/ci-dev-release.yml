@@ -58,8 +58,6 @@ jobs:
           cache-dependency-path: pkg/go.sum
           go-version-file: pkg/go.mod
       - uses: ./.github/actions/retry
-        env:
-          MISE_NPM_SHELL_OUT: "true"
         with:
           action: jdx/mise-action@v2
           with: |
