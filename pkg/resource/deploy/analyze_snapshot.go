@@ -40,6 +40,7 @@ import (
 func analyzeResource(
 	ctx context.Context,
 	analyzers []plugin.Analyzer,
+	policyExceptions map[string]resourceanalyzer.PolicyExceptions,
 	r plugin.AnalyzerResource,
 	events PolicyEvents,
 	dryRun bool,
@@ -75,13 +76,14 @@ func analyzeResource(
 					d.EnforcementLevel = apitype.Mandatory
 				}
 
-				if d.EnforcementLevel == apitype.Mandatory {
+				exceptions := policyExceptions[info.Name].Match(d.PolicyName, r.URN)
+				if d.EnforcementLevel == apitype.Mandatory && len(exceptions) == 0 {
 					if !dryRun {
 						invalidAtomic.Store(true)
 					}
 					sawErrorAtomic.Store(true)
 				}
-				events.OnPolicyViolation(r.URN, d)
+				events.OnPolicyViolation(r.URN, d, exceptions)
 			}
 
 			summary := resourceanalyzer.NewAnalyzePolicySummary(r.URN, response, info)
@@ -189,6 +191,7 @@ func AnalyzeSnapshot(
 	ctx context.Context,
 	snap *Snapshot,
 	analyzers []plugin.Analyzer,
+	policyExceptions map[string]resourceanalyzer.PolicyExceptions,
 	events PolicyEvents,
 ) (bool, error) {
 	if snap == nil || len(analyzers) == 0 {
@@ -230,7 +233,7 @@ func AnalyzeSnapshot(
 						Message:           tresult.Diagnostic,
 						EnforcementLevel:  apitype.Advisory,
 						URN:               res.URN,
-					})
+					}, nil)
 				} else {
 					// Report what would be remediated without applying it.
 					events.OnPolicyRemediation(res.URN, tresult,
@@ -244,7 +247,7 @@ func AnalyzeSnapshot(
 
 		// Second pass: run analysis in parallel. We use dryRun=true because we're not
 		// executing a deployment; violations are reported but do not fail the resource.
-		_, sawError, err := analyzeResource(ctx, analyzers, analyzerRes, events, true /*dryRun*/)
+		_, sawError, err := analyzeResource(ctx, analyzers, policyExceptions, analyzerRes, events, true /*dryRun*/)
 		if err != nil {
 			return false, err
 		}
@@ -303,12 +306,13 @@ func AnalyzeSnapshot(
 					// Stack policies cannot be remediated, so treat the level as mandatory.
 					d.EnforcementLevel = apitype.Mandatory
 				}
-				if d.EnforcementLevel == apitype.Mandatory {
-					sawStackError.Store(true)
-				}
 				urn := resolveStackPolicyViolationURN(d.URN, rootStackURN,
 					func(u resource.URN) bool { _, ok := snapshotURNs[u]; return ok })
-				events.OnPolicyViolation(urn, d)
+				exceptions := policyExceptions[info.Name].Match(d.PolicyName, urn)
+				if d.EnforcementLevel == apitype.Mandatory && len(exceptions) == 0 {
+					sawStackError.Store(true)
+				}
+				events.OnPolicyViolation(urn, d, exceptions)
 			}
 
 			summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)
