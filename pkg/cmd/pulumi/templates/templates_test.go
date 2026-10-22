@@ -77,7 +77,8 @@ func TestFilterOnName(t *testing.T) {
 		}
 		ctx := testContext(t)
 
-		source := newImpl(ctx, &pkgWorkspace.MockContext{}, lm, "name1",
+		source := newImpl(
+			ctx, &pkgWorkspace.MockContext{}, lm, "name1",
 			ScopeAll, TemplateKindPulumiProject,
 			templateRepository(TemplateRepository{}, TemplateNotFoundError{}),
 			env.NewEnv(mapStore),
@@ -209,7 +210,8 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 		SubDirectory: subdir,
 	}, nil)
 
-	source := newImpl(ctx, &pkgWorkspace.MockContext{}, lm, "",
+	source := newImpl(
+		ctx, &pkgWorkspace.MockContext{}, lm, "",
 		ScopeAll, TemplateKindPulumiProject,
 		repoTemplates, env.NewEnv(env.MapStore{
 			"PULUMI_DISABLE_REGISTRY_RESOLVE": "true",
@@ -252,7 +254,8 @@ func TestSurfaceListTemplateErrors_OrgTemplates(t *testing.T) {
 
 	lm := mockLoginManager(mockBackend)
 
-	source := newImpl(ctx, &pkgWorkspace.MockContext{}, lm, "name1",
+	source := newImpl(
+		ctx, &pkgWorkspace.MockContext{}, lm, "name1",
 		ScopeAll, TemplateKindPulumiProject,
 		templateRepository(TemplateRepository{}, TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{"PULUMI_DISABLE_REGISTRY_RESOLVE": "true"}),
@@ -287,7 +290,8 @@ func TestSurfaceListTemplateErrors_RegistryTemplates(t *testing.T) {
 
 	lm := mockLoginManager(mockBackend)
 
-	source := newImpl(ctx, &pkgWorkspace.MockContext{}, lm, "name1",
+	source := newImpl(
+		ctx, &pkgWorkspace.MockContext{}, lm, "name1",
 		ScopeAll, TemplateKindPulumiProject,
 		templateRepository(TemplateRepository{}, TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{
@@ -318,7 +322,8 @@ func TestSurfaceOnEmptyError_OrgTemplates(t *testing.T) {
 
 	lm := mockLoginManager(mockBackend)
 
-	source := newImpl(ctx, &pkgWorkspace.MockContext{}, lm, "name1",
+	source := newImpl(
+		ctx, &pkgWorkspace.MockContext{}, lm, "name1",
 		ScopeAll, TemplateKindPulumiProject,
 		templateRepository(TemplateRepository{}, TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{
@@ -353,7 +358,8 @@ func TestSurfaceOnEmptyError_RegistryTemplates(t *testing.T) {
 
 	lm := mockLoginManager(mockBackend)
 
-	source := newImpl(ctx, &pkgWorkspace.MockContext{}, lm, "name1",
+	source := newImpl(
+		ctx, &pkgWorkspace.MockContext{}, lm, "name1",
 		ScopeAll, TemplateKindPulumiProject,
 		templateRepository(TemplateRepository{}, TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{
@@ -413,7 +419,8 @@ description: An ASP.NET application running a simple container in a EKS Cluster
 
 	lm := mockLoginManager(mockBackend)
 
-	source := newImpl(ctx, &pkgWorkspace.MockContext{}, lm, "name1",
+	source := newImpl(
+		ctx, &pkgWorkspace.MockContext{}, lm, "name1",
 		ScopeAll, TemplateKindPulumiProject,
 		templateRepository(TemplateRepository{}, TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{
@@ -644,6 +651,31 @@ func mockRegistrySource(
 		"", ScopeAll, TemplateKindPulumiProject,
 		templateRepository(TemplateRepository{}, TemplateNotFoundError{}),
 		env.NewEnv(env.MapStore{"PULUMI_DISABLE_REGISTRY_RESOLVE": "false"}))
+}
+
+func TestRegistryTemplateNotFoundSuggestsCloseMatch(t *testing.T) {
+	t.Parallel()
+
+	list := func(
+		ctx context.Context, opts registry.ListTemplatesOptions,
+	) iter.Seq2[apitype.ListTemplatesResponse, error] {
+		return singlePage(apitype.TemplateMetadata{
+			Name:      "aws-typescript",
+			Source:    "pulumi",
+			Publisher: "pulumi",
+		})
+	}
+	source := newImpl(testContext(t), &pkgWorkspace.MockContext{}, mockLoginManager(&backend.MockBackend{
+		GetReadOnlyCloudRegistryF: func() registry.Registry {
+			return &backend.MockCloudRegistry{Mock: registry.Mock{ListTemplatesF: list}}
+		},
+	}), "aws-typscript", ScopeAll, TemplateKindPulumiProject,
+		templateRepository(TemplateRepository{}, TemplateNotFoundError{templateName: "aws-typscript"}),
+		env.NewEnv(env.MapStore{"PULUMI_DISABLE_REGISTRY_RESOLVE": "false"}))
+
+	_, err := source.Templates()
+	assert.ErrorContains(t, err, "template 'aws-typscript' not found")
+	assert.ErrorContains(t, err, "aws-typescript")
 }
 
 func TestVcsTemplateSourceOrgsAreReadOffTheListing(t *testing.T) {
