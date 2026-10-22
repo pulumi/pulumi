@@ -938,6 +938,9 @@ func (display *ProgressDisplay) printPolicies() bool {
 		// Print the policy pack status and name/version as a header:
 		passFailWarn := "✅"
 		for _, violation := range info.ViolationEvents {
+			if len(violation.Exceptions) > 0 {
+				continue
+			}
 			if violation.EnforcementLevel == apitype.Mandatory {
 				passFailWarn = "❌"
 				hadMandatoryViolations = true
@@ -1001,9 +1004,12 @@ func (display *ProgressDisplay) printPolicies() bool {
 			}
 		}
 
-		// Next up, display all violations. Sort policy events by: enforcement level, severity, policy name,
+		// Next up, display all violations. Sort policy events by: exempted last, enforcement level, severity, policy name,
 		// and finally the URN of the resource.
 		slices.SortStableFunc(info.ViolationEvents, func(a, b engine.PolicyViolationEventPayload) int {
+			if d := cmp.Compare(min(len(a.Exceptions), 1), min(len(b.Exceptions), 1)); d != 0 {
+				return d
+			}
 			if d := cmp.Compare(enforcementRank(a.EnforcementLevel), enforcementRank(b.EnforcementLevel)); d != 0 {
 				return d
 			}
@@ -1015,12 +1021,34 @@ func (display *ProgressDisplay) printPolicies() bool {
 			}
 			return cmp.Compare(string(a.ResourceURN), string(b.ResourceURN))
 		})
+		exemptedNames := make([]string, 0)
+		exemptedCounts := make(map[string]int)
 		for _, policyEvent := range info.ViolationEvents {
-			// Print the individual policy event.
+			if len(policyEvent.Exceptions) > 0 && !display.opts.ShowPolicyExceptions {
+				if exemptedCounts[policyEvent.PolicyName] == 0 {
+					exemptedNames = append(exemptedNames, policyEvent.PolicyName)
+				}
+				exemptedCounts[policyEvent.PolicyName]++
+				continue
+			}
+			// Print the individual policy event, with a dot for an exempted one.
+			bullet := "- "
+			if len(policyEvent.Exceptions) > 0 {
+				bullet = "· "
+			}
 			policyLine := renderDiffPolicyViolationEvent(
-				policyEvent, subItemIndent+"- ", subItemIndent+"  ", display.opts)
+				policyEvent, subItemIndent+bullet, subItemIndent+"  ", display.opts)
 			policyLine = strings.TrimSuffix(policyLine, "\n")
 			display.println(policyLine)
+		}
+
+		// Unless the user has requested detailed exceptions, summarize the exempted violations of each policy.
+		sort.Strings(exemptedNames)
+		for _, policyName := range exemptedNames {
+			count := exemptedCounts[policyName]
+			display.println(fmt.Sprintf("%s· %s[exempted]  %s  (%d %s)%s",
+				subItemIndent, colors.BrightBlack, policyName,
+				count, english.PluralWord(count, "violation", ""), colors.Reset))
 		}
 	}
 

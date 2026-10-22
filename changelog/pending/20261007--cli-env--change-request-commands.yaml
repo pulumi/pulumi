@@ -1,0 +1,4 @@
+component: cli/env
+kind: feat
+body: Add `pulumi env change-request` commands for working with change requests
+time: 2026-10-07T00:00:00Z
