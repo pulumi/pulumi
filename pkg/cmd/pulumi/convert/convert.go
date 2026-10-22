@@ -82,9 +82,9 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 			"\n" +
 			"Valid source languages: yaml, terraform, bicep, arm, kubernetes\n" +
 			"\n" +
-			"Valid target languages: typescript, python, csharp, go, java, yaml" +
+			"Valid target languages: typescript, python, csharp, go, java, yaml\n" +
 			"\n" +
-			"Example command usage:" +
+			"Example command usage:\n" +
 			"\n" +
 			"    pulumi convert --from yaml --language java --out . \n" +
 			"\n\n" +
