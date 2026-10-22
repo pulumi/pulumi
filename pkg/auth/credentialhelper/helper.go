@@ -238,9 +238,6 @@ func (r *Result) SelectedBackend() bool {
 
 // HasHTTP reports whether the helper owns HTTP authentication for this backend.
 func (r *Result) HasHTTP() bool {
-	if r == nil {
-		return false
-	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.hasToken || len(r.state.credentials.Headers) > 0
@@ -253,9 +250,6 @@ func (r *Result) Token() string {
 
 // PluginEnv snapshots helper HTTP credentials for a newly launched plugin.
 func (r *Result) PluginEnv() map[string]string {
-	if r == nil {
-		return nil
-	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if !r.hasToken && len(r.state.credentials.Headers) == 0 {
