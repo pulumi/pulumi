@@ -15,6 +15,7 @@
 package credentialhelper
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -101,7 +102,7 @@ func testSession(t *testing.T, responses map[string]string) (context.Context, *S
 	t.Helper()
 	config, log := helperConfig(t, responses)
 	ctx := t.Context()
-	s := NewSession()
+	s := NewSession(io.Discard)
 	require.NoError(t, s.Configure(config.Path, config.Args))
 	return ctx, s, log
 }
@@ -156,7 +157,7 @@ func TestProtocolValidation(t *testing.T) {
 			t.Parallel()
 
 			c, _ := helperConfig(t, map[string]string{"initial": test.response})
-			_, err := invoke(t.Context(), c, request{Version: 1, Reason: "initial"}, nil)
+			_, err := invoke(t.Context(), c, request{Version: 1, Reason: "initial"}, NewSession(io.Discard))
 			if test.valid {
 				require.NoError(t, err)
 			} else {
@@ -176,7 +177,7 @@ func TestInvokeContextErrors(t *testing.T) {
 		c, _ := helperConfig(t, nil)
 		ctx, cancel := context.WithTimeout(t.Context(), 1*time.Second)
 		defer cancel()
-		_, err := invoke(ctx, c, request{Version: 1, Reason: "wait"}, nil)
+		_, err := invoke(ctx, c, request{Version: 1, Reason: "wait"}, NewSession(io.Discard))
 		require.ErrorIs(t, err, context.DeadlineExceeded)
 		assert.ErrorContains(t, err, "timed out")
 		assert.NotContains(t, err.Error(), "signal: killed")
@@ -187,7 +188,7 @@ func TestInvokeContextErrors(t *testing.T) {
 		c, _ := helperConfig(t, nil)
 		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
-		_, err := invoke(ctx, c, request{Version: 1, Reason: "wait"}, nil)
+		_, err := invoke(ctx, c, request{Version: 1, Reason: "wait"}, NewSession(io.Discard))
 		require.ErrorIs(t, err, context.Canceled)
 		assert.NotContains(t, err.Error(), "timed out")
 	})
@@ -459,7 +460,7 @@ func TestRefreshWaiterCancellation(t *testing.T) {
 	release := filepath.Join(t.TempDir(), "release")
 	config.Args = append(config.Args, release)
 	t.Cleanup(func() { _ = os.WriteFile(release, nil, 0o600) })
-	s := NewSession()
+	s := NewSession(io.Discard)
 	require.NoError(t, s.Configure(config.Path, config.Args))
 	helper, err := s.Resolve(t.Context(), server.URL)
 	require.NoError(t, err)
@@ -608,7 +609,7 @@ func TestPersistenceDoesNotSaveToken(t *testing.T) {
 func TestDisabledHelper(t *testing.T) {
 	t.Setenv("PULUMI_CREDENTIAL_HELPER", "none")
 	t.Setenv("PULUMI_CREDENTIAL_HELPER_ARGS", "invalid")
-	s := NewSession()
+	s := NewSession(io.Discard)
 	config, _, err := s.Configuration()
 	require.NoError(t, err)
 	assert.Nil(t, config)
@@ -627,7 +628,7 @@ func TestDiscoveryWithUnreadableCredentials(t *testing.T) {
 					"https://api.agent.example", workspace.Account{AccessToken: "agent-token"}, true))
 			}
 			require.NoError(t, os.Mkdir(filepath.Join(dirs.Home, "credentials.json"), 0o700))
-			r, err := NewSession().Resolve(t.Context(), "https://api.agent.example")
+			r, err := NewSession(io.Discard).Resolve(t.Context(), "https://api.agent.example")
 			if agent {
 				require.NoError(t, err)
 				assert.Nil(t, r.Helper)
@@ -641,37 +642,39 @@ func TestDiscoveryWithUnreadableCredentials(t *testing.T) {
 func TestDiagnosticsStreamLines(t *testing.T) {
 	t.Parallel()
 
-	s := NewSession()
-	var messages []string
-	stop := s.DisplayDiagnostics(func(message string) {
-		messages = append(messages, message)
-	})
+	var stderr bytes.Buffer
+	s := NewSession(&stderr)
+	messages := make(chan string, 3)
+	stop := s.DisplayDiagnostics(messages)
 	defer stop()
 	d := newDiagnostics(s)
 	_, err := d.Write([]byte("Approve the authentication prompt\npartial"))
 	require.NoError(t, err)
-	assert.Equal(t, []string{"Approve the authentication prompt"}, messages)
+	assert.Equal(t, "Approve the authentication prompt", <-messages)
+	assert.Empty(t, messages, "the partial line waits for a newline or invocation completion")
 	_, err = d.Write([]byte(" line\r\nlast line"))
 	require.NoError(t, err)
-	assert.Equal(t, []string{"Approve the authentication prompt", "partial line"}, messages)
+	assert.Equal(t, "partial line", <-messages)
 	d.close()
-	assert.Equal(t, []string{"Approve the authentication prompt", "partial line", "last line"}, messages)
+	assert.Equal(t, "last line", <-messages)
+	assert.Empty(t, stderr.String(), "display messages do not also go to stderr")
+
+	// Detach before closing the display channel; later invocations return to the configured writer.
+	stop()
+	close(messages)
+	d = newDiagnostics(s)
+	_, err = d.Write([]byte("back on stderr"))
+	require.NoError(t, err)
+	d.close()
+	assert.Equal(t, "back on stderr\n", stderr.String(), "close waits for the terminal consumer to finish")
 }
 
 func TestDiagnosticsSlowSink(t *testing.T) {
 	t.Parallel()
 
-	s := NewSession()
-	ch := make(chan string)
-	started := make(chan struct{})
-	var once sync.Once
-	stop := s.DisplayDiagnostics(func(message string) {
-		once.Do(func() { close(started) })
-		select {
-		case ch <- message:
-		case <-t.Context().Done():
-		}
-	})
+	s := NewSession(io.Discard)
+	messages := make(chan string)
+	stop := s.DisplayDiagnostics(messages)
 	t.Cleanup(stop)
 	done := make(chan error, 1)
 	longLine := strings.Repeat("x", 8192)
@@ -681,15 +684,9 @@ func TestDiagnosticsSlowSink(t *testing.T) {
 		d.close()
 		done <- err
 	}()
-	<-started
-	select {
-	case <-done:
-		t.Fatal("diagnostics did not wait for the display")
-	default:
-	}
-	assert.Equal(t, longLine, <-ch)
-	assert.Equal(t, "line", <-ch)
-	assert.Equal(t, "last line", <-ch)
+	assert.Equal(t, longLine, <-messages)
+	assert.Equal(t, "line", <-messages)
+	assert.Equal(t, "last line", <-messages)
 	require.NoError(t, <-done)
 }
 
