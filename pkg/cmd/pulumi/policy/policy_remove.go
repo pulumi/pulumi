@@ -16,6 +16,7 @@ package policy
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -30,14 +31,27 @@ import (
 
 const allKeyword = "all"
 
-type policyRemoveJSON struct {
+type policyRemoveResult struct {
 	Organization string  `json:"organization"`
 	PolicyPack   string  `json:"policyPack"`
 	VersionTag   *string `json:"versionTag"`
 }
 
-// policyRemoveRender is a marker type for outputflag; the output mode is read back from the flag value.
-type policyRemoveRender func()
+type policyRemoveRenderFunc func(w io.Writer, result policyRemoveResult) error
+
+func renderPolicyRemoveText(w io.Writer, result policyRemoveResult) error {
+	if result.VersionTag == nil {
+		fmt.Fprintf(w, "Removed policy pack %s/%s.\n", result.Organization, result.PolicyPack)
+	} else {
+		fmt.Fprintf(w, "Removed version %s of policy pack %s/%s.\n",
+			*result.VersionTag, result.Organization, result.PolicyPack)
+	}
+	return nil
+}
+
+func renderPolicyRemoveJSON(w io.Writer, result policyRemoveResult) error {
+	return ui.FprintJSON(w, result)
+}
 
 func newPolicyRemoveCmd() *cobra.Command {
 	return newPolicyRemoveCmdWith(defaultPolicyPackCmdDeps)
@@ -46,9 +60,9 @@ func newPolicyRemoveCmd() *cobra.Command {
 func newPolicyRemoveCmdWith(deps policyPackCmdDeps) *cobra.Command {
 	contract.Assertf(deps != nil, "policyPackCmdDeps must not be nil")
 	var yes bool
-	outputFormat := outputflag.OutputFlag[policyRemoveRender]{
-		RenderForTerminal: func() {},
-		RenderJSON:        func() {},
+	outputFormat := outputflag.OutputFlag[policyRemoveRenderFunc]{
+		RenderForTerminal: renderPolicyRemoveText,
+		RenderJSON:        renderPolicyRemoveJSON,
 	}
 	cmd := &cobra.Command{
 		Use:     "remove",
@@ -89,11 +103,11 @@ func newPolicyRemoveCmdWith(deps policyPackCmdDeps) *cobra.Command {
 			err = policyPack.Remove(ctx, backend.PolicyPackOperation{
 				VersionTag: version, Scopes: backend.CancellationScopes,
 			})
-			if err != nil || outputFormat.String() != "json" {
+			if err != nil {
 				return err
 			}
 
-			return writeJSON(cmd.OutOrStdout(), policyRemoveJSON{
+			return outputFormat.Get()(cmd.OutOrStdout(), policyRemoveResult{
 				Organization: policyPack.Ref().OrgName(),
 				PolicyPack:   string(policyPack.Ref().Name()),
 				VersionTag:   version,

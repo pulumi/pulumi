@@ -68,17 +68,30 @@ func TestPolicyRemove_JSON(t *testing.T) {
 	}
 }
 
-func TestPolicyRemove_DefaultSilent(t *testing.T) {
+//nolint:paralleltest // t.Setenv
+func TestPolicyRemove_DefaultMessage(t *testing.T) {
 	t.Setenv("PULUMI_SKIP_CONFIRMATIONS", "")
 
-	pack := &backend.MockPolicyPack{
-		RefF:    func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
-		RemoveF: func(context.Context, backend.PolicyPackOperation) error { return nil },
+	tests := []struct {
+		name    string
+		version string
+		want    string
+	}{
+		{name: "all versions", version: "all", want: "Removed policy pack acme/p.\n"},
+		{name: "one version", version: "1.0.0", want: "Removed version 1.0.0 of policy pack acme/p.\n"},
 	}
-	out, err := runPolicyPackCmd(t,
-		newPolicyRemoveCmdWith(stubPolicyPackDeps(pack, stubPolicyGroupClient{})), "acme/p", "all", "--yes")
-	require.NoError(t, err)
-	assert.Empty(t, out)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pack := &backend.MockPolicyPack{
+				RefF:    func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
+				RemoveF: func(context.Context, backend.PolicyPackOperation) error { return nil },
+			}
+			out, err := runPolicyPackCmd(t,
+				newPolicyRemoveCmdWith(stubPolicyPackDeps(pack, stubPolicyGroupClient{})), "acme/p", tt.version, "--yes")
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, out)
+		})
+	}
 }
 
 func TestPolicyRemove_NonInteractiveWithoutYesErrors(t *testing.T) {

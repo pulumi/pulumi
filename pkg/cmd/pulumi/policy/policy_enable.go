@@ -22,12 +22,14 @@ import (
 	"io"
 	"maps"
 	"slices"
+	"strconv"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
@@ -61,20 +63,26 @@ func defaultPolicyPackCmdDeps(
 	return policyPack, cloudBackend.Client(), nil
 }
 
-type policyEnableJSON struct {
+type policyEnableResult struct {
 	Organization string                             `json:"organization"`
 	PolicyGroup  string                             `json:"policyGroup"`
 	PolicyPack   cloudapitype.AppPolicyPackMetadata `json:"policyPack"`
 }
 
-// policyEnableRender is a marker type for outputflag; the output mode is read back from the flag value.
-type policyEnableRender func()
+type policyEnableRenderFunc func(w io.Writer, result policyEnableResult) error
 
-func writeJSON(w io.Writer, v any) error {
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	return enc.Encode(v)
+func renderPolicyEnableText(w io.Writer, result policyEnableResult) error {
+	version := result.PolicyPack.VersionTag
+	if version == "" {
+		version = strconv.Itoa(result.PolicyPack.Version)
+	}
+	fmt.Fprintf(w, "Enabled policy pack %s/%s version %s in policy group %s.\n",
+		result.Organization, result.PolicyPack.Name, version, result.PolicyGroup)
+	return nil
+}
+
+func renderPolicyEnableJSON(w io.Writer, result policyEnableResult) error {
+	return ui.FprintJSON(w, result)
 }
 
 func newPolicyEnableCmd() *cobra.Command {
@@ -84,9 +92,9 @@ func newPolicyEnableCmd() *cobra.Command {
 func newPolicyEnableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 	contract.Assertf(deps != nil, "policyPackCmdDeps must not be nil")
 	args := policyEnableArgs{}
-	outputFormat := outputflag.OutputFlag[policyEnableRender]{
-		RenderForTerminal: func() {},
-		RenderJSON:        func() {},
+	outputFormat := outputflag.OutputFlag[policyEnableRenderFunc]{
+		RenderForTerminal: renderPolicyEnableText,
+		RenderJSON:        renderPolicyEnableJSON,
 	}
 
 	cmd := &cobra.Command{
@@ -128,10 +136,11 @@ func newPolicyEnableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 					Scopes:     backend.CancellationScopes,
 					Config:     config,
 				})
-			if err != nil || outputFormat.String() != "json" {
+			if err != nil {
 				return err
 			}
 
+			// The enable endpoint returns nothing, so read the group back to report the version that was resolved.
 			org := policyPack.Ref().OrgName()
 			name := string(policyPack.Ref().Name())
 			group := args.policyGroup
@@ -149,7 +158,7 @@ func newPolicyEnableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 			if idx < 0 {
 				return fmt.Errorf("policy pack %q not found in policy group %q after enabling", name, group)
 			}
-			return writeJSON(cmd.OutOrStdout(), policyEnableJSON{
+			return outputFormat.Get()(cmd.OutOrStdout(), policyEnableResult{
 				Organization: org,
 				PolicyGroup:  group,
 				PolicyPack:   resp.AppliedPolicyPacks[idx],

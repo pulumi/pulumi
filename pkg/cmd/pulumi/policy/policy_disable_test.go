@@ -67,14 +67,34 @@ func TestPolicyDisable_JSON(t *testing.T) {
 	}
 }
 
-func TestPolicyDisable_DefaultSilent(t *testing.T) {
+func TestPolicyDisable_DefaultMessage(t *testing.T) {
 	t.Parallel()
 
-	pack := &backend.MockPolicyPack{
-		RefF:     func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
-		DisableF: func(context.Context, string, backend.PolicyPackOperation) error { return nil },
+	tests := []struct {
+		name string
+		args []string
+		want string
+	}{
+		{
+			name: "no version", args: []string{"acme/p"},
+			want: "Disabled policy pack acme/p in policy group default-policy-group.\n",
+		},
+		{
+			name: "version and group", args: []string{"acme/p", "--version", "1.0.0", "--policy-group", "prod"},
+			want: "Disabled version 1.0.0 of policy pack acme/p in policy group prod.\n",
+		},
 	}
-	out, err := runPolicyPackCmd(t, newPolicyDisableCmdWith(stubPolicyPackDeps(pack, stubPolicyGroupClient{})), "acme/p")
-	require.NoError(t, err)
-	assert.Empty(t, out)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			pack := &backend.MockPolicyPack{
+				RefF:     func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
+				DisableF: func(context.Context, string, backend.PolicyPackOperation) error { return nil },
+			}
+			out, err := runPolicyPackCmd(t,
+				newPolicyDisableCmdWith(stubPolicyPackDeps(pack, stubPolicyGroupClient{})), tt.args...)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, out)
+		})
+	}
 }

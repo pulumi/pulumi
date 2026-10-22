@@ -243,12 +243,14 @@ func TestPolicyPublish_JSONOutputIsPureJSON(t *testing.T) {
 	}
 
 	var stdout, stderr bytes.Buffer
-	cmd := policyPublishCmd{getwd: testdataGetwd, stdout: &stdout, stderr: &stderr, json: true}
+	cmd := policyPublishCmd{
+		getwd: testdataGetwd, stdout: &stdout, stderr: &stderr, json: true, render: renderPolicyPublishJSON,
+	}
 	require.NoError(t, cmd.Run(t.Context(), publishTestLoginManager(t, pack), []string{}))
 
-	var got policyPublishJSON
+	var got policyPublishResult
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &got))
-	assert.Equal(t, policyPublishJSON{
+	assert.Equal(t, policyPublishResult{
 		Organization: "org1",
 		Name:         "pack",
 		VersionTag:   "1.2.0",
