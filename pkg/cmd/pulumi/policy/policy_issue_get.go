@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"time"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
@@ -211,45 +212,16 @@ func renderPolicyIssueGetText(w io.Writer, issue cloudapitype.PolicyIssue) error
 	return nil
 }
 
-// policyIssueGetJSON is the JSON envelope emitted by
-// `pulumi policy issue get --output=json`.
-type policyIssueGetJSON struct {
-	ID            string `json:"id"`
-	PolicyName    string `json:"policyName"`
-	PolicyPack    string `json:"policyPack"`
-	PolicyPackTag string `json:"policyPackTag,omitempty"`
-	Level         string `json:"level"`
-	Severity      string `json:"severity,omitempty"`
-	Status        string `json:"status,omitempty"`
-	ResourceURN   string `json:"resourceURN,omitempty"`
-	ResourceType  string `json:"resourceType,omitempty"`
-	EntityProject string `json:"entityProject,omitempty"`
-	EntityID      string `json:"entityId,omitempty"`
-	Message       string `json:"message,omitempty"`
-	ObservedAt    string `json:"observedAt,omitempty"`
-}
-
-func toPolicyIssueGetJSON(issue cloudapitype.PolicyIssue) policyIssueGetJSON {
-	return policyIssueGetJSON{
-		ID:            issue.ID,
-		PolicyName:    issue.PolicyName,
-		PolicyPack:    issue.PolicyPack,
-		PolicyPackTag: issue.PolicyPackTag,
-		Level:         issue.Level,
-		Severity:      string(issue.Severity),
-		Status:        string(issue.Status),
-		ResourceURN:   issue.ResourceURN,
-		ResourceType:  issue.ResourceType,
-		EntityProject: issue.EntityProject,
-		EntityID:      issue.EntityID,
-		Message:       issue.Message,
-		ObservedAt:    formatPolicyIssueTime(issue.ObservedAt),
+func formatPolicyIssueTime(t *time.Time) string {
+	if t == nil {
+		return ""
 	}
+	return t.Format(time.RFC3339Nano)
 }
 
 func renderPolicyIssueGetJSON(w io.Writer, issue cloudapitype.PolicyIssue) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(toPolicyIssueGetJSON(issue))
+	return enc.Encode(issue)
 }

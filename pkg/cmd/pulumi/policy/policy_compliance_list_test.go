@@ -40,25 +40,11 @@ func TestComplianceList_JSON(t *testing.T) {
 	c := &complianceListCmd{w: &buf}
 	require.NoError(t, c.renderJSON(sampleComplianceColumns(), sampleComplianceRows()))
 	assert.JSONEq(t, `{
-  "results": [
-    {
-      "entity": "web/prod",
-      "scores": {
-        "audit-accounts": 85,
-        "aws-guardrails": -1,
-        "default-policy-group": 100
-      }
-    },
-    {
-      "entity": "web/dev",
-      "scores": {
-        "audit-accounts": -2,
-        "aws-guardrails": 50,
-        "default-policy-group": 0
-      }
-    }
-  ],
-  "count": 2
+  "columns": ["default-policy-group", "audit-accounts", "aws-guardrails"],
+  "rows": [
+    {"entityName": "web/prod", "scores": [100, 85, -1]},
+    {"entityName": "web/dev", "scores": [0, -2, 50]}
+  ]
 }
 `, buf.String())
 }

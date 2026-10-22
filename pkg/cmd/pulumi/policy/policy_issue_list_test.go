@@ -168,35 +168,52 @@ func TestPolicyIssueList_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
-		"issues": [
-			{
-				"id": "issue-1",
-				"policyName": "no-public-buckets",
-				"policyPack": "aws-guardrails",
-				"policyPackTag": "1.2.0",
-				"level": "mandatory",
-				"severity": "high",
-				"resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
-				"resourceType": "aws:s3/bucket:Bucket",
-				"entityId": "prod",
-				"entityProject": "web",
-				"message": "S3 bucket must not allow public access",
-				"observedAt": "2026-05-01T12:00:00Z"
-			},
-			{
-				"id": "issue-2",
-				"policyName": "required-tags",
-				"policyPack": "tagging",
-				"level": "advisory",
-				"entityId": "staging",
-				"entityProject": "web",
-				"message": "Resource is missing required tags: this message is intentionally `+
+  "policyIssues": [
+    {
+      "id": "issue-1",
+      "entityType": "",
+      "entityProject": "web",
+      "entityId": "prod",
+      "policyPack": "aws-guardrails",
+      "policyPackTag": "1.2.0",
+      "policyName": "no-public-buckets",
+      "resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
+      "resourceProvider": "",
+      "resourceType": "aws:s3/bucket:Bucket",
+      "resourceName": "",
+      "message": "S3 bucket must not allow public access",
+      "observedAt": "2026-05-01T12:00:00Z",
+      "level": "mandatory",
+      "severity": "high",
+      "status": "",
+      "kind": "",
+      "priority": ""
+    },
+    {
+      "id": "issue-2",
+      "entityType": "",
+      "entityProject": "web",
+      "entityId": "staging",
+      "policyPack": "tagging",
+      "policyPackTag": "",
+      "policyName": "required-tags",
+      "resourceURN": "",
+      "resourceProvider": "",
+      "resourceType": "",
+      "resourceName": "",
+      "message": "Resource is missing required tags: this message is intentionally `+
 		`long enough to exercise the truncation path in the table renderer",
-				"observedAt": "2026-04-30T08:00:00Z"
-			}
-		],
-		"total": 2
-	}`, buf.String())
+      "observedAt": "2026-04-30T08:00:00Z",
+      "level": "advisory",
+      "severity": "",
+      "status": "",
+      "kind": "",
+      "priority": ""
+    }
+  ],
+  "groupData": null,
+  "rowCount": 2
+}`, buf.String())
 }
 
 func newPolicyIssueServerClient(t *testing.T, respond func(r *http.Request) string) *client.Client {
@@ -270,7 +287,7 @@ func TestPolicyIssueList_UnknownEnumValues(t *testing.T) {
 	jsonArgs := policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()}
 	require.NoError(t, jsonArgs.outputFormat.Set("json"))
 	var envelope struct {
-		Issues []map[string]any `json:"issues"`
+		Issues []map[string]any `json:"policyIssues"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(runPolicyIssueListAgainstServer(t, body, jsonArgs)), &envelope))
 	require.Len(t, envelope.Issues, 1)
@@ -348,7 +365,7 @@ func TestPolicyIssueList_JSON_Full(t *testing.T) {
 	require.NoError(t, renderPolicyIssueListJSON(&buf, resp))
 	got := buf.String()
 	assert.JSONEq(t, `{
-  "issues": [
+  "policyIssues": [
     {
       "id": "issue-1",
       "entityType": "stack",
@@ -357,8 +374,6 @@ func TestPolicyIssueList_JSON_Full(t *testing.T) {
       "policyPack": "aws-guardrails",
       "policyPackTag": "3.1.0",
       "policyName": "s3-no-public",
-      "level": "mandatory",
-      "severity": "critical",
       "resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets",
       "resourceProvider": "aws",
       "resourceType": "aws:s3/bucket:Bucket",
@@ -366,18 +381,34 @@ func TestPolicyIssueList_JSON_Full(t *testing.T) {
       "message": "Bucket must not allow public access & <must> be \"private\".",
       "observedAt": "2026-03-04T05:06:07.123456Z",
       "lastModified": "2026-03-05T06:07:08.5Z",
+      "level": "mandatory",
+      "severity": "critical",
       "status": "open",
       "kind": "audit",
       "priority": "P1"
     },
     {
       "id": "issue-2",
+      "entityType": "",
+      "entityProject": "",
+      "entityId": "",
       "policyPack": "tagging",
+      "policyPackTag": "",
       "policyName": "require-owner",
-      "level": "advisory"
+      "resourceURN": "",
+      "resourceProvider": "",
+      "resourceType": "",
+      "resourceName": "",
+      "observedAt": null,
+      "level": "advisory",
+      "severity": "",
+      "status": "",
+      "kind": "",
+      "priority": ""
     }
   ],
-  "total": 250
+  "groupData": null,
+  "rowCount": 250
 }
 `, got)
 }
@@ -388,8 +419,8 @@ func TestPolicyIssueList_JSON_Minimal(t *testing.T) {
 	require.NoError(t, renderPolicyIssueListJSON(&buf, cloudapitype.ListPolicyIssuesResponse{}))
 	got := buf.String()
 	assert.JSONEq(t, `{
-  "issues": [],
-  "total": 0
+  "policyIssues": [],
+  "groupData": null
 }
 `, got)
 }

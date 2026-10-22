@@ -258,35 +258,20 @@ func (c *complianceListCmd) renderTable(
 	return nil
 }
 
-type complianceJSONRow struct {
-	Entity string         `json:"entity"`
-	Scores map[string]int `json:"scores"`
-}
-
 func (c *complianceListCmd) renderJSON(
 	columns []string, rows []cloudapitype.PolicyComplianceResult,
 ) error {
-	jsonRows := make([]complianceJSONRow, 0, len(rows))
-	for _, row := range rows {
-		scores := make(map[string]int, len(columns))
-		for i, col := range columns {
-			if i < len(row.Scores) {
-				scores[col] = row.Scores[i]
-			}
-		}
-		jsonRows = append(jsonRows, complianceJSONRow{
-			Entity: row.EntityName,
-			Scores: scores,
-		})
+	if columns == nil {
+		columns = []string{}
+	}
+	if rows == nil {
+		rows = []cloudapitype.PolicyComplianceResult{}
 	}
 	enc := json.NewEncoder(c.w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(struct {
-		Results []complianceJSONRow `json:"results"`
-		Count   int                 `json:"count"`
-	}{
-		Results: jsonRows,
-		Count:   len(jsonRows),
+	return enc.Encode(cloudapitype.GetPolicyComplianceResultsResponse{
+		Columns: columns,
+		Rows:    rows,
 	})
 }

@@ -115,19 +115,25 @@ func TestPolicyIssueGet_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
-		"id": "issue-1",
-		"policyName": "no-public-buckets",
-		"policyPack": "aws-guardrails",
-		"policyPackTag": "1.2.0",
-		"level": "mandatory",
-		"severity": "high",
-		"resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
-		"resourceType": "aws:s3/bucket:Bucket",
-		"entityId": "prod",
-		"entityProject": "web",
-		"message": "S3 bucket must not allow public access",
-		"observedAt": "2026-05-01T12:00:00Z"
-	}`, buf.String())
+  "id": "issue-1",
+  "entityType": "",
+  "entityProject": "web",
+  "entityId": "prod",
+  "policyPack": "aws-guardrails",
+  "policyPackTag": "1.2.0",
+  "policyName": "no-public-buckets",
+  "resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
+  "resourceProvider": "",
+  "resourceType": "aws:s3/bucket:Bucket",
+  "resourceName": "",
+  "message": "S3 bucket must not allow public access",
+  "observedAt": "2026-05-01T12:00:00Z",
+  "level": "mandatory",
+  "severity": "high",
+  "status": "",
+  "kind": "",
+  "priority": ""
+}`, buf.String())
 }
 
 func TestPolicyIssueGet_ClientError(t *testing.T) {
@@ -211,18 +217,24 @@ func TestPolicyIssueGet_JSON_Full(t *testing.T) {
 	got := buf.String()
 	assert.JSONEq(t, `{
   "id": "issue-1",
-  "policyName": "s3-no-public",
+  "entityType": "stack",
+  "entityProject": "web",
+  "entityId": "prod",
   "policyPack": "aws-guardrails",
   "policyPackTag": "3.1.0",
+  "policyName": "s3-no-public",
+  "resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets",
+  "resourceProvider": "aws",
+  "resourceType": "aws:s3/bucket:Bucket",
+  "resourceName": "assets",
+  "message": "Bucket must not allow public access & <must> be \"private\".",
+  "observedAt": "2026-03-04T05:06:07.123456Z",
+  "lastModified": "2026-03-05T06:07:08.5Z",
   "level": "mandatory",
   "severity": "critical",
   "status": "open",
-  "resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets",
-  "resourceType": "aws:s3/bucket:Bucket",
-  "entityProject": "web",
-  "entityId": "prod",
-  "message": "Bucket must not allow public access & <must> be \"private\".",
-  "observedAt": "2026-03-04T05:06:07.123456Z"
+  "kind": "audit",
+  "priority": "P1"
 }
 `, got)
 }
@@ -234,9 +246,22 @@ func TestPolicyIssueGet_JSON_Minimal(t *testing.T) {
 	got := buf.String()
 	assert.JSONEq(t, `{
   "id": "issue-2",
-  "policyName": "require-owner",
+  "entityType": "",
+  "entityProject": "",
+  "entityId": "",
   "policyPack": "tagging",
-  "level": "advisory"
+  "policyPackTag": "",
+  "policyName": "require-owner",
+  "resourceURN": "",
+  "resourceProvider": "",
+  "resourceType": "",
+  "resourceName": "",
+  "observedAt": null,
+  "level": "advisory",
+  "severity": "",
+  "status": "",
+  "kind": "",
+  "priority": ""
 }
 `, got)
 }
