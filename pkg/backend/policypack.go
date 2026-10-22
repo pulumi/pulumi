@@ -50,6 +50,8 @@ type PolicyPackOperation struct {
 	VersionTag *string
 	Scopes     CancellationScopeSource
 	Config     map[string]*json.RawMessage
+	// Environments are the ESC environment references to attach to the Policy Pack.
+	Environments []string
 }
 
 // PolicyPack is used to manage policy against a pluggable backend.

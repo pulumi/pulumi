@@ -2222,9 +2222,10 @@ func validatePolicyPackVersion(s string) error {
 }
 
 // ApplyPolicyPack enables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,
-// it will enable the PolicyPack on the default PolicyGroup.
+// it will enable the PolicyPack on the default PolicyGroup. The service replaces the pack's
+// configuration and environments in the group with policyPackConfig and environments.
 func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName, policyGroup,
-	policyPackName, versionTag string, policyPackConfig map[string]*json.RawMessage,
+	policyPackName, versionTag string, policyPackConfig map[string]*json.RawMessage, environments []string,
 ) error {
 	// If a Policy Group was not specified, we use the default Policy Group.
 	if policyGroup == "" {
@@ -2234,9 +2235,10 @@ func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName, policyGroup,
 	req := cloudapitype.UpdatePolicyGroupRequest{
 		AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
 			AddPolicyPack: &cloudapitype.AppPolicyPackMetadata{
-				Name:       policyPackName,
-				VersionTag: versionTag,
-				Config:     policyPackConfig,
+				Name:         policyPackName,
+				VersionTag:   versionTag,
+				Config:       policyPackConfig,
+				Environments: environments,
 			},
 		},
 	}
