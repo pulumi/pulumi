@@ -22,13 +22,14 @@ import (
 	"os"
 	"strings"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -43,30 +44,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type policyPublishResult struct {
-	Organization string `json:"organization"`
-	Name         string `json:"name"`
-	VersionTag   string `json:"versionTag"`
-	URL          string `json:"url"`
+type policyPublishClient interface {
+	GetPolicyPack(
+		ctx context.Context, orgName, name, versionTag string,
+	) (cloudapitype.AppGetPolicyPackResponse, error)
 }
 
-type policyPublishRenderFunc func(w io.Writer, result policyPublishResult) error
-
-// renderPolicyPublishText prints nothing because the publish progress output already reports the version and
-// permalink.
-func renderPolicyPublishText(io.Writer, policyPublishResult) error {
-	return nil
-}
-
-func renderPolicyPublishJSON(w io.Writer, result policyPublishResult) error {
-	return ui.FprintJSON(w, result)
+func defaultPolicyPublishClient(b backend.Backend) (policyPublishClient, error) {
+	cloudBackend, ok := b.(httpstate.Backend)
+	if !ok {
+		return nil, errors.New("publishing a Policy Pack requires the Pulumi Cloud backend; run `pulumi login`")
+	}
+	return cloudBackend.Client(), nil
 }
 
 func newPolicyPublishCmd() *cobra.Command {
 	var policyPublishCmd policyPublishCmd
-	outputFormat := outputflag.OutputFlag[policyPublishRenderFunc]{
-		RenderForTerminal: renderPolicyPublishText,
-		RenderJSON:        renderPolicyPublishJSON,
+	outputFormat := outputflag.OutputFlag[policyGetRenderFunc]{
+		RenderForTerminal: renderPolicyGetText,
+		RenderJSON:        renderPolicyGetJSON,
 	}
 	cmd := &cobra.Command{
 		Use:   "publish",
@@ -102,10 +98,11 @@ func newPolicyPublishCmd() *cobra.Command {
 
 type policyPublishCmd struct {
 	getwd  func() (string, error)
+	client func(backend.Backend) (policyPublishClient, error)
 	stdout io.Writer
 	stderr io.Writer
 	json   bool
-	render policyPublishRenderFunc
+	render policyGetRenderFunc
 }
 
 func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
@@ -118,8 +115,11 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	if cmd.stderr == nil {
 		cmd.stderr = io.Discard
 	}
+	if cmd.client == nil {
+		cmd.client = defaultPolicyPublishClient
+	}
 	if cmd.render == nil {
-		cmd.render = renderPolicyPublishText
+		cmd.render = renderPolicyGetText
 	}
 
 	b, err := loginToCloudBackend(ctx, lm)
@@ -220,12 +220,19 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		return err
 	}
 
-	return cmd.render(cmd.stdout, policyPublishResult{
-		Organization: orgName,
-		Name:         result.Name,
-		VersionTag:   result.VersionTag,
-		URL:          result.URL,
-	})
+	c, err := cmd.client(b)
+	if err != nil {
+		return err
+	}
+	pack, err := c.GetPolicyPack(ctx, policyPack.Ref().OrgName(), result.Name, result.VersionTag)
+	if err != nil {
+		return fmt.Errorf("reading policy pack %s@%s after publish: %w", result.Name, result.VersionTag, err)
+	}
+	if pack.Policies == nil {
+		pack.Policies = []cloudapitype.AppPolicy{}
+	}
+	fmt.Fprintln(progress)
+	return cmd.render(cmd.stdout, pack)
 }
 
 func loginToCloudBackend(
