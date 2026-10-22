@@ -1077,6 +1077,7 @@ func (c *testPulumiClient) OpenEnvironmentDraft(
 	projectName string,
 	envName string,
 	changeRequestID string,
+	revision *int,
 	duration time.Duration,
 ) (string, []client.EnvironmentDiagnostic, error) {
 	envName = envName + "_DRAFT"
