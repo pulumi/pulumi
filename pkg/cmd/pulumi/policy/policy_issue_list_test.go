@@ -185,3 +185,112 @@ func TestPolicyIssueList_JSONOutput(t *testing.T) {
 		"total": 2
 	}`, buf.String())
 }
+
+func samplePolicyIssueFull() apitype.PolicyIssue {
+	return apitype.PolicyIssue{
+		ID:               "issue-1",
+		EntityType:       "stack",
+		EntityProject:    "web",
+		EntityID:         "prod",
+		PolicyPack:       "aws-guardrails",
+		PolicyPackTag:    "3.1.0",
+		PolicyName:       "s3-no-public",
+		Level:            "mandatory",
+		Severity:         apitype.PolicySeverityCritical,
+		ResourceURN:      "urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets",
+		ResourceProvider: "aws",
+		ResourceType:     "aws:s3/bucket:Bucket",
+		ResourceName:     "assets",
+		Message:          "Bucket must not allow public access & <must> be \"private\".",
+		ObservedAt:       "2026-03-04T05:06:07.123456Z",
+		LastModified:     "2026-03-05T06:07:08.5Z",
+		Status:           "open",
+		Kind:             "audit",
+		Priority:         "P1",
+	}
+}
+
+func samplePolicyIssueMinimal() apitype.PolicyIssue {
+	return apitype.PolicyIssue{
+		ID:         "issue-2",
+		PolicyPack: "tagging",
+		PolicyName: "require-owner",
+		Level:      "advisory",
+	}
+}
+
+func TestPolicyIssueList_JSON_Full(t *testing.T) {
+	t.Parallel()
+	resp := apitype.ListPolicyIssuesResponse{
+		Issues: []apitype.PolicyIssue{samplePolicyIssueFull(), samplePolicyIssueMinimal()},
+		Total:  250,
+	}
+	var buf bytes.Buffer
+	require.NoError(t, renderPolicyIssueListJSON(&buf, resp))
+	got := buf.String()
+	assert.JSONEq(t, `{
+  "issues": [
+    {
+      "id": "issue-1",
+      "entityType": "stack",
+      "entityProject": "web",
+      "entityId": "prod",
+      "policyPack": "aws-guardrails",
+      "policyPackTag": "3.1.0",
+      "policyName": "s3-no-public",
+      "level": "mandatory",
+      "severity": "critical",
+      "resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets",
+      "resourceProvider": "aws",
+      "resourceType": "aws:s3/bucket:Bucket",
+      "resourceName": "assets",
+      "message": "Bucket must not allow public access & <must> be \"private\".",
+      "observedAt": "2026-03-04T05:06:07.123456Z",
+      "lastModified": "2026-03-05T06:07:08.5Z",
+      "status": "open",
+      "kind": "audit",
+      "priority": "P1"
+    },
+    {
+      "id": "issue-2",
+      "policyPack": "tagging",
+      "policyName": "require-owner",
+      "level": "advisory"
+    }
+  ],
+  "total": 250
+}
+`, got)
+}
+
+func TestPolicyIssueList_JSON_Minimal(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	require.NoError(t, renderPolicyIssueListJSON(&buf, apitype.ListPolicyIssuesResponse{}))
+	got := buf.String()
+	assert.JSONEq(t, `{
+  "issues": [],
+  "total": 0
+}
+`, got)
+}
+
+func TestPolicyIssueList_Table(t *testing.T) {
+	t.Parallel()
+	resp := apitype.ListPolicyIssuesResponse{
+		Issues: []apitype.PolicyIssue{samplePolicyIssueFull(), samplePolicyIssueMinimal()},
+		Total:  250,
+	}
+	var buf bytes.Buffer
+	require.NoError(t, renderPolicyIssueListTable(&buf, resp))
+	got := buf.String()
+	for _, want := range []string{
+		"ID", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE",
+		"issue-1", "aws-guardrails@3.1.0", "s3-no-public", "mandatory", "web/prod",
+		`Bucket must not allow public access & <must> be "private".`,
+		"issue-2", "tagging", "require-owner", "advisory",
+		"Showing 2 of 250 policy issue(s)",
+	} {
+		assert.Contains(t, got, want)
+	}
+}
