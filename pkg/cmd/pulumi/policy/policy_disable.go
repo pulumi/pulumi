@@ -15,14 +15,9 @@
 package policy
 
 import (
-	"fmt"
-	"io"
-
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
@@ -32,30 +27,6 @@ type policyDisableArgs struct {
 	version     string
 }
 
-type policyDisableResult struct {
-	Organization string  `json:"organization"`
-	PolicyGroup  string  `json:"policyGroup"`
-	PolicyPack   string  `json:"policyPack"`
-	VersionTag   *string `json:"versionTag"`
-}
-
-type policyDisableRenderFunc func(w io.Writer, result policyDisableResult) error
-
-func renderPolicyDisableText(w io.Writer, result policyDisableResult) error {
-	if result.VersionTag == nil {
-		fmt.Fprintf(w, "Disabled policy pack %s/%s in policy group %s.\n",
-			result.Organization, result.PolicyPack, result.PolicyGroup)
-	} else {
-		fmt.Fprintf(w, "Disabled version %s of policy pack %s/%s in policy group %s.\n",
-			*result.VersionTag, result.Organization, result.PolicyPack, result.PolicyGroup)
-	}
-	return nil
-}
-
-func renderPolicyDisableJSON(w io.Writer, result policyDisableResult) error {
-	return ui.FprintJSON(w, result)
-}
-
 func newPolicyDisableCmd() *cobra.Command {
 	return newPolicyDisableCmdWith(defaultPolicyPackCmdDeps)
 }
@@ -63,10 +34,7 @@ func newPolicyDisableCmd() *cobra.Command {
 func newPolicyDisableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 	contract.Assertf(deps != nil, "policyPackCmdDeps must not be nil")
 	args := policyDisableArgs{}
-	outputFormat := outputflag.OutputFlag[policyDisableRenderFunc]{
-		RenderForTerminal: renderPolicyDisableText,
-		RenderJSON:        renderPolicyDisableJSON,
-	}
+	outputFormat := defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Use:   "disable",
@@ -79,7 +47,7 @@ func newPolicyDisableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			policyPack, _, err := deps(ctx, cliArgs[0])
+			policyPack, client, err := deps(ctx, cliArgs[0])
 			if err != nil {
 				return err
 			}
@@ -92,20 +60,11 @@ func newPolicyDisableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 				return err
 			}
 
-			group := args.policyGroup
-			if group == "" {
-				group = apitype.DefaultPolicyGroup
+			resp, err := readBackPolicyGroup(ctx, client, policyPack, args.policyGroup)
+			if err != nil {
+				return err
 			}
-			var versionTag *string
-			if args.version != "" {
-				versionTag = &args.version
-			}
-			return outputFormat.Get()(cmd.OutOrStdout(), policyDisableResult{
-				Organization: policyPack.Ref().OrgName(),
-				PolicyGroup:  group,
-				PolicyPack:   string(policyPack.Ref().Name()),
-				VersionTag:   versionTag,
-			})
+			return outputFormat.Get()(cmd.OutOrStdout(), resp)
 		},
 	}
 

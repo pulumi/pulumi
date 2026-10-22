@@ -15,29 +15,28 @@
 package policy
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 )
 
-func TestPolicyDisable_JSON(t *testing.T) {
+func TestPolicyDisable_JSONReadsBackGroup(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name      string
 		args      []string
 		wantGroup string
-		wantTag   any
+		wantTag   string
 	}{
-		{
-			name: "no version", args: []string{"acme/p", "--output", "json"},
-			wantGroup: "default-policy-group", wantTag: nil,
-		},
+		{name: "no version", args: []string{"acme/p", "--output", "json"}, wantGroup: "default-policy-group"},
 		{
 			name:      "version and group",
 			args:      []string{"acme/p", "--version", "1.0.0", "--policy-group", "prod", "--output", "json"},
@@ -48,53 +47,43 @@ func TestPolicyDisable_JSON(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			pack := &backend.MockPolicyPack{
-				RefF:     func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
-				DisableF: func(context.Context, string, backend.PolicyPackOperation) error { return nil },
+				RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
+				DisableF: func(_ context.Context, group string, op backend.PolicyPackOperation) error {
+					assert.Equal(t, tt.wantTag, *op.VersionTag)
+					return nil
+				},
 			}
-			client := stubPolicyGroupClient{}
+			client := stubPolicyGroupClient{get: func(_ context.Context, org, group string) (cloudapitype.PolicyGroup, error) {
+				assert.Equal(t, "acme", org)
+				assert.Equal(t, tt.wantGroup, group)
+				return cloudapitype.PolicyGroup{Name: group}, nil
+			}}
 			out, err := runPolicyPackCmd(t, newPolicyDisableCmdWith(stubPolicyPackDeps(pack, client)), tt.args...)
 			require.NoError(t, err)
 
-			var got map[string]any
+			var got cloudapitype.PolicyGroup
 			require.NoError(t, json.Unmarshal([]byte(out), &got))
-			assert.Equal(t, "acme", got["organization"])
-			assert.Equal(t, tt.wantGroup, got["policyGroup"])
-			assert.Equal(t, "p", got["policyPack"])
-			v, ok := got["versionTag"]
-			assert.True(t, ok)
-			assert.Equal(t, tt.wantTag, v)
+			assert.Equal(t, tt.wantGroup, got.Name)
+			assert.Empty(t, got.AppliedPolicyPacks)
 		})
 	}
 }
 
-func TestPolicyDisable_DefaultMessage(t *testing.T) {
+func TestPolicyDisable_DefaultRendersGroup(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name string
-		args []string
-		want string
-	}{
-		{
-			name: "no version", args: []string{"acme/p"},
-			want: "Disabled policy pack acme/p in policy group default-policy-group.\n",
-		},
-		{
-			name: "version and group", args: []string{"acme/p", "--version", "1.0.0", "--policy-group", "prod"},
-			want: "Disabled version 1.0.0 of policy pack acme/p in policy group prod.\n",
-		},
+	pack := &backend.MockPolicyPack{
+		RefF:     func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
+		DisableF: func(context.Context, string, backend.PolicyPackOperation) error { return nil },
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			pack := &backend.MockPolicyPack{
-				RefF:     func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
-				DisableF: func(context.Context, string, backend.PolicyPackOperation) error { return nil },
-			}
-			out, err := runPolicyPackCmd(t,
-				newPolicyDisableCmdWith(stubPolicyPackDeps(pack, stubPolicyGroupClient{})), tt.args...)
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, out)
-		})
-	}
+	group := cloudapitype.PolicyGroup{Name: "default-policy-group"}
+	client := stubPolicyGroupClient{get: func(context.Context, string, string) (cloudapitype.PolicyGroup, error) {
+		return group, nil
+	}}
+	out, err := runPolicyPackCmd(t, newPolicyDisableCmdWith(stubPolicyPackDeps(pack, client)), "acme/p")
+	require.NoError(t, err)
+
+	var want bytes.Buffer
+	require.NoError(t, renderPolicyGroupGetText(&want, group))
+	assert.Equal(t, want.String(), out)
 }
