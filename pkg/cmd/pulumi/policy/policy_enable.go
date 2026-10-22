@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -74,36 +75,76 @@ func readBackPolicyGroup(
 	return resp, nil
 }
 
-func newPolicyEnableCmd() *cobra.Command {
-	return newPolicyEnableCmdWith(defaultPolicyPackCmdDeps)
+// policyEnableClient is the subset of cloud-API operations `policy enable` needs.
+type policyEnableClient interface {
+	policyGroupGetClient
+	packSettingsClient
 }
 
-func newPolicyEnableCmdWith(deps policyPackCmdDeps) *cobra.Command {
-	contract.Assertf(deps != nil, "policyPackCmdDeps must not be nil")
+type policyEnableDeps func(
+	ctx context.Context, policyPackRef string,
+) (backend.PolicyPack, policyEnableClient, error)
+
+func defaultPolicyEnableDeps(
+	ctx context.Context, policyPackRef string,
+) (backend.PolicyPack, policyEnableClient, error) {
+	policyPack, err := requirePolicyPack(ctx, policyPackRef, cmdBackend.DefaultLoginManager)
+	if err != nil {
+		return nil, nil, err
+	}
+	cloudBackend, ok := policyPack.Backend().(httpstate.Backend)
+	if !ok {
+		return nil, nil, errors.New("this command requires the Pulumi Cloud backend; run `pulumi login`")
+	}
+	return policyPack, cloudBackend.Client(), nil
+}
+
+func newPolicyEnableCmd() *cobra.Command {
+	return newPolicyEnableCmdWith(defaultPolicyEnableDeps)
+}
+
+func newPolicyEnableCmdWith(deps policyEnableDeps) *cobra.Command {
+	contract.Assertf(deps != nil, "policyEnableDeps must not be nil")
 	args := policyEnableArgs{}
+	var settings packSettingsFlags
 	outputFormat := defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Use:   "enable",
 		Short: "Enable a Policy Pack for a Pulumi organization",
-		Long: "Enable a Policy Pack for a Pulumi organization. " +
-			"Can specify latest to enable the latest version of the Policy Pack or a specific version number.\n" +
+		Long: "Enable a Policy Pack for a Pulumi organization, or change the settings of a Policy Pack that is\n" +
+			"already enabled in a Policy Group.\n" +
 			"\n" +
-			"Examples:\n" +
+			"The version is 'latest' or a specific version. It may be omitted when the Policy Pack is already\n" +
+			"enabled in the Policy Group, in which case the enabled version is kept. When the version changes,\n" +
+			"configuration for policies that do not exist in the new version is removed and reported.\n" +
+			"\n" +
+			"The Policy Pack's existing configuration and ESC environments in the Policy Group are kept, and only\n" +
+			"the changes requested with flags are applied. --config replaces the whole configuration instead.\n" +
+			"\n" +
+			"Enforcement levels are one of: " + enforcementLevelValues + ".\n" +
+			"--enforcement-level sets the level of every policy and clears per-policy enforcement levels;\n" +
+			"--policy-enforcement then sets the level of individual policies. The remediate level only takes\n" +
+			"effect for organizations entitled to it.",
+		Example: "  # Enable the latest version in the default Policy Group\n" +
 			"  pulumi policy enable acme/aws-guardrails latest\n" +
-			"  pulumi policy enable acme/aws-guardrails 3 --policy-group prod --output json",
+			"\n" +
+			"  # Promote every policy to mandatory, keeping one advisory\n" +
+			"  pulumi policy enable acme/aws-guardrails --policy-group prod \\\n" +
+			"    --enforcement-level mandatory --policy-enforcement s3-no-public-read=advisory\n" +
+			"\n" +
+			"  # Upgrade to version 3 and attach an ESC environment\n" +
+			"  pulumi policy enable acme/aws-guardrails 3 --policy-group prod \\\n" +
+			"    --environment policies/aws-credentials --output json",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
-			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			policyPack, client, err := deps(ctx, cliArgs[0])
+			changes, err := settings.parse()
 			if err != nil {
 				return err
 			}
-
-			// Parse version if it's specified.
-			var version *string
-			if cliArgs[1] != latestKeyword {
-				version = &cliArgs[1]
+			if args.config != "" && changes.changesConfig() {
+				return cmdCmd.ConfigurationError{Message: "--config cannot be combined with " +
+					"--enforcement-level or --policy-enforcement"}
 			}
 
 			// Load the configuration from the user-specified JSON file into config object.
@@ -115,12 +156,59 @@ func newPolicyEnableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 				}
 			}
 
+			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
+			policyPack, client, err := deps(ctx, cliArgs[0])
+			if err != nil {
+				return err
+			}
+
+			org := policyPack.Ref().OrgName()
+			name := string(policyPack.Ref().Name())
+			group := args.policyGroup
+			if group == "" {
+				group = apitype.DefaultPolicyGroup
+			}
+
+			before, err := client.GetPolicyGroup(ctx, org, group)
+			if err != nil {
+				return fmt.Errorf("reading policy group %q: %w", group, err)
+			}
+			current := findAppliedPack(before, name)
+
+			var version *string
+			var targetVersionTag string
+			switch {
+			case len(cliArgs) < 2:
+				if current == nil {
+					return cmdCmd.ConfigurationError{Message: fmt.Sprintf(
+						"policy pack %q is not enabled in policy group %q; specify a version or %q",
+						name, group, latestKeyword)}
+				}
+				targetVersionTag = packVersionTag(*current)
+				version = &targetVersionTag
+			case cliArgs[1] != latestKeyword:
+				targetVersionTag = cliArgs[1]
+				version = &targetVersionTag
+			}
+
+			merged, err := mergePackSettings(ctx, client, org, name, packMergeInput{
+				current:          current,
+				targetVersionTag: targetVersionTag,
+				replaceConfig:    config,
+				changes:          changes,
+			})
+			if err != nil {
+				return err
+			}
+			warnPackSettings(cmd.ErrOrStderr(), name, changes, merged)
+
 			// Attempt to enable the Policy Pack.
 			err = policyPack.Enable(ctx, args.policyGroup,
 				backend.PolicyPackOperation{
-					VersionTag: version,
-					Scopes:     backend.CancellationScopes,
-					Config:     config,
+					VersionTag:   version,
+					Scopes:       backend.CancellationScopes,
+					Config:       merged.config,
+					Environments: merged.environments,
 				})
 			if err != nil {
 				return err
@@ -137,9 +225,9 @@ func newPolicyEnableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
 			{Name: "policy-pack", Usage: "<org-name>/<policy-pack-name>"},
-			{Name: "version", Usage: "<latest|version>"},
+			{Name: "version", Usage: "[latest|version]"},
 		},
-		Required: 2,
+		Required: 1,
 	})
 
 	cmd.PersistentFlags().StringVar(
@@ -148,8 +236,9 @@ func newPolicyEnableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&args.config, "config", "",
-		"The file path for the Policy Pack configuration file")
+		"The file path for the Policy Pack configuration file; replaces the Policy Pack's whole configuration")
 
+	settings.register(cmd.Flags())
 	outputflag.VarP(cmd.Flags(), &outputFormat)
 	return cmd
 }
