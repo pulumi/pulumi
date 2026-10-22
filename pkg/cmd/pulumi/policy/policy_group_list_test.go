@@ -58,6 +58,10 @@ func TestPolicyGroupList_DefaultOutput(t *testing.T) {
 	assert.Contains(t, out, "default-policy-group")
 	assert.Contains(t, out, "42")
 	assert.Contains(t, out, "audit-accounts")
+	assert.Contains(t, out, "ACCOUNTS")
+	assert.Contains(t, out, "MODE")
+	assert.Contains(t, out, "preventative")
+	assert.Contains(t, out, "audit")
 }
 
 func TestPolicyGroupList_JSONOutput(t *testing.T) {
@@ -66,7 +70,13 @@ func TestPolicyGroupList_JSONOutput(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, formatPolicyGroupsJSON(&buf, samplePolicyGroupSummaries()))
 	assert.JSONEq(t, `[
-		{"name": "default-policy-group", "default": true, "numPolicyPacks": 5, "numStacks": 42},
-		{"name": "audit-accounts", "default": false, "numPolicyPacks": 2, "numStacks": 0}
+		{
+			"name": "default-policy-group", "default": true, "numPolicyPacks": 5, "numStacks": 42,
+			"numAccounts": 3, "mode": "preventative"
+		},
+		{
+			"name": "audit-accounts", "default": false, "numPolicyPacks": 2, "numStacks": 0,
+			"numAccounts": 7, "mode": "audit"
+		}
 	]`, buf.String())
 }
