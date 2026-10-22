@@ -46,6 +46,8 @@ type Options struct {
 	Memprofilerate int
 	// the Pulumi organization to configure OIDC for
 	Org string
+	// the Pulumi organization to configure OIDC for
+	Organization string
 	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
 	// the role granted to the service account: roles/editor (required for Deployments), roles/viewer (required for Discovery), or any other role; prompted for when omitted
@@ -134,6 +136,13 @@ func Memprofilerate(v int) Option {
 func Org(v string) Option {
 	return func(o *Options) {
 		o.Org = v
+	}
+}
+
+// Organization returns an Option that sets Organization.
+func Organization(v string) Option {
+	return func(o *Options) {
+		o.Organization = v
 	}
 }
 

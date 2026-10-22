@@ -37,6 +37,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigset"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigsetall"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconvert"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestapply"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestapprove"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestclose"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestcomment"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestdiff"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestget"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestlist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestlog"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestrebase"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestunapprove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvclone"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvdiff"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvedit"
@@ -1693,6 +1703,836 @@ func (a *API) Convert(
 	if len(args) > 0 {
 		final = append(final, "--")
 		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestApply corresponds to `pulumi env change-request apply`.
+//
+// [EXPERIMENTAL] Apply a change request
+//
+// This command shows the change that the change request proposes and asks for confirmation,
+// then applies it to the environment. The change request must have all required approvals.
+func (a *API) EnvChangeRequestApply(
+	ctx context.Context,
+	opts ...optenvchangerequestapply.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestapply.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "apply"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestApprove corresponds to `pulumi env change-request approve`.
+//
+// [EXPERIMENTAL] Approve a change request
+//
+// This command shows the change that the change request proposes and asks for confirmation,
+// then approves its latest revision. Use `env change-request get` to see how many approvals
+// are still required.
+func (a *API) EnvChangeRequestApprove(
+	ctx context.Context,
+	opts ...optenvchangerequestapprove.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestapprove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "approve"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Message != "" {
+		final = append(final, "--message", fmt.Sprint(o.Message))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestClose corresponds to `pulumi env change-request close`.
+//
+// [EXPERIMENTAL] Close a change request
+//
+// This command closes a change request without applying it. A closed change request cannot be
+// reopened.
+func (a *API) EnvChangeRequestClose(
+	ctx context.Context,
+	opts ...optenvchangerequestclose.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestclose.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "close"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Message != "" {
+		final = append(final, "--message", fmt.Sprint(o.Message))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestComment corresponds to `pulumi env change-request comment`.
+//
+// [EXPERIMENTAL] Comment on a change request
+//
+// This command adds a comment to a change request. To comment while approving or closing,
+// use -m on `env change-request approve` or `env change-request close`.
+func (a *API) EnvChangeRequestComment(
+	ctx context.Context,
+	opts ...optenvchangerequestcomment.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestcomment.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "comment"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	final = append(final, "--message", fmt.Sprint(o.Message))
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestDiff corresponds to `pulumi env change-request diff`.
+//
+// [EXPERIMENTAL] Show the change a change request proposes
+//
+// This command shows the difference between the environment revision the draft is based on and
+// the draft.
+func (a *API) EnvChangeRequestDiff(
+	ctx context.Context,
+	opts ...optenvchangerequestdiff.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestdiff.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "diff"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestGet corresponds to `pulumi env change-request get`.
+//
+// [EXPERIMENTAL] Show a change request
+//
+// This command shows a change request's status, description, and approvals, and the environment
+// revision the draft is based on. If the environment has changed since then, use
+// `env change-request rebase` to bring the draft up to date.
+func (a *API) EnvChangeRequestGet(
+	ctx context.Context,
+	opts ...optenvchangerequestget.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestget.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "get"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestList corresponds to `pulumi env change-request list`.
+//
+// [EXPERIMENTAL] List change requests
+//
+// This command lists the open change requests in an organization, optionally filtered to a single environment.
+// Use --status to list change requests with a different status.
+func (a *API) EnvChangeRequestList(
+	ctx context.Context,
+	opts ...optenvchangerequestlist.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestlist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "list"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Status != "" {
+		final = append(final, "--status", fmt.Sprint(o.Status))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestLog corresponds to `pulumi env change-request log`.
+//
+// [EXPERIMENTAL] Show a change request's events
+//
+// This command shows a change request's events, such as new revisions, approvals, comments, and
+// status changes.
+func (a *API) EnvChangeRequestLog(
+	ctx context.Context,
+	opts ...optenvchangerequestlog.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestlog.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "log"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestRebase corresponds to `pulumi env change-request rebase`.
+//
+// [EXPERIMENTAL] Rebase a draft onto the environment's current revision
+//
+// This command replays a draft's changes onto the environment's current revision.
+// If the draft conflicts with the current revision, the draft is left unchanged and
+// each conflict is shown in the revision the draft is based on, the draft, and the current
+// revision.
+func (a *API) EnvChangeRequestRebase(
+	ctx context.Context,
+	opts ...optenvchangerequestrebase.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestrebase.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "rebase"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestUnapprove corresponds to `pulumi env change-request unapprove`.
+//
+// [EXPERIMENTAL] Remove your approval from a change request
+//
+// This command withdraws an approval you gave earlier, for example if you approved by mistake.
+// To reject a change request outright, use `env change-request close`.
+func (a *API) EnvChangeRequestUnapprove(
+	ctx context.Context,
+	opts ...optenvchangerequestunapprove.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestunapprove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "unapprove"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
 	}
 
 	return a.run(ctx, base.BaseOptions{
@@ -4233,6 +5073,10 @@ func (a *API) EnvSetupAws(
 		final = append(final, "--org", fmt.Sprint(o.Org))
 	}
 
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
 	}
@@ -4358,6 +5202,10 @@ func (a *API) EnvSetupAzure(
 		final = append(final, "--org", fmt.Sprint(o.Org))
 	}
 
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
 	}
@@ -4462,6 +5310,10 @@ func (a *API) EnvSetupGcp(
 
 	if o.Org != "" {
 		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
 	}
 
 	if o.OtelTraces != "" {
