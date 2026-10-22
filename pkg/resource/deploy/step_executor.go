@@ -456,32 +456,20 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 }
 
 func (se *stepExecutor) cancelDueToError(err error, step Step) {
-	// AwaitError from Create or Update surfaces the resource to the SDK as SUCCESS + Unknown=true
-	// with empty outputs, so dependents propagate unknowns rather than treating stale/partial
-	// values as real. The deployment keeps running (dependents cascade-skip like continue-on-error)
-	// and the deployment is marked so the CLI can surface a dedicated exit code. Only CreateStep
-	// and UpdateStep support await semantics; any other step type receiving an AwaitError falls
-	// through and is treated as a normal error. We do not reject sawError here so that a
-	// subsequent real error still takes precedence over the await when computing the deployment's
-	// return error.
+	// AwaitError from Create or Update fails the step as if continuing on error, so the SDK resolves
+	// the resource's outputs as unknown and its dependents are skipped. The deployment is marked so
+	// the CLI can surface a dedicated exit code. Any other step type receiving an AwaitError falls
+	// through and is treated as a normal error. We do not reject sawError here so that a subsequent
+	// real error still takes precedence over the await when computing the deployment's return error.
 	if _, isAwait := errors.AsType[*plugin.AwaitError](err); isAwait {
-		switch s := step.(type) {
-		case *CreateStep:
+		switch step.(type) {
+		case *CreateStep, *UpdateStep:
 			if !se.ignoreErrors {
 				se.awaited.Store(true)
 				se.erroredStepLock.Lock()
 				se.erroredSteps = append(se.erroredSteps, step)
 				se.erroredStepLock.Unlock()
-				s.Await()
-			}
-			return
-		case *UpdateStep:
-			if !se.ignoreErrors {
-				se.awaited.Store(true)
-				se.erroredStepLock.Lock()
-				se.erroredSteps = append(se.erroredSteps, step)
-				se.erroredStepLock.Unlock()
-				s.Await()
+				step.Fail()
 			}
 			return
 		}

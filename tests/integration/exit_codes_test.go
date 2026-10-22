@@ -65,21 +65,23 @@ func TestExitCode_AwaitError(t *testing.T) {
 
 	providerDir := testutil.TestProviderDir(t)
 	pulumiYaml := fmt.Sprintf(`name: exit-code-await
-runtime: yaml
+runtime: nodejs
 plugins:
   providers:
     - name: testprovider
       path: %s
-resources:
-  awaiting:
-    type: testprovider:index:AwaitsOnCreate
 `, providerDir)
 	require.NoError(t, os.WriteFile(filepath.Join(e.CWD, "Pulumi.yaml"), []byte(pulumiYaml), 0o600))
+	e.WriteTestFile("package.json", `{"name": "exit-code-await", "main": "index.js"}`)
+	e.WriteTestFile("index.js", `const pulumi = require("@pulumi/pulumi");
+new pulumi.CustomResource("testprovider:index:AwaitsOnCreate", "awaiting", {});
+`)
 
 	e.Backend = e.LocalURL()
 	e.Env = append(e.Env, "PULUMI_CONFIG_PASSPHRASE=")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "test", "--secrets-provider", "passphrase")
+	e.InstallDependencies()
 
 	cmd := e.SetupCommandIn(t.Context(), e.CWD, "pulumi", "up", "--yes", "--skip-preview")
 	err := cmd.Run()
