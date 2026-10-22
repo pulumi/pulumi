@@ -1,0 +1,4 @@
+component: programgen/python
+kind: feat
+body: Support `resourceExists` in generated Python programs
+time: 2026-10-22T15:41:50.838509+02:00
