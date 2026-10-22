@@ -34,6 +34,8 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+	"github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -2364,11 +2366,11 @@ func TestCreatePolicyGroup(t *testing.T) {
 	})
 	defer server.Close()
 
-	err := newMockClient(server).CreatePolicyGroup(t.Context(), "acme", apitype.CreatePolicyGroupRequest{
+	err := newMockClient(server).CreatePolicyGroup(t.Context(), "acme", cloudapitype.NewPolicyGroupRequest{
 		Name:        "prod-policies",
-		EntityType:  "stacks",
-		Mode:        "preventative",
-		AgentPoolID: "pool-123",
+		EntityType:  new(cloudapitype.PolicyGroupEntityTypeStacks), //nolint:staticcheck
+		Mode:        new(cloudapitype.PolicyGroupModePreventative),
+		AgentPoolID: jsonvalue.NotNull("pool-123"),
 	})
 	require.NoError(t, err)
 
@@ -2396,21 +2398,35 @@ func TestBatchUpdatePolicyGroup(t *testing.T) {
 	defer server.Close()
 
 	err := newMockClient(server).BatchUpdatePolicyGroup(t.Context(), "acme", "prod-policies",
-		[]apitype.UpdatePolicyGroupRequest{
-			{NewName: new("renamed")},
-			{AddStack: &apitype.PulumiStackReference{Name: "prod", RoutingProject: "web"}},
-			{AddStack: &apitype.PulumiStackReference{Name: "standalone"}},
-			{RemoveStack: &apitype.PulumiStackReference{Name: "old", RoutingProject: "api"}},
-			{AddPolicyPack: &apitype.PolicyPackMetadata{
-				Name:       "aws-pack",
-				VersionTag: "1.2.3",
-				Config: map[string]*json.RawMessage{
-					"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory","tags":["a","b"]}`)),
+		[]cloudapitype.UpdatePolicyGroupRequest{
+			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{NewName: new("renamed")}},
+			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+				AddStack: &cloudapitype.AppPulumiStackReference{Name: "prod", RoutingProject: "web"},
+			}},
+			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+				AddStack: &cloudapitype.AppPulumiStackReference{Name: "standalone"},
+			}},
+			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+				RemoveStack: &cloudapitype.AppPulumiStackReference{Name: "old", RoutingProject: "api"},
+			}},
+			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+				AddPolicyPack: &cloudapitype.AppPolicyPackMetadata{
+					Name:       "aws-pack",
+					VersionTag: "1.2.3",
+					Config: map[string]*json.RawMessage{
+						"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory","tags":["a","b"]}`)),
+					},
 				},
 			}},
-			{RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "tagging", VersionTag: "1.0.0"}},
-			{AddInsightsAccount: &apitype.InsightsAccountReference{Name: "prod-aws"}},
-			{RemoveInsightsAccount: &apitype.InsightsAccountReference{Name: "stale-gcp"}},
+			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+				RemovePolicyPack: &cloudapitype.AppPolicyPackMetadata{Name: "tagging", VersionTag: "1.0.0"},
+			}},
+			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+				AddInsightsAccount: &cloudapitype.AppInsightsAccountReference{Name: "prod-aws"},
+			}},
+			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
+				RemoveInsightsAccount: &cloudapitype.AppInsightsAccountReference{Name: "stale-gcp"},
+			}},
 		})
 	require.NoError(t, err)
 
@@ -2419,14 +2435,16 @@ func TestBatchUpdatePolicyGroup(t *testing.T) {
 	assert.JSONEq(t, `[
 		{"newName": "renamed"},
 		{"addStack": {"name": "prod", "routingProject": "web"}},
-		{"addStack": {"name": "standalone"}},
+		{"addStack": {"name": "standalone", "routingProject": ""}},
 		{"removeStack": {"name": "old", "routingProject": "api"}},
 		{"addPolicyPack": {
 			"name": "aws-pack",
+			"displayName": "",
+			"version": 0,
 			"versionTag": "1.2.3",
 			"config": {"s3-no-public": {"enforcementLevel": "mandatory", "tags": ["a", "b"]}}
 		}},
-		{"removePolicyPack": {"name": "tagging", "versionTag": "1.0.0"}},
+		{"removePolicyPack": {"name": "tagging", "displayName": "", "version": 0, "versionTag": "1.0.0"}},
 		{"addInsightsAccount": {"name": "prod-aws"}},
 		{"removeInsightsAccount": {"name": "stale-gcp"}}
 	]`, body)
@@ -2485,6 +2503,8 @@ func TestApplyPolicyPack(t *testing.T) {
 	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies", path)
 	assert.JSONEq(t, `{"addPolicyPack": {
 		"name": "aws-pack",
+		"displayName": "",
+		"version": 0,
 		"versionTag": "1.2.3",
 		"config": {"s3-no-public": {"enforcementLevel": "mandatory"}}
 	}}`, body)
@@ -2508,5 +2528,5 @@ func TestDisablePolicyPack(t *testing.T) {
 
 	assert.Equal(t, http.MethodPatch, method)
 	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies", path)
-	assert.JSONEq(t, `{"removePolicyPack": {"name": "aws-pack"}}`, body)
+	assert.JSONEq(t, `{"removePolicyPack": {"name": "aws-pack", "displayName": "", "version": 0, "versionTag": ""}}`, body)
 }

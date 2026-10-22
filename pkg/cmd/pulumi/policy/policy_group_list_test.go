@@ -18,28 +18,27 @@ import (
 	"bytes"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-func samplePolicyGroupSummaries() []apitype.PolicyGroupSummary {
-	return []apitype.PolicyGroupSummary{
+func samplePolicyGroupSummaries() []cloudapitype.AppPolicyGroupSummary {
+	return []cloudapitype.AppPolicyGroupSummary{
 		{
 			Name:                  "default-policy-group",
 			IsOrgDefault:          true,
 			NumStacks:             42,
 			NumAccounts:           3,
-			EntityType:            apitype.Stacks,
-			Mode:                  apitype.PolicyGroupModePreventative,
+			EntityType:            cloudapitype.AppEntityTypeStacks,
+			Mode:                  cloudapitype.PolicyGroupModePreventative,
 			NumEnabledPolicyPacks: 5,
 		},
 		{
 			Name:                  "audit-accounts",
 			NumAccounts:           7,
-			EntityType:            apitype.Accounts,
-			Mode:                  apitype.PolicyGroupModeAudit,
+			EntityType:            cloudapitype.AppEntityTypeAccounts,
+			Mode:                  cloudapitype.PolicyGroupModeAudit,
 			NumEnabledPolicyPacks: 2,
 		},
 	}
