@@ -256,18 +256,41 @@ func Remove(def *yaml.Node, names []string, path resource.PropertyPath) (removed
 	if err != nil || pc == nil {
 		return false, err
 	}
+	syntax := encoding.YAMLSyntax{Node: pc}
+	var targets []resource.PropertyPath
 	for _, name := range matches(pc, names) {
 		full := append(resource.PropertyPath{escape(name)}, escapePath(path)...)
-		syntax := encoding.YAMLSyntax{Node: pc}
 		if _, ok := syntax.Get(full); !ok {
 			continue
 		}
+		if len(path) > 0 && removeLeavesLoneSecureKey(syntax, full) {
+			return false, errSecureReprReserved
+		}
+		targets = append(targets, full)
+	}
+	for _, full := range targets {
 		if err := syntax.Delete(nil, full); err != nil {
 			return removed, err
 		}
 		removed = true
 	}
 	return removed, nil
+}
+
+func removeLeavesLoneSecureKey(syntax encoding.YAMLSyntax, full resource.PropertyPath) bool {
+	removedKey, isKey := full[len(full)-1].(string)
+	if !isKey {
+		return false
+	}
+	parent, ok := syntax.Get(full[:len(full)-1])
+	if !ok || parent.Kind != yaml.MappingNode || len(parent.Content) != 4 {
+		return false
+	}
+	kept := parent.Content[0:2]
+	if kept[0].Value == removedKey {
+		kept = parent.Content[2:4]
+	}
+	return kept[0].Value == "secure" && kept[1].Kind == yaml.ScalarNode && kept[1].ShortTag() == "!!str"
 }
 
 // ValueNode renders v as a YAML node using the typing rules of "pulumi config set". nested reports whether v is set

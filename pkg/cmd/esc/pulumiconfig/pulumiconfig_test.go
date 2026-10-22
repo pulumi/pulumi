@@ -332,6 +332,7 @@ func TestRemove(t *testing.T) {
 		path    string
 		removed bool
 		out     string
+		err     string
 	}{
 		{
 			name:    "entry keeps sibling comments",
@@ -362,6 +363,30 @@ func TestRemove(t *testing.T) {
 			path:    "b",
 			removed: true,
 			out:     "values:\n  pulumiConfig:\n    proj:a:\n      c: 2\n",
+		},
+		{
+			name:  "map member leaving a lone secure string",
+			in:    "values:\n  pulumiConfig:\n    proj:a:\n      b: 1\n      secure: tls\n",
+			names: []string{"proj:a"},
+			path:  "b",
+			out:   "values:\n  pulumiConfig:\n    proj:a:\n      b: 1\n      secure: tls\n",
+			err:   `maps with the single key "secure" are reserved`,
+		},
+		{
+			name:  "a failing spelling leaves the other spelling untouched",
+			in:    "values:\n  pulumiConfig:\n    proj:a:\n      b: 1\n      c: 2\n    a:\n      b: 1\n      secure: tls\n",
+			names: []string{"proj:a", "a"},
+			path:  "b",
+			out:   "values:\n  pulumiConfig:\n    proj:a:\n      b: 1\n      c: 2\n    a:\n      b: 1\n      secure: tls\n",
+			err:   `maps with the single key "secure" are reserved`,
+		},
+		{
+			name:    "map member leaving a lone secure bool",
+			in:      "values:\n  pulumiConfig:\n    proj:a:\n      b: 1\n      secure: true\n",
+			names:   []string{"proj:a"},
+			path:    "b",
+			removed: true,
+			out:     "values:\n  pulumiConfig:\n    proj:a:\n      secure: true\n",
 		},
 		{
 			name:  "missing parent is a no-op",
@@ -404,7 +429,11 @@ func TestRemove(t *testing.T) {
 
 			doc := parse(t, tt.in)
 			removed, err := Remove(doc, tt.names, mustPath(t, tt.path))
-			require.NoError(t, err)
+			if tt.err != "" {
+				require.ErrorContains(t, err, tt.err)
+			} else {
+				require.NoError(t, err)
+			}
 			assert.Equal(t, tt.removed, removed)
 			assert.Equal(t, tt.out, render(t, doc))
 		})
