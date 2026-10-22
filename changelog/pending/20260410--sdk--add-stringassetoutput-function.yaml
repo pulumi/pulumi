@@ -1,0 +1,10 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Add NewStringAssetOutput function to create a StringAsset from an Output[string]
+- type: feat
+  scope: sdk/nodejs
+  description: Add stringAssetOutput function to create a StringAsset from an Input<string>
+- type: feat
+  scope: sdk/python
+  description: Add string_asset_output function to create a StringAsset from an Input[str]
