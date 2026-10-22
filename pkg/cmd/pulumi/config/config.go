@@ -438,12 +438,7 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 				return err
 			}
 
-			err = ps.Config.Remove(key, path)
-			if err != nil {
-				return err
-			}
-
-			return cmdStack.SaveProjectStack(ctx, stack, ps, *configFile)
+			return removeConfigKeys(ctx, stack, project, ps, *configFile, []config.Key{key}, path)
 		},
 	}
 	constrictor.AttachArguments(rmCmd, &constrictor.Arguments{
@@ -518,19 +513,16 @@ func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *s
 				return err
 			}
 
+			keys := make([]config.Key, 0, len(args))
 			for _, arg := range args {
 				key, err := ParseConfigKey(ws, arg, path)
 				if err != nil {
 					return fmt.Errorf("invalid configuration key: %w", err)
 				}
-
-				err = ps.Config.Remove(key, path)
-				if err != nil {
-					return err
-				}
+				keys = append(keys, key)
 			}
 
-			return cmdStack.SaveProjectStack(ctx, stack, ps, *configFile)
+			return removeConfigKeys(ctx, stack, project, ps, *configFile, keys, path)
 		},
 	}
 	constrictor.AttachArguments(rmAllCmd, &constrictor.Arguments{
@@ -842,6 +834,14 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
+	managed, err := managedEnvForWrite(s, project.Name, ps, configFile)
+	if err != nil {
+		return err
+	}
+	if managed != nil && c.Secret {
+		return cmdStack.ManagedEnvironmentNotSupportedError("`pulumi config set --secret`")
+	}
+
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 	// Encrypt the config value if needed.
@@ -895,6 +895,13 @@ func (c *configSetCmd) Run(
 				err, *configLocation.EscEnv, key.String(), exampleValue)
 		}
 		return err
+	}
+
+	if managed != nil {
+		if err := managed.Set(ctx, key, v, c.Path); err != nil {
+			return fmt.Errorf("could not set config: %w", err)
+		}
+		return managed.Save(ctx)
 	}
 
 	err = ps.Config.Set(key, v, c.Path)
