@@ -12,10 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cli
 
 import (
+	"log"
 	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/stretchr/testify/require"
 )
@@ -136,4 +143,88 @@ func TestStringArrayNoSplitOnComma(t *testing.T) {
 	plaintext, err := config.PersistentFlags().GetStringArray("plaintext")
 	require.NoError(t, err)
 	require.Equal(t, []string{"a=foo,bar,baz"}, plaintext)
+}
+
+func TestEmbeddedCommandRestoresProcessFlags(t *testing.T) {
+	t.Setenv("PULUMI_OPTION_NON_INTERACTIVE", "true")
+	oldEmoji, oldQualified := cmdutil.Emoji, cmdutil.FullyQualifyStackNames
+	oldInteractive, oldIntegrity := cmdutil.DisableInteractive, backend.DisableIntegrityChecking
+	writer := log.Writer()
+	called := false
+	cmd, cleanup := NewPulumiCmd(Options{Embedded: true, AICommands: []*cobra.Command{{
+		Use: "embedded-test",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			called = true
+			require.True(t, cmdutil.DisableInteractive)
+			require.Equal(t, writer, log.Writer())
+			return nil
+		},
+	}}})
+	defer cleanup()
+	cmd.SetArgs([]string{"embedded-test"})
+	require.NoError(t, cmd.ExecuteContext(t.Context()))
+	require.True(t, called)
+	cleanup()
+	require.Equal(t, oldEmoji, cmdutil.Emoji)
+	require.Equal(t, oldQualified, cmdutil.FullyQualifyStackNames)
+	require.Equal(t, oldInteractive, cmdutil.DisableInteractive)
+	require.Equal(t, oldIntegrity, backend.DisableIntegrityChecking)
+	require.Equal(t, writer, log.Writer())
+}
+
+func TestRepeatedCommandsDoNotGrowEnvironmentRegistry(t *testing.T) {
+	_, cleanup := NewPulumiCmd(Options{Embedded: true})
+	cleanup()
+	count := len(declared.Variables())
+	t.Setenv("PULUMI_OPTION_RUN_PROGRAM", "true")
+	command, cleanup := NewPulumiCmd(Options{Embedded: true})
+	defer cleanup()
+	require.Len(t, declared.Variables(), count)
+	preview, _, err := command.Find([]string{"preview"})
+	require.NoError(t, err)
+	value, err := preview.PersistentFlags().GetBool("run-program")
+	require.NoError(t, err)
+	require.True(t, value)
+}
+
+func TestInt32EnvironmentVariable(t *testing.T) {
+	t.Setenv("PULUMI_OPTION_PARALLEL", "7")
+	command, cleanup := NewPulumiCmd(Options{Embedded: true})
+	defer cleanup()
+	preview, _, err := command.Find([]string{"preview"})
+	require.NoError(t, err)
+	value, err := preview.PersistentFlags().GetInt32("parallel")
+	require.NoError(t, err)
+	require.Equal(t, int32(7), value)
+}
+
+func TestEmbeddedCommandScalarEnvironmentVariables(t *testing.T) {
+	t.Setenv("PULUMI_OPTION_COUNT", "7")
+	t.Setenv("PULUMI_OPTION_GRANULARITY", "2s")
+	command, cleanup := NewPulumiCmd(Options{Embedded: true})
+	defer cleanup()
+	var check func(*cobra.Command)
+	count, duration := false, false
+	check = func(cmd *cobra.Command) {
+		visit := func(flag *pflag.Flag) {
+			switch flag.Name {
+			case "count":
+				if flag.Value.Type() == "int64" {
+					require.Equal(t, "7", flag.Value.String())
+					count = true
+				}
+			case "granularity":
+				require.Equal(t, "2s", flag.Value.String())
+				duration = true
+			}
+		}
+		cmd.Flags().VisitAll(visit)
+		cmd.PersistentFlags().VisitAll(visit)
+		for _, child := range cmd.Commands() {
+			check(child)
+		}
+	}
+	check(command)
+	require.True(t, count)
+	require.True(t, duration)
 }

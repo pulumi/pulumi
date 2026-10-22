@@ -1,0 +1,4 @@
+component: cli/neo
+kind: fix
+body: Honor CLI operation options in agent previews and updates, including running the program during refresh
+time: 2026-10-20T08:22:44.006515-05:00
