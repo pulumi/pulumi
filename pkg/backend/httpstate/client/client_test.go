@@ -2496,7 +2496,7 @@ func TestApplyPolicyPack(t *testing.T) {
 	err := newMockClient(server).ApplyPolicyPack(t.Context(), "acme", "prod-policies", "aws-pack", "1.2.3",
 		map[string]*json.RawMessage{
 			"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory"}`)),
-		})
+		}, []string{"policies/aws-creds@3"})
 	require.NoError(t, err)
 
 	assert.Equal(t, http.MethodPatch, method)
@@ -2506,7 +2506,8 @@ func TestApplyPolicyPack(t *testing.T) {
 		"displayName": "",
 		"version": 0,
 		"versionTag": "1.2.3",
-		"config": {"s3-no-public": {"enforcementLevel": "mandatory"}}
+		"config": {"s3-no-public": {"enforcementLevel": "mandatory"}},
+		"environments": ["policies/aws-creds@3"]
 	}}`, body)
 }
 
