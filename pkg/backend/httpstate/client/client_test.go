@@ -2279,10 +2279,73 @@ func TestCreateUpdateSendsCoherenceWindow(t *testing.T) {
 
 	update, _, err := newMockClient(server).CreateUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
 		config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, true, /* dryRun */
-		"d333a711-4aa0-402f-be6d-72af9665fc37")
+		"d333a711-4aa0-402f-be6d-72af9665fc37", UpdateRequestOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, "update-id", update.UpdateID)
 	assert.Equal(t, "d333a711-4aa0-402f-be6d-72af9665fc37", gotBody.CoherenceWindow)
+}
+
+func TestUpdateRequestsSendManagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")}
+	proj := &workspace.Project{Name: "project", Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil)}
+
+	cases := []struct {
+		name string
+		env  *apitype.UpdateProgramEnvironment
+		want string
+	}{
+		{
+			name: "draft revision zero with a change request",
+			env:  &apitype.UpdateProgramEnvironment{BaseRevision: 7, ChangeRequestID: "cr-1"},
+			want: `{"baseRevision":7,"changeRequestID":"cr-1","draftRevision":0}`,
+		},
+		{
+			name: "open revision",
+			env:  &apitype.UpdateProgramEnvironment{BaseRevision: 7},
+			want: `{"baseRevision":7,"draftRevision":0}`,
+		},
+		{name: "unmanaged"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var createBody map[string]json.RawMessage
+			createServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+				require.NoError(t, json.NewDecoder(req.Body).Decode(&createBody))
+				return `{"updateID":"update-id"}`
+			})
+			defer createServer.Close()
+			_, _, err := newMockClient(createServer).CreateUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+				config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, true, "",
+				UpdateRequestOptions{Environment: tc.env})
+			require.NoError(t, err)
+
+			var beginBody struct {
+				Program map[string]json.RawMessage `json:"program"`
+			}
+			beginServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+				require.NoError(t, json.NewDecoder(req.Body).Decode(&beginBody))
+				return `{"updateID":"update-id"}`
+			})
+			defer beginServer.Close()
+			_, err = newMockClient(beginServer).BeginUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+				config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, nil, true, "",
+				UpdateRequestOptions{Environment: tc.env})
+			require.NoError(t, err)
+
+			for _, body := range []map[string]json.RawMessage{createBody, beginBody.Program} {
+				got, present := body["environment"]
+				if tc.env == nil {
+					assert.False(t, present)
+					continue
+				}
+				assert.JSONEq(t, tc.want, string(got))
+			}
+		})
+	}
 }
 
 func TestBeginUpdateSendsCoherenceWindow(t *testing.T) {
@@ -2300,7 +2363,7 @@ func TestBeginUpdateSendsCoherenceWindow(t *testing.T) {
 
 	resp, err := newMockClient(server).BeginUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
 		config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, nil, true, /* dryRun */
-		"d333a711-4aa0-402f-be6d-72af9665fc37")
+		"d333a711-4aa0-402f-be6d-72af9665fc37", UpdateRequestOptions{})
 	require.NoError(t, err)
 	assert.Equal(t, "update-id", resp.UpdateID)
 	assert.Equal(t, "d333a711-4aa0-402f-be6d-72af9665fc37", gotBody.Program.CoherenceWindow)

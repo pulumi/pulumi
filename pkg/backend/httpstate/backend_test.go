@@ -1689,6 +1689,67 @@ func TestCreateAndStartUpdateRequiresCoherenceWindowCapability(t *testing.T) {
 	}
 }
 
+func TestCreateAndStartUpdateSendsManagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	managed := &apitype.UpdateProgramEnvironment{BaseRevision: 7, ChangeRequestID: "cr-1"}
+	for _, tc := range []struct {
+		name        string
+		beginUpdate bool
+		path        string
+	}{
+		{"legacy create", false, "/api/stacks/owner/project/stack/preview"},
+		{"begin-update", true, "/api/stacks/owner/project/stack/begin-update"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
+
+			var mu sync.Mutex
+			var body []byte
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == tc.path {
+					raw, err := io.ReadAll(r.Body)
+					require.NoError(t, err)
+					mu.Lock()
+					body = raw
+					mu.Unlock()
+				}
+				http.Error(w, "stop", http.StatusInternalServerError)
+			}))
+			t.Cleanup(server.Close)
+
+			sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+			fx.backend.client = client.NewClient(server.URL, "token", false, sink).WithHTTPClient(server.Client())
+			fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) {
+				return apitype.Capabilities{BeginUpdate: tc.beginUpdate}, nil
+			})
+			fx.op.M = &backend.UpdateMetadata{}
+			fx.op.StackConfiguration.ManagedEnvironment = managed
+
+			stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
+			_, _, err := fx.backend.createAndStartUpdate(t.Context(), apitype.PreviewUpdate, stk, &fx.op, true)
+			require.Error(t, err)
+
+			mu.Lock()
+			defer mu.Unlock()
+			require.NotEmpty(t, body)
+			var sent struct {
+				Environment *apitype.UpdateProgramEnvironment `json:"environment"`
+				Program     struct {
+					Environment *apitype.UpdateProgramEnvironment `json:"environment"`
+				} `json:"program"`
+			}
+			require.NoError(t, json.Unmarshal(body, &sent))
+			if tc.beginUpdate {
+				assert.Equal(t, managed, sent.Program.Environment)
+			} else {
+				assert.Equal(t, managed, sent.Environment)
+			}
+		})
+	}
+}
+
 type runEngineActionFixture struct {
 	backend     *cloudBackend
 	stackRef    cloudBackendReference
