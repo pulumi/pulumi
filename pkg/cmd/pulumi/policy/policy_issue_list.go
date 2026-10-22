@@ -23,16 +23,15 @@ import (
 	"slices"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -42,8 +41,8 @@ import (
 // the full HTTP client surface.
 type policyIssueListClient interface {
 	ListPolicyIssues(
-		ctx context.Context, orgName string, opts client.ListPolicyIssuesOptions,
-	) (apitype.ListPolicyIssuesResponse, error)
+		ctx context.Context, orgName string, req cloudapitype.AngularGridGetRowsRequest,
+	) (cloudapitype.ListPolicyIssuesResponse, error)
 }
 
 // policyIssueListClientFactory resolves a cloud client and the organization
@@ -178,7 +177,7 @@ func runPolicyIssueList(
 		want = -1 // sentinel: fetch everything
 	}
 
-	var allIssues []apitype.PolicyIssue
+	var allIssues []cloudapitype.PolicyIssue
 	var total int64
 	startRow := 0
 
@@ -188,36 +187,43 @@ func runPolicyIssueList(
 			pageSize = int(want - int64(len(allIssues)))
 		}
 
-		resp, err := c.ListPolicyIssues(ctx, org, client.ListPolicyIssuesOptions{
+		resp, err := c.ListPolicyIssues(ctx, org, cloudapitype.AngularGridGetRowsRequest{
 			StartRow: startRow,
 			EndRow:   startRow + pageSize,
 		})
 		if err != nil {
 			return fmt.Errorf("listing policy issues: %w", err)
 		}
-		total = resp.Total
-		allIssues = append(allIssues, resp.Issues...)
+		total = policyIssueTotal(resp)
+		allIssues = append(allIssues, resp.PolicyIssues...)
 
 		// Stop if we've collected enough, or there are no more results.
 		if want > 0 && int64(len(allIssues)) >= want {
 			allIssues = allIssues[:want]
 			break
 		}
-		if int64(len(allIssues)) >= total || len(resp.Issues) == 0 {
+		if int64(len(allIssues)) >= total || len(resp.PolicyIssues) == 0 {
 			break
 		}
-		startRow += len(resp.Issues)
+		startRow += len(resp.PolicyIssues)
 	}
 
-	return args.outputFormat.Get()(w, apitype.ListPolicyIssuesResponse{
-		Issues: allIssues,
-		Total:  total,
+	return args.outputFormat.Get()(w, cloudapitype.ListPolicyIssuesResponse{
+		PolicyIssues: allIssues,
+		RowCount:     new(int(total)),
 	})
 }
 
 type policyIssueListRenderFunc func(
-	w io.Writer, resp apitype.ListPolicyIssuesResponse,
+	w io.Writer, resp cloudapitype.ListPolicyIssuesResponse,
 ) error
+
+func policyIssueTotal(resp cloudapitype.ListPolicyIssuesResponse) int64 {
+	if resp.RowCount == nil {
+		return 0
+	}
+	return int64(*resp.RowCount)
+}
 
 // policyIssueMessageMax is the maximum width of the message column in the
 // human-readable table. Longer messages are truncated with an ellipsis so the
@@ -240,9 +246,9 @@ func truncateMessage(s string, max int) string {
 }
 
 func renderPolicyIssueListTable(
-	w io.Writer, resp apitype.ListPolicyIssuesResponse,
+	w io.Writer, resp cloudapitype.ListPolicyIssuesResponse,
 ) error {
-	if len(resp.Issues) == 0 {
+	if len(resp.PolicyIssues) == 0 {
 		fmt.Fprintln(w, "No policy issues found for this organization.")
 		return nil
 	}
@@ -252,7 +258,7 @@ func renderPolicyIssueListTable(
 	t.SetStyle(table.StyleLight)
 	t.AppendHeader(table.Row{"ID", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE"})
 
-	for _, issue := range resp.Issues {
+	for _, issue := range resp.PolicyIssues {
 		pack := issue.PolicyPack
 		if issue.PolicyPackTag != "" {
 			pack = fmt.Sprintf("%s@%s", issue.PolicyPack, issue.PolicyPackTag)
@@ -279,29 +285,29 @@ func renderPolicyIssueListTable(
 	}
 	t.Render()
 
-	fmt.Fprintf(w, "\nShowing %d of %d policy issue(s)\n", len(resp.Issues), resp.Total)
+	fmt.Fprintf(w, "\nShowing %d of %d policy issue(s)\n", len(resp.PolicyIssues), policyIssueTotal(resp))
 	return nil
 }
 
 // policyIssueListEnvelope is the JSON shape emitted by
 // `pulumi policy issue list --output=json`.
 type policyIssueListEnvelope struct {
-	Issues []apitype.PolicyIssue `json:"issues"`
-	Total  int64                 `json:"total"`
+	Issues []policyIssueJSON `json:"issues"`
+	Total  int64             `json:"total"`
 }
 
 func renderPolicyIssueListJSON(
-	w io.Writer, resp apitype.ListPolicyIssuesResponse,
+	w io.Writer, resp cloudapitype.ListPolicyIssuesResponse,
 ) error {
-	issues := resp.Issues
-	if issues == nil {
-		issues = []apitype.PolicyIssue{}
+	issues := make([]policyIssueJSON, 0, len(resp.PolicyIssues))
+	for _, issue := range resp.PolicyIssues {
+		issues = append(issues, toPolicyIssueJSON(issue))
 	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	return enc.Encode(policyIssueListEnvelope{
 		Issues: issues,
-		Total:  resp.Total,
+		Total:  policyIssueTotal(resp),
 	})
 }

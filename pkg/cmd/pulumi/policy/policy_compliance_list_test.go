@@ -18,18 +18,17 @@ import (
 	"bytes"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 func sampleComplianceColumns() []string {
 	return []string{"default-policy-group", "audit-accounts", "aws-guardrails"}
 }
 
-func sampleComplianceRows() []apitype.PolicyComplianceResult {
-	return []apitype.PolicyComplianceResult{
+func sampleComplianceRows() []cloudapitype.PolicyComplianceResult {
+	return []cloudapitype.PolicyComplianceResult{
 		{EntityName: "web/prod", Scores: []int{100, 85, -1}},
 		{EntityName: "web/dev", Scores: []int{0, -2, 50}},
 	}
