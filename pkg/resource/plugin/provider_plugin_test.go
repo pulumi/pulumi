@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -291,16 +292,18 @@ func TestRestoreElidedAssetContents(t *testing.T) {
 		}),
 	}
 
-	serialized, err := MarshalProperties(original, MarshalOptions{
+	filtered, err := FilterProperties(resource.FromResourcePropertyMap(original), FilterOptions{
 		ElideAssetContents: true,
 		KeepSecrets:        true,
 	})
-	require.NoError(t, err, "failed to marshal properties")
+	require.NoError(t, err, "failed to filter properties")
+	serialized := propertyrpc.Marshal(filtered)
 
-	deserialized, err := UnmarshalProperties(serialized, MarshalOptions{
-		KeepSecrets: true,
-	})
+	raw, err := propertyrpc.Unmarshal(serialized)
 	require.NoError(t, err, "failed to unmarshal properties")
+	deserializedMap, err := FilterProperties(raw, FilterOptions{KeepSecrets: true})
+	require.NoError(t, err, "failed to filter unmarshaled properties")
+	deserialized := resource.ToResourcePropertyMap(deserializedMap)
 
 	originalRaw := original.Mappable()
 	deserializedRaw := deserialized.Mappable()
@@ -1420,13 +1423,11 @@ func TestProvider_PartialFailure(t *testing.T) {
 
 	urn := resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux")
 
-	liveProperties := resource.PropertyMap{"out": resource.NewProperty("live-output")}
-	liveInputs := resource.PropertyMap{"in": resource.NewProperty("live-input")}
+	liveProperties := property.NewMap(map[string]property.Value{"out": property.New("live-output")})
+	liveInputs := property.NewMap(map[string]property.Value{"in": property.New("live-input")})
 
-	mliveProperties, err := MarshalProperties(liveProperties, MarshalOptions{})
-	require.NoError(t, err)
-	mliveInputs, err := MarshalProperties(liveInputs, MarshalOptions{})
-	require.NoError(t, err)
+	mliveProperties := propertyrpc.Marshal(liveProperties)
+	mliveInputs := propertyrpc.Marshal(liveInputs)
 
 	initFailed := func(reason string) error {
 		detail := pulumirpc.ErrorResourceInitFailed{
@@ -1456,7 +1457,7 @@ func TestProvider_PartialFailure(t *testing.T) {
 
 	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
-	_, err = p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
 	require.NoError(t, err, "configure failed")
 
 	var initErr *InitError
@@ -1471,7 +1472,7 @@ func TestProvider_PartialFailure(t *testing.T) {
 	assert.Equal(t, []string{"create issue"}, initErr.Reasons)
 	assert.Equal(t, CreateResponse{
 		ID:                  "some-id",
-		Properties:          resource.FromResourcePropertyMap(liveProperties),
+		Properties:          liveProperties,
 		Status:              resource.StatusPartialFailure,
 		RefreshBeforeUpdate: true,
 	}, createResp)
@@ -1489,8 +1490,8 @@ func TestProvider_PartialFailure(t *testing.T) {
 	assert.Equal(t, ReadResponse{
 		ReadResult: ReadResult{
 			ID:                  "some-id",
-			Inputs:              new(resource.FromResourcePropertyMap(liveInputs)),
-			Outputs:             new(resource.FromResourcePropertyMap(liveProperties)),
+			Inputs:              new(liveInputs),
+			Outputs:             new(liveProperties),
 			RefreshBeforeUpdate: true,
 		},
 		Status: resource.StatusPartialFailure,
@@ -1508,7 +1509,7 @@ func TestProvider_PartialFailure(t *testing.T) {
 	require.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"update issue"}, initErr.Reasons)
 	assert.Equal(t, UpdateResponse{
-		Properties:          resource.FromResourcePropertyMap(liveProperties),
+		Properties:          liveProperties,
 		Status:              resource.StatusPartialFailure,
 		RefreshBeforeUpdate: true,
 	}, updateResp)

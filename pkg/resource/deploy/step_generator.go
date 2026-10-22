@@ -104,6 +104,11 @@ type stepGenerator struct {
 	// the set of resources that need to be destroyed in this deployment after running other steps on them.
 	toDelete []*pkgresource.State
 
+	// the set of resources that failed or were skipped under --continue-on-error. Resources that depend on
+	// these will be skipped too, so they aren't sent to providers or analyzers: their inputs may be missing
+	// values that the failed resources would have provided.
+	skipped mapset.Set[resource.URN]
+
 	// untargeted same steps queued for old-state dependencies of resources in a constrained
 	// operation, prepended to the next validated batch so they precede their consumers in the snapshot
 	pendingUntargetedSames    []Step
@@ -226,6 +231,12 @@ func (sg *stepGenerator) recordActualTargeting(isTargeted bool, res *pkgresource
 	} else if isTargeted && sg.isTargetedForUpdate(res) {
 		sg.targetsActual.addLiteral(res.URN)
 	}
+}
+
+// dependsOnSkipped returns true if the given resource depends on a resource that failed or was skipped
+// under --continue-on-error, in which case it will be skipped too.
+func (sg *stepGenerator) dependsOnSkipped(res *pkgresource.State) bool {
+	return sg.skipped != nil && doesResourceDependOn(res, sg.skipped)
 }
 
 func (sg *stepGenerator) isTargetedReplace(urn resource.URN, old *pkgresource.State) bool {
@@ -370,6 +381,20 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 
 	sg.recordActualTargeting(sg.isIncludedInOperation(newState), newState)
 
+	// During preview, if any dependsOn target is being newly created or replaced in this run,
+	// the referenced resource doesn't actually exist yet — invoking the provider's Read against
+	// its id would fail in the real world. Skip the provider call and signal unknown outputs
+	// back to the SDK. See https://github.com/pulumi/pulumi/issues/16395.
+	skipProvider := false
+	if sg.deployment.opts.DryRun {
+		for _, dep := range event.Dependencies() {
+			if sg.creates[dep] || sg.replaces[dep] {
+				skipProvider = true
+				break
+			}
+		}
+	}
+
 	// If the snapshot has an old resource for this URN and it's not external, we're going
 	// to have to delete the old resource and conceptually replace it with the resource we
 	// are about to read.
@@ -389,7 +414,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		)
 		sg.replaces[urn] = true
 		return []Step{
-			NewReadReplacementStep(sg.deployment, event, old, newState),
+			NewReadReplacementStep(sg.deployment, event, old, newState, skipProvider),
 			NewReplaceStep(sg.deployment, old, newState, nil, nil, nil, true),
 		}, nil
 	}
@@ -405,7 +430,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 
 	sg.reads[urn] = true
 	return []Step{
-		NewReadStep(sg.deployment, event, old, newState),
+		NewReadStep(sg.deployment, event, old, newState, skipProvider),
 	}, nil
 }
 
@@ -1118,6 +1143,23 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 		sg.toDelete = append(sg.toDelete, new)
 	}
 
+	// If this resource depends on a resource (or provider) that failed or was skipped under --continue-on-error, the
+	// executor will skip its step too. Generate that step now, without involving its provider or any analyzers: its
+	// inputs may be missing values that the failed resources would have provided, which Check would reject, and its
+	// provider may have failed. It's a same step rather than a create or update, because nothing happens to the
+	// resource: any existing state is kept, and an update plan allows a same step wherever it allows a create or
+	// update. SameStep.Skip reports what the create or update would have produced.
+	if sg.dependsOnSkipped(new) {
+		sg.sames[urn] = true
+		if old != nil {
+			new.Inputs = old.Inputs
+			new.Outputs = old.Outputs
+			return []Step{NewSameStep(sg.deployment, event, old, new)}, false, nil
+		}
+		sg.skippedCreates[urn] = true
+		return []Step{NewSkippedCreateStep(sg.deployment, event, new)}, false, nil
+	}
+
 	// Fetch the provider for this resource.
 	prov, err := sg.loadResourceProvider(urn, goal.Custom, goal.Provider, goal.Type)
 	if err != nil {
@@ -1496,7 +1538,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 					Message:           tresult.Diagnostic,
 					EnforcementLevel:  apitype.Advisory,
 					URN:               new.URN,
-				})
+				}, nil)
 			} else {
 				// Emit a nice message so users know what was remediated.
 				sg.deployment.events.OnPolicyRemediation(new.URN, tresult,
@@ -3132,21 +3174,25 @@ func unwrapResourcePropertySecretsAndOutputs(value resource.PropertyValue) resou
 func issueCheckErrors(deployment *Deployment, new *pkgresource.State, urn resource.URN,
 	failures []plugin.CheckFailure,
 ) bool {
-	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures)
+	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures, deployment.opts.ShowSecrets)
 }
 
-// issueCheckErrors prints any check errors to the given printer function.
+// issueCheckFailures prints any check failures to printf, redacting secret values unless showSecrets is set.
 func issueCheckFailures(printf func(*diag.Diag, ...any), new *pkgresource.State, urn resource.URN,
-	failures []plugin.CheckFailure,
+	failures []plugin.CheckFailure, showSecrets bool,
 ) bool {
 	if len(failures) == 0 {
 		return false
+	}
+	render := resource.PropertyValue.RedactSecrets
+	if showSecrets {
+		render = resource.PropertyValue.String
 	}
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
 			printf(diag.GetResourcePropertyInvalidValueError(urn),
-				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
+				new.Type, urn.Name(), failure.Property, render(inputs[failure.Property]), failure.Reason)
 		} else {
 			printf(
 				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason,
@@ -3569,7 +3615,8 @@ func (sg *stepGenerator) analyzeAll(
 		}
 	}
 
-	invalid, sawError, err := analyzeResource(ctx, analyzers, r, sg.deployment.events, sg.deployment.opts.DryRun)
+	invalid, sawError, err := analyzeResource(
+		ctx, analyzers, sg.deployment.policyExceptions, r, sg.deployment.events, sg.deployment.opts.DryRun)
 	if err != nil {
 		return false, err
 	}
@@ -3692,13 +3739,14 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 					d.EnforcementLevel = apitype.Mandatory
 				}
 
-				if d.EnforcementLevel == apitype.Mandatory {
-					sawError.Store(true)
-				}
 				urn := resolveStackPolicyViolationURN(d.URN,
 					resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project()),
 					func(u resource.URN) bool { _, ok := sg.deployment.news.Load(u); return ok })
-				sg.deployment.events.OnPolicyViolation(urn, d)
+				exceptions := sg.deployment.policyExceptions[analyzer].Match(d.PolicyName, urn)
+				if d.EnforcementLevel == apitype.Mandatory && len(exceptions) == 0 {
+					sawError.Store(true)
+				}
+				sg.deployment.events.OnPolicyViolation(urn, d, exceptions)
 			}
 
 			summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)

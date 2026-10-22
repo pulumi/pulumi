@@ -13,12 +13,6 @@
             }
         },
         {
-            "path": ["env"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["neo"],
             "propagate": true,
             "exclude": true,
@@ -319,12 +313,6 @@
         },
         {
             "path": ["stack"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["state"],
             "propagate": true,
             "exclude": true,
             "flags": {}

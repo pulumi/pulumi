@@ -1510,9 +1510,13 @@ func (ctx *Context) readPackageResource(
 		if resp != nil {
 			urn = resp.Urn
 			state = resp.Properties
-			// A skipped read reports Unknown=true; resolve outputs as unknown so dependents
-			// propagate unknowns instead of seeing empty values as real.
-			keepUnknowns = resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown
+			// A skipped read reports Unknown=true and a failed read reports a non-success result;
+			// resolve outputs as unknown in both cases so dependents propagate unknowns instead of
+			// seeing empty values as real.
+			if resp.Result != pulumirpc.Result_SUCCESS {
+				state = nil
+			}
+			keepUnknowns = resp.Result != pulumirpc.Result_SUCCESS || resp.Unknown
 			// Prefer the id returned by the provider's Read, which may differ from the id
 			// supplied on the request. An empty response id during preview means "unknown"
 			// (resolve() will mark the output as computed); during update it indicates an
@@ -2103,13 +2107,12 @@ func (ctx *Context) registerResource(
 				}
 				deps[key] = resources
 			}
-			// If the engine reported that the resource failed or was skipped, synthesize an
-			// error so downstream outputs fault. This allows Output.Recover to intercept the
-			// failure.
-			if err == nil && resp.Result != pulumirpc.Result_SUCCESS {
-				err = fmt.Errorf("resource %s [%s] failed to register", name, t)
-			}
-			if custom && resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown {
+			// If the engine reported that the resource failed, resolve all of its outputs as
+			// unknown so the rest of the program can continue.
+			if resp.Result != pulumirpc.Result_SUCCESS {
+				state = nil
+				keepUnknowns = true
+			} else if custom && resp.Unknown {
 				keepUnknowns = true
 			}
 		}

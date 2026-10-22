@@ -99,6 +99,25 @@ type RequiredPolicy struct {
 
 	// ESC environment references to resolve for this policy pack.
 	Environments []string `json:"environments,omitempty"`
+
+	// The active policy exceptions for this Policy Pack, keyed by exception ID. Each value is a PolicyException.
+	Exceptions map[string]json.RawMessage `json:"exceptions,omitempty"`
+}
+
+// PolicyException excepts the violations it matches, so that they don't fail an operation.
+type PolicyException struct {
+	// The justification for the exception.
+	Reason string `json:"reason"`
+	// The violations to except. A violation is excepted when it matches any entry.
+	Match []PolicyExceptionMatch `json:"match"`
+}
+
+// PolicyExceptionMatch matches the violations of any of its policies on any of its targets.
+type PolicyExceptionMatch struct {
+	// The names of policies within the Policy Pack.
+	Policies []string `json:"policies"`
+	// The URNs of the resources the violations are reported against, compared exactly.
+	Targets []string `json:"targets"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.

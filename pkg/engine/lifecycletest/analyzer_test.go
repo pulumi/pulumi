@@ -37,9 +37,10 @@ import (
 )
 
 type testRequiredPolicy struct {
-	name    string
-	version string
-	config  map[string]*json.RawMessage
+	name       string
+	version    string
+	config     map[string]*json.RawMessage
+	exceptions map[string]json.RawMessage
 }
 
 func (p *testRequiredPolicy) Name() string {
@@ -67,6 +68,10 @@ func (p *testRequiredPolicy) Config() map[string]*json.RawMessage {
 
 func (p *testRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
 	return nil, nil
+}
+
+func (p *testRequiredPolicy) Exceptions() map[string]json.RawMessage {
+	return p.exceptions
 }
 
 func NewRequiredPolicy(name, version string, config map[string]*json.RawMessage) RequiredPolicy {
@@ -1211,6 +1216,8 @@ func (p *failingRequiredPolicy) EnsureInstalled(
 func (p *failingRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
 	return nil, nil
 }
+
+func (p *failingRequiredPolicy) Exceptions() map[string]json.RawMessage { return nil }
 
 // TestPolicyPackInstallFailureReturnsError is a regression test verifying that errors from the install
 // step of policy pack installation are returned to the caller rather than silently dropped.

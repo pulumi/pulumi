@@ -5988,7 +5988,8 @@ proto.pulumirpc.GenerateProgramRequest.toObject = function(includeInstance, msg)
   var f, obj = {
 sourceMap: (f = msg.getSourceMap()) ? f.toObject(includeInstance, undefined) : [],
 loaderTarget: jspb.Message.getFieldWithDefault(msg, 2, ""),
-strict: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
+strict: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+mapperTarget: jspb.Message.getFieldWithDefault(msg, 4, "")
   };
 
   if (includeInstance) {
@@ -6039,6 +6040,10 @@ proto.pulumirpc.GenerateProgramRequest.deserializeBinaryFromReader = function(ms
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setStrict(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setMapperTarget(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -6083,6 +6088,13 @@ proto.pulumirpc.GenerateProgramRequest.serializeBinaryToWriter = function(messag
   if (f) {
     writer.writeBool(
       3,
+      f
+    );
+  }
+  f = message.getMapperTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
       f
     );
   }
@@ -6145,6 +6157,24 @@ proto.pulumirpc.GenerateProgramRequest.prototype.getStrict = function() {
  */
 proto.pulumirpc.GenerateProgramRequest.prototype.setStrict = function(value) {
   return jspb.Message.setProto3BooleanField(this, 3, value);
+};
+
+
+/**
+ * optional string mapper_target = 4;
+ * @return {string}
+ */
+proto.pulumirpc.GenerateProgramRequest.prototype.getMapperTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.GenerateProgramRequest} returns this
+ */
+proto.pulumirpc.GenerateProgramRequest.prototype.setMapperTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
@@ -6379,7 +6409,8 @@ targetDirectory: jspb.Message.getFieldWithDefault(msg, 2, ""),
 project: jspb.Message.getFieldWithDefault(msg, 3, ""),
 strict: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
 loaderTarget: jspb.Message.getFieldWithDefault(msg, 5, ""),
-localDependenciesMap: (f = msg.getLocalDependenciesMap()) ? f.toObject(includeInstance, undefined) : []
+localDependenciesMap: (f = msg.getLocalDependenciesMap()) ? f.toObject(includeInstance, undefined) : [],
+mapperTarget: jspb.Message.getFieldWithDefault(msg, 7, "")
   };
 
   if (includeInstance) {
@@ -6441,6 +6472,10 @@ proto.pulumirpc.GenerateProjectRequest.deserializeBinaryFromReader = function(ms
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
          });
+      break;
+    case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setMapperTarget(value);
       break;
     default:
       reader.skipField();
@@ -6509,6 +6544,13 @@ proto.pulumirpc.GenerateProjectRequest.serializeBinaryToWriter = function(messag
   f = message.getLocalDependenciesMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(6, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  }
+  f = message.getMapperTarget();
+  if (f.length > 0) {
+    writer.writeString(
+      7,
+      f
+    );
   }
 };
 
@@ -6623,6 +6665,24 @@ proto.pulumirpc.GenerateProjectRequest.prototype.getLocalDependenciesMap = funct
 proto.pulumirpc.GenerateProjectRequest.prototype.clearLocalDependenciesMap = function() {
   this.getLocalDependenciesMap().clear();
   return this;
+};
+
+
+/**
+ * optional string mapper_target = 7;
+ * @return {string}
+ */
+proto.pulumirpc.GenerateProjectRequest.prototype.getMapperTarget = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.pulumirpc.GenerateProjectRequest} returns this
+ */
+proto.pulumirpc.GenerateProjectRequest.prototype.setMapperTarget = function(value) {
+  return jspb.Message.setProto3StringField(this, 7, value);
 };
 
 
