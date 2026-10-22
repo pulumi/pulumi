@@ -498,7 +498,6 @@ func (pack *cloudPolicyPack) Publish(
 	return backend.PublishResult{
 		Name:       string(pack.ref.name),
 		VersionTag: publishedVersion,
-		URL:        permalink,
 	}, nil
 }
 

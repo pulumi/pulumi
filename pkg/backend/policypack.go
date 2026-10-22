@@ -42,7 +42,6 @@ type PublishOperation struct {
 type PublishResult struct {
 	Name       string
 	VersionTag string
-	URL        string
 }
 
 // PolicyPackOperation is used to make various operations against a Policy Pack.
