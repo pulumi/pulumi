@@ -116,6 +116,14 @@ func Title(s string) string {
 	if s[0] == '$' {
 		return Title(s[1:])
 	}
+	// A leading underscore makes the identifier unexported, which defeats the purpose of
+	// title-casing. Strip leading underscores so wire-fixed, underscore-prefixed property
+	// names (e.g. a provider-defined type discriminator like "__type") still produce an
+	// exported, accessible member; the original name is preserved separately in the
+	// generated `pulumi:"..."` tag.
+	if trimmed := strings.TrimLeft(s, "_"); trimmed != "" {
+		s = trimmed
+	}
 	s = cgstrings.UppercaseFirst(s)
 	s = cgstrings.Unhyphenate(s)
 	if len(s) > 0 && !isLegalIdentifierStart(rune(s[0])) {
