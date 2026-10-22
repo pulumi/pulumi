@@ -132,7 +132,7 @@ func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (Sour
 			dependencies:      rewritten.Dependencies,
 		}, nil
 	case RegisterResourceOutputsEvent:
-		state := &pkgresource.State{Outputs: e.Outputs()}
+		state := &pkgresource.State{Outputs: resource.ToResourcePropertyMap(e.Outputs())}
 		rewritten, err := d.rewriteStateMigrationState(state)
 		if err != nil {
 			return nil, fmt.Errorf("normalizing outputs for %s after state migration: %w", e.URN(), err)

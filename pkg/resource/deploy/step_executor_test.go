@@ -212,8 +212,8 @@ func (e *mockRegisterResourceOutputsEvent) event() {}
 
 func (e *mockRegisterResourceOutputsEvent) URN() resource.URN { return e.urn }
 
-func (e *mockRegisterResourceOutputsEvent) Outputs() resource.PropertyMap {
-	return resource.PropertyMap{}
+func (e *mockRegisterResourceOutputsEvent) Outputs() property.Map {
+	return property.Map{}
 }
 
 func (e *mockRegisterResourceOutputsEvent) Done() {}
