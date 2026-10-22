@@ -1,0 +1,4 @@
+component: sdk/go
+kind: improvement
+body: Keep the formatting of ESC environment definitions that have no secrets to encrypt
+time: 2026-10-22T00:00:00Z
