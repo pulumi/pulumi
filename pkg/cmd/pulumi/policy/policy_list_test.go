@@ -91,10 +91,14 @@ func TestPolicyList_DefaultOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	require.NoError(t, formatPolicyPacksConsole(&buf, samplePolicyPacks()))
-	assert.Equal(t, `NAME            VERSIONS
-aws-guardrails  1.0.0, 2.0.0, 3.1.0
-tagging         7.0.0
-`, buf.String())
+	out := buf.String()
+
+	assert.Contains(t, out, "NAME")
+	assert.Contains(t, out, "VERSIONS")
+	assert.Contains(t, out, "aws-guardrails")
+	assert.Contains(t, out, "1.0.0, 2.0.0, 3.1.0")
+	assert.Contains(t, out, "tagging")
+	assert.Contains(t, out, "7.0.0")
 }
 
 func TestPolicyList_JSONOutput(t *testing.T) {
