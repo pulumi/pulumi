@@ -2647,6 +2647,32 @@ func (pkg *pkgContext) genResource(
 		fmt.Fprintf(w, "}\n\n")
 	}
 
+	// Emit a factory function that checks whether an existing instance of this resource exists.
+	if !r.IsProvider && !r.IsComponent {
+		fmt.Fprintf(w, "// %[1]sExists checks whether an existing %[1]s resource with the given ID exists.\n", name)
+		fmt.Fprintf(w, "func %sExists(ctx *pulumi.Context,\n", name)
+		fmt.Fprintf(w, "\tid pulumi.StringInput, state *%sState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {\n", name)
+
+		// If this is a parameterized resource we need the package ref.
+		def, err := pkg.pkg.Definition()
+		if err != nil {
+			return err
+		}
+		existsPackageRef := `""`
+		if def.Parameterization != nil {
+			existsPackageRef = "ref"
+			fmt.Fprintf(w, "\tref, err := %s.PkgGetPackageRef(ctx)\n", pkg.internalModuleName)
+			fmt.Fprintf(w, "\tif err != nil {\n")
+			fmt.Fprintf(w, "\t\tvar ret pulumi.BoolOutput\n")
+			fmt.Fprintf(w, "\t\treturn ret\n")
+			fmt.Fprintf(w, "\t}\n")
+		}
+
+		fmt.Fprintf(w, "\treturn ctx.ExistsResource(\"%s\", id, state, %s, opts...)\n",
+			r.Token, existsPackageRef)
+		fmt.Fprintf(w, "}\n\n")
+	}
+
 	// Emit the args types.
 	fmt.Fprintf(w, "type %sArgs struct {\n", cgstrings.Camel(name))
 	for _, p := range r.InputProperties {
@@ -5515,7 +5541,7 @@ func GeneratePackage(tool string,
 		err = gomod.AddGoStmt("1.25")
 		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
-		pulumiVersion := "v3.256.0"
+		pulumiVersion := "v3.269.0"
 		err = gomod.AddRequire(pulumiPackagePath, pulumiVersion)
 		contract.AssertNoErrorf(err, "could not add require statement to go.mod")
 		if replacementPath, hasReplacement := localDependencies["pulumi"]; hasReplacement {
