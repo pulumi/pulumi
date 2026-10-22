@@ -2241,7 +2241,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		return ConstructResult{}, err
 	}
 	outputs, err := FilterProperties(rawOutputs, FilterOptions{
-		KeepUnknowns:     req.Info.DryRun,
+		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepDependencies: true,

@@ -1,0 +1,4 @@
+component: sdk
+kind: fix
+body: Keep the unknown outputs of remote components, such as those that depend on an awaiting or failed child, instead of resolving them as empty values
+time: 2026-10-20T16:38:13.565435+02:00
