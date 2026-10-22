@@ -15,7 +15,12 @@
 package stack
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -24,8 +29,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // When a backend doesn't support the --teams flag,
@@ -118,5 +125,201 @@ func TestNewCreateStackOptsFiltersWhitespace(t *testing.T) {
 			got := sanitizeTeams(tt.giveTeams)
 			assert.ElementsMatch(t, tt.wantTeams, got)
 		})
+	}
+}
+
+// escConfigBackend extends a fake environment universe with just enough backend to create a stack.
+func (u *fakeEnvUniverse) escConfigBackend(t *testing.T) *backend.MockEnvironmentsBackend {
+	be := u.backend()
+	be.ValidateStackNameF = func(string) error { return nil }
+	be.ParseStackReferenceF = func(ref string) (backend.StackReference, error) {
+		return &backend.MockStackReference{
+			StringV:             ref,
+			NameV:               tokens.MustParseStackName(ref),
+			FullyQualifiedNameV: tokens.QName("acme/payments/" + ref),
+		}, nil
+	}
+	be.DefaultSecretManagerF = func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+		return nil, nil
+	}
+	// The stack does not exist until CreateStack makes it.
+	be.GetStackF = func(context.Context, backend.StackReference) (backend.Stack, error) {
+		return nil, nil
+	}
+	be.CreateStackF = func(
+		_ context.Context, ref backend.StackReference, _ string,
+		_ *apitype.UntypedDeployment, _ *backend.CreateStackOptions,
+	) (backend.Stack, error) {
+		return &backend.MockStack{
+			RefF:     func() backend.StackReference { return ref },
+			OrgNameF: func() string { return "acme" },
+			BackendF: func() backend.Backend { return be },
+		}, nil
+	}
+	return be
+}
+
+func escConfigProjectDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "Pulumi.yaml"), []byte("name: payments\nruntime: nodejs\n"), 0o600))
+	return dir
+}
+
+// A backend that cannot host environments must be refused before anything is created.
+//
+//nolint:paralleltest // changes directory for the process
+func TestStackInitESCConfigRefusesBackendWithoutEnvironments(t *testing.T) {
+	t.Chdir(escConfigProjectDir(t))
+
+	mockBackend := &backend.MockBackend{
+		NameF:              func() string { return "file://~" },
+		ValidateStackNameF: func(string) error { return nil },
+		ParseStackReferenceF: func(ref string) (backend.StackReference, error) {
+			return &backend.MockStackReference{StringV: ref}, nil
+		},
+		CreateStackF: func(
+			context.Context, backend.StackReference, string,
+			*apitype.UntypedDeployment, *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			t.Fatal("the stack must not be created when the backend cannot host environments")
+			return nil, nil
+		},
+	}
+	cmd := &stackNewCmd{
+		stackName: "dev",
+		escConfig: true,
+		noSelect:  true,
+		stdout:    io.Discard,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	}
+
+	err := cmd.Run(t.Context(), nil /* args */)
+	assert.ErrorContains(t, err, "backend file://~ does not support environments")
+	assert.NoFileExists(t, "Pulumi.dev.yaml")
+}
+
+//nolint:paralleltest // changes directory for the process
+func TestStackInitESCConfigRefusesCopyConfigFrom(t *testing.T) {
+	t.Chdir(escConfigProjectDir(t))
+
+	u := newFakeEnvUniverse(t)
+	be := u.escConfigBackend(t)
+	be.CreateStackF = func(
+		context.Context, backend.StackReference, string,
+		*apitype.UntypedDeployment, *backend.CreateStackOptions,
+	) (backend.Stack, error) {
+		t.Fatal("the stack must not be created when the flags are refused")
+		return nil, nil
+	}
+	cmd := &stackNewCmd{
+		stackName:   "dev",
+		escConfig:   true,
+		stackToCopy: "prod",
+		noSelect:    true,
+		stdout:      io.Discard,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	err := cmd.Run(t.Context(), nil /* args */)
+	assert.ErrorContains(t, err, "--esc-config cannot be combined with --copy-config-from")
+}
+
+// With the flag, the stack file points at the new environment and holds no config of its own.
+//
+//nolint:paralleltest // changes directory for the process
+func TestStackInitESCConfigWritesMainEnvironment(t *testing.T) {
+	dir := escConfigProjectDir(t)
+	t.Chdir(dir)
+
+	u := newFakeEnvUniverse(t)
+	var out bytes.Buffer
+	cmd := &stackNewCmd{
+		stackName: "dev",
+		escConfig: true,
+		noSelect:  true,
+		stdout:    &out,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return u.escConfigBackend(t), nil
+		},
+	}
+
+	require.NoError(t, cmd.Run(t.Context(), nil /* args */))
+
+	assert.Equal(t, []string{"payments/base", "payments/dev"}, u.created)
+	assert.Contains(t, out.String(), "Creating environment 'acme/payments/base'...\n")
+	assert.Contains(t, out.String(), "Creating environment 'acme/payments/dev'... (imports payments/base)\n")
+
+	contents, err := os.ReadFile(filepath.Join(dir, "Pulumi.dev.yaml"))
+	require.NoError(t, err)
+	assert.Contains(t, string(contents), "mainEnvironment: payments/dev")
+	assert.NotContains(t, string(contents), "config:")
+}
+
+// Without the flag nothing about the command changes: the mock's environment functions are never
+// reached, and touching them would panic.
+//
+//nolint:paralleltest // changes directory for the process
+func TestStackInitWithoutESCConfigTouchesNoEnvironment(t *testing.T) {
+	dir := escConfigProjectDir(t)
+	t.Chdir(dir)
+
+	be := (&fakeEnvUniverse{t: t}).escConfigBackend(t)
+	be.GetEnvironmentDefinitionF = nil
+	be.CreateEnvironmentF = nil
+	cmd := &stackNewCmd{
+		stackName: "dev",
+		noSelect:  true,
+		stdout:    io.Discard,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+
+	require.NoError(t, cmd.Run(t.Context(), nil /* args */))
+	assert.NoFileExists(t, filepath.Join(dir, "Pulumi.dev.yaml"))
+}
+
+// A failure after the stack exists leaves an ordinary, working stack: no 'mainEnvironment' is recorded.
+//
+//nolint:paralleltest // changes directory for the process
+func TestStackInitESCConfigFailureLeavesOrdinaryStack(t *testing.T) {
+	dir := escConfigProjectDir(t)
+	t.Chdir(dir)
+
+	u := newFakeEnvUniverse(t)
+	u.createErrs["payments/dev"] = errors.New("boom")
+	cmd := &stackNewCmd{
+		stackName: "dev",
+		escConfig: true,
+		noSelect:  true,
+		stdout:    io.Discard,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return u.escConfigBackend(t), nil
+		},
+	}
+
+	err := cmd.Run(t.Context(), nil /* args */)
+	assert.ErrorContains(t, err, "created environment(s) acme/payments/base")
+	assert.ErrorContains(t, err, "could not create environment acme/payments/dev: boom")
+	assert.ErrorContains(t, err, "the stack was created without 'mainEnvironment'")
+
+	if contents, readErr := os.ReadFile(filepath.Join(dir, "Pulumi.dev.yaml")); readErr == nil {
+		assert.NotContains(t, string(contents), "mainEnvironment")
 	}
 }

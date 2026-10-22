@@ -454,6 +454,7 @@ func NewUpCmd() *cobra.Command {
 			path,
 			opts.Display,
 			configFile,
+			false, /* escConfig */
 		); err != nil {
 			return err
 		}

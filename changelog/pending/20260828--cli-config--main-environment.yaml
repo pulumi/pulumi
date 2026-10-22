@@ -1,0 +1,6 @@
+component: cli/config
+kind: feat
+body: Add an experimental `mainEnvironment` stack setting that reads stack configuration
+    from a named ESC environment and makes `pulumi config set` and `pulumi config rm`
+    write to it
+time: 2026-08-28T00:00:00Z
