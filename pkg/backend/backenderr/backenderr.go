@@ -37,14 +37,19 @@ var (
 
 // StackNotFoundError is returned when a named stack cannot be found in the backend.
 type StackNotFoundError struct {
-	StackName string
+	StackName   string
+	OfferCreate bool
 }
 
 func (e StackNotFoundError) Error() string {
 	if e.StackName == "" {
 		return "stack not found"
 	}
-	return fmt.Sprintf("no stack named '%s' found", e.StackName)
+	message := fmt.Sprintf("no stack named '%s' found", e.StackName)
+	if e.OfferCreate {
+		message += fmt.Sprintf("; use `pulumi stack select %s --create` to create it", e.StackName)
+	}
+	return message
 }
 
 // NoStacksError is returned when an operation requires at least one stack in a backend,
@@ -57,10 +62,16 @@ func (NoStacksError) Error() string {
 
 // NoStackSelectedError is returned when a stack is required but none has been specified
 // or selected in a non-interactive context.
-type NoStackSelectedError struct{}
+type NoStackSelectedError struct {
+	HasStacks bool
+}
 
-func (NoStackSelectedError) Error() string {
-	return "no stack selected; specify a stack name with --stack"
+func (e NoStackSelectedError) Error() string {
+	if !e.HasStacks {
+		return "no stack selected; use `pulumi stack init <name>` to create one"
+	}
+	return "no stack selected; use `pulumi stack select <name>` to choose one " +
+		"(list available stacks with `pulumi stack ls`)"
 }
 
 // StackStateNotFoundError is returned when a stack exists but its state / snapshot

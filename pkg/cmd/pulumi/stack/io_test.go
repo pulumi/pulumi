@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -60,6 +61,53 @@ func TestStackLoadOption(t *testing.T) {
 			assert.Equal(t,
 				tt.setCurrent, tt.give.SetCurrent(),
 				"SetCurrent did not match")
+		})
+	}
+}
+
+//nolint:paralleltest // mutates global interactive-mode state
+func TestChooseStackNonInteractiveError(t *testing.T) {
+	previousDisableInteractive := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = true
+	t.Cleanup(func() { cmdutil.DisableInteractive = previousDisableInteractive })
+
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "test-project"}, "", nil
+		},
+	}
+
+	tests := []struct {
+		name      string
+		stackRefs []backend.StackReference
+		expected  string
+	}{
+		{
+			name:     "no stacks exist",
+			expected: "no stack selected; use `pulumi stack init <name>` to create one",
+		},
+		{
+			name: "stacks exist",
+			stackRefs: []backend.StackReference{
+				&backend.MockStackReference{StringV: "dev"},
+			},
+			expected: "no stack selected; use `pulumi stack select <name>` to choose one " +
+				"(list available stacks with `pulumi stack ls`)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockBackend := &backend.MockBackend{
+				ListStackNamesF: func(context.Context, backend.ListStackNamesFilter, backend.ContinuationToken) (
+					[]backend.StackReference, backend.ContinuationToken, error,
+				) {
+					return tt.stackRefs, nil, nil
+				},
+			}
+
+			_, err := ChooseStack(t.Context(), cmdutil.Diag(), ws, mockBackend, OfferNew, display.Options{}, "")
+			require.EqualError(t, err, tt.expected)
 		})
 	}
 }
