@@ -16,17 +16,33 @@ package credentialhelper
 
 import (
 	"fmt"
-	"os"
 	"strings"
+	"sync"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// diagnostics assembles lines and forwards them while the helper is running.
+// diagnostics assembles lines and owns the terminal consumer for one helper invocation.
 type diagnostics struct {
-	line    []byte
-	session *Session
+	line              []byte
+	session           *Session
+	defaultOutput     chan string
+	defaultOutputDone chan struct{}
 }
 
-func newDiagnostics(session *Session) *diagnostics { return &diagnostics{session: session} }
+func newDiagnostics(session *Session) *diagnostics {
+	d := &diagnostics{session: session, defaultOutput: make(chan string), defaultOutputDone: make(chan struct{})}
+	go func() {
+		defer close(d.defaultOutputDone)
+		for message := range d.defaultOutput {
+			session.defaultOutputMu.Lock()
+			fmt.Fprintln(session.defaultOutput, message)
+			session.defaultOutputMu.Unlock()
+		}
+	}()
+	return d
+}
+
 func (d *diagnostics) Write(p []byte) (int, error) {
 	for _, b := range p {
 		if b == '\n' {
@@ -40,7 +56,7 @@ func (d *diagnostics) Write(p []byte) (int, error) {
 
 func (d *diagnostics) flush() {
 	message := strings.TrimSuffix(string(d.line), "\r")
-	d.session.reportDiagnostic(message)
+	d.session.reportDiagnostic(message, d.defaultOutput)
 	d.line = d.line[:0]
 }
 
@@ -48,29 +64,29 @@ func (d *diagnostics) close() {
 	if len(d.line) > 0 {
 		d.flush()
 	}
+	close(d.defaultOutput)
+	<-d.defaultOutputDone
 }
 
-func (s *Session) reportDiagnostic(message string) {
-	if s != nil {
-		s.outputMu.Lock()
-		defer s.outputMu.Unlock()
-		if s.output != nil {
-			s.output(message)
-			return
-		}
+func (s *Session) reportDiagnostic(message string, defaultOutput chan<- string) {
+	s.displayOutputMu.Lock()
+	defer s.displayOutputMu.Unlock()
+	if s.displayOutput != nil {
+		s.displayOutput <- message
+	} else {
+		defaultOutput <- message
 	}
-	fmt.Fprintln(os.Stderr, message)
 }
 
-// DisplayDiagnostics sends helper output through the display's existing system-message sink.
-// The sink may block, but must return when its display shuts down.
-func (s *Session) DisplayDiagnostics(send func(string)) func() {
-	s.outputMu.Lock()
-	s.output = send
-	s.outputMu.Unlock()
-	return func() {
-		s.outputMu.Lock()
-		defer s.outputMu.Unlock()
-		s.output = nil
-	}
+// DisplayDiagnostics routes helper output to messages until the returned function detaches it.
+func (s *Session) DisplayDiagnostics(messages chan<- string) func() {
+	contract.Requiref(messages != nil, "messages", "expected a diagnostic channel")
+	s.displayOutputMu.Lock()
+	s.displayOutput = messages
+	s.displayOutputMu.Unlock()
+	return sync.OnceFunc(func() {
+		s.displayOutputMu.Lock()
+		defer s.displayOutputMu.Unlock()
+		s.displayOutput = nil
+	})
 }

@@ -53,6 +53,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -61,26 +62,32 @@ import (
 
 // Session owns helper configuration, initial calls, and environment changes for one command.
 type Session struct {
-	mu         sync.Mutex
-	configured bool
-	config     *workspace.CredentialHelper
-	source     string
-	original   map[string]string
-	applied    map[string]string
-	results    map[string]*Result
-	current    *Result
-	outputMu   sync.Mutex
-	output     func(string)
+	mu              sync.Mutex
+	configured      bool                        // Helper selection is complete, config may be nil if absent or disabled
+	config          *workspace.CredentialHelper // The selected helper, nil when absent or disabled
+	source          string                      // Human-readable origin of the helper configuration
+	original        map[string]string           // Environment at session creation
+	applied         map[string]string           // Helper-provided values, to detect conflicts
+	results         map[string]*Result          // Cached helper
+	current         *Result                     // The currently selected backend
+	defaultOutputMu sync.Mutex
+	defaultOutput   io.Writer
+	displayOutputMu sync.Mutex
+	displayOutput   chan<- string // Attached display channel. When nil we use defaultOutput.
 }
 
 // NewSession creates a lazy helper session for one command without discovering or running a helper.
-func NewSession() *Session {
+// defaultOutput receives helper diagnostics when no display channel is attached.
+func NewSession(defaultOutput io.Writer) *Session {
+	contract.Requiref(defaultOutput != nil, "defaultOutput", "expected a diagnostic writer")
 	original := map[string]string{}
 	for _, entry := range os.Environ() {
 		k, v, _ := strings.Cut(entry, "=")
 		original[environmentKey(k)] = v
 	}
-	return &Session{original: original, applied: map[string]string{}, results: map[string]*Result{}}
+	return &Session{
+		original: original, applied: map[string]string{}, results: map[string]*Result{}, defaultOutput: defaultOutput,
+	}
 }
 
 // Configure selects a login flag override without executing it.
@@ -550,8 +557,8 @@ func ClearConfiguration() error {
 }
 
 // DisplayDiagnostics routes this backend's helper messages to its interactive display.
-func (r *Result) DisplayDiagnostics(send func(string)) func() {
-	return r.session.DisplayDiagnostics(send)
+func (r *Result) DisplayDiagnostics(messages chan<- string) func() {
+	return r.session.DisplayDiagnostics(messages)
 }
 
 func environmentKey(name string) string {
