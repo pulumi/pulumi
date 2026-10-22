@@ -13,12 +13,6 @@
             }
         },
         {
-            "path": ["env"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["neo"],
             "propagate": true,
             "exclude": true,
@@ -138,18 +132,6 @@
             "flags": {
                 "json": { "omit": true, "preset": true }
             }
-        },
-        {
-            "path": ["ai"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["cloud"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
         },
         {
             "path": ["console"],
@@ -313,12 +295,6 @@
         },
         {
             "path": ["stack"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["state"],
             "propagate": true,
             "exclude": true,
             "flags": {}

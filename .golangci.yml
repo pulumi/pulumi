@@ -243,6 +243,7 @@ linters:
         text: '^(atomictypes|slicesbackward):'
     paths:
       - Godeps$
+      - sdk/go/tools/automation/boilerplate/
       - builtin$
       - node_modules
       - testdata$

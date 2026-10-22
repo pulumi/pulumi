@@ -195,6 +195,10 @@ func newPolicyAnalyzeCmd(
 				return fmt.Errorf("loading policy packs: %w", err)
 			}
 			defer cleanup()
+			exceptions, err := engine.LocalPolicyPackExceptions(ctx, cmdutil.Diag(), packs, analyzers)
+			if err != nil {
+				return fmt.Errorf("loading policy exceptions: %w", err)
+			}
 
 			// Run analysis against the snapshot.
 			events, finish, err := newAnalyzeEvents(
@@ -204,7 +208,7 @@ func newPolicyAnalyzeCmd(
 			if err != nil {
 				return fmt.Errorf("configuring analysis display: %w", err)
 			}
-			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, events)
+			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, exceptions, events)
 			result := apitype.OperationResultFromError(err)
 			if err == nil && hasMandatory {
 				result = apitype.OperationResultFailed
@@ -416,7 +420,9 @@ func (e *analyzeEvents) writeEvent(event engine.Event) {
 	fmt.Fprint(e.out, msg)
 }
 
-func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+func (e *analyzeEvents) OnPolicyViolation(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
 	e.outLock.Lock()
 	defer e.outLock.Unlock()
 	e.writeEvent(engine.NewEvent(engine.PolicyViolationEventPayload{
@@ -427,6 +433,7 @@ func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiag
 		PolicyPackVersion: d.PolicyPackVersion,
 		EnforcementLevel:  d.EnforcementLevel,
 		Severity:          d.Severity,
+		Exceptions:        exceptions,
 	}))
 }
 
