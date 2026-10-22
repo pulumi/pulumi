@@ -288,12 +288,6 @@
             "flags": {}
         },
         {
-            "path": ["preview"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["project"],
             "propagate": true,
             "exclude": true,
