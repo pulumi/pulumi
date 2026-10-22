@@ -82,6 +82,7 @@ generate-cli-spec::
 .PHONY: generate-nodejs-automation-api
 generate-nodejs-automation-api:: generate-cli-spec
 	cd sdk/nodejs/tools/automation && npm ci && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts ../../automation/interface
+	cd sdk/nodejs && make ensure && npx --no-install biome format --write automation/interface
 
 .PHONY: test-nodejs-automation-api
 test-nodejs-automation-api:: generate-cli-spec

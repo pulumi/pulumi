@@ -1927,6 +1927,7 @@ func (rtc roundTripClient) roundTrip(
 		SourceDirectory: tmpDir,
 		TargetDirectory: ejectDir,
 		LoaderTarget:    loaderTarget,
+		MapperTarget:    mapperTarget,
 	})
 	for _, diag := range resp.GetDiagnostics() {
 		diags = append(diags, plugin.RPCDiagnosticToHclDiagnostic(diag))

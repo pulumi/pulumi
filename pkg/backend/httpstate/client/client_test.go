@@ -2380,3 +2380,33 @@ func TestBatchUpdatePolicyGroup(t *testing.T) {
 		{"addInsightsAccount": {"name": "prod-aws"}}
 	]`, body)
 }
+
+func TestAuditLogsQueryParams(t *testing.T) {
+	t.Parallel()
+
+	var gotURLs []string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		gotURLs = append(gotURLs, req.URL.String())
+		return "{}"
+	})
+	defer server.Close()
+
+	client := NewClient(server.URL, "token", true, nil)
+	ctx := t.Context()
+
+	_, err := client.ListAuditLogs(ctx, "org", ListAuditLogsOptions{
+		EventType: "stack.create", User: "alice", StartTime: "1", EndTime: "2",
+	})
+	require.NoError(t, err)
+
+	body, err := client.ExportAuditLogs(ctx, "org", ExportAuditLogsOptions{
+		EventType: "stack.create", User: "alice", StartTime: "1", EndTime: "2",
+	})
+	require.NoError(t, err)
+	require.NoError(t, body.Close())
+
+	assert.Equal(t, []string{
+		"/api/orgs/org/auditlogs/v2?endTime=2&eventFilter=stack.create&startTime=1&userFilter=alice",
+		"/api/orgs/org/auditlogs/v2/export?endTime=2&eventFilter=stack.create&format=csv&startTime=1&userFilter=alice",
+	}, gotURLs)
+}

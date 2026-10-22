@@ -85,7 +85,7 @@ func TestStateDeleteMultipleURNs(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -154,7 +154,7 @@ func TestStateDeleteMultipleURNsResolvesDependencyOrder(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -219,7 +219,7 @@ func TestStateDeleteParentAndChild(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -270,7 +270,7 @@ func TestStateDeleteInvalidURN(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -314,7 +314,7 @@ func TestStateDeleteURNNotFound(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -350,6 +350,7 @@ func TestNoProject(t *testing.T) {
 		LoginF: func(
 			ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+			_ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			return mockBackend, nil
@@ -403,7 +404,7 @@ func TestStateDeleteURN(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -457,7 +458,7 @@ func TestStateDeleteDependency(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -516,7 +517,7 @@ func TestStateDeleteProtected(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)
@@ -589,7 +590,7 @@ func TestStateDeleteAll(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{
 		LoginF: func(
 			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization, _ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			assert.Equal(t, "", url)
 			assert.Equal(t, tokens.PackageName("proj"), project.Name)

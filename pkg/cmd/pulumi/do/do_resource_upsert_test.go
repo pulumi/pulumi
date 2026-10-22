@@ -98,7 +98,7 @@ func installMockUpsertBackend(t *testing.T, snapshot *deploy.Snapshot) (pkgWorks
 		},
 		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink,
 			string, *workspace.Project, bool,
-			bool, colors.Colorization,
+			bool, colors.Colorization, ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
