@@ -97,7 +97,7 @@ func newPolicyIssueGetCmdWith(factory policyIssueGetClientFactory) *cobra.Comman
 		Example: "  # Show a policy issue\n" +
 			"  pulumi policy issue get <issue-id>\n\n" +
 			"  # Show a policy issue as JSON\n" +
-			"  pulumi policy issue get <issue-id> -o json",
+			"  pulumi policy issue get <issue-id> --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runPolicyIssueGet(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},

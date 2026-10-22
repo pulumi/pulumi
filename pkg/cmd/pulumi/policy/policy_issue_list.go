@@ -100,7 +100,7 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 		Example: "  # List active policy issues\n" +
 			"  pulumi policy issue ls\n\n" +
 			"  # List all closed policy issues as JSON\n" +
-			"  pulumi policy issue ls --closed --all -o json",
+			"  pulumi policy issue ls --closed --all --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runPolicyIssueList(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},
