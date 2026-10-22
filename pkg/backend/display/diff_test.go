@@ -350,7 +350,7 @@ func TestRenderDiffPolicyRemediationEventFromPropertyMaps(t *testing.T) {
 
 	var actual strings.Builder
 	for _, event := range events {
-		actual.WriteString(RenderDiffEvent(event, 0, nil, Options{Color: colors.Never}))
+		actual.WriteString(RenderDiffEvent(event, 0, 0, nil, Options{Color: colors.Never}))
 	}
 
 	expected := "" +
