@@ -34,6 +34,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 	var duration time.Duration
 	var format string
 	var draft string
+	var approval openApprovalOptions
 
 	cmd := &cobra.Command{
 		Use:   "open [<org-name>/][<project-name>/]<environment-name>[@<version>] [property path]",
@@ -75,7 +76,13 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return fmt.Errorf("unknown output format %q", format)
 			}
 
-			env, diags, err := envcmd.openEnvironment(ctx, ref, duration, draft)
+			var env *esc.Environment
+			var diags []client.EnvironmentDiagnostic
+			err = envcmd.withOpenApproval(ctx, ref, approval, func() error {
+				var err error
+				env, diags, err = envcmd.openEnvironment(ctx, ref, duration, draft)
+				return err
+			})
 			if err != nil {
 				return err
 			}
@@ -96,6 +103,7 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(
 		&draft, "draft", "",
 		"open an environment draft with --draft=<change-request-id>")
+	addRequestApprovalFlags(cmd, &approval)
 
 	return cmd
 }
