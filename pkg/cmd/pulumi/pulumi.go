@@ -558,7 +558,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
 				convert.NewConvertCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance),
-				operations.NewWatchCmd(),
 				logs.NewLogsCmd(pkgWorkspace.Instance),
 				templatecmd.NewTemplateCmd(),
 			},

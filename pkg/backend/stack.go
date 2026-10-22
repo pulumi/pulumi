@@ -111,12 +111,6 @@ func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (display.Res
 	return s.Backend().Destroy(ctx, s, op)
 }
 
-// WatchStack watches the projects working directory for changes and automatically updates the
-// active stack.
-func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string) error {
-	return s.Backend().Watch(ctx, s, op, paths)
-}
-
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
 func GetLatestConfiguration(ctx context.Context, s Stack) (LatestConfiguration, error) {
 	return s.Backend().GetLatestConfiguration(ctx, s)
