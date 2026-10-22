@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf16"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -93,6 +94,52 @@ func TestCrypt(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, plaintextBytes, decrypted)
+		})
+	}
+}
+
+func TestEncryptNoSecretsKeepsSource(t *testing.T) {
+	t.Parallel()
+	const doc = `values:
+  x:   1
+
+  # trailing comment
+`
+
+	encrypted, err := EncryptSecrets(t.Context(), "doc", []byte(doc), rot128{})
+	require.NoError(t, err)
+	assert.Equal(t, doc, string(encrypted))
+}
+
+func TestEncryptNoSecretsReencodesSource(t *testing.T) {
+	t.Parallel()
+
+	utf16LE := []byte{0xFF, 0xFE}
+	for _, r := range utf16.Encode([]rune("values:\n  x: 1\n")) {
+		utf16LE = append(utf16LE, byte(r), byte(r>>8))
+	}
+
+	cases := []struct {
+		name     string
+		source   []byte
+		expected string
+	}{
+		{"crlf", []byte("values:\r\n  x: 1\r\n"), "values:\n  x: 1\n"},
+		{"utf-8 bom", []byte("\uFEFFvalues:\n  x: 1\n"), "values:\n  x: 1\n"},
+		{"utf-16", utf16LE, "values:\n  x: 1\n"},
+		{
+			"multiple documents",
+			[]byte("values:\n  x: 1\n---\nvalues:\n  password:\n    fn::secret: hunter2\n"),
+			"values:\n  x: 1\n",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			encrypted, err := EncryptSecrets(t.Context(), "doc", c.source, rot128{})
+			require.NoError(t, err)
+			assert.Equal(t, c.expected, string(encrypted))
 		})
 	}
 }
