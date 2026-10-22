@@ -1,0 +1,14 @@
+run: esc env default
+error: exit status 1
+process:
+  fs:
+    Pulumi.yaml: |
+      name: my-project
+      runtime: [
+
+---
+> esc env default
+
+---
+> esc env default
+Error: invalid Pulumi.yaml: could not unmarshal 'Pulumi.yaml': invalid YAML file: yaml: line 2: did not find expected node content
