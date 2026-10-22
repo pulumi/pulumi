@@ -230,7 +230,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 
 	// Marshal all properties for the RPC call.
-	keepUnknowns := req.GetDryRun()
+	keepUnknowns := true
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
 		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.state.keepResources})
