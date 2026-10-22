@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Return an empty list for a splat over `null`, instead of failing
+time: 2026-10-22T00:00:00Z

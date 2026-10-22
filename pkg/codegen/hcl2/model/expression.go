@@ -2180,6 +2180,7 @@ func splatItemType(source Expression, splatSyntax *hclsyntax.SplatExpr) (Express
 				Tokens:      syntax.NewTupleConsTokens(1),
 				Expressions: []Expression{source},
 				exprType:    NewListType(source.Type()),
+				splatSource: true,
 			}
 		}
 	}
@@ -2213,8 +2214,14 @@ func (x *SplatExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 }
 
 func (x *SplatExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	source := x.Source
+	// HCL wraps a source that is not a list itself, and gives an empty list for a null source. Give HCL the
+	// original source, so that a null source does not become a one-element tuple.
+	if tuple, ok := source.(*TupleConsExpression); ok && tuple.splatSource {
+		source = tuple.Expressions[0]
+	}
 	syntax := &hclsyntax.SplatExpr{
-		Source: &syntaxExpr{expr: x.Source},
+		Source: &syntaxExpr{expr: source},
 		Each:   &syntaxExpr{expr: x.Each},
 		Item:   &x.Item.symbol,
 	}
@@ -2503,6 +2510,8 @@ type TupleConsExpression struct {
 	Expressions []Expression
 
 	exprType Type
+	// splatSource is true if the binder made this tuple to wrap the source of a splat expression.
+	splatSource bool
 }
 
 // SyntaxNode returns the syntax node associated with the tuple construction expression.

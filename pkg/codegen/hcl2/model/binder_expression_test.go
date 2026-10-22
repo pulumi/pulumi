@@ -775,6 +775,39 @@ func TestBindSplat(t *testing.T) {
 	}
 }
 
+// A splat over a value that is not a list wraps the value in a list, and a splat over null gives an empty list.
+func TestEvaluateSplatOverNonList(t *testing.T) {
+	t.Parallel()
+
+	ot := cty.Object(map[string]cty.Type{"foo": cty.String})
+	scope := environment(map[string]any{
+		"a": NewOptionalType(NewObjectType(map[string]Type{"foo": StringType})),
+	}).scope()
+
+	expr, diags := BindExpressionText(`a[*].foo`, scope, hcl.Pos{})
+	require.Len(t, diags, 0)
+
+	cases := []struct {
+		name     string
+		a        cty.Value
+		expected cty.Value
+	}{
+		{"null", cty.NullVal(ot), cty.EmptyTupleVal},
+		{"object", cty.ObjectVal(map[string]cty.Value{"foo": cty.StringVal("x")}), cty.TupleVal([]cty.Value{
+			cty.StringVal("x"),
+		})},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			actual, diags := expr.Evaluate(&hcl.EvalContext{Variables: map[string]cty.Value{"a": c.a}})
+			require.Len(t, diags, 0)
+			assert.Equal(t, c.expected, actual)
+		})
+	}
+}
+
 func TestBindTemplate(t *testing.T) {
 	t.Parallel()
 
