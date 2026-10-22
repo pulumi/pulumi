@@ -66,8 +66,17 @@ func ManagedEnvironmentMissingFromFileHint(
 ) string {
 	return fmt.Sprintf("Restore it with `pulumi env get %s/%s --definition` and put the output under "+
 		"`environment:` in %s. "+
-		"For a stack that has never been updated, `environment: {values: {pulumiConfig: {}}}` is enough.",
+		"For a stack that has never been updated, this is enough:\n\n"+
+		"  environment:\n"+
+		"    values:\n"+
+		"      pulumiConfig: {}",
 		org, managedEnv, stackConfigFilePath(stack, configFile))
+}
+
+// ManagedEnvironmentNotSupportedError is the error for a command or flag that does not work on a stack with an
+// ESC-managed environment.
+func ManagedEnvironmentNotSupportedError(what string) error {
+	return fmt.Errorf("%s is not supported on stacks with an ESC-managed environment yet", what)
 }
 
 // ManagedEnvironmentDeletedHint tells the user how to recover a managed stack whose environment was deleted.

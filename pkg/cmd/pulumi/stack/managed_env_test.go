@@ -34,8 +34,10 @@ const (
 	managedJSON      = `{"environment": {"values": {"pulumiConfig": {"proj:a": "b"}}}}`
 	managedNoDef     = "%[1]s has no definition for managed environment acme/proj/renamed. " +
 		"Restore it with `pulumi env get acme/proj/renamed --definition` and put the output under " +
-		"`environment:` in %[1]s. For a stack that has never been updated, " +
-		"`environment: {values: {pulumiConfig: {}}}` is enough."
+		"`environment:` in %[1]s. For a stack that has never been updated, this is enough:\n\n" +
+		"  environment:\n" +
+		"    values:\n" +
+		"      pulumiConfig: {}"
 	managedRequiresYAML = "stack-managed environments require a YAML stack file"
 )
 
@@ -106,6 +108,13 @@ func TestManagedEnvironmentDefinition(t *testing.T) {
 			assert.Same(t, want, node)
 		})
 	}
+}
+
+func TestManagedEnvironmentNotSupportedError(t *testing.T) {
+	t.Parallel()
+
+	assert.EqualError(t, ManagedEnvironmentNotSupportedError("`pulumi config refresh`"),
+		"`pulumi config refresh` is not supported on stacks with an ESC-managed environment yet")
 }
 
 //nolint:paralleltest // uses t.Chdir
