@@ -66,12 +66,15 @@ func init() {
 					// unknown/computed values: the SDK propagates failure as unknown rather than
 					// halting the program, so the outputs are registered but never resolve.
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					require.Contains(l, stack.Outputs, resource.PropertyKey("readValue"))
-					require.Contains(l, stack.Outputs, resource.PropertyKey("readPropDepValue"))
-					assert.True(l, stack.Outputs["readValue"].IsComputed(),
-						"expected readValue to be unknown, got %v", stack.Outputs["readValue"])
-					assert.True(l, stack.Outputs["readPropDepValue"].IsComputed(),
-						"expected readPropDepValue to be unknown, got %v", stack.Outputs["readPropDepValue"])
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					readValue, hasReadValue := stackOutputs.GetOk("readValue")
+					require.True(l, hasReadValue)
+					readPropDepValue, hasReadPropDepValue := stackOutputs.GetOk("readPropDepValue")
+					require.True(l, hasReadPropDepValue)
+					assert.True(l, readValue.IsComputed(),
+						"expected readValue to be unknown, got %v", readValue)
+					assert.True(l, readPropDepValue.IsComputed(),
+						"expected readPropDepValue to be unknown, got %v", readPropDepValue)
 				},
 			},
 		},
