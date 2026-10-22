@@ -397,7 +397,8 @@ func drawResourceSpec(t *rapid.T, ctx *pkgCtx, label string) schema.ResourceSpec
 
 // drawProperties returns a property map plus a sorted required list.
 // Property names are drawn via rapid (filtered against reserved keywords)
-// and deduplicated within the map.
+// and deduplicated by their reduced form, which the binder requires to be
+// unique within the map.
 func drawProperties(
 	t *rapid.T, ctx *pkgCtx, label string, depth int,
 ) (map[string]schema.PropertySpec, []string) {
@@ -408,7 +409,7 @@ func drawProperties(
 	names := rapid.SliceOfNDistinct(
 		rapid.Custom(func(t *rapid.T) string { return drawPropertyName(t, "name") }),
 		n, n,
-		rapid.ID[string],
+		schema.ReducePropertyName,
 	).Draw(t, label+":names")
 
 	props := make(map[string]schema.PropertySpec, n)
