@@ -15,10 +15,12 @@
 package cli
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetEnvRef(t *testing.T) {
@@ -87,5 +89,43 @@ func TestGetEnvRef(t *testing.T) {
 		assert.Equal(t, ref.envName, "rel-env")
 		assert.Equal(t, ref.version, "v1")
 		assert.Equal(t, isRelative, true)
+	})
+}
+
+func TestDraftConflictError(t *testing.T) {
+	t.Parallel()
+	esc := &escCommand{command: "pulumi", client: &testPulumiClient{}}
+	ref := environmentRef{orgName: "org", projectName: "project", envName: "env"}
+
+	t.Run("draft conflict", func(t *testing.T) {
+		t.Parallel()
+		err := esc.draftConflictError(ref, &client.EnvironmentErrorResponse{
+			Code: 400,
+			Message: "Bad Request: a draft already exists for this environment (change request cr-id); " +
+				"submit it for approval via POST /api/change-requests/org/cr-id/submit, or close it via " +
+				"POST /api/change-requests/org/cr-id/close to clear the lock",
+		})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "org/project/env already has a draft (change request cr-id)")
+		assert.Contains(t, err.Error(), "--draft=cr-id")
+		assert.Contains(t, err.Error(), "pulumi api /api/change-requests/org/cr-id/submit -X POST --body '{}'")
+		assert.Contains(t, err.Error(), "pulumi api /api/change-requests/org/cr-id/close -X POST --body '{}'")
+		assert.NotContains(t, err.Error(), "via POST")
+	})
+
+	t.Run("unrelated environment error", func(t *testing.T) {
+		t.Parallel()
+		err := esc.draftConflictError(ref, &client.EnvironmentErrorResponse{
+			Code:    409,
+			Message: `"org" does not support approvals. An organization is required.`,
+		})
+
+		require.NoError(t, err)
+	})
+
+	t.Run("unrelated error", func(t *testing.T) {
+		t.Parallel()
+		require.NoError(t, esc.draftConflictError(ref, errors.New("boom")))
 	})
 }
