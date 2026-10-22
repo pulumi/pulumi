@@ -271,6 +271,8 @@ type Client interface {
 	// environment. The opened environment will be available for the indicated duration, after which it
 	// will expire.
 	//
+	// If revision is non-nil, the draft is opened at that change request revision rather than the latest.
+	//
 	// If the environment draft contains errors, the open will fail with diagnostics.
 	OpenEnvironmentDraft(
 		ctx context.Context,
@@ -278,6 +280,7 @@ type Client interface {
 		projectName string,
 		envName string,
 		changeRequestID string,
+		revision *int,
 		duration time.Duration,
 	) (string, []EnvironmentDiagnostic, error)
 
@@ -1130,14 +1133,17 @@ func (pc *client) OpenEnvironmentDraft(
 	projectName string,
 	envName string,
 	changeRequestID string,
+	revision *int,
 	duration time.Duration,
 ) (string, []EnvironmentDiagnostic, error) {
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/open", orgName, projectName, envName, changeRequestID)
 
 	queryObj := struct {
 		Duration string `url:"duration"`
+		Revision *int   `url:"revision,omitempty"`
 	}{
 		Duration: duration.String(),
+		Revision: revision,
 	}
 
 	var resp struct {
