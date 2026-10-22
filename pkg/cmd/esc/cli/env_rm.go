@@ -126,7 +126,7 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			newYAML, err := yaml.Marshal(docNode.Content[0])
+			newYAML, err := marshalDefinition(&docNode)
 			if err != nil {
 				return fmt.Errorf("marshaling definition: %w", err)
 			}
