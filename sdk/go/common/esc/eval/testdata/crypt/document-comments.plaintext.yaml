@@ -1,0 +1,7 @@
+# leading comment
+
+values:
+  password:
+    fn::secret: hunter2
+
+# trailing comment
