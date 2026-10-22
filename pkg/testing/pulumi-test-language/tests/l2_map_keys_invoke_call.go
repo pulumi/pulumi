@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,16 +27,16 @@ import (
 // SDKs sometimes treat specially (e.g. "__"-prefixed keys, which some SDKs have been
 // known to mistake for reserved metadata sigils).
 func init() {
-	expected := resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
-		"my key":     "one",
-		"my.key":     "two",
-		"my-key":     "three",
-		"my_key":     "four",
-		"MY_KEY":     "five",
-		"myKey":      "six",
-		"__type":     "seven",
-		"__internal": "eight",
-	}))
+	expected := property.New(map[string]property.Value{
+		"my key":     property.New("one"),
+		"my.key":     property.New("two"),
+		"my-key":     property.New("three"),
+		"my_key":     property.New("four"),
+		"MY_KEY":     property.New("five"),
+		"myKey":      property.New("six"),
+		"__type":     property.New("seven"),
+		"__internal": property.New("eight"),
+	})
 
 	LanguageTests["l2-map-keys-invoke-call"] = LanguageTest{
 		Providers: []func() plugin.Provider{
@@ -47,10 +48,10 @@ func init() {
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					assert.Equal(l, resource.PropertyMap{
+					assert.Equal(l, property.NewMap(map[string]property.Value{
 						"invokeResult": expected,
 						"callResult":   expected,
-					}, stack.Outputs)
+					}), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},
