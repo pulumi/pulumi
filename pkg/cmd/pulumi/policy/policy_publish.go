@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -42,21 +43,30 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type policyPublishJSON struct {
+type policyPublishResult struct {
 	Organization string `json:"organization"`
 	Name         string `json:"name"`
 	VersionTag   string `json:"versionTag"`
 	URL          string `json:"url"`
 }
 
-// policyPublishRender is a marker type for outputflag; the output mode is read back from the flag value.
-type policyPublishRender func()
+type policyPublishRenderFunc func(w io.Writer, result policyPublishResult) error
+
+// renderPolicyPublishText prints nothing because the publish progress output already reports the version and
+// permalink.
+func renderPolicyPublishText(io.Writer, policyPublishResult) error {
+	return nil
+}
+
+func renderPolicyPublishJSON(w io.Writer, result policyPublishResult) error {
+	return ui.FprintJSON(w, result)
+}
 
 func newPolicyPublishCmd() *cobra.Command {
 	var policyPublishCmd policyPublishCmd
-	outputFormat := outputflag.OutputFlag[policyPublishRender]{
-		RenderForTerminal: func() {},
-		RenderJSON:        func() {},
+	outputFormat := outputflag.OutputFlag[policyPublishRenderFunc]{
+		RenderForTerminal: renderPolicyPublishText,
+		RenderJSON:        renderPolicyPublishJSON,
 	}
 	cmd := &cobra.Command{
 		Use:   "publish",
@@ -72,6 +82,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			"  pulumi policy publish acme --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			policyPublishCmd.json = outputFormat.String() == "json"
+			policyPublishCmd.render = outputFormat.Get()
 			policyPublishCmd.stdout = cmd.OutOrStdout()
 			policyPublishCmd.stderr = cmd.ErrOrStderr()
 			return policyPublishCmd.Run(cmd.Context(), cmdBackend.DefaultLoginManager, args)
@@ -94,6 +105,7 @@ type policyPublishCmd struct {
 	stdout io.Writer
 	stderr io.Writer
 	json   bool
+	render policyPublishRenderFunc
 }
 
 func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
@@ -105,6 +117,9 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	}
 	if cmd.stderr == nil {
 		cmd.stderr = io.Discard
+	}
+	if cmd.render == nil {
+		cmd.render = renderPolicyPublishText
 	}
 
 	b, err := loginToCloudBackend(ctx, lm)
@@ -205,16 +220,12 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 		return err
 	}
 
-	if cmd.json {
-		return writeJSON(cmd.stdout, policyPublishJSON{
-			Organization: orgName,
-			Name:         result.Name,
-			VersionTag:   result.VersionTag,
-			URL:          result.URL,
-		})
-	}
-
-	return nil
+	return cmd.render(cmd.stdout, policyPublishResult{
+		Organization: orgName,
+		Name:         result.Name,
+		VersionTag:   result.VersionTag,
+		URL:          result.URL,
+	})
 }
 
 func loginToCloudBackend(

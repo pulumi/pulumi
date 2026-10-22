@@ -15,8 +15,12 @@
 package policy
 
 import (
+	"fmt"
+	"io"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -28,15 +32,29 @@ type policyDisableArgs struct {
 	version     string
 }
 
-type policyDisableJSON struct {
+type policyDisableResult struct {
 	Organization string  `json:"organization"`
 	PolicyGroup  string  `json:"policyGroup"`
 	PolicyPack   string  `json:"policyPack"`
 	VersionTag   *string `json:"versionTag"`
 }
 
-// policyDisableRender is a marker type for outputflag; the output mode is read back from the flag value.
-type policyDisableRender func()
+type policyDisableRenderFunc func(w io.Writer, result policyDisableResult) error
+
+func renderPolicyDisableText(w io.Writer, result policyDisableResult) error {
+	if result.VersionTag == nil {
+		fmt.Fprintf(w, "Disabled policy pack %s/%s in policy group %s.\n",
+			result.Organization, result.PolicyPack, result.PolicyGroup)
+	} else {
+		fmt.Fprintf(w, "Disabled version %s of policy pack %s/%s in policy group %s.\n",
+			*result.VersionTag, result.Organization, result.PolicyPack, result.PolicyGroup)
+	}
+	return nil
+}
+
+func renderPolicyDisableJSON(w io.Writer, result policyDisableResult) error {
+	return ui.FprintJSON(w, result)
+}
 
 func newPolicyDisableCmd() *cobra.Command {
 	return newPolicyDisableCmdWith(defaultPolicyPackCmdDeps)
@@ -45,9 +63,9 @@ func newPolicyDisableCmd() *cobra.Command {
 func newPolicyDisableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 	contract.Assertf(deps != nil, "policyPackCmdDeps must not be nil")
 	args := policyDisableArgs{}
-	outputFormat := outputflag.OutputFlag[policyDisableRender]{
-		RenderForTerminal: func() {},
-		RenderJSON:        func() {},
+	outputFormat := outputflag.OutputFlag[policyDisableRenderFunc]{
+		RenderForTerminal: renderPolicyDisableText,
+		RenderJSON:        renderPolicyDisableJSON,
 	}
 
 	cmd := &cobra.Command{
@@ -70,7 +88,7 @@ func newPolicyDisableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 			err = policyPack.Disable(ctx, args.policyGroup, backend.PolicyPackOperation{
 				VersionTag: &args.version, Scopes: backend.CancellationScopes,
 			})
-			if err != nil || outputFormat.String() != "json" {
+			if err != nil {
 				return err
 			}
 
@@ -82,7 +100,7 @@ func newPolicyDisableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 			if args.version != "" {
 				versionTag = &args.version
 			}
-			return writeJSON(cmd.OutOrStdout(), policyDisableJSON{
+			return outputFormat.Get()(cmd.OutOrStdout(), policyDisableResult{
 				Organization: policyPack.Ref().OrgName(),
 				PolicyGroup:  group,
 				PolicyPack:   string(policyPack.Ref().Name()),

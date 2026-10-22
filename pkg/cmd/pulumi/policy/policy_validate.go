@@ -17,23 +17,33 @@ package policy
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 
-type policyValidateJSON struct {
+type policyValidateResult struct {
 	Organization string `json:"organization"`
 	PolicyPack   string `json:"policyPack"`
 	VersionTag   string `json:"versionTag"`
 	Valid        bool   `json:"valid"`
 }
 
-// policyValidateRender is a marker type for outputflag; the output mode is read back from the flag value.
-type policyValidateRender func()
+type policyValidateRenderFunc func(w io.Writer, result policyValidateResult) error
+
+func renderPolicyValidateText(w io.Writer, result policyValidateResult) error {
+	fmt.Fprintln(w, "Policy Pack configuration is valid.")
+	return nil
+}
+
+func renderPolicyValidateJSON(w io.Writer, result policyValidateResult) error {
+	return ui.FprintJSON(w, result)
+}
 
 func newPolicyValidateCmd() *cobra.Command {
 	return newPolicyValidateCmdWith(defaultPolicyPackCmdDeps)
@@ -42,9 +52,9 @@ func newPolicyValidateCmd() *cobra.Command {
 func newPolicyValidateCmdWith(deps policyPackCmdDeps) *cobra.Command {
 	contract.Assertf(deps != nil, "policyPackCmdDeps must not be nil")
 	var argConfig string
-	outputFormat := outputflag.OutputFlag[policyValidateRender]{
-		RenderForTerminal: func() {},
-		RenderJSON:        func() {},
+	outputFormat := outputflag.OutputFlag[policyValidateRenderFunc]{
+		RenderForTerminal: renderPolicyValidateText,
+		RenderJSON:        renderPolicyValidateJSON,
 	}
 
 	cmd := &cobra.Command{
@@ -84,16 +94,12 @@ func newPolicyValidateCmdWith(deps policyPackCmdDeps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if outputFormat.String() == "json" {
-				return writeJSON(cmd.OutOrStdout(), policyValidateJSON{
-					Organization: policyPack.Ref().OrgName(),
-					PolicyPack:   string(policyPack.Ref().Name()),
-					VersionTag:   *version,
-					Valid:        true,
-				})
-			}
-			fmt.Fprintln(cmd.OutOrStdout(), "Policy Pack configuration is valid.")
-			return nil
+			return outputFormat.Get()(cmd.OutOrStdout(), policyValidateResult{
+				Organization: policyPack.Ref().OrgName(),
+				PolicyPack:   string(policyPack.Ref().Name()),
+				VersionTag:   *version,
+				Valid:        true,
+			})
 		},
 	}
 

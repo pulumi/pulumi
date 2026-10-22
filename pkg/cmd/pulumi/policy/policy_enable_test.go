@@ -162,18 +162,39 @@ func TestPolicyEnable_JSONReadBackFailure(t *testing.T) {
 	assert.NotContains(t, out, `"organization"`)
 }
 
-func TestPolicyEnable_DefaultNoGroupRead(t *testing.T) {
+func TestPolicyEnable_DefaultMessage(t *testing.T) {
 	t.Parallel()
 
-	pack := &backend.MockPolicyPack{
-		RefF:    func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
-		EnableF: func(context.Context, string, backend.PolicyPackOperation) error { return nil },
+	tests := []struct {
+		name string
+		pack cloudapitype.AppPolicyPackMetadata
+		want string
+	}{
+		{
+			name: "version tag",
+			pack: cloudapitype.AppPolicyPackMetadata{Name: "p", Version: 3, VersionTag: "1.2.0"},
+			want: "Enabled policy pack acme/p version 1.2.0 in policy group prod.\n",
+		},
+		{
+			name: "no version tag",
+			pack: cloudapitype.AppPolicyPackMetadata{Name: "p", Version: 3},
+			want: "Enabled policy pack acme/p version 3 in policy group prod.\n",
+		},
 	}
-	client := stubPolicyGroupClient{get: func(context.Context, string, string) (cloudapitype.PolicyGroup, error) {
-		t.Fatal("GetPolicyGroup must not be called without --output json")
-		return cloudapitype.PolicyGroup{}, nil
-	}}
-	out, err := runPolicyPackCmd(t, newPolicyEnableCmdWith(stubPolicyPackDeps(pack, client)), "acme/p", "latest")
-	require.NoError(t, err)
-	assert.Empty(t, out)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			pack := &backend.MockPolicyPack{
+				RefF:    func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
+				EnableF: func(context.Context, string, backend.PolicyPackOperation) error { return nil },
+			}
+			client := stubPolicyGroupClient{get: func(context.Context, string, string) (cloudapitype.PolicyGroup, error) {
+				return cloudapitype.PolicyGroup{AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{tt.pack}}, nil
+			}}
+			out, err := runPolicyPackCmd(t, newPolicyEnableCmdWith(stubPolicyPackDeps(pack, client)),
+				"acme/p", "latest", "--policy-group", "prod")
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, out)
+		})
+	}
 }
