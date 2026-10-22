@@ -927,17 +927,24 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 }
 
 // WelcomeUser prints a Welcome to Pulumi message. consoleURL may be empty, in which case the
-// console line is omitted.
-func WelcomeUser(opts display.Options, consoleURL string) {
-	fmt.Printf("\n\n  %s\n\n", opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset))
+// console line is omitted. The suggestion to run `pulumi new` is printed only when newProjectHint is set.
+func WelcomeUser(opts display.Options, consoleURL string, newProjectHint bool) {
+	welcomeUser(os.Stdout, opts, consoleURL, newProjectHint)
+}
+
+func welcomeUser(w io.Writer, opts display.Options, consoleURL string, newProjectHint bool) {
+	fmt.Fprintf(w, "\n\n  %s\n\n", opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset))
 	if consoleURL != "" {
-		fmt.Printf("  Your stacks, state, and deployment history live at %s\n\n",
+		fmt.Fprintf(w, "  Your stacks, state, and deployment history live at %s\n\n",
 			opts.Color.Colorize(colors.BrightBlue+colors.Underline+consoleURL+colors.Reset))
 	}
-	fmt.Printf("  See what's new: %s\n\n",
+	fmt.Fprintf(w, "  See what's new: %s\n\n",
 		opts.Color.Colorize(colors.BrightBlue+colors.Underline+"https://www.pulumi.com/releases/changelog/"+colors.Reset))
-	fmt.Printf("  %s Create your first project with `pulumi new`.\n\n\n",
-		opts.Color.Colorize(colors.SpecSubHeadline+"New to Pulumi?"+colors.Reset))
+	if newProjectHint {
+		fmt.Fprintf(w, "  %s Create your first project with `pulumi new`.\n\n",
+			opts.Color.Colorize(colors.SpecSubHeadline+"New to Pulumi?"+colors.Reset))
+	}
+	fmt.Fprintln(w)
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {

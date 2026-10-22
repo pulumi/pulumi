@@ -830,7 +830,7 @@ func TestConfigSetAll(t *testing.T) {
 					project *workspace.Project,
 					setCurrent bool,
 					insecure bool,
-					color colors.Colorization,
+					color colors.Colorization, _ ...cmdBackend.LoginOption,
 				) (backend.Backend, error) {
 					return &backend.MockBackend{
 						GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
@@ -949,7 +949,7 @@ func TestConfigRefresh(t *testing.T) {
 		lm := &cmdBackend.MockLoginManager{
 			LoginF: func(
 				_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
-				_ string, _ *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+				_ string, _ *workspace.Project, _ bool, _ bool, _ colors.Colorization, _ ...cmdBackend.LoginOption,
 			) (backend.Backend, error) {
 				return mockBackend, nil
 			},

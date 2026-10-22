@@ -1,8 +1,5 @@
 env:
-  ESC_ACTION_OIDC_AUTH: true
-  ESC_ACTION_OIDC_ORGANIZATION: pulumi
-  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
-  ESC_ACTION_ENVIRONMENT: github-secrets/pulumi-pulumi
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
   ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 name: CI
 
@@ -66,28 +63,6 @@ on:
         default: false
         description: "If true, fuzz test failures won't block the workflow"
         type: boolean
-    secrets:
-      PULUMI_PROD_ACCESS_TOKEN:
-        required: false
-        description: "Pulumi access token, required to run tests against the service"
-      CODECOV_TOKEN:
-        required: false
-        description: "CodeCov token, required to publish CodeCov coverage data"
-      AZURE_TENANT_ID:
-        required: false
-        description: "Azure tenant ID, required to run tests against Azure"
-      AZURE_CLIENT_ID:
-        required: false
-        description: "Azure client ID, required to run tests against Azure"
-      AZURE_CLIENT_SECRET:
-        required: false
-        description: "Azure clients secret, needs to be rotated before 2027-12-22 (see the TestAzureLoginAzLogin test for detailed instructions)"
-      AZURE_STORAGE_SAS_TOKEN:
-        required: false
-        description: "Azure storage SAS token, required to run tests against Azure"
-      GCP_SERVICE_ACCOUNT:
-        required: false
-        description: "GCP service account, required to run tests against GCP"
 
 jobs:
   # Computes the cheap outputs every other job fans out from. This job must stay fast: the
@@ -522,9 +497,18 @@ jobs:
     if: ${{ inputs.enable-coverage }}
     runs-on: ubuntu-latest
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
       - name: Fetch secrets from ESC
         id: esc-secrets
-        uses: pulumi/esc-action@6cf9520e68354d86f81c455e8d43eabd58f5c9f5 # v1
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       # Check that there are no failed tests.
       - name: Check tests completed successfully.
         run: |
@@ -553,7 +537,7 @@ jobs:
         run: |
           curl -Os https://cli.codecov.io/latest/linux/codecov
           sudo chmod +x codecov
-          ./codecov pr-base-picking --base-sha "$(git merge-base origin/master HEAD)" --pr ${{ github.event.number }} --slug pulumi/pulumi --token ${{ secrets.CODECOV_TOKEN }} --service github
+          ./codecov pr-base-picking --base-sha "$(git merge-base origin/master HEAD)" --pr ${{ github.event.number }} --slug pulumi/pulumi --token ${{ steps.esc-secrets.outputs.CODECOV_TOKEN }} --service github
       - name: Upload code coverage
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
         with:
