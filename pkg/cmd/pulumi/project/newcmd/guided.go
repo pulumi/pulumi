@@ -183,7 +183,8 @@ func registryPublisher(t cmdTemplates.Template) (string, bool) {
 	return publisher, publisher != ""
 }
 
-// Both signals are advisory, so an organization can turn out to have nothing to show.
+// VCS template source orgs and registry publishers only tell us an organization exists, not that it
+// has templates the guided flow can offer, so a row here can still resolve to an empty list.
 func (t guidedTemplates) orgRows() []string {
 	names := slices.Clone(t.vcsOrgs)
 	for _, template := range t.database {
