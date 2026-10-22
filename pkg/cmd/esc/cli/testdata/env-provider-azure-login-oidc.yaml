@@ -32,7 +32,7 @@ values:
           - env
           - team
   environmentVariables:
-    ARM_USE_OIDC: 'true'
+    ARM_USE_OIDC: "true"
     ARM_CLIENT_ID: ${azure.login.clientId}
     ARM_TENANT_ID: ${azure.login.tenantId}
     ARM_OIDC_TOKEN: ${azure.login.oidc.token}
