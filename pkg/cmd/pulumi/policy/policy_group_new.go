@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
@@ -57,6 +58,8 @@ type policyGroupNewArgs struct {
 	entityType   string
 	mode         string
 	agentPoolID  string
+	stackRule    []string
+	accountRule  []string
 	yes          bool
 	outputFormat outputflag.OutputFlag[policyGroupGetRenderFunc]
 }
@@ -88,13 +91,23 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 			"accounts, with configurable enforcement levels per pack.\n" +
 			"\n" +
 			"When run interactively, prompts for required values that aren't\n" +
-			"provided via flags. Pass --yes to skip prompts; --mode is then required.",
+			"provided via flags. Pass --yes to skip prompts; --mode is then required.\n" +
+			"\n" +
+			matchRuleHelp,
 		Example: "  # Create a Policy Group interactively\n" +
 			"  pulumi policy group new prod-policies\n\n" +
 			"  # Create a preventative Policy Group non-interactively\n" +
 			"  pulumi policy group new prod-policies --mode preventative --yes\n\n" +
 			"  # Create an audit Policy Group\n" +
 			"  pulumi policy group new compliance --mode audit --yes\n\n" +
+			"  # Create a preventative group that holds every stack tagged env=prod\n" +
+			"  pulumi policy group new prod-policies --mode preventative \\\n" +
+			"    --stack-rule env=prod --yes\n\n" +
+			"  # Create an audit group for prod accounts not owned by the sandbox team\n" +
+			"  pulumi policy group new prod-accounts --mode audit \\\n" +
+			"    --account-rule 'env=prod,team!=sandbox' --yes\n\n" +
+			"  # Create a group whose stack rule is read from a JSON file\n" +
+			"  pulumi policy group new tagged --mode audit --stack-rule @rule.json --yes\n\n" +
 			"  # Emit JSON\n" +
 			"  pulumi policy group new prod-policies --mode preventative \\\n" +
 			"    --yes --output json",
@@ -119,6 +132,12 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 		"The enforcement mode: audit or preventative")
 	cmd.Flags().StringVar(&args.agentPoolID, "agent-pool-id", "",
 		"Agent pool ID for policy evaluation (optional)")
+	cmd.Flags().StringArrayVar(&args.stackRule, "stack-rule", nil,
+		"Stack match rule: tag conditions such as 'env=prod,team!=web', a JSON expression, or @<file>. "+
+			"Repeat to match any of several rules")
+	cmd.Flags().StringArrayVar(&args.accountRule, "account-rule", nil,
+		"Insights account match rule, in the same syntax as --stack-rule. Audit groups only. "+
+			"Repeat to match any of several rules")
 	cmd.Flags().BoolVarP(&args.yes, "yes", "y", false,
 		"Skip prompts; --mode is then required")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
@@ -170,6 +189,15 @@ func runPolicyGroupNew(
 	ctx context.Context, w io.Writer,
 	factory policyGroupNewClientFactory, name string, args policyGroupNewArgs,
 ) error {
+	stackRule, err := parseMatchRule(stackMatchRule, args.stackRule)
+	if err != nil {
+		return err
+	}
+	accountRule, err := parseMatchRule(accountMatchRule, args.accountRule)
+	if err != nil {
+		return err
+	}
+
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
@@ -186,7 +214,7 @@ func runPolicyGroupNew(
 	mode := args.mode
 	if mode == "" && !skipPrompts {
 		defaultMode := "preventative"
-		if entityType == "accounts" {
+		if entityType == "accounts" || accountRule != nil {
 			defaultMode = "audit"
 		}
 		mode = ui.PromptUserSkippable(
@@ -202,7 +230,15 @@ func runPolicyGroupNew(
 		return fmt.Errorf("invalid --mode %q; must be \"audit\" or \"preventative\"", mode)
 	}
 
-	req := cloudapitype.NewPolicyGroupRequest{Name: name}
+	if accountRule != nil && !createsAuditGroup(mode, entityType) {
+		return cmdCmd.ConfigurationError{Message: "--account-rule requires --mode audit"}
+	}
+
+	req := cloudapitype.NewPolicyGroupRequest{
+		Name:             name,
+		StackMatchRule:   stackRule,
+		AccountMatchRule: accountRule,
+	}
 	if entityType != "" {
 		req.EntityType = new(cloudapitype.PolicyGroupEntityType(entityType)) //nolint:staticcheck // deprecated flag
 	}
@@ -223,4 +259,13 @@ func runPolicyGroupNew(
 	}
 
 	return args.outputFormat.Get()(w, resp)
+}
+
+// createsAuditGroup reports whether the service will create an audit group,
+// which, without --mode, the deprecated --entity-type decides.
+func createsAuditGroup(mode, entityType string) bool {
+	if mode != "" {
+		return mode == string(cloudapitype.PolicyGroupModeAudit)
+	}
+	return entityType == "accounts"
 }

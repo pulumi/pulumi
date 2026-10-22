@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -68,11 +69,13 @@ type policyGroupEditArgs struct {
 	removePolicyPack      []string
 	addInsightsAccount    []string
 	removeInsightsAccount []string
+	stackRule             []string
+	removeStackRule       bool
+	accountRule           []string
+	removeAccountRule     bool
 
 	// changed records which of the mutation flags were set by the user.
-	// Keys are the flag names: "name", "add-stack", "remove-stack",
-	// "add-policy-pack", "remove-policy-pack", "add-insights-account",
-	// "remove-insights-account".
+	// Keys are the names in mutationFlagNames.
 	changed map[string]bool
 }
 
@@ -94,16 +97,24 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 		Long: "[EXPERIMENTAL] Update a Policy Group's configuration.\n" +
 			"\n" +
 			"Renames a Policy Group, adds or removes stacks, applies or detaches\n" +
-			"Policy Packs, and adds or removes Insights accounts. At least one\n" +
-			"mutation flag must be provided.\n" +
+			"Policy Packs, adds or removes Insights accounts, and sets or removes\n" +
+			"match rules. At least one mutation flag must be provided.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
-			"full response as JSON.",
+			"full response as JSON.\n" +
+			"\n" +
+			matchRuleHelp,
 		Example: "  # Rename a Policy Group\n" +
 			"  pulumi policy group edit prod-policies --name production\n\n" +
 			"  # Add a stack and a Policy Pack to a group\n" +
 			"  pulumi policy group edit prod-policies " +
-			"--add-stack web/prod --add-policy-pack aws-guardrails@3",
+			"--add-stack web/prod --add-policy-pack aws-guardrails@3\n\n" +
+			"  # Replace the stack rule: stacks tagged env=prod, or any stack with a team tag\n" +
+			"  pulumi policy group edit prod-policies --stack-rule env=prod --stack-rule team\n\n" +
+			"  # Set an account rule from a JSON file on an audit group\n" +
+			"  pulumi policy group edit compliance --account-rule @account-rule.json\n\n" +
+			"  # Remove the stack rule\n" +
+			"  pulumi policy group edit prod-policies --remove-stack-rule",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			args.changed = changedFlagSet(cmd, mutationFlagNames)
 			return runPolicyGroupEdit(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
@@ -132,6 +143,16 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 		"Add an Insights account to the Policy Group (repeatable)")
 	cmd.Flags().StringArrayVar(&args.removeInsightsAccount, "remove-insights-account", nil,
 		"Remove an Insights account from the Policy Group (repeatable)")
+	cmd.Flags().StringArrayVar(&args.stackRule, "stack-rule", nil,
+		"Replace the stack match rule: tag conditions such as 'env=prod,team!=web', a JSON expression, "+
+			"or @<file>. Repeat to match any of several rules")
+	cmd.Flags().BoolVar(&args.removeStackRule, "remove-stack-rule", false,
+		"Remove the stack match rule")
+	cmd.Flags().StringArrayVar(&args.accountRule, "account-rule", nil,
+		"Replace the Insights account match rule, in the same syntax as --stack-rule. Audit groups only. "+
+			"Repeat to match any of several rules")
+	cmd.Flags().BoolVar(&args.removeAccountRule, "remove-account-rule", false,
+		"Remove the Insights account match rule")
 
 	return cmd
 }
@@ -143,7 +164,14 @@ var mutationFlagNames = []string{
 	"add-stack", "remove-stack",
 	"add-policy-pack", "remove-policy-pack",
 	"add-insights-account", "remove-insights-account",
+	"stack-rule", "remove-stack-rule",
+	"account-rule", "remove-account-rule",
 }
+
+var errNoPolicyGroupChanges = errors.New(
+	"no changes specified; pass at least one of --name, --add-stack, --remove-stack, " +
+		"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account, " +
+		"--stack-rule, --remove-stack-rule, --account-rule, --remove-account-rule")
 
 // changedFlagSet snapshots which of the named flags were set on the command
 // line. Cobra resets `.Changed` after parsing, so we capture it inside RunE.
@@ -206,9 +234,13 @@ func runPolicyGroupEdit(
 	factory policyGroupEditClientFactory, name string, args policyGroupEditArgs,
 ) error {
 	if !anyMutationRequested(args) {
-		return errors.New(
-			"no changes specified; pass at least one of --name, --add-stack, --remove-stack, " +
-				"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account")
+		return errNoPolicyGroupChanges
+	}
+	if args.changed["stack-rule"] && args.changed["remove-stack-rule"] {
+		return cmdCmd.ConfigurationError{Message: "--stack-rule and --remove-stack-rule cannot be used together"}
+	}
+	if args.changed["account-rule"] && args.changed["remove-account-rule"] {
+		return cmdCmd.ConfigurationError{Message: "--account-rule and --remove-account-rule cannot be used together"}
 	}
 
 	addStacks, removeStacks, err := parseStackReferences(args.addStack, args.removeStack)
@@ -219,13 +251,37 @@ func runPolicyGroupEdit(
 	if err != nil {
 		return err
 	}
+	stackRule, err := parseMatchRule(stackMatchRule, args.stackRule)
+	if err != nil {
+		return err
+	}
+	accountRule, err := parseMatchRule(accountMatchRule, args.accountRule)
+	if err != nil {
+		return err
+	}
+
+	updates := policyGroupUpdates(args, addStacks, removeStacks, addPacks, removePacks)
+	updates = append(updates, matchRuleUpdates(args, stackRule, accountRule)...)
+	if len(updates) == 0 {
+		return errNoPolicyGroupChanges
+	}
 
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
 	}
 
-	updates := policyGroupUpdates(args, addStacks, removeStacks, addPacks, removePacks)
+	if accountRule != nil {
+		group, err := c.GetPolicyGroup(ctx, org, name)
+		if err != nil {
+			return fmt.Errorf("reading policy group: %w", err)
+		}
+		if group.Mode != cloudapitype.PolicyGroupModeAudit {
+			return cmdCmd.ConfigurationError{Message: fmt.Sprintf(
+				"--account-rule requires an audit policy group; %q is %s", name, group.Mode)}
+		}
+	}
+
 	if err := c.BatchUpdatePolicyGroup(ctx, org, name, updates); err != nil {
 		return err
 	}
@@ -275,6 +331,26 @@ func policyGroupUpdates(
 	}
 	for _, p := range removePacks {
 		updates = append(updates, policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{RemovePolicyPack: &p}))
+	}
+	return updates
+}
+
+// matchRuleUpdates converts the rule flags into one update per rule change.
+func matchRuleUpdates(
+	args policyGroupEditArgs, stackRule, accountRule cloudapitype.PermissionBooleanExpression,
+) []cloudapitype.UpdatePolicyGroupRequest {
+	var updates []cloudapitype.UpdatePolicyGroupRequest
+	if stackRule != nil {
+		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{StackMatchRule: stackRule})
+	}
+	if args.changed["remove-stack-rule"] && args.removeStackRule {
+		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{RemoveStackMatchRule: true})
+	}
+	if accountRule != nil {
+		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{AccountMatchRule: accountRule})
+	}
+	if args.changed["remove-account-rule"] && args.removeAccountRule {
+		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{RemoveAccountMatchRule: true})
 	}
 	return updates
 }
