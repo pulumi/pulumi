@@ -93,7 +93,7 @@ func mergeProviderIntoEnv(
 		docNode = yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{}}}
 	}
 
-	baseline, err := yaml.Marshal(docNode.Content[0])
+	baseline, err := marshalDefinition(&docNode)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshaling definition: %w", err)
 	}
@@ -122,7 +122,7 @@ func mergeProviderIntoEnv(
 		}
 	}
 
-	out, err := yaml.Marshal(docNode.Content[0])
+	out, err := marshalDefinition(&docNode)
 	if err != nil {
 		return nil, false, fmt.Errorf("marshaling definition: %w", err)
 	}

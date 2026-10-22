@@ -15,6 +15,7 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -199,7 +200,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
-			newYAML, err := yaml.Marshal(docNode.Content[0])
+			newYAML, err := marshalDefinition(&docNode)
 			if err != nil {
 				return fmt.Errorf("marshaling definition: %w", err)
 			}
@@ -274,4 +275,18 @@ func looksLikeSecret(path resource.PropertyPath, n yaml.Node) bool {
 	entropyPerChar := info.Entropy / float64(len(v))
 	return info.Entropy >= entropyThreshold ||
 		(info.Entropy >= (entropyThreshold/2) && entropyPerChar >= entropyPerCharThreshold)
+}
+
+// marshalDefinition encodes an environment definition document with the standard formatting
+func marshalDefinition(doc *yaml.Node) ([]byte, error) {
+	var b bytes.Buffer
+	enc := yaml.NewEncoder(&b)
+	enc.SetIndent(2)
+	if err := enc.Encode(doc); err != nil {
+		return nil, err
+	}
+	if err := enc.Close(); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
