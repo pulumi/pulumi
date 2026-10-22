@@ -501,7 +501,7 @@ export function readResource(
  */
 export function existsResource(
     type: string,
-    id: Input<ID>,
+    id: Input<string>,
     props?: Inputs,
     opts?: CustomResourceOptions,
     packageRef?: Promise<string | undefined>,
