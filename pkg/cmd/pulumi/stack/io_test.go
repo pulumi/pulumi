@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"testing"
@@ -164,6 +165,61 @@ func TestCreateStackQuiet(t *testing.T) {
 				assert.NotContains(t, buf.String(), "Created stack")
 			} else {
 				assert.Contains(t, buf.String(), "Created stack 'quietstack'")
+			}
+		})
+	}
+}
+
+// Tests that CreateStack marks a sandbox stack, and doesn't leave an unmarked stack behind if marking it fails.
+func TestCreateStackLocal(t *testing.T) {
+	t.Parallel()
+
+	for _, tagErr := range []error{nil, errors.New("tags unavailable")} {
+		t.Run(fmt.Sprintf("tagErr=%v", tagErr), func(t *testing.T) {
+			t.Parallel()
+
+			var savedTags map[apitype.StackTagName]string
+			var removed bool
+			mockBackend := &backend.MockBackend{NameF: func() string { return "mock" }}
+			mockBackend.CreateStackF = func(
+				_ context.Context, ref backend.StackReference, _ string,
+				_ *apitype.UntypedDeployment, _ *backend.CreateStackOptions,
+			) (backend.Stack, error) {
+				return &backend.MockStack{
+					RefF:     func() backend.StackReference { return ref },
+					BackendF: func() backend.Backend { return mockBackend },
+					TagsF: func() map[apitype.StackTagName]string {
+						return map[apitype.StackTagName]string{apitype.ProjectNameTag: "proj"}
+					},
+				}, nil
+			}
+			mockBackend.UpdateStackTagsF = func(
+				_ context.Context, _ backend.Stack, tags map[apitype.StackTagName]string,
+			) error {
+				savedTags = tags
+				return tagErr
+			}
+			mockBackend.RemoveStackF = func(context.Context, backend.Stack, bool, bool) (bool, error) {
+				removed = true
+				return false, nil
+			}
+			mockBackend.DefaultSecretManagerF = func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+				return nil, nil
+			}
+
+			_, err := CreateStack(t.Context(), cmdutil.Diag(), pkgWorkspace.Instance, mockBackend,
+				&backend.MockStackReference{StringV: "dev"}, "" /*root*/, CreateStackOptions{Sandbox: true})
+
+			assert.Equal(t, map[apitype.StackTagName]string{
+				apitype.ProjectNameTag:  "proj",
+				backend.SandboxStackTag: "true",
+			}, savedTags)
+			if tagErr != nil {
+				require.ErrorIs(t, err, tagErr)
+				assert.True(t, removed, "an unmarked stack must not be left behind")
+			} else {
+				require.NoError(t, err)
+				assert.False(t, removed)
 			}
 		})
 	}

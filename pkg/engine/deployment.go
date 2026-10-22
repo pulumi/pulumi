@@ -29,6 +29,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers/sandbox"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -249,6 +250,15 @@ func newDeployment(
 	contract.Assertf(target != nil, "update target cannot be nil")
 	projinfo := &Projinfo{Proj: proj, Root: info.Update.Root}
 
+	// Sandbox stacks must never deploy against real clouds, so refuse to run one unless the caller set up sandbox mode.
+	if isLocal := target.Tags[sandbox.StackTag] == "true"; isLocal != (opts.Sandbox != nil) {
+		if isLocal {
+			return nil, fmt.Errorf("stack %s is a sandbox stack, and this operation does not support sandbox stacks",
+				target.Name)
+		}
+		return nil, fmt.Errorf("stack %s is not a sandbox stack, so it cannot be deployed in sandbox mode", target.Name)
+	}
+
 	// Decrypt the configuration.
 	decryptedConfig, err := target.Config.Decrypt(target.Decrypter)
 	if err != nil {
@@ -328,6 +338,7 @@ func newDeployment(
 		Analyzers:                 opts.LoadedAnalyzers,
 		PolicyExceptions:          opts.PolicyExceptions,
 		StateMigrationSerializer:  stateMigrationResourceSerializer{},
+		Sandbox:                   opts.Sandbox,
 	}
 
 	var depl *deploy.Deployment

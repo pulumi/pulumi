@@ -95,6 +95,7 @@ type newArgs struct {
 	templateMode         bool
 	runtimeOptions       []string
 	remoteStackConfig    bool
+	sandbox              bool
 	stdout               io.Writer
 	stderr               io.Writer
 }
@@ -266,6 +267,10 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 		if existingStack != nil {
+			if args.sandbox && !backend.IsSandboxStack(existingStack) {
+				return fmt.Errorf("stack %s already exists and is not a sandbox stack; "+
+					"--sandbox can only be used to create a new stack", stackName)
+			}
 			s = existingStack
 			if args.description == "" {
 				args.description = existingDesc
@@ -470,7 +475,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Print out next steps.
-	printNextSteps(args.stdout, proj, originalCwd, cwd, args.generateOnly, opts)
+	printNextSteps(args.stdout, proj, originalCwd, cwd, args.generateOnly, args.sandbox, opts)
 
 	if template.Quickstart != "" {
 		fmt.Fprintln(args.stdout, template.Quickstart)
@@ -664,6 +669,11 @@ func NewNewCmd() *cobra.Command {
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
 
+	cmd.PersistentFlags().BoolVar(
+		&args.sandbox, "sandbox", false,
+		"Create a sandbox stack, which deploys against local cloud emulators (floci) instead of real clouds",
+	)
+
 	return cmd
 }
 
@@ -812,7 +822,7 @@ func makePromptValidator(prompt plugin.RuntimeOptionPrompt) func(string) error {
 
 // printNextSteps prints out a series of commands that the user needs to run before their stack is able to be updated.
 func printNextSteps(
-	w io.Writer, proj *workspace.Project, originalCwd, cwd string, generateOnly bool, opts display.Options,
+	w io.Writer, proj *workspace.Project, originalCwd, cwd string, generateOnly, sandbox bool, opts display.Options,
 ) {
 	var commands []string
 
@@ -840,7 +850,11 @@ func printNextSteps(
 		// We didn't install dependencies, so instruct the user to do so.
 		commands = append(commands, "pulumi install")
 		// We didn't create a stack so show that as a command to run before `pulumi up`.
-		commands = append(commands, "pulumi stack init")
+		if sandbox {
+			commands = append(commands, "pulumi stack init --sandbox")
+		} else {
+			commands = append(commands, "pulumi stack init")
+		}
 	}
 
 	if len(commands) == 0 { // No additional commands need to be run.

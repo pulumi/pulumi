@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"sort"
 	"time"
@@ -351,6 +352,8 @@ type CreateStackOptions struct {
 	ConfigFile string
 	// Quiet suppresses the "Created stack" announcement so the caller can own the creation summary.
 	Quiet bool
+	// Local marks the new stack as a sandbox stack, deployed against local cloud emulators.
+	Sandbox bool
 }
 
 // InitStack creates the stack.
@@ -436,6 +439,21 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 			return nil, err
 		}
 		return nil, fmt.Errorf("could not create stack: %w", err)
+	}
+
+	if opts.Sandbox {
+		tags := maps.Clone(stack.Tags())
+		if tags == nil {
+			tags = map[apitype.StackTagName]string{}
+		}
+		tags[backend.SandboxStackTag] = "true"
+		if err := backend.UpdateStackTags(ctx, stack, tags); err != nil {
+			// Don't leave behind an unmarked stack the user believes is a sandbox, since it would deploy to real clouds.
+			if _, rmErr := b.RemoveStack(ctx, stack, false /*force*/, false /*removeBackups*/); rmErr != nil {
+				return nil, fmt.Errorf("marking stack as a sandbox: %w (removing the stack also failed: %w)", err, rmErr)
+			}
+			return nil, fmt.Errorf("marking stack as a sandbox: %w", err)
+		}
 	}
 
 	if !opts.Quiet {

@@ -79,6 +79,12 @@ var SkipNewCredentialsCheck = env.Bool("SKIP_NEW_CREDENTIALS_CHECK",
 	"Skips the best-effort cloud credentials check that `pulumi new` runs after "+
 		"creating a project for providers that opt in through their schema.")
 
+var SandboxNoAutostart = env.Bool("SANDBOX_NO_AUTOSTART",
+	"Do not start local cloud emulators automatically when operating on a sandbox stack.")
+
+var SandboxAllowPackages = env.String("SANDBOX_ALLOW_PACKAGES",
+	"A comma-separated list of extra provider packages that sandbox stacks may use unmodified.")
+
 var SkipConfirmations = env.Bool("SKIP_CONFIRMATIONS",
 	`Whether or not confirmation prompts should be skipped. This should be used by pass any requirement
 that a --yes parameter has been set for non-interactive scenarios.

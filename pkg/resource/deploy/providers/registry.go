@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers/sandbox"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -364,6 +365,7 @@ type Registry struct {
 	providers map[providers.Reference]plugin.Provider
 	builtins  plugin.Provider
 	aliases   map[resource.URN]resource.URN
+	sandbox   *sandbox.Mode
 	m         sync.RWMutex
 }
 
@@ -471,6 +473,38 @@ func NewRegistry(pctx *plugin.Context, isPreview bool, builtins plugin.Provider)
 		builtins:  builtins,
 		aliases:   make(map[resource.URN]resource.URN),
 	}
+}
+
+// SetSandbox redirects every provider the registry loads at local cloud emulators, refusing packages that sandbox mode
+// does not support. It must be called before the registry loads any providers.
+func (r *Registry) SetSandbox(mode *sandbox.Mode) {
+	r.sandbox = mode
+}
+
+// loadProvider loads the plugin for a provider resource, applying sandbox mode if it is enabled.
+func (r *Registry) loadProvider(
+	ctx context.Context, providerPkg tokens.Package, name tokens.Package, version *semver.Version, downloadURL string,
+	parameter *workspace.Parameterization, envVarMappings map[string]string,
+) (plugin.Provider, error) {
+	e := buildEnvWithMappings(envVarMappings)
+	var rule *sandbox.Package
+	if r.sandbox != nil {
+		var err error
+		if rule, err = r.sandbox.Package(ctx, providerPkg, r.pctx.Diag); err != nil {
+			return nil, err
+		}
+		e = envutil.NewEnv(envutil.JoinStore(rule.Env(), e.GetStore()))
+	}
+
+	// TODO: We should thread checksums through here.
+	provider, err := loadParameterizedProvider(ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, e)
+	if err != nil || provider == nil {
+		return provider, err
+	}
+	if rule != nil {
+		provider = rule.Wrap(provider)
+	}
+	return provider, nil
 }
 
 // GetProvider returns the provider plugin that is currently registered under the given reference, if any.
@@ -663,9 +697,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		}}}, nil
 	}
 
-	// TODO: We should thread checksums through here.
-	provider, err := loadParameterizedProvider(
-		ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
+	provider, err := r.loadProvider(ctx, providerPkg, name, version, downloadURL, parameter, envVarMappings)
 	if err != nil {
 		return plugin.CheckResponse{}, err
 	}
@@ -850,9 +882,7 @@ func (r *Registry) Same(ctx context.Context, res *pkgresource.State, fromCheck b
 			return fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, urn, err)
 		}
 
-		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(
-			ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
+		provider, err = r.loadProvider(ctx, providerPkg, name, version, downloadURL, parameter, envVarMappings)
 		if err != nil {
 			return fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, urn, err)
 		}
@@ -941,9 +971,7 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 				fmt.Errorf("get environment variable mappings for %v provider '%v': %w", providerPkg, req.URN, err)
 		}
 
-		// TODO: We should thread checksums through here.
-		provider, err = loadParameterizedProvider(
-			ctx, name, version, downloadURL, nil, parameter, r.pctx, r.builtins, buildEnvWithMappings(envVarMappings))
+		provider, err = r.loadProvider(ctx, providerPkg, name, version, downloadURL, parameter, envVarMappings)
 		if err != nil {
 			return plugin.CreateResponse{Status: resource.StatusUnknown},
 				fmt.Errorf("load plugin for %v provider '%v': %w", providerPkg, req.URN, err)
