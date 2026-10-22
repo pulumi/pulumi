@@ -1229,8 +1229,15 @@ func escape(s string) string {
 	return escaped[1 : len(escaped)-1]
 }
 
+// maxDiffWork bounds the work of diffing a changed string, since go-diff takes O((N+M)·D) time.
+const maxDiffWork = 100_000_000
+
 func (p *propertyPrinter) printTextDiff(old, new string) {
 	if p.printEncodedValueDiff(old, new) {
+		return
+	}
+	if !cheapToDiff(old, new) {
+		p.printReplacedText(old, new)
 		return
 	}
 
@@ -1246,6 +1253,133 @@ func (p *propertyPrinter) printTextDiff(old, new string) {
 		diffs := differ.DiffMain(hashed1, hashed2, false)
 		p.indented(1).printLineDiff(differ.DiffCharsToLines(diffs, lineArray))
 	}
+}
+
+// trimCommon returns the lengths of the common prefix and suffix of a and b, which don't overlap.
+func trimCommon[T comparable](a, b []T) (prefix, suffix int) {
+	for prefix < len(a) && prefix < len(b) && a[prefix] == b[prefix] {
+		prefix++
+	}
+	for suffix < len(a)-prefix && suffix < len(b)-prefix && a[len(a)-1-suffix] == b[len(b)-1-suffix] {
+		suffix++
+	}
+	return prefix, suffix
+}
+
+// splitCommon splits old and new into their common prefix and suffix and the differing middles, trimming whole lines
+// for multi-line values and characters otherwise.
+func splitCommon(old, new string) (prefix, oldMid, newMid, suffix string, multiLine bool) {
+	if multiLine = strings.ContainsRune(old, '\n') || strings.ContainsRune(new, '\n'); multiLine {
+		a, b := strings.SplitAfter(old, "\n"), strings.SplitAfter(new, "\n")
+		pre, suf := trimCommon(a, b)
+		return strings.Join(a[:pre], ""), strings.Join(a[pre:len(a)-suf], ""),
+			strings.Join(b[pre:len(b)-suf], ""), strings.Join(a[len(a)-suf:], ""), true
+	}
+	a, b := []rune(old), []rune(new)
+	pre, suf := trimCommon(a, b)
+	return string(a[:pre]), string(a[pre : len(a)-suf]), string(b[pre : len(b)-suf]), string(a[len(a)-suf:]), false
+}
+
+// cheapToDiff reports whether printTextDiff can diff old and new within maxDiffWork. Lines are interned so the probe
+// compares ints.
+func cheapToDiff(old, new string) bool {
+	if !strings.ContainsRune(old, '\n') && !strings.ContainsRune(new, '\n') {
+		return editDistanceWithin([]rune(old), []rune(new))
+	}
+	ids := map[string]int{}
+	intern := func(s string) []int {
+		lines := strings.SplitAfter(s, "\n")
+		// Like go-diff, don't count the empty string after a final newline as a line.
+		if lines[len(lines)-1] == "" {
+			lines = lines[:len(lines)-1]
+		}
+		out := make([]int, len(lines))
+		for i, l := range lines {
+			id, ok := ids[l]
+			if !ok {
+				id = len(ids)
+				ids[l] = id
+			}
+			out[i] = id
+		}
+		return out
+	}
+	return editDistanceWithin(intern(old), intern(new))
+}
+
+// editDistanceWithin reports whether the edit distance between a and b is at most maxDiffWork/(N+M), where N and M
+// are the lengths left after trimming their common prefix and suffix. It takes O(maxDiffWork) time at most.
+func editDistanceWithin[T comparable](a, b []T) bool {
+	pre, suf := trimCommon(a, b)
+	a, b = a[pre:len(a)-suf], b[pre:len(b)-suf]
+	if len(a) == 0 || len(b) == 0 {
+		return true
+	}
+	// The edit distance never exceeds len(a)+len(b), which keeps v small for short inputs.
+	maxD := min(maxDiffWork/(len(a)+len(b)), len(a)+len(b))
+	off := maxD + 1
+	v := make([]int, 2*maxD+3)
+	for d := 0; d <= maxD; d++ {
+		for k := -d; k <= d; k += 2 {
+			var x int
+			if k == -d || (k != d && v[off+k-1] < v[off+k+1]) {
+				x = v[off+k+1]
+			} else {
+				x = v[off+k-1] + 1
+			}
+			y := x - k
+			for x < len(a) && y < len(b) && a[x] == b[y] {
+				x++
+				y++
+			}
+			v[off+k] = x
+			if x >= len(a) && y >= len(b) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// printReplacedText prints old and new without a detailed diff, followed by a note on how much changed. Multi-line
+// values are printed as a coarse line diff unless the output is truncated.
+func (p *propertyPrinter) printReplacedText(old, new string) {
+	prefix, oldMid, newMid, suffix, multiLine := splitCommon(old, new)
+	unit, size := "character", utf8.RuneCountInString
+	if multiLine {
+		unit = "line"
+		size = func(s string) int { return strings.Count(strings.TrimSuffix(s, "\n"), "\n") + min(len(s), 1) }
+	}
+	changed := max(size(oldMid), size(newMid))
+
+	if multiLine && !p.truncateOutput {
+		var diffs []diffmatchpatch.Diff
+		for _, d := range []diffmatchpatch.Diff{
+			{Type: diffmatchpatch.DiffEqual, Text: prefix},
+			{Type: diffmatchpatch.DiffDelete, Text: oldMid},
+			{Type: diffmatchpatch.DiffInsert, Text: newMid},
+			{Type: diffmatchpatch.DiffEqual, Text: suffix},
+		} {
+			if d.Text != "" {
+				diffs = append(diffs, d)
+			}
+		}
+		p.indented(1).printLineDiff(diffs)
+	} else {
+		if p.truncateOutput {
+			old = p.truncatePropertyString(old)
+			new = p.truncatePropertyString(new)
+		}
+		p.withOp(deploy.OpDelete).writef("%q", old)
+		p.writeVerbatim(" => ")
+		p.withOp(deploy.OpCreate).writef("%q", new)
+		p.writeVerbatim("\n")
+	}
+	if changed != 1 {
+		unit += "s"
+	}
+	p.indented(1).withOp(deploy.OpSame).writeUnprefixedIndentedf(
+		"(detailed diff omitted: changed region spans %d %s)\n", changed, unit)
 }
 
 func (p *propertyPrinter) printCharacterDiff(diffs []diffmatchpatch.Diff) {
@@ -1362,6 +1496,11 @@ func (p *propertyPrinter) printEncodedValueDiff(old, new string) bool {
 
 	// If the decoded values are the same, then print a text diff as an object diff won't show any changes.
 	if oldValue.DeepEquals(newValue) {
+		// Replace oversized values here, since printTextDiff would print the quoted strings quoted again.
+		if !cheapToDiff(strconv.Quote(old), strconv.Quote(new)) {
+			p.printReplacedText(old, new)
+			return true
+		}
 		p.printTextDiff(strconv.Quote(old), strconv.Quote(new))
 		return true
 	}
