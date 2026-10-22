@@ -129,7 +129,6 @@ func (p *SimpleProvider) CheckConfig(
 func (p *SimpleProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "simple:index:Resource"
 	if req.URN.Type() != "simple:index:Resource" {
 		return plugin.CheckResponse{
@@ -138,24 +137,25 @@ func (p *SimpleProvider) Check(
 	}
 
 	// Expect just the boolean value
-	value, ok := news["value"]
+	value, ok := req.NewInputs.GetOk("value")
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "missing value"),
 		}, nil
 	}
+
 	if !value.IsBool() && !value.IsComputed() {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "value is not a boolean"),
 		}, nil
 	}
-	if len(news) != 1 {
+	if req.NewInputs.Len() != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.NewInputs)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
+	return plugin.CheckResponse{Properties: req.NewInputs}, nil
 }
 
 func (p *SimpleProvider) Create(
