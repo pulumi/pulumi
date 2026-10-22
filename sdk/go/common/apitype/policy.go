@@ -214,18 +214,19 @@ func (el EnforcementLevel) IsValid() bool {
 
 // EntityType indicates the type of entity a policy group applies to
 //
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupEntityType (or AppEntityType for summaries).
+// Deprecated: entity type no longer determines policy group membership; use
+// github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupMode.
 type EntityType string
 
 const (
 	// Stacks indicates the policy group applies to stacks
 	//
-	// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupEntityTypeStacks.
+	// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupModePreventative.
 	Stacks EntityType = "stacks"
 
 	// Accounts indicates the policy group applies to accounts
 	//
-	// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupEntityTypeAccounts.
+	// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupModeAudit.
 	Accounts EntityType = "accounts"
 )
 
