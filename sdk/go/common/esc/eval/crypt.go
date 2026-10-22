@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"unicode/utf8"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax/encoding"
@@ -56,12 +57,20 @@ func rewriteYAML(
 		return nil, diags
 	}
 
-	doc, diags, err := syntax.Walk(syn, visitor)
+	changed := false
+	doc, diags, err := syntax.Walk(syn, func(n syntax.Node) (syntax.Node, syntax.Diagnostics, error) {
+		m, diags, err := visitor(n)
+		changed = changed || m != n
+		return m, diags, err
+	})
 	if err != nil {
 		return nil, err
 	}
 	if len(diags) != 0 {
 		return nil, diags
+	}
+	if !changed && canReturnSource(source) {
+		return source, nil
 	}
 
 	var b bytes.Buffer
@@ -72,6 +81,21 @@ func rewriteYAML(
 		return nil, diags
 	}
 	return b.Bytes(), nil
+}
+
+// canReturnSource reports whether source can be returned in place of its re-encoding. Re-encoding converts the source
+// to UTF-8 without a byte order mark, converts CRLF line endings to LF, and drops any documents after the first, which
+// are never checked for secrets.
+func canReturnSource(source []byte) bool {
+	if !utf8.Valid(source) || bytes.HasPrefix(source, []byte("\uFEFF")) || bytes.IndexByte(source, '\r') != -1 {
+		return false
+	}
+	d := yaml.NewDecoder(bytes.NewReader(source))
+	var n yaml.Node
+	if err := d.Decode(&n); err != nil {
+		return errors.Is(err, io.EOF)
+	}
+	return errors.Is(d.Decode(&n), io.EOF)
 }
 
 // parseSecret attempts to parse a syntax.Node as a call to the fn::secret builtin. If the node is such a call,
