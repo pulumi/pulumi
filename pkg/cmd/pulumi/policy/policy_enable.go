@@ -19,17 +19,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"maps"
-	"slices"
-	"strconv"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
@@ -63,26 +59,19 @@ func defaultPolicyPackCmdDeps(
 	return policyPack, cloudBackend.Client(), nil
 }
 
-type policyEnableResult struct {
-	Organization string                             `json:"organization"`
-	PolicyGroup  string                             `json:"policyGroup"`
-	PolicyPack   cloudapitype.AppPolicyPackMetadata `json:"policyPack"`
-}
-
-type policyEnableRenderFunc func(w io.Writer, result policyEnableResult) error
-
-func renderPolicyEnableText(w io.Writer, result policyEnableResult) error {
-	version := result.PolicyPack.VersionTag
-	if version == "" {
-		version = strconv.Itoa(result.PolicyPack.Version)
+// readBackPolicyGroup fetches the group a pack was just enabled in or disabled from, since the update endpoint
+// returns nothing.
+func readBackPolicyGroup(
+	ctx context.Context, client policyGroupGetClient, policyPack backend.PolicyPack, group string,
+) (cloudapitype.PolicyGroup, error) {
+	if group == "" {
+		group = apitype.DefaultPolicyGroup
 	}
-	fmt.Fprintf(w, "Enabled policy pack %s/%s version %s in policy group %s.\n",
-		result.Organization, result.PolicyPack.Name, version, result.PolicyGroup)
-	return nil
-}
-
-func renderPolicyEnableJSON(w io.Writer, result policyEnableResult) error {
-	return ui.FprintJSON(w, result)
+	resp, err := client.GetPolicyGroup(ctx, policyPack.Ref().OrgName(), group)
+	if err != nil {
+		return cloudapitype.PolicyGroup{}, fmt.Errorf("reading policy group %q after update: %w", group, err)
+	}
+	return resp, nil
 }
 
 func newPolicyEnableCmd() *cobra.Command {
@@ -92,10 +81,7 @@ func newPolicyEnableCmd() *cobra.Command {
 func newPolicyEnableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 	contract.Assertf(deps != nil, "policyPackCmdDeps must not be nil")
 	args := policyEnableArgs{}
-	outputFormat := outputflag.OutputFlag[policyEnableRenderFunc]{
-		RenderForTerminal: renderPolicyEnableText,
-		RenderJSON:        renderPolicyEnableJSON,
-	}
+	outputFormat := defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Use:   "enable",
@@ -140,29 +126,11 @@ func newPolicyEnableCmdWith(deps policyPackCmdDeps) *cobra.Command {
 				return err
 			}
 
-			// The enable endpoint returns nothing, so read the group back to report the version that was resolved.
-			org := policyPack.Ref().OrgName()
-			name := string(policyPack.Ref().Name())
-			group := args.policyGroup
-			if group == "" {
-				group = apitype.DefaultPolicyGroup
-			}
-			resp, err := client.GetPolicyGroup(ctx, org, group)
+			resp, err := readBackPolicyGroup(ctx, client, policyPack, args.policyGroup)
 			if err != nil {
-				return fmt.Errorf("policy pack %q was enabled, but reading back policy group %q failed: %w",
-					name, group, err)
+				return err
 			}
-			idx := slices.IndexFunc(resp.AppliedPolicyPacks, func(p cloudapitype.AppPolicyPackMetadata) bool {
-				return p.Name == name
-			})
-			if idx < 0 {
-				return fmt.Errorf("policy pack %q not found in policy group %q after enabling", name, group)
-			}
-			return outputFormat.Get()(cmd.OutOrStdout(), policyEnableResult{
-				Organization: org,
-				PolicyGroup:  group,
-				PolicyPack:   resp.AppliedPolicyPacks[idx],
-			})
+			return outputFormat.Get()(cmd.OutOrStdout(), resp)
 		},
 	}
 

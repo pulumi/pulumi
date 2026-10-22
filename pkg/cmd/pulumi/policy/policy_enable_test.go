@@ -88,8 +88,7 @@ func TestPolicyEnable_JSONReadsBackGroup(t *testing.T) {
 	client := stubPolicyGroupClient{get: func(_ context.Context, org, group string) (cloudapitype.PolicyGroup, error) {
 		gotOrg, gotGroup = org, group
 		raw := json.RawMessage(`"mandatory"`)
-		return cloudapitype.PolicyGroup{AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{
-			{Name: "other", VersionTag: "9.9.9"},
+		return cloudapitype.PolicyGroup{Name: group, AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{
 			{Name: "aws-guardrails", Version: 3, VersionTag: "1.2.0", Config: map[string]*json.RawMessage{"all": &raw}},
 		}}, nil
 	}}
@@ -102,17 +101,16 @@ func TestPolicyEnable_JSONReadsBackGroup(t *testing.T) {
 	assert.Equal(t, "acme", gotOrg)
 	assert.Equal(t, "default-policy-group", gotGroup)
 
-	var got map[string]any
+	var got cloudapitype.PolicyGroup
 	require.NoError(t, json.Unmarshal([]byte(out), &got))
-	assert.Equal(t, "acme", got["organization"])
-	assert.Equal(t, "default-policy-group", got["policyGroup"])
-	pp := got["policyPack"].(map[string]any)
-	assert.Equal(t, "aws-guardrails", pp["name"])
-	assert.Equal(t, "1.2.0", pp["versionTag"])
-	assert.Equal(t, map[string]any{"all": "mandatory"}, pp["config"])
+	assert.Equal(t, "default-policy-group", got.Name)
+	require.Len(t, got.AppliedPolicyPacks, 1)
+	assert.Equal(t, "aws-guardrails", got.AppliedPolicyPacks[0].Name)
+	assert.Equal(t, "1.2.0", got.AppliedPolicyPacks[0].VersionTag)
+	assert.JSONEq(t, `"mandatory"`, string(*got.AppliedPolicyPacks[0].Config["all"]))
 }
 
-func TestPolicyEnable_JSONExplicitGroup(t *testing.T) {
+func TestPolicyEnable_ExplicitGroup(t *testing.T) {
 	t.Parallel()
 
 	pack := &backend.MockPolicyPack{
@@ -121,31 +119,14 @@ func TestPolicyEnable_JSONExplicitGroup(t *testing.T) {
 	}
 	client := stubPolicyGroupClient{get: func(_ context.Context, _, group string) (cloudapitype.PolicyGroup, error) {
 		assert.Equal(t, "prod", group)
-		return cloudapitype.PolicyGroup{AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{{Name: "p"}}}, nil
-	}}
-	out, err := runPolicyPackCmd(t, newPolicyEnableCmdWith(stubPolicyPackDeps(pack, client)),
-		"acme/p", "latest", "--policy-group", "prod", "--output", "json")
-	require.NoError(t, err)
-	assert.Contains(t, out, `"policyGroup": "prod"`)
-}
-
-func TestPolicyEnable_JSONPackMissingAfterEnable(t *testing.T) {
-	t.Parallel()
-
-	pack := &backend.MockPolicyPack{
-		RefF:    func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "aws-guardrails"} },
-		EnableF: func(context.Context, string, backend.PolicyPackOperation) error { return nil },
-	}
-	client := stubPolicyGroupClient{get: func(context.Context, string, string) (cloudapitype.PolicyGroup, error) {
-		return cloudapitype.PolicyGroup{}, nil
+		return cloudapitype.PolicyGroup{Name: group}, nil
 	}}
 	_, err := runPolicyPackCmd(t, newPolicyEnableCmdWith(stubPolicyPackDeps(pack, client)),
-		"acme/aws-guardrails", "latest", "--output", "json")
-	require.EqualError(t, err,
-		`policy pack "aws-guardrails" not found in policy group "default-policy-group" after enabling`)
+		"acme/p", "latest", "--policy-group", "prod", "--output", "json")
+	require.NoError(t, err)
 }
 
-func TestPolicyEnable_JSONReadBackFailure(t *testing.T) {
+func TestPolicyEnable_ReadBackFailure(t *testing.T) {
 	t.Parallel()
 
 	pack := &backend.MockPolicyPack{
@@ -157,44 +138,29 @@ func TestPolicyEnable_JSONReadBackFailure(t *testing.T) {
 	}}
 	out, err := runPolicyPackCmd(t, newPolicyEnableCmdWith(stubPolicyPackDeps(pack, client)),
 		"acme/aws-guardrails", "latest", "--output", "json")
-	require.EqualError(t, err,
-		`policy pack "aws-guardrails" was enabled, but reading back policy group "default-policy-group" failed: boom`)
-	assert.NotContains(t, out, `"organization"`)
+	require.EqualError(t, err, `reading policy group "default-policy-group" after update: boom`)
+	assert.NotContains(t, out, `"name"`)
 }
 
-func TestPolicyEnable_DefaultMessage(t *testing.T) {
+func TestPolicyEnable_DefaultRendersGroup(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name string
-		pack cloudapitype.AppPolicyPackMetadata
-		want string
-	}{
-		{
-			name: "version tag",
-			pack: cloudapitype.AppPolicyPackMetadata{Name: "p", Version: 3, VersionTag: "1.2.0"},
-			want: "Enabled policy pack acme/p version 1.2.0 in policy group prod.\n",
-		},
-		{
-			name: "no version tag",
-			pack: cloudapitype.AppPolicyPackMetadata{Name: "p", Version: 3},
-			want: "Enabled policy pack acme/p version 3 in policy group prod.\n",
-		},
+	pack := &backend.MockPolicyPack{
+		RefF:    func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
+		EnableF: func(context.Context, string, backend.PolicyPackOperation) error { return nil },
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			pack := &backend.MockPolicyPack{
-				RefF:    func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "p"} },
-				EnableF: func(context.Context, string, backend.PolicyPackOperation) error { return nil },
-			}
-			client := stubPolicyGroupClient{get: func(context.Context, string, string) (cloudapitype.PolicyGroup, error) {
-				return cloudapitype.PolicyGroup{AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{tt.pack}}, nil
-			}}
-			out, err := runPolicyPackCmd(t, newPolicyEnableCmdWith(stubPolicyPackDeps(pack, client)),
-				"acme/p", "latest", "--policy-group", "prod")
-			require.NoError(t, err)
-			assert.Equal(t, tt.want, out)
-		})
+	group := cloudapitype.PolicyGroup{
+		Name:               "prod",
+		AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{{Name: "p", Version: 3, VersionTag: "1.2.0"}},
 	}
+	client := stubPolicyGroupClient{get: func(context.Context, string, string) (cloudapitype.PolicyGroup, error) {
+		return group, nil
+	}}
+	out, err := runPolicyPackCmd(t, newPolicyEnableCmdWith(stubPolicyPackDeps(pack, client)),
+		"acme/p", "latest", "--policy-group", "prod")
+	require.NoError(t, err)
+
+	var want bytes.Buffer
+	require.NoError(t, renderPolicyGroupGetText(&want, group))
+	assert.Equal(t, want.String(), out)
 }

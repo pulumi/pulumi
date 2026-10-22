@@ -68,7 +68,7 @@ func TestPolicyValidate_DefaultMessage(t *testing.T) {
 		newPolicyValidateCmdWith(stubPolicyPackDeps(pack, stubPolicyGroupClient{})),
 		"acme/p", "1.0.0", "--config", writeValidateConfig(t))
 	require.NoError(t, err)
-	assert.Equal(t, "Policy Pack configuration is valid.\n", out)
+	assert.Equal(t, "Policy pack acme/p version 1.0.0 configuration is valid.\n", out)
 }
 
 func TestPolicyValidate_InvalidStillErrors(t *testing.T) {

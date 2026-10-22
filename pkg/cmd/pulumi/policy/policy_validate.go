@@ -37,7 +37,8 @@ type policyValidateResult struct {
 type policyValidateRenderFunc func(w io.Writer, result policyValidateResult) error
 
 func renderPolicyValidateText(w io.Writer, result policyValidateResult) error {
-	fmt.Fprintln(w, "Policy Pack configuration is valid.")
+	fmt.Fprintf(w, "Policy pack %s/%s version %s configuration is valid.\n",
+		result.Organization, result.PolicyPack, result.VersionTag)
 	return nil
 }
 
