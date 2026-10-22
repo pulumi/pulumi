@@ -102,8 +102,8 @@ func agentCredentialUseFromContext(ctx context.Context) *agentCredentialUse {
 
 type skipAgentSignupContextKey struct{}
 
-// ContextWithoutAgentSignup returns a context in which agent mode never creates a new agent account,
-// for use by `pulumi login`.
+// ContextWithoutAgentSignup returns a context in which agent mode neither reuses shared agent credentials
+// nor creates a new agent account, for use by `pulumi login`.
 func ContextWithoutAgentSignup(ctx context.Context) context.Context {
 	return context.WithValue(ctx, skipAgentSignupContextKey{}, true)
 }
@@ -676,6 +676,16 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		logging.V(7).Infof("Deleted expired shared agent credentials")
 	}
 
+	// `pulumi login` logs the user in as themselves, so it neither reuses nor creates agent credentials.
+	// An existing agent account stays reachable through its claim URL.
+	if skipAgentSignup(ctx) {
+		if workspace.IsUndecryptableCredentials(defaultCredsErr) {
+			return nil, defaultCredsErr
+		}
+		logging.V(7).Infof("Agent signup disabled for this command; ignoring shared agent credentials for %q", cloudURL)
+		return nil, nil
+	}
+
 	agentAccount, err := workspace.GetAgentAccount(cloudURL)
 	if err != nil {
 		return nil, err
@@ -694,11 +704,6 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 			}
 			MarkAgentCredentialsUsed(ctx, cloudURL)
 			return &agentAccount, nil
-		}
-		// `pulumi login` is how users recover from rejected agent credentials.
-		if skipAgentSignup(ctx) && !workspace.IsUndecryptableCredentials(defaultCredsErr) {
-			logging.V(7).Infof("Shared agent credentials for %q are not valid; ignoring them for this login", cloudURL)
-			return nil, nil
 		}
 		if expiresAt, tokenValid := workspace.AgentAccessTokenExpiresAt(agentAccount, now); tokenValid {
 			logging.V(7).Infof(
@@ -731,11 +736,6 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	// not be papered over with a fresh ephemeral agent identity.
 	if workspace.IsUndecryptableCredentials(defaultCredsErr) {
 		return nil, defaultCredsErr
-	}
-
-	if skipAgentSignup(ctx) {
-		logging.V(7).Infof("Agent signup disabled for this command; not creating a new agent account")
-		return nil, nil
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
