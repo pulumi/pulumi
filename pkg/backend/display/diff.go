@@ -235,9 +235,28 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 	prefix string, linePrefix string, opts Options,
 ) string {
-	// Colorize mandatory and warning violations differently.
+	// Colorize mandatory and warning violations differently, and dim exempted ones, tagged before their level. On a
+	// single line, the exempted tag lists the exceptions; otherwise each exception and its reason follows the message.
 	c := colors.SpecWarning
-	if payload.EnforcementLevel == apitype.Mandatory {
+	tag := fmt.Sprintf("[%s]", payload.EnforcementLevel)
+	message := strings.TrimSuffix(payload.Message, "\n")
+	if len(payload.Exceptions) > 0 {
+		c = colors.BrightBlack
+		exempted := "exempted"
+		ids := make([]string, 0, len(payload.Exceptions))
+		lines := make([]string, 0, 1+len(payload.Exceptions))
+		lines = append(lines, message)
+		for _, e := range payload.Exceptions {
+			ids = append(ids, e.ID)
+			lines = append(lines, e.ID+": "+e.Reason)
+		}
+		if linePrefix == "" {
+			exempted += ": " + strings.Join(ids, ", ")
+		} else {
+			message = strings.Join(lines, "\n")
+		}
+		tag = fmt.Sprintf("[%s] %s", exempted, tag)
+	} else if payload.EnforcementLevel == apitype.Mandatory {
 		c = colors.SpecError
 	}
 
@@ -248,8 +267,8 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 
 	// Print the individual policy's name and, for resource-scoped violations, the
 	// target resource type and name. Stack-level violations carry no resource URN.
-	policyLine := fmt.Sprintf("%s[%s]%s  %s%s%s",
-		c, payload.EnforcementLevel, severity, payload.PolicyName, colors.Reset,
+	policyLine := fmt.Sprintf("%s%s%s  %s%s%s",
+		c, tag, severity, payload.PolicyName, colors.Reset,
 		policyResourceClause(payload.ResourceURN, opts))
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
@@ -266,7 +285,6 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 	}
 
 	// The message may span multiple lines, so we massage it so it will be indented properly.
-	message := strings.TrimSuffix(payload.Message, "\n")
 	message = strings.ReplaceAll(message, "\n", "\n"+linePrefix)
 	policyLine = fmt.Sprintf("%s%s%s", policyLine, linePrefix, message)
 	return opts.Color.Colorize(policyLine + "\n")
