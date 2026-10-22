@@ -76,16 +76,7 @@ func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
 		return nil, fmt.Errorf("reading project: %w", err)
 	}
 
-	// Resolve the URL ourselves before probing credentials so we honour
-	// a project-declared backend (Pulumi.yaml's `backend.url`) without
-	// triggering CurrentBackend's interactive login path.
-	var projectURL string
-	if project != nil {
-		if u, perr := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project); perr == nil {
-			projectURL = u
-		}
-	}
-	cloudURL := httpstate.ValueOrDefaultURL(ws, projectURL)
+	cloudURL := resolveCloudURL(ws, project)
 
 	// Probe credentials non-interactively. (account == nil, err == nil) is
 	// the legitimate not-logged-in case — fall through to anonymous below.
@@ -134,6 +125,23 @@ func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
 		StackName: stackName,
 		LoggedIn:  true,
 	}, nil
+}
+
+// resolveCloudURL returns the cloud URL a `pulumi api` credential probe should
+// target: the same URL CurrentBackend resolves, so we validate the token for
+// the backend we actually build. GetCurrentCloudURL honours PULUMI_BACKEND_URL,
+// a project-declared backend (Pulumi.yaml's `backend.url`), and stored
+// credentials; ValueOrDefaultURL supplies the default cloud URL when none is
+// set. Resolving it here lets us probe credentials without triggering
+// CurrentBackend's interactive login path.
+func resolveCloudURL(ws pkgWorkspace.Context, project *workspace.Project) string {
+	// GetCurrentCloudURL only errors when stored credentials can't be read;
+	// treat that as "no URL" so ValueOrDefaultURL falls back to the default.
+	backendURL, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project)
+	if err != nil {
+		backendURL = ""
+	}
+	return httpstate.ValueOrDefaultURL(ws, backendURL)
 }
 
 // currentStackSelection returns the (org, project, stack) of the user's
