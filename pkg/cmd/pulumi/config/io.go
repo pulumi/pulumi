@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -37,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // OverrideEnvFlag registers the --override-env flag on cmd, binding it to overrides.
@@ -78,6 +80,11 @@ func GetStackConfigurationOrLatest(
 		ctx, sink, ssml, stack, project,
 		func(err error) (config.Map, error) {
 			if errors.Is(err, workspace.ErrProjectNotFound) {
+				if stack.ConfigLocation().ManagedEnvironment != "" {
+					_, _, err := managedEnvironmentDefinition(stack, &workspace.ProjectStack{})
+					contract.Assertf(err != nil, "an empty stack file has no managed environment definition")
+					return nil, err
+				}
 				// This error indicates that we're not being run in a project directory.
 				// We should fallback on the backend.
 				latest, err := backend.GetLatestConfiguration(ctx, stack)
@@ -135,7 +142,7 @@ func getStackConfigurationFromProjectStack(
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
 ) (backend.StackConfiguration, error) {
-	env, diags, err := openStackEnv(ctx, stack, workspaceStack, envOverrides)
+	env, diags, managedEnv, err := openStackEnvWithManaged(ctx, stack, workspaceStack, envOverrides)
 	if err != nil {
 		return backend.StackConfiguration{}, fmt.Errorf("opening environment: %w", err)
 	}
@@ -144,6 +151,9 @@ func getStackConfigurationFromProjectStack(
 		// to thread through here. Writes go to the process streams directly.
 		printESCDiagnostics(os.Stderr, diags) //nolint:forbidigo
 		return backend.StackConfiguration{}, errors.New("opening environment: too many errors")
+	}
+	if managedEnv != nil {
+		printManagedEnvironmentNotices(os.Stderr, stack, managedEnv) //nolint:forbidigo
 	}
 
 	var pulumiEnv esc.Value
@@ -178,6 +188,7 @@ func getStackConfigurationFromProjectStack(
 			Environment:        pulumiEnv,
 			Config:             workspaceStack.Config,
 			Decrypter:          config.NewPanicCrypter(),
+			ManagedEnvironment: managedEnv,
 		}, nil
 	}
 
@@ -188,6 +199,7 @@ func getStackConfigurationFromProjectStack(
 		Environment:        pulumiEnv,
 		Config:             workspaceStack.Config,
 		Decrypter:          crypter,
+		ManagedEnvironment: managedEnv,
 	}, nil
 }
 
@@ -235,7 +247,82 @@ func needsCrypter(cfg config.Map, env esc.Value) bool {
 	return cfg.HasSecureValue() || hasSecrets(env)
 }
 
+func printManagedEnvironmentNotices(
+	w io.Writer,
+	stack backend.Stack,
+	managedEnv *apitype.UpdateProgramEnvironment,
+) {
+	if managedEnv.ChangeRequestID != "" {
+		fmt.Fprintf(w, "environment %s will be updated from revision %d\n",
+			stack.ConfigLocation().ManagedEnvironment, managedEnv.BaseRevision)
+	}
+}
+
 func openStackEnv(
+	ctx context.Context,
+	stack backend.Stack,
+	workspaceStack *workspace.ProjectStack,
+	envOverrides []string,
+) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+	env, diags, _, err := openStackEnvWithManaged(ctx, stack, workspaceStack, envOverrides)
+	return env, diags, err
+}
+
+func openStackEnvWithManaged(
+	ctx context.Context,
+	stack backend.Stack,
+	workspaceStack *workspace.ProjectStack,
+	envOverrides []string,
+) (*esc.Environment, []apitype.EnvironmentDiagnostic, *apitype.UpdateProgramEnvironment, error) {
+	loc := stack.ConfigLocation()
+	if loc.ManagedEnvironment == "" {
+		env, diags, err := openUnmanagedStackEnv(ctx, stack, workspaceStack, envOverrides)
+		return env, diags, nil, err
+	}
+
+	org, definition, err := managedEnvironmentDefinition(stack, workspaceStack)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if len(envOverrides) != 0 {
+		return nil, nil, nil, cmdStack.ManagedEnvironmentNotSupportedError("--override-env")
+	}
+	project, name := loc.ManagedEnvironmentRef()
+
+	managed, ok := stack.Backend().(backend.ManagedEnvironmentsBackend)
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("backend %v does not support ESC-managed environments", stack.Backend().Name())
+	}
+	evaluation, diags, err := managed.EvaluateManagedEnvironment(ctx, org, project, name, definition)
+	if err != nil || len(diags) != 0 {
+		return nil, diags, nil, err
+	}
+	return evaluation.Environment, nil, &apitype.UpdateProgramEnvironment{
+		BaseRevision:    evaluation.BaseRevision,
+		ChangeRequestID: evaluation.ChangeRequestID,
+		DraftRevision:   evaluation.DraftRevision,
+	}, nil
+}
+
+func managedEnvironmentDefinition(
+	stack backend.Stack,
+	workspaceStack *workspace.ProjectStack,
+) (string, []byte, error) {
+	orgNamer, ok := stack.(interface{ OrgName() string })
+	if !ok {
+		return "", nil, fmt.Errorf("cannot determine organization for stack %v", stack.Ref())
+	}
+	org := orgNamer.OrgName()
+	node, err := cmdStack.ManagedEnvironmentDefinition(
+		stack.ConfigLocation(), workspaceStack, org, stack.Ref().Name().String(), "")
+	if err != nil {
+		return "", nil, err
+	}
+	definition, err := yaml.Marshal(node)
+	return org, definition, err
+}
+
+func openUnmanagedStackEnv(
 	ctx context.Context,
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
