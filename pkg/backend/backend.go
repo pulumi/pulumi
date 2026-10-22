@@ -311,6 +311,31 @@ type EnvironmentsBackend interface {
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
+// ManagedEnvironmentEvaluation is the result of evaluating a stack's managed environment definition.
+type ManagedEnvironmentEvaluation struct {
+	Environment *esc.Environment
+	// BaseRevision is the published revision the local definition was compared with.
+	BaseRevision int
+	// ChangeRequestID is set when the definition differs from BaseRevision.
+	ChangeRequestID string
+	// DraftRevision is the change request revision that was opened. It is meaningful only when
+	// ChangeRequestID is set.
+	DraftRevision int
+}
+
+// ManagedEnvironmentsBackend is implemented by backends whose stacks can manage an ESC environment.
+type ManagedEnvironmentsBackend interface {
+	// EvaluateManagedEnvironment opens the managed environment project/name with the stack's definition, creating a
+	// draft when the definition differs from the published one.
+	EvaluateManagedEnvironment(
+		ctx context.Context,
+		org string,
+		project string,
+		name string,
+		definition []byte,
+	) (*ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error)
+}
+
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the
 // ability to export a specific versions of a stack's deployment. This isn't a requirement for all backends and
 // should be checked for dynamically.
@@ -344,6 +369,10 @@ type StackConfiguration struct {
 	Environment esc.Value
 	Config      config.Map
 	Decrypter   config.Decrypter
+
+	// ManagedEnvironment is the revision or draft of the stack's managed ESC environment that Environment came from;
+	// nil for unmanaged stacks.
+	ManagedEnvironment *apitype.UpdateProgramEnvironment
 }
 
 // LatestConfiguration holds the configuration retrieved from the most recent deployment.
