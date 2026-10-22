@@ -530,6 +530,10 @@ type CreateStackOptions struct {
 	// Config is the optional cloud stack config to use instead of reading from a local file on disk.
 	// This is only used by the Service backend.
 	Config *apitype.StackConfig
+
+	// ManagedEnvironment asks the backend to create an ESC environment that the stack manages.
+	// This is only used by the Service backend.
+	ManagedEnvironment bool
 }
 
 // TarReaderCloser is a [tar.Reader] that owns it's backing memory.

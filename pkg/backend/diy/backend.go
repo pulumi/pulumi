@@ -870,6 +870,9 @@ func (b *diyBackend) CreateStack(
 	if opts != nil && opts.Config != nil {
 		return nil, backend.ErrConfigNotSupported
 	}
+	if opts != nil && opts.ManagedEnvironment {
+		return nil, fmt.Errorf("%w by the DIY backend", backend.ErrManagedEnvironmentNotSupported)
+	}
 
 	if err := backend.CurrentProjectContradictsWorkspace(b.currentProject.Load(), stackRef); err != nil {
 		return nil, err

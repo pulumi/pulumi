@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -110,6 +111,29 @@ func stackConfigFilePath(stack string, configFile string) string {
 		return path
 	}
 	return fmt.Sprintf("Pulumi.%s.yaml", stack)
+}
+
+func managedStackFilePath(stackName tokens.QName, configFile string) (string, error) {
+	path := configFile
+	if path == "" {
+		_, detected, err := workspace.DetectProjectStackPath(stackName)
+		if err != nil {
+			return "", fmt.Errorf("could not detect project stack path: %w", err)
+		}
+		path = detected
+	}
+	if ext := filepath.Ext(path); ext != encoding.YAMLExt && ext != ".yml" {
+		return "", errManagedEnvironmentRequiresYAML
+	}
+	return path, nil
+}
+
+func newManagedEnvironmentPlaceholder() *workspace.Environment {
+	var env workspace.Environment
+	// values stays block style: yamlutil restyles only an empty flow collection that gains content.
+	err := yaml.Unmarshal([]byte("values:\n  pulumiConfig: {}\n"), &env)
+	contract.AssertNoErrorf(err, "parsing the managed environment placeholder")
+	return &env
 }
 
 // A JSON stack file whose environment is a list or absent doesn't yield ErrJSONManagedDefinition.

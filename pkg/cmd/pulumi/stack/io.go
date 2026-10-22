@@ -349,6 +349,8 @@ type CreateStackOptions struct {
 	UseRemoteConfig bool
 	// ConfigFile overrides the path the stack's configuration is read from and written to.
 	ConfigFile string
+	// ManagedEnvironment creates an ESC environment that the stack manages, defined in the stack's YAML config file.
+	ManagedEnvironment bool
 	// Quiet suppresses the "Created stack" announcement so the caller can own the creation summary.
 	Quiet bool
 }
@@ -375,10 +377,23 @@ var ErrSaveStackConfig = errors.New("saving stack config")
 func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	b backend.Backend, stackRef backend.StackReference, root string, opts CreateStackOptions,
 ) (backend.Stack, error) {
+	var managedStackFile string
+	if opts.ManagedEnvironment {
+		path, err := managedStackFilePath(stackRef.Name().Q(), opts.ConfigFile)
+		if err != nil {
+			return nil, err
+		}
+		managedStackFile = path
+	}
+
 	ps, needsSave, sm, err := createSecretsManagerForNewStack(
 		ctx, sink, ws, b, stackRef, opts.SecretsProvider, opts.ConfigFile)
 	if err != nil {
 		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
+	}
+	if opts.ManagedEnvironment && (len(ps.Config) > 0 || ps.Environment != nil) {
+		return nil, fmt.Errorf("%s already has config or an environment; move it aside before creating a managed stack",
+			managedStackFile)
 	}
 
 	// If we have a non-empty secrets manager, we'll send it off to the backend as part of the initial state to be stored
@@ -411,7 +426,8 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	}
 
 	backendOpts := backend.CreateStackOptions{
-		Teams: opts.Teams,
+		Teams:              opts.Teams,
+		ManagedEnvironment: opts.ManagedEnvironment,
 	}
 
 	var escEnvironment string
@@ -440,6 +456,17 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	if !opts.Quiet {
 		sink.Infof(diag.Message("", "Created stack '%s'"), stack.Ref())
+	}
+
+	if opts.ManagedEnvironment {
+		managedEnv := stack.ConfigLocation().ManagedEnvironment
+		if managedEnv == "" {
+			return nil, fmt.Errorf("stack %[1]s was created without an ESC environment; "+
+				"remove it with `pulumi stack rm %[1]s`", stack.Ref())
+		}
+		sink.Infof(diag.Message("", "Created environment %s for stack configuration"), managedEnv)
+		ps.Environment = newManagedEnvironmentPlaceholder()
+		needsSave = true
 	}
 
 	if escEnvironment != "" {

@@ -836,6 +836,12 @@ func TestDIYBackendRejectsStackInitOptions(t *testing.T) {
 	require.NoError(t, err)
 	_, err = diy.CreateStack(ctx, fakeStackRef, "", nil, illegalOptions)
 	assert.ErrorIs(t, err, backend.ErrTeamsNotSupported)
+
+	_, err = diy.CreateStack(ctx, fakeStackRef, "", nil, &backend.CreateStackOptions{ManagedEnvironment: true})
+	assert.ErrorIs(t, err, backend.ErrManagedEnvironmentNotSupported)
+	s, err := diy.GetStack(ctx, fakeStackRef)
+	require.NoError(t, err)
+	assert.Nil(t, s)
 }
 
 func TestLegacyFolderStructure(t *testing.T) {

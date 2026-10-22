@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,6 +34,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -167,4 +171,120 @@ func TestCreateStackQuiet(t *testing.T) {
 			}
 		})
 	}
+}
+
+func newManagedTestBackend(managedEnv string, createdManaged *bool) *backend.MockBackend {
+	return &backend.MockBackend{
+		NameF:              func() string { return "mock" },
+		ValidateStackNameF: func(string) error { return nil },
+		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+		CreateStackF: func(
+			_ context.Context,
+			ref backend.StackReference,
+			_ string,
+			_ *apitype.UntypedDeployment,
+			opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			*createdManaged = opts.ManagedEnvironment
+			return &backend.MockStack{
+				RefF: func() backend.StackReference { return ref },
+				ConfigLocationF: func() backend.StackConfigLocation {
+					return backend.StackConfigLocation{ManagedEnvironment: managedEnv}
+				},
+			}, nil
+		},
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+	}
+}
+
+func TestCreateStackManagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		stackFile   string
+		contents    string
+		managedEnv  string
+		wantCreated bool
+		wantErr     string
+	}{
+		{name: "created", stackFile: "Pulumi.dev.yaml", managedEnv: "proj/renamed", wantCreated: true},
+		{name: "JSON stack file", stackFile: "Pulumi.dev.json", managedEnv: "proj/renamed", wantErr: managedRequiresYAML},
+		{
+			name:       "existing config",
+			stackFile:  "Pulumi.dev.yaml",
+			contents:   "config:\n  proj:a: b\n",
+			managedEnv: "proj/renamed",
+			wantErr:    "already has config or an environment; move it aside before creating a managed stack",
+		},
+		{
+			name:       "existing environment",
+			stackFile:  "Pulumi.dev.yaml",
+			contents:   "environment:\n  - other\n",
+			managedEnv: "proj/renamed",
+			wantErr:    "already has config or an environment; move it aside before creating a managed stack",
+		},
+		{
+			name:        "service without managed environments",
+			stackFile:   "Pulumi.dev.yaml",
+			wantCreated: true,
+			wantErr:     "stack dev was created without an ESC environment; remove it with `pulumi stack rm dev`",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+			stackFile := filepath.Join(dir, tt.stackFile)
+			if tt.contents != "" {
+				require.NoError(t, os.WriteFile(stackFile, []byte(tt.contents), 0o600))
+			}
+			ws := &pkgWorkspace.MockContext{
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
+					return &workspace.Project{Name: "proj"}, filepath.Join(dir, "Pulumi.yaml"), nil
+				},
+			}
+			var out bytes.Buffer
+			sink := diag.DefaultSink(&out, io.Discard, diag.FormatOptions{Color: colors.Never})
+			var createdManaged bool
+
+			_, err := CreateStack(t.Context(), sink, ws, newManagedTestBackend(tt.managedEnv, &createdManaged),
+				&backend.MockStackReference{StringV: "dev", NameV: tokens.MustParseStackName("dev")}, "",
+				CreateStackOptions{ConfigFile: stackFile, ManagedEnvironment: true})
+
+			assert.Equal(t, tt.wantCreated, createdManaged)
+			if tt.wantErr != "" {
+				assert.ErrorContains(t, err, tt.wantErr)
+				if tt.contents == "" {
+					assert.NoFileExists(t, stackFile)
+				}
+				return
+			}
+			require.NoError(t, err)
+			assert.Contains(t, out.String(), "Created environment proj/renamed for stack configuration")
+		})
+	}
+}
+
+func TestCreateStackManagedEnvironmentSaveFails(t *testing.T) {
+	t.Parallel()
+
+	notADir := filepath.Join(t.TempDir(), "file")
+	require.NoError(t, os.WriteFile(notADir, nil, 0o600))
+	stackFile := filepath.Join(notADir, "Pulumi.dev.yaml")
+	var createdManaged bool
+
+	_, err := CreateStack(t.Context(), diagtest.LogSink(t), &pkgWorkspace.MockContext{},
+		newManagedTestBackend("proj/renamed", &createdManaged),
+		&backend.MockStackReference{StringV: "dev", NameV: tokens.MustParseStackName("dev")}, "",
+		CreateStackOptions{ConfigFile: stackFile, ManagedEnvironment: true})
+	require.ErrorIs(t, err, ErrSaveStackConfig)
+
+	_, err = ManagedEnvironmentDefinition(managedLoc, &workspace.ProjectStack{}, "acme", "dev", stackFile)
+	assert.ErrorContains(t, err, ManagedEnvironmentMissingFromFileHint("acme", "proj/renamed", "dev", stackFile))
 }

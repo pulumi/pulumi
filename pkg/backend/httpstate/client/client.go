@@ -1276,6 +1276,7 @@ func (pc *Client) CreateStack(
 	teams []string,
 	state *apitype.UntypedDeployment,
 	config *apitype.StackConfig,
+	managedEnvironment bool,
 ) (apitype.Stack, CreateStackDetails, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackTags(tags); err != nil {
@@ -1289,11 +1290,12 @@ func (pc *Client) CreateStack(
 		Tags:        tags,
 	}
 	createStackReq := apitype.CreateStackRequest{
-		StackName: stackID.Stack.String(),
-		Tags:      tags,
-		Teams:     teams,
-		State:     state,
-		Config:    config,
+		StackName:          stackID.Stack.String(),
+		Tags:               tags,
+		Teams:              teams,
+		State:              state,
+		Config:             config,
+		ManagedEnvironment: managedEnvironment,
 	}
 
 	var createStackResp apitype.CreateStackResponse
@@ -1301,6 +1303,9 @@ func (pc *Client) CreateStack(
 	if err := pc.restCall(
 		ctx, "POST", endpoint, nil, &createStackReq, &createStackResp); err != nil {
 		return apitype.Stack{}, CreateStackDetails{}, err
+	}
+	if createStackResp.ManagedEnvironment != "" {
+		stack.ManagedEnvironment = &createStackResp.ManagedEnvironment
 	}
 
 	return stack, CreateStackDetails{

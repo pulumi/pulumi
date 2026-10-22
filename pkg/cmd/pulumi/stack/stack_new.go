@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -102,6 +103,15 @@ func newStackNewCmd() *cobra.Command {
 		&sicmd.remoteConfig, "remote-config", false, "Store stack configuration remotely",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-config")
+	cmd.PersistentFlags().BoolVar(
+		&sicmd.escConfig, "esc-config", false,
+		"[EXPERIMENTAL] Create an ESC environment, managed by the stack, that holds the stack's configuration",
+	)
+	if !env.Experimental.Value() {
+		_ = cmd.PersistentFlags().MarkHidden("esc-config")
+	}
+	cmd.MarkFlagsMutuallyExclusive("esc-config", "remote-config")
+	cmd.MarkFlagsMutuallyExclusive("esc-config", "copy-config-from")
 	cmd.PersistentFlags().BoolVarP(
 		&sicmd.yes, "yes", "y", false,
 		"Skip interactive prompts; fail if required information is missing")
@@ -116,6 +126,7 @@ type stackNewCmd struct {
 	noSelect        bool
 	teams           []string
 	remoteConfig    bool
+	escConfig       bool
 	yes             bool
 	stdout          io.Writer
 
@@ -229,10 +240,11 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, CreateStackOptions{
-		Teams:           sanitizeTeams(cmd.teams),
-		SetCurrent:      !cmd.noSelect,
-		SecretsProvider: cmd.secretsProvider,
-		UseRemoteConfig: cmd.remoteConfig,
+		Teams:              sanitizeTeams(cmd.teams),
+		SetCurrent:         !cmd.noSelect,
+		SecretsProvider:    cmd.secretsProvider,
+		UseRemoteConfig:    cmd.remoteConfig,
+		ManagedEnvironment: cmd.escConfig,
 	})
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
