@@ -1,0 +1,4 @@
+component: cli/cloud
+kind: fix
+body: Omit the empty scan status from `pulumi insights account new` and `pulumi insights account ls` output for accounts that have not been scanned
+time: 2026-10-20T00:00:00Z

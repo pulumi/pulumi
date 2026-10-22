@@ -39,6 +39,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -3594,13 +3595,38 @@ func (pc *Client) SearchInsightsResources(
 // so the service applies its own defaults.
 func (pc *Client) ListInsightsAccounts(
 	ctx context.Context, org string, params apitype.ListInsightsAccountsParams,
-) (apitype.ListInsightsAccountsResponse, error) {
+) (cloudapitype.ListInsightsAccountsResponse, error) {
 	path := fmt.Sprintf("/api/preview/insights/%s/accounts", url.PathEscape(org))
-	var resp apitype.ListInsightsAccountsResponse
-	if err := pc.restCall(ctx, "GET", path, &params, nil, &resp); err != nil {
-		return apitype.ListInsightsAccountsResponse{}, err
+	var resp struct {
+		cloudapitype.ListInsightsAccountsResponse
+		Accounts []insightsAccountWire `json:"accounts"`
 	}
-	return resp, nil
+	if err := pc.restCall(ctx, "GET", path, &params, nil, &resp); err != nil {
+		return cloudapitype.ListInsightsAccountsResponse{}, err
+	}
+	result := resp.ListInsightsAccountsResponse
+	if resp.Accounts != nil {
+		result.Accounts = make([]cloudapitype.InsightsAccount, len(resp.Accounts))
+		for i, account := range resp.Accounts {
+			result.Accounts[i] = account.toInsightsAccount()
+		}
+	}
+	return result, nil
+}
+
+// insightsAccountWire decodes an Insights account keeping the provider config as raw JSON, so that it is shown
+// exactly as the service sent it rather than re-ordered through a generic map.
+type insightsAccountWire struct {
+	cloudapitype.InsightsAccount
+	ProviderConfig json.RawMessage `json:"providerConfig"`
+}
+
+func (w insightsAccountWire) toInsightsAccount() cloudapitype.InsightsAccount {
+	account := w.InsightsAccount
+	if len(w.ProviderConfig) > 0 {
+		account.ProviderConfig = w.ProviderConfig
+	}
+	return account
 }
 
 // GetInsightsScan fetches the full workflow run for a single Pulumi Insights
@@ -3654,7 +3680,7 @@ func (pc *Client) ListInsightsAccountScans(
 // GetInsightsResource. The endpoint returns 204 No Content on success; no
 // response body is parsed.
 func (pc *Client) CreateInsightsAccount(
-	ctx context.Context, org, account string, req apitype.CreateInsightsAccountRequest,
+	ctx context.Context, org, account string, req cloudapitype.CreateInsightsAccountRequest,
 ) error {
 	path := fmt.Sprintf(
 		"/api/preview/insights/%s/accounts/%s",
@@ -3670,17 +3696,17 @@ func (pc *Client) CreateInsightsAccount(
 // GetInsightsResource.
 func (pc *Client) GetInsightsAccount(
 	ctx context.Context, org, account string,
-) (apitype.InsightsAccount, error) {
+) (cloudapitype.InsightsAccount, error) {
 	path := fmt.Sprintf(
 		"/api/preview/insights/%s/accounts/%s",
 		url.PathEscape(org),
 		url.PathEscape(url.PathEscape(account)),
 	)
-	var resp apitype.InsightsAccount
+	var resp insightsAccountWire
 	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
-		return apitype.InsightsAccount{}, err
+		return cloudapitype.InsightsAccount{}, err
 	}
-	return resp, nil
+	return resp.toInsightsAccount(), nil
 }
 
 // ListESCEnvironments fetches a page of ESC environments visible to the
