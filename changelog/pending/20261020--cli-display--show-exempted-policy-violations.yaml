@@ -1,0 +1,3 @@
+component: cli/display
+kind: feat
+body: Collapse policy violations that an exception exempts under `Policies:` into one line per policy, and add `--show-policy-exceptions` to `up` and `preview` to list them with their exceptions
