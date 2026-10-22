@@ -204,12 +204,13 @@ func renderPolicyIssueGetText(w io.Writer, resp cloudapitype.GetPolicyIssueRespo
 	if issue.Priority != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Priority:", issue.Priority)
 	}
-	if assignee := policyIssueAssignee(issue); assignee != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Assignee:", assignee)
+	if a := issue.AssignedTo; a != nil && a.GitHubLogin != "" {
+		fmt.Fprintf(w, "%-20s %s\n", "Assignee:", a.GitHubLogin)
 	}
-	if group := policyIssueGroupName(issue); group != "" {
-		if groupType := policyIssueGroupType(issue); groupType != "" {
-			group = fmt.Sprintf("%s (%s)", group, groupType)
+	if issue.PolicyGroupName != nil && *issue.PolicyGroupName != "" {
+		group := *issue.PolicyGroupName
+		if t := issue.PolicyGroupType; t != nil && *t != "" {
+			group = fmt.Sprintf("%s (%s)", group, *t)
 		}
 		fmt.Fprintf(w, "%-20s %s\n", "Policy group:", group)
 	}
@@ -258,27 +259,6 @@ func formatPolicyIssueTime(t *time.Time) string {
 func printPolicyIssueMultiline(w io.Writer, label, value string) {
 	value = strings.ReplaceAll(value, "\n", "\n"+strings.Repeat(" ", 21))
 	fmt.Fprintf(w, "%-20s %s\n", label, value)
-}
-
-func policyIssueAssignee(issue cloudapitype.PolicyIssue) string {
-	if issue.AssignedTo == nil {
-		return ""
-	}
-	return issue.AssignedTo.GitHubLogin
-}
-
-func policyIssueGroupName(issue cloudapitype.PolicyIssue) string {
-	if issue.PolicyGroupName == nil {
-		return ""
-	}
-	return *issue.PolicyGroupName
-}
-
-func policyIssueGroupType(issue cloudapitype.PolicyIssue) string {
-	if issue.PolicyGroupType == nil {
-		return ""
-	}
-	return string(*issue.PolicyGroupType)
 }
 
 func formatPolicyFramework(framework *cloudapitype.AppPolicyComplianceFramework) string {
