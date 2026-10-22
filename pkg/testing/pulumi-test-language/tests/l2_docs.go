@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -75,26 +76,26 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:docs")
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:enum")
 					enumRes := RequireSingleNamedResource(l, snap.Resources, "enumRes")
-					assert.Equal(l, resource.NewPropertyMapFromMap(map[string]any{
-						"intEnum":    1.0,
-						"stringEnum": "one",
-					}), enumRes.Outputs)
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"intEnum":    property.New(1.0),
+						"stringEnum": property.New("one"),
+					}), resource.FromResourcePropertyMap(enumRes.Outputs))
 					res := RequireSingleResource(l, snap.Resources, "docs:index:Resource")
 
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"in":           true,
-						"externalEnum": "one",
+					want := property.NewMap(map[string]property.Value{
+						"in":           property.New(true),
+						"externalEnum": property.New("one"),
 					})
-					assert.Equal(l, want, res.Inputs, "expected inputs to be %v", want)
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"in":           true,
-						"out":          false,
-						"externalEnum": "one",
-						"data": map[string]any{
-							"state": "internal data",
-						},
+					assert.Equal(l, want, resource.FromResourcePropertyMap(res.Inputs), "expected inputs to be %v", want)
+					want = property.NewMap(map[string]property.Value{
+						"in":           property.New(true),
+						"out":          property.New(false),
+						"externalEnum": property.New("one"),
+						"data": property.New(map[string]property.Value{
+							"state": property.New("internal data"),
+						}),
 					})
-					assert.Equal(l, want, res.Outputs, "expected outputs to be %v", want)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(res.Outputs), "expected outputs to be %v", want)
 				},
 			},
 		},

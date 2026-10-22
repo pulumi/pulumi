@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,19 +38,19 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 5)
+					require.Equal(l, 5, outputs.Len())
 					AssertPropertyMapMember(l, outputs,
-						"roundtripSecret", resource.MakeSecret(resource.NewProperty("this is a secret")))
+						"roundtripSecret", property.New("this is a secret").WithSecret(true))
 					AssertPropertyMapMember(l, outputs,
-						"roundtripNotSecret", resource.NewProperty("this is plaintext"))
+						"roundtripNotSecret", property.New("this is plaintext"))
 					AssertPropertyMapMember(l, outputs,
-						"open", resource.NewProperty("this is a secret"))
+						"open", property.New("this is a secret"))
 					AssertPropertyMapMember(l, outputs,
-						"close", resource.MakeSecret(resource.NewProperty("this is plaintext")))
+						"close", property.New("this is plaintext").WithSecret(true))
 					AssertPropertyMapMember(l, outputs,
-						"double", resource.MakeSecret(resource.NewProperty("this is a secret")))
+						"double", property.New("this is a secret").WithSecret(true))
 				},
 			},
 		},
