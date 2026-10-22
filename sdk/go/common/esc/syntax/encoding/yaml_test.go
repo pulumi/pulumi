@@ -182,6 +182,35 @@ baz: qux
 	assert.Equal(t, expected, b.String())
 }
 
+func TestYAMLFlowWithChildCommentReEmitsAsBlock(t *testing.T) {
+	t.Parallel()
+	// A flow-style sequence whose child carries a comment produces ambiguous YAML
+	// when re-emitted as flow (e.g. `items: [one, # first\n  two, three]`), which
+	// stricter parsers reject. EncodeYAML should convert such nodes to block style.
+	const doc = `items: [
+  one, # first
+  two,
+  three,
+]
+`
+	const expected = `items:
+  - one # first
+  - two
+  - three
+`
+
+	rootNode, diags := DecodeYAML("yaml", yaml.NewDecoder(strings.NewReader(doc)), nil)
+	require.Empty(t, diags)
+
+	var b bytes.Buffer
+	enc := yaml.NewEncoder(&b)
+	enc.SetIndent(2)
+	diags = EncodeYAML(enc, rootNode)
+
+	assert.Empty(t, diags)
+	assert.Equal(t, expected, b.String())
+}
+
 func TestYAMLDeleteAllValuesThenAdd(t *testing.T) {
 	t.Parallel()
 	const doc = `values:
