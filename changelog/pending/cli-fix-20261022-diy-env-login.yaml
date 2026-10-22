@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Report that Pulumi ESC requires Pulumi Cloud before attempting login on DIY backends
+time: 2026-10-22T15:44:05+00:00
