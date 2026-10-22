@@ -1,0 +1,4 @@
+component: cli/plugin
+kind: fix
+body: Fix plugin and policy pack tarball extraction writing outside the destination directory through symlinks created by earlier entries
+time: 2026-10-16T12:00:00.000000+00:00
