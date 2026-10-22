@@ -46,17 +46,13 @@ type policyGetClient interface {
 	GetPolicyPack(
 		ctx context.Context, orgName, name, versionTag string,
 	) (cloudapitype.AppGetPolicyPackResponse, error)
-	ListPolicyGroups(
-		ctx context.Context, orgName string, inContToken *string,
-	) (cloudapitype.AppListPolicyGroupsResponse, *string, error)
-	GetPolicyGroup(ctx context.Context, orgName, policyGroup string) (cloudapitype.PolicyGroup, error)
 }
 
 // policyGetClientFactory receives the organization parsed from the argument
 // (possibly empty) and returns the client along with the resolved organization.
 type policyGetClientFactory func(ctx context.Context, org string) (policyGetClient, string, error)
 
-type policyGetRenderFunc func(w io.Writer, resp policyGetJSON) error
+type policyGetRenderFunc func(w io.Writer, pack cloudapitype.AppGetPolicyPackResponse) error
 
 func newPolicyGetCmd() *cobra.Command {
 	return newPolicyGetCmdWith(defaultPolicyGetClientFactory)
@@ -74,9 +70,9 @@ func newPolicyGetCmdWith(factory policyGetClientFactory) *cobra.Command {
 		Short: "Get the details of a Policy Pack",
 		Long: "Get the details of a Policy Pack.\n" +
 			"\n" +
-			"Shows the policies contained in a published version of a Policy Pack and the\n" +
-			"Policy Groups it is enabled in. The organization defaults to your default\n" +
-			"organization, and the version defaults to the latest published version.\n" +
+			"Shows the policies contained in a published version of a Policy Pack. The\n" +
+			"organization defaults to your default organization, and the version defaults\n" +
+			"to the latest published version.\n" +
 			"\n" +
 			"Examples:\n" +
 			"  pulumi policy get acme/aws-guardrails@1.2.0\n" +
@@ -234,87 +230,25 @@ func runPolicyGet(
 		pack.Policies = []cloudapitype.AppPolicy{}
 	}
 
-	groups, err := policyGroupsEnabling(ctx, c, org, name)
-	if err != nil {
-		return err
-	}
-
-	return outputFormat.Get()(w, policyGetJSON{
-		Organization:             org,
-		AppGetPolicyPackResponse: pack,
-		PolicyGroups:             groups,
-	})
+	return outputFormat.Get()(w, pack)
 }
 
-func policyGroupsEnabling(
-	ctx context.Context, c policyGetClient, org, packName string,
-) ([]policyPackGroupJSON, error) {
-	groups := []policyPackGroupJSON{}
-	var token *string
-	for {
-		resp, next, err := c.ListPolicyGroups(ctx, org, token)
-		if err != nil {
-			return nil, fmt.Errorf("listing policy groups: %w", err)
-		}
-		for _, summary := range resp.PolicyGroups {
-			if summary.NumEnabledPolicyPacks == 0 {
-				continue
-			}
-			group, err := c.GetPolicyGroup(ctx, org, summary.Name)
-			if err != nil {
-				return nil, fmt.Errorf("getting policy group %q: %w", summary.Name, err)
-			}
-			for _, applied := range group.AppliedPolicyPacks {
-				if applied.Name == packName {
-					groups = append(groups, policyPackGroupJSON{
-						Name:         group.Name,
-						Mode:         group.Mode,
-						IsOrgDefault: group.IsOrgDefault,
-						Version:      applied.Version,
-						VersionTag:   applied.VersionTag,
-					})
-					break
-				}
-			}
-		}
-		if next == nil || *next == "" {
-			return groups, nil
-		}
-		token = next
-	}
-}
-
-type policyGetJSON struct {
-	Organization string `json:"organization"`
-	cloudapitype.AppGetPolicyPackResponse
-	PolicyGroups []policyPackGroupJSON `json:"policyGroups"`
-}
-
-type policyPackGroupJSON struct {
-	Name         string                       `json:"name"`
-	Mode         cloudapitype.PolicyGroupMode `json:"mode"`
-	IsOrgDefault bool                         `json:"isOrgDefault"`
-	Version      int                          `json:"version"`
-	VersionTag   string                       `json:"versionTag"`
-}
-
-func renderPolicyGetJSON(w io.Writer, resp policyGetJSON) error {
+func renderPolicyGetJSON(w io.Writer, pack cloudapitype.AppGetPolicyPackResponse) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(resp)
+	return enc.Encode(pack)
 }
 
-func renderPolicyGetText(w io.Writer, resp policyGetJSON) error {
-	fmt.Fprintf(w, "%-14s %s\n", "Name:", resp.Name)
-	fmt.Fprintf(w, "%-14s %s\n", "Display name:", resp.DisplayName)
-	fmt.Fprintf(w, "%-14s %s (%d)\n", "Version:", resp.VersionTag, resp.Version)
-	fmt.Fprintf(w, "%-14s %s\n", "Organization:", resp.Organization)
+func renderPolicyGetText(w io.Writer, pack cloudapitype.AppGetPolicyPackResponse) error {
+	fmt.Fprintf(w, "%-14s %s\n", "Name:", pack.Name)
+	fmt.Fprintf(w, "%-14s %s\n", "Display name:", pack.DisplayName)
+	fmt.Fprintf(w, "%-14s %s (%d)\n", "Version:", pack.VersionTag, pack.Version)
 
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "POLICIES")
-	policyRows := slice.Prealloc[cmdutil.TableRow](len(resp.Policies))
-	for _, p := range resp.Policies {
+	policyRows := slice.Prealloc[cmdutil.TableRow](len(pack.Policies))
+	for _, p := range pack.Policies {
 		policyRows = append(policyRows, cmdutil.TableRow{Columns: []string{
 			p.Name, string(p.EnforcementLevel), string(p.Severity), p.Description,
 		}})
@@ -322,25 +256,6 @@ func renderPolicyGetText(w io.Writer, resp policyGetJSON) error {
 	ui.FprintTable(w, cmdutil.Table{
 		Headers: []string{"NAME", "ENFORCEMENT", "SEVERITY", "DESCRIPTION"},
 		Rows:    policyRows,
-	}, nil)
-
-	fmt.Fprintln(w)
-	if len(resp.PolicyGroups) == 0 {
-		fmt.Fprintln(w, "Not enabled in any policy group.")
-		return nil
-	}
-	fmt.Fprintln(w, "ENABLED IN POLICY GROUPS")
-	groupRows := slice.Prealloc[cmdutil.TableRow](len(resp.PolicyGroups))
-	for _, g := range resp.PolicyGroups {
-		version := g.VersionTag
-		if version == "" {
-			version = strconv.Itoa(g.Version)
-		}
-		groupRows = append(groupRows, cmdutil.TableRow{Columns: []string{g.Name, string(g.Mode), version}})
-	}
-	ui.FprintTable(w, cmdutil.Table{
-		Headers: []string{"NAME", "MODE", "VERSION"},
-		Rows:    groupRows,
 	}, nil)
 	return nil
 }

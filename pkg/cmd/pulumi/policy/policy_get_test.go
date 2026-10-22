@@ -94,18 +94,14 @@ func TestResolveLatestVersion_NotFound(t *testing.T) {
 }
 
 type mockPolicyGetClient struct {
-	packs     []cloudapitype.AppPolicyPackWithVersions
-	pack      cloudapitype.AppGetPolicyPackResponse
-	summaries []cloudapitype.AppPolicyGroupSummary
-	groups    map[string]cloudapitype.PolicyGroup
+	packs []cloudapitype.AppPolicyPackWithVersions
+	pack  cloudapitype.AppGetPolicyPackResponse
 
-	gotOrg       string
-	gotName      string
-	gotVersion   string
-	groupsLoaded []string
+	gotOrg     string
+	gotName    string
+	gotVersion string
 
-	getPackErr  error
-	getGroupErr error
+	getPackErr error
 }
 
 func (m *mockPolicyGetClient) ListPolicyPacks(
@@ -124,22 +120,6 @@ func (m *mockPolicyGetClient) GetPolicyPack(
 	return m.pack, nil
 }
 
-func (m *mockPolicyGetClient) ListPolicyGroups(
-	_ context.Context, _ string, _ *string,
-) (cloudapitype.AppListPolicyGroupsResponse, *string, error) {
-	return cloudapitype.AppListPolicyGroupsResponse{PolicyGroups: m.summaries}, nil, nil
-}
-
-func (m *mockPolicyGetClient) GetPolicyGroup(
-	_ context.Context, _, group string,
-) (cloudapitype.PolicyGroup, error) {
-	m.groupsLoaded = append(m.groupsLoaded, group)
-	if m.getGroupErr != nil {
-		return cloudapitype.PolicyGroup{}, m.getGroupErr
-	}
-	return m.groups[group], nil
-}
-
 func samplePolicyGetClient() *mockPolicyGetClient {
 	return &mockPolicyGetClient{
 		packs: []cloudapitype.AppPolicyPackWithVersions{{
@@ -155,25 +135,6 @@ func samplePolicyGetClient() *mockPolicyGetClient {
 				Description:      "S3 buckets must not be public",
 				EnforcementLevel: cloudapitype.AppEnforcementLevelMandatory,
 			}},
-		},
-		summaries: []cloudapitype.AppPolicyGroupSummary{
-			{Name: "prod", NumEnabledPolicyPacks: 1},
-			{Name: "dev", NumEnabledPolicyPacks: 1},
-			{Name: "empty", NumEnabledPolicyPacks: 0},
-		},
-		groups: map[string]cloudapitype.PolicyGroup{
-			"prod": {
-				Name: "prod", Mode: cloudapitype.PolicyGroupModePreventative,
-				AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{
-					{Name: "aws-guardrails", Version: 3, VersionTag: "1.2.0"},
-				},
-			},
-			"dev": {
-				Name: "dev", Mode: cloudapitype.PolicyGroupModeAudit,
-				AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{
-					{Name: "other", Version: 1, VersionTag: "1.0.0"},
-				},
-			},
 		},
 	}
 }
@@ -210,17 +171,11 @@ func TestPolicyGet_JSON(t *testing.T) {
 
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(out), &got))
-	assert.Equal(t, "acme", got["organization"])
 	assert.Equal(t, "1.2.0", got["versionTag"])
 	policies := got["policies"].([]any)
 	assert.Equal(t, "mandatory", policies[0].(map[string]any)["enforcementLevel"])
-
-	groups := got["policyGroups"].([]any)
-	require.Len(t, groups, 1)
-	prod := groups[0].(map[string]any)
-	assert.Equal(t, "prod", prod["name"])
-	assert.Equal(t, "1.2.0", prod["versionTag"])
-	assert.NotContains(t, c.groupsLoaded, "empty")
+	assert.NotContains(t, got, "organization")
+	assert.NotContains(t, got, "policyGroups")
 	assert.Equal(t, "1.2.0", c.gotVersion)
 }
 
@@ -233,14 +188,12 @@ func TestPolicyGet_ExplicitOrgAndVersion(t *testing.T) {
 	assert.Equal(t, "1.1.0", c.gotVersion)
 }
 
-func TestPolicyGet_NotEnabledAnywhere_JSONEmptyArray(t *testing.T) {
+func TestPolicyGet_NoPolicies_JSONEmptyArray(t *testing.T) {
 	t.Parallel()
 
 	c := samplePolicyGetClient()
-	c.summaries = nil
 	c.pack.Policies = nil
 	out := executePolicyGet(t, c, "aws-guardrails", "--output", "json")
-	assert.Contains(t, out, `"policyGroups": []`)
 	assert.Contains(t, out, `"policies": []`)
 }
 
@@ -249,19 +202,8 @@ func TestPolicyGet_Text(t *testing.T) {
 
 	out := executePolicyGet(t, samplePolicyGetClient(), "aws-guardrails")
 	assert.Contains(t, out, "POLICIES")
-	assert.Contains(t, out, "ENABLED IN POLICY GROUPS")
 	assert.Contains(t, out, "s3-no-public")
 	assert.Contains(t, out, "mandatory")
-	assert.Contains(t, out, "prod")
-}
-
-func TestPolicyGet_Text_NotEnabled(t *testing.T) {
-	t.Parallel()
-
-	c := samplePolicyGetClient()
-	c.summaries = nil
-	out := executePolicyGet(t, c, "aws-guardrails")
-	assert.Contains(t, out, "Not enabled in any policy group.")
 }
 
 func TestPolicyGet_GetPolicyPackErrorPropagates(t *testing.T) {
@@ -271,15 +213,5 @@ func TestPolicyGet_GetPolicyPackErrorPropagates(t *testing.T) {
 	c.getPackErr = errors.New("boom")
 	out, err := executePolicyGetErr(t, c, "aws-guardrails", "--output", "json")
 	require.ErrorContains(t, err, "boom")
-	assert.NotContains(t, out, `"organization"`)
-}
-
-func TestPolicyGet_GetPolicyGroupErrorPropagates(t *testing.T) {
-	t.Parallel()
-
-	c := samplePolicyGetClient()
-	c.getGroupErr = errors.New("group boom")
-	out, err := executePolicyGetErr(t, c, "aws-guardrails", "--output", "json")
-	require.ErrorContains(t, err, "group boom")
-	assert.NotContains(t, out, `"organization"`)
+	assert.NotContains(t, out, `"policies"`)
 }
