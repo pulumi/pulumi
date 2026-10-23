@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // ExistsProvider is a provider whose Read reports a resource as missing when the state it is given has a false
@@ -198,8 +199,8 @@ func (p *ExistsProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin
 		return plugin.ReadResponse{Status: resource.StatusOK}, nil
 	}
 
-	outputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"value": resource.NewProperty(true),
+	outputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
 	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
