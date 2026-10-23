@@ -89,6 +89,15 @@ func TestManagedEnvironmentDefinition(t *testing.T) {
 			configFile: "config/Pulumi.dev.yaml",
 			wantErr:    fmt.Sprintf(managedNoDef, "config/Pulumi.dev.yaml"),
 		},
+		{
+			name:       "values under config",
+			loc:        managedLoc,
+			contents:   managedValidYAML + "config:\n  proj:old: x\n",
+			configFile: "Pulumi.dev.yaml",
+			wantErr: "Pulumi.dev.yaml has values under `config:`, which stacks with an ESC-managed environment " +
+				"don't use. Remove the `config:` section, then set each value with `pulumi config set` " +
+				"(`--secret` for secrets)",
+		},
 		{name: "valid definition", loc: managedLoc, contents: managedValidYAML, configFile: "Pulumi.dev.yaml"},
 	}
 	for _, tt := range tests {
