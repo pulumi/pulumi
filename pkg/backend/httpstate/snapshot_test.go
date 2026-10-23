@@ -39,6 +39,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
@@ -206,7 +207,8 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 
 	initPersister := func() *cloudSnapshotPersister {
-		backendGeneric, err := New(ctx, sink, server.URL, nil, false, NewClientSource(sink))
+		backendGeneric, err := New(
+			ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
@@ -722,7 +724,8 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	initPersister := func() *cloudSnapshotPersister {
 		server := newMockServer()
-		backendGeneric, err := New(ctx, sink, server.URL, nil, false, NewClientSource(sink))
+		backendGeneric, err := New(
+			ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{

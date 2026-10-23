@@ -25,6 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -45,7 +46,8 @@ type Options struct {
 
 	Colors colors.Colorization
 
-	Login httpstate.LoginManager
+	Login             httpstate.LoginManager // Handles login when the helper supplies no HTTP credentials.
+	CredentialHelpers *credentialhelper.Session
 
 	fs      escFS
 	environ environ
@@ -57,6 +59,7 @@ type Options struct {
 }
 
 type escCommand struct {
+	helpers *credentialhelper.Session
 	fs      escFS
 	environ environ
 	exec    cmdExec
@@ -92,6 +95,7 @@ func newESC(opts *Options) *escCommand {
 		command:   valueOrDefault(opts.ParentPath, "esc"),
 		colors:    valueOrDefault(opts.Colors, cmdutil.GetGlobalColorization()),
 		login:     valueOrDefault(opts.Login, httpstate.NewLoginManager()),
+		helpers:   opts.CredentialHelpers,
 		ws:        valueOrDefault(opts.ws, pkgWorkspace.Instance),
 		userAgent: valueOrDefault(opts.UserAgent, fmt.Sprintf("esc-cli/1 (%s; %s)", version.Version, runtime.GOOS)),
 		newClient: opts.newClient,
