@@ -17,12 +17,15 @@ package policy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 )
 
 // mockPolicyGroupEditClient records each BatchUpdatePolicyGroup call and
@@ -202,7 +205,8 @@ func TestPolicyGroupEdit_NoFlagsChanged(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t,
 		"no changes specified; pass at least one of --name, --add-stack, --remove-stack, "+
-			"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account",
+			"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account, "+
+			"--stack-rule, --account-rule",
 		err.Error())
 	assert.Empty(t, c.updates)
 }
@@ -268,4 +272,138 @@ func TestPolicyGroupEdit_InvalidPolicyPackRef(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, `policy pack reference "@1" is missing a name`, err.Error())
 	assert.Empty(t, c.updates)
+}
+
+func TestPolicyGroupEdit_SetsAndRemovesMatchRules(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupEditClient{getResp: cloudapitype.PolicyGroup{
+		Name: "compliance",
+		Mode: cloudapitype.PolicyGroupModeAudit,
+	}}
+	var buf bytes.Buffer
+	err := runPolicyGroupEdit(t.Context(), &buf,
+		stubPolicyGroupEditFactory(c, "acme"), "compliance", policyGroupEditArgs{
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			addStack:     []string{"web/prod"},
+			stackRule:    "",
+			accountRule:  "env=prod OR team",
+			changed: map[string]bool{
+				"add-stack": true, "stack-rule": true, "account-rule": true,
+			},
+		})
+	require.NoError(t, err)
+
+	// One GET checks the mode before the account rule is written; one renders the result.
+	assert.Equal(t, 2, c.getCalls)
+	require.Len(t, c.updates, 1)
+	body, err := json.Marshal(c.updates[0])
+	require.NoError(t, err)
+	assert.JSONEq(t, `[
+		{"addStack": {"name": "prod", "routingProject": "web"}},
+		{"removeStackMatchRule": true},
+		{"accountMatchRule": `+binaryJSON("Or",
+		tagEqualsJSON(accountCtxJSON, "env", "prod"),
+		hasTagJSON(accountCtxJSON, "team"))+`}
+	]`, string(body))
+}
+
+func TestPolicyGroupEdit_StackRuleAndRemoveAccountRule(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupEditClient{getResp: cloudapitype.PolicyGroup{
+		Name: "prod-policies",
+		Mode: cloudapitype.PolicyGroupModePreventative,
+	}}
+	err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
+		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			stackRule:    "env!=dev",
+			accountRule:  " ",
+			changed:      map[string]bool{"stack-rule": true, "account-rule": true},
+		})
+	require.NoError(t, err)
+
+	// Removing an account rule does not check the mode before the write.
+	assert.Equal(t, 1, c.getCalls)
+	require.Len(t, c.updates, 1)
+	body, err := json.Marshal(c.updates[0])
+	require.NoError(t, err)
+	assert.JSONEq(t, `[
+		{"stackMatchRule": `+notJSON(tagEqualsJSON(stackCtxJSON, "env", "dev"))+`},
+		{"removeAccountMatchRule": true}
+	]`, string(body))
+}
+
+func TestPolicyGroupEdit_AccountRuleOnPreventativeGroup(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupEditClient{getResp: cloudapitype.PolicyGroup{
+		Name: "prod-policies",
+		Mode: cloudapitype.PolicyGroupModePreventative,
+	}}
+	err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
+		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			accountRule:  "env=prod",
+			changed:      map[string]bool{"account-rule": true},
+		})
+	require.Error(t, err)
+	assert.Equal(t, cmdCmd.ConfigurationError{
+		Message: `--account-rule requires an audit policy group; "prod-policies" is preventative`,
+	}, err)
+	assert.Empty(t, c.updates)
+}
+
+func TestPolicyGroupEdit_AccountRuleModeCheckError(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupEditClient{getErr: errors.New("not found"), getErrOn: 1}
+	err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
+		stubPolicyGroupEditFactory(c, "acme"), "missing", policyGroupEditArgs{
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			accountRule:  "env=prod",
+			changed:      map[string]bool{"account-rule": true},
+		})
+	require.Error(t, err)
+	assert.Equal(t, "reading policy group: not found", err.Error())
+	assert.Empty(t, c.updates)
+}
+
+func TestPolicyGroupEdit_InvalidRule(t *testing.T) {
+	t.Parallel()
+
+	err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
+		failingPolicyGroupEditFactory(errors.New("factory must not be called")), "prod-policies",
+		policyGroupEditArgs{
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			stackRule:    `{"__type": "PermissionExpressionStack"}`,
+			changed:      map[string]bool{"stack-rule": true},
+		})
+	require.Error(t, err)
+	assert.IsType(t, cmdCmd.ConfigurationError{}, err)
+	assert.Equal(t,
+		"invalid --stack-rule: invalid JSON expression: type 'PermissionExpressionStack' not recognized",
+		err.Error())
+}
+
+func TestPolicyGroupEdit_RuleFlagsParse(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupEditClient{getResp: cloudapitype.PolicyGroup{
+		Name: "prod-policies",
+		Mode: cloudapitype.PolicyGroupModeAudit,
+	}}
+	cmd := newPolicyGroupEditCmdWith(stubPolicyGroupEditFactory(c, "acme"))
+	cmd.SetArgs([]string{"prod-policies", "--stack-rule", "env=prod", "--account-rule", ""})
+	cmd.SetOut(&bytes.Buffer{})
+	require.NoError(t, cmd.Execute())
+
+	require.Len(t, c.updates, 1)
+	body, err := json.Marshal(c.updates[0])
+	require.NoError(t, err)
+	assert.JSONEq(t, `[
+		{"stackMatchRule": `+tagEqualsJSON(stackCtxJSON, "env", "prod")+`},
+		{"removeAccountMatchRule": true}
+	]`, string(body))
 }
