@@ -17,6 +17,7 @@ package backend
 import (
 	"context"
 	"encoding/json"
+	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -32,6 +33,15 @@ type PublishOperation struct {
 	// Metadata contains optional data about the environment performing the publish operation,
 	// e.g. the current source code control commit information.
 	Metadata map[string]string
+
+	// Progress receives human-readable progress messages. A nil Progress means os.Stdout.
+	Progress io.Writer
+}
+
+// PublishResult describes a published PolicyPack version.
+type PublishResult struct {
+	Name       string
+	VersionTag string
 }
 
 // PolicyPackOperation is used to make various operations against a Policy Pack.
@@ -49,7 +59,7 @@ type PolicyPack interface {
 	// Backend returns the backend this PolicyPack is managed by.
 	Backend() Backend
 	// Publish the PolicyPack to the service.
-	Publish(ctx context.Context, op PublishOperation) error
+	Publish(ctx context.Context, op PublishOperation) (PublishResult, error)
 	// Enable the PolicyPack to a Policy Group in an organization. If Policy Group is
 	// empty, it enables it for the default Policy Group.
 	Enable(ctx context.Context, policyGroup string, op PolicyPackOperation) error

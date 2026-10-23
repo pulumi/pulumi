@@ -18,10 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -32,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -40,15 +44,43 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type policyPublishClient interface {
+	GetPolicyPack(
+		ctx context.Context, orgName, name, versionTag string,
+	) (cloudapitype.AppGetPolicyPackResponse, error)
+}
+
+func defaultPolicyPublishClient(b backend.Backend) (policyPublishClient, error) {
+	cloudBackend, ok := b.(httpstate.Backend)
+	if !ok {
+		return nil, errors.New("publishing a Policy Pack requires the Pulumi Cloud backend; run `pulumi login`")
+	}
+	return cloudBackend.Client(), nil
+}
+
 func newPolicyPublishCmd() *cobra.Command {
 	var policyPublishCmd policyPublishCmd
+	outputFormat := outputflag.OutputFlag[policyGetRenderFunc]{
+		RenderForTerminal: renderPolicyGetText,
+		RenderJSON:        renderPolicyGetJSON,
+	}
 	cmd := &cobra.Command{
 		Use:   "publish",
 		Short: "Publish a Policy Pack to the Pulumi Cloud",
 		Long: "Publish a Policy Pack to the Pulumi Cloud\n" +
 			"\n" +
-			"If an organization name is not specified, the default org (if set) or the current user account is used.",
+			"If an organization name is not specified, the default org (if set) or the current user account is used.\n" +
+			"\n" +
+			"With --output json, progress messages are written to stderr and the result is written to stdout.\n" +
+			"\n" +
+			"Examples:\n" +
+			"  pulumi policy publish acme\n" +
+			"  pulumi policy publish acme --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			policyPublishCmd.json = outputFormat.String() == "json"
+			policyPublishCmd.render = outputFormat.Get()
+			policyPublishCmd.stdout = cmd.OutOrStdout()
+			policyPublishCmd.stderr = cmd.ErrOrStderr()
 			return policyPublishCmd.Run(cmd.Context(), cmdBackend.DefaultLoginManager, args)
 		},
 	}
@@ -60,16 +92,34 @@ func newPolicyPublishCmd() *cobra.Command {
 		Required: 0,
 	})
 
+	outputflag.VarP(cmd.Flags(), &outputFormat)
 	return cmd
 }
 
 type policyPublishCmd struct {
-	getwd func() (string, error)
+	getwd  func() (string, error)
+	client func(backend.Backend) (policyPublishClient, error)
+	stdout io.Writer
+	stderr io.Writer
+	json   bool
+	render policyGetRenderFunc
 }
 
 func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
 	if cmd.getwd == nil {
 		cmd.getwd = os.Getwd
+	}
+	if cmd.stdout == nil {
+		cmd.stdout = io.Discard
+	}
+	if cmd.stderr == nil {
+		cmd.stderr = io.Discard
+	}
+	if cmd.client == nil {
+		cmd.client = defaultPolicyPublishClient
+	}
+	if cmd.render == nil {
+		cmd.render = renderPolicyGetText
 	}
 
 	b, err := loginToCloudBackend(ctx, lm)
@@ -153,18 +203,36 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	// Attempt to publish the PolicyPack.
 	//
 
-	err = policyPack.Publish(ctx, backend.PublishOperation{
+	progress := cmd.stdout
+	if cmd.json {
+		progress = cmd.stderr
+	}
+
+	result, err := policyPack.Publish(ctx, backend.PublishOperation{
 		Root:       root,
 		PlugCtx:    plugctx,
 		PolicyPack: proj,
 		Scopes:     backend.CancellationScopes,
 		Metadata:   m,
+		Progress:   progress,
 	})
 	if err != nil {
 		return err
 	}
 
-	return nil
+	c, err := cmd.client(b)
+	if err != nil {
+		return err
+	}
+	pack, err := c.GetPolicyPack(ctx, policyPack.Ref().OrgName(), result.Name, result.VersionTag)
+	if err != nil {
+		return fmt.Errorf("reading policy pack %s@%s after publish: %w", result.Name, result.VersionTag, err)
+	}
+	if pack.Policies == nil {
+		pack.Policies = []cloudapitype.AppPolicy{}
+	}
+	fmt.Fprintln(progress)
+	return cmd.render(cmd.stdout, pack)
 }
 
 func loginToCloudBackend(

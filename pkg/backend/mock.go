@@ -724,7 +724,7 @@ func (r *MockStackReference) FullyQualifiedName() tokens.QName {
 type MockPolicyPack struct {
 	RefF      func() PolicyPackReference
 	BackendF  func() Backend
-	PublishF  func(context.Context, PublishOperation) error
+	PublishF  func(context.Context, PublishOperation) (PublishResult, error)
 	EnableF   func(context.Context, string, PolicyPackOperation) error
 	DisableF  func(context.Context, string, PolicyPackOperation) error
 	ValidateF func(context.Context, PolicyPackOperation) error
@@ -747,7 +747,7 @@ func (mp *MockPolicyPack) Backend() Backend {
 	panic("not implemented: MockPolicyPack.Backend")
 }
 
-func (mp *MockPolicyPack) Publish(ctx context.Context, op PublishOperation) error {
+func (mp *MockPolicyPack) Publish(ctx context.Context, op PublishOperation) (PublishResult, error) {
 	if mp.PublishF != nil {
 		return mp.PublishF(ctx, op)
 	}

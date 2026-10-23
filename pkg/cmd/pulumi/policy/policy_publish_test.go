@@ -15,12 +15,16 @@
 package policy
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -35,8 +39,9 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 	t.Parallel()
 
 	mockPolicyPack := &backend.MockPolicyPack{
-		PublishF: func(ctx context.Context, opts backend.PublishOperation) error {
-			return nil
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(ctx context.Context, opts backend.PublishOperation) (backend.PublishResult, error) {
+			return backend.PublishResult{}, nil
 		},
 	}
 
@@ -62,6 +67,7 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 	}
 
 	cmd := policyPublishCmd{
+		client: stubPublishClient(cloudapitype.AppGetPolicyPackResponse{}),
 		getwd: func() (string, error) {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -79,8 +85,9 @@ func TestPolicyPublishCmd_orgNamePassedIn(t *testing.T) {
 	t.Parallel()
 
 	mockPolicyPack := &backend.MockPolicyPack{
-		PublishF: func(ctx context.Context, opts backend.PublishOperation) error {
-			return nil
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(ctx context.Context, opts backend.PublishOperation) (backend.PublishResult, error) {
+			return backend.PublishResult{}, nil
 		},
 	}
 
@@ -103,6 +110,7 @@ func TestPolicyPublishCmd_orgNamePassedIn(t *testing.T) {
 	}
 
 	cmd := policyPublishCmd{
+		client: stubPublishClient(cloudapitype.AppGetPolicyPackResponse{}),
 		getwd: func() (string, error) {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -142,9 +150,10 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 	var metadata map[string]string
 
 	mockPolicyPack := &backend.MockPolicyPack{
-		PublishF: func(ctx context.Context, opts backend.PublishOperation) error {
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(ctx context.Context, opts backend.PublishOperation) (backend.PublishResult, error) {
 			metadata = opts.Metadata
-			return nil
+			return backend.PublishResult{}, nil
 		},
 	}
 
@@ -166,6 +175,7 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 	}
 
 	cmd := policyPublishCmd{
+		client: stubPublishClient(cloudapitype.AppGetPolicyPackResponse{}),
 		getwd: func() (string, error) {
 			// Return the sub directory to ensure we get the subdirectory metadata.
 			return subDir, nil
@@ -192,4 +202,143 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 	assertEnvValue(metadata, backend.GitCommitterEmail, "repo-user@example.com")
 	assertEnvValue(metadata, backend.GitAuthor, "repo-user")
 	assertEnvValue(metadata, backend.GitAuthorEmail, "repo-user@example.com")
+}
+
+type stubPolicyPublishClient struct {
+	get func(ctx context.Context, org, name, versionTag string) (cloudapitype.AppGetPolicyPackResponse, error)
+}
+
+func (s stubPolicyPublishClient) GetPolicyPack(
+	ctx context.Context, org, name, versionTag string,
+) (cloudapitype.AppGetPolicyPackResponse, error) {
+	return s.get(ctx, org, name, versionTag)
+}
+
+func stubPublishClient(
+	pack cloudapitype.AppGetPolicyPackResponse,
+) func(backend.Backend) (policyPublishClient, error) {
+	return func(backend.Backend) (policyPublishClient, error) {
+		return stubPolicyPublishClient{get: func(context.Context, string, string, string) (
+			cloudapitype.AppGetPolicyPackResponse, error,
+		) {
+			return pack, nil
+		}}, nil
+	}
+}
+
+func publishTestLoginManager(t *testing.T, pack backend.PolicyPack) *cmdBackend.MockLoginManager {
+	t.Helper()
+	return &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			ctx context.Context,
+			ws pkgWorkspace.Context,
+			sink diag.Sink,
+			url string,
+			project *workspace.Project,
+			setCurrent bool,
+		) (backend.Backend, error) {
+			return &backend.MockBackend{
+				GetPolicyPackF: func(ctx context.Context, name string, d diag.Sink) (backend.PolicyPack, error) {
+					return pack, nil
+				},
+				GetDefaultOrgF: func(ctx context.Context) (string, error) {
+					return "org1", nil
+				},
+			}, nil
+		},
+	}
+}
+
+func testdataGetwd() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(cwd, "testdata"), nil
+}
+
+func TestPolicyPublish_JSONReadsBackPack(t *testing.T) {
+	t.Parallel()
+
+	pack := &backend.MockPolicyPack{
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(ctx context.Context, op backend.PublishOperation) (backend.PublishResult, error) {
+			_, err := op.Progress.Write([]byte("Obtaining policy metadata from policy plugin\n"))
+			require.NoError(t, err)
+			return backend.PublishResult{Name: "pack", VersionTag: "1.2.0"}, nil
+		},
+	}
+	var gotOrg, gotName, gotTag string
+	client := func(backend.Backend) (policyPublishClient, error) {
+		return stubPolicyPublishClient{get: func(_ context.Context, org, name, versionTag string) (
+			cloudapitype.AppGetPolicyPackResponse, error,
+		) {
+			gotOrg, gotName, gotTag = org, name, versionTag
+			return cloudapitype.AppGetPolicyPackResponse{
+				Name: "pack", DisplayName: "Pack", Version: 4, VersionTag: "1.2.0",
+				Policies: []cloudapitype.AppPolicy{{Name: "no-public-buckets"}},
+			}, nil
+		}}, nil
+	}
+
+	var stdout, stderr bytes.Buffer
+	cmd := policyPublishCmd{
+		getwd: testdataGetwd, client: client, stdout: &stdout, stderr: &stderr, json: true, render: renderPolicyGetJSON,
+	}
+	require.NoError(t, cmd.Run(t.Context(), publishTestLoginManager(t, pack), []string{}))
+
+	assert.Equal(t, []string{"org1", "pack", "1.2.0"}, []string{gotOrg, gotName, gotTag})
+	var got cloudapitype.AppGetPolicyPackResponse
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &got))
+	assert.Equal(t, "pack", got.Name)
+	assert.Equal(t, 4, got.Version)
+	assert.Equal(t, "1.2.0", got.VersionTag)
+	require.Len(t, got.Policies, 1)
+	assert.Contains(t, stderr.String(), "Obtaining policy metadata from policy plugin")
+	assert.NotContains(t, stdout.String(), "Obtaining")
+}
+
+func TestPolicyPublish_ReadBackFailure(t *testing.T) {
+	t.Parallel()
+
+	pack := &backend.MockPolicyPack{
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(context.Context, backend.PublishOperation) (backend.PublishResult, error) {
+			return backend.PublishResult{Name: "pack", VersionTag: "1.2.0"}, nil
+		},
+	}
+	client := func(backend.Backend) (policyPublishClient, error) {
+		return stubPolicyPublishClient{get: func(context.Context, string, string, string) (
+			cloudapitype.AppGetPolicyPackResponse, error,
+		) {
+			return cloudapitype.AppGetPolicyPackResponse{}, errors.New("boom")
+		}}, nil
+	}
+	cmd := policyPublishCmd{getwd: testdataGetwd, client: client}
+	err := cmd.Run(t.Context(), publishTestLoginManager(t, pack), []string{})
+	require.EqualError(t, err, "reading policy pack pack@1.2.0 after publish: boom")
+}
+
+func TestPolicyPublish_DefaultProgressOnStdout(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	pack := &backend.MockPolicyPack{
+		RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"org1", "pack"} },
+		PublishF: func(ctx context.Context, op backend.PublishOperation) (backend.PublishResult, error) {
+			assert.Same(t, &stdout, op.Progress)
+			return backend.PublishResult{Name: "pack", VersionTag: "1.2.0"}, nil
+		},
+	}
+	published := cloudapitype.AppGetPolicyPackResponse{Name: "pack", Version: 4, VersionTag: "1.2.0"}
+
+	cmd := policyPublishCmd{
+		getwd: testdataGetwd, client: stubPublishClient(published), stdout: &stdout, stderr: &stderr,
+	}
+	require.NoError(t, cmd.Run(t.Context(), publishTestLoginManager(t, pack), []string{"org1"}))
+
+	published.Policies = []cloudapitype.AppPolicy{}
+	want := bytes.NewBufferString("\n")
+	require.NoError(t, renderPolicyGetText(want, published))
+	assert.Equal(t, want.String(), stdout.String())
 }
