@@ -282,12 +282,6 @@
             "flags": {}
         },
         {
-            "path": ["project"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["replay-events"],
             "propagate": true,
             "exclude": true,
