@@ -1,4 +1,4 @@
 component: sdk
 kind: chore
-body: Add managed ESC environment fields to apitypes
+body: Add managed ESC environment fields to apitypes and `Environment.DefinitionNode` to workspace
 time: 2026-10-23T16:23:26-07:00
