@@ -34,6 +34,4 @@ install_file sdk/python/dist/pulumi-resource-pulumi-python.cmd              wind
 
 install_file sdk/python/cmd/pulumi-language-python-exec          linux darwin windows
 
-# Get pulumi-watch binaries
-./scripts/get-pulumi-watch.sh "${LOCAL}"
 ./scripts/get-language-providers.sh "${LOCAL}"

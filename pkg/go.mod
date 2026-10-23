@@ -7,7 +7,6 @@ replace github.com/pulumi/pulumi/sdk/v3 => ../sdk
 replace github.com/atotto/clipboard => github.com/tgummerer/clipboard v0.0.0-20241001131231-d02d263e614e
 
 require (
-	cloud.google.com/go/logging v1.19.0
 	cloud.google.com/go/storage v1.64.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
@@ -42,7 +41,7 @@ require (
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.24.0
 	google.golang.org/api v0.290.0
-	google.golang.org/genproto v0.0.0-20260724162435-b2f20204f0df
+	google.golang.org/genproto v0.0.0-20260724162435-b2f20204f0df // indirect
 	google.golang.org/grpc v1.84.0
 	gopkg.in/yaml.v3 v3.0.1
 	pgregory.net/rapid v1.2.0
@@ -63,7 +62,6 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.43.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.31
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.30
-	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.74.4
 	github.com/aws/aws-sdk-go-v2/service/iam v1.31.4
 	github.com/aws/aws-sdk-go-v2/service/kms v1.55.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.106.0
