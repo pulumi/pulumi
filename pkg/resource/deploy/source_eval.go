@@ -353,9 +353,9 @@ type TransformFunction func(
 
 // A transformation function that can be applied to an invoke.
 type TransformInvokeFunction func(
-	ctx context.Context, token string, args resource.PropertyMap,
+	ctx context.Context, token string, args property.Map,
 	opts *pulumirpc.TransformInvokeOptions,
-) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error)
+) (property.Map, *pulumirpc.TransformInvokeOptions, error)
 
 // A state migration function that can be applied to the prior state of a resource and the prior state of all
 // resources transitively parented to it. oldState is a JSON-encoded array of apitype.ResourceV3 values. The
@@ -1038,7 +1038,7 @@ func (rm *resmon) Invoke(
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
-	filteredArgs, err := plugin.FilterProperties(rawArgs, plugin.FilterOptions{
+	args, err := plugin.FilterProperties(rawArgs, plugin.FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
@@ -1048,7 +1048,6 @@ func (rm *resmon) Invoke(
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
-	args := resource.ToResourcePropertyMap(filteredArgs)
 
 	parent, err := resource.ParseOptionalURN(req.GetParent())
 	if err != nil {
@@ -1108,27 +1107,28 @@ func (rm *resmon) Invoke(
 	// The invoke must observe the resources it depends on. Dependencies come from two places: an explicit
 	// `dependsOn` list on the request (legacy SDKs, and any dependency the SDK deliberately declared), and any
 	// OutputValues nested in `args` (new-world SDKs that opt into `INVOKE_OUTPUT_VALUES`). We union both.
-	roots := mapset.NewThreadUnsafeSet[resource.URN]()
+	rootSet := mapset.NewThreadUnsafeSet[resource.URN]()
 	for _, dep := range req.GetDependsOn() {
 		urn, err := resource.ParseURN(dep)
 		if err != nil {
 			return nil, fmt.Errorf("invalid dependsOn URN %q: %w", dep, err)
 		}
-		roots.Add(urn)
+		rootSet.Add(urn)
 	}
-	for _, v := range args {
-		addOutputDependencies(roots, v)
+	for _, v := range resource.ToResourcePropertyMap(args) {
+		addOutputDependencies(rootSet, v)
 	}
-	if roots.Cardinality() > 0 && rm.registrations.HasUnresolved(roots) {
+
+	if rootSet.Cardinality() > 0 && rm.registrations.HasUnresolved(rootSet) {
 		logging.V(5).Infof("ResourceMonitor.Invoke: tok=%v has pending dependencies, returning unknown", tok)
 		return &pulumirpc.ResourceInvokeResponse{Unknown: true}, nil
 	}
 
 	// Do the invoke and then return the arguments.
-	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
+	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, args.Len())
 	resp, err := prov.Invoke(ctx, plugin.InvokeRequest{
 		Tok:     tok,
-		Args:    resource.FromResourcePropertyMap(args),
+		Args:    args,
 		Preview: rm.opts.DryRun,
 	})
 	if err != nil {
@@ -1818,8 +1818,8 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 	token := cb.Token
 	return func(
 		ctx context.Context, invokeToken string,
-		args resource.PropertyMap, opts *pulumirpc.TransformInvokeOptions,
-	) (resource.PropertyMap, *pulumirpc.TransformInvokeOptions, error) {
+		args property.Map, opts *pulumirpc.TransformInvokeOptions,
+	) (property.Map, *pulumirpc.TransformInvokeOptions, error) {
 		logging.V(5).Infof("Invoke transform: token=%v props=%v opts=%v",
 			invokeToken, args, opts)
 
@@ -1832,9 +1832,9 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 			WorkingDirectory:     rm.workingDirectory,
 		}
 
-		filteredArgs, err := plugin.FilterProperties(resource.FromResourcePropertyMap(args), filterOpts)
+		filteredArgs, err := plugin.FilterProperties(args, filterOpts)
 		if err != nil {
-			return nil, nil, err
+			return property.Map{}, nil, err
 		}
 		mprops := propertyrpc.Marshal(filteredArgs)
 
@@ -1845,7 +1845,7 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 			Options: opts,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("marshaling request: %w", err)
+			return property.Map{}, nil, fmt.Errorf("marshaling request: %w", err)
 		}
 
 		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
@@ -1854,15 +1854,15 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 		})
 		if err != nil {
 			logging.V(5).Infof("Invoke transform callback error: %v", err)
-			return nil, nil, err
+			return property.Map{}, nil, err
 		}
 
 		newOpts := opts
-		var newProps resource.PropertyMap
+		var newProps property.Map
 		var response pulumirpc.TransformInvokeResponse
 		err = proto.Unmarshal(resp.Response, &response)
 		if err != nil {
-			return nil, nil, fmt.Errorf("unmarshaling response: %w", err)
+			return property.Map{}, nil, fmt.Errorf("unmarshaling response: %w", err)
 		}
 
 		if response.Options != nil {
@@ -1872,13 +1872,12 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 		if response.Args != nil {
 			rawNew, err := propertyrpc.Unmarshal(response.Args)
 			if err != nil {
-				return nil, nil, err
+				return property.Map{}, nil, err
 			}
-			filteredNew, err := plugin.FilterProperties(rawNew, filterOpts)
+			newProps, err = plugin.FilterProperties(rawNew, filterOpts)
 			if err != nil {
-				return nil, nil, err
+				return property.Map{}, nil, err
 			}
-			newProps = resource.ToResourcePropertyMap(filteredNew)
 		}
 
 		logging.V(5).Infof("Invoke transform: props=%v opts=%v", newProps, newOpts)
