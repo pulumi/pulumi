@@ -282,7 +282,7 @@ func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 	case regOut := <-iter.regOutChan:
 		contract.Assertf(regOut != nil, "received a nil registerResourceOutputsEvent")
 		logging.V(5).Infof("EvalSourceIterator produced a completion: urn=%v,#outs=%v",
-			regOut.URN(), len(regOut.Outputs()))
+			regOut.URN(), regOut.Outputs().Len())
 		return regOut, nil
 	case read := <-iter.regReadChan:
 		contract.Assertf(read != nil, "received a nil readResourceEvent")
@@ -3413,13 +3413,12 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal output properties: %w", err)
 	}
-	outs := resource.ToResourcePropertyMap(filteredOuts)
-	logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs received: urn=%v, #outs=%v", urn, len(outs))
+	logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs received: urn=%v, #outs=%v", urn, filteredOuts.Len())
 
 	// Now send the step over to the engine to perform.
 	step := &registerResourceOutputsEvent{
 		urn:     urn,
-		outputs: outs,
+		outputs: filteredOuts,
 		done:    make(chan bool),
 	}
 
@@ -3442,6 +3441,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	// publish at RegisterResource time and never reach this path; only components (local or remote)
 	// land here. ID is empty for components by construction. Aliases were stashed at register time
 	// and are republished here so consumers blocked on a pre-rename URN find the resource.
+	outs := resource.ToResourcePropertyMap(filteredOuts)
 	if rm.observer != nil {
 		rm.observer.Resolve(urn, "", outs)
 		rm.componentAliasesLock.Lock()
@@ -3493,9 +3493,9 @@ func (g *registerResourceEvent) Done(result *RegisterResult) {
 }
 
 type registerResourceOutputsEvent struct {
-	urn     resource.URN         // the URN to which this completion applies.
-	outputs resource.PropertyMap // an optional property bag for output properties.
-	done    chan bool            // the channel to communicate with after the operation completes.
+	urn     resource.URN // the URN to which this completion applies.
+	outputs property.Map // an optional property bag for output properties.
+	done    chan bool    // the channel to communicate with after the operation completes.
 }
 
 var _ RegisterResourceOutputsEvent = (*registerResourceOutputsEvent)(nil)
@@ -3506,7 +3506,7 @@ func (g *registerResourceOutputsEvent) URN() resource.URN {
 	return g.urn
 }
 
-func (g *registerResourceOutputsEvent) Outputs() resource.PropertyMap {
+func (g *registerResourceOutputsEvent) Outputs() property.Map {
 	return g.outputs
 }
 
