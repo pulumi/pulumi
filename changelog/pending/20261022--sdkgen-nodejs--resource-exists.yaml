@@ -1,0 +1,4 @@
+component: sdkgen/nodejs
+kind: feat
+body: Generate static `exists` methods that check whether a resource with a given ID exists without adopting it into the stack
+time: 2026-10-22T15:01:38.113748+02:00
