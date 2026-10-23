@@ -1123,7 +1123,8 @@ func (rm *resmon) Invoke(
 	roots := rootSet.ToSlice()
 	result := args.AsMap()
 	for k, v := range result {
-		result[k] = v.WithDependencies(roots)
+		deps := append(v.Dependencies(), roots...)
+		result[k] = v.WithDependencies(deps)
 	}
 	args = property.NewMap(result)
 
