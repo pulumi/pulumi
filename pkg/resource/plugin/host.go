@@ -116,6 +116,14 @@ type Host interface {
 	Close() error
 }
 
+// ProviderManager is implemented by hosts that can take ownership of a provider started outside the host, so that
+// releasing the provider's context or closing the host also closes the provider.
+type ProviderManager interface {
+	// ManageProvider registers provider with the host under ctx and returns a provider whose Close goes through the
+	// host. If registration fails, provider is closed.
+	ManageProvider(ctx *Context, provider Provider, name string) (Provider, error)
+}
+
 // IsLocalPluginPath determines if a plugin source refers to a local path rather than a downloadable plugin.
 // A plugin is considered local if it doesn't match the plugin name regexp and doesn't have a download URL.
 func IsLocalPluginPath(ctx context.Context, source string) bool {

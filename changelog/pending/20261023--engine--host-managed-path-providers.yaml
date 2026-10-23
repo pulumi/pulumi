@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Stop leaking provider processes started from a local path when the command that started them finishes
+time: 2026-10-23T13:00:00-04:00
