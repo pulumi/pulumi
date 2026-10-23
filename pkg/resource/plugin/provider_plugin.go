@@ -453,7 +453,8 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 	return dialOpts
 }
 
-// NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
+// NewProviderFromPath creates a new provider by loading the plugin binary located at `path`. If host is a
+// [ProviderManager], the host takes ownership of the provider and closes it when ctx is closed or the host shuts down.
 func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
 	mapperAddr := mapperTarget(ctx)
 	loaderAddr := loaderTarget(ctx)
@@ -523,12 +524,15 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			return nil, err
 		}
 	}
+	if m, ok := host.(ProviderManager); ok {
+		return m.ManageProvider(ctx, p, path)
+	}
 	return &cancelOnCloseProvider{provider: p}, nil
 }
 
 // cancelOnCloseProvider wraps a Provider so that Close sends a Cancel RPC before shutting down the plugin process. This
-// is used for providers created via NewProviderFromPath, which are not managed by a Host and therefore don't get Cancel
-// via the host's close sequence.
+// is used for providers created via NewProviderFromPath with a host that is not a [ProviderManager], which therefore
+// don't get Cancel via the host's close sequence.
 type cancelOnCloseProvider struct {
 	*provider
 }

@@ -148,7 +148,10 @@ type defaultHost struct {
 	contextServersMu sync.Mutex
 }
 
-var _ plugin.Host = (*defaultHost)(nil)
+var (
+	_ plugin.Host            = (*defaultHost)(nil)
+	_ plugin.ProviderManager = (*defaultHost)(nil)
+)
 
 // Loader returns a schema loader service bound to ctx's workspace view, built from the loader
 // factory the host was constructed with. It returns nil if the host has no loader factory. The
@@ -448,7 +451,25 @@ func (host *defaultHost) Provider(
 	return hostManagedProvider{plug, host}, nil
 }
 
-// hostManagedProvider wraps a Provider such that it can be closed by the host that created it.
+// ManageProvider registers a provider started outside the host, so that releasing ctx or closing the host also
+// closes it.
+func (host *defaultHost) ManageProvider(
+	ctx *plugin.Context, provider plugin.Provider, name string,
+) (plugin.Provider, error) {
+	_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
+		host.resourcePlugins[provider] = &resourcePlugin{
+			Plugin: provider, Name: name, ctx: ctx.LifetimeContext(),
+		}
+		return nil, nil
+	})
+	if err != nil {
+		return nil, errors.Join(err, provider.Close())
+	}
+	return hostManagedProvider{provider, host}, nil
+}
+
+// hostManagedProvider wraps a Provider owned by the host, whether booted by Provider or adopted by ManageProvider,
+// so that Close goes through the host.
 type hostManagedProvider struct {
 	plugin.Provider
 
