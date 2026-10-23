@@ -2518,6 +2518,67 @@ func TestListPolicyIssues_ClosedQuery(t *testing.T) {
 	}
 }
 
+func TestExportPolicyIssues(t *testing.T) {
+	t.Parallel()
+
+	var method, path, gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("reading request body: %v", err)
+		}
+		method, path, gotBody = r.Method, r.URL.EscapedPath(), string(body)
+		w.Header().Set("Content-Type", "text/csv")
+		_, _ = w.Write([]byte("id,policyName\ni1,p\n"))
+	}))
+	defer server.Close()
+
+	stream, err := newMockClient(server).ExportPolicyIssues(
+		t.Context(), "acme", cloudapitype.AngularGridGetRowsRequest{}, false)
+	require.NoError(t, err)
+	defer stream.Close()
+	data, err := io.ReadAll(stream)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, method)
+	assert.Equal(t, "/api/orgs/acme/policyresults/issues/export", path)
+	var body map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(gotBody), &body))
+	assert.NotContains(t, body, "startRow")
+	assert.NotContains(t, body, "endRow")
+	assert.Equal(t, "id,policyName\ni1,p\n", string(data))
+}
+
+func TestExportPolicyIssues_ClosedQuery(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		closed   bool
+		rawQuery string
+	}{
+		{"active", false, ""},
+		{"closed", true, "closed=true"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var rawQuery string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				rawQuery = r.URL.RawQuery
+				_, _ = w.Write([]byte("id\n"))
+			}))
+			defer server.Close()
+
+			stream, err := newMockClient(server).ExportPolicyIssues(
+				t.Context(), "acme", cloudapitype.AngularGridGetRowsRequest{}, tt.closed)
+			require.NoError(t, err)
+			require.NoError(t, stream.Close())
+			assert.Equal(t, tt.rawQuery, rawQuery)
+		})
+	}
+}
+
 func getPolicyIssueFromServer(t *testing.T, body string) cloudapitype.GetPolicyIssueResponse {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
