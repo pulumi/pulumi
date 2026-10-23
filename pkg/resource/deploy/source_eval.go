@@ -1668,7 +1668,6 @@ func (rm *resmon) ExistsResource(ctx context.Context,
 		Type:   urn.Type(),
 		ID:     id,
 		Inputs: resource.FromResourcePropertyMap(props),
-		State:  resource.FromResourcePropertyMap(props),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reading resource '%s': %w", id, err)
