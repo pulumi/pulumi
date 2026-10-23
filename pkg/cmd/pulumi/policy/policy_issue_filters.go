@@ -34,6 +34,8 @@ type policyIssueFilters struct {
 
 const (
 	gridFilterTypeText = "text"
+	// The service only rewrites assignedTo logins inside nested groups marked as joins.
+	gridFilterTypeJoin = "join"
 	gridOpEquals       = "equals"
 	gridCombinatorAnd  = "AND"
 	gridCombinatorOr   = "OR"
@@ -169,7 +171,7 @@ func gridGroup(combinator string, conds []cloudapitype.AngularGridFilterModel) c
 	if len(conds) == 1 {
 		return conds[0]
 	}
-	return cloudapitype.AngularGridFilterModel{Type: combinator, Conditions: conds}
+	return cloudapitype.AngularGridFilterModel{FilterType: gridFilterTypeJoin, Type: combinator, Conditions: conds}
 }
 
 func validateFlagValues(flag string, values, allowed []string) error {
@@ -236,7 +238,7 @@ func entityFilter(parts ...[2]string) cloudapitype.AngularGridFilterModel {
 	for _, p := range parts {
 		conds = append(conds, gridLeaf(p[0], p[1]))
 	}
-	return cloudapitype.AngularGridFilterModel{Type: gridCombinatorAnd, Conditions: conds}
+	return cloudapitype.AngularGridFilterModel{FilterType: gridFilterTypeJoin, Type: gridCombinatorAnd, Conditions: conds}
 }
 
 func buildStackCondition(stacks []string) cloudapitype.AngularGridFilterModel {

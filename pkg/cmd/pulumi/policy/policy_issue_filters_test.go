@@ -62,7 +62,7 @@ func TestBuildPolicyIssueFilter_RepeatIsOr_FlagsAreAnd(t *testing.T) {
 	got, err := json.Marshal(filter)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"type":"AND","conditions":[
-		{"colId":"","filterType":"","filter":"","type":"OR","conditions":[
+		{"colId":"","filterType":"join","filter":"","type":"OR","conditions":[
 			{"colId":"severity","filterType":"text","type":"equals","filter":"high"},
 			{"colId":"severity","filterType":"text","type":"equals","filter":"critical"}]},
 		{"colId":"policyPack","filterType":"text","type":"equals","filter":"aws"}]}`, string(got))
@@ -75,7 +75,7 @@ func TestBuildPolicyIssueFilter_Stack(t *testing.T) {
 	require.NoError(t, err)
 	got, err := json.Marshal(filter)
 	require.NoError(t, err)
-	assert.JSONEq(t, `{"type":"AND","conditions":[{"colId":"","filterType":"","filter":"","type":"AND","conditions":[
+	assert.JSONEq(t, `{"type":"AND","conditions":[{"colId":"","filterType":"join","filter":"","type":"AND","conditions":[
 		{"colId":"entityType","filterType":"text","type":"equals","filter":"stack"},
 		{"colId":"entityProject","filterType":"text","type":"equals","filter":"web"},
 		{"colId":"entityId","filterType":"text","type":"equals","filter":"prod"}]}]}`, string(got))
@@ -102,7 +102,7 @@ func TestBuildPolicyIssueFilter_Account(t *testing.T) {
 	require.NoError(t, err)
 	got, err := json.Marshal(filter)
 	require.NoError(t, err)
-	assert.JSONEq(t, `{"type":"AND","conditions":[{"colId":"","filterType":"","filter":"","type":"AND","conditions":[
+	assert.JSONEq(t, `{"type":"AND","conditions":[{"colId":"","filterType":"join","filter":"","type":"AND","conditions":[
 		{"colId":"entityType","filterType":"text","type":"equals","filter":"insights-account"},
 		{"colId":"entityProject","filterType":"text","type":"equals","filter":"my-acct"},
 		{"colId":"entityId","filterType":"text","type":"equals","filter":"my-acct"}]}]}`, string(got))
@@ -111,7 +111,7 @@ func TestBuildPolicyIssueFilter_Account(t *testing.T) {
 	require.NoError(t, err)
 	got, err = json.Marshal(filter)
 	require.NoError(t, err)
-	assert.JSONEq(t, `{"type":"AND","conditions":[{"colId":"","filterType":"","filter":"","type":"AND","conditions":[
+	assert.JSONEq(t, `{"type":"AND","conditions":[{"colId":"","filterType":"join","filter":"","type":"AND","conditions":[
 		{"colId":"entityType","filterType":"text","type":"equals","filter":"insights-account"},
 		{"colId":"entityProject","filterType":"text","type":"equals","filter":"team"},
 		{"colId":"entityId","filterType":"text","type":"equals","filter":"aws-prod"}]}]}`, string(got))
@@ -127,6 +127,14 @@ func TestBuildPolicyIssueFilter_AssignedTo(t *testing.T) {
 	filter, _, err := buildPolicyIssueGrid(parseIssueFilters(t, "--assigned-to", "bob"))
 	require.NoError(t, err)
 	assert.Equal(t, "bob", filter.Conditions[0].Filter)
+
+	filter, _, err = buildPolicyIssueGrid(parseIssueFilters(t, "--assigned-to", "bob", "--assigned-to", "alice"))
+	require.NoError(t, err)
+	got, err := json.Marshal(filter)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"type":"AND","conditions":[{"colId":"","filterType":"join","filter":"","type":"OR","conditions":[
+		{"colId":"assignedTo","filterType":"text","type":"equals","filter":"bob"},
+		{"colId":"assignedTo","filterType":"text","type":"equals","filter":"alice"}]}]}`, string(got))
 }
 
 func TestBuildPolicyIssueFilter_InvalidEnum(t *testing.T) {
