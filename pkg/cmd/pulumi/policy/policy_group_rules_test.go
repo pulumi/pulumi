@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
@@ -62,39 +61,39 @@ func TestParseMatchRule_TagConditions(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name   string
-		kind   matchRuleKind
-		values []string
-		want   string
+		name  string
+		kind  matchRuleKind
+		value string
+		want  string
 	}{
 		{
-			name:   "equals",
-			kind:   stackMatchRule,
-			values: []string{"env=prod"},
-			want:   tagEqualsJSON(stackCtxJSON, "env", "prod"),
+			name:  "equals",
+			kind:  stackMatchRule,
+			value: "env=prod",
+			want:  tagEqualsJSON(stackCtxJSON, "env", "prod"),
 		},
 		{
-			name:   "not equals",
-			kind:   stackMatchRule,
-			values: []string{"env!=prod"},
-			want:   notJSON(tagEqualsJSON(stackCtxJSON, "env", "prod")),
+			name:  "not equals",
+			kind:  stackMatchRule,
+			value: "env!=prod",
+			want:  notJSON(tagEqualsJSON(stackCtxJSON, "env", "prod")),
 		},
 		{
-			name:   "exists",
-			kind:   stackMatchRule,
-			values: []string{"owner"},
-			want:   hasTagJSON(stackCtxJSON, "owner"),
+			name:  "exists",
+			kind:  stackMatchRule,
+			value: "owner",
+			want:  hasTagJSON(stackCtxJSON, "owner"),
 		},
 		{
-			name:   "not exists",
-			kind:   stackMatchRule,
-			values: []string{"!temp"},
-			want:   notJSON(hasTagJSON(stackCtxJSON, "temp")),
+			name:  "not exists",
+			kind:  stackMatchRule,
+			value: "!temp",
+			want:  notJSON(hasTagJSON(stackCtxJSON, "temp")),
 		},
 		{
-			name:   "conditions are ANDed left to right",
-			kind:   stackMatchRule,
-			values: []string{"env=prod, region = us-west-2 ,owner"},
+			name:  "conditions are ANDed left to right",
+			kind:  stackMatchRule,
+			value: "env=prod, region = us-west-2 ,owner",
 			want: binaryJSON("And",
 				binaryJSON("And",
 					tagEqualsJSON(stackCtxJSON, "env", "prod"),
@@ -102,9 +101,9 @@ func TestParseMatchRule_TagConditions(t *testing.T) {
 				hasTagJSON(stackCtxJSON, "owner")),
 		},
 		{
-			name:   "repeated values are ORed",
-			kind:   stackMatchRule,
-			values: []string{"env=prod,owner", "team=platform", "!temp"},
+			name:  "alternatives are ORed left to right",
+			kind:  stackMatchRule,
+			value: "env=prod,owner OR team=platform OR !temp",
 			want: binaryJSON("Or",
 				binaryJSON("Or",
 					binaryJSON("And", tagEqualsJSON(stackCtxJSON, "env", "prod"), hasTagJSON(stackCtxJSON, "owner")),
@@ -112,36 +111,50 @@ func TestParseMatchRule_TagConditions(t *testing.T) {
 				notJSON(hasTagJSON(stackCtxJSON, "temp"))),
 		},
 		{
-			name:   "account rules read account tags",
-			kind:   accountMatchRule,
-			values: []string{"env=prod,team!=sandbox"},
+			name:  "account rules read account tags",
+			kind:  accountMatchRule,
+			value: "env=prod,team!=sandbox",
 			want: binaryJSON("And",
 				tagEqualsJSON(accountCtxJSON, "env", "prod"),
 				notJSON(tagEqualsJSON(accountCtxJSON, "team", "sandbox"))),
 		},
 		{
-			name:   "value may contain an equals sign",
-			kind:   stackMatchRule,
-			values: []string{"query=a=b"},
-			want:   tagEqualsJSON(stackCtxJSON, "query", "a=b"),
+			name:  "value may contain an equals sign",
+			kind:  stackMatchRule,
+			value: "query=a=b",
+			want:  tagEqualsJSON(stackCtxJSON, "query", "a=b"),
+		},
+		{
+			name:  "OR without surrounding spaces is part of a value",
+			kind:  stackMatchRule,
+			value: "env=prodORdev",
+			want:  tagEqualsJSON(stackCtxJSON, "env", "prodORdev"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			rule, err := parseMatchRule(tt.kind, tt.values)
+			rule, err := parseMatchRule(tt.kind, tt.value)
 			require.NoError(t, err)
 			assert.JSONEq(t, tt.want, marshalRule(t, rule))
 		})
 	}
 }
 
-func TestParseMatchRule_NoValues(t *testing.T) {
+func TestParseMatchRuleFlag_NotPassed(t *testing.T) {
 	t.Parallel()
 
-	rule, err := parseMatchRule(stackMatchRule, nil)
+	rule, err := parseMatchRuleFlag(stackMatchRule, "", map[string]bool{"account-rule": true})
 	require.NoError(t, err)
 	assert.Nil(t, rule)
+}
+
+func TestParseMatchRuleFlag_PassedEmpty(t *testing.T) {
+	t.Parallel()
+
+	_, err := parseMatchRuleFlag(stackMatchRule, "", map[string]bool{"stack-rule": true})
+	require.Error(t, err)
+	assert.Equal(t, "invalid --stack-rule: must not be empty", err.Error())
 }
 
 func TestParseMatchRule_JSON(t *testing.T) {
@@ -149,7 +162,7 @@ func TestParseMatchRule_JSON(t *testing.T) {
 
 	expr := binaryJSON("Or", hasTagJSON(stackCtxJSON, "a"), tagEqualsJSON(stackCtxJSON, "b", "c"))
 
-	rule, err := parseMatchRule(stackMatchRule, []string{"  " + expr})
+	rule, err := parseMatchRule(stackMatchRule, "  "+expr)
 	require.NoError(t, err)
 	assert.JSONEq(t, expr, marshalRule(t, rule))
 }
@@ -165,9 +178,9 @@ func TestParseMatchRule_File(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "rule.json")
 	require.NoError(t, os.WriteFile(path, []byte(expr), 0o600))
 
-	rule, err := parseMatchRule(stackMatchRule, []string{"@" + path, "owner"})
+	rule, err := parseMatchRule(stackMatchRule, "@"+path)
 	require.NoError(t, err)
-	assert.JSONEq(t, binaryJSON("Or", expr, hasTagJSON(stackCtxJSON, "owner")), marshalRule(t, rule))
+	assert.JSONEq(t, expr, marshalRule(t, rule))
 }
 
 func TestParseMatchRule_Errors(t *testing.T) {
@@ -182,6 +195,9 @@ func TestParseMatchRule_Errors(t *testing.T) {
 	}{
 		{"empty", stackMatchRule, " ", "invalid --stack-rule: must not be empty"},
 		{"empty condition", stackMatchRule, "env=prod,,owner", "invalid --stack-rule: empty tag condition"},
+		{"empty alternative", stackMatchRule, "env=prod OR  OR owner", "invalid --stack-rule: empty tag condition"},
+		{"leading OR", stackMatchRule, "OR env=prod", `invalid --stack-rule: " OR " must separate two alternatives`},
+		{"trailing OR", stackMatchRule, "env=prod OR ", `invalid --stack-rule: " OR " must separate two alternatives`},
 		{"missing key", stackMatchRule, "=prod", `invalid --stack-rule: tag condition "=prod" is missing a key`},
 		{"missing negated key", accountMatchRule, "!", `invalid --account-rule: tag condition "!" is missing a key`},
 		{
@@ -205,7 +221,7 @@ func TestParseMatchRule_Errors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := parseMatchRule(tt.kind, []string{tt.value})
+			_, err := parseMatchRule(tt.kind, tt.value)
 			require.Error(t, err)
 			assert.Equal(t, tt.want, err.Error())
 			assert.IsType(t, cmdCmd.ConfigurationError{}, err)
@@ -214,7 +230,7 @@ func TestParseMatchRule_Errors(t *testing.T) {
 
 	t.Run("missing file", func(t *testing.T) {
 		t.Parallel()
-		_, err := parseMatchRule(stackMatchRule, []string{"@" + missing})
+		_, err := parseMatchRule(stackMatchRule, "@"+missing)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid --stack-rule: reading "+missing)
 		assert.IsType(t, cmdCmd.ConfigurationError{}, err)
@@ -224,17 +240,17 @@ func TestParseMatchRule_Errors(t *testing.T) {
 func TestFormatMatchRule_RoundTripsTagConditions(t *testing.T) {
 	t.Parallel()
 
-	for _, values := range [][]string{
-		{"env=prod"},
-		{"env!=prod"},
-		{"owner"},
-		{"!temp"},
-		{"env=prod,region=us-west-2,!temp"},
-		{"env=prod,owner", "team=platform", "!temp"},
+	for _, value := range []string{
+		"env=prod",
+		"env!=prod",
+		"owner",
+		"!temp",
+		"env=prod,region=us-west-2,!temp",
+		"env=prod,owner OR team=platform OR !temp",
 	} {
-		rule, err := parseMatchRule(stackMatchRule, values)
+		rule, err := parseMatchRule(stackMatchRule, value)
 		require.NoError(t, err)
-		assert.Equal(t, strings.Join(values, " OR "), formatMatchRule(stackMatchRule, rule))
+		assert.Equal(t, value, formatMatchRule(stackMatchRule, rule))
 	}
 }
 
@@ -257,6 +273,11 @@ func TestFormatMatchRule_FallsBackToJSON(t *testing.T) {
 			name: "value the syntax cannot carry",
 			kind: stackMatchRule,
 			expr: tagEqualsJSON(stackCtxJSON, "env", "a,b"),
+		},
+		{
+			name: "value ending in OR",
+			kind: stackMatchRule,
+			expr: tagEqualsJSON(stackCtxJSON, "env", "prod OR"),
 		},
 		{
 			name: "context of the other entity",

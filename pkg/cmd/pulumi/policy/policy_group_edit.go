@@ -69,9 +69,9 @@ type policyGroupEditArgs struct {
 	removePolicyPack      []string
 	addInsightsAccount    []string
 	removeInsightsAccount []string
-	stackRule             []string
+	stackRule             string
 	removeStackRule       bool
-	accountRule           []string
+	accountRule           string
 	removeAccountRule     bool
 
 	// changed records which of the mutation flags were set by the user.
@@ -110,7 +110,7 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 			"  pulumi policy group edit prod-policies " +
 			"--add-stack web/prod --add-policy-pack aws-guardrails@3\n\n" +
 			"  # Replace the stack rule: stacks tagged env=prod, or any stack with a team tag\n" +
-			"  pulumi policy group edit prod-policies --stack-rule env=prod --stack-rule team\n\n" +
+			"  pulumi policy group edit prod-policies --stack-rule 'env=prod OR team'\n\n" +
 			"  # Set an account rule from a JSON file on an audit group\n" +
 			"  pulumi policy group edit compliance --account-rule @account-rule.json\n\n" +
 			"  # Remove the stack rule\n" +
@@ -143,14 +143,13 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 		"Add an Insights account to the Policy Group (repeatable)")
 	cmd.Flags().StringArrayVar(&args.removeInsightsAccount, "remove-insights-account", nil,
 		"Remove an Insights account from the Policy Group (repeatable)")
-	cmd.Flags().StringArrayVar(&args.stackRule, "stack-rule", nil,
-		"Replace the stack match rule: tag conditions such as 'env=prod,team!=web', a JSON expression, "+
-			"or @<file>. Repeat to match any of several rules")
+	cmd.Flags().StringVar(&args.stackRule, "stack-rule", "",
+		"Replace the stack match rule: tag conditions such as 'env=prod,team!=web OR owner', "+
+			"a JSON expression, or @<file>")
 	cmd.Flags().BoolVar(&args.removeStackRule, "remove-stack-rule", false,
 		"Remove the stack match rule")
-	cmd.Flags().StringArrayVar(&args.accountRule, "account-rule", nil,
-		"Replace the Insights account match rule, in the same syntax as --stack-rule. Audit groups only. "+
-			"Repeat to match any of several rules")
+	cmd.Flags().StringVar(&args.accountRule, "account-rule", "",
+		"Replace the Insights account match rule, in the same syntax as --stack-rule. Audit groups only")
 	cmd.Flags().BoolVar(&args.removeAccountRule, "remove-account-rule", false,
 		"Remove the Insights account match rule")
 
@@ -251,11 +250,11 @@ func runPolicyGroupEdit(
 	if err != nil {
 		return err
 	}
-	stackRule, err := parseMatchRule(stackMatchRule, args.stackRule)
+	stackRule, err := parseMatchRuleFlag(stackMatchRule, args.stackRule, args.changed)
 	if err != nil {
 		return err
 	}
-	accountRule, err := parseMatchRule(accountMatchRule, args.accountRule)
+	accountRule, err := parseMatchRuleFlag(accountMatchRule, args.accountRule, args.changed)
 	if err != nil {
 		return err
 	}

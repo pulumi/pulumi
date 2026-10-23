@@ -66,44 +66,34 @@ const matchRuleHelp = "Match rules (preview; requires the tag-based policy group
 	"of the group alongside those added individually. --account-rule is only\n" +
 	"allowed on audit groups. Setting a rule replaces the group's current rule.\n" +
 	"\n" +
-	"Each value is one of:\n" +
+	"The value is one of:\n" +
 	"  - Tag conditions separated by commas, all of which must hold:\n" +
 	"      key=value    the tag is set to value\n" +
 	"      key!=value   the tag is not set to value (also true when the tag is absent)\n" +
 	"      key          the tag exists\n" +
 	"      !key         the tag does not exist\n" +
+	"    Separate alternatives with \" OR \" to match entities that satisfy any\n" +
+	"    of them, as in 'env=prod,region=us-west-2 OR team'. This is the syntax\n" +
+	"    `pulumi policy group get` prints.\n" +
 	"  - A JSON PermissionBooleanExpression, as returned in the stackMatchRule\n" +
 	"    and accountMatchRule fields of `pulumi policy group get --output json`.\n" +
 	"  - @<path> to read that JSON from a file.\n" +
 	"\n" +
-	"Repeat the flag to match entities that satisfy any of the values.\n" +
-	"Use JSON when a tag key or value contains ',' or '=', or a key starts or\n" +
-	"ends with '!'."
+	"Use JSON when a tag key or value contains ',', '=' or \" OR \", or a key\n" +
+	"starts or ends with '!'."
 
-// parseMatchRule turns the values of a repeatable rule flag into one
-// expression, ORing the values together in the order given.
-func parseMatchRule(kind matchRuleKind, values []string) (cloudapitype.PermissionBooleanExpression, error) {
-	var rule cloudapitype.PermissionBooleanExpression
-	for _, v := range values {
-		expr, err := parseMatchRuleValue(kind, v)
-		if err != nil {
-			return nil, err
-		}
-		if rule == nil {
-			rule = expr
-			continue
-		}
-		rule = cloudapitype.PermissionExpressionOrBuilder{
-			PermissionBooleanExpressionBinaryBuilder: cloudapitype.PermissionBooleanExpressionBinaryBuilder{
-				Left:  rule,
-				Right: expr,
-			},
-		}.Build()
+// parseMatchRuleFlag parses the value of kind's flag, or returns nil when the
+// flag was not passed.
+func parseMatchRuleFlag(
+	kind matchRuleKind, value string, changed map[string]bool,
+) (cloudapitype.PermissionBooleanExpression, error) {
+	if !changed[strings.TrimPrefix(kind.flag, "--")] {
+		return nil, nil
 	}
-	return rule, nil
+	return parseMatchRule(kind, value)
 }
 
-func parseMatchRuleValue(kind matchRuleKind, value string) (cloudapitype.PermissionBooleanExpression, error) {
+func parseMatchRule(kind matchRuleKind, value string) (cloudapitype.PermissionBooleanExpression, error) {
 	trimmed := strings.TrimSpace(value)
 	switch {
 	case trimmed == "":
@@ -121,7 +111,7 @@ func parseMatchRuleValue(kind matchRuleKind, value string) (cloudapitype.Permiss
 	case strings.HasPrefix(trimmed, "{"):
 		return parseMatchRuleJSON(kind, []byte(trimmed))
 	default:
-		return parseTagConditions(kind, trimmed)
+		return parseAlternatives(kind, trimmed)
 	}
 }
 
@@ -134,6 +124,30 @@ func parseMatchRuleJSON(kind matchRuleKind, data []byte) (cloudapitype.Permissio
 		return nil, matchRuleError(kind, "JSON expression must be an object with a \"__type\"")
 	}
 	return expr, nil
+}
+
+func parseAlternatives(kind matchRuleKind, value string) (cloudapitype.PermissionBooleanExpression, error) {
+	if strings.HasPrefix(value, "OR ") || strings.HasSuffix(value, " OR") {
+		return nil, matchRuleError(kind, `" OR " must separate two alternatives`)
+	}
+	var rule cloudapitype.PermissionBooleanExpression
+	for alt := range strings.SplitSeq(value, " OR ") {
+		expr, err := parseTagConditions(kind, strings.TrimSpace(alt))
+		if err != nil {
+			return nil, err
+		}
+		if rule == nil {
+			rule = expr
+			continue
+		}
+		rule = cloudapitype.PermissionExpressionOrBuilder{
+			PermissionBooleanExpressionBinaryBuilder: cloudapitype.PermissionBooleanExpressionBinaryBuilder{
+				Left:  rule,
+				Right: expr,
+			},
+		}.Build()
+	}
+	return rule, nil
 }
 
 func parseTagConditions(kind matchRuleKind, value string) (cloudapitype.PermissionBooleanExpression, error) {
@@ -216,8 +230,8 @@ func matchRuleError(kind matchRuleKind, msg string) error {
 }
 
 // formatMatchRule renders a rule in the tag-condition syntax the rule flags
-// accept, with " OR " between alternatives, or as compact JSON when the rule
-// has a shape that syntax cannot express.
+// accept, or as compact JSON when the rule has a shape that syntax cannot
+// express.
 func formatMatchRule(kind matchRuleKind, rule cloudapitype.PermissionBooleanExpression) string {
 	var alternatives []string
 	for _, branch := range flattenBinary[cloudapitype.PermissionExpressionOr](rule) {
@@ -278,7 +292,8 @@ func formatTagCondition(kind matchRuleKind, expr cloudapitype.PermissionBooleanE
 func isShorthandSafe(s string) bool {
 	return s != "" && s == strings.TrimSpace(s) &&
 		!strings.ContainsAny(s, ",=") && !strings.HasPrefix(s, "!") && !strings.HasSuffix(s, "!") &&
-		!strings.HasPrefix(s, "@") && !strings.HasPrefix(s, "{") && !strings.Contains(s, " OR ")
+		!strings.HasPrefix(s, "@") && !strings.HasPrefix(s, "{") &&
+		!strings.Contains(s, " OR ") && !strings.HasPrefix(s, "OR ") && !strings.HasSuffix(s, " OR")
 }
 
 func formatMatchRuleJSON(rule cloudapitype.PermissionBooleanExpression) string {

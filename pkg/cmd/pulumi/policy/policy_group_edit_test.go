@@ -287,7 +287,7 @@ func TestPolicyGroupEdit_SetsAndRemovesMatchRules(t *testing.T) {
 			outputFormat:    defaultPolicyGroupGetOutputFormat(),
 			addStack:        []string{"web/prod"},
 			removeStackRule: true,
-			accountRule:     []string{"env=prod", "team"},
+			accountRule:     "env=prod OR team",
 			changed: map[string]bool{
 				"add-stack": true, "remove-stack-rule": true, "account-rule": true,
 			},
@@ -318,7 +318,7 @@ func TestPolicyGroupEdit_StackRuleAndRemoveAccountRule(t *testing.T) {
 	err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
 			outputFormat:      defaultPolicyGroupGetOutputFormat(),
-			stackRule:         []string{"env!=dev"},
+			stackRule:         "env!=dev",
 			removeAccountRule: true,
 			changed:           map[string]bool{"stack-rule": true, "remove-account-rule": true},
 		})
@@ -345,7 +345,7 @@ func TestPolicyGroupEdit_AccountRuleOnPreventativeGroup(t *testing.T) {
 	err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
-			accountRule:  []string{"env=prod"},
+			accountRule:  "env=prod",
 			changed:      map[string]bool{"account-rule": true},
 		})
 	require.Error(t, err)
@@ -362,7 +362,7 @@ func TestPolicyGroupEdit_AccountRuleModeCheckError(t *testing.T) {
 	err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
 		stubPolicyGroupEditFactory(c, "acme"), "missing", policyGroupEditArgs{
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
-			accountRule:  []string{"env=prod"},
+			accountRule:  "env=prod",
 			changed:      map[string]bool{"account-rule": true},
 		})
 	require.Error(t, err)
@@ -379,14 +379,14 @@ func TestPolicyGroupEdit_RuleFlagConflicts(t *testing.T) {
 	}{
 		{
 			args: policyGroupEditArgs{
-				stackRule: []string{"env=prod"}, removeStackRule: true,
+				stackRule: "env=prod", removeStackRule: true,
 				changed: map[string]bool{"stack-rule": true, "remove-stack-rule": true},
 			},
 			want: "--stack-rule and --remove-stack-rule cannot be used together",
 		},
 		{
 			args: policyGroupEditArgs{
-				accountRule: []string{"env=prod"}, removeAccountRule: true,
+				accountRule: "env=prod", removeAccountRule: true,
 				changed: map[string]bool{"account-rule": true, "remove-account-rule": true},
 			},
 			want: "--account-rule and --remove-account-rule cannot be used together",
@@ -408,7 +408,7 @@ func TestPolicyGroupEdit_InvalidRule(t *testing.T) {
 		failingPolicyGroupEditFactory(errors.New("factory must not be called")), "prod-policies",
 		policyGroupEditArgs{
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
-			stackRule:    []string{`{"__type": "PermissionExpressionStack"}`},
+			stackRule:    `{"__type": "PermissionExpressionStack"}`,
 			changed:      map[string]bool{"stack-rule": true},
 		})
 	require.Error(t, err)

@@ -88,8 +88,8 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 			"organization, including the list of Policy Packs applied to it, the\n" +
 			"stacks or Insights accounts added to the group individually, and the\n" +
 			"stack and account match rules, if any. Match rules are shown in the\n" +
-			"syntax `pulumi policy group edit --stack-rule` accepts, with \" OR \"\n" +
-			"between alternatives, or as JSON when that syntax cannot express them.\n" +
+			"syntax `pulumi policy group edit --stack-rule` accepts, or as JSON when\n" +
+			"that syntax cannot express them.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"full response as JSON.",

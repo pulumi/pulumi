@@ -234,10 +234,11 @@ func TestPolicyGroupNew_MatchRules(t *testing.T) {
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
 		policyGroupNewArgs{
 			mode:         "audit",
-			stackRule:    []string{"env=prod", "owner"},
-			accountRule:  []string{"!temp"},
+			stackRule:    "env=prod OR owner",
+			accountRule:  "!temp",
 			yes:          true,
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			changed:      map[string]bool{"stack-rule": true, "account-rule": true},
 		})
 	require.NoError(t, err)
 
@@ -260,7 +261,8 @@ func TestPolicyGroupNew_AccountRuleRequiresAudit(t *testing.T) {
 		{mode: "preventative"},
 		{entityType: "stacks"},
 	} {
-		args.accountRule = []string{"env=prod"}
+		args.accountRule = "env=prod"
+		args.changed = map[string]bool{"account-rule": true}
 		args.yes = true
 		args.outputFormat = defaultPolicyGroupGetOutputFormat()
 
@@ -281,9 +283,10 @@ func TestPolicyGroupNew_AccountRuleWithDeprecatedAccountsEntityType(t *testing.T
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
 		policyGroupNewArgs{
 			entityType:   "accounts",
-			accountRule:  []string{"env=prod"},
+			accountRule:  "env=prod",
 			yes:          true,
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			changed:      map[string]bool{"account-rule": true},
 		})
 	require.NoError(t, err)
 	assert.Equal(t, 1, c.createCalls)
@@ -297,9 +300,10 @@ func TestPolicyGroupNew_InvalidRuleFailsBeforeLogin(t *testing.T) {
 		failingPolicyGroupNewFactory(errors.New("factory must not be called")), "prod-policies",
 		policyGroupNewArgs{
 			mode:         "preventative",
-			stackRule:    []string{"env="},
+			stackRule:    "env=",
 			yes:          true,
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			changed:      map[string]bool{"stack-rule": true},
 		})
 	require.Error(t, err)
 	assert.IsType(t, cmdCmd.ConfigurationError{}, err)
@@ -313,7 +317,7 @@ func TestPolicyGroupNew_RuleFlagsParse(t *testing.T) {
 	cmd := newPolicyGroupNewCmdWith(stubPolicyGroupNewFactory(c, "acme"))
 	cmd.SetArgs([]string{
 		"prod-policies", "--mode", "audit", "--yes",
-		"--stack-rule", "env=prod", "--stack-rule", "owner",
+		"--stack-rule", "env=prod OR owner",
 		"--account-rule", "team=platform",
 	})
 	cmd.SetOut(&bytes.Buffer{})

@@ -58,10 +58,13 @@ type policyGroupNewArgs struct {
 	entityType   string
 	mode         string
 	agentPoolID  string
-	stackRule    []string
-	accountRule  []string
+	stackRule    string
+	accountRule  string
 	yes          bool
 	outputFormat outputflag.OutputFlag[policyGroupGetRenderFunc]
+
+	// changed records whether --stack-rule and --account-rule were set.
+	changed map[string]bool
 }
 
 var (
@@ -112,6 +115,7 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 			"  pulumi policy group new prod-policies --mode preventative \\\n" +
 			"    --yes --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
+			args.changed = changedFlagSet(cmd, []string{"stack-rule", "account-rule"})
 			return runPolicyGroupNew(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
 	}
@@ -132,12 +136,11 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 		"The enforcement mode: audit or preventative")
 	cmd.Flags().StringVar(&args.agentPoolID, "agent-pool-id", "",
 		"Agent pool ID for policy evaluation (optional)")
-	cmd.Flags().StringArrayVar(&args.stackRule, "stack-rule", nil,
-		"Stack match rule: tag conditions such as 'env=prod,team!=web', a JSON expression, or @<file>. "+
-			"Repeat to match any of several rules")
-	cmd.Flags().StringArrayVar(&args.accountRule, "account-rule", nil,
-		"Insights account match rule, in the same syntax as --stack-rule. Audit groups only. "+
-			"Repeat to match any of several rules")
+	cmd.Flags().StringVar(&args.stackRule, "stack-rule", "",
+		"Stack match rule: tag conditions such as 'env=prod,team!=web OR owner', a JSON expression, "+
+			"or @<file>")
+	cmd.Flags().StringVar(&args.accountRule, "account-rule", "",
+		"Insights account match rule, in the same syntax as --stack-rule. Audit groups only")
 	cmd.Flags().BoolVarP(&args.yes, "yes", "y", false,
 		"Skip prompts; --mode is then required")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
@@ -189,11 +192,11 @@ func runPolicyGroupNew(
 	ctx context.Context, w io.Writer,
 	factory policyGroupNewClientFactory, name string, args policyGroupNewArgs,
 ) error {
-	stackRule, err := parseMatchRule(stackMatchRule, args.stackRule)
+	stackRule, err := parseMatchRuleFlag(stackMatchRule, args.stackRule, args.changed)
 	if err != nil {
 		return err
 	}
-	accountRule, err := parseMatchRule(accountMatchRule, args.accountRule)
+	accountRule, err := parseMatchRuleFlag(accountMatchRule, args.accountRule, args.changed)
 	if err != nil {
 		return err
 	}
