@@ -25,12 +25,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -307,4 +310,128 @@ func TestManagedConfigWritesRejectConfigFile(t *testing.T) {
 			require.Equal(t, managedStackFile, string(written))
 		})
 	}
+}
+
+func TestManagedConfigCommandsNotSupported(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		managed string
+		command func(cmdBackend.LoginManager, pkgWorkspace.Context, *string, *string) *cobra.Command
+		args    []string
+		err     string
+	}{
+		{
+			name:    "refresh",
+			managed: "dev",
+			command: func(lm cmdBackend.LoginManager, ws pkgWorkspace.Context, stack *string, file *string) *cobra.Command {
+				return newConfigRefreshCmd(ws, stack, lm, file)
+			},
+			err: "`pulumi config refresh` is not supported on stacks with an ESC-managed environment yet",
+		},
+		{
+			name:    "copy from a managed stack",
+			managed: "dev",
+			command: func(lm cmdBackend.LoginManager, ws pkgWorkspace.Context, stack *string, file *string) *cobra.Command {
+				return newConfigCopyCmd(ws, stack, lm, file)
+			},
+			args: []string{"--dest", "other"},
+			err:  "`pulumi config copy` from stack org/dev is not supported on stacks with an ESC-managed environment yet",
+		},
+		{
+			name:    "copy to a managed stack",
+			managed: "other",
+			command: func(lm cmdBackend.LoginManager, ws pkgWorkspace.Context, stack *string, file *string) *cobra.Command {
+				return newConfigCopyCmd(ws, stack, lm, file)
+			},
+			args: []string{"--dest", "other"},
+			err:  "`pulumi config copy` to stack org/other is not supported on stacks with an ESC-managed environment yet",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			configFile := filepath.Join(t.TempDir(), "Pulumi.dev.yaml")
+			require.NoError(t, os.WriteFile(configFile, []byte(managedStackFile), 0o600))
+			lm, ws := managedStacksLoginManager(c.managed)
+			stack := "dev"
+			cmd := c.command(lm, ws, &stack, &configFile)
+			cmd.SetArgs(c.args)
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+			cmd.SilenceUsage = true
+
+			err := cmd.ExecuteContext(t.Context())
+			require.ErrorContains(t, err, c.err)
+			written, readErr := os.ReadFile(configFile)
+			require.NoError(t, readErr)
+			require.Equal(t, managedStackFile, string(written))
+		})
+	}
+}
+
+func managedConfigEnvCmd(t *testing.T, stackYAML string, saved *string) *configEnvCmd {
+	cmd := newConfigEnvCmdForTestWithCheckYAMLEnvironment(nil, io.Discard, "name: app\nruntime: yaml", stackYAML,
+		func(context.Context, string, string, string, []byte) (apitype.EnvironmentDiagnostics, error) {
+			t.Error("no environment may be created")
+			return nil, nil
+		},
+		func(context.Context, string, []byte) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			return &esc.Environment{}, nil, nil
+		},
+		saved)
+	requireStack := cmd.requireStack
+	cmd.requireStack = func(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
+		name string, lopt cmdStack.LoadOption, opts display.Options, configFile string,
+	) (backend.Stack, error) {
+		s, err := requireStack(ctx, sink, ws, lm, name, lopt, opts, configFile)
+		require.NoError(t, err)
+		s.(*backend.MockStack).ConfigLocationF = func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"}
+		}
+		return s, nil
+	}
+	return cmd
+}
+
+func TestManagedConfigEnvCommands(t *testing.T) {
+	t.Parallel()
+
+	t.Run("init is not supported", func(t *testing.T) {
+		t.Parallel()
+		var saved string
+		init := &configEnvInitCmd{
+			parent:     managedConfigEnvCmd(t, managedStackFile, &saved),
+			newCrypter: newBase64EvalCrypter,
+			yes:        true,
+		}
+		err := init.run(t.Context(), nil)
+		require.EqualError(t, err,
+			"`pulumi config env init` is not supported on stacks with an ESC-managed environment yet")
+		require.Empty(t, saved)
+	})
+
+	t.Run("add to the stack init placeholder", func(t *testing.T) {
+		t.Parallel()
+		var saved string
+		add := &configEnvAddCmd{
+			parent: managedConfigEnvCmd(t, "environment:\n  values:\n    pulumiConfig: {}\n", &saved),
+			yes:    true,
+		}
+		require.NoError(t, add.run(t.Context(), []string{"proj/base"}))
+		require.Equal(t, "environment:\n  values:\n    pulumiConfig: {}\n  imports:\n    - proj/base\n", saved)
+	})
+
+	t.Run("remove keeps the values", func(t *testing.T) {
+		t.Parallel()
+		var saved string
+		rm := &configEnvRmCmd{
+			parent: managedConfigEnvCmd(t, "environment:\n  imports:\n    - proj/base\n    - proj/other\n"+
+				"  values:\n    pulumiConfig:\n      app:foo: bar # kept\n", &saved),
+			yes: true,
+		}
+		require.NoError(t, rm.run(t.Context(), []string{"proj/base"}))
+		require.Equal(t, "environment:\n  imports:\n    - proj/other\n"+
+			"  values:\n    pulumiConfig:\n      app:foo: bar # kept\n", saved)
+	})
 }

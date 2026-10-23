@@ -655,6 +655,35 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) {
 			}(),
 			wantSubstr: "checking target backend for existing stack",
 		},
+		{
+			name: "managed source",
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func(string) (*workspace.Project, string, error) {
+				return project, "Pulumi.yaml", nil
+			}},
+			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+				_ ...cmdBackend.LoginOption,
+			) (backend.Backend, error) {
+				sourceBE := newSourceBackend()
+				sourceBE.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return &backend.MockStack{
+						RefF: func() backend.StackReference { return ref },
+						ConfigLocationF: func() backend.StackConfigLocation {
+							return backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"}
+						},
+					}, nil
+				}
+				return sourceBE, nil
+			}},
+			targetBE: func() *backend.MockBackend {
+				be := newTargetBackend()
+				be.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return nil, errors.New("target lookup boom")
+				}
+				return be
+			}(),
+			wantSubstr: "`pulumi stack migrate` is not supported on stacks with an ESC-managed environment yet",
+		},
 	}
 
 	for _, tt := range tests {

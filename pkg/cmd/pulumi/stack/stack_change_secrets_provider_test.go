@@ -315,3 +315,38 @@ runtime: mock
 	require.NoError(t, err)
 	assert.Equal(t, "bar", val)
 }
+
+//nolint:paralleltest // mutates global state
+func TestChangeSecretsProvider_ManagedEnvironment(t *testing.T) {
+	mockStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{StringV: "dev", NameV: tokens.MustParseStackName("dev")}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"}
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) { return mockStack, nil },
+	}
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{
+		LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool,
+			colors.Colorization, ...cmdBackend.LoginOption,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	})
+	t.Chdir(t.TempDir())
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock\n"), 0o600))
+	const stackFile = "secretsprovider: awskms://alias/key\nenvironment:\n  values:\n    pulumiConfig: {}\n"
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte(stackFile), 0o600))
+
+	cmd := stackChangeSecretsProviderCmd{stdout: &bytes.Buffer{}, stack: "dev"}
+	err := cmd.Run(t.Context(), []string{"passphrase"})
+	require.EqualError(t, err, "`pulumi stack change-secrets-provider` is not supported on stacks with an "+
+		"ESC-managed environment yet; use a customer-managed key (CMK) in Pulumi Cloud to control the encryption key "+
+		"instead")
+	written, err := os.ReadFile("Pulumi.dev.yaml")
+	require.NoError(t, err)
+	assert.Equal(t, stackFile, string(written))
+}

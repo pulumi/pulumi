@@ -127,6 +127,10 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	if err != nil {
 		return err
 	}
+	if currentStack.ConfigLocation().ManagedEnvironment != "" {
+		return fmt.Errorf("%w; use a customer-managed key (CMK) in Pulumi Cloud to control the encryption key instead",
+			ManagedEnvironmentNotSupportedError("`pulumi stack change-secrets-provider`"))
+	}
 
 	currentProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), project, currentStack, "")
 	if err != nil {

@@ -167,13 +167,15 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	cmd.AddCommand(newConfigSetAllCmd(ws, &stack, cmdBackend.DefaultLoginManager, &ssml, &configFile))
 	cmd.AddCommand(newConfigRefreshCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
-	cmd.AddCommand(newConfigCopyCmd(ws, &stack, &configFile))
+	cmd.AddCommand(newConfigCopyCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack, &configFile))
 
 	return cmd
 }
 
-func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
+func newConfigCopyCmd(
+	ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, configFile *string,
+) *cobra.Command {
 	var path bool
 	var destinationStackName string
 
@@ -204,7 +206,7 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				*stack,
 				cmdStack.SetCurrent,
 				opts,
@@ -212,6 +214,10 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 			)
 			if err != nil {
 				return err
+			}
+			if currentStack.ConfigLocation().ManagedEnvironment != "" {
+				return cmdStack.ManagedEnvironmentNotSupportedError(
+					fmt.Sprintf("`pulumi config copy` from stack %s", currentStack.Ref()))
 			}
 			if currentStack.Ref().Name().String() == destinationStackName {
 				return errors.New("current stack and destination stack are the same")
@@ -226,7 +232,7 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				destinationStackName,
 				cmdStack.LoadOnly,
 				opts,
@@ -234,6 +240,10 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 			)
 			if err != nil {
 				return err
+			}
+			if destinationStack.ConfigLocation().ManagedEnvironment != "" {
+				return cmdStack.ManagedEnvironmentNotSupportedError(
+					fmt.Sprintf("`pulumi config copy` to stack %s", destinationStack.Ref()))
 			}
 			destinationProjectStack, err := cmdStack.LoadProjectStack(
 				ctx, cmdutil.Diag(), project, destinationStack, *configFile,
@@ -593,6 +603,9 @@ func newConfigRefreshCmd(
 			)
 			if err != nil {
 				return err
+			}
+			if s.ConfigLocation().ManagedEnvironment != "" {
+				return cmdStack.ManagedEnvironmentNotSupportedError("`pulumi config refresh`")
 			}
 
 			var configPath string
