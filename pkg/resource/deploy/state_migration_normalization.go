@@ -20,6 +20,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // rewriteStateMigrationState returns state unchanged if no migration rewrite applies, or a prepared rewritten copy.
@@ -93,10 +94,10 @@ func (e *normalizedReadResourceEvent) Dependencies() []resource.URN     { return
 // normalizedRegisterResourceOutputsEvent wraps an outputs event with rewritten state migration references.
 type normalizedRegisterResourceOutputsEvent struct {
 	RegisterResourceOutputsEvent
-	outputs resource.PropertyMap
+	outputs property.Map
 }
 
-func (e *normalizedRegisterResourceOutputsEvent) Outputs() resource.PropertyMap { return e.outputs }
+func (e *normalizedRegisterResourceOutputsEvent) Outputs() property.Map { return e.outputs }
 
 // normalizeStateMigrationSourceEvent applies saved state migration rewrites to program events.
 func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (SourceEvent, error) {
@@ -142,7 +143,7 @@ func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (Sour
 		}
 		return &normalizedRegisterResourceOutputsEvent{
 			RegisterResourceOutputsEvent: e,
-			outputs:                      rewritten.Outputs,
+			outputs:                      resource.FromResourcePropertyMap(rewritten.Outputs),
 		}, nil
 	default:
 		contract.Failf("unrecognized source event type %T", event)
