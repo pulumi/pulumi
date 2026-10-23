@@ -135,9 +135,9 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 			"\n" +
 			"Pass --stacks or --accounts to list every stack or Insights account that\n" +
 			"is a member of the group instead: both those added individually and\n" +
-			"those matched by the group's tag rule. --source narrows the list to one\n" +
-			"of the two. The first 100 members are shown by default; use --count or\n" +
-			"--all to fetch more.\n" +
+			"those matched by the group's match rule. --source narrows the list\n" +
+			"to one of the two. The first 100 members are shown by default; use\n" +
+			"--count or --all to fetch more.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"full response as JSON.",
@@ -145,9 +145,9 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 			"  pulumi policy group get prod-policies\n\n" +
 			"  # Show a Policy Group in another organization as JSON\n" +
 			"  pulumi policy group get prod-policies --org acme --output json\n\n" +
-			"  # List every stack in a Policy Group, including those matched by its tag rule\n" +
+			"  # List every stack in a Policy Group, including those matched by its match rule\n" +
 			"  pulumi policy group get prod-policies --stacks --all\n\n" +
-			"  # List only the Insights accounts matched by a Policy Group's tag rule\n" +
+			"  # List only the Insights accounts matched by a Policy Group's match rule\n" +
 			"  pulumi policy group get compliance --accounts --source rule",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runPolicyGroupGet(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), factory, posArgs[0], args)
@@ -163,12 +163,12 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the Policy Group")
 	cmd.Flags().BoolVar(&args.stacks, "stacks", false,
-		"List every stack in the group, added individually or matched by its tag rule")
+		"List every stack in the group, added individually or matched by its match rule")
 	cmd.Flags().BoolVar(&args.accounts, "accounts", false,
-		"List every Insights account in the group, added individually or matched by its tag rule")
+		"List every Insights account in the group, added individually or matched by its match rule")
 	cmd.Flags().StringVar(&args.source, "source", "",
 		"With --stacks or --accounts, list only members that were added individually (explicit) "+
-			"or matched by the tag rule (rule)")
+			"or matched by the match rule (rule)")
 	cmd.Flags().IntVar(&args.count, "count", 0,
 		"With --stacks or --accounts, the maximum number of members to return (default 100)")
 	cmd.Flags().BoolVar(&args.all, "all", false,

@@ -1767,7 +1767,7 @@ func (o ListPolicyGroupMembersOptions) query() any {
 }
 
 // ListPolicyGroupStacks returns one page of the stacks that are members of a
-// Policy Group, whether added explicitly or matched by its stack tag rule.
+// Policy Group, whether added explicitly or matched by its stack match rule.
 func (pc *Client) ListPolicyGroupStacks(
 	ctx context.Context, orgName, policyGroup string, opts ListPolicyGroupMembersOptions,
 ) (cloudapitype.ListPolicyGroupStacksResponse, error) {
@@ -1781,7 +1781,7 @@ func (pc *Client) ListPolicyGroupStacks(
 
 // ListPolicyGroupAccounts returns one page of the Insights accounts that are
 // members of a Policy Group, whether added explicitly or matched by its
-// account tag rule.
+// account match rule.
 func (pc *Client) ListPolicyGroupAccounts(
 	ctx context.Context, orgName, policyGroup string, opts ListPolicyGroupMembersOptions,
 ) (cloudapitype.ListPolicyGroupAccountsResponse, error) {
