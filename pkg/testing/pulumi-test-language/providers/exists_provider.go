@@ -27,8 +27,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-// ExistsProvider is a provider whose Read reports a resource as missing when the state it is given has a false
-// "value", so tests can check that state is passed through to Read.
+// ExistsProvider is a provider whose Read reports a resource as missing when the inputs it is given have a false
+// "value", so tests can check that the state passed to an existence check reaches Read.
 type ExistsProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -195,7 +195,7 @@ func (p *ExistsProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	if value, ok := req.State.GetOk("value"); ok && value.IsBool() && !value.AsBool() {
+	if value, ok := req.Inputs.GetOk("value"); ok && value.IsBool() && !value.AsBool() {
 		return plugin.ReadResponse{Status: resource.StatusOK}, nil
 	}
 
