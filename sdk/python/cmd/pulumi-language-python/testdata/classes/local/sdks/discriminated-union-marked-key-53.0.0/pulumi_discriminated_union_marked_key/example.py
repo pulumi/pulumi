@@ -110,6 +110,16 @@ class Example(pulumi.CustomResource):
         __props__.__dict__["union_out"] = None
         return Example(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = ExampleArgs.__new__(ExampleArgs)
+
+        __props__.__dict__["union_in"] = None
+        __props__.__dict__["union_out"] = None
+        __inst__ = Example.__new__(Example)
+        return pulumi.runtime.exists_resource(__inst__, 'discriminated-union-marked-key:index:Example', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="unionIn")
     def union_in(self) -> pulumi.Output[Union['outputs.VariantOne', 'outputs.VariantTwo']]:

@@ -128,6 +128,16 @@ class Foo(pulumi.CustomResource):
         __props__.__dict__["private_endpoint"] = None
         return Foo(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = FooArgs.__new__(FooArgs)
+
+        __props__.__dict__["condition_sets"] = None
+        __props__.__dict__["private_endpoint"] = None
+        __inst__ = Foo.__new__(Foo)
+        return pulumi.runtime.exists_resource(__inst__, 'nestedcollections:index:Foo', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="conditionSets")
     def condition_sets(self) -> pulumi.Output[Sequence[Sequence[Sequence['outputs.Bar']]]]:

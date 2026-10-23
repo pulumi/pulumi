@@ -145,6 +145,17 @@ class Lambda(pulumi.CustomResource):
         __props__.__dict__["property"] = None
         return Lambda(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__ = LambdaArgs.__new__(LambdaArgs)
+
+        __props__.__dict__["builtins"] = None
+        __props__.__dict__["lambda_"] = None
+        __props__.__dict__["property"] = None
+        __inst__ = Lambda.__new__(Lambda)
+        return pulumi.runtime.exists_resource(__inst__, 'keywords:module:Lambda', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def builtins(self) -> pulumi.Output[_builtins.str]:
