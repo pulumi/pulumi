@@ -623,9 +623,6 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				},
 				{
 					Name: "id",
-					// The ID is typed as an output so callers can pass a resource's id directly without the
-					// apply rewriter lifting it: resourceExists already returns an output and the SDK
-					// existence helpers accept an eventual id.
 					Type: model.NewOutputType(model.StringType),
 				},
 				{
