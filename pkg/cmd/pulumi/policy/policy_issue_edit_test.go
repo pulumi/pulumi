@@ -80,7 +80,10 @@ func TestBuildUpdatePolicyIssueRequest(t *testing.T) {
 
 	t.Run("status and priority", func(t *testing.T) {
 		t.Parallel()
-		req := buildUpdatePolicyIssueRequest(policyIssueEditArgs{status: "in_progress", priority: "p1"})
+		req := buildUpdatePolicyIssueRequest(policyIssueEditArgs{
+			status: "in_progress", priority: "p1",
+			changed: map[string]bool{"status": true, "priority": true},
+		})
 		require.NotNil(t, req.Status)
 		assert.Equal(t, cloudapitype.PolicyIssueStatusInProgress, *req.Status)
 		require.NotNil(t, req.Priority)
@@ -90,7 +93,9 @@ func TestBuildUpdatePolicyIssueRequest(t *testing.T) {
 
 	t.Run("assignee", func(t *testing.T) {
 		t.Parallel()
-		req := buildUpdatePolicyIssueRequest(policyIssueEditArgs{assignee: "alice"})
+		req := buildUpdatePolicyIssueRequest(policyIssueEditArgs{
+			assignee: "alice", changed: map[string]bool{"assignee": true},
+		})
 		require.NotNil(t, req.AssignedTo)
 		assert.Equal(t, "alice", *req.AssignedTo)
 	})
@@ -115,6 +120,13 @@ func TestPolicyIssueEdit_InvalidArgs(t *testing.T) {
 		{"fixed status", []string{"i1", "--status", "fixed"}, "open, in_progress, ignored"},
 		{"by_design status", []string{"i1", "--status", "by_design"}, "open, in_progress, ignored"},
 		{"bad priority", []string{"i1", "--priority", "p9"}, "p0, p1, p2, p3, p4"},
+		{"empty status", []string{"i1", "--status", ""}, `invalid status ""`},
+		{"empty priority", []string{"i1", "--priority", ""}, `invalid priority ""`},
+		{
+			"empty assignee",
+			[]string{"i1", "--status", "open", "--assignee", ""},
+			"--assignee must not be empty; use --unassign to clear the assignee",
+		},
 		{
 			"assignee with unassign",
 			[]string{"i1", "--assignee", "bob", "--unassign"},

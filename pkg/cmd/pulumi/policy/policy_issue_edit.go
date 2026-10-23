@@ -61,7 +61,13 @@ type policyIssueEditArgs struct {
 	assignee     string
 	unassign     bool
 	outputFormat outputflag.OutputFlag[policyIssueGetRenderFunc]
+
+	// changed records which of policyIssueEditFlagNames were passed, so an
+	// explicitly empty value is rejected rather than ignored.
+	changed map[string]bool
 }
+
+var policyIssueEditFlagNames = []string{"status", "priority", "assignee"}
 
 func newPolicyIssueEditCmd() *cobra.Command {
 	return newPolicyIssueEditCmdWith(defaultPolicyIssueEditClientFactory)
@@ -94,6 +100,7 @@ func newPolicyIssueEditCmdWith(factory policyIssueEditClientFactory) *cobra.Comm
 			"  # Clear the assignee of a policy issue\n" +
 			"  pulumi policy issue edit <issue-id> --unassign",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
+			args.changed = changedFlagSet(cmd, policyIssueEditFlagNames)
 			return runPolicyIssueEdit(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
 	}
@@ -167,19 +174,22 @@ func joinPolicyIssueValues[T ~string](values []T) string {
 }
 
 func validatePolicyIssueEditArgs(args policyIssueEditArgs) error {
-	if args.status != "" &&
+	if args.changed["status"] &&
 		!slices.Contains(policyIssueEditStatuses, cloudapitype.PolicyIssueStatus(args.status)) {
 		return cmdCmd.ConfigurationError{Message: fmt.Sprintf("invalid status %q: must be one of %s",
 			args.status, joinPolicyIssueValues(policyIssueEditStatuses))}
 	}
-	if priority := cloudapitype.PolicyIssuePriority(args.priority); args.priority != "" && !priority.IsValid() {
+	if priority := cloudapitype.PolicyIssuePriority(args.priority); args.changed["priority"] && !priority.IsValid() {
 		return cmdCmd.ConfigurationError{Message: fmt.Sprintf("invalid priority %q: must be one of %s",
 			args.priority, joinPolicyIssueValues(priority.AllValues()))}
 	}
-	if args.assignee != "" && args.unassign {
+	if args.changed["assignee"] && args.unassign {
 		return cmdCmd.ConfigurationError{Message: "--assignee and --unassign cannot be used together"}
 	}
-	if args.status == "" && args.priority == "" && args.assignee == "" && !args.unassign {
+	if args.changed["assignee"] && args.assignee == "" {
+		return cmdCmd.ConfigurationError{Message: "--assignee must not be empty; use --unassign to clear the assignee"}
+	}
+	if !args.changed["status"] && !args.changed["priority"] && !args.changed["assignee"] && !args.unassign {
 		return cmdCmd.ConfigurationError{
 			Message: "nothing to update: specify at least one of --status, --priority, --assignee or --unassign",
 		}
@@ -189,22 +199,18 @@ func validatePolicyIssueEditArgs(args policyIssueEditArgs) error {
 
 func buildUpdatePolicyIssueRequest(args policyIssueEditArgs) cloudapitype.UpdatePolicyIssueRequest {
 	var req cloudapitype.UpdatePolicyIssueRequest
-	if args.status != "" {
-		status := cloudapitype.PolicyIssueStatus(args.status)
-		req.Status = &status
+	if args.changed["status"] {
+		req.Status = new(cloudapitype.PolicyIssueStatus(args.status))
 	}
-	if args.priority != "" {
-		priority := cloudapitype.PolicyIssuePriority(args.priority)
-		req.Priority = &priority
+	if args.changed["priority"] {
+		req.Priority = new(cloudapitype.PolicyIssuePriority(args.priority))
 	}
 
 	switch {
 	case args.unassign:
-		empty := ""
-		req.AssignedTo = &empty
-	case args.assignee != "":
-		assignee := args.assignee
-		req.AssignedTo = &assignee
+		req.AssignedTo = new("")
+	case args.changed["assignee"]:
+		req.AssignedTo = new(args.assignee)
 	}
 	return req
 }
