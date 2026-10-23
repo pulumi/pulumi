@@ -104,7 +104,22 @@ func TestBuildPolicyIssueFilter_Account(t *testing.T) {
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"type":"AND","conditions":[{"colId":"","filterType":"","filter":"","type":"AND","conditions":[
 		{"colId":"entityType","filterType":"text","type":"equals","filter":"insights-account"},
-		{"colId":"entityProject","filterType":"text","type":"equals","filter":"my-acct"}]}]}`, string(got))
+		{"colId":"entityProject","filterType":"text","type":"equals","filter":"my-acct"},
+		{"colId":"entityId","filterType":"text","type":"equals","filter":"my-acct"}]}]}`, string(got))
+
+	filter, _, err = buildPolicyIssueGrid(parseIssueFilters(t, "--account", "team/aws-prod"))
+	require.NoError(t, err)
+	got, err = json.Marshal(filter)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"type":"AND","conditions":[{"colId":"","filterType":"","filter":"","type":"AND","conditions":[
+		{"colId":"entityType","filterType":"text","type":"equals","filter":"insights-account"},
+		{"colId":"entityProject","filterType":"text","type":"equals","filter":"team"},
+		{"colId":"entityId","filterType":"text","type":"equals","filter":"aws-prod"}]}]}`, string(got))
+
+	for _, bad := range []string{"/aws-prod", "team/", "a/b/c"} {
+		_, _, err = buildPolicyIssueGrid(parseIssueFilters(t, "--account", bad))
+		assert.ErrorContains(t, err, "expected [<project>/]<account>", bad)
+	}
 }
 
 func TestBuildPolicyIssueFilter_AssignedTo(t *testing.T) {

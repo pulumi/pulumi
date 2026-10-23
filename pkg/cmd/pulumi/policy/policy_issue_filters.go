@@ -141,7 +141,7 @@ func addPolicyIssueFilterFlags(flags *pflag.FlagSet, f *policyIssueFilters) {
 	flags.StringArrayVar(&f.stacks, "stack", nil,
 		"Filter by stack, as <project>/<stack> (repeatable)")
 	flags.StringArrayVar(&f.accounts, "account", nil,
-		"Filter by Insights account (repeatable)")
+		"Filter by Insights account, as [<project>/]<account> (repeatable)")
 	flags.StringArrayVar(&f.sort, "sort", nil,
 		"Sort by <field>[:asc|desc], default asc (repeatable). Fields: "+
 			strings.Join(policyIssueSortFields, ", "))
@@ -184,6 +184,14 @@ func validateFlagValues(flag string, values, allowed []string) error {
 	return nil
 }
 
+func validateAccount(a string) error {
+	project, account, ok := strings.Cut(a, "/")
+	if ok && (project == "" || account == "" || strings.Contains(account, "/")) {
+		return fmt.Errorf("invalid value %q for --account: expected [<project>/]<account>", a)
+	}
+	return nil
+}
+
 func validateStack(s string) error {
 	project, stack, ok := strings.Cut(s, "/")
 	if !ok || project == "" || stack == "" || strings.Contains(stack, "/") {
@@ -210,6 +218,11 @@ func validatePolicyIssueFilters(f policyIssueFilters) error {
 	}
 	if err := validateFlagValues("account", f.accounts, nil); err != nil {
 		return err
+	}
+	for _, a := range f.accounts {
+		if err := validateAccount(a); err != nil {
+			return err
+		}
 	}
 	if err := validateFlagValues("sort", f.sort, nil); err != nil {
 		return err
@@ -242,9 +255,15 @@ func buildStackCondition(stacks []string) cloudapitype.AngularGridFilterModel {
 func buildAccountCondition(accounts []string) cloudapitype.AngularGridFilterModel {
 	conds := make([]cloudapitype.AngularGridFilterModel, 0, len(accounts))
 	for _, a := range accounts {
+		project, account, ok := strings.Cut(a, "/")
+		if !ok {
+			// The service uses the account name as the project for accounts without one.
+			account = project
+		}
 		conds = append(conds, entityFilter(
 			[2]string{colEntityType, string(cloudapitype.IssueEntityTypeInsightsAccount)},
-			[2]string{colEntityProject, a},
+			[2]string{colEntityProject, project},
+			[2]string{colEntityID, account},
 		))
 	}
 	return gridGroup(gridCombinatorOr, conds)
