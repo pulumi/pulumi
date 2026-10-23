@@ -58,13 +58,15 @@ tuple = length([1, 2, 3])
 object = length({"a" = 1, "b" = 2})
 emptyObject = length({})
 map = length({for k, v in {"a" = 1, "b" = 2, "c" = 3} : k => v})
+optionalList = length(false ? null : [1])
 `)
 	assert.Equal(t, map[string]property.Value{
-		"string":      property.New(3.0),
-		"tuple":       property.New(3.0),
-		"object":      property.New(2.0),
-		"emptyObject": property.New(0.0),
-		"map":         property.New(3.0),
+		"string":       property.New(3.0),
+		"tuple":        property.New(3.0),
+		"object":       property.New(2.0),
+		"emptyObject":  property.New(0.0),
+		"map":          property.New(3.0),
+		"optionalList": property.New(1.0),
 	}, values)
 }
 
