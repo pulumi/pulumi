@@ -28,17 +28,17 @@ import (
 )
 
 type policyValidateResult struct {
-	Organization string `json:"organization"`
-	PolicyPack   string `json:"policyPack"`
-	VersionTag   string `json:"versionTag"`
-	Valid        bool   `json:"valid"`
+	OrganizationName string `json:"organizationName"`
+	Name             string `json:"name"`
+	VersionTag       string `json:"versionTag"`
+	Valid            bool   `json:"valid"`
 }
 
 type policyValidateRenderFunc func(w io.Writer, result policyValidateResult) error
 
 func renderPolicyValidateText(w io.Writer, result policyValidateResult) error {
 	fmt.Fprintf(w, "Policy pack %s/%s version %s configuration is valid.\n",
-		result.Organization, result.PolicyPack, result.VersionTag)
+		result.OrganizationName, result.Name, result.VersionTag)
 	return nil
 }
 
@@ -96,10 +96,10 @@ func newPolicyValidateCmdWith(deps policyPackCmdDeps) *cobra.Command {
 				return err
 			}
 			return outputFormat.Get()(cmd.OutOrStdout(), policyValidateResult{
-				Organization: policyPack.Ref().OrgName(),
-				PolicyPack:   string(policyPack.Ref().Name()),
-				VersionTag:   *version,
-				Valid:        true,
+				OrganizationName: policyPack.Ref().OrgName(),
+				Name:             string(policyPack.Ref().Name()),
+				VersionTag:       *version,
+				Valid:            true,
 			})
 		},
 	}

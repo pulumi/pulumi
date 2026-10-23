@@ -50,10 +50,10 @@ func TestPolicyValidate_JSON(t *testing.T) {
 	var got map[string]any
 	require.NoError(t, json.Unmarshal([]byte(out), &got))
 	assert.Equal(t, map[string]any{
-		"organization": "acme",
-		"policyPack":   "p",
-		"versionTag":   "1.0.0",
-		"valid":        true,
+		"organizationName": "acme",
+		"name":             "p",
+		"versionTag":       "1.0.0",
+		"valid":            true,
 	}, got)
 }
 
