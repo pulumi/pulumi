@@ -110,7 +110,7 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 			"  pulumi policy group new prod-accounts --mode audit \\\n" +
 			"    --account-rule 'env=prod,team!=sandbox' --yes\n\n" +
 			"  # Create a group whose stack rule is read from a JSON file\n" +
-			"  pulumi policy group new tagged --mode audit --stack-rule @rule.json --yes\n\n" +
+			"  pulumi policy group new tagged --mode audit --stack-rule \"$(cat rule.json)\" --yes\n\n" +
 			"  # Emit JSON\n" +
 			"  pulumi policy group new prod-policies --mode preventative \\\n" +
 			"    --yes --output json",
@@ -137,8 +137,7 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 	cmd.Flags().StringVar(&args.agentPoolID, "agent-pool-id", "",
 		"Agent pool ID for policy evaluation (optional)")
 	cmd.Flags().StringVar(&args.stackRule, "stack-rule", "",
-		"Stack match rule: tag conditions such as 'env=prod,team!=web OR owner', a JSON expression, "+
-			"or @<file>")
+		"Stack match rule: tag conditions such as 'env=prod,team!=web OR owner', or a JSON expression")
 	cmd.Flags().StringVar(&args.accountRule, "account-rule", "",
 		"Insights account match rule, in the same syntax as --stack-rule. Audit groups only")
 	cmd.Flags().BoolVarP(&args.yes, "yes", "y", false,

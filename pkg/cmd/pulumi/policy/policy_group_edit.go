@@ -110,7 +110,7 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 			"  # Replace the stack rule: stacks tagged env=prod, or any stack with a team tag\n" +
 			"  pulumi policy group edit prod-policies --stack-rule 'env=prod OR team'\n\n" +
 			"  # Set an account rule from a JSON file on an audit group\n" +
-			"  pulumi policy group edit compliance --account-rule @account-rule.json\n\n" +
+			"  pulumi policy group edit compliance --account-rule \"$(cat account-rule.json)\"\n\n" +
 			"  # Remove the stack rule\n" +
 			"  pulumi policy group edit prod-policies --stack-rule ''",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
@@ -143,7 +143,7 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 		"Remove an Insights account from the Policy Group (repeatable)")
 	cmd.Flags().StringVar(&args.stackRule, "stack-rule", "",
 		"Replace the stack match rule: tag conditions such as 'env=prod,team!=web OR owner', "+
-			"a JSON expression, or @<file>. '' removes the rule")
+			"or a JSON expression. '' removes the rule")
 	cmd.Flags().StringVar(&args.accountRule, "account-rule", "",
 		"Replace the Insights account match rule, in the same syntax as --stack-rule. "+
 			"Audit groups only. '' removes the rule")

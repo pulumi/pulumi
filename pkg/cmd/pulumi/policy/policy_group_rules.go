@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
@@ -78,7 +77,6 @@ const matchRuleHelp = "Match rules (preview; requires the tag-based policy group
 	"    `pulumi policy group get` prints.\n" +
 	"  - A JSON PermissionBooleanExpression, as returned in the stackMatchRule\n" +
 	"    and accountMatchRule fields of `pulumi policy group get --output json`.\n" +
-	"  - @<path> to read that JSON from a file.\n" +
 	"\n" +
 	"Use JSON when a tag key or value contains ',', '=' or \" OR \", or a key\n" +
 	"starts or ends with '!'."
@@ -100,16 +98,6 @@ func parseMatchRule(kind matchRuleKind, value string) (cloudapitype.PermissionBo
 	switch {
 	case trimmed == "":
 		return nil, nil
-	case strings.HasPrefix(trimmed, "@"):
-		path := trimmed[1:]
-		if path == "" {
-			return nil, matchRuleError(kind, "@ must be followed by a file path")
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return nil, matchRuleError(kind, fmt.Sprintf("reading %s: %v", path, err))
-		}
-		return parseMatchRuleJSON(kind, data)
 	case strings.HasPrefix(trimmed, "{"):
 		return parseMatchRuleJSON(kind, []byte(trimmed))
 	default:
@@ -294,7 +282,7 @@ func formatTagCondition(kind matchRuleKind, expr cloudapitype.PermissionBooleanE
 func isShorthandSafe(s string) bool {
 	return s != "" && s == strings.TrimSpace(s) &&
 		!strings.ContainsAny(s, ",=") && !strings.HasPrefix(s, "!") && !strings.HasSuffix(s, "!") &&
-		!strings.HasPrefix(s, "@") && !strings.HasPrefix(s, "{") &&
+		!strings.HasPrefix(s, "{") &&
 		!strings.Contains(s, " OR ") && !strings.HasPrefix(s, "OR ") && !strings.HasSuffix(s, " OR")
 }
 

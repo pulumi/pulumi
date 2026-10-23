@@ -16,8 +16,6 @@ package policy
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
@@ -169,26 +167,9 @@ func TestParseMatchRule_JSON(t *testing.T) {
 	assert.JSONEq(t, expr, marshalRule(t, rule))
 }
 
-func TestParseMatchRule_File(t *testing.T) {
-	t.Parallel()
-
-	expr := `{
-		"__type": "PermissionExpressionIn",
-		"target": {"__type": "PermissionExpressionTag", "context": ` + stackCtxJSON + `, "key": "env"},
-		"values": {"__type": "PermissionSetExpressionString", "values": ["prod", "staging"]}
-	}`
-	path := filepath.Join(t.TempDir(), "rule.json")
-	require.NoError(t, os.WriteFile(path, []byte(expr), 0o600))
-
-	rule, err := parseMatchRule(stackMatchRule, "@"+path)
-	require.NoError(t, err)
-	assert.JSONEq(t, expr, marshalRule(t, rule))
-}
-
 func TestParseMatchRule_Errors(t *testing.T) {
 	t.Parallel()
 
-	missing := filepath.Join(t.TempDir(), "missing.json")
 	tests := []struct {
 		name  string
 		kind  matchRuleKind
@@ -209,7 +190,6 @@ func TestParseMatchRule_Errors(t *testing.T) {
 			"negated equality", stackMatchRule, "!env=prod",
 			`invalid --stack-rule: tag condition "!env=prod": write key!=value to exclude a value`,
 		},
-		{"bare at", stackMatchRule, "@", "invalid --stack-rule: @ must be followed by a file path"},
 		{
 			"unknown type", stackMatchRule, `{"__type": "Nope"}`,
 			"invalid --stack-rule: invalid JSON expression: type 'Nope' not recognized",
@@ -228,14 +208,6 @@ func TestParseMatchRule_Errors(t *testing.T) {
 			assert.IsType(t, cmdCmd.ConfigurationError{}, err)
 		})
 	}
-
-	t.Run("missing file", func(t *testing.T) {
-		t.Parallel()
-		_, err := parseMatchRule(stackMatchRule, "@"+missing)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid --stack-rule: reading "+missing)
-		assert.IsType(t, cmdCmd.ConfigurationError{}, err)
-	})
 }
 
 func TestFormatMatchRule_RoundTripsTagConditions(t *testing.T) {
