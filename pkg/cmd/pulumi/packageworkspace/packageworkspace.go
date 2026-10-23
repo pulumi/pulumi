@@ -469,7 +469,7 @@ func (w Workspace) RunPackage(
 	pctx.DebugTraceMutex = w.pctx.DebugTraceMutex
 	p, err := plugin.NewProviderFromPath(w.pctx.Host, pctx, pluginPath)
 	if err != nil {
-		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
+		return nil, errors.Join(fmt.Errorf("could not run plugin at %q: %w", pluginPath, err), pctx.Close())
 	}
 	var pluginResp *plugin.ParameterizeResponse
 	if params != nil && !params.Empty() {
@@ -477,11 +477,11 @@ func (w Workspace) RunPackage(
 			Parameters: params,
 		})
 		if err != nil {
-			return nil, err
+			return nil, errors.Join(err, p.Close(), pctx.Close())
 		}
 		pluginResp = &resp
 	}
-	return pluginProvider{p, originalSpec, pluginResp}, nil
+	return pluginProvider{p, pctx, originalSpec, pluginResp}, nil
 }
 
 func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, error) {
@@ -499,6 +499,9 @@ func bindSpec(spec schema.PackageSpec, loader schema.Loader) (*schema.Package, e
 
 type pluginProvider struct {
 	plugin.Provider
+
+	// The context the provider was started in, owned by the provider and closed with it.
+	pctx *plugin.Context
 
 	originalSpec workspace.PackageSpec
 
@@ -580,4 +583,8 @@ func (p pluginProvider) Parameterize(
 		return plugin.ParameterizeResponse{}, plugin.ErrDoubleParameterized
 	}
 	return p.Provider.Parameterize(ctx, req)
+}
+
+func (p pluginProvider) Close() error {
+	return errors.Join(p.Provider.Close(), p.pctx.Close())
 }

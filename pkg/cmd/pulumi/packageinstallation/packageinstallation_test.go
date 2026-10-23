@@ -679,8 +679,9 @@ func TestInstallInProjectWithRelativePaths(t *testing.T) {
 
 	// Create a custom workspace with plugins at specific local paths
 	ws := &invariantWorkspace{
-		t:  t,
-		rw: new(sync.RWMutex),
+		t:            t,
+		rw:           new(sync.RWMutex),
+		sdkProviders: newSDKProviderLog(t),
 		plugins: map[string]*invariantPlugin{
 			"/work": {
 				d: workspace.PluginDescriptor{
@@ -1776,8 +1777,9 @@ func TestRequiredPackagesDeclaredInProjectPackagesNotDownloaded(t *testing.T) {
 	t.Parallel()
 
 	ws := &invariantWorkspace{
-		t:  t,
-		rw: new(sync.RWMutex),
+		t:            t,
+		rw:           new(sync.RWMutex),
+		sdkProviders: newSDKProviderLog(t),
 		plugins: map[string]*invariantPlugin{
 			"/work/provider": {
 				d: workspace.PluginDescriptor{
@@ -2241,8 +2243,9 @@ func TestInstallLocalPluginDependenciesFirst(t *testing.T) {
 		PluginDownloadURL: "https://example.com/plugin-b.tar.gz",
 	}
 	ws := &invariantWorkspace{
-		t:  t,
-		rw: new(sync.RWMutex),
+		t:            t,
+		rw:           new(sync.RWMutex),
+		sdkProviders: newSDKProviderLog(t),
 		plugins: map[string]*invariantPlugin{
 			"/work/plugin-a": {
 				d: workspace.PluginDescriptor{

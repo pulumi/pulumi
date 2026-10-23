@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -63,4 +64,37 @@ func TestGetSchemaInjectsPluginDownloadURL(t *testing.T) {
 	var spec schema.PackageSpec
 	require.NoError(t, json.Unmarshal(resp.Schema, &spec))
 	require.Equal(t, "https://example.com/downloads", spec.PluginDownloadURL)
+}
+
+type closeRecordingProvider struct {
+	plugin.UnimplementedProvider
+
+	events *[]string
+}
+
+func (p *closeRecordingProvider) Close() error {
+	*p.events = append(*p.events, "provider closed")
+	return nil
+}
+
+// Closing a provider from RunPackage must also release the plugin context it was started in.
+func TestPluginProviderCloseReleasesContext(t *testing.T) {
+	t.Parallel()
+
+	var events []string
+	var pctx *plugin.Context
+	host := &plugin.MockHost{
+		ReleaseContextF: func(ctx *plugin.Context) error {
+			require.Same(t, pctx, ctx)
+			events = append(events, "context released")
+			return nil
+		},
+	}
+	d := diagtest.LogSink(t)
+	pctx, err := plugin.NewContextWithHost(t.Context(), d, d, host, "", "", nil)
+	require.NoError(t, err)
+
+	provider := pluginProvider{Provider: &closeRecordingProvider{events: &events}, pctx: pctx}
+	require.NoError(t, provider.Close())
+	require.Equal(t, []string{"provider closed", "context released"}, events)
 }
