@@ -88,13 +88,15 @@ func newPolicyRemoveCmdWith(deps policyPackCmdDeps) *cobra.Command {
 				version = &args[1]
 			}
 
+			// The prompt goes to stderr so stdout only carries the result.
 			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
+				Color:  cmdutil.GetGlobalColorization(),
+				Stdout: cmd.ErrOrStderr(),
 			}
 
 			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", args[0])
 			if err := ui.ConfirmDeletion(
-				yes, cmdutil.Interactive(), prompt, args[0], cmd.OutOrStdout(), opts,
+				yes, cmdutil.Interactive(), prompt, args[0], cmd.ErrOrStderr(), opts,
 			); err != nil {
 				return err
 			}
