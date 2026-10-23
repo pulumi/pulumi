@@ -202,8 +202,9 @@
         {
             "path": ["login"],
             "propagate": true,
-            "exclude": true,
-            "flags": {}
+            "flags": {
+                "interactive": { "omit": true }
+            }
         },
         {
             "path": ["logout"],
