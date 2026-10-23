@@ -2484,7 +2484,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	if !protocol.acceptsOutputsInCall {
 		result := ret.AsMap()
 		for k, v := range result {
-			deps := append([]resource.URN(nil), argDeps...)
+			deps := append(v.Dependencies(), argDeps...)
 			deps = append(deps, returnDependencies[resource.PropertyKey(k)]...)
 			if len(deps) > 0 {
 				result[k] = v.WithDependencies(deps)
