@@ -46,51 +46,53 @@ import (
 func TestAnnotateSecrets(t *testing.T) {
 	t.Parallel()
 
-	from := resource.PropertyMap{
-		"stringValue": resource.MakeSecret(resource.NewProperty("hello")),
-		"numberValue": resource.MakeSecret(resource.NewProperty(1.00)),
-		"boolValue":   resource.MakeSecret(resource.NewProperty(true)),
-		"secretArrayValue": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("a"),
-			resource.NewProperty("b"),
-			resource.NewProperty("c"),
+	secret := func(v property.Value) property.Value { return v.WithSecret(true) }
+
+	from := property.NewMap(map[string]property.Value{
+		"stringValue": secret(property.New("hello")),
+		"numberValue": secret(property.New(1.00)),
+		"boolValue":   secret(property.New(true)),
+		"secretArrayValue": secret(property.New([]property.Value{
+			property.New("a"),
+			property.New("b"),
+			property.New("c"),
 		})),
-		"secretObjectValue": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+		"secretObjectValue": secret(property.New(map[string]property.Value{
+			"a": property.New("aValue"),
+			"b": property.New("bValue"),
+			"c": property.New("cValue"),
 		})),
-		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.MakeSecret(resource.NewProperty("bValue")),
-			"c": resource.NewProperty("cValue"),
+		"objectWithSecretValue": property.New(map[string]property.Value{
+			"a": property.New("aValue"),
+			"b": secret(property.New("bValue")),
+			"c": property.New("cValue"),
 		}),
-	}
+	})
 
-	to := resource.PropertyMap{
-		"stringValue": resource.NewProperty("hello"),
-		"numberValue": resource.NewProperty(1.00),
-		"boolValue":   resource.NewProperty(true),
-		"secretArrayValue": resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("a"),
-			resource.NewProperty("b"),
-			resource.NewProperty("c"),
+	to := property.NewMap(map[string]property.Value{
+		"stringValue": property.New("hello"),
+		"numberValue": property.New(1.00),
+		"boolValue":   property.New(true),
+		"secretArrayValue": property.New([]property.Value{
+			property.New("a"),
+			property.New("b"),
+			property.New("c"),
 		}),
-		"secretObjectValue": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+		"secretObjectValue": property.New(map[string]property.Value{
+			"a": property.New("aValue"),
+			"b": property.New("bValue"),
+			"c": property.New("cValue"),
 		}),
-		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+		"objectWithSecretValue": property.New(map[string]property.Value{
+			"a": property.New("aValue"),
+			"b": property.New("bValue"),
+			"c": property.New("cValue"),
 		}),
-	}
+	})
 
-	annotateSecrets(to, from)
+	got := annotateSecrets(to, from)
 
-	assert.Truef(t, reflect.DeepEqual(to, from), "objects should be deeply equal")
+	assert.Truef(t, got.Equals(from), "objects should be equal")
 }
 
 func TestAnnotateSecretsDifferentProperties(t *testing.T) {
@@ -99,200 +101,207 @@ func TestAnnotateSecretsDifferentProperties(t *testing.T) {
 	// ensure that if from and and to have different shapes, values on from are not put into to, values on to which
 	// are not present in from stay in to, but any secretness is propigated for shared keys.
 
-	from := resource.PropertyMap{
-		"stringValue": resource.MakeSecret(resource.NewProperty("hello")),
-		"numberValue": resource.MakeSecret(resource.NewProperty(1.00)),
-		"boolValue":   resource.MakeSecret(resource.NewProperty(true)),
-		"secretObjectValue": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+	secret := func(v property.Value) property.Value { return v.WithSecret(true) }
+
+	from := property.NewMap(map[string]property.Value{
+		"stringValue": secret(property.New("hello")),
+		"numberValue": secret(property.New(1.00)),
+		"boolValue":   secret(property.New(true)),
+		"secretObjectValue": secret(property.New(map[string]property.Value{
+			"a": property.New("aValue"),
+			"b": property.New("bValue"),
+			"c": property.New("cValue"),
 		})),
-		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.MakeSecret(resource.NewProperty("bValue")),
-			"c": resource.NewProperty("cValue"),
+		"objectWithSecretValue": property.New(map[string]property.Value{
+			"a": property.New("aValue"),
+			"b": secret(property.New("bValue")),
+			"c": property.New("cValue"),
 		}),
-		"extraFromValue": resource.NewProperty("extraFromValue"),
-	}
+		"extraFromValue": property.New("extraFromValue"),
+	})
 
-	to := resource.PropertyMap{
-		"stringValue": resource.NewProperty("hello"),
-		"numberValue": resource.NewProperty(1.00),
-		"boolValue":   resource.NewProperty(true),
-		"secretObjectValue": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+	to := property.NewMap(map[string]property.Value{
+		"stringValue": property.New("hello"),
+		"numberValue": property.New(1.00),
+		"boolValue":   property.New(true),
+		"secretObjectValue": secret(property.New(map[string]property.Value{
+			"a": property.New("aValue"),
+			"b": property.New("bValue"),
+			"c": property.New("cValue"),
 		})),
-		"objectWithSecretValue": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("aValue"),
-			"b": resource.NewProperty("bValue"),
-			"c": resource.NewProperty("cValue"),
+		"objectWithSecretValue": property.New(map[string]property.Value{
+			"a": property.New("aValue"),
+			"b": property.New("bValue"),
+			"c": property.New("cValue"),
 		}),
-		"extraToValue": resource.NewProperty("extraToValue"),
-	}
+		"extraToValue": property.New("extraToValue"),
+	})
 
-	annotateSecrets(to, from)
+	got := annotateSecrets(to, from)
 
-	for key, val := range to {
-		fromVal, fromHas := from[key]
+	got.All(func(key string, val property.Value) bool {
+		fromVal, fromHas := from.GetOk(key)
 		if !fromHas {
-			continue
+			return true
 		}
+		assert.Truef(t, fromVal.Equals(val), "expected properties %s to be equal", key)
+		return true
+	})
 
-		assert.Truef(t, reflect.DeepEqual(fromVal, val), "expected properties %s to be deeply equal", key)
-	}
-
-	_, has := to["extraFromValue"]
+	_, has := got.GetOk("extraFromValue")
 	assert.Falsef(t, has, "to should not have a key named extraFromValue, it was not present before annotating secrets")
 
-	_, has = to["extraToValue"]
+	_, has = got.GetOk("extraToValue")
 	assert.True(t, has, "to should have a key named extraToValue, even though it was not in the from value")
 }
 
 func TestAnnotateSecretsArrays(t *testing.T) {
 	t.Parallel()
 
-	from := resource.PropertyMap{
-		"secretArray": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("a"),
-			resource.NewProperty("b"),
-			resource.NewProperty("c"),
+	secret := func(v property.Value) property.Value { return v.WithSecret(true) }
+
+	from := property.NewMap(map[string]property.Value{
+		"secretArray": secret(property.New([]property.Value{
+			property.New("a"),
+			property.New("b"),
+			property.New("c"),
 		})),
-		"arrayWithSecrets": resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("a"),
-			resource.MakeSecret(resource.NewProperty("b")),
-			resource.NewProperty("c"),
+		"arrayWithSecrets": property.New([]property.Value{
+			property.New("a"),
+			secret(property.New("b")),
+			property.New("c"),
 		}),
-	}
+	})
 
-	to := resource.PropertyMap{
-		"secretArray": resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("a"),
-			resource.NewProperty("b"),
-			resource.NewProperty("c"),
+	to := property.NewMap(map[string]property.Value{
+		"secretArray": property.New([]property.Value{
+			property.New("a"),
+			property.New("b"),
+			property.New("c"),
 		}),
-		"arrayWithSecrets": resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("a"),
-			resource.NewProperty("c"),
-			resource.NewProperty("b"),
+		"arrayWithSecrets": property.New([]property.Value{
+			property.New("a"),
+			property.New("c"),
+			property.New("b"),
 		}),
-	}
+	})
 
-	expected := resource.PropertyMap{
-		"secretArray": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("a"),
-			resource.NewProperty("b"),
-			resource.NewProperty("c"),
+	expected := property.NewMap(map[string]property.Value{
+		"secretArray": secret(property.New([]property.Value{
+			property.New("a"),
+			property.New("b"),
+			property.New("c"),
 		})),
-		"arrayWithSecrets": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("a"),
-			resource.NewProperty("c"),
-			resource.NewProperty("b"),
+		"arrayWithSecrets": secret(property.New([]property.Value{
+			property.New("a"),
+			property.New("c"),
+			property.New("b"),
 		})),
-	}
+	})
 
-	annotateSecrets(to, from)
+	got := annotateSecrets(to, from)
 
-	assert.Truef(t, reflect.DeepEqual(to, expected), "did not match expected after annotation")
+	assert.Truef(t, got.Equals(expected), "did not match expected after annotation")
 }
 
 func TestNestedSecret(t *testing.T) {
 	t.Parallel()
 
-	from := resource.PropertyMap{
-		"secretString": resource.MakeSecret(resource.NewProperty("shh")),
-		"secretArray": resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("hello"),
-			resource.MakeSecret(resource.NewProperty("shh")),
-			resource.NewProperty("goodbye"),
-		}),
-		"secretMap": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.NewProperty("b"),
-		})),
-		"deepSecretMap": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.MakeSecret(resource.NewProperty("b")),
-		}),
-	}
+	secret := func(v property.Value) property.Value { return v.WithSecret(true) }
 
-	to := resource.PropertyMap{
-		"secretString": resource.NewProperty("shh"),
-		"secretArray": resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("shh"),
-			resource.NewProperty("hello"),
-			resource.NewProperty("goodbye"),
+	from := property.NewMap(map[string]property.Value{
+		"secretString": secret(property.New("shh")),
+		"secretArray": property.New([]property.Value{
+			property.New("hello"),
+			secret(property.New("shh")),
+			property.New("goodbye"),
 		}),
-		"secretMap": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.NewProperty("b"),
+		"secretMap": secret(property.New(map[string]property.Value{
+			"a": property.New("a"),
+			"b": property.New("b"),
 		})),
-		"deepSecretMap": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.NewProperty("b"),
+		"deepSecretMap": property.New(map[string]property.Value{
+			"a": property.New("a"),
+			"b": secret(property.New("b")),
+		}),
+	})
+
+	to := property.NewMap(map[string]property.Value{
+		"secretString": property.New("shh"),
+		"secretArray": property.New([]property.Value{
+			property.New("shh"),
+			property.New("hello"),
+			property.New("goodbye"),
+		}),
+		"secretMap": secret(property.New(map[string]property.Value{
+			"a": property.New("a"),
+			"b": property.New("b"),
+		})),
+		"deepSecretMap": property.New(map[string]property.Value{
+			"a": property.New("a"),
+			"b": property.New("b"),
 			// Note the additional property here, which we expect to be kept when annotating.
-			"c": resource.NewProperty("c"),
+			"c": property.New("c"),
 		}),
-	}
+	})
 
-	expected := resource.PropertyMap{
-		"secretString": resource.MakeSecret(resource.NewProperty("shh")),
+	expected := property.NewMap(map[string]property.Value{
+		"secretString": secret(property.New("shh")),
 		// The entire array has been marked a secret because it contained a secret member in from. Since arrays
 		// are often used for sets, we didn't try to apply the secretness to a specific member of the array, like
 		// we would have with maps (where we can use the keys to correlate related properties)
-		"secretArray": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("shh"),
-			resource.NewProperty("hello"),
-			resource.NewProperty("goodbye"),
+		"secretArray": secret(property.New([]property.Value{
+			property.New("shh"),
+			property.New("hello"),
+			property.New("goodbye"),
 		})),
-		"secretMap": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.NewProperty("b"),
+		"secretMap": secret(property.New(map[string]property.Value{
+			"a": property.New("a"),
+			"b": property.New("b"),
 		})),
-		"deepSecretMap": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("a"),
-			"b": resource.MakeSecret(resource.NewProperty("b")),
-			"c": resource.NewProperty("c"),
+		"deepSecretMap": property.New(map[string]property.Value{
+			"a": property.New("a"),
+			"b": secret(property.New("b")),
+			"c": property.New("c"),
 		}),
-	}
+	})
 
-	annotateSecrets(to, from)
+	got := annotateSecrets(to, from)
 
-	assert.Truef(t, reflect.DeepEqual(to, expected), "did not match expected after annotation")
+	assert.Truef(t, got.Equals(expected), "did not match expected after annotation")
 }
 
 func TestRestoreElidedAssetContents(t *testing.T) {
 	t.Parallel()
-	textAsset := func(text string) resource.PropertyValue {
-		asset, err := asset.FromText(text)
+	textAsset := func(text string) property.Value {
+		a, err := asset.FromText(text)
 		require.NoError(t, err)
-		return resource.NewProperty(asset)
+		return property.New(a)
 	}
+	secret := func(v property.Value) property.Value { return v.WithSecret(true) }
 
-	original := resource.PropertyMap{
+	original := property.NewMap(map[string]property.Value{
 		"source": textAsset("Hello world"),
-		"nested": resource.NewProperty(resource.PropertyMap{
+		"nested": property.New(map[string]property.Value{
 			"another":      textAsset("Another"),
 			"doubleNested": textAsset("Double nested"),
-			"tripleNested": resource.NewProperty(resource.PropertyMap{
-				"secret": resource.MakeSecret(textAsset("Secret content")),
+			"tripleNested": property.New(map[string]property.Value{
+				"secret": secret(textAsset("Secret content")),
 			}),
 		}),
-		"insideArray": resource.NewProperty([]resource.PropertyValue{
+		"insideArray": property.New([]property.Value{
 			textAsset("First"),
 			textAsset("Second"),
-			resource.NewProperty(resource.PropertyMap{
-				"nestedArray": resource.NewProperty([]resource.PropertyValue{
+			property.New(map[string]property.Value{
+				"nestedArray": property.New([]property.Value{
 					textAsset("Nested array"),
-					resource.MakeSecret(textAsset("another secret content")),
+					secret(textAsset("another secret content")),
 				}),
 			}),
 		}),
-	}
+	})
 
-	filtered, err := FilterProperties(resource.FromResourcePropertyMap(original), FilterOptions{
+	filtered, err := FilterProperties(original, FilterOptions{
 		ElideAssetContents: true,
 		KeepSecrets:        true,
 	})
@@ -301,21 +310,20 @@ func TestRestoreElidedAssetContents(t *testing.T) {
 
 	raw, err := propertyrpc.Unmarshal(serialized)
 	require.NoError(t, err, "failed to unmarshal properties")
-	deserializedMap, err := FilterProperties(raw, FilterOptions{KeepSecrets: true})
+	deserialized, err := FilterProperties(raw, FilterOptions{KeepSecrets: true})
 	require.NoError(t, err, "failed to filter unmarshaled properties")
-	deserialized := resource.ToResourcePropertyMap(deserializedMap)
-
-	originalRaw := original.Mappable()
-	deserializedRaw := deserialized.Mappable()
 
 	// the deserialized properties are not the same as the original, because during marshalling
 	// we skipped the contents of assets with the option `ElideAssetContents` set to true.
-	assert.NotEqual(t, originalRaw, deserializedRaw)
+	assert.Equal(t, "Hello world", original.Get("source").AsAsset().Text)
+	assert.Empty(t, deserialized.Get("source").AsAsset().Text,
+		"expected elided deserialization to have empty asset text")
 
 	// but if we restore the elided contents, we should get the original properties back.
-	restoreElidedAssetContents(original, deserialized)
-	deserializedRaw = deserialized.Mappable()
-	assert.Equal(t, originalRaw, deserializedRaw)
+	restored := restoreElidedAssetContents(original, deserialized)
+	assert.Equal(t, "Hello world", restored.Get("source").AsAsset().Text)
+	assert.Equal(t, "Another",
+		restored.Get("nested").AsMap().Get("another").AsAsset().Text)
 }
 
 // Tests that Delete requests are correctly marshalled and sent to the engine.
@@ -776,11 +784,9 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 
 	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
-	props := resource.PropertyMap{
-		"foo": resource.NewProperty(&resource.Secret{
-			Element: resource.NewProperty("bar"),
-		}),
-	}
+	props := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar").WithSecret(true),
+	})
 
 	// Signal to specify that the Delete request was sent
 	// and we should Configure now.
@@ -795,8 +801,8 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 			Name:    "qux",
 			Type:    "bar:baz",
 			ID:      "whatever",
-			Inputs:  resource.FromResourcePropertyMap(props),
-			Outputs: resource.FromResourcePropertyMap(props),
+			Inputs:  props,
+			Outputs: props,
 			Timeout: 1000,
 		})
 		require.NoError(t, err, "Delete failed")
@@ -807,7 +813,7 @@ func TestProvider_ConfigureDeleteRace(t *testing.T) {
 	<-deleting
 	_, err := p.Configure(t.Context(), ConfigureRequest{
 		Type:   new(tokens.Type("pulumi:providers:test")),
-		Inputs: resource.FromResourcePropertyMap(props),
+		Inputs: props,
 	})
 	require.NoError(t, err)
 	<-done
@@ -1527,11 +1533,11 @@ func TestProvider_RestoresElidedAssetsFromState(t *testing.T) {
 	require.NoError(t, err)
 
 	// The asset only ever appears in the outputs, never in the inputs.
-	inputs := resource.PropertyMap{"assetPaths": resource.NewProperty("build/**")}
-	outputs := resource.PropertyMap{"assets": resource.NewProperty(textAsset)}
+	inputs := property.NewMap(map[string]property.Value{"assetPaths": property.New("build/**")})
+	outputs := property.NewMap(map[string]property.Value{"assets": property.New(textAsset)})
 
-	assertRestored := func(t *testing.T, got resource.PropertyMap) {
-		a := got["assets"].AssetValue()
+	assertRestored := func(t *testing.T, got property.Map) {
+		a := got.Get("assets").AsAsset()
 		assert.Equal(t, textAsset.Hash, a.Hash)
 		assert.True(t, a.HasContents(), "asset lost its contents")
 		assert.Equal(t, "Hello world", a.Text)
@@ -1564,12 +1570,12 @@ func TestProvider_RestoresElidedAssetsFromState(t *testing.T) {
 		resp, err := p.Read(t.Context(), ReadRequest{
 			URN:    urn,
 			ID:     "some-id",
-			Inputs: resource.FromResourcePropertyMap(inputs),
-			State:  resource.FromResourcePropertyMap(outputs),
+			Inputs: inputs,
+			State:  outputs,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, resp.Outputs)
-		assertRestored(t, resource.ToResourcePropertyMap(*resp.Outputs))
+		assertRestored(t, *resp.Outputs)
 	})
 
 	t.Run("update", func(t *testing.T) {
@@ -1585,11 +1591,11 @@ func TestProvider_RestoresElidedAssetsFromState(t *testing.T) {
 		resp, err := p.Update(t.Context(), UpdateRequest{
 			URN:        urn,
 			ID:         "some-id",
-			OldInputs:  resource.FromResourcePropertyMap(inputs),
-			OldOutputs: resource.FromResourcePropertyMap(outputs),
-			NewInputs:  resource.FromResourcePropertyMap(inputs),
+			OldInputs:  inputs,
+			OldOutputs: outputs,
+			NewInputs:  inputs,
 		})
 		require.NoError(t, err)
-		assertRestored(t, resource.ToResourcePropertyMap(resp.Properties))
+		assertRestored(t, resp.Properties)
 	})
 }
