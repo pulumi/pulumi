@@ -194,12 +194,6 @@
             "flags": {}
         },
         {
-            "path": ["insights"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["login"],
             "propagate": true,
             "exclude": true,
