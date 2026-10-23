@@ -256,9 +256,12 @@ func formatPolicyIssueTime(t *time.Time) string {
 	return t.Format(time.RFC3339Nano)
 }
 
+const policyIssueLabelWidth = 20
+
 func printPolicyIssueMultiline(w io.Writer, label, value string) {
-	value = strings.ReplaceAll(value, "\n", "\n"+strings.Repeat(" ", 21))
-	fmt.Fprintf(w, "%-20s %s\n", label, value)
+	value = strings.TrimSpace(strings.ReplaceAll(value, "\r\n", "\n"))
+	value = strings.ReplaceAll(value, "\n", "\n"+strings.Repeat(" ", policyIssueLabelWidth+1))
+	fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, label, value)
 }
 
 func formatPolicyFramework(framework *cloudapitype.AppPolicyComplianceFramework) string {

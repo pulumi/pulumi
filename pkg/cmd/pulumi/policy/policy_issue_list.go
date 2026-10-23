@@ -86,14 +86,14 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "[EXPERIMENTAL] List all policy issues for an organization",
+		Short:   "[EXPERIMENTAL] List policy issues for an organization",
 		Long: "[EXPERIMENTAL] List policy issues for an organization.\n" +
 			"\n" +
 			"Lists the active policy issues for the organization, or the closed\n" +
-			"issues when --closed is passed. Each issue\n" +
-			"represents a violation detected by a Policy Pack during a stack update\n" +
-			"or a continuous-compliance scan, and includes the violating resource,\n" +
-			"policy details, and enforcement level.\n" +
+			"issues when --closed is passed. Each issue represents a violation\n" +
+			"detected by a Policy Pack during a stack update or a continuous-compliance\n" +
+			"scan, and includes the violating resource, policy details, status, and\n" +
+			"enforcement level.\n" +
 			"\n" +
 			"Default output is a human-readable table; pass --output=json for the\n" +
 			"full response as a JSON envelope.",

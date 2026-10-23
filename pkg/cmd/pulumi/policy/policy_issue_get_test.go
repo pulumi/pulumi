@@ -441,6 +441,17 @@ func TestPolicyIssueGet_MultilineRemediationIndented(t *testing.T) {
 	assert.Contains(t, text, "Remediation:         1. Open the bucket\n                     2. Block public access\n")
 }
 
+func TestPolicyIssueGet_MultilineTrimsSurroundingWhitespace(t *testing.T) {
+	t.Parallel()
+
+	resp := sampleFullPolicyIssueResponse()
+	resp.Policy.RemediationSteps = "\r\n1. Open the bucket\r\n2. Block public access\r\n"
+	text := renderPolicyIssueGetWith(t, resp, "")
+	assert.Contains(t, text, "Remediation:         1. Open the bucket\n                     2. Block public access\n")
+	assert.NotContains(t, text, "\r")
+	assert.NotContains(t, text, "Remediation:         \n")
+}
+
 func TestFormatPolicyFramework(t *testing.T) {
 	t.Parallel()
 
