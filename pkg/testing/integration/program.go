@@ -43,6 +43,7 @@ import (
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -782,7 +783,7 @@ func GetLogs(
 	snap, err := stack.DeserializeDeploymentV3(
 		t.Context(),
 		*stackInfo.Deployment,
-		secrets.DefaultProvider)
+		secrets.NewProvider(httpstate.NewClientSource(cmdutil.Diag()).ClientForURL))
 	require.NoError(t, err)
 
 	tree := operations.NewResourceTree(snap.Resources)

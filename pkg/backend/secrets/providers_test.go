@@ -15,9 +15,13 @@
 package secrets
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,4 +51,19 @@ func TestBlindingProviderRedactsSecrets(t *testing.T) {
 	plaintext, err := sm.Decrypter().DecryptValue(t.Context(), "any-ciphertext")
 	require.NoError(t, err)
 	assert.JSONEq(t, `"[secret]"`, plaintext)
+}
+
+func TestStandardProvidersResolveServiceCredentials(t *testing.T) {
+	t.Parallel()
+	state := json.RawMessage(`{"url":"https://api.example.com","insecure":true}`)
+	resolveErr := errors.New("credentials unavailable")
+	resolve := func(_ context.Context, url string, insecure bool) (*client.Client, error) {
+		assert.Equal(t, "https://api.example.com", url)
+		assert.True(t, insecure)
+		return nil, resolveErr
+	}
+	for _, provider := range []secrets.Provider{NewProvider(resolve), NewNamedStackProvider("stack", resolve)} {
+		_, err := provider.OfType(t.Context(), "service", state)
+		require.ErrorIs(t, err, resolveErr)
+	}
 }

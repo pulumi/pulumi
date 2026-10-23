@@ -20,12 +20,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -200,22 +197,19 @@ func NewServiceSecretsManager(
 	}, nil
 }
 
-// NewServiceSecretsManagerFromState returns a Pulumi service-based secrets manager based on the
-// existing state.
-func NewServiceSecretsManagerFromState(ctx context.Context, state json.RawMessage) (secrets.Manager, error) {
+// NewServiceSecretsManagerFromState restores a service secrets manager using credentials for its recorded backend.
+func NewServiceSecretsManagerFromState(
+	ctx context.Context, state json.RawMessage, clientForURL client.ClientForURL,
+) (secrets.Manager, error) {
 	var s serviceSecretsManagerState
 	if err := json.Unmarshal(state, &s); err != nil {
 		return nil, fmt.Errorf("unmarshalling state: %w", err)
 	}
 
-	account, err := getServiceSecretsAccount(s.URL)
+	contract.Requiref(clientForURL != nil, "clientForURL", "expected a backend client resolver")
+	c, err := clientForURL(ctx, s.URL, s.Insecure)
 	if err != nil {
-		return nil, fmt.Errorf("getting access token: %w", err)
-	}
-	token := account.AccessToken
-
-	if token == "" {
-		return nil, fmt.Errorf("could not find access token for %s, have you logged in?", s.URL)
+		return nil, fmt.Errorf("resolving service secrets client: %w", err)
 	}
 
 	stack, err := tokens.ParseStackName(s.Stack)
@@ -228,9 +222,6 @@ func NewServiceSecretsManagerFromState(ctx context.Context, state json.RawMessag
 		Project: s.Project,
 		Stack:   stack,
 	}
-	c := client.NewClient(s.URL, token, s.Insecure, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-		Color: colors.Never,
-	}))
 
 	crypter := newServiceCrypter(ctx, c, id)
 	cachedCrypter := config.NewCiphertextToPlaintextCachedCrypter(crypter, crypter)
@@ -238,12 +229,4 @@ func NewServiceSecretsManagerFromState(ctx context.Context, state json.RawMessag
 		state:   state,
 		crypter: cachedCrypter,
 	}, nil
-}
-
-// getServiceSecretsAccount returns credentials for a service secrets manager,
-// falling back to shared agent credentials when an agent cannot use default
-// credentials and no explicit Pulumi credential path was configured.
-func getServiceSecretsAccount(cloudURL string) (workspace.Account, error) {
-	account, _, err := workspace.GetAccountWithAgentFallback(cloudURL)
-	return account, err
 }
