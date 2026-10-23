@@ -1115,18 +1115,14 @@ func (rm *resmon) Invoke(
 		}
 		rootSet.Add(urn)
 	}
+	for _, v := range resource.ToResourcePropertyMap(args) {
+		addOutputDependencies(rootSet, v)
+	}
 
 	if rootSet.Cardinality() > 0 && rm.registrations.HasUnresolved(rootSet) {
 		logging.V(5).Infof("ResourceMonitor.Invoke: tok=%v has pending dependencies, returning unknown", tok)
 		return &pulumirpc.ResourceInvokeResponse{Unknown: true}, nil
 	}
-	roots := rootSet.ToSlice()
-	result := args.AsMap()
-	for k, v := range result {
-		deps := append(v.Dependencies(), roots...)
-		result[k] = v.WithDependencies(deps)
-	}
-	args = property.NewMap(result)
 
 	// Do the invoke and then return the arguments.
 	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, args.Len())
