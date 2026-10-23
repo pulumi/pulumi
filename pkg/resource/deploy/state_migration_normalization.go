@@ -82,14 +82,14 @@ type normalizedReadResourceEvent struct {
 	ReadResourceEvent
 	parent       resource.URN
 	provider     string
-	properties   resource.PropertyMap
+	properties   property.Map
 	dependencies []resource.URN
 }
 
-func (e *normalizedReadResourceEvent) Parent() resource.URN             { return e.parent }
-func (e *normalizedReadResourceEvent) Provider() string                 { return e.provider }
-func (e *normalizedReadResourceEvent) Properties() resource.PropertyMap { return e.properties }
-func (e *normalizedReadResourceEvent) Dependencies() []resource.URN     { return e.dependencies }
+func (e *normalizedReadResourceEvent) Parent() resource.URN         { return e.parent }
+func (e *normalizedReadResourceEvent) Provider() string             { return e.provider }
+func (e *normalizedReadResourceEvent) Properties() property.Map     { return e.properties }
+func (e *normalizedReadResourceEvent) Dependencies() []resource.URN { return e.dependencies }
 
 // normalizedRegisterResourceOutputsEvent wraps an outputs event with rewritten state migration references.
 type normalizedRegisterResourceOutputsEvent struct {
@@ -129,7 +129,7 @@ func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (Sour
 			ReadResourceEvent: e,
 			parent:            rewritten.Parent,
 			provider:          rewritten.Provider,
-			properties:        rewritten.Inputs,
+			properties:        resource.FromResourcePropertyMap(rewritten.Inputs),
 			dependencies:      rewritten.Dependencies,
 		}, nil
 	case RegisterResourceOutputsEvent:
