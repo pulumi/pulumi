@@ -58,9 +58,9 @@ func TestPreviewInvoke(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		resp, _, err := monitor.Invoke("pkgA:index:myFunc", nil, "", "", "")
+		resp, _, err := monitor.Invoke("pkgA:index:myFunc", property.Map{}, "", "", "")
 		require.NoError(t, err)
-		assert.Equal(t, resource.NewProperty("invoked"), resp["result"])
+		assert.Equal(t, property.New("invoked"), resp.Get("result"))
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -107,7 +107,7 @@ func TestInvokeParentResolvesComponentProviders(t *testing.T) {
 		registerProvider := func(name string) string {
 			resp, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), name, true,
 				deploytest.ResourceOptions{
-					Inputs: resource.PropertyMap{"instance": resource.NewProperty(name)},
+					Inputs: property.NewMap(map[string]property.Value{"instance": property.New(name)}),
 				})
 			require.NoError(t, err)
 			ref, err := providers.NewReference(resp.URN, resp.ID)
@@ -137,10 +137,11 @@ func TestInvokeParentResolvesComponentProviders(t *testing.T) {
 		require.NoError(t, err)
 
 		servedBy := func(provider string, options ...deploytest.InvokeOptions) string {
-			resp, _, err := monitor.Invoke("pkgA:index:echo", nil, provider, "", "", options...)
+			resp, _, err := monitor.Invoke(
+				"pkgA:index:echo", property.Map{}, provider, "", "", options...)
 			require.NoError(t, err)
-			require.True(t, resp["instance"].IsString())
-			return resp["instance"].StringValue()
+			require.True(t, resp.Get("instance").IsString())
+			return resp.Get("instance").AsString()
 		}
 
 		assert.Equal(t, "explicit", servedBy("", deploytest.InvokeOptions{Parent: comp.URN}),
@@ -217,9 +218,10 @@ func TestInvokeDependsOnRemoteComponent(t *testing.T) {
 		// An invoke that depends on the component. The caller cannot see the
 		// component's children, so it sends the component's URN and the engine
 		// expands it.
-		result, err := monitor.InvokeWithResult("pkgA:index:readChild", nil, "", "", "", deploytest.InvokeOptions{
-			DependsOn: []resource.URN{comp.URN},
-		})
+		result, err := monitor.InvokeWithResult(
+			"pkgA:index:readChild", property.Map{}, "", "", "", deploytest.InvokeOptions{
+				DependsOn: []resource.URN{comp.URN},
+			})
 		require.NoError(t, err)
 		require.Empty(t, result.Failures)
 		return nil
@@ -302,9 +304,10 @@ func TestInvokeDependsOnNestedRemoteComponent(t *testing.T) {
 
 		// The dependency names the outer component, so reaching the pending child means descending outer ->
 		// remote component -> child.
-		result, err := monitor.InvokeWithResult("pkgA:index:readChild", nil, "", "", "", deploytest.InvokeOptions{
-			DependsOn: []resource.URN{outer.URN},
-		})
+		result, err := monitor.InvokeWithResult(
+			"pkgA:index:readChild", property.Map{}, "", "", "", deploytest.InvokeOptions{
+				DependsOn: []resource.URN{outer.URN},
+			})
 		require.NoError(t, err)
 		require.Empty(t, result.Failures)
 		return nil
@@ -357,9 +360,10 @@ func TestInvokeDependsOnPendingCustomResource(t *testing.T) {
 		dep, err := monitor.RegisterResource("pkgA:m:typA", "dep", true)
 		require.NoError(t, err)
 
-		result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
-			DependsOn: []resource.URN{dep.URN},
-		})
+		result, err := monitor.InvokeWithResult(
+			"pkgA:index:read", property.Map{}, "", "", "", deploytest.InvokeOptions{
+				DependsOn: []resource.URN{dep.URN},
+			})
 		require.NoError(t, err)
 		require.Empty(t, result.Failures)
 		assert.Equal(t, expectUnknown, result.Unknown)
@@ -417,9 +421,10 @@ func TestInvokeDependsOnStopsAtCustomResources(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
-			DependsOn: []resource.URN{parent.URN},
-		})
+		result, err := monitor.InvokeWithResult(
+			"pkgA:index:read", property.Map{}, "", "", "", deploytest.InvokeOptions{
+				DependsOn: []resource.URN{parent.URN},
+			})
 		require.NoError(t, err)
 		require.Empty(t, result.Failures)
 		assert.False(t, result.Unknown, "a custom dependency's pending children must not defer the invoke")
@@ -468,9 +473,10 @@ func TestInvokeDependsOnTargetedUp(t *testing.T) {
 		dep, err := monitor.RegisterResource("pkgA:m:typA", "dep", true)
 		require.NoError(t, err)
 
-		result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
-			DependsOn: []resource.URN{dep.URN},
-		})
+		result, err := monitor.InvokeWithResult(
+			"pkgA:index:read", property.Map{}, "", "", "", deploytest.InvokeOptions{
+				DependsOn: []resource.URN{dep.URN},
+			})
 		require.NoError(t, err)
 		require.Empty(t, result.Failures)
 		assert.True(t, result.Unknown, "invoke must be unknown: its dependency's creation was skipped by --target")
@@ -538,9 +544,10 @@ func TestInvokeDependsOnDestroyRunProgram(t *testing.T) {
 		require.NoError(t, err)
 
 		invokeOn := func(urns ...resource.URN) bool {
-			result, err := monitor.InvokeWithResult("pkgA:index:read", nil, "", "", "", deploytest.InvokeOptions{
-				DependsOn: urns,
-			})
+			result, err := monitor.InvokeWithResult(
+				"pkgA:index:read", property.Map{}, "", "", "", deploytest.InvokeOptions{
+					DependsOn: urns,
+				})
 			require.NoError(t, err)
 			require.Empty(t, result.Failures)
 			return result.Unknown
@@ -600,11 +607,13 @@ func TestSecretsInvoke(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		resp, _, err := monitor.Invoke("pkgA:index:myFunc", resource.PropertyMap{
-			"secret": resource.MakeSecret(resource.NewProperty("my-secret")),
-		}, "", "", "")
+		resp, _, err := monitor.Invoke("pkgA:index:myFunc", property.NewMap(map[string]property.Value{
+			"secret": property.New("my-secret").WithSecret(true),
+		}), "", "", "")
 		require.NoError(t, err)
-		assert.Equalf(t, resource.MakeSecret(resource.NewProperty("invoked")), resp["result"], "Returned: %#v", resp)
+		assert.Equalf(t,
+			property.New("invoked").WithSecret(true),
+			resp.Get("result"), "Returned: %#v", resp)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
