@@ -161,6 +161,8 @@ func getSummaryAbout(
 	var pwd string
 	if proj, pwd, err = ws.ReadProject(cwd); err != nil {
 		addError(err, "Failed to read project")
+	} else if cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, proj); err != nil {
+		addError(err, "Failed to prepare plugin credentials")
 	} else {
 		projinfo := &engine.Projinfo{Proj: proj, Root: pwd}
 		reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), cmdEnv.Global())
@@ -173,7 +175,7 @@ func getSummaryAbout(
 			addError(hostErr, "Failed to create plugin host")
 		} else if pwd, program, pluginContext, err := engine.ProjectInfoContext(
 			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
-		); err != nil {
+			cloudCredentialEnv); err != nil {
 			addError(err, "Failed to create plugin context")
 			contract.IgnoreClose(pluginHost)
 		} else {

@@ -240,7 +240,12 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("getting autonaming config: %w", err)
 		}
 
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, proj)
+		if err != nil {
+			return err
+		}
 		opts.Engine = engine.UpdateOptions{
+			CloudCredentialEnv:        cloudCredentialEnv,
 			ParallelDiff:              env.ParallelDiff.Value(),
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:                  parallel,
@@ -471,8 +476,13 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("building plugin host: %w", err)
 		}
 		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, proj)
+		if err != nil {
+			return err
+		}
 		_, main, pctx, err := engine.ProjectInfoContext(
 			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+			cloudCredentialEnv,
 		)
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
@@ -527,13 +537,14 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 		opts.Engine = engine.UpdateOptions{
-			ParallelDiff:     env.ParallelDiff.Value(),
-			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:         parallel,
-			Debug:            debug,
-			Refresh:          refreshOption,
-			RefreshProgram:   runProgram,
-			ShowSecrets:      showSecrets,
+			CloudCredentialEnv: cloudCredentialEnv,
+			ParallelDiff:       env.ParallelDiff.Value(),
+			LocalPolicyPacks:   engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:           parallel,
+			Debug:              debug,
+			Refresh:            refreshOption,
+			RefreshProgram:     runProgram,
+			ShowSecrets:        showSecrets,
 			// If the user passed --plan (but no path) then trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
 			GeneratePlan: env.Experimental.Value() || strict,

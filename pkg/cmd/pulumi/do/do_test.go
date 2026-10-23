@@ -30,8 +30,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -1418,4 +1421,37 @@ func TestPropertyValueToPCLLiteral(t *testing.T) {
 		"cfg", property.New(property.Computed))
 	require.ErrorContains(t, err, `"cfg"`)
 	require.ErrorContains(t, err, "computed/output")
+}
+
+// The provider is loaded before do opens a stack, so its context must already carry backend credentials.
+func TestDoProviderCredentials(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")
+	require.NoError(t, workspace.StoreAccount("https://api.example.com",
+		workspace.Account{AccessToken: "stored-token"}, false))
+	dir := t.TempDir()
+	output := filepath.Join(dir, "env")
+	child, err := os.Executable()
+	require.NoError(t, err)
+	childEnv := env.NewEnv(env.MapStore{"PULUMI_TEST_DO_PROVIDER_ENV_FILE": output})
+	stop := errors.New("stop after provider launch")
+	loader := func(_ context.Context, pctx *plugin.Context, _, _ string) (plugin.Provider, error) {
+		p, err := plugin.ExecPlugin(pctx, child, "test", apitype.ResourcePlugin, nil, dir, childEnv, false)
+		require.NoError(t, err)
+		defer p.Close()
+		code, err := p.Wait(t.Context())
+		require.NoError(t, err)
+		require.Zero(t, code)
+		return nil, stop
+	}
+	lm := &cmdBackend.MockLoginManager{}
+	cmd := NewDoCmd(lm, newTestWorkspace(t), loader, testHost, panicLoadConverterPlugin, nil)
+	cmd.SetContext(t.Context())
+	cmd.SetArgs([]string{"test:index:Thing"})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	require.ErrorIs(t, cmd.Execute(), stop)
+	data, err := os.ReadFile(output)
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.example.com\nstored-token\n", string(data))
 }

@@ -156,7 +156,12 @@ func NewWatchCmd() *cobra.Command {
 				return fmt.Errorf("validating stack config: %w", configErr)
 			}
 
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			if err != nil {
+				return err
+			}
 			opts.Engine = engine.UpdateOptions{
+				CloudCredentialEnv:        cloudCredentialEnv,
 				ParallelDiff:              env.ParallelDiff.Value(),
 				LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 				Parallel:                  parallel,

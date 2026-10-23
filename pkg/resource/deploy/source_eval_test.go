@@ -255,7 +255,7 @@ func newTestPluginContext(t testing.TB, program deploytest.ProgramFunc) (*plugin
 	lang := deploytest.NewLanguageRuntime(program)
 	host := deploytest.NewPluginHost(sink, statusSink, lang)
 	return plugin.NewContext(t.Context(), sink, statusSink, host, nil, "", nil, false,
-		nil)
+		nil, nil)
 }
 
 type testProviderSource struct {
@@ -2801,7 +2801,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 	plugctx, err := plugin.NewContext(t.Context(),
 		&deploytest.NoopSink{}, &deploytest.NoopSink{},
 		deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-		nil, "", nil, false, nil)
+		nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 
 	plainKey := config.MustMakeKey("test", "region")
@@ -3033,7 +3033,7 @@ func TestInvoke(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3091,7 +3091,7 @@ func TestInvoke(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3170,7 +3170,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3242,7 +3242,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3345,7 +3345,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3411,7 +3411,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)

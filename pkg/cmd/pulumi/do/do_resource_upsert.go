@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	deployproviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -842,10 +843,16 @@ func DefaultRunStatefulUpdate(
 		uuids = append(uuids, s.UUID)
 	}
 
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, req.Proj)
+	if err != nil {
+		return nil, err
+	}
 	engineOpts := engine.UpdateOptions{
-		Snippets:       snippets,
-		TargetSnippets: targetSnippets,
-		ShowSecrets:    req.ShowSecrets,
+		CloudCredentialEnv: cloudCredentialEnv,
+		Snippets:           snippets,
+		TargetSnippets:     targetSnippets,
+		ShowSecrets:        req.ShowSecrets,
 	}
 
 	op := backend.UpdateOperation{
