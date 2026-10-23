@@ -103,7 +103,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 					if !cmdutil.Interactive() {
 						return missingNonInteractiveArg("resource URN")
 					}
-					urn, selErr := getURNFromState(ctx, sink, ws, backend.DefaultLoginManager, stack, nil,
+					urn, selErr := getURNFromState(ctx, sink, ws, lm, stack, nil,
 						"Select the resource to delete")
 					if selErr != nil {
 						return fmt.Errorf("failed to select resource: %w", selErr)
