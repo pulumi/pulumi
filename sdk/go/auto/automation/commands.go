@@ -39,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconvert"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinstall"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogs"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogsdecrypt"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogslist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogsremove"
@@ -1959,95 +1958,6 @@ func (a *API) Install(
 
 	if o.UseLanguageVersionTools {
 		final = append(final, "--use-language-version-tools")
-	}
-
-	if o.Verbose != 0 {
-		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
-	}
-
-	return a.run(ctx, base.BaseOptions{
-		Cwd:           o.Cwd,
-		AdditionalEnv: o.AdditionalEnv,
-		Stdout:        o.Stdout,
-		Stderr:        o.Stderr,
-		Stdin:         o.Stdin,
-	}, final)
-}
-
-// Logs corresponds to `pulumi logs`.
-func (a *API) Logs(
-	ctx context.Context,
-	opts ...optlogs.Option,
-) (base.CommandResult, error) {
-	o := optlogs.Options{}
-	for _, opt := range opts {
-		opt(&o)
-	}
-
-	final := []string{"logs"}
-
-	if o.Color != "" {
-		final = append(final, "--color", fmt.Sprint(o.Color))
-	}
-
-	if o.ConfigFile != "" {
-		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
-	}
-
-	if o.DisableIntegrityChecking {
-		final = append(final, "--disable-integrity-checking")
-	}
-
-	if o.Follow {
-		final = append(final, "--follow")
-	}
-
-	if o.FullyQualifyStackNames {
-		final = append(final, "--fully-qualify-stack-names")
-	}
-
-	if o.Json {
-		final = append(final, "--json")
-	}
-
-	if o.Logflow {
-		final = append(final, "--logflow")
-	}
-
-	if o.Logtostderr {
-		final = append(final, "--logtostderr")
-	}
-
-	if o.Memprofilerate != 0 {
-		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
-	}
-
-	if o.OtelTraces != "" {
-		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Profiling != "" {
-		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
-	}
-
-	if o.Resource != "" {
-		final = append(final, "--resource", fmt.Sprint(o.Resource))
-	}
-
-	if o.Since != "" {
-		final = append(final, "--since", fmt.Sprint(o.Since))
-	}
-
-	if o.Stack != "" {
-		final = append(final, "--stack", fmt.Sprint(o.Stack))
-	}
-
-	if o.Tracing != "" {
-		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
-	}
-
-	if o.TracingHeader != "" {
-		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
 	}
 
 	if o.Verbose != 0 {
