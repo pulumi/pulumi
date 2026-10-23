@@ -1,0 +1,4 @@
+component: auto
+kind: feat
+body: Add `events` commands to the generated automation APIs for NodeJS, Python and Go
+time: 2026-10-06T16:46:46.431758+02:00
