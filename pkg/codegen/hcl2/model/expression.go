@@ -2154,37 +2154,32 @@ func (x *SplatExpression) Type() Type {
 	return x.exprType
 }
 
-func splatItemType(source Expression, splatSyntax *hclsyntax.SplatExpr) (Expression, Type) {
-	sourceType := unwrapIterableSourceType(source.Type())
-	itemType := sourceType
-	switch sourceType := sourceType.(type) {
+// splatItemType returns the type of the item of a splat expression over a value of type sourceType. If the source is
+// not a list, set or tuple, the splat applies to the source itself, so the item has the type of the source.
+func splatItemType(sourceType Type) Type {
+	switch sourceType := unwrapIterableSourceType(sourceType).(type) {
 	case *ListType:
-		itemType = sourceType.ElementType
+		return sourceType.ElementType
 	case *SetType:
-		itemType = sourceType.ElementType
+		return sourceType.ElementType
 	case *TupleType:
-		itemType, _ = UnifyTypes(sourceType.ElementTypes...)
+		itemType, _ := UnifyTypes(sourceType.ElementTypes...)
+		return itemType
 	default:
-		if sourceType != DynamicType {
-			var tupleSyntax *hclsyntax.TupleConsExpr
-			if splatSyntax != nil {
-				tupleSyntax = &hclsyntax.TupleConsExpr{
-					Exprs:     []hclsyntax.Expression{splatSyntax.Source},
-					SrcRange:  splatSyntax.Source.Range(),
-					OpenRange: splatSyntax.Source.StartRange(),
-				}
-			}
-
-			source = &TupleConsExpression{
-				Syntax:      tupleSyntax,
-				Tokens:      syntax.NewTupleConsTokens(1),
-				Expressions: []Expression{source},
-				exprType:    NewListType(source.Type()),
-				splatSource: true,
-			}
-		}
+		return sourceType
 	}
-	return source, itemType
+}
+
+// SourceIsValue returns true if the source of the splat is not a list, set, or tuple. In that case, the splat applies
+// to the source value itself: HCL wraps the value in a single-element tuple, or gives an empty tuple if the value is
+// null.
+func (x *SplatExpression) SourceIsValue() bool {
+	switch sourceType := unwrapIterableSourceType(x.Source.Type()).(type) {
+	case *ListType, *SetType, *TupleType:
+		return false
+	default:
+		return sourceType != DynamicType
+	}
 }
 
 func (x *SplatExpression) typecheck(retypeItem, typecheckOperands bool) hcl.Diagnostics {
@@ -2196,7 +2191,7 @@ func (x *SplatExpression) typecheck(retypeItem, typecheckOperands bool) hcl.Diag
 	}
 
 	if retypeItem {
-		x.Source, x.Item.VariableType = splatItemType(x.Source, x.Syntax)
+		x.Item.VariableType = splatItemType(x.Source.Type())
 	}
 
 	if typecheckOperands {
@@ -2214,14 +2209,8 @@ func (x *SplatExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 }
 
 func (x *SplatExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
-	source := x.Source
-	// HCL wraps a source that is not a list itself, and gives an empty list for a null source. Give HCL the
-	// original source, so that a null source does not become a one-element tuple.
-	if tuple, ok := source.(*TupleConsExpression); ok && tuple.splatSource {
-		source = tuple.Expressions[0]
-	}
 	syntax := &hclsyntax.SplatExpr{
-		Source: &syntaxExpr{expr: source},
+		Source: &syntaxExpr{expr: x.Source},
 		Each:   &syntaxExpr{expr: x.Each},
 		Item:   &x.Item.symbol,
 	}
@@ -2510,8 +2499,6 @@ type TupleConsExpression struct {
 	Expressions []Expression
 
 	exprType Type
-	// splatSource is true if the binder made this tuple to wrap the source of a splat expression.
-	splatSource bool
 }
 
 // SyntaxNode returns the syntax node associated with the tuple construction expression.

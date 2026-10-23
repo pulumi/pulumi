@@ -46,6 +46,8 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (mode
 	expr = pcl.RewritePropertyReferences(expr)
 	skipToJSONWhenRewritingApplies := true
 	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), false, skipToJSONWhenRewritingApplies)
+	expr, splatDiags := pcl.RewriteSplats(expr)
+	diags = diags.Extend(splatDiags)
 	expr, lowerProxyDiags := g.lowerProxyApplies(expr)
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	// Guard dereferences of conditionally-created resources after applies and

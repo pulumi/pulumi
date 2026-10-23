@@ -27,6 +27,7 @@ func init() {
 	LanguageTests["l3-splat"] = LanguageTest{
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider { return &providers.NestedObjectProvider{} },
+			func() plugin.Provider { return &providers.OptionalPrimitiveRefProvider{} },
 		},
 		Runs: []TestRun{
 			{
@@ -40,6 +41,16 @@ func init() {
 							property.New("computed-b"),
 						}),
 					}), resource.FromResourcePropertyMap(sink.Inputs))
+
+					// A splat over a value that is not a list wraps the value in a list, and a splat over null
+					// gives an empty list.
+					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"setOptionalSplat": property.New([]property.Value{
+							property.New("set"),
+						}),
+						"unsetOptionalSplat": property.New([]property.Value{}),
+					}), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

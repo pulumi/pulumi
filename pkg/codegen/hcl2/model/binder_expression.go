@@ -724,7 +724,7 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 	item := &SplatVariable{}
 	b.anonSymbols[syntax.Item] = item
 
-	source, item.VariableType = splatItemType(source, syntax)
+	item.VariableType = splatItemType(source.Type())
 
 	each, eachDiags := b.bindExpression(syntax.Each)
 

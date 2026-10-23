@@ -10,6 +10,7 @@
 	},
 	"dependencies": {
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
-		"@pulumi/nestedobject": "ROOT/artifacts/pulumi-nestedobject-1.42.0.tgz"
+		"@pulumi/nestedobject": "ROOT/artifacts/pulumi-nestedobject-1.42.0.tgz",
+		"@pulumi/optional-primitive-ref": "ROOT/artifacts/pulumi-optional-primitive-ref-40.0.0.tgz"
 	}
 }

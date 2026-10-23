@@ -111,6 +111,7 @@ var expectedFailures = map[string]string{
 	"l1-builtin-range":              "range emits a TODO stub",
 	"l2-builtin-object":             "entries/lookup emit TODO stubs",
 	"l1-builtin-to-json":            "Go doesn't support output based toJSON",
+	"l3-splat":                      "pulumi#25356 an apply that gives a list of optional primitives panics",
 	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
 	"l2-resource-schema-secret":     "does not preserve schema-secret unknown outputs",
 

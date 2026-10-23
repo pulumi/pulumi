@@ -49,6 +49,8 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) model
 	expr = pcl.RewritePropertyReferences(expr)
 	skipToJSONWhenRewritingApplies := true
 	expr, diags := pcl.RewriteAppliesWithSkipToJSON(expr, nameInfo(0), !g.asyncMain, skipToJSONWhenRewritingApplies)
+	expr, splatDiags := pcl.RewriteSplats(expr)
+	diags = diags.Extend(splatDiags)
 	if typ != nil {
 		var convertDiags hcl.Diagnostics
 		expr, convertDiags = pcl.RewriteConversions(expr, typ)

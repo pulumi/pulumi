@@ -2335,7 +2335,15 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 			} else {
 				g.Fgenf(w, "var %s []%s\n", t.Name, argTyp)
 			}
-			g.Fgenf(w, "for _, val0 := range %.v {\n", t.Value.Source)
+			switch {
+			case !t.Value.SourceIsValue():
+				g.Fgenf(w, "for _, val0 := range %.v {\n", t.Value.Source)
+			case model.IsOptionalType(t.Value.Source.Type()):
+				// A splat over null gives an empty list.
+				g.Fgenf(w, "if val0 := %.v; val0 != nil {\n", t.Value.Source)
+			default:
+				g.Fgenf(w, "{\nval0 := %.v\n", t.Value.Source)
+			}
 			g.Fgenf(w, "%s = append(%s, %.v)\n", t.Name, t.Name, t.Value.Each)
 			g.Fgenf(w, "}\n")
 		case *forTemp:
