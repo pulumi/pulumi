@@ -41,7 +41,7 @@ import (
 // the full HTTP client surface.
 type policyIssueListClient interface {
 	ListPolicyIssues(
-		ctx context.Context, orgName string, req cloudapitype.AngularGridGetRowsRequest,
+		ctx context.Context, orgName string, req cloudapitype.AngularGridGetRowsRequest, closed bool,
 	) (cloudapitype.ListPolicyIssuesResponse, error)
 }
 
@@ -58,6 +58,7 @@ type policyIssueListArgs struct {
 	org          string
 	count        int64
 	all          bool
+	closed       bool
 	outputFormat outputflag.OutputFlag[policyIssueListRenderFunc]
 }
 
@@ -85,16 +86,21 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "[EXPERIMENTAL] List all policy issues for an organization",
-		Long: "[EXPERIMENTAL] List all policy issues for an organization.\n" +
+		Short:   "[EXPERIMENTAL] List policy issues for an organization",
+		Long: "[EXPERIMENTAL] List policy issues for an organization.\n" +
 			"\n" +
-			"Returns a list of policy issues for the organization. Each issue\n" +
-			"represents a violation detected by a Policy Pack during a stack update\n" +
-			"or a continuous-compliance scan, and includes the violating resource,\n" +
-			"policy details, and enforcement level.\n" +
+			"Lists the active policy issues for the organization, or the closed\n" +
+			"issues when --closed is passed. Each issue represents a violation\n" +
+			"detected by a Policy Pack during a stack update or a continuous-compliance\n" +
+			"scan, and includes the violating resource, policy details, status, and\n" +
+			"enforcement level.\n" +
 			"\n" +
 			"Default output is a human-readable table; pass --output=json for the\n" +
 			"full response as a JSON envelope.",
+		Example: "  # List active policy issues\n" +
+			"  pulumi policy issue ls\n\n" +
+			"  # List all closed policy issues as JSON\n" +
+			"  pulumi policy issue ls --closed --all --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runPolicyIssueList(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},
@@ -106,6 +112,7 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 	cmd.Flags().Int64Var(&args.count, "count", 0,
 		"Maximum number of issues to return (default 100)")
 	cmd.Flags().BoolVar(&args.all, "all", false, "Return all matching issues; mutually exclusive with --count")
+	cmd.Flags().BoolVar(&args.closed, "closed", false, "List closed issues instead of active ones")
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
@@ -190,7 +197,7 @@ func runPolicyIssueList(
 		resp, err := c.ListPolicyIssues(ctx, org, cloudapitype.AngularGridGetRowsRequest{
 			StartRow: startRow,
 			EndRow:   startRow + pageSize,
-		})
+		}, args.closed)
 		if err != nil {
 			return fmt.Errorf("listing policy issues: %w", err)
 		}
@@ -211,11 +218,11 @@ func runPolicyIssueList(
 	return args.outputFormat.Get()(w, cloudapitype.ListPolicyIssuesResponse{
 		PolicyIssues: allIssues,
 		RowCount:     new(int(total)),
-	})
+	}, args.closed)
 }
 
 type policyIssueListRenderFunc func(
-	w io.Writer, resp cloudapitype.ListPolicyIssuesResponse,
+	w io.Writer, resp cloudapitype.ListPolicyIssuesResponse, closed bool,
 ) error
 
 func policyIssueTotal(resp cloudapitype.ListPolicyIssuesResponse) int64 {
@@ -246,9 +253,13 @@ func truncateMessage(s string, max int) string {
 }
 
 func renderPolicyIssueListTable(
-	w io.Writer, resp cloudapitype.ListPolicyIssuesResponse,
+	w io.Writer, resp cloudapitype.ListPolicyIssuesResponse, closed bool,
 ) error {
 	if len(resp.PolicyIssues) == 0 {
+		if closed {
+			fmt.Fprintln(w, "No closed policy issues found for this organization.")
+			return nil
+		}
 		fmt.Fprintln(w, "No policy issues found for this organization.")
 		return nil
 	}
@@ -256,7 +267,7 @@ func renderPolicyIssueListTable(
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.SetStyle(table.StyleLight)
-	t.AppendHeader(table.Row{"ID", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE"})
+	t.AppendHeader(table.Row{"ID", "STATUS", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE"})
 
 	for _, issue := range resp.PolicyIssues {
 		pack := issue.PolicyPack
@@ -274,8 +285,13 @@ func renderPolicyIssueListTable(
 		if stack == "" {
 			stack = "-"
 		}
+		status := string(issue.Status)
+		if status == "" {
+			status = "-"
+		}
 		t.AppendRow(table.Row{
 			issue.ID,
+			status,
 			pack,
 			issue.PolicyName,
 			enforcement,
@@ -290,7 +306,7 @@ func renderPolicyIssueListTable(
 }
 
 func renderPolicyIssueListJSON(
-	w io.Writer, resp cloudapitype.ListPolicyIssuesResponse,
+	w io.Writer, resp cloudapitype.ListPolicyIssuesResponse, _ bool,
 ) error {
 	if resp.PolicyIssues == nil {
 		resp.PolicyIssues = []cloudapitype.PolicyIssue{}

@@ -1925,7 +1925,7 @@ func (pc *Client) RemoveOrganizationMember(ctx context.Context, orgName, userLog
 // because the request body carries pagination parameters in an AngularGrid
 // format.
 func (pc *Client) ListPolicyIssues(
-	ctx context.Context, orgName string, req cloudapitype.AngularGridGetRowsRequest,
+	ctx context.Context, orgName string, req cloudapitype.AngularGridGetRowsRequest, closed bool,
 ) (cloudapitype.ListPolicyIssuesResponse, error) {
 	// Send startRow and endRow even when zero; the generated type omits them.
 	body := struct {
@@ -1934,9 +1934,12 @@ func (pc *Client) ListPolicyIssues(
 		EndRow   int `json:"endRow"`
 	}{req, req.StartRow, req.EndRow}
 	path := fmt.Sprintf("/api/orgs/%s/policyresults/issues", url.PathEscape(orgName))
+	query := struct {
+		Closed bool `url:"closed,omitempty"`
+	}{closed}
 
 	var resp cloudapitype.ListPolicyIssuesResponse
-	if err := pc.restCall(ctx, http.MethodPost, path, nil, body, &resp); err != nil {
+	if err := pc.restCall(ctx, http.MethodPost, path, query, body, &resp); err != nil {
 		return cloudapitype.ListPolicyIssuesResponse{}, fmt.Errorf("listing policy issues: %w", err)
 	}
 	return resp, nil
@@ -1956,21 +1959,21 @@ func (pc *Client) GetPolicyComplianceResults(
 	return resp, nil
 }
 
-// GetPolicyIssue returns the details of a single policy issue in the given
-// organization, wrapping the `GetPolicyIssue` Pulumi Cloud REST endpoint
+// GetPolicyIssue returns a single policy issue in the given organization along
+// with its policy details, wrapping the `GetPolicyIssue` Pulumi Cloud REST endpoint
 // (GET /api/orgs/{orgName}/policyresults/issues/{issueId}).
 func (pc *Client) GetPolicyIssue(
 	ctx context.Context, orgName, issueID string,
-) (cloudapitype.PolicyIssue, error) {
+) (cloudapitype.GetPolicyIssueResponse, error) {
 	path := fmt.Sprintf(
 		"/api/orgs/%s/policyresults/issues/%s",
 		url.PathEscape(orgName), url.PathEscape(issueID))
 
 	var resp cloudapitype.GetPolicyIssueResponse
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
-		return cloudapitype.PolicyIssue{}, fmt.Errorf("getting policy issue: %w", err)
+		return cloudapitype.GetPolicyIssueResponse{}, fmt.Errorf("getting policy issue: %w", err)
 	}
-	return resp.PolicyIssue, nil
+	return resp, nil
 }
 
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
