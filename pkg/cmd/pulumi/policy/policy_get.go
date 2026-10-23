@@ -66,25 +66,30 @@ func newPolicyGetCmdWith(factory policyGetClientFactory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "get <org-name>/<policy-pack-name>[@<version>]",
-		Short: "Get the details of a Policy Pack",
-		Long: "Get the details of a Policy Pack.\n" +
+		Use:   "get",
+		Short: "[EXPERIMENTAL] Get the details of a Policy Pack",
+		Long: "[EXPERIMENTAL] Get the details of a Policy Pack.\n" +
 			"\n" +
 			"Shows the policies contained in a published version of a Policy Pack. The\n" +
 			"organization defaults to your default organization, and the version defaults\n" +
-			"to the latest published version.\n" +
+			"to latest.\n" +
 			"\n" +
 			"Examples:\n" +
-			"  pulumi policy get acme/aws-guardrails@1.2.0\n" +
+			"  pulumi policy get acme/aws-guardrails 1.2.0\n" +
 			"  pulumi policy get aws-guardrails --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
-			return runPolicyGet(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], outputFormat)
+			version := latestKeyword
+			if len(posArgs) > 1 {
+				version = posArgs[1]
+			}
+			return runPolicyGet(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], version, outputFormat)
 		},
 	}
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
-			{Name: "policy-pack", Usage: "[<org-name>/]<policy-pack-name>[@<version>]"},
+			{Name: "policy-pack", Usage: "[<org-name>/]<policy-pack-name>"},
+			{Name: "version", Usage: "[latest|version]"},
 		},
 		Required: 1,
 	})
@@ -131,37 +136,24 @@ func defaultPolicyGetClientFactory(ctx context.Context, orgArg string) (policyGe
 	return cloudBackend.Client(), org, nil
 }
 
-// parsePolicyPackVersionRef splits "[org/]name[@version]". A version of
-// "latest" is returned as the empty string.
-func parsePolicyPackVersionRef(s string) (org, name, version string, err error) {
-	ref := s
-	if before, after, found := strings.Cut(s, "@"); found {
-		ref = before
-		version = after
-		if version == "" {
-			return "", "", "", fmt.Errorf("invalid policy pack %q: version after '@' must not be empty", s)
-		}
-		if version == "latest" {
-			version = ""
-		}
-	}
-
-	parts := strings.Split(ref, "/")
+// parseOrgPolicyPackName splits "[org/]name".
+func parseOrgPolicyPackName(s string) (org, name string, err error) {
+	parts := strings.Split(s, "/")
 	switch len(parts) {
 	case 1:
 		name = parts[0]
 	case 2:
 		org, name = parts[0], parts[1]
 		if org == "" {
-			return "", "", "", fmt.Errorf("invalid policy pack %q: organization must not be empty", s)
+			return "", "", fmt.Errorf("invalid policy pack %q: organization must not be empty", s)
 		}
 	default:
-		return "", "", "", fmt.Errorf("invalid policy pack %q: expected <org-name>/<policy-pack-name>[@<version>]", s)
+		return "", "", fmt.Errorf("invalid policy pack %q: expected [<org-name>/]<policy-pack-name>", s)
 	}
 	if name == "" {
-		return "", "", "", fmt.Errorf("invalid policy pack %q: policy pack name must not be empty", s)
+		return "", "", fmt.Errorf("invalid policy pack %q: policy pack name must not be empty", s)
 	}
-	return org, name, version, nil
+	return org, name, nil
 }
 
 // resolveLatestVersionTag returns the version tag of the highest-numbered
@@ -189,12 +181,15 @@ func resolveLatestVersionTag(
 }
 
 func runPolicyGet(
-	ctx context.Context, w io.Writer, factory policyGetClientFactory, ref string,
+	ctx context.Context, w io.Writer, factory policyGetClientFactory, ref, version string,
 	outputFormat outputflag.OutputFlag[policyGetRenderFunc],
 ) error {
-	refOrg, name, version, err := parsePolicyPackVersionRef(ref)
+	refOrg, name, err := parseOrgPolicyPackName(ref)
 	if err != nil {
 		return err
+	}
+	if version == "" {
+		return fmt.Errorf("invalid version: must be %q or a version", latestKeyword)
 	}
 
 	c, org, err := factory(ctx, refOrg)
@@ -202,13 +197,13 @@ func runPolicyGet(
 		return err
 	}
 
-	if version == "" {
+	if version == latestKeyword {
 		var packs []cloudapitype.AppPolicyPackWithVersions
 		var token *string
 		for {
 			resp, next, err := c.ListPolicyPacks(ctx, org, token)
 			if err != nil {
-				return fmt.Errorf("listing policy packs: %w", err)
+				return err
 			}
 			packs = append(packs, resp.PolicyPacks...)
 			if next == nil || *next == "" {
@@ -243,7 +238,11 @@ func renderPolicyGetJSON(w io.Writer, pack cloudapitype.AppGetPolicyPackResponse
 func renderPolicyGetText(w io.Writer, pack cloudapitype.AppGetPolicyPackResponse) error {
 	fmt.Fprintf(w, "%-14s %s\n", "Name:", pack.Name)
 	fmt.Fprintf(w, "%-14s %s\n", "Display name:", pack.DisplayName)
-	fmt.Fprintf(w, "%-14s %s (%d)\n", "Version:", pack.VersionTag, pack.Version)
+	if pack.VersionTag != "" {
+		fmt.Fprintf(w, "%-14s %s (v%d)\n", "Version:", pack.VersionTag, pack.Version)
+	} else {
+		fmt.Fprintf(w, "%-14s v%d\n", "Version:", pack.Version)
+	}
 
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "POLICIES")
