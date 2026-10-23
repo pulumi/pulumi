@@ -1,0 +1,4 @@
+component: cli/install
+kind: fix
+body: Stop the provider plugin that `pulumi install` launches to generate a local SDK once generation finishes, instead of leaving it running after the command exits
+time: 2026-10-23T12:45:00-04:00

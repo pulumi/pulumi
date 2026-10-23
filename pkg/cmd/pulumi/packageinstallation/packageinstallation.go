@@ -93,6 +93,8 @@ type Context interface {
 	// If the package is served from a binary, then pluginPath will point at that
 	// binary. If it's served from a directory, then pluginPath will be that
 	// directory.
+	//
+	// The caller owns the returned provider and must Close it.
 	RunPackage(
 		ctx context.Context,
 		rootDir, pluginPath string, params plugin.ParameterizeParameters,
@@ -130,7 +132,7 @@ type Options struct {
 // The returned plugin *may* already be parameterized, depending on if the requested
 // [workspace.PluginSpec] specified parameterization (via the Pulumi registry).
 //
-// The plugin will be launched in wd.
+// The plugin will be launched in wd. The caller owns the returned provider and must Close it.
 type RunPlugin = func(ctx context.Context, wd string) (plugin.Provider, error)
 
 // InstallPlugin installs a plugin into a project.
@@ -725,6 +727,7 @@ func (step generateLocalSDKStep) run(ctx context.Context, p state) error {
 	if err != nil {
 		return err
 	}
+	defer contract.IgnoreClose(provider)
 	descriptor, err := p.ws.GenerateLocalSDK(ctx, step.project.proj.RuntimeInfo(), step.project.projectDir, provider)
 	if err != nil {
 		return err

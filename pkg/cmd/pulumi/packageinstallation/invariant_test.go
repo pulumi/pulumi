@@ -21,10 +21,12 @@ import (
 	"maps"
 	"math/rand/v2"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -65,7 +67,20 @@ func newInvariantWorkspace(
 		binaryPaths:         map[string]string{},
 		downloadedWorkspace: downloadedWorkspace,
 		rw:                  new(sync.RWMutex),
+		sdkProviders:        newSDKProviderLog(t),
 	}
+}
+
+func newSDKProviderLog(t *testing.T) *sdkProviderLog {
+	log := &sdkProviderLog{}
+	t.Cleanup(func() {
+		log.mu.Lock()
+		defer log.mu.Unlock()
+		for _, p := range log.providers {
+			assert.Truef(t, p.closed.Load(), "provider %q used for SDK generation was never closed", p.path)
+		}
+	})
+	return log
 }
 
 func assertInvariantWorkspaceEqual(t *testing.T, a, b invariantWorkspace) {
@@ -73,6 +88,8 @@ func assertInvariantWorkspaceEqual(t *testing.T, a, b invariantWorkspace) {
 	b.t = nil
 	a.jitter = 0
 	b.jitter = 0
+	a.sdkProviders = nil
+	b.sdkProviders = nil
 	assert.Equal(t, a, b)
 }
 
@@ -100,6 +117,14 @@ type invariantWorkspace struct {
 	// jitter should be set on tests that run operations in parallel, and does not need to be
 	// set on tests that run operations in sequence.
 	jitter time.Duration
+
+	// Every provider passed to GenerateLocalSDK, checked at test cleanup to have been closed.
+	sdkProviders *sdkProviderLog
+}
+
+type sdkProviderLog struct {
+	mu        sync.Mutex
+	providers []invariantProvider
 }
 
 type invariantWorkDir struct{ linked []string }
@@ -317,6 +342,12 @@ func (w invariantWorkspace) GenerateLocalSDK(
 	}
 
 	ip := provider.(invariantProvider)
+	if !assert.Falsef(w.t, ip.closed.Load(), "provider %q passed to GenerateLocalSDK was already closed", ip.path) {
+		return workspace.LinkablePackageDescriptor{}, assert.AnError
+	}
+	w.sdkProviders.mu.Lock()
+	w.sdkProviders.providers = append(w.sdkProviders.providers, ip)
+	w.sdkProviders.mu.Unlock()
 	// SDKs are emitted per-package, not per-plugin. The path embeds the
 	// package name so two parameterized packages backed by the same plugin
 	// produce distinct LinkablePackageDescriptor.Path values.
@@ -392,7 +423,7 @@ func (w invariantWorkspace) RunPackage(
 ) (plugin.Provider, error) {
 	pluginPath = filepath.ToSlash(pluginPath)
 	if _, ok := w.plainBinaryPaths[pluginPath]; ok {
-		return invariantProvider{path: pluginPath, params: params}, nil
+		return invariantProvider{path: pluginPath, params: params, closed: new(atomic.Bool)}, nil
 	}
 
 	w.rw.RLock()
@@ -412,7 +443,7 @@ func (w invariantWorkspace) RunPackage(
 			pluginPath, pl.state, pl.project != nil)
 		return nil, assert.AnError
 	}
-	return invariantProvider{path: pluginPath, params: params}, nil
+	return invariantProvider{path: pluginPath, params: params, closed: new(atomic.Bool)}, nil
 }
 
 type invariantProvider struct {
@@ -420,4 +451,18 @@ type invariantProvider struct {
 
 	path   string
 	params plugin.ParameterizeParameters
+	closed *atomic.Bool
+}
+
+func (p invariantProvider) Close() error {
+	p.closed.Store(true)
+	return nil
+}
+
+// GoString leaves close tracking out of recorded steps.
+func (p invariantProvider) GoString() string {
+	return formatStruct(reflect.ValueOf(struct {
+		path   string
+		params plugin.ParameterizeParameters
+	}{p.path, p.params}), "invariantProvider")
 }
