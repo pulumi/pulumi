@@ -16,16 +16,21 @@ package config
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -213,6 +218,87 @@ environment:
 			}
 			require.NoError(t, err)
 			require.Equal(t, c.expected, string(written))
+		})
+	}
+}
+
+func TestRejectConfigFileOnManagedStack(t *testing.T) {
+	t.Parallel()
+
+	managed := managedTestStack(t, backend.StackConfigLocation{ManagedEnvironment: "proj/dev"})
+	unmanaged := managedTestStack(t, backend.StackConfigLocation{})
+
+	require.EqualError(t, rejectConfigFileOnManagedStack(managed, "Pulumi.other.yaml"),
+		"--config-file is not supported on stacks with an ESC-managed environment yet")
+	require.NoError(t, rejectConfigFileOnManagedStack(managed, ""))
+	require.NoError(t, rejectConfigFileOnManagedStack(unmanaged, "Pulumi.other.yaml"))
+}
+
+func managedStacksLoginManager(managed string) (cmdBackend.LoginManager, pkgWorkspace.Context) {
+	be := &backend.MockBackend{
+		ParseStackReferenceF: func(name string) (backend.StackReference, error) {
+			return &backend.MockStackReference{StringV: "org/" + name, NameV: tokens.MustParseStackName(name)}, nil
+		},
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			var loc backend.StackConfigLocation
+			if ref.Name().String() == managed {
+				loc.ManagedEnvironment = "proj/renamed"
+			}
+			return &backend.MockStack{
+				RefF:            func() backend.StackReference { return ref },
+				OrgNameF:        func() string { return "org" },
+				ConfigLocationF: func() backend.StackConfigLocation { return loc },
+			}, nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool,
+			colors.Colorization, ...cmdBackend.LoginOption,
+		) (backend.Backend, error) {
+			return be, nil
+		},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "app"}, "", nil
+		},
+		GetStoredCredentialsF: func() (workspace.Credentials, error) {
+			return workspace.Credentials{Current: "https://api.pulumi.com"}, nil
+		},
+	}
+	return lm, ws
+}
+
+func TestManagedConfigWritesRejectConfigFile(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		command func(pkgWorkspace.Context, *string, cmdBackend.LoginManager, *string) *cobra.Command
+		args    []string
+	}{
+		{name: "set", command: newConfigSetCmd, args: []string{"app:new", "v"}},
+		{name: "rm", command: newConfigRemoveCmd, args: []string{"app:keep"}},
+		{name: "rm-all", command: newConfigRemoveAllCmd, args: []string{"app:keep"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			configFile := filepath.Join(t.TempDir(), "Pulumi.alt.yaml")
+			require.NoError(t, os.WriteFile(configFile, []byte(managedStackFile), 0o600))
+			lm, ws := managedStacksLoginManager("dev")
+			stack := "dev"
+			cmd := c.command(ws, &stack, lm, &configFile)
+			cmd.SetArgs(c.args)
+			cmd.SetOut(io.Discard)
+			cmd.SetErr(io.Discard)
+			cmd.SilenceUsage = true
+
+			err := cmd.ExecuteContext(t.Context())
+			require.EqualError(t, err, "--config-file is not supported on stacks with an ESC-managed environment yet")
+			written, readErr := os.ReadFile(configFile)
+			require.NoError(t, readErr)
+			require.Equal(t, managedStackFile, string(written))
 		})
 	}
 }

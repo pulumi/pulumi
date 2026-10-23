@@ -38,6 +38,14 @@ type managedStore struct {
 	configFile  string
 }
 
+func rejectConfigFileOnManagedStack(s backend.Stack, configFile string) error {
+	loc := s.ConfigLocation()
+	if configFile != "" && loc.ManagedEnvironment != "" {
+		return cmdStack.ManagedEnvironmentNotSupportedError("--config-file")
+	}
+	return nil
+}
+
 func managedEnvForWrite(
 	s backend.Stack,
 	projectName tokens.PackageName,
