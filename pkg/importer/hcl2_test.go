@@ -1365,10 +1365,11 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 	t.Run("ResourceReference", func(t *testing.T) {
 		t.Parallel()
-		value := property.New(property.ResourceReference{
-			URN: "urn:pulumi:s::p::pkg:index:R::r",
-			ID:  property.New("id"),
-		})
+		value := property.New(property.NewResourceReference(
+			"urn:pulumi:s::p::pkg:index:R::r",
+			property.New("id"),
+			"",
+		))
 		resType := &schema.ResourceType{Token: "pkg:index:R"}
 
 		assert.True(t, valueStructurallyTypedAs(value, resType))
