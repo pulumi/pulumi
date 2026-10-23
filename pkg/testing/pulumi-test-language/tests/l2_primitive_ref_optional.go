@@ -106,6 +106,10 @@ func init() {
 					AssertPropertyMapMember(l, outputs, "unsetString", property.New("null"))
 					AssertPropertyMapMember(l, outputs, "unsetNumberArray", property.New("null"))
 					AssertPropertyMapMember(l, outputs, "unsetBooleanMap", property.New("null"))
+
+					// Comparison of an optional object to null yields whether the object is set.
+					AssertPropertyMapMember(l, outputs, "setOptionalData", property.New("not null"))
+					AssertPropertyMapMember(l, outputs, "unsetOptionalData", property.New("null"))
 				},
 			},
 		},

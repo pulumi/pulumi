@@ -104,6 +104,24 @@ func main() {
 			}
 			return tmp5, nil
 		}).(pulumi.StringOutput))
+		ctx.Export("setOptionalData", setRes.OptionalData.ApplyT(func(optionalData *optionalprimitiveref.Data) (string, error) {
+			var tmp6 string
+			if optionalData == nil {
+				tmp6 = "null"
+			} else {
+				tmp6 = "not null"
+			}
+			return tmp6, nil
+		}).(pulumi.StringOutput))
+		ctx.Export("unsetOptionalData", unsetRes.OptionalData.ApplyT(func(optionalData *optionalprimitiveref.Data) (string, error) {
+			var tmp7 string
+			if optionalData == nil {
+				tmp7 = "null"
+			} else {
+				tmp7 = "not null"
+			}
+			return tmp7, nil
+		}).(pulumi.StringOutput))
 		return nil
 	})
 }
