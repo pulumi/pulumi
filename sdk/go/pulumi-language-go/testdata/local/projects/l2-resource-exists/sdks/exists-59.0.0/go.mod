@@ -1,4 +1,4 @@
-module example.com/pulumi-exists/sdk/go
+module example.com/pulumi-exists/sdk/go/v59
 
 go 1.25
 

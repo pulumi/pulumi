@@ -8,7 +8,7 @@ import (
 	"reflect"
 
 	"errors"
-	"example.com/pulumi-exists/sdk/go/exists/internal"
+	"example.com/pulumi-exists/sdk/go/v59/exists/internal"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
