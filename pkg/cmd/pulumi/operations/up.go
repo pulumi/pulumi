@@ -603,7 +603,7 @@ func NewUpCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.\n" +
 			"\n" +
 			"Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary\n" +
-			" project is created, deployed, and then deleted, leaving only the stack state.",
+			"project is created, deployed, and then deleted, leaving only the stack state.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance

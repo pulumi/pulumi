@@ -3308,7 +3308,7 @@ func (a *API) EnvRotate(
 // references in the command are not expanded by default. You should invoke the command
 // inside a shell if you need environment variable expansion:
 //
-//	run <environment-name> -- zsh -c '"echo $MY_ENV_VAR"'
+//	run <environment-name> -- sh -c '"echo $MY_ENV_VAR"'
 //
 // The command to run is assumed to be non-interactive by default and its output
 // streams are filtered to remove any secret values. Use the -i flag to run interactive
@@ -8321,8 +8321,7 @@ func (a *API) StateUpgrade(
 // `--cwd` flag to use a different directory.
 //
 // Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary
-//
-//	project is created, deployed, and then deleted, leaving only the stack state.
+// project is created, deployed, and then deleted, leaving only the stack state.
 func (a *API) Up(
 	ctx context.Context,
 	templateOrUrl *string,
