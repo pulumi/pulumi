@@ -1,4 +1,4 @@
 package "exists" {
   baseProviderName    = "exists"
-  baseProviderVersion = "1.0.0"
+  baseProviderVersion = "59.0.0"
 }
