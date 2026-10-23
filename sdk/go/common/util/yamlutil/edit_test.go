@@ -114,3 +114,20 @@ listFoo:
       - cee
 `)
 }
+
+func TestEditEmptyFlowCollectionGainsContent(t *testing.T) {
+	t.Parallel()
+
+	assertYamlEdit(t, "list: [] # c\nlistFoo: [{bar: x}]\n", Foo{
+		List:    []string{"a"},
+		ListFoo: []*Foo{{Bar: "x"}, {Bar: "z"}},
+	}, "list: # c\n  - a\nlistFoo: [{bar: x}, {bar: z}]\n")
+
+	assertYamlEdit(t, "values: {pulumiConfig: {}}\n", map[string]any{
+		"values": map[string]any{"pulumiConfig": map[string]any{"foo": "bar"}},
+	}, "values: {pulumiConfig: {foo: bar}}\n")
+
+	assertYamlEdit(t, "values:\n  pulumiConfig: {}\n", map[string]any{
+		"values": map[string]any{"pulumiConfig": map[string]any{"foo": "bar"}},
+	}, "values:\n  pulumiConfig:\n    foo: bar\n")
+}

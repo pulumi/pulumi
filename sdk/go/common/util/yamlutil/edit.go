@@ -60,6 +60,9 @@ func editNodes(original, newNode *yaml.Node) (yaml.Node, error) {
 	ret := *original
 	ret.Tag = newNode.Tag
 	ret.Value = newNode.Value
+	if restyled(original, newNode) {
+		ret.Style = newNode.Style
+	}
 
 	switch original.Kind {
 	case yaml.DocumentNode, yaml.SequenceNode:
@@ -92,6 +95,12 @@ func editNodes(original, newNode *yaml.Node) (yaml.Node, error) {
 		return ret, nil
 	}
 	return yaml.Node{}, errors.New("unknown node type")
+}
+
+// yaml.v3 writes every empty collection as {} or [], so that flow style is not a choice worth keeping.
+func restyled(original *yaml.Node, newNode *yaml.Node) bool {
+	return original.Style&yaml.FlowStyle != 0 && newNode.Style&yaml.FlowStyle == 0 &&
+		len(original.Content) == 0 && len(newNode.Content) != 0
 }
 
 func handleMappingNode(original, newNode *yaml.Node) ([]*yaml.Node, error) {
@@ -136,6 +145,11 @@ func handleMappingNode(original, newNode *yaml.Node) ([]*yaml.Node, error) {
 		value, err := editNodes(original.Content[origIdx+1], newNode.Content[newIdx+1])
 		if err != nil {
 			return nil, err
+		}
+		// yaml.v3 drops the line comment of a block collection, but writes one on its key.
+		if restyled(original.Content[origIdx+1], &value) && key.LineComment == "" {
+			key.LineComment = value.LineComment
+			value.LineComment = ""
 		}
 
 		content = append(content, &key)

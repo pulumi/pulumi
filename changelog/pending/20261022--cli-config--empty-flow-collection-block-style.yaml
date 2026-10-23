@@ -1,0 +1,4 @@
+component: cli/config
+kind: fix
+body: Write block-style YAML when a CLI edit adds the first entry to an empty `{}` or `[]` collection in a stack or project file, instead of keeping the collection on one line
+time: 2026-10-22T00:00:00Z
