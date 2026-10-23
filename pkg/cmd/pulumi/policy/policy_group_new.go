@@ -88,7 +88,7 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 			"accounts, with configurable enforcement levels per pack.\n" +
 			"\n" +
 			"When run interactively, prompts for required values that aren't\n" +
-			"provided via flags. Pass --yes to accept defaults without prompting.",
+			"provided via flags. Pass --yes to skip prompts; --mode is then required.",
 		Example: "  # Create a Policy Group interactively\n" +
 			"  pulumi policy group new prod-policies\n\n" +
 			"  # Create a preventative Policy Group non-interactively\n" +
@@ -120,7 +120,7 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 	cmd.Flags().StringVar(&args.agentPoolID, "agent-pool-id", "",
 		"Agent pool ID for policy evaluation (optional)")
 	cmd.Flags().BoolVarP(&args.yes, "yes", "y", false,
-		"Skip prompts and proceed with default values")
+		"Skip prompts; --mode is then required")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
@@ -183,7 +183,6 @@ func runPolicyGroupNew(
 		return fmt.Errorf("invalid --entity-type %q; must be \"stacks\" or \"accounts\"", entityType)
 	}
 
-	// Without --mode, a deprecated --entity-type still lets the service pick the mode.
 	mode := args.mode
 	if mode == "" && !skipPrompts {
 		defaultMode := "preventative"
@@ -195,6 +194,7 @@ func runPolicyGroupNew(
 			validModes, defaultMode,
 			displayOpts.Color)
 	}
+	// Without --mode, a deprecated --entity-type still lets the service pick the mode.
 	if mode == "" && entityType == "" {
 		return errors.New("--mode is required (use --mode preventative or --mode audit)")
 	}
