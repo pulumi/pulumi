@@ -316,12 +316,6 @@
             "propagate": true,
             "exclude": true,
             "flags": {}
-        },
-        {
-            "path": ["watch"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
         }
     ]
 }
