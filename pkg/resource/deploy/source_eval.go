@@ -1616,7 +1616,7 @@ func (rm *resmon) ExistsResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	filteredProps, err := plugin.FilterProperties(rawProps, plugin.FilterOptions{
+	props, err := plugin.FilterProperties(rawProps, plugin.FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
@@ -1625,7 +1625,6 @@ func (rm *resmon) ExistsResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	props := resource.ToResourcePropertyMap(filteredProps)
 
 	// If the ID is unknown (during preview), we can't check existence.
 	if id == plugin.UnknownStringValue {
@@ -1667,7 +1666,7 @@ func (rm *resmon) ExistsResource(ctx context.Context,
 		Name:   urn.Name(),
 		Type:   urn.Type(),
 		ID:     id,
-		Inputs: resource.FromResourcePropertyMap(props),
+		Inputs: props,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("reading resource '%s': %w", id, err)
