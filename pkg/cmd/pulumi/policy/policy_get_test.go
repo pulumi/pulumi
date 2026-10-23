@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
@@ -26,28 +27,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParsePolicyPackVersionRef(t *testing.T) {
+func TestParseOrgPolicyPackName(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		in                 string
-		org, name, version string
-		wantErr            bool
+		in        string
+		org, name string
+		wantErr   bool
 	}{
-		{in: "acme/pack@1.2.0", org: "acme", name: "pack", version: "1.2.0"},
+		{in: "acme/pack", org: "acme", name: "pack"},
 		{in: "pack", name: "pack"},
-		{in: "acme/pack@latest", org: "acme", name: "pack"},
-		{in: "pack@latest", name: "pack"},
 		{in: "a/b/c", wantErr: true},
 		{in: "acme/", wantErr: true},
-		{in: "acme/pack@", wantErr: true},
 		{in: "", wantErr: true},
 		{in: "/pack", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
 			t.Parallel()
-			org, name, version, err := parsePolicyPackVersionRef(tt.in)
+			org, name, err := parseOrgPolicyPackName(tt.in)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -55,7 +53,6 @@ func TestParsePolicyPackVersionRef(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.org, org)
 			assert.Equal(t, tt.name, name)
-			assert.Equal(t, tt.version, version)
 		})
 	}
 }
@@ -94,20 +91,34 @@ func TestResolveLatestVersion_NotFound(t *testing.T) {
 }
 
 type mockPolicyGetClient struct {
-	packs []cloudapitype.AppPolicyPackWithVersions
+	// pages holds the packs returned by successive ListPolicyPacks calls.
+	pages [][]cloudapitype.AppPolicyPackWithVersions
 	pack  cloudapitype.AppGetPolicyPackResponse
 
+	listOrgs   []string
+	listTokens []*string
 	gotOrg     string
 	gotName    string
 	gotVersion string
 
+	listErr    error
 	getPackErr error
 }
 
 func (m *mockPolicyGetClient) ListPolicyPacks(
-	_ context.Context, _ string, _ *string,
+	_ context.Context, org string, token *string,
 ) (cloudapitype.AppListPolicyPacksResponse, *string, error) {
-	return cloudapitype.AppListPolicyPacksResponse{PolicyPacks: m.packs}, nil, nil
+	page := len(m.listOrgs)
+	m.listOrgs = append(m.listOrgs, org)
+	m.listTokens = append(m.listTokens, token)
+	if m.listErr != nil {
+		return cloudapitype.AppListPolicyPacksResponse{}, nil, m.listErr
+	}
+	var next *string
+	if page+1 < len(m.pages) {
+		next = new(fmt.Sprintf("page-%d", page+1))
+	}
+	return cloudapitype.AppListPolicyPacksResponse{PolicyPacks: m.pages[page]}, next, nil
 }
 
 func (m *mockPolicyGetClient) GetPolicyPack(
@@ -122,9 +133,9 @@ func (m *mockPolicyGetClient) GetPolicyPack(
 
 func samplePolicyGetClient() *mockPolicyGetClient {
 	return &mockPolicyGetClient{
-		packs: []cloudapitype.AppPolicyPackWithVersions{{
+		pages: [][]cloudapitype.AppPolicyPackWithVersions{{{
 			Name: "aws-guardrails", Versions: []int{2, 3}, VersionTags: []string{"1.1.0", "1.2.0"},
-		}},
+		}}},
 		pack: cloudapitype.AppGetPolicyPackResponse{
 			Name:        "aws-guardrails",
 			DisplayName: "AWS Guardrails",
@@ -183,9 +194,61 @@ func TestPolicyGet_ExplicitOrgAndVersion(t *testing.T) {
 	t.Parallel()
 
 	c := samplePolicyGetClient()
-	executePolicyGet(t, c, "other-org/aws-guardrails@1.1.0", "--output", "json")
+	executePolicyGet(t, c, "other-org/aws-guardrails", "1.1.0", "--output", "json")
 	assert.Equal(t, "other-org", c.gotOrg)
 	assert.Equal(t, "1.1.0", c.gotVersion)
+	assert.Empty(t, c.listOrgs, "an explicit version must not list policy packs")
+}
+
+func TestPolicyGet_LatestListsPacksInResolvedOrg(t *testing.T) {
+	t.Parallel()
+
+	c := samplePolicyGetClient()
+	executePolicyGet(t, c, "other-org/aws-guardrails", "latest", "--output", "json")
+	assert.Equal(t, []string{"other-org"}, c.listOrgs)
+	assert.Equal(t, "other-org", c.gotOrg)
+	assert.Equal(t, "1.2.0", c.gotVersion)
+}
+
+func TestPolicyGet_LatestFollowsContinuationTokens(t *testing.T) {
+	t.Parallel()
+
+	c := samplePolicyGetClient()
+	c.pages = [][]cloudapitype.AppPolicyPackWithVersions{
+		{{Name: "other-pack", Versions: []int{1}, VersionTags: []string{"0.1.0"}}},
+		{{Name: "aws-guardrails", Versions: []int{5}, VersionTags: []string{"2.0.0"}}},
+	}
+	executePolicyGet(t, c, "aws-guardrails", "--output", "json")
+	require.Len(t, c.listTokens, 2)
+	assert.Nil(t, c.listTokens[0])
+	assert.Equal(t, "page-1", *c.listTokens[1])
+	assert.Equal(t, "2.0.0", c.gotVersion)
+}
+
+func TestPolicyGet_PackNotFound(t *testing.T) {
+	t.Parallel()
+
+	c := samplePolicyGetClient()
+	_, err := executePolicyGetErr(t, c, "missing", "--output", "json")
+	require.ErrorContains(t, err, `policy pack "missing" not found in organization "acme"`)
+	assert.Empty(t, c.gotName, "GetPolicyPack must not be called")
+}
+
+func TestPolicyGet_ListErrorPropagates(t *testing.T) {
+	t.Parallel()
+
+	c := samplePolicyGetClient()
+	c.listErr = errors.New("boom")
+	_, err := executePolicyGetErr(t, c, "aws-guardrails")
+	require.ErrorContains(t, err, "boom")
+	assert.Empty(t, c.gotName, "GetPolicyPack must not be called")
+}
+
+func TestPolicyGet_TooManyArgs(t *testing.T) {
+	t.Parallel()
+
+	_, err := executePolicyGetErr(t, samplePolicyGetClient(), "acme/aws-guardrails", "1.2.0", "extra")
+	require.Error(t, err)
 }
 
 func TestPolicyGet_NoPolicies_JSONEmptyArray(t *testing.T) {
@@ -204,6 +267,17 @@ func TestPolicyGet_Text(t *testing.T) {
 	assert.Contains(t, out, "POLICIES")
 	assert.Contains(t, out, "s3-no-public")
 	assert.Contains(t, out, "mandatory")
+	assert.Contains(t, out, "1.2.0 (v3)")
+}
+
+func TestPolicyGet_TextUntaggedVersion(t *testing.T) {
+	t.Parallel()
+
+	c := samplePolicyGetClient()
+	c.pack.VersionTag = ""
+	out := executePolicyGet(t, c, "aws-guardrails", "3")
+	assert.Contains(t, out, "v3")
+	assert.NotContains(t, out, "(3)")
 }
 
 func TestPolicyGet_GetPolicyPackErrorPropagates(t *testing.T) {
