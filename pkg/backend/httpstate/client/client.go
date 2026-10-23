@@ -1730,8 +1730,9 @@ func (pc *Client) GetPolicyGroup(
 }
 
 // BatchUpdatePolicyGroup applies the given updates to a Policy Group in one
-// request. Each update carries one mutation: a rename, or the addition or
-// removal of one stack, Policy Pack, or Insights account.
+// request. Each update carries one mutation: a rename, the addition or
+// removal of one stack, Policy Pack, or Insights account, or setting or
+// removing the stack or account match rule.
 func (pc *Client) BatchUpdatePolicyGroup(
 	ctx context.Context, orgName, policyGroup string, reqs []cloudapitype.UpdatePolicyGroupRequest,
 ) error {
