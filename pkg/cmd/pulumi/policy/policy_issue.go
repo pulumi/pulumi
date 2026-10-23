@@ -34,5 +34,6 @@ func newPolicyIssueCmd() *cobra.Command {
 
 	cmd.AddCommand(newPolicyIssueListCmd())
 	cmd.AddCommand(newPolicyIssueGetCmd())
+	cmd.AddCommand(newPolicyIssueExportCmd())
 	return cmd
 }
