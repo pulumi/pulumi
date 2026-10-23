@@ -39,10 +39,15 @@ func ManagedEnvironmentDefinition(
 	configFile string,
 ) (*yaml.Node, error) {
 	node, err := ps.Environment.DefinitionNode()
-	if err == nil {
+	if err == nil && len(ps.Config) == 0 {
 		return node, nil
 	}
 	stackFile := stackConfigFilePath(stackName, configFile)
+	if err == nil {
+		return nil, fmt.Errorf("%s has values under `config:`, which stacks with an ESC-managed environment "+
+			"don't use. Remove the `config:` section, then set each value with `pulumi config set` "+
+			"(`--secret` for secrets)", stackFile)
+	}
 	if isJSONStackFile(stackFile, err) {
 		return nil, errManagedEnvironmentRequiresYAML
 	}
