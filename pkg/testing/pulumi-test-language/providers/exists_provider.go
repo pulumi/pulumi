@@ -39,7 +39,7 @@ func (p *ExistsProvider) Close() error {
 }
 
 func (p *ExistsProvider) version() semver.Version {
-	return semver.Version{Major: 1}
+	return semver.Version{Major: 59}
 }
 
 func (p *ExistsProvider) Configure(
