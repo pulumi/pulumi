@@ -18,6 +18,8 @@ package pulumiconfig
 
 import (
 	"errors"
+	"fmt"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -47,6 +49,19 @@ func escape(s string) string {
 	return strings.ReplaceAll(s, "$", "$$")
 }
 
+func isNull(n *yaml.Node) bool {
+	return n.Kind == yaml.ScalarNode && n.ShortTag() == "!!null"
+}
+
+func isConfigLeaf(n *yaml.Node) bool {
+	isSecret := n.Kind == yaml.MappingNode && len(n.Content) == 2 && n.Content[0].Value == "fn::secret"
+	return n.Kind == yaml.ScalarNode || isSecret
+}
+
+func resetNode(n *yaml.Node, kind yaml.Kind, tag string) {
+	*n = yaml.Node{Kind: kind, Tag: tag, HeadComment: n.HeadComment, LineComment: n.LineComment}
+}
+
 func rootMapping(def *yaml.Node) (*yaml.Node, error) {
 	if def == nil {
 		return nil, errors.New("environment definition is empty")
@@ -61,6 +76,198 @@ func rootMapping(def *yaml.Node) (*yaml.Node, error) {
 		return nil, errors.New("environment definition must be a mapping")
 	}
 	return def, nil
+}
+
+func childMapping(parent *yaml.Node, key string, create bool) (*yaml.Node, error) {
+	child, ok := encoding.YAMLSyntax{Node: parent}.Get(resource.PropertyPath{key})
+	if !ok {
+		if !create {
+			return nil, nil
+		}
+		return encoding.YAMLSyntax{Node: parent}.Set(
+			nil, resource.PropertyPath{key}, yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"})
+	}
+	if isNull(child) {
+		if !create {
+			return nil, nil
+		}
+		resetNode(child, yaml.MappingNode, "!!map")
+		return child, nil
+	}
+	if child.Kind != yaml.MappingNode {
+		return nil, fmt.Errorf("%s must be a mapping", key)
+	}
+	return child, nil
+}
+
+func pulumiConfigNode(def *yaml.Node, create bool) (*yaml.Node, error) {
+	root, err := rootMapping(def)
+	if err != nil {
+		return nil, err
+	}
+	values, err := childMapping(root, "values", create)
+	if err != nil || values == nil {
+		return nil, err
+	}
+	return childMapping(values, "pulumiConfig", create)
+}
+
+func matches(pc *yaml.Node, names []string) []string {
+	var found []string
+	for _, name := range names {
+		if _, ok := (encoding.YAMLSyntax{Node: pc}).Get(resource.PropertyPath{escape(name)}); ok {
+			found = append(found, name)
+		}
+	}
+	return found
+}
+
+func checkNames(names []string, path resource.PropertyPath) error {
+	if len(names) == 0 {
+		return errors.New("at least one config key name is required")
+	}
+	if slices.ContainsFunc(names, isReservedName) {
+		return errReservedName
+	}
+	for _, seg := range path {
+		if s, ok := seg.(string); ok && isReservedName(s) {
+			return errReservedName
+		}
+	}
+	return nil
+}
+
+func escapePath(path resource.PropertyPath) resource.PropertyPath {
+	escaped := make(resource.PropertyPath, len(path))
+	for i, seg := range path {
+		if s, ok := seg.(string); ok {
+			seg = escape(s)
+		}
+		escaped[i] = seg
+	}
+	return escaped
+}
+
+// Find returns the first of names that is an entry in the definition's values.pulumiConfig.
+func Find(def *yaml.Node, names []string) (name string, ok bool) {
+	pc, err := pulumiConfigNode(def, false)
+	if err != nil || pc == nil {
+		return "", false
+	}
+	found := matches(pc, names)
+	if len(found) == 0 {
+		return "", false
+	}
+	return found[0], true
+}
+
+// Set writes value at path inside the pulumiConfig entry named by whichever of names exists, or by names[0] if
+// none does. An empty path replaces the whole entry. names and path are literal; Set escapes them.
+func Set(def *yaml.Node, names []string, path resource.PropertyPath, value yaml.Node) error {
+	if err := checkNames(names, path); err != nil {
+		return err
+	}
+	pc, err := pulumiConfigNode(def, true)
+	if err != nil {
+		return err
+	}
+
+	entry := names[0]
+	if found := matches(pc, names); len(found) > 1 {
+		return fmt.Errorf("pulumiConfig has both %s", strings.Join(found, " and "))
+	} else if len(found) == 1 {
+		entry = found[0]
+	}
+
+	full := append(resource.PropertyPath{escape(entry)}, escapePath(path)...)
+	syntax := encoding.YAMLSyntax{Node: pc}
+	if len(path) > 0 {
+		if leavesLoneSecureKey(syntax, full, value) {
+			return errSecureReprReserved
+		}
+		if err := prepareContainers(syntax, full); err != nil {
+			return err
+		}
+	}
+	leaf, err := syntax.Set(nil, full, value)
+	if err != nil {
+		return err
+	}
+	// YAMLSyntax.Set does not copy Style.
+	leaf.Style = value.Style
+	return nil
+}
+
+// The stack reads pulumiConfig through config.NewPlaintext, which panics on a {secure: <string>} mapping.
+func leavesLoneSecureKey(syntax encoding.YAMLSyntax, full resource.PropertyPath, value yaml.Node) bool {
+	if full[len(full)-1] != "secure" || value.Kind != yaml.ScalarNode || value.ShortTag() != "!!str" {
+		return false
+	}
+	parent, ok := syntax.Get(full[:len(full)-1])
+	isReplacedEntry := ok && len(full) == 2 && isConfigLeaf(parent)
+	if !ok || isNull(parent) || isReplacedEntry {
+		return true
+	}
+	onlySecure := len(parent.Content) == 2 && parent.Content[0].Value == "secure"
+	return parent.Kind == yaml.MappingNode && (len(parent.Content) == 0 || onlySecure)
+}
+
+// YAMLSyntax.Set gives a zero-kind node its container type from the next path segment.
+const placeholderKind yaml.Kind = 0
+
+// prepareContainers matches config set --path where YAMLSyntax.Set differs.
+func prepareContainers(syntax encoding.YAMLSyntax, full resource.PropertyPath) error {
+	cur := syntax.Node
+	for i, acc := range full {
+		child, ok := encoding.YAMLSyntax{Node: cur}.Get(resource.PropertyPath{acc})
+		if !ok {
+			if index, isIndex := acc.(int); isIndex && cur.Kind == placeholderKind && index > 0 {
+				cur.Kind, cur.Tag = yaml.SequenceNode, "!!seq"
+				for range index {
+					cur.Content = append(cur.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"})
+				}
+			}
+			var err error
+			child, err = encoding.YAMLSyntax{Node: cur}.Set(nil, resource.PropertyPath{acc}, yaml.Node{})
+			if err != nil {
+				return err
+			}
+		}
+		isContainerStep := i < len(full)-1
+		isEntry := i == 0
+		if isContainerStep && isConfigLeaf(child) {
+			if !isEntry && !isNull(child) {
+				return fmt.Errorf("%v: expected an array or an object", full[:i+2])
+			}
+			resetNode(child, placeholderKind, "")
+		}
+		cur = child
+	}
+	return nil
+}
+
+// Remove deletes the path inside every pulumiConfig entry named by names, or the whole entries when path is empty.
+// It reports whether anything was removed.
+func Remove(def *yaml.Node, names []string, path resource.PropertyPath) (removed bool, err error) {
+	if err := checkNames(names, path); err != nil {
+		return false, err
+	}
+	pc, err := pulumiConfigNode(def, false)
+	if err != nil || pc == nil {
+		return false, err
+	}
+	for _, name := range matches(pc, names) {
+		full := append(resource.PropertyPath{escape(name)}, escapePath(path)...)
+		syntax := encoding.YAMLSyntax{Node: pc}
+		if _, ok := syntax.Get(full); !ok {
+			continue
+		}
+		if err := syntax.Delete(nil, full); err != nil {
+			return removed, err
+		}
+		removed = true
+	}
+	return removed, nil
 }
 
 // ValueNode renders v as a YAML node using the typing rules of "pulumi config set". nested reports whether v is set
