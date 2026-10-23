@@ -1617,6 +1617,14 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 					schemaType = obj.InputShape
 				}
 			}
+			// GetSchemaForType drops the `none` member of an optional union. A plain optional
+			// object or enum is a pointer in Go (the element type of a `FooPtrOutput` is `*Foo`).
+			if _, isUnion := destType.(*model.UnionType); isUnion && !isInput && model.IsOptionalType(destType) {
+				switch schemaType.(type) {
+				case *schema.ObjectType, *schema.EnumType:
+					schemaType = &schema.OptionalType{ElementType: schemaType}
+				}
+			}
 			return (&pkgContext{
 				pkg:              (&schema.Package{Name: "main"}).Reference(),
 				externalPackages: g.externalCache,

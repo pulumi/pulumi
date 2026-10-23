@@ -117,11 +117,15 @@ func TestResourceReferenceRoundTrip(t *testing.T) {
 			PackageVersion: "1.2.3",
 		}},
 		{"unknown-id", property.ResourceReference{
-			URN: "urn:pulumi:stack::proj::pkg:index:Res::name",
-			ID:  property.New(property.Computed),
+			URN:  "urn:pulumi:stack::proj::pkg:index:Res::name",
+			Name: "name",
+			Type: "pkg:index:Res",
+			ID:   property.New(property.Computed),
 		}},
 		{"component", property.ResourceReference{
-			URN: "urn:pulumi:stack::proj::pkg:index:Component::name",
+			URN:  "urn:pulumi:stack::proj::pkg:index:Component::name",
+			Name: "name",
+			Type: "pkg:index:Component",
 		}},
 	}
 

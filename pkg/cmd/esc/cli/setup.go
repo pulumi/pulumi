@@ -111,7 +111,7 @@ func (s *setupCommand) org(orgFlag string) (string, error) {
 	if s.esc().account.DefaultOrg != "" {
 		return s.esc().account.DefaultOrg, nil
 	}
-	return "", errors.New("could not determine the organization; pass --org or set a default organization")
+	return "", errors.New("could not determine the organization; pass --organization or set a default organization")
 }
 
 // orgID returns the unique identifier of the Pulumi organization.

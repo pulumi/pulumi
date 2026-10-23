@@ -27,11 +27,11 @@ import (
 // bundled with the `pulumi` binary and must be downloaded on demand.
 var knownLanguageRuntimes = map[string]semver.Version{
 	// renovate: datasource=github-releases depName=pulumi/pulumi-hcl extractVersion=^v(?<version>.+)$
-	"hcl": semver.MustParse("0.18.4"),
+	"hcl": semver.MustParse("0.18.6"),
 	// renovate: datasource=github-releases depName=pulumi/pulumi-java extractVersion=^v(?<version>.+)$
-	"java": semver.MustParse("1.37.4"),
+	"java": semver.MustParse("1.37.7"),
 	// renovate: datasource=github-releases depName=pulumi/pulumi-policy-opa extractVersion=^v(?<version>.+)$
-	"opa": semver.MustParse("1.1.2"),
+	"opa": semver.MustParse("1.1.3"),
 }
 
 // knownLanguageRuntimeURLs locates language runtimes whose releases are not in the default
