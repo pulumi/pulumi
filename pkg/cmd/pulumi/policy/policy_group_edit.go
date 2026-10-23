@@ -24,11 +24,13 @@ import (
 	"strings"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+	"github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -45,6 +47,7 @@ type policyGroupEditClient interface {
 	GetPolicyGroup(
 		ctx context.Context, orgName, policyGroup string,
 	) (cloudapitype.PolicyGroup, error)
+	packSettingsClient
 }
 
 // policyGroupEditClientFactory resolves a cloud client and the organization
@@ -68,11 +71,15 @@ type policyGroupEditArgs struct {
 	removePolicyPack      []string
 	addInsightsAccount    []string
 	removeInsightsAccount []string
+	agentPoolID           string
+
+	// packSettings apply to the single Policy Pack added with --add-policy-pack.
+	packSettings packSettingsFlags
 
 	// changed records which of the mutation flags were set by the user.
 	// Keys are the flag names: "name", "add-stack", "remove-stack",
 	// "add-policy-pack", "remove-policy-pack", "add-insights-account",
-	// "remove-insights-account".
+	// "remove-insights-account", "agent-pool-id".
 	changed map[string]bool
 }
 
@@ -94,8 +101,16 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 		Long: "[EXPERIMENTAL] Update a Policy Group's configuration.\n" +
 			"\n" +
 			"Renames a Policy Group, adds or removes stacks, applies or detaches\n" +
-			"Policy Packs, and adds or removes Insights accounts. At least one\n" +
-			"mutation flag must be provided.\n" +
+			"Policy Packs, adds or removes Insights accounts, and changes the agent\n" +
+			"pool. At least one mutation flag must be provided.\n" +
+			"\n" +
+			"Applying a Policy Pack that is already in the group keeps its existing\n" +
+			"configuration and ESC environments; configuration for policies that do\n" +
+			"not exist in a newly applied version is removed and reported.\n" +
+			"--enforcement-level, --policy-enforcement, --environment and\n" +
+			"--remove-environment change the settings of the Policy Pack given with\n" +
+			"--add-policy-pack, and require exactly one --add-policy-pack.\n" +
+			"Enforcement levels are one of: " + enforcementLevelValues + ".\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"full response as JSON.",
@@ -103,10 +118,15 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 			"  pulumi policy group edit prod-policies --name production\n\n" +
 			"  # Add a stack and a Policy Pack to a group\n" +
 			"  pulumi policy group edit prod-policies " +
-			"--add-stack web/prod --add-policy-pack aws-guardrails@3",
+			"--add-stack web/prod --add-policy-pack aws-guardrails@3\n\n" +
+			"  # Upgrade a Policy Pack and make every policy mandatory\n" +
+			"  pulumi policy group edit prod-policies --add-policy-pack aws-guardrails@4 " +
+			"--enforcement-level mandatory\n\n" +
+			"  # Run audit evaluation on a self-hosted agent pool\n" +
+			"  pulumi policy group edit prod-policies --agent-pool-id 0f3c9a1e-6d2b-4b8e-9c55-2a7f1e0d4b11",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			args.changed = changedFlagSet(cmd, mutationFlagNames)
-			return runPolicyGroupEdit(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
+			return runPolicyGroupEdit(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), factory, posArgs[0], args)
 		},
 	}
 
@@ -132,6 +152,9 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 		"Add an Insights account to the Policy Group (repeatable)")
 	cmd.Flags().StringArrayVar(&args.removeInsightsAccount, "remove-insights-account", nil,
 		"Remove an Insights account from the Policy Group (repeatable)")
+	cmd.Flags().StringVar(&args.agentPoolID, "agent-pool-id", "",
+		"Set the ID of the agent pool that runs audit policy evaluation; an empty value selects the Pulumi-hosted pool")
+	args.packSettings.register(cmd.Flags())
 
 	return cmd
 }
@@ -143,6 +166,7 @@ var mutationFlagNames = []string{
 	"add-stack", "remove-stack",
 	"add-policy-pack", "remove-policy-pack",
 	"add-insights-account", "remove-insights-account",
+	"agent-pool-id",
 }
 
 // changedFlagSet snapshots which of the named flags were set on the command
@@ -202,13 +226,24 @@ func defaultPolicyGroupEditClientFactory(
 // runPolicyGroupEdit is the cobra-decoupled command body so tests can drive it
 // directly without spinning up the flag parser.
 func runPolicyGroupEdit(
-	ctx context.Context, w io.Writer,
+	ctx context.Context, w, errW io.Writer,
 	factory policyGroupEditClientFactory, name string, args policyGroupEditArgs,
 ) error {
+	packChanges, err := args.packSettings.parse()
+	if err != nil {
+		return err
+	}
+	if packChanges.any() && len(args.addPolicyPack) != 1 {
+		return cmdCmd.ConfigurationError{Message: "--enforcement-level, --policy-enforcement, --environment and " +
+			"--remove-environment apply to the Policy Pack added with --add-policy-pack; " +
+			"pass exactly one --add-policy-pack"}
+	}
+
 	if !anyMutationRequested(args) {
 		return errors.New(
 			"no changes specified; pass at least one of --name, --add-stack, --remove-stack, " +
-				"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account")
+				"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account, " +
+				"--agent-pool-id")
 	}
 
 	addStacks, removeStacks, err := parseStackReferences(args.addStack, args.removeStack)
@@ -223,6 +258,26 @@ func runPolicyGroupEdit(
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
+	}
+
+	if len(addPacks) > 0 {
+		before, err := c.GetPolicyGroup(ctx, org, name)
+		if err != nil {
+			return fmt.Errorf("reading policy group before edit: %w", err)
+		}
+		for i, p := range addPacks {
+			merged, err := mergePackSettings(ctx, c, org, p.Name, packMergeInput{
+				current:          findAppliedPack(before, p.Name),
+				targetVersionTag: packVersionTag(p),
+				changes:          packChanges,
+			})
+			if err != nil {
+				return err
+			}
+			warnPackSettings(errW, p.Name, packChanges, merged)
+			addPacks[i].Config = merged.config
+			addPacks[i].Environments = merged.environments
+		}
 	}
 
 	updates := policyGroupUpdates(args, addStacks, removeStacks, addPacks, removePacks)
@@ -275,6 +330,9 @@ func policyGroupUpdates(
 	}
 	for _, p := range removePacks {
 		updates = append(updates, policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{RemovePolicyPack: &p}))
+	}
+	if args.changed["agent-pool-id"] {
+		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{AgentPoolID: jsonvalue.NotNull(args.agentPoolID)})
 	}
 	return updates
 }

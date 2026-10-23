@@ -1,0 +1,3 @@
+component: cli/policy
+kind: fix
+body: Keep a Policy Pack's existing configuration and ESC environments when `pulumi policy enable` or `pulumi policy group edit --add-policy-pack` re-applies it, instead of clearing them

@@ -1,0 +1,3 @@
+component: cli/policy
+kind: feat
+body: Add `--enforcement-level`, `--policy-enforcement`, `--environment` and `--remove-environment` to `pulumi policy enable` and `pulumi policy group edit`, and `--agent-pool-id` to `pulumi policy group edit`
