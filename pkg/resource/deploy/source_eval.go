@@ -67,6 +67,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -1033,20 +1034,21 @@ func (rm *resmon) Invoke(
 	// Fetch the token.
 	tok := tokens.ModuleMember(req.GetTok())
 
-	label := fmt.Sprintf("ResourceMonitor.Invoke(%s)", tok)
-	args, err := plugin.UnmarshalProperties(
-		req.GetArgs(), plugin.MarshalOptions{
-			Label:            label,
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-			WorkingDirectory: rm.workingDirectory,
-		},
-	)
+	rawArgs, err := propertyrpc.Unmarshal(req.GetArgs())
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
+	filteredArgs, err := plugin.FilterProperties(rawArgs, plugin.FilterOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepDependencies: true,
+		WorkingDirectory: rm.workingDirectory,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
+	}
+	args := resource.ToResourcePropertyMap(filteredArgs)
 
 	parent, err := resource.ParseOptionalURN(req.GetParent())
 	if err != nil {
@@ -1141,18 +1143,18 @@ func (rm *resmon) Invoke(
 		keepResources = true
 	}
 
-	mret, err := plugin.MarshalProperties(resource.ToResourcePropertyMap(resp.Properties), plugin.MarshalOptions{
-		Label:            label,
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepResources:    keepResources,
-		KeepByteString:   req.GetAcceptsByteString(),
-		KeepOutputValues: req.GetAcceptOutputValues(),
-		WorkingDirectory: rm.workingDirectory,
+	filteredRet, err := plugin.FilterProperties(resp.Properties, plugin.FilterOptions{
+		KeepUnknowns:         true,
+		KeepSecrets:          true,
+		KeepResources:        keepResources,
+		RejectNonUTF8Strings: !req.GetAcceptsByteString(),
+		KeepDependencies:     req.GetAcceptOutputValues(),
+		WorkingDirectory:     rm.workingDirectory,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
 	}
+	mret := propertyrpc.Marshal(filteredRet)
 	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(resp.Failures))
 	for _, failure := range resp.Failures {
 		chkfails = append(chkfails, &pulumirpc.CheckFailure{
@@ -1308,22 +1310,21 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		return nil, err
 	}
 
-	label := fmt.Sprintf("ResourceMonitor.Call(%s)", tok)
-
-	args, err := plugin.UnmarshalProperties(
-		req.GetArgs(), plugin.MarshalOptions{
-			Label:                 label,
-			KeepUnknowns:          true,
-			KeepSecrets:           true,
-			KeepResources:         true,
-			KeepOutputValues:      true,
-			UpgradeToOutputValues: true,
-			WorkingDirectory:      rm.workingDirectory,
-		},
-	)
+	rawArgs, err := propertyrpc.Unmarshal(req.GetArgs())
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
+	filteredArgs, err := plugin.FilterProperties(rawArgs, plugin.FilterOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepDependencies: true,
+		WorkingDirectory: rm.workingDirectory,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
+	}
+	args := resource.ToResourcePropertyMap(filteredArgs)
 
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetArgDependencies() {
@@ -1404,18 +1405,18 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
-	mret, err := plugin.MarshalProperties(retReturn, plugin.MarshalOptions{
-		Label:            label,
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		KeepResources:    true,
-		KeepByteString:   req.GetAcceptsByteString(),
-		KeepOutputValues: req.GetAcceptOutputValues(),
-		WorkingDirectory: rm.workingDirectory,
+	filteredRet, err := plugin.FilterProperties(resource.FromResourcePropertyMap(retReturn), plugin.FilterOptions{
+		KeepUnknowns:         true,
+		KeepSecrets:          true,
+		KeepResources:        true,
+		RejectNonUTF8Strings: !req.GetAcceptsByteString(),
+		KeepDependencies:     req.GetAcceptOutputValues(),
+		WorkingDirectory:     rm.workingDirectory,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %v return: %w", tok, err)
 	}
+	mret := propertyrpc.Marshal(filteredRet)
 
 	chkfails := slice.Prealloc[*pulumirpc.CheckFailure](len(ret.Failures))
 	for _, failure := range ret.Failures {
@@ -1473,7 +1474,6 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	}
 
 	id := resource.ID(req.GetId())
-	label := fmt.Sprintf("ResourceMonitor.ReadResource(%s, %s, %s, %s)", id, t, name, provider)
 	deps := slice.Prealloc[resource.URN](len(req.GetDependencies()))
 	for _, depURN := range req.GetDependencies() {
 		urn, err := resource.ParseURN(depURN)
@@ -1483,8 +1483,11 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		deps = append(deps, urn)
 	}
 
-	props, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
-		Label:            label,
+	rawProps, err := propertyrpc.Unmarshal(req.GetProperties())
+	if err != nil {
+		return nil, err
+	}
+	filteredProps, err := plugin.FilterProperties(rawProps, plugin.FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
@@ -1493,6 +1496,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	props := resource.ToResourcePropertyMap(filteredProps)
 
 	additionalSecretOutputs := slice.Prealloc[resource.PropertyKey](len(req.GetAdditionalSecretOutputs()))
 	for _, name := range req.GetAdditionalSecretOutputs() {
@@ -1534,17 +1538,19 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	// A read always produces an id, so it is never pending, but it can still be an invoke's declared dependency.
 	rm.trackSettledResource(result.State, parent, true)
 
-	marshaled, err := plugin.MarshalProperties(result.State.Outputs, plugin.MarshalOptions{
-		Label:            label,
-		KeepUnknowns:     true,
-		KeepSecrets:      req.GetAcceptSecrets(),
-		KeepResources:    req.GetAcceptResources(),
-		KeepByteString:   req.GetAcceptsByteString(),
-		WorkingDirectory: rm.workingDirectory,
-	})
+	filteredOutputs, err := plugin.FilterProperties(
+		resource.FromResourcePropertyMap(result.State.Outputs),
+		plugin.FilterOptions{
+			KeepUnknowns:         true,
+			KeepSecrets:          req.GetAcceptSecrets(),
+			KeepResources:        req.GetAcceptResources(),
+			RejectNonUTF8Strings: !req.GetAcceptsByteString(),
+			WorkingDirectory:     rm.workingDirectory,
+		})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal %s return state: %w", result.State.URN, err)
 	}
+	marshaled := propertyrpc.Marshal(filteredOutputs)
 
 	reason := pulumirpc.Result_SUCCESS
 	if result.Result == ResultStateFailed {
@@ -1605,10 +1611,12 @@ func (rm *resmon) ExistsResource(ctx context.Context,
 	}
 
 	id := resource.ID(req.GetId())
-	label := fmt.Sprintf("ResourceMonitor.ExistsResource(%s, %s)", id, t)
 
-	props, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
-		Label:            label,
+	rawProps, err := propertyrpc.Unmarshal(req.GetProperties())
+	if err != nil {
+		return nil, err
+	}
+	filteredProps, err := plugin.FilterProperties(rawProps, plugin.FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
@@ -1617,6 +1625,7 @@ func (rm *resmon) ExistsResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	props := resource.ToResourcePropertyMap(filteredProps)
 
 	// If the ID is unknown (during preview), we can't check existence.
 	if id == plugin.UnknownStringValue {
@@ -1693,21 +1702,20 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 		logging.V(5).Infof("Transform: name=%v type=%v custom=%v parent=%v props=%v opts=%v",
 			name, typ, custom, parent, props, opts)
 
-		mopts := plugin.MarshalOptions{
-			Label:              fmt.Sprintf("ResourceMonitor.Transform(%s, %s, %s)", token, typ, name),
-			KeepUnknowns:       true,
-			KeepSecrets:        true,
-			KeepResources:      true,
-			KeepOutputValues:   true,
-			KeepByteString:     cb.AcceptsByteString,
-			WorkingDirectory:   rm.workingDirectory,
-			ComputeAssetHashes: true,
+		filterOpts := plugin.FilterOptions{
+			KeepUnknowns:         true,
+			KeepSecrets:          true,
+			KeepResources:        true,
+			KeepDependencies:     true,
+			RejectNonUTF8Strings: !cb.AcceptsByteString,
+			WorkingDirectory:     rm.workingDirectory,
 		}
 
-		mprops, err := plugin.MarshalProperties(props, mopts)
+		filteredProps, err := plugin.FilterProperties(resource.FromResourcePropertyMap(props), filterOpts)
 		if err != nil {
 			return nil, nil, fmt.Errorf("marshaling transform properties: %w", err)
 		}
+		mprops := propertyrpc.Marshal(filteredProps)
 
 		request, err := proto.Marshal(&pulumirpc.TransformRequest{
 			Name:       name,
@@ -1743,10 +1751,15 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 
 		newProps := props
 		if response.Properties != nil {
-			newProps, err = plugin.UnmarshalProperties(response.Properties, mopts)
+			rawNew, err := propertyrpc.Unmarshal(response.Properties)
 			if err != nil {
 				return nil, nil, fmt.Errorf("unmarshalling transform properties: %w", err)
 			}
+			filteredNew, err := plugin.FilterProperties(rawNew, filterOpts)
+			if err != nil {
+				return nil, nil, fmt.Errorf("unmarshalling transform properties: %w", err)
+			}
+			newProps = resource.ToResourcePropertyMap(filteredNew)
 		}
 
 		logging.V(5).Infof("Transform: props=%v opts=%v", newProps, newOpts)
@@ -1813,20 +1826,20 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 		logging.V(5).Infof("Invoke transform: token=%v props=%v opts=%v",
 			invokeToken, args, opts)
 
-		margs := plugin.MarshalOptions{
-			Label:            fmt.Sprintf("ResourceMonitor.InvokeTransform(%s, %s)", token, invokeToken),
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-			KeepByteString:   cb.AcceptsByteString,
-			WorkingDirectory: rm.workingDirectory,
+		filterOpts := plugin.FilterOptions{
+			KeepUnknowns:         true,
+			KeepSecrets:          true,
+			KeepResources:        true,
+			KeepDependencies:     true,
+			RejectNonUTF8Strings: !cb.AcceptsByteString,
+			WorkingDirectory:     rm.workingDirectory,
 		}
 
-		mprops, err := plugin.MarshalProperties(args, margs)
+		filteredArgs, err := plugin.FilterProperties(resource.FromResourcePropertyMap(args), filterOpts)
 		if err != nil {
 			return nil, nil, err
 		}
+		mprops := propertyrpc.Marshal(filteredArgs)
 
 		var request []byte
 		request, err = proto.Marshal(&pulumirpc.TransformInvokeRequest{
@@ -1860,10 +1873,15 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 		}
 		newProps = args
 		if response.Args != nil {
-			newProps, err = plugin.UnmarshalProperties(response.Args, margs)
+			rawNew, err := propertyrpc.Unmarshal(response.Args)
 			if err != nil {
 				return nil, nil, err
 			}
+			filteredNew, err := plugin.FilterProperties(rawNew, filterOpts)
+			if err != nil {
+				return nil, nil, err
+			}
+			newProps = resource.ToResourcePropertyMap(filteredNew)
 		}
 
 		logging.V(5).Infof("Invoke transform: props=%v opts=%v", newProps, newOpts)
@@ -1939,37 +1957,40 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 	) error {
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
 		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
-		mOpts := plugin.MarshalOptions{
-			Label:            fmt.Sprintf("ResourceMonitor.ResourceHook(%s, %s)", name, urn),
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-			KeepByteString:   cb.AcceptsByteString,
+		filterOpts := plugin.FilterOptions{
+			KeepUnknowns:         true,
+			KeepSecrets:          true,
+			KeepResources:        true,
+			KeepDependencies:     true,
+			RejectNonUTF8Strings: !cb.AcceptsByteString,
 		}
 		if newInputs != nil {
-			mNewInputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*newInputs), mOpts)
+			filtered, err := plugin.FilterProperties(*newInputs, filterOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling new inputs for resource hook %q: %w", name, err)
 			}
+			mNewInputs = propertyrpc.Marshal(filtered)
 		}
 		if oldInputs != nil {
-			mOldInputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*oldInputs), mOpts)
+			filtered, err := plugin.FilterProperties(*oldInputs, filterOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling old inputs for resource hook %q: %w", name, err)
 			}
+			mOldInputs = propertyrpc.Marshal(filtered)
 		}
 		if newOutputs != nil {
-			mNewOutputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*newOutputs), mOpts)
+			filtered, err := plugin.FilterProperties(*newOutputs, filterOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling new outputs for resource hook %q: %w", name, err)
 			}
+			mNewOutputs = propertyrpc.Marshal(filtered)
 		}
 		if oldOutputs != nil {
-			mOldOutputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*oldOutputs), mOpts)
+			filtered, err := plugin.FilterProperties(*oldOutputs, filterOpts)
 			if err != nil {
 				return fmt.Errorf("marshaling old outputs for resource hook %q: %w", name, err)
 			}
+			mOldOutputs = propertyrpc.Marshal(filtered)
 		}
 
 		reqBytes, err := proto.Marshal(&pulumirpc.ResourceHookRequest{
@@ -2041,31 +2062,33 @@ func (rm *resmon) wrapErrorHookCallback(
 	) (bool, error) {
 		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
 		var mNewInputs, mOldInputs, mOldOutputs *structpb.Struct
-		mOpts := plugin.MarshalOptions{
-			Label:            fmt.Sprintf("ResourceMonitor.ErrorHook(%s, %s)", name, urn),
-			KeepUnknowns:     true,
-			KeepSecrets:      true,
-			KeepResources:    true,
-			KeepOutputValues: true,
-			KeepByteString:   cb.AcceptsByteString,
+		filterOpts := plugin.FilterOptions{
+			KeepUnknowns:         true,
+			KeepSecrets:          true,
+			KeepResources:        true,
+			KeepDependencies:     true,
+			RejectNonUTF8Strings: !cb.AcceptsByteString,
 		}
 		if newInputs != nil {
-			mNewInputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*newInputs), mOpts)
+			filtered, err := plugin.FilterProperties(*newInputs, filterOpts)
 			if err != nil {
 				return false, fmt.Errorf("marshaling new inputs for resource error hook %q: %w", name, err)
 			}
+			mNewInputs = propertyrpc.Marshal(filtered)
 		}
 		if oldInputs != nil {
-			mOldInputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*oldInputs), mOpts)
+			filtered, err := plugin.FilterProperties(*oldInputs, filterOpts)
 			if err != nil {
 				return false, fmt.Errorf("marshaling old inputs for resource error hook %q: %w", name, err)
 			}
+			mOldInputs = propertyrpc.Marshal(filtered)
 		}
 		if oldOutputs != nil {
-			mOldOutputs, err = plugin.MarshalProperties(resource.ToResourcePropertyMap(*oldOutputs), mOpts)
+			filtered, err := plugin.FilterProperties(*oldOutputs, filterOpts)
 			if err != nil {
 				return false, fmt.Errorf("marshaling old outputs for resource error hook %q: %w", name, err)
 			}
+			mOldOutputs = propertyrpc.Marshal(filtered)
 		}
 		reqBytes, err := proto.Marshal(&pulumirpc.ErrorHookRequest{
 			Urn:             string(urn),
@@ -2480,21 +2503,21 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		deleteBeforeReplace = &req.DeleteBeforeReplace
 	}
 
-	props, err := plugin.UnmarshalProperties(
-		req.GetObject(), plugin.MarshalOptions{
-			Label:                 label,
-			KeepUnknowns:          true,
-			ComputeAssetHashes:    true,
-			KeepSecrets:           true,
-			KeepResources:         true,
-			KeepOutputValues:      true,
-			UpgradeToOutputValues: true,
-			WorkingDirectory:      rm.workingDirectory,
-		},
-	)
+	rawProps, err := propertyrpc.Unmarshal(req.GetObject())
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal properties: %w", err)
 	}
+	filteredProps, err := plugin.FilterProperties(rawProps, plugin.FilterOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepDependencies: true,
+		WorkingDirectory: rm.workingDirectory,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal properties: %w", err)
+	}
+	props := resource.ToResourcePropertyMap(filteredProps)
 
 	// Before we pass the props to the transform function we need to ensure that they correctly carry any dependency
 	// information.
@@ -2864,20 +2887,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	replacementTrigger := resource.NewNullProperty()
 	replacementTriggerValue := opts.GetReplacementTrigger()
 	if replacementTriggerValue != nil {
-		t, err := plugin.UnmarshalPropertyValue(
-			"replacementTrigger", replacementTriggerValue, plugin.MarshalOptions{
-				Label:              label,
-				KeepUnknowns:       true,
-				ComputeAssetHashes: true,
-				KeepSecrets:        true,
-				KeepResources:      true,
-				KeepOutputValues:   true,
-			},
-		)
+		rawVal, err := propertyrpc.UnmarshalValue(replacementTriggerValue)
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling replacement trigger: %w", err)
 		}
-		replacementTrigger = *t
+		filteredVal, _, err := plugin.FilterPropertyValue(rawVal, plugin.FilterOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepDependencies: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("unmarshaling replacement trigger: %w", err)
+		}
+		replacementTrigger = resource.ToResourcePropertyValue(filteredVal)
 	}
 
 	retainOnDelete := opts.RetainOnDelete
@@ -3319,17 +3342,17 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Finally, unpack the response into properties that we can return to the language runtime.  This mostly includes
 	// an ID, URN, and defaults and output properties that will all be blitted back onto the runtime object.
-	obj, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
-		Label:            label,
-		KeepUnknowns:     true,
-		KeepSecrets:      req.GetAcceptSecrets(),
-		KeepResources:    req.GetAcceptResources(),
-		KeepByteString:   req.GetAcceptsByteString(),
-		WorkingDirectory: rm.workingDirectory,
+	filteredObj, err := plugin.FilterProperties(resource.FromResourcePropertyMap(outputs), plugin.FilterOptions{
+		KeepUnknowns:         true,
+		KeepSecrets:          req.GetAcceptSecrets(),
+		KeepResources:        req.GetAcceptResources(),
+		RejectNonUTF8Strings: !req.GetAcceptsByteString(),
+		WorkingDirectory:     rm.workingDirectory,
 	})
 	if err != nil {
 		return nil, err
 	}
+	obj := propertyrpc.Marshal(filteredObj)
 
 	// Assert that we never leak the unconfigured provider ID to the language host.
 	contract.Assertf(
@@ -3377,20 +3400,20 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 		return nil, fmt.Errorf("invalid resource URN: %w", err)
 	}
 
-	label := fmt.Sprintf("ResourceMonitor.RegisterResourceOutputs(%s)", urn)
-	outs, err := plugin.UnmarshalProperties(
-		req.GetOutputs(), plugin.MarshalOptions{
-			Label:              label,
-			KeepUnknowns:       true,
-			ComputeAssetHashes: true,
-			KeepSecrets:        true,
-			KeepResources:      true,
-			WorkingDirectory:   rm.workingDirectory,
-		},
-	)
+	rawOuts, err := propertyrpc.Unmarshal(req.GetOutputs())
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal output properties: %w", err)
 	}
+	filteredOuts, err := plugin.FilterProperties(rawOuts, plugin.FilterOptions{
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		WorkingDirectory: rm.workingDirectory,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cannot unmarshal output properties: %w", err)
+	}
+	outs := resource.ToResourcePropertyMap(filteredOuts)
 	logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs received: urn=%v, #outs=%v", urn, len(outs))
 
 	// Now send the step over to the engine to perform.

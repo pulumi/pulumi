@@ -36,3 +36,5 @@ pulumi.export("unsetInteger", unset_res.data.apply(lambda data: "null" if data.i
 pulumi.export("unsetString", unset_res.data.apply(lambda data: "null" if data.string is None else "not null"))
 pulumi.export("unsetNumberArray", unset_res.data.apply(lambda data: "null" if data.number_array is None else "not null"))
 pulumi.export("unsetBooleanMap", unset_res.data.apply(lambda data: "null" if data.boolean_map is None else "not null"))
+pulumi.export("setOptionalData", set_res.optional_data.apply(lambda optional_data: "null" if optional_data is None else "not null"))
+pulumi.export("unsetOptionalData", unset_res.optional_data.apply(lambda optional_data: "null" if optional_data is None else "not null"))

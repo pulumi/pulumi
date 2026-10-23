@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,15 +35,15 @@ func init() {
 				require.Len(l, res.Snap.Resources, 5)
 
 				myRes := RequireSingleNamedResource(l, res.Snap.Resources, "myRes")
-				assert.Equal(l, resource.PropertyMap{
-					"intEnum":    resource.NewProperty(1.0),
-					"stringEnum": resource.NewProperty("one"),
-				}, myRes.Outputs)
+				assert.Equal(l, property.NewMap(map[string]property.Value{
+					"intEnum":    property.New(1.0),
+					"stringEnum": property.New("one"),
+				}), resource.FromResourcePropertyMap(myRes.Outputs))
 
 				mySink := RequireSingleNamedResource(l, res.Snap.Resources, "mySink")
-				assert.Equal(l, resource.PropertyMap{
-					"stringEnum": resource.NewProperty("two"),
-				}, mySink.Outputs)
+				assert.Equal(l, property.NewMap(map[string]property.Value{
+					"stringEnum": property.New("two"),
+				}), resource.FromResourcePropertyMap(mySink.Outputs))
 			},
 		}},
 	}

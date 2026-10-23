@@ -16,6 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,22 +36,22 @@ func init() {
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 2, "expected 2 outputs")
+					require.Equal(l, 2, outputs.Len(), "expected 2 outputs")
 
-					getOutput := func(key string) resource.PropertyValue {
-						got, ok := outputs[resource.PropertyKey(key)]
+					getOutput := func(key string) property.Value {
+						got, ok := outputs.GetOk(key)
 						require.True(l, ok, "expected property %s", key)
 						return got
 					}
 
-					expectedStash := resource.NewProperty(resource.PropertyMap{
-						"key": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("value"),
-							resource.NewProperty("s"),
+					expectedStash := property.New(map[string]property.Value{
+						"key": property.New([]property.Value{
+							property.New("value"),
+							property.New("s"),
 						}),
-						"": resource.NewProperty(false),
+						"": property.New(false),
 					})
 
 					got := getOutput("stashInput")
@@ -62,15 +63,15 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:pulumi")
 					myStash := RequireSingleNamedResource(l, snap.Resources, "myStash")
 
-					want := resource.PropertyMap{
+					want := property.NewMap(map[string]property.Value{
 						"input":  expectedStash,
 						"output": expectedStash,
-					}
-					assert.Equal(l, want, myStash.Outputs, "expected myStash outputs to be %v", want)
-					want = resource.PropertyMap{
+					})
+					assert.Equal(l, want, resource.FromResourcePropertyMap(myStash.Outputs), "expected myStash outputs to be %v", want)
+					want = property.NewMap(map[string]property.Value{
 						"input": expectedStash,
-					}
-					assert.Equal(l, want, myStash.Inputs, "expected myStash inputs to be %v", want)
+					})
+					assert.Equal(l, want, resource.FromResourcePropertyMap(myStash.Inputs), "expected myStash inputs to be %v", want)
 				},
 			},
 			{
@@ -84,42 +85,42 @@ func init() {
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 2, "expected 2 outputs")
+					require.Equal(l, 2, outputs.Len(), "expected 2 outputs")
 
-					getOutput := func(key string) resource.PropertyValue {
-						got, ok := outputs[resource.PropertyKey(key)]
+					getOutput := func(key string) property.Value {
+						got, ok := outputs.GetOk(key)
 						require.True(l, ok, "expected property %s", key)
 						return got
 					}
 
 					got := getOutput("stashInput")
-					expectedInput := resource.NewProperty("ignored")
+					expectedInput := property.New("ignored")
 					assert.Equal(l, expectedInput, got, "unexpected value for stashInput")
 
 					got = getOutput("stashOutput")
-					expectedStash := resource.NewProperty(resource.PropertyMap{
-						"key": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("value"),
-							resource.NewProperty("s"),
+					expectedStash := property.New(map[string]property.Value{
+						"key": property.New([]property.Value{
+							property.New("value"),
+							property.New("s"),
 						}),
-						"": resource.NewProperty(false),
+						"": property.New(false),
 					})
 					assert.Equal(l, expectedStash, got, "unexpected value for stashOutput")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:pulumi")
 					myStash := RequireSingleNamedResource(l, snap.Resources, "myStash")
 
-					want := resource.PropertyMap{
+					want := property.NewMap(map[string]property.Value{
 						"input":  expectedInput,
 						"output": expectedStash,
-					}
-					assert.Equal(l, want, myStash.Outputs, "expected myStash outputs to be %v", want)
-					want = resource.PropertyMap{
+					})
+					assert.Equal(l, want, resource.FromResourcePropertyMap(myStash.Outputs), "expected myStash outputs to be %v", want)
+					want = property.NewMap(map[string]property.Value{
 						"input": expectedInput,
-					}
-					assert.Equal(l, want, myStash.Inputs, "expected myStash inputs to be %v", want)
+					})
+					assert.Equal(l, want, resource.FromResourcePropertyMap(myStash.Inputs), "expected myStash inputs to be %v", want)
 				},
 			},
 		},
