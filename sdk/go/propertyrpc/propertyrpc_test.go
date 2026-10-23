@@ -109,24 +109,21 @@ func TestResourceReferenceRoundTrip(t *testing.T) {
 		name string
 		ref  property.ResourceReference
 	}{
-		{"known-id", property.ResourceReference{
-			URN:            "urn:pulumi:stack::proj::pkg:index:Res::name",
-			Name:           "name",
-			Type:           "pkg:index:Res",
-			ID:             property.New("id"),
-			PackageVersion: "1.2.3",
-		}},
-		{"unknown-id", property.ResourceReference{
-			URN:  "urn:pulumi:stack::proj::pkg:index:Res::name",
-			Name: "name",
-			Type: "pkg:index:Res",
-			ID:   property.New(property.Computed),
-		}},
-		{"component", property.ResourceReference{
-			URN:  "urn:pulumi:stack::proj::pkg:index:Component::name",
-			Name: "name",
-			Type: "pkg:index:Component",
-		}},
+		{"known-id", property.NewResourceReference(
+			"urn:pulumi:stack::proj::pkg:index:Res::name",
+			property.New("id"),
+			"1.2.3",
+		)},
+		{"unknown-id", property.NewResourceReference(
+			"urn:pulumi:stack::proj::pkg:index:Res::name",
+			property.New(property.Computed),
+			"",
+		)},
+		{"component", property.NewResourceReference(
+			"urn:pulumi:stack::proj::pkg:index:Component::name",
+			property.Value{},
+			"",
+		)},
 	}
 
 	for _, tt := range tests {

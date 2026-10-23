@@ -1119,10 +1119,11 @@ func collapseResourceReferences(value property.Value) property.Value {
 		id, hasID := collapsed["id"]
 		typ, hasType := collapsed["__type"]
 		if hasURN && hasID && hasType && urn.IsString() && typ.IsString() {
-			ref := property.ResourceReference{
-				URN: resource.URN(urn.AsString()),
-				ID:  id,
-			}
+			ref := property.NewResourceReference(
+				resource.URN(urn.AsString()),
+				id,
+				"",
+			)
 			// A dependency on only the referenced resource adds nothing to the reference itself.
 			if d := value.Dependencies(); len(d) == 1 && d[0] == ref.URN {
 				value = value.WithDependencies(nil)
