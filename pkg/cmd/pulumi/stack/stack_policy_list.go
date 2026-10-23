@@ -52,21 +52,9 @@ type stackPolicyListRender func(w io.Writer, result stackPolicyListResult) error
 
 // stackPolicyListResult is the --output json shape of `pulumi stack policy ls`.
 type stackPolicyListResult struct {
-	Stack        string                               `json:"stack"`
-	PolicyGroups []cloudapitype.AppPolicyGroupSummary `json:"policyGroups"`
-	PolicyPacks  []stackPolicyPack                    `json:"policyPacks"`
-}
-
-// stackPolicyPack is a required Policy Pack without its download URL, tagged
-// with the mode of the policy groups that enable it.
-type stackPolicyPack struct {
-	Name         string                       `json:"name"`
-	DisplayName  string                       `json:"displayName"`
-	Version      int                          `json:"version"`
-	VersionTag   string                       `json:"versionTag"`
-	Mode         cloudapitype.PolicyGroupMode `json:"mode"`
-	Config       map[string]*json.RawMessage  `json:"config,omitempty"`
-	Environments []string                     `json:"environments,omitempty"`
+	Stack        string                                                            `json:"stack"`
+	PolicyGroups []cloudapitype.AppPolicyGroupSummary                              `json:"policyGroups"`
+	PolicyPacks  map[cloudapitype.PolicyGroupMode][]cloudapitype.AppRequiredPolicy `json:"policyPacks"`
 }
 
 // stackPolicyModes are the modes whose packs are listed, in display order.
@@ -174,7 +162,7 @@ func runStackPolicyList(
 	result := stackPolicyListResult{
 		Stack:        stackID.String(),
 		PolicyGroups: groups.PolicyGroups,
-		PolicyPacks:  []stackPolicyPack{},
+		PolicyPacks:  map[cloudapitype.PolicyGroupMode][]cloudapitype.AppRequiredPolicy{},
 	}
 	if result.PolicyGroups == nil {
 		result.PolicyGroups = []cloudapitype.AppPolicyGroupSummary{}
@@ -185,17 +173,10 @@ func runStackPolicyList(
 		if err != nil {
 			return err
 		}
-		for _, p := range packs.RequiredPolicies {
-			result.PolicyPacks = append(result.PolicyPacks, stackPolicyPack{
-				Name:         p.Name,
-				DisplayName:  p.DisplayName,
-				Version:      p.Version,
-				VersionTag:   p.VersionTag,
-				Mode:         mode,
-				Config:       p.Config,
-				Environments: p.Environments,
-			})
+		if packs.RequiredPolicies == nil {
+			packs.RequiredPolicies = []cloudapitype.AppRequiredPolicy{}
 		}
+		result.PolicyPacks[mode] = packs.RequiredPolicies
 	}
 
 	return args.output.Get()(w, result)
@@ -228,17 +209,19 @@ func renderStackPolicyListTable(w io.Writer, result stackPolicyListResult) error
 
 	fmt.Fprintln(w)
 
-	if len(result.PolicyPacks) == 0 {
+	var rows []cmdutil.TableRow
+	for _, mode := range stackPolicyModes {
+		for _, p := range result.PolicyPacks[mode] {
+			version := p.VersionTag
+			if version == "" {
+				version = fmt.Sprintf("v%d", p.Version)
+			}
+			rows = append(rows, cmdutil.TableRow{Columns: []string{p.Name, version, string(mode)}})
+		}
+	}
+	if len(rows) == 0 {
 		fmt.Fprintf(w, "No Policy Packs apply to stack %s.\n", result.Stack)
 		return nil
-	}
-	rows := make([]cmdutil.TableRow, 0, len(result.PolicyPacks))
-	for _, p := range result.PolicyPacks {
-		version := p.VersionTag
-		if version == "" {
-			version = fmt.Sprintf("v%d", p.Version)
-		}
-		rows = append(rows, cmdutil.TableRow{Columns: []string{p.Name, version, string(p.Mode)}})
 	}
 	ui.FprintTable(w, cmdutil.Table{
 		Headers: []string{"POLICY PACK", "VERSION", "MODE"},

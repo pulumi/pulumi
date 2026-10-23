@@ -135,13 +135,14 @@ func TestStackPolicyList_JSON(t *testing.T) {
 				"entityType": "stacks", "mode": "audit", "numEnabledPolicyPacks": 1
 			}
 		],
-		"policyPacks": [
-			{
+		"policyPacks": {
+			"preventative": [{
 				"name": "aws-guardrails", "displayName": "AWS Guardrails", "version": 3, "versionTag": "1.2.0",
-				"mode": "preventative", "config": {"all": "mandatory"}, "environments": ["infra/policy-secrets"]
-			},
-			{"name": "tagging", "displayName": "Tagging", "version": 1, "versionTag": "", "mode": "audit"}
-		]
+				"packLocation": "https://example.com/signed-download",
+				"config": {"all": "mandatory"}, "environments": ["infra/policy-secrets"]
+			}],
+			"audit": [{"name": "tagging", "displayName": "Tagging", "version": 1, "versionTag": ""}]
+		}
 	}`, buf.String())
 }
 
@@ -154,7 +155,8 @@ func TestStackPolicyList_JSON_Empty(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, runStackPolicyList(t.Context(), &buf,
 		stubStackPolicyListFactory(&mockStackPolicyListClient{}), args))
-	assert.JSONEq(t, `{"stack": "acme/web/prod", "policyGroups": [], "policyPacks": []}`, buf.String())
+	assert.JSONEq(t, `{"stack": "acme/web/prod", "policyGroups": [], "policyPacks": {"preventative": [], "audit": []}}`,
+		buf.String())
 }
 
 func TestStackPolicyList_Table(t *testing.T) {
