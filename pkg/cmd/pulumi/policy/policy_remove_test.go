@@ -59,8 +59,8 @@ func TestPolicyRemove_JSON(t *testing.T) {
 
 			var got map[string]any
 			require.NoError(t, json.Unmarshal([]byte(out), &got))
-			assert.Equal(t, "acme", got["organization"])
-			assert.Equal(t, "p", got["policyPack"])
+			assert.Equal(t, "acme", got["organizationName"])
+			assert.Equal(t, "p", got["name"])
 			v, ok := got["versionTag"]
 			assert.True(t, ok)
 			assert.Equal(t, tt.wantTag, v)

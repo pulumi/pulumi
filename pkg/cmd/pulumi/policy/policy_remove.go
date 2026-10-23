@@ -32,19 +32,19 @@ import (
 const allKeyword = "all"
 
 type policyRemoveResult struct {
-	Organization string  `json:"organization"`
-	PolicyPack   string  `json:"policyPack"`
-	VersionTag   *string `json:"versionTag"`
+	OrganizationName string  `json:"organizationName"`
+	Name             string  `json:"name"`
+	VersionTag       *string `json:"versionTag"`
 }
 
 type policyRemoveRenderFunc func(w io.Writer, result policyRemoveResult) error
 
 func renderPolicyRemoveText(w io.Writer, result policyRemoveResult) error {
 	if result.VersionTag == nil {
-		fmt.Fprintf(w, "Removed policy pack %s/%s.\n", result.Organization, result.PolicyPack)
+		fmt.Fprintf(w, "Removed policy pack %s/%s.\n", result.OrganizationName, result.Name)
 	} else {
 		fmt.Fprintf(w, "Removed version %s of policy pack %s/%s.\n",
-			*result.VersionTag, result.Organization, result.PolicyPack)
+			*result.VersionTag, result.OrganizationName, result.Name)
 	}
 	return nil
 }
@@ -108,9 +108,9 @@ func newPolicyRemoveCmdWith(deps policyPackCmdDeps) *cobra.Command {
 			}
 
 			return outputFormat.Get()(cmd.OutOrStdout(), policyRemoveResult{
-				Organization: policyPack.Ref().OrgName(),
-				PolicyPack:   string(policyPack.Ref().Name()),
-				VersionTag:   version,
+				OrganizationName: policyPack.Ref().OrgName(),
+				Name:             string(policyPack.Ref().Name()),
+				VersionTag:       version,
 			})
 		},
 	}
