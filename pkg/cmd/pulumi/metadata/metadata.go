@@ -150,7 +150,13 @@ func GetUpdateMetadata(
 
 	addUpdatePlanMetadataToEnvironment(m.Environment, updatePlan)
 
-	addEscMetadataToEnvironment(m.Environment, cfg.EnvironmentImports)
+	escEnvironments := cfg.EnvironmentImports
+	if cfg.ManagedEnvironment != nil && len(escEnvironments) > 0 && escEnvironments[len(escEnvironments)-1] == "yaml" {
+		// Environment.Imports names the inline values "yaml"; on a managed stack they are the managed environment,
+		// and the console would link "yaml" to a default/yaml environment that does not exist.
+		escEnvironments = escEnvironments[:len(escEnvironments)-1]
+	}
+	addEscMetadataToEnvironment(m.Environment, escEnvironments)
 
 	return m, nil
 }

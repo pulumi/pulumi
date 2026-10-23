@@ -22,10 +22,12 @@ import (
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
@@ -413,6 +415,29 @@ func TestAddEscMetadataToEnvironment(t *testing.T) {
 
 	expected := "[{\"id\":\"proj/env1\"},{\"id\":\"proj/env2@stable\"}]"
 	assert.Equal(t, expected, env[backend.StackEnvironments])
+}
+
+//nolint:paralleltest // GetUpdateMetadata reaches env.Variables, which sorts a process-wide slice in place
+func TestGetUpdateMetadataStackEnvironments(t *testing.T) {
+	managed := &apitype.UpdateProgramEnvironment{BaseRevision: 3}
+	cases := []struct {
+		name    string
+		imports []string
+		managed *apitype.UpdateProgramEnvironment
+		want    string
+	}{
+		{"managed drops inline values", []string{"proj/a", "yaml"}, managed, `[{"id":"proj/a"}]`},
+		{"managed with only inline values", []string{"yaml"}, managed, `[]`},
+		{"unmanaged keeps inline values", []string{"proj/a", "yaml"}, nil, `[{"id":"proj/a"},{"id":"yaml"}]`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := backend.StackConfiguration{EnvironmentImports: tc.imports, ManagedEnvironment: tc.managed}
+			m, err := GetUpdateMetadata("", t.TempDir(), "", "", false, cfg, pflag.NewFlagSet("test", pflag.ContinueOnError))
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.want, m.Environment[backend.StackEnvironments])
+		})
+	}
 }
 
 func TestAddExecutionMetadataToEnvironmentDetectsAgent(t *testing.T) {
