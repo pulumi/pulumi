@@ -267,7 +267,7 @@ func renderPolicyIssueListTable(
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.SetStyle(table.StyleLight)
-	t.AppendHeader(table.Row{"ID", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE"})
+	t.AppendHeader(table.Row{"ID", "STATUS", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE"})
 
 	for _, issue := range resp.PolicyIssues {
 		pack := issue.PolicyPack
@@ -285,8 +285,13 @@ func renderPolicyIssueListTable(
 		if stack == "" {
 			stack = "-"
 		}
+		status := string(issue.Status)
+		if status == "" {
+			status = "-"
+		}
 		t.AppendRow(table.Row{
 			issue.ID,
+			status,
 			pack,
 			issue.PolicyName,
 			enforcement,

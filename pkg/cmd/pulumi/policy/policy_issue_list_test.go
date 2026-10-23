@@ -437,12 +437,37 @@ func TestPolicyIssueList_Table(t *testing.T) {
 	require.NoError(t, renderPolicyIssueListTable(&buf, resp, false))
 	got := buf.String()
 	for _, want := range []string{
-		"ID", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE",
-		"issue-1", "aws-guardrails@3.1.0", "s3-no-public", "mandatory", "web/prod",
+		"ID", "STATUS", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE",
+		"issue-1", "open", "aws-guardrails@3.1.0", "s3-no-public", "mandatory", "web/prod",
 		`Bucket must not allow public access & <must> be "private".`,
 		"issue-2", "tagging", "require-owner", "advisory",
 		"Showing 2 of 250 policy issue(s)",
 	} {
+		assert.Contains(t, got, want)
+	}
+}
+
+func TestPolicyIssueList_TableShowsClosedStatuses(t *testing.T) {
+	t.Parallel()
+
+	statuses := []cloudapitype.PolicyIssueStatus{
+		cloudapitype.PolicyIssueStatusFixed,
+		cloudapitype.PolicyIssueStatusIgnored,
+		cloudapitype.PolicyIssueStatusByDesign,
+	}
+	issues := make([]cloudapitype.PolicyIssue, 0, len(statuses))
+	for _, status := range statuses {
+		issue := samplePolicyIssueMinimal()
+		issue.Status = status
+		issues = append(issues, issue)
+	}
+	var buf bytes.Buffer
+	require.NoError(t, renderPolicyIssueListTable(&buf, cloudapitype.ListPolicyIssuesResponse{
+		PolicyIssues: issues,
+		RowCount:     new(len(issues)),
+	}, true))
+	got := buf.String()
+	for _, want := range []string{"fixed", "ignored", "by_design"} {
 		assert.Contains(t, got, want)
 	}
 }
