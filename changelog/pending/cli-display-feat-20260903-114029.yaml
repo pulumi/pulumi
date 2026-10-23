@@ -1,0 +1,4 @@
+component: cli/display
+kind: feat
+body: Include the resource property diff in `--output json` when `--diff` is also set
+time: 2026-09-03T11:40:29.656895+02:00
