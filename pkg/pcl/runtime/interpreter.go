@@ -1326,6 +1326,7 @@ func (i *Interpreter) registerResourceWith(
 		AcceptResources:         true,
 		AcceptsByteString:       true,
 		SupportsResultReporting: true,
+		SupportsPartialValues:   true,
 		SnippetId:               i.snippetID,
 	}
 	request.PackageRef = i.getPackageRefFromToken(token)
@@ -1908,6 +1909,17 @@ func (i *Interpreter) registerResourceWith(
 		Set("urn", property.New(resp.GetUrn())).
 		Set("__name", property.New(request.Name)).
 		Set("__type", property.New(request.Type))
+
+	// An output can depend on other resources, such as a remote component's outputs on its children.
+	for key, deps := range resp.GetPropertyDependencies() {
+		if v, ok := outputs.GetOk(key); ok {
+			urns := v.Dependencies()
+			for _, u := range deps.GetUrns() {
+				urns = append(urns, resource.URN(u))
+			}
+			outputs = outputs.Set(key, v.WithDependencies(urns))
+		}
+	}
 
 	// Ensure every schema-declared output property is present, recursing into nested object
 	// types so that programs which traverse into an optional inner field see a typed null

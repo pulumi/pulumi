@@ -15,18 +15,12 @@
 package logs
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestParseSince(t *testing.T) {
@@ -54,33 +48,4 @@ func TestParseSince(t *testing.T) {
 
 	f, _ := parseSince("2006-01-02-08:00", time.Now().In(pst))
 	assert.Equal(t, "2006-01-02T00:00:00-08:00", f.In(pst).Format(time.RFC3339))
-}
-
-func TestLogsRemovalError(t *testing.T) {
-	errReadProject := errors.New("read project")
-	run := func() error {
-		cmd := NewLogsCmd(&pkgWorkspace.MockContext{
-			ReadProjectF: func(string) (*workspace.Project, string, error) {
-				return nil, "", errReadProject
-			},
-		})
-		cmd.SetArgs(nil)
-		cmd.SetErr(io.Discard)
-		cmd.SetOut(io.Discard)
-		return cmd.Execute()
-	}
-
-	t.Run("default", func(t *testing.T) {
-		t.Setenv(env.DisableExperimentalLogsRemovalError.Var().Name(), "false")
-		assert.EqualError(t, run(), "command \"logs\" is deprecated and disabled by default.\n\n"+
-			"This command will be removed in a future version of pulumi.\n\n"+
-			"The removal is being tracked in https://github.com/pulumi/pulumi/issues/24718. If you believe that \n"+
-			"`pulumi logs` should not be removed, please comment on the issue explaining why.\n\n"+
-			"To run the command until it is removed, set PULUMI_DISABLE_EXPERIMENTAL_LOGS_REMOVAL_ERROR=1.")
-	})
-
-	t.Run("disabled", func(t *testing.T) {
-		t.Setenv(env.DisableExperimentalLogsRemovalError.Var().Name(), "true")
-		assert.ErrorIs(t, run(), errReadProject)
-	})
 }

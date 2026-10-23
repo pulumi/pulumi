@@ -1,4 +1,0 @@
-component: cli
-kind: fix
-body: Name the directory searched in the `no Pulumi.yaml project file found` error of `pulumi preview`, `refresh`, `import`, `logs` and `install` instead of leaving it empty
-time: 2026-10-13T11:20:31.774402+01:00

@@ -253,8 +253,15 @@ func unmarshalResourceReference(s *structpb.Struct, p path) (property.Value, err
 		return property.Value{}, errAt(p, "malformed resource reference: missing urn")
 	}
 
+	urnValue := urn.URN(resourceURN)
+	if name == "" && urnValue.IsValid() {
+		name = urnValue.Name()
+	}
+	if typ == "" && urnValue.IsValid() {
+		typ = string(urnValue.Type())
+	}
 	ref := property.ResourceReference{
-		URN:            urn.URN(resourceURN),
+		URN:            urnValue,
 		Name:           name,
 		Type:           typ,
 		PackageVersion: packageVersion,
@@ -262,8 +269,8 @@ func unmarshalResourceReference(s *structpb.Struct, p path) (property.Value, err
 	switch {
 	case !hasID:
 		// A reference to a component resource has no ID, so ref.ID stays null.
-	case id == "":
-		// An empty ID marks a resource whose ID is not yet known.
+	case id == "" || sig.IsUnknown(id):
+		// An empty ID or the unknown-string sentinel marks a resource whose ID is not yet known.
 		ref.ID = property.New(property.Computed)
 	default:
 		ref.ID = property.New(id)

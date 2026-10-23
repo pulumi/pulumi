@@ -49,7 +49,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -1303,12 +1302,6 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil, nil)
 }
 
-func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
-	op backend.UpdateOperation, paths []string,
-) error {
-	return backend.Watch(ctx, b, stk, op, b.apply, paths)
-}
-
 // apply actually performs the provided type of update on a diy hosted stack.
 func (b *diyBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
@@ -1333,8 +1326,7 @@ func (b *diyBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&
-		op.Opts.Display.Type != display.DisplayWatch {
+	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
 		// than a logical span, but this is a convenient way to record this information.
 		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
@@ -1544,48 +1536,6 @@ func (b *diyBackend) GetHistory(
 		return nil, err
 	}
 	return updates, nil
-}
-
-func (b *diyBackend) GetLogs(ctx context.Context,
-	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
-	query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	diyStackRef, err := b.getReference(stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-
-	target, err := b.getTarget(ctx, secretsProvider, diyStackRef, cfg.Config, cfg.Decrypter)
-	if err != nil {
-		return nil, err
-	}
-
-	return GetLogsForTarget(ctx, target, query)
-}
-
-// GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
-func GetLogsForTarget(
-	ctx context.Context, target *deploy.Target, query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	contract.Requiref(target != nil, "target", "must not be nil")
-
-	if target.Snapshot == nil {
-		// If the stack has not been deployed yet, return no logs.
-		return nil, nil
-	}
-
-	config, err := target.Config.Decrypt(target.Decrypter)
-	if err != nil {
-		return nil, err
-	}
-
-	components := operations.NewResourceTree(target.Snapshot.Resources)
-	ops := components.OperationsProvider(config)
-	logs, err := ops.GetLogs(ctx, query)
-	if logs == nil {
-		return nil, err
-	}
-	return *logs, err
 }
 
 func (b *diyBackend) ExportDeployment(ctx context.Context,

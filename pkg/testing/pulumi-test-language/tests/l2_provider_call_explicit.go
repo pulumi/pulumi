@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,19 +66,19 @@ func init() {
 					// * explicitProvFromIdentity, whose value should be the value output of the explicit provider.
 					// * explicitProvFromPrefixed, whose value should be the value output of the explicit provider, prefixed with
 					//   "call-prefix-".
-					outputs := stack.Outputs
-					require.Len(l, outputs, 3, "expected 3 outputs")
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					require.Equal(l, 3, outputs.Len(), "expected 3 outputs")
 					AssertPropertyMapMember(
 						l, outputs,
-						"explicitProviderValue", resource.NewProperty("explicitProvValueexplicitValue"),
+						"explicitProviderValue", property.New("explicitProvValueexplicitValue"),
 					)
 					AssertPropertyMapMember(
 						l, outputs,
-						"explicitProvFromIdentity", resource.NewProperty("explicitProvValue"),
+						"explicitProvFromIdentity", property.New("explicitProvValue"),
 					)
 					AssertPropertyMapMember(
 						l, outputs,
-						"explicitProvFromPrefixed", resource.NewProperty("call-prefix-explicitProvValue"),
+						"explicitProvFromPrefixed", property.New("call-prefix-explicitProvValue"),
 					)
 				},
 			},
