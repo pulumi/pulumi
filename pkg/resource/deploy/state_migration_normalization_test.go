@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -131,9 +132,9 @@ func TestDeploymentNormalizesStateMigrationSourceEvents(t *testing.T) {
 
 		event := &registerResourceOutputsEvent{
 			urn: consumerURN,
-			outputs: resource.PropertyMap{
-				"reference": resource.MakeCustomResourceReference(predecessorURN, "physical-id", "1.2.3"),
-			},
+			outputs: property.NewMap(map[string]property.Value{
+				"reference": property.New(property.NewResourceReference(predecessorURN, property.New("physical-id"), "1.2.3")),
+			}),
 		}
 
 		normalized, err := d.normalizeStateMigrationSourceEvent(event)
@@ -142,7 +143,7 @@ func TestDeploymentNormalizesStateMigrationSourceEvents(t *testing.T) {
 		require.True(t, ok)
 		assert.NotSame(t, event, normalized)
 		assert.Equal(t, consumerURN, outputs.URN())
-		assert.Equal(t, successorURN, outputs.Outputs()["reference"].ResourceReferenceValue().URN)
+		assert.Equal(t, successorURN, outputs.Outputs().Get("reference").AsResourceReference().URN)
 	})
 
 	t.Run("engine and registration events pass through", func(t *testing.T) {

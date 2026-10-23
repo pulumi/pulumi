@@ -567,10 +567,11 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			if id.IsKnown() {
 				idPV = property.New(id.AsString())
 			}
-			argsPM = argsPM.Set("__self__", property.New(property.ResourceReference{
-				URN: resource.URN(urnVal.AsString()),
-				ID:  idPV,
-			}))
+			argsPM = argsPM.Set("__self__", property.New(property.NewResourceReference(
+				resource.URN(urnVal.AsString()),
+				idPV,
+				"",
+			)))
 
 			request := &pulumirpc.ResourceCallRequest{
 				Tok:                fun.Token,
