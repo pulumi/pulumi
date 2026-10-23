@@ -113,7 +113,7 @@ func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (Sour
 		return event, nil
 	case ReadResourceEvent:
 		state := &pkgresource.State{
-			Inputs:       e.Properties(),
+			Inputs:       resource.ToResourcePropertyMap(e.Properties()),
 			Parent:       e.Parent(),
 			Dependencies: e.Dependencies(),
 			Provider:     e.Provider(),

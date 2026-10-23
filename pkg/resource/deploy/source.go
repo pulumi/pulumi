@@ -142,7 +142,7 @@ type ReadResourceEvent interface {
 	// Parent is the parent resource of the resource being read.
 	Parent() resource.URN
 	// Properties is the property bag that will be passed to Read as search parameters.
-	Properties() resource.PropertyMap
+	Properties() property.Map
 	// Dependencies returns the list of URNs upon which this read depends.
 	Dependencies() []resource.URN
 	// Done indicates that we are done with this event.

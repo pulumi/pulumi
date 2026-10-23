@@ -1487,7 +1487,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	filteredProps, err := plugin.FilterProperties(rawProps, plugin.FilterOptions{
+	props, err := plugin.FilterProperties(rawProps, plugin.FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
@@ -1496,7 +1496,6 @@ func (rm *resmon) ReadResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	props := resource.ToResourcePropertyMap(filteredProps)
 
 	additionalSecretOutputs := slice.Prealloc[resource.PropertyKey](len(req.GetAdditionalSecretOutputs()))
 	for _, name := range req.GetAdditionalSecretOutputs() {
@@ -3520,7 +3519,7 @@ type readResourceEvent struct {
 	baseType                tokens.Type
 	provider                string
 	parent                  resource.URN
-	props                   resource.PropertyMap
+	props                   property.Map
 	dependencies            []resource.URN
 	additionalSecretOutputs []resource.PropertyKey
 	sourcePosition          string
@@ -3532,13 +3531,13 @@ var _ ReadResourceEvent = (*readResourceEvent)(nil)
 
 func (g *readResourceEvent) event() {}
 
-func (g *readResourceEvent) ID() resource.ID                  { return g.id }
-func (g *readResourceEvent) Name() string                     { return g.name }
-func (g *readResourceEvent) Type() tokens.Type                { return g.baseType }
-func (g *readResourceEvent) Provider() string                 { return g.provider }
-func (g *readResourceEvent) Parent() resource.URN             { return g.parent }
-func (g *readResourceEvent) Properties() resource.PropertyMap { return g.props }
-func (g *readResourceEvent) Dependencies() []resource.URN     { return g.dependencies }
+func (g *readResourceEvent) ID() resource.ID              { return g.id }
+func (g *readResourceEvent) Name() string                 { return g.name }
+func (g *readResourceEvent) Type() tokens.Type            { return g.baseType }
+func (g *readResourceEvent) Provider() string             { return g.provider }
+func (g *readResourceEvent) Parent() resource.URN         { return g.parent }
+func (g *readResourceEvent) Properties() property.Map     { return g.props }
+func (g *readResourceEvent) Dependencies() []resource.URN { return g.dependencies }
 func (g *readResourceEvent) AdditionalSecretOutputs() []resource.PropertyKey {
 	return g.additionalSecretOutputs
 }
