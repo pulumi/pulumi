@@ -70,9 +70,7 @@ type policyGroupEditArgs struct {
 	addInsightsAccount    []string
 	removeInsightsAccount []string
 	stackRule             string
-	removeStackRule       bool
 	accountRule           string
-	removeAccountRule     bool
 
 	// changed records which of the mutation flags were set by the user.
 	// Keys are the names in mutationFlagNames.
@@ -114,7 +112,7 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 			"  # Set an account rule from a JSON file on an audit group\n" +
 			"  pulumi policy group edit compliance --account-rule @account-rule.json\n\n" +
 			"  # Remove the stack rule\n" +
-			"  pulumi policy group edit prod-policies --remove-stack-rule",
+			"  pulumi policy group edit prod-policies --stack-rule ''",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			args.changed = changedFlagSet(cmd, mutationFlagNames)
 			return runPolicyGroupEdit(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
@@ -145,13 +143,10 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 		"Remove an Insights account from the Policy Group (repeatable)")
 	cmd.Flags().StringVar(&args.stackRule, "stack-rule", "",
 		"Replace the stack match rule: tag conditions such as 'env=prod,team!=web OR owner', "+
-			"a JSON expression, or @<file>")
-	cmd.Flags().BoolVar(&args.removeStackRule, "remove-stack-rule", false,
-		"Remove the stack match rule")
+			"a JSON expression, or @<file>. '' removes the rule")
 	cmd.Flags().StringVar(&args.accountRule, "account-rule", "",
-		"Replace the Insights account match rule, in the same syntax as --stack-rule. Audit groups only")
-	cmd.Flags().BoolVar(&args.removeAccountRule, "remove-account-rule", false,
-		"Remove the Insights account match rule")
+		"Replace the Insights account match rule, in the same syntax as --stack-rule. "+
+			"Audit groups only. '' removes the rule")
 
 	return cmd
 }
@@ -163,14 +158,13 @@ var mutationFlagNames = []string{
 	"add-stack", "remove-stack",
 	"add-policy-pack", "remove-policy-pack",
 	"add-insights-account", "remove-insights-account",
-	"stack-rule", "remove-stack-rule",
-	"account-rule", "remove-account-rule",
+	"stack-rule", "account-rule",
 }
 
 var errNoPolicyGroupChanges = errors.New(
 	"no changes specified; pass at least one of --name, --add-stack, --remove-stack, " +
 		"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account, " +
-		"--stack-rule, --remove-stack-rule, --account-rule, --remove-account-rule")
+		"--stack-rule, --account-rule")
 
 // changedFlagSet snapshots which of the named flags were set on the command
 // line. Cobra resets `.Changed` after parsing, so we capture it inside RunE.
@@ -234,12 +228,6 @@ func runPolicyGroupEdit(
 ) error {
 	if !anyMutationRequested(args) {
 		return errNoPolicyGroupChanges
-	}
-	if args.changed["stack-rule"] && args.changed["remove-stack-rule"] {
-		return cmdCmd.ConfigurationError{Message: "--stack-rule and --remove-stack-rule cannot be used together"}
-	}
-	if args.changed["account-rule"] && args.changed["remove-account-rule"] {
-		return cmdCmd.ConfigurationError{Message: "--account-rule and --remove-account-rule cannot be used together"}
 	}
 
 	addStacks, removeStacks, err := parseStackReferences(args.addStack, args.removeStack)
@@ -334,21 +322,20 @@ func policyGroupUpdates(
 	return updates
 }
 
-// matchRuleUpdates converts the rule flags into one update per rule change.
+// matchRuleUpdates converts the rule flags into one update per rule change. A
+// rule flag passed with an empty value removes the rule.
 func matchRuleUpdates(
 	args policyGroupEditArgs, stackRule, accountRule cloudapitype.PermissionBooleanExpression,
 ) []cloudapitype.UpdatePolicyGroupRequest {
 	var updates []cloudapitype.UpdatePolicyGroupRequest
 	if stackRule != nil {
 		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{StackMatchRule: stackRule})
-	}
-	if args.changed["remove-stack-rule"] && args.removeStackRule {
+	} else if args.changed["stack-rule"] {
 		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{RemoveStackMatchRule: true})
 	}
 	if accountRule != nil {
 		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{AccountMatchRule: accountRule})
-	}
-	if args.changed["remove-account-rule"] && args.removeAccountRule {
+	} else if args.changed["account-rule"] {
 		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{RemoveAccountMatchRule: true})
 	}
 	return updates

@@ -206,7 +206,7 @@ func TestPolicyGroupEdit_NoFlagsChanged(t *testing.T) {
 	assert.Equal(t,
 		"no changes specified; pass at least one of --name, --add-stack, --remove-stack, "+
 			"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account, "+
-			"--stack-rule, --remove-stack-rule, --account-rule, --remove-account-rule",
+			"--stack-rule, --account-rule",
 		err.Error())
 	assert.Empty(t, c.updates)
 }
@@ -284,12 +284,12 @@ func TestPolicyGroupEdit_SetsAndRemovesMatchRules(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		stubPolicyGroupEditFactory(c, "acme"), "compliance", policyGroupEditArgs{
-			outputFormat:    defaultPolicyGroupGetOutputFormat(),
-			addStack:        []string{"web/prod"},
-			removeStackRule: true,
-			accountRule:     "env=prod OR team",
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			addStack:     []string{"web/prod"},
+			stackRule:    "",
+			accountRule:  "env=prod OR team",
 			changed: map[string]bool{
-				"add-stack": true, "remove-stack-rule": true, "account-rule": true,
+				"add-stack": true, "stack-rule": true, "account-rule": true,
 			},
 		})
 	require.NoError(t, err)
@@ -317,14 +317,14 @@ func TestPolicyGroupEdit_StackRuleAndRemoveAccountRule(t *testing.T) {
 	}}
 	err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
-			outputFormat:      defaultPolicyGroupGetOutputFormat(),
-			stackRule:         "env!=dev",
-			removeAccountRule: true,
-			changed:           map[string]bool{"stack-rule": true, "remove-account-rule": true},
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			stackRule:    "env!=dev",
+			accountRule:  " ",
+			changed:      map[string]bool{"stack-rule": true, "account-rule": true},
 		})
 	require.NoError(t, err)
 
-	// Without --account-rule the mode is not checked before the write.
+	// Removing an account rule does not check the mode before the write.
 	assert.Equal(t, 1, c.getCalls)
 	require.Len(t, c.updates, 1)
 	body, err := json.Marshal(c.updates[0])
@@ -370,37 +370,6 @@ func TestPolicyGroupEdit_AccountRuleModeCheckError(t *testing.T) {
 	assert.Empty(t, c.updates)
 }
 
-func TestPolicyGroupEdit_RuleFlagConflicts(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		args policyGroupEditArgs
-		want string
-	}{
-		{
-			args: policyGroupEditArgs{
-				stackRule: "env=prod", removeStackRule: true,
-				changed: map[string]bool{"stack-rule": true, "remove-stack-rule": true},
-			},
-			want: "--stack-rule and --remove-stack-rule cannot be used together",
-		},
-		{
-			args: policyGroupEditArgs{
-				accountRule: "env=prod", removeAccountRule: true,
-				changed: map[string]bool{"account-rule": true, "remove-account-rule": true},
-			},
-			want: "--account-rule and --remove-account-rule cannot be used together",
-		},
-	}
-	for _, tt := range tests {
-		tt.args.outputFormat = defaultPolicyGroupGetOutputFormat()
-		err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
-			failingPolicyGroupEditFactory(errors.New("factory must not be called")), "prod-policies", tt.args)
-		require.Error(t, err)
-		assert.Equal(t, cmdCmd.ConfigurationError{Message: tt.want}, err)
-	}
-}
-
 func TestPolicyGroupEdit_InvalidRule(t *testing.T) {
 	t.Parallel()
 
@@ -418,18 +387,6 @@ func TestPolicyGroupEdit_InvalidRule(t *testing.T) {
 		err.Error())
 }
 
-func TestPolicyGroupEdit_RemoveRuleFalseIsNoChange(t *testing.T) {
-	t.Parallel()
-
-	err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
-		failingPolicyGroupEditFactory(errors.New("factory must not be called")), "prod-policies",
-		policyGroupEditArgs{
-			outputFormat: defaultPolicyGroupGetOutputFormat(),
-			changed:      map[string]bool{"remove-stack-rule": true},
-		})
-	require.ErrorIs(t, err, errNoPolicyGroupChanges)
-}
-
 func TestPolicyGroupEdit_RuleFlagsParse(t *testing.T) {
 	t.Parallel()
 
@@ -438,7 +395,7 @@ func TestPolicyGroupEdit_RuleFlagsParse(t *testing.T) {
 		Mode: cloudapitype.PolicyGroupModeAudit,
 	}}
 	cmd := newPolicyGroupEditCmdWith(stubPolicyGroupEditFactory(c, "acme"))
-	cmd.SetArgs([]string{"prod-policies", "--stack-rule", "env=prod", "--remove-account-rule"})
+	cmd.SetArgs([]string{"prod-policies", "--stack-rule", "env=prod", "--account-rule", ""})
 	cmd.SetOut(&bytes.Buffer{})
 	require.NoError(t, cmd.Execute())
 

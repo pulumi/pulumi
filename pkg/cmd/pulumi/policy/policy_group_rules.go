@@ -64,9 +64,10 @@ const matchRuleHelp = "Match rules (preview; requires the tag-based policy group
 	"--stack-rule and --account-rule set a rule over stack tags or Insights\n" +
 	"account tags. Stacks or accounts whose tags satisfy the rule are members\n" +
 	"of the group alongside those added individually. --account-rule is only\n" +
-	"allowed on audit groups. Setting a rule replaces the group's current rule.\n" +
+	"allowed on audit groups. Setting a rule replaces the group's current rule,\n" +
+	"and setting it to '' removes it.\n" +
 	"\n" +
-	"The value is one of:\n" +
+	"A non-empty value is one of:\n" +
 	"  - Tag conditions separated by commas, all of which must hold:\n" +
 	"      key=value    the tag is set to value\n" +
 	"      key!=value   the tag is not set to value (also true when the tag is absent)\n" +
@@ -83,7 +84,7 @@ const matchRuleHelp = "Match rules (preview; requires the tag-based policy group
 	"starts or ends with '!'."
 
 // parseMatchRuleFlag parses the value of kind's flag, or returns nil when the
-// flag was not passed.
+// flag was not passed or its value is empty.
 func parseMatchRuleFlag(
 	kind matchRuleKind, value string, changed map[string]bool,
 ) (cloudapitype.PermissionBooleanExpression, error) {
@@ -93,11 +94,12 @@ func parseMatchRuleFlag(
 	return parseMatchRule(kind, value)
 }
 
+// parseMatchRule parses a rule flag value, returning nil for an empty value.
 func parseMatchRule(kind matchRuleKind, value string) (cloudapitype.PermissionBooleanExpression, error) {
 	trimmed := strings.TrimSpace(value)
 	switch {
 	case trimmed == "":
-		return nil, matchRuleError(kind, "must not be empty")
+		return nil, nil
 	case strings.HasPrefix(trimmed, "@"):
 		path := trimmed[1:]
 		if path == "" {

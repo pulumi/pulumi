@@ -144,17 +144,19 @@ func TestParseMatchRule_TagConditions(t *testing.T) {
 func TestParseMatchRuleFlag_NotPassed(t *testing.T) {
 	t.Parallel()
 
-	rule, err := parseMatchRuleFlag(stackMatchRule, "", map[string]bool{"account-rule": true})
+	rule, err := parseMatchRuleFlag(stackMatchRule, "env=prod", map[string]bool{"account-rule": true})
 	require.NoError(t, err)
 	assert.Nil(t, rule)
 }
 
-func TestParseMatchRuleFlag_PassedEmpty(t *testing.T) {
+func TestParseMatchRule_Empty(t *testing.T) {
 	t.Parallel()
 
-	_, err := parseMatchRuleFlag(stackMatchRule, "", map[string]bool{"stack-rule": true})
-	require.Error(t, err)
-	assert.Equal(t, "invalid --stack-rule: must not be empty", err.Error())
+	for _, value := range []string{"", "  "} {
+		rule, err := parseMatchRule(stackMatchRule, value)
+		require.NoError(t, err)
+		assert.Nil(t, rule)
+	}
 }
 
 func TestParseMatchRule_JSON(t *testing.T) {
@@ -193,7 +195,6 @@ func TestParseMatchRule_Errors(t *testing.T) {
 		value string
 		want  string
 	}{
-		{"empty", stackMatchRule, " ", "invalid --stack-rule: must not be empty"},
 		{"empty condition", stackMatchRule, "env=prod,,owner", "invalid --stack-rule: empty tag condition"},
 		{"empty alternative", stackMatchRule, "env=prod OR  OR owner", "invalid --stack-rule: empty tag condition"},
 		{"leading OR", stackMatchRule, "OR env=prod", `invalid --stack-rule: " OR " must separate two alternatives`},

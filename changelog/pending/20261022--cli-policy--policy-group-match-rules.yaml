@@ -1,3 +1,3 @@
 component: cli/policy
 kind: feat
-body: Add `--stack-rule`, `--account-rule`, `--remove-stack-rule` and `--remove-account-rule` to `pulumi policy group new` and `edit`, and show match rules in `policy group` console output
+body: Add `--stack-rule` and `--account-rule` to `pulumi policy group new` and `edit`, and show match rules in `policy group` console output
