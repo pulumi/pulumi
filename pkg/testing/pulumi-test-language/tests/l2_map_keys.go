@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,143 +51,119 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:plain")
 					plainResource := RequireSingleResource(l, snap.Resources, "plain:index:Resource")
 
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean":     false,
-						"float":       2.17,
-						"integer":     -12,
-						"string":      "Goodbye",
-						"numberArray": []any{0, 1},
-						"booleanMap": map[string]any{
-							"my key": false,
-							"my.key": true,
-							"my-key": false,
-							"my_key": true,
-							"MY_KEY": false,
-							"myKey":  true,
-						},
-					})
-					assert.Equal(l, want, primResource.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, primResource.Inputs, primResource.Outputs, "expected inputs and outputs to match")
+					stringMapAlt := func() property.Value {
+						return property.New(map[string]property.Value{
+							"my key": property.New("one"),
+							"my.key": property.New("two"),
+							"my-key": property.New("three"),
+							"my_key": property.New("four"),
+							"MY_KEY": property.New("five"),
+							"myKey":  property.New("six"),
+						})
+					}
 
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"data": resource.NewPropertyMapFromMap(map[string]any{
-							"boolean":   false,
-							"float":     2.17,
-							"integer":   -12,
-							"string":    "Goodbye",
-							"boolArray": []any{false, true},
-							"stringMap": map[string]any{
-								"my key": "one",
-								"my.key": "two",
-								"my-key": "three",
-								"my_key": "four",
-								"MY_KEY": "five",
-								"myKey":  "six",
-							},
+					want := property.NewMap(map[string]property.Value{
+						"boolean": property.New(false),
+						"float":   property.New(2.17),
+						"integer": property.New(-12.0),
+						"string":  property.New("Goodbye"),
+						"numberArray": property.New([]property.Value{
+							property.New(0.0), property.New(1.0),
+						}),
+						"booleanMap": property.New(map[string]property.Value{
+							"my key": property.New(false),
+							"my.key": property.New(true),
+							"my-key": property.New(false),
+							"my_key": property.New(true),
+							"MY_KEY": property.New(false),
+							"myKey":  property.New(true),
 						}),
 					})
-					assert.Equal(l, want, refResource.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, refResource.Inputs, refResource.Outputs, "expected inputs and outputs to match")
+					primInputs := resource.FromResourcePropertyMap(primResource.Inputs)
+					assert.Equal(l, want, primInputs, "expected inputs to be %v", want)
+					assert.Equal(l, primInputs,
+						resource.FromResourcePropertyMap(primResource.Outputs),
+						"expected inputs and outputs to match")
 
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"data": resource.NewPropertyMapFromMap(map[string]any{
-							"innerData": resource.NewPropertyMapFromMap(map[string]any{
-								"boolean":   false,
-								"float":     -2.17,
-								"integer":   123,
-								"string":    "Goodbye",
-								"boolArray": []any{},
-								"stringMap": map[string]any{
-									"my key": "one",
-									"my.key": "two",
-									"my-key": "three",
-									"my_key": "four",
-									"MY_KEY": "five",
-									"myKey":  "six",
-								},
-							}),
-							"boolean":   true,
-							"float":     4.5,
-							"integer":   1024,
-							"string":    "Hello",
-							"boolArray": []any{},
-							"stringMap": map[string]any{
-								"my key": "one",
-								"my.key": "two",
-								"my-key": "three",
-								"my_key": "four",
-								"MY_KEY": "five",
-								"myKey":  "six",
-							},
+					want = property.NewMap(map[string]property.Value{
+						"data": property.New(map[string]property.Value{
+							"boolean":   property.New(false),
+							"float":     property.New(2.17),
+							"integer":   property.New(-12.0),
+							"string":    property.New("Goodbye"),
+							"boolArray": property.New([]property.Value{property.New(false), property.New(true)}),
+							"stringMap": stringMapAlt(),
 						}),
 					})
-					assert.Equal(l, want, rrefResource.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, rrefResource.Inputs, rrefResource.Outputs, "expected inputs and outputs to match")
+					refInputs := resource.FromResourcePropertyMap(refResource.Inputs)
+					assert.Equal(l, want, refInputs, "expected inputs to be %v", want)
+					assert.Equal(l, refInputs,
+						resource.FromResourcePropertyMap(refResource.Outputs),
+						"expected inputs and outputs to match")
 
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"data": resource.NewPropertyMapFromMap(map[string]any{
-							"innerData": resource.NewPropertyMapFromMap(map[string]any{
-								"boolean":   false,
-								"float":     2.17,
-								"integer":   -12,
-								"string":    "Goodbye",
-								"boolArray": []any{false, true},
-								"stringMap": map[string]any{
-									"my key": "one",
-									"my.key": "two",
-									"my-key": "three",
-									"my_key": "four",
-									"MY_KEY": "five",
-									"myKey":  "six",
-								},
+					want = property.NewMap(map[string]property.Value{
+						"data": property.New(map[string]property.Value{
+							"innerData": property.New(map[string]property.Value{
+								"boolean":   property.New(false),
+								"float":     property.New(-2.17),
+								"integer":   property.New(123.0),
+								"string":    property.New("Goodbye"),
+								"boolArray": property.New([]property.Value{}),
+								"stringMap": stringMapAlt(),
 							}),
-							"boolean":   true,
-							"float":     4.5,
-							"integer":   1024,
-							"string":    "Hello",
-							"boolArray": []any{true, false},
-							"stringMap": map[string]any{
-								"my key": "one",
-								"my.key": "two",
-								"my-key": "three",
-								"my_key": "four",
-								"MY_KEY": "five",
-								"myKey":  "six",
-							},
-						}),
-						"nonPlainData": resource.NewPropertyMapFromMap(map[string]any{
-							"innerData": resource.NewPropertyMapFromMap(map[string]any{
-								"boolean":   false,
-								"float":     2.17,
-								"integer":   -12,
-								"string":    "Goodbye",
-								"boolArray": []any{false, true},
-								"stringMap": map[string]any{
-									"my key": "one",
-									"my.key": "two",
-									"my-key": "three",
-									"my_key": "four",
-									"MY_KEY": "five",
-									"myKey":  "six",
-								},
-							}),
-							"boolean":   true,
-							"float":     4.5,
-							"integer":   1024,
-							"string":    "Hello",
-							"boolArray": []any{true, false},
-							"stringMap": map[string]any{
-								"my key": "one",
-								"my.key": "two",
-								"my-key": "three",
-								"my_key": "four",
-								"MY_KEY": "five",
-								"myKey":  "six",
-							},
+							"boolean":   property.New(true),
+							"float":     property.New(4.5),
+							"integer":   property.New(1024.0),
+							"string":    property.New("Hello"),
+							"boolArray": property.New([]property.Value{}),
+							"stringMap": stringMapAlt(),
 						}),
 					})
-					assert.Equal(l, want, plainResource.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, plainResource.Inputs, plainResource.Outputs, "expected inputs and outputs to match")
+					rrefInputs := resource.FromResourcePropertyMap(rrefResource.Inputs)
+					assert.Equal(l, want, rrefInputs, "expected inputs to be %v", want)
+					assert.Equal(l, rrefInputs,
+						resource.FromResourcePropertyMap(rrefResource.Outputs),
+						"expected inputs and outputs to match")
+
+					want = property.NewMap(map[string]property.Value{
+						"data": property.New(map[string]property.Value{
+							"innerData": property.New(map[string]property.Value{
+								"boolean":   property.New(false),
+								"float":     property.New(2.17),
+								"integer":   property.New(-12.0),
+								"string":    property.New("Goodbye"),
+								"boolArray": property.New([]property.Value{property.New(false), property.New(true)}),
+								"stringMap": stringMapAlt(),
+							}),
+							"boolean":   property.New(true),
+							"float":     property.New(4.5),
+							"integer":   property.New(1024.0),
+							"string":    property.New("Hello"),
+							"boolArray": property.New([]property.Value{property.New(true), property.New(false)}),
+							"stringMap": stringMapAlt(),
+						}),
+						"nonPlainData": property.New(map[string]property.Value{
+							"innerData": property.New(map[string]property.Value{
+								"boolean":   property.New(false),
+								"float":     property.New(2.17),
+								"integer":   property.New(-12.0),
+								"string":    property.New("Goodbye"),
+								"boolArray": property.New([]property.Value{property.New(false), property.New(true)}),
+								"stringMap": stringMapAlt(),
+							}),
+							"boolean":   property.New(true),
+							"float":     property.New(4.5),
+							"integer":   property.New(1024.0),
+							"string":    property.New("Hello"),
+							"boolArray": property.New([]property.Value{property.New(true), property.New(false)}),
+							"stringMap": stringMapAlt(),
+						}),
+					})
+					plainInputs := resource.FromResourcePropertyMap(plainResource.Inputs)
+					assert.Equal(l, want, plainInputs, "expected inputs to be %v", want)
+					assert.Equal(l, plainInputs,
+						resource.FromResourcePropertyMap(plainResource.Outputs),
+						"expected inputs and outputs to match")
 				},
 			},
 		},
