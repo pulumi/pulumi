@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
 	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
@@ -94,8 +95,9 @@ func WithoutNewProjectHint() LoginOption {
 	}
 }
 
-var DefaultLoginManager = NewLoginManager(
-	cmdutil.Diag(), credentialhelper.NewSession(helperDiagnosticWriter{sink: cmdutil.Diag}))
+var DefaultLoginManager LoginManager = &lm{
+	session: credentialhelper.NewSession(helperDiagnosticWriter{sink: cmdutil.Diag}),
+}
 
 type helperDiagnosticWriter struct {
 	sink func() diag.Sink
@@ -107,8 +109,9 @@ func (w helperDiagnosticWriter) Write(p []byte) (int, error) {
 }
 
 type lm struct {
-	session *credentialhelper.Session
-	clients *httpstate.ClientSource
+	session     *credentialhelper.Session
+	clientsOnce sync.Once
+	clients     *httpstate.ClientSource
 }
 
 // NewLoginManager shares backend clients and helper credentials for one command.
@@ -120,11 +123,23 @@ func NewLoginManager(sink diag.Sink, session *credentialhelper.Session) LoginMan
 }
 
 // ClientSource returns the command's authenticated backend clients.
-func (f *lm) ClientSource() *httpstate.ClientSource { return f.clients }
+func (f *lm) ClientSource() *httpstate.ClientSource {
+	f.clientsOnce.Do(func() {
+		if f.clients == nil {
+			// The default manager is created during package initialization, before --color is parsed.
+			// cmdutil.Diag caches its color settings on first use, so defer creating the client
+			// source until a command needs it, after flags have been applied.
+			f.clients = httpstate.NewClientSource(f.session, cmdutil.Diag())
+		}
+	})
+	return f.clients
+}
 
 // SecretsProvider constructs standard secrets managers using the login manager's clients.
 func SecretsProvider(lm LoginManager) secrets.Provider {
-	return backendsecrets.NewProvider(lm.ClientSource().ClientForURL)
+	return backendsecrets.NewProvider(func(ctx context.Context, url string, insecure bool) (*client.Client, error) {
+		return lm.ClientSource().ClientForURL(ctx, url, insecure)
+	})
 }
 
 // CredentialHelperSession returns the helper session explicitly owned by this manager.
@@ -328,7 +343,7 @@ func (f *lm) openHTTPBackend(
 	ctx context.Context, sink diag.Sink, raw string, project *workspace.Project,
 	insecure, setCurrent bool, helper *credentialhelper.Result,
 ) (backend.Backend, error) {
-	be, err := httpstate.New(ctx, sink, raw, project, insecure, f.clients)
+	be, err := httpstate.New(ctx, sink, raw, project, insecure, f.ClientSource())
 	if err != nil {
 		return nil, err
 	}
