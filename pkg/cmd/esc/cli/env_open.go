@@ -238,7 +238,7 @@ func (env *envCommand) openEnvironment(
 			duration,
 		)
 	} else {
-		envID, diags, err = env.esc.client.OpenEnvironmentDraft(ctx, ref.orgName, ref.projectName, ref.envName, changeRequestID, duration) //nolint:lll
+		envID, diags, err = env.esc.client.OpenEnvironmentDraft(ctx, ref.orgName, ref.projectName, ref.envName, changeRequestID, nil, duration) //nolint:lll
 	}
 	if err != nil {
 		return nil, nil, err
