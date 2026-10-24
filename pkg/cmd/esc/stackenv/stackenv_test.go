@@ -37,24 +37,25 @@ import (
 const publishedDefinition = "values:\n  a: 1\n"
 
 type fakeService struct {
-	mu           sync.Mutex
-	requests     []string
-	queries      map[string]string
-	draftBody    []byte
-	draftETag    string
-	notFound     bool
-	createStatus int
-	createDiags  bool
-	openDiags    bool
+	mu                 sync.Mutex
+	requests           []string
+	queries            map[string]string
+	draftBody          []byte
+	draftETag          string
+	notFound           bool
+	createStatus       int
+	createDiags        bool
+	openDiags          bool
+	openStatus         int
+	publishedOpenDiags bool
 }
 
+// writeDiagnostics writes the 400 body the service sends for definition diagnostics, which has no code or message.
 func writeDiagnostics(t *testing.T, w http.ResponseWriter, summary string) {
 	w.WriteHeader(http.StatusBadRequest)
-	require.NoError(t, json.NewEncoder(w).Encode(client.EnvironmentErrorResponse{
-		Code:        http.StatusBadRequest,
-		Message:     "invalid definition",
-		Diagnostics: []client.EnvironmentDiagnostic{{Summary: summary}},
-	}))
+	require.NoError(t, json.NewEncoder(w).Encode(struct {
+		Diagnostics []client.EnvironmentDiagnostic `json:"diagnostics"`
+	}{[]client.EnvironmentDiagnostic{{Summary: summary}}}))
 }
 
 func (f *fakeService) newClient(t *testing.T) client.Client {
@@ -74,6 +75,10 @@ func (f *fakeService) newClient(t *testing.T) client.Client {
 		require.NoError(t, err)
 	})
 	mux.HandleFunc("POST "+base+"/versions/7/open", func(w http.ResponseWriter, r *http.Request) {
+		if f.publishedOpenDiags {
+			writeDiagnostics(t, w, "unknown provider")
+			return
+		}
 		require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"id": "open-published"}))
 	})
 	mux.HandleFunc("POST "+base+"/drafts", func(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +106,12 @@ func (f *fakeService) newClient(t *testing.T) client.Client {
 	mux.HandleFunc("POST "+base+"/drafts/cr-1/open", func(w http.ResponseWriter, r *http.Request) {
 		if f.openDiags {
 			writeDiagnostics(t, w, "unknown import")
+			return
+		}
+		if f.openStatus != 0 {
+			w.WriteHeader(f.openStatus)
+			_, err := fmt.Fprintf(w, `{"code":%d,"message":"forbidden","diagnostics":[{"summary":"x"}]}`, f.openStatus)
+			require.NoError(t, err)
 			return
 		}
 		require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"id": "open-draft"}))
@@ -175,26 +186,32 @@ func TestEvaluateChanged(t *testing.T) {
 func TestEvaluateDiagnostics(t *testing.T) {
 	t.Parallel()
 
+	const changed = "values:\n  a: 2\n"
 	cases := []struct {
 		name        string
 		svc         *fakeService
+		definition  string
 		summary     string
 		lastRequest string
 	}{
 		{
-			"draft create", &fakeService{createDiags: true}, "unknown property",
+			"draft create", &fakeService{createDiags: true}, changed, "unknown property",
 			"POST /api/esc/environments/org/proj/env/drafts",
 		},
 		{
-			"draft open", &fakeService{openDiags: true}, "unknown import",
+			"draft open", &fakeService{openDiags: true}, changed, "unknown import",
 			"POST /api/esc/environments/org/proj/env/drafts/cr-1/open",
+		},
+		{
+			"published open", &fakeService{publishedOpenDiags: true}, publishedDefinition, "unknown provider",
+			"POST /api/esc/environments/org/proj/env/versions/7/open",
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			c := tc.svc.newClient(t)
-			got, diags, err := Evaluate(t.Context(), c, "org", "proj", "env", []byte("values:\n  a: 2\n"), time.Hour)
+			got, diags, err := Evaluate(t.Context(), c, "org", "proj", "env", []byte(tc.definition), time.Hour)
 			require.NoError(t, err)
 			assert.Nil(t, got)
 			require.Len(t, diags, 1)
@@ -223,6 +240,17 @@ func TestEvaluateErrors(t *testing.T) {
 		c := svc.newClient(t)
 		_, _, err := Evaluate(t.Context(), c, "org", "proj", "env", []byte(publishedDefinition), time.Hour)
 		require.ErrorContains(t, err, "managed environment proj/env was not found; the stack cannot load its config")
+	})
+
+	t.Run("draft open fails with diagnostics in a non-400 body", func(t *testing.T) {
+		t.Parallel()
+		svc := &fakeService{openStatus: http.StatusForbidden}
+		c := svc.newClient(t)
+		_, diags, err := Evaluate(t.Context(), c, "org", "proj", "env", []byte("values:\n  a: 2\n"), time.Hour)
+		assert.Nil(t, diags)
+		var apiErr *client.EnvironmentErrorResponse
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, http.StatusForbidden, apiErr.Code)
 	})
 
 	t.Run("draft create fails", func(t *testing.T) {

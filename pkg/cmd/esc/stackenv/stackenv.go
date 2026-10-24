@@ -18,7 +18,9 @@ package stackenv
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -87,6 +89,12 @@ func Evaluate(
 		evaluation.DraftRevision = 0
 		openID, diags, err = c.OpenEnvironmentDraft(
 			ctx, org, project, env, evaluation.ChangeRequestID, &evaluation.DraftRevision, duration)
+	}
+	// The service's 400 for an environment that fails to evaluate carries no code, and the client's open methods
+	// return diagnostics only with a code of 400, so they arrive here as the error.
+	if errResp, ok := errors.AsType[*client.EnvironmentErrorResponse](err); ok && len(errResp.Diagnostics) != 0 &&
+		(errResp.Code == 0 || errResp.Code == http.StatusBadRequest) {
+		return nil, errResp.Diagnostics, nil
 	}
 	if err != nil || len(diags) != 0 {
 		return nil, diags, err
