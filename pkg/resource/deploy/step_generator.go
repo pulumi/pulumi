@@ -2203,7 +2203,8 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 					// This resource might already be pending-delete
 					if dependentResource.Delete {
 						oldViews := sg.deployment.GetOldViews(dependentResource.URN)
-						steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, dependentResource, oldViews))
+						steps = append(steps, NewDeleteReplacementStep(
+							sg.deployment, sg.deletes, dependentResource, false, oldViews))
 					} else {
 						// Check if the resource is protected, if it is we can't do this replacement chain.
 						if dependentResource.Protect && !sg.deployment.opts.IgnoreProtect {
