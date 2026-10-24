@@ -1014,6 +1014,26 @@ func NewEnvironment(envs []string) *Environment {
 	return &Environment{envs: envs}
 }
 
+var (
+	ErrNoManagedDefinition   = errors.New("environment definition must be a YAML mapping with at least one key")
+	ErrJSONManagedDefinition = errors.New("environment definition is JSON, not YAML")
+)
+
+// DefinitionNode returns the environment's definition only if it is a non-empty YAML mapping, the form a stack-managed
+// environment requires. The returned node backs this Environment, so edits to it are saved with the stack file.
+func (e *Environment) DefinitionNode() (*yaml.Node, error) {
+	switch {
+	case e == nil:
+		return nil, ErrNoManagedDefinition
+	case e.message != nil:
+		return nil, ErrJSONManagedDefinition
+	case e.node == nil || e.node.Kind != yaml.MappingNode || len(e.node.Content) == 0:
+		return nil, ErrNoManagedDefinition
+	default:
+		return e.node, nil
+	}
+}
+
 func (e *Environment) Definition() []byte {
 	switch {
 	case e == nil:
