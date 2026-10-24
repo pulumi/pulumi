@@ -37,6 +37,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
 	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -1709,11 +1710,8 @@ func (host *goLanguageHost) Link(
 		return nil, fmt.Errorf("go.mod parse: %w", err)
 	}
 
-	for modulePath, path := range modules {
-		err = gomod.AddReplace(modulePath, "", path, "")
-		if err != nil {
-			return nil, fmt.Errorf("could not add replace statement: %w", err)
-		}
+	if err := addLinkedModules(gomod, modules); err != nil {
+		return nil, err
 	}
 
 	data, err := gomod.Format()
@@ -1728,6 +1726,34 @@ func (host *goLanguageHost) Link(
 	return &pulumirpc.LinkResponse{
 		ImportInstructions: instructions,
 	}, nil
+}
+
+// addLinkedModules adds a replace directive for each linked module to gomod. A replace on its own is not
+// enough for the module to be usable: Go also needs a require for the module, otherwise building fails with
+// "module ... is replaced but not required". So if gomod does not already require the module, also add a require
+// with the zero pseudo-version, which is what `go mod tidy` would add for a module replaced by a local directory.
+func addLinkedModules(gomod *modfile.File, modules map[string]string) error {
+	required := map[string]bool{}
+	for _, r := range gomod.Require {
+		required[r.Mod.Path] = true
+	}
+	for modulePath, path := range modules {
+		if err := gomod.AddReplace(modulePath, "", path, ""); err != nil {
+			return fmt.Errorf("could not add replace statement: %w", err)
+		}
+		if required[modulePath] {
+			continue
+		}
+		major := "v0"
+		if _, pathMajor, ok := module.SplitPathVersion(modulePath); ok && pathMajor != "" {
+			major = module.PathMajorPrefix(pathMajor)
+		}
+		if err := gomod.AddRequire(modulePath, module.ZeroPseudoVersion(major)); err != nil {
+			return fmt.Errorf("could not add require statement: %w", err)
+		}
+		required[modulePath] = true
+	}
+	return nil
 }
 
 func (host *goLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
