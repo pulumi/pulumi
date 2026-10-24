@@ -35,6 +35,11 @@ var (
 	errSecureReprReserved = errors.New(`maps with the single key "secure" are reserved`)
 )
 
+// isReservedName matches ESC, which rejects a single-key object whose key starts with fn:: in any case.
+func isReservedName(k string) bool {
+	return strings.HasPrefix(strings.ToLower(k), functionPrefix)
+}
+
 func escape(s string) string {
 	return strings.ReplaceAll(s, "$", "$$")
 }
@@ -68,6 +73,15 @@ func ValueNode(key config.Key, v config.Value, path bool) (yaml.Node, error) {
 			return yaml.Node{}, err
 		}
 		return secretNode(ciphertext), nil
+	}
+	// The stack reads pulumiConfig through config.NewPlaintext, which panics on a {secure: <string>} mapping, and
+	// config reads that shape anywhere in an object value as a secret, so ToObject would hide it.
+	secrets, err := v.SecureValues(config.NopDecrypter)
+	if err != nil {
+		return yaml.Node{}, err
+	}
+	if len(secrets) != 0 {
+		return yaml.Node{}, errSecureReprReserved
 	}
 
 	// As element 0 of a new array the leaf keeps Map.Set's --path coercion but skips its "secure"-key check, which
@@ -126,13 +140,9 @@ func literalValue(v any) (any, error) {
 		}
 		return out, nil
 	case map[string]any:
-		// The stack reads pulumiConfig through config.NewPlaintext, which panics on a {secure: <string>} mapping.
-		if _, ok := v["secure"].(string); ok && len(v) == 1 {
-			return nil, errSecureReprReserved
-		}
 		out := make(map[string]any, len(v))
 		for k, elem := range v {
-			if strings.HasPrefix(k, functionPrefix) {
+			if isReservedName(k) {
 				return nil, errReservedName
 			}
 			lit, err := literalValue(elem)

@@ -48,11 +48,18 @@ func TestValueNodeObject(t *testing.T) {
 	_, err = ValueNode(key, config.NewObjectValue(`{"b":{"fn::open":"x"}}`), false)
 	require.ErrorContains(t, err, "keys starting with fn:: are reserved in environments")
 
+	_, err = ValueNode(key, config.NewObjectValue(`{"Fn::GetAtt":["a","b"]}`), false)
+	require.ErrorIs(t, err, errReservedName)
+
 	_, err = ValueNode(key, config.NewSecureObjectValue(`{"b":"x"}`), false)
 	require.ErrorContains(t, err, "secret object values are not supported")
 
-	_, err = ValueNode(key, config.NewObjectValue(`{"b":{"secure":"x"}}`), false)
-	require.ErrorContains(t, err, `maps with the single key "secure" are reserved`)
+	for _, object := range []string{`{"secure":"x"}`, `{"b":{"secure":"x"}}`, `{"b":[{"secure":"x"}]}`} {
+		_, err = ValueNode(key, config.NewObjectValue(object), false)
+		require.ErrorIs(t, err, errSecureReprReserved, object)
+	}
+	_, err = ValueNode(config.MustMakeKey("proj", "a.b"), config.NewObjectValue(`{"secure":"x"}`), true)
+	require.ErrorIs(t, err, errSecureReprReserved)
 
 	node, err = ValueNode(key, config.NewObjectValue(`{"b":{"secure":1},"c":{"secure":"x","d":1}}`), false)
 	require.NoError(t, err)
