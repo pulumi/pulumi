@@ -15,8 +15,11 @@
 package stackenv
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -25,8 +28,10 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 const publishedDefinition = "values:\n  a: 1\n"
@@ -35,8 +40,21 @@ type fakeService struct {
 	mu           sync.Mutex
 	requests     []string
 	queries      map[string]string
+	draftBody    []byte
+	draftETag    string
 	notFound     bool
 	createStatus int
+	createDiags  bool
+	openDiags    bool
+}
+
+func writeDiagnostics(t *testing.T, w http.ResponseWriter, summary string) {
+	w.WriteHeader(http.StatusBadRequest)
+	require.NoError(t, json.NewEncoder(w).Encode(client.EnvironmentErrorResponse{
+		Code:        http.StatusBadRequest,
+		Message:     "invalid definition",
+		Diagnostics: []client.EnvironmentDiagnostic{{Summary: summary}},
+	}))
 }
 
 func (f *fakeService) newClient(t *testing.T) client.Client {
@@ -59,6 +77,15 @@ func (f *fakeService) newClient(t *testing.T) client.Client {
 		require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"id": "open-published"}))
 	})
 	mux.HandleFunc("POST "+base+"/drafts", func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		f.mu.Lock()
+		f.draftBody, f.draftETag = body, r.Header.Get("ETag")
+		f.mu.Unlock()
+		if f.createDiags {
+			writeDiagnostics(t, w, "unknown property")
+			return
+		}
 		if f.createStatus != 0 {
 			w.WriteHeader(f.createStatus)
 			_, err := fmt.Fprintf(w, `{"code":%d,"message":"forbidden"}`, f.createStatus)
@@ -72,6 +99,10 @@ func (f *fakeService) newClient(t *testing.T) client.Client {
 		}))
 	})
 	mux.HandleFunc("POST "+base+"/drafts/cr-1/open", func(w http.ResponseWriter, r *http.Request) {
+		if f.openDiags {
+			writeDiagnostics(t, w, "unknown import")
+			return
+		}
 		require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"id": "open-draft"}))
 	})
 	mux.HandleFunc("GET "+base+"/open/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -122,14 +153,55 @@ func TestEvaluateChanged(t *testing.T) {
 	svc := &fakeService{}
 	c := svc.newClient(t)
 
-	got, diags, err := Evaluate(t.Context(), c, "org", "proj", "env", []byte("values:\n  a: 2\n"), time.Hour)
+	definition := []byte("values:\n    a: 2\n")
+	got, diags, err := Evaluate(t.Context(), c, "org", "proj", "env", definition, time.Hour)
 	require.NoError(t, err)
 	require.Empty(t, diags)
 	assert.Equal(t, 7, got.BaseRevision)
 	assert.Equal(t, "cr-1", got.ChangeRequestID)
 	assert.Equal(t, 0, got.DraftRevision)
 	assert.Equal(t, "open-draft", openedID(t, got))
-	assert.Contains(t, svc.queries["/api/esc/environments/org/proj/env/drafts/cr-1/open"], "revision=0")
+	assert.Equal(t, []string{
+		"GET /api/esc/environments/org/proj/env",
+		"POST /api/esc/environments/org/proj/env/drafts",
+		"POST /api/esc/environments/org/proj/env/drafts/cr-1/open",
+		"GET /api/esc/environments/org/proj/env/open/open-draft",
+	}, svc.requests)
+	assert.Equal(t, definition, svc.draftBody)
+	assert.Equal(t, "etag-1", svc.draftETag)
+	assert.Equal(t, "duration=1h0m0s&revision=0", svc.queries["/api/esc/environments/org/proj/env/drafts/cr-1/open"])
+}
+
+func TestEvaluateDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		svc         *fakeService
+		summary     string
+		lastRequest string
+	}{
+		{
+			"draft create", &fakeService{createDiags: true}, "unknown property",
+			"POST /api/esc/environments/org/proj/env/drafts",
+		},
+		{
+			"draft open", &fakeService{openDiags: true}, "unknown import",
+			"POST /api/esc/environments/org/proj/env/drafts/cr-1/open",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			c := tc.svc.newClient(t)
+			got, diags, err := Evaluate(t.Context(), c, "org", "proj", "env", []byte("values:\n  a: 2\n"), time.Hour)
+			require.NoError(t, err)
+			assert.Nil(t, got)
+			require.Len(t, diags, 1)
+			assert.Equal(t, tc.summary, diags[0].Summary)
+			assert.Equal(t, tc.lastRequest, tc.svc.requests[len(tc.svc.requests)-1])
+		})
+	}
 }
 
 func TestEvaluateErrors(t *testing.T) {
@@ -181,6 +253,7 @@ func TestDefinitionsEqual(t *testing.T) {
 			"values:\n  s:\n    fn::secret:\n      ciphertext: abc\n", true,
 		},
 		{"value change", "values:\n  a: 2\n", "values:\n  a: 1\n", false},
+		{"quoted number is a string", "values:\n  a: \"1\"\n", "values:\n  a: 1\n", false},
 		{"comment change", "# note\nvalues:\n  a: 1\n", "values:\n  a: 1\n", false},
 	}
 	for _, tc := range cases {
@@ -189,6 +262,82 @@ func TestDefinitionsEqual(t *testing.T) {
 			got, err := DefinitionsEqual([]byte(tc.local), []byte(tc.published))
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+type noEncrypter struct{}
+
+func (noEncrypter) Encrypt(context.Context, []byte) ([]byte, error) {
+	return nil, errors.New("the definition has no plaintext secrets to encrypt")
+}
+
+// The service saves every draft through eval.EncryptSecrets, which re-encodes the whole document.
+func TestDefinitionsEqualAfterServiceSave(t *testing.T) {
+	t.Parallel()
+
+	const written = `imports:
+  - proj/base
+values:
+  # comment
+  host: ${base.host}
+  port: "8080"
+  enabled: "true"
+  list: [1, 2]
+  obj: {p: q}
+  script: |
+    line1
+    line2
+  token:
+    fn::secret:
+      ciphertext: ZXhhbXBsZQ==
+  joined:
+    fn::join: [",", [a, b]]
+  pulumiConfig:
+    proj:key: value # trailing
+`
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(written), &node))
+	marshaled, err := yaml.Marshal(&node)
+	require.NoError(t, err)
+	require.NotEqual(t, written, string(marshaled))
+
+	for name, local := range map[string][]byte{"as written": []byte(written), "as the CLI marshals it": marshaled} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			published, err := eval.EncryptSecrets(t.Context(), "proj/env", local, noEncrypter{})
+			require.NoError(t, err)
+			equal, err := DefinitionsEqual(local, published)
+			require.NoError(t, err)
+			assert.True(t, equal, "published:\n%s", published)
+		})
+	}
+}
+
+func TestRejectPlaintextSecrets(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		definition string
+		wantErr    string
+	}{
+		{"nested in a list", "values:\n  list:\n    - fn::secret: hunter2\n", "plaintext secret at values.list[0]"},
+		{
+			"interpolated, which the service encrypts as a literal",
+			"values:\n  s:\n    fn::secret: ${a.b}\n", "plaintext secret at values.s",
+		},
+		{"ciphertext", "values:\n  s:\n    fn::secret:\n      ciphertext: ZXhhbXBsZQ==\n", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			err := rejectPlaintextSecrets([]byte(tc.definition))
+			if tc.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tc.wantErr)
+			}
 		})
 	}
 }
