@@ -19,12 +19,16 @@ import (
 	"io"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCloudBackendReference(t *testing.T) {
@@ -114,4 +118,40 @@ func TestCloudBackendReference(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("%s/%s/%s", defaultOrg, otherProject.Name, stackName), stack)
 		})
 	})
+}
+
+func TestNewStackManagedEnvironmentConfigLocation(t *testing.T) {
+	t.Parallel()
+
+	defaultOrg := &promise.CompletionSource[string]{}
+	defaultOrg.MustFulfill("some-org")
+	b := &cloudBackend{defaultOrg: defaultOrg.Promise()}
+
+	tests := []struct {
+		name    string
+		env     string
+		missing bool
+	}{
+		{name: "unmanaged"},
+		{name: "managed", env: "proj/renamed"},
+		{name: "managed environment missing", env: "proj/renamed", missing: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			stack, err := newStack(t.Context(), apitype.Stack{
+				OrgName:                   "org",
+				ProjectName:               "proj",
+				StackName:                 "dev",
+				ManagedEnvironment:        tt.env,
+				ManagedEnvironmentMissing: tt.missing,
+			}, b)
+			require.NoError(t, err)
+			assert.Equal(t, backend.StackConfigLocation{
+				ManagedEnvironment:        tt.env,
+				ManagedEnvironmentMissing: tt.missing,
+			}, stack.ConfigLocation())
+		})
+	}
 }

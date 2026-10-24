@@ -671,6 +671,12 @@ type Stack struct {
 	// If set, then the stack's configuration is loaded from the cloud and not a file on disk.
 	Config *StackConfig `json:"config,omitempty"`
 
+	// ManagedEnvironment is "<project>/<name>" of the ESC environment the stack publishes its config to.
+	// Empty means the stack is not managed.
+	ManagedEnvironment string `json:"managedEnvironment,omitempty"`
+	// ManagedEnvironmentMissing reports a managed stack whose environment was deleted.
+	ManagedEnvironmentMissing bool `json:"managedEnvironmentMissing,omitempty"`
+
 	Version int `json:"version"`
 }
 

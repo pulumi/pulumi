@@ -121,6 +121,9 @@ type cloudStack struct {
 	tags map[apitype.StackTagName]string
 	// escConfigEnv caches if we expect this stack to have its config stored in an ESC environment.
 	escConfigEnv *string
+
+	managedEnv        string
+	managedEnvMissing bool
 }
 
 func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
@@ -146,20 +149,24 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 			name:       stackName,
 			b:          b,
 		},
-		orgName:          apistack.OrgName,
-		currentOperation: apistack.CurrentOperation,
-		tags:             apistack.Tags,
-		b:                b,
-		escConfigEnv:     escConfigEnv,
+		orgName:           apistack.OrgName,
+		currentOperation:  apistack.CurrentOperation,
+		tags:              apistack.Tags,
+		b:                 b,
+		escConfigEnv:      escConfigEnv,
+		managedEnv:        apistack.ManagedEnvironment,
+		managedEnvMissing: apistack.ManagedEnvironmentMissing,
 	}, nil
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
 
-// ConfigLocation returns the ESC environment of the stack config if applicable.
+// ConfigLocation reports the stack's remote-config and managed ESC environments, if any.
 func (s *cloudStack) ConfigLocation() backend.StackConfigLocation {
 	return backend.StackConfigLocation{
-		IsRemote: s.escConfigEnv != nil,
-		EscEnv:   s.escConfigEnv,
+		IsRemote:                  s.escConfigEnv != nil,
+		EscEnv:                    s.escConfigEnv,
+		ManagedEnvironment:        s.managedEnv,
+		ManagedEnvironmentMissing: s.managedEnvMissing,
 	}
 }
 

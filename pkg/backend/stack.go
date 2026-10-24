@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"maps"
 	"path/filepath"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -38,13 +39,26 @@ type StackConfigLocation struct {
 	IsRemote bool
 	// EscEnv is the optional name of an ESC Environment being used to store the stack's configuration.
 	EscEnv *string
+	// ManagedEnvironment is "<project>/<name>" of the ESC environment the stack publishes its config to on
+	// update. Empty means the stack is not managed.
+	ManagedEnvironment string
+	// ManagedEnvironmentMissing reports a managed stack whose environment was deleted.
+	ManagedEnvironmentMissing bool
+}
+
+// ManagedEnvironmentRef returns the managed environment's project and name, which can differ from the stack's after
+// a rename.
+func (l StackConfigLocation) ManagedEnvironmentRef() (project string, name string) {
+	project, name, _ = strings.Cut(l.ManagedEnvironment, "/")
+	return project, name
 }
 
 // Stack is used to manage stacks of resources against a pluggable backend.
 type Stack interface {
 	// Ref returns this stack's identity.
 	Ref() StackReference
-	// ConfigLocation indicates if the backend has configuration stored independent of the local file stack config.
+	// ConfigLocation reports whether the stack's configuration is stored remotely and whether the stack manages an ESC
+	// environment.
 	ConfigLocation() StackConfigLocation
 	// LoadRemoteConfig the stack's configuration remotely from the backend.
 	LoadRemoteConfig(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)

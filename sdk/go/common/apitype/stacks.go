@@ -68,12 +68,18 @@ type CreateStackRequest struct {
 	State *UntypedDeployment `json:"state,omitempty"`
 
 	Config *StackConfig `json:"config,omitempty"`
+
+	// ManagedEnvironment asks the service to create an ESC environment that the stack manages.
+	ManagedEnvironment bool `json:"managedEnvironment,omitempty"`
 }
 
 // CreateStackResponse is the response from a create Stack request.
 type CreateStackResponse struct {
 	// Messages is a list of messages that should be displayed to the user.
 	Messages []Message `json:"messages,omitempty"`
+
+	// ManagedEnvironment is "<project>/<name>" of the ESC environment created for the stack, if any.
+	ManagedEnvironment string `json:"managedEnvironment,omitempty"`
 }
 
 // EncryptValueRequest defines the request body for encrypting a value.
