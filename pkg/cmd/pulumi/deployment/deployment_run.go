@@ -151,6 +151,6 @@ func deploymentRunError(
 	}
 
 	return fmt.Errorf("no deployment settings are configured for stack %s.\n"+
-		"Configure them with 'pulumi deployment settings init', or pass a repo URL: "+
+		"Configure them with 'pulumi deployment settings edit', or pass a repo URL: "+
 		"'pulumi deployment run %s <git-url>'.", stack, operation)
 }
