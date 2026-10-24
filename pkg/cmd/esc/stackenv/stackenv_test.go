@@ -16,6 +16,7 @@ package stackenv
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -31,10 +32,11 @@ import (
 const publishedDefinition = "values:\n  a: 1\n"
 
 type fakeService struct {
-	mu       sync.Mutex
-	requests []string
-	queries  map[string]string
-	notFound bool
+	mu           sync.Mutex
+	requests     []string
+	queries      map[string]string
+	notFound     bool
+	createStatus int
 }
 
 func (f *fakeService) newClient(t *testing.T) client.Client {
@@ -57,6 +59,12 @@ func (f *fakeService) newClient(t *testing.T) client.Client {
 		require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"id": "open-published"}))
 	})
 	mux.HandleFunc("POST "+base+"/drafts", func(w http.ResponseWriter, r *http.Request) {
+		if f.createStatus != 0 {
+			w.WriteHeader(f.createStatus)
+			_, err := fmt.Fprintf(w, `{"code":%d,"message":"forbidden"}`, f.createStatus)
+			require.NoError(t, err)
+			return
+		}
 		// A concurrent PATCH may have made the create response report a later revision.
 		require.NoError(t, json.NewEncoder(w).Encode(client.CreateEnvironmentDraftResponse{
 			ChangeRequestID:      "cr-1",
@@ -143,6 +151,17 @@ func TestEvaluateErrors(t *testing.T) {
 		c := svc.newClient(t)
 		_, _, err := Evaluate(t.Context(), c, "org", "proj", "env", []byte(publishedDefinition), time.Hour)
 		require.ErrorContains(t, err, "managed environment proj/env was not found; the stack cannot load its config")
+	})
+
+	t.Run("draft create fails", func(t *testing.T) {
+		t.Parallel()
+		svc := &fakeService{createStatus: http.StatusForbidden}
+		c := svc.newClient(t)
+		_, _, err := Evaluate(t.Context(), c, "org", "proj", "env", []byte("values:\n  a: 2\n"), time.Hour)
+		require.ErrorContains(t, err, "creating a draft of managed environment proj/env: ")
+		var apiErr *client.EnvironmentErrorResponse
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, http.StatusForbidden, apiErr.Code)
 	})
 }
 

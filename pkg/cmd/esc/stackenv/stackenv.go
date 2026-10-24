@@ -78,8 +78,11 @@ func Evaluate(
 		openID, diags, err = c.OpenEnvironment(ctx, org, project, env, strconv.Itoa(revision), duration)
 	} else {
 		evaluation.ChangeRequestID, diags, err = c.CreateEnvironmentDraft(ctx, org, project, env, definition, etag)
-		if err != nil || len(diags) != 0 {
-			return nil, diags, err
+		if err != nil {
+			return nil, nil, fmt.Errorf("creating a draft of managed environment %s/%s: %w", project, env, err)
+		}
+		if len(diags) != 0 {
+			return nil, diags, nil
 		}
 		evaluation.DraftRevision = 0
 		openID, diags, err = c.OpenEnvironmentDraft(
