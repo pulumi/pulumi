@@ -1590,6 +1590,20 @@ func isPulumiInterfaceType(typeName string) bool {
 	return false
 }
 
+// optionalPrimitive reports whether t is an optional string, number, int, or bool.
+// Those are the primitives whose Go optional output is a pointer output.
+func optionalPrimitive(t model.Type) bool {
+	if !model.IsOptionalType(t) {
+		return false
+	}
+	switch pcl.UnwrapOption(t) {
+	case model.StringType, model.NumberType, model.IntType, model.BoolType:
+		return true
+	default:
+		return false
+	}
+}
+
 // argumentTypeName computes the go type for the given model type.
 func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result string) {
 	if cns, ok := destType.(*model.ConstType); ok {
@@ -1776,6 +1790,14 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			isResourceTypeName := argTypeName == "pulumi.Resource" || argTypeName == "pulumi.ProviderResource"
 			if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 				if argTypeName == "pulumi.Any" {
+					return "pulumi.Array"
+				}
+				// Optional string, number, int, and bool outputs are pointer outputs
+				// (StringPtrOutput and the other Ptr outputs). They do not implement
+				// the non-pointer input interface, and the SDK has no pointer-element
+				// array type such as StringPtrArray. Optional lists, maps, and objects
+				// are not pointer outputs, so they keep a typed array name.
+				if optionalPrimitive(model.ResolveOutputs(elmType)) {
 					return "pulumi.Array"
 				}
 				return argTypeName + "Array"
