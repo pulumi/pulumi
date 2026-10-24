@@ -171,6 +171,9 @@ func NewUpCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		if err := rejectConfigFlagsOnManagedStack(s, configArray, configFile); err != nil {
+			return err
+		}
 
 		// Save any config values passed via flags.
 		if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path, configFile); err != nil {
@@ -386,6 +389,11 @@ func NewUpCmd() *cobra.Command {
 		if stackName != "" {
 			if s, name, description, err = newcmd.GetStack(ctx, b, stackName, opts.Display); err != nil {
 				return err
+			}
+			if s != nil {
+				if err = rejectTemplateUpOnManagedStack(s); err != nil {
+					return err
+				}
 			}
 		}
 

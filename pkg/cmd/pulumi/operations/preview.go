@@ -501,6 +501,9 @@ func NewPreviewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err = rejectConfigFlagsOnManagedStack(s, configArray, configFile); err != nil {
+				return err
+			}
 
 			// Save any config values passed via flags.
 			if err = parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, configPath, configFile); err != nil {
