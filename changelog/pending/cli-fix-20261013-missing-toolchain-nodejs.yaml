@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: fix
+body: Report a missing `node` or `bun` executable before the program runs, with one message that names the toolchain and links to install instructions, instead of as an unhandled program error
+time: 2026-10-13T10:02:00.000000+01:00

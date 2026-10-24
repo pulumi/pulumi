@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -148,6 +149,21 @@ func TestCommandNoVenv(t *testing.T) {
 	require.Equal(t, globalPython, cmd.Path, "Toolchain should use the global python executable")
 
 	require.Nil(t, cmd.Env)
+}
+
+func TestCommandPathNotFound(t *testing.T) {
+	if runtime.GOOS == windows {
+		t.Skip("Windows falls back to the app execution alias")
+	}
+	t.Setenv("PATH", t.TempDir())
+	t.Setenv("PULUMI_PYTHON_CMD", "")
+
+	_, _, err := CommandPath()
+	var notFound *executable.ToolchainNotFoundError
+	require.ErrorAs(t, err, &notFound)
+	assert.Equal(t, "the python runtime requires Python 3.10 or later, but none of 'python3', 'python' was found "+
+		"on your PATH. See https://www.pulumi.com/docs/iac/languages-sdks/python/ for installation instructions",
+		err.Error())
 }
 
 func TestCommandPulumiPythonCommand(t *testing.T) {
