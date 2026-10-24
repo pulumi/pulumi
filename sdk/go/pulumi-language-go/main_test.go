@@ -30,6 +30,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -548,4 +549,53 @@ func main() {
 		require.ErrorContains(t, err, "unable to run `go build`: exit status 1")
 		require.Contains(t, stderr.String(), "main.go:3:1: syntax error")
 	})
+}
+
+func TestAddLinkedModules(t *testing.T) {
+	t.Parallel()
+
+	gomodContent := `module example
+
+go 1.24
+
+require github.com/pulumi/pulumi/sdk/v3 v3.200.0
+`
+	gomod, err := modfile.Parse("go.mod", []byte(gomodContent), nil)
+	require.NoError(t, err)
+
+	err = addLinkedModules(gomod, map[string]string{
+		"github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3": "./sdks/random",
+		"example.com/unversioned":         "./sdks/unversioned",
+		"github.com/pulumi/pulumi/sdk/v3": "./sdks/pulumi",
+	})
+	require.NoError(t, err)
+
+	requires := map[string]string{}
+	for _, r := range gomod.Require {
+		requires[r.Mod.Path] = r.Mod.Version
+	}
+	assert.Equal(t, map[string]string{
+		// Already required, so the existing version is kept.
+		"github.com/pulumi/pulumi/sdk/v3": "v3.200.0",
+		// Not required before, so a require with the zero pseudo-version is added, like `go mod tidy` does.
+		"github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3": "v3.0.0-00010101000000-000000000000",
+		"example.com/unversioned": "v0.0.0-00010101000000-000000000000",
+	}, requires)
+
+	replaces := map[string]string{}
+	for _, r := range gomod.Replace {
+		replaces[r.Old.Path] = r.New.Path
+	}
+	assert.Equal(t, map[string]string{
+		"github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3": "./sdks/random",
+		"example.com/unversioned":         "./sdks/unversioned",
+		"github.com/pulumi/pulumi/sdk/v3": "./sdks/pulumi",
+	}, replaces)
+
+	// Running it again (for example when linking the same package twice) does not add duplicate requires.
+	err = addLinkedModules(gomod, map[string]string{
+		"github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3": "./sdks/random",
+	})
+	require.NoError(t, err)
+	require.Len(t, gomod.Require, 3)
 }

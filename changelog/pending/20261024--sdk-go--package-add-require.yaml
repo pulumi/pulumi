@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Add a `require` for linked SDKs in `go.mod` so Go programs build right after `pulumi package add`
+time: 2026-10-24T00:00:00Z
