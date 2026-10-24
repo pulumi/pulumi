@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -95,21 +96,19 @@ func TestSnippetReferenceValue(t *testing.T) {
 	urn := resource.URN("urn:pulumi:stack::project::pkg:index:parent$pkg:index:res::name")
 	value := snippetReferenceValue(urn, URNRegistration{
 		ID: "id",
-		Outputs: resource.PropertyMap{
-			"output": resource.NewProperty("value"),
-		},
+		Outputs: property.NewMap(map[string]property.Value{
+			"output": property.New("value"),
+		}),
 	})
 
-	output := value.OutputValue()
-	require.True(t, output.Known)
-	require.Equal(t, []resource.URN{urn}, output.Dependencies)
-	require.Equal(t, resource.PropertyMap{
-		"output": resource.NewProperty("value"),
-		"urn":    resource.NewProperty(string(urn)),
-		"id":     resource.NewProperty("id"),
-		"__name": resource.NewProperty("name"),
-		"__type": resource.NewProperty("pkg:index:res"),
-	}, output.Element.ObjectValue())
+	require.Equal(t, []resource.URN{urn}, value.Dependencies())
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"output": property.New("value"),
+		"urn":    property.New(string(urn)),
+		"id":     property.New("id"),
+		"__name": property.New("name"),
+		"__type": property.New("pkg:index:res"),
+	}), value)
 }
 
 func TestSnippetSourceRequiresObserver(t *testing.T) {
