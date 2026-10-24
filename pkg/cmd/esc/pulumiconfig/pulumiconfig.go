@@ -247,14 +247,13 @@ func prepareContainers(syntax encoding.YAMLSyntax, full resource.PropertyPath) e
 }
 
 // Remove deletes the path inside every pulumiConfig entry named by names, or the whole entries when path is empty.
-// It reports whether anything was removed.
-func Remove(def *yaml.Node, names []string, path resource.PropertyPath) (removed bool, err error) {
+func Remove(def *yaml.Node, names []string, path resource.PropertyPath) error {
 	if err := checkNames(names, path); err != nil {
-		return false, err
+		return err
 	}
 	pc, err := pulumiConfigNode(def, false)
 	if err != nil || pc == nil {
-		return false, err
+		return err
 	}
 	syntax := encoding.YAMLSyntax{Node: pc}
 	var targets []resource.PropertyPath
@@ -264,17 +263,16 @@ func Remove(def *yaml.Node, names []string, path resource.PropertyPath) (removed
 			continue
 		}
 		if len(path) > 0 && removeLeavesLoneSecureKey(syntax, full) {
-			return false, errSecureReprReserved
+			return errSecureReprReserved
 		}
 		targets = append(targets, full)
 	}
 	for _, full := range targets {
 		if err := syntax.Delete(nil, full); err != nil {
-			return removed, err
+			return err
 		}
-		removed = true
 	}
-	return removed, nil
+	return nil
 }
 
 func removeLeavesLoneSecureKey(syntax encoding.YAMLSyntax, full resource.PropertyPath) bool {

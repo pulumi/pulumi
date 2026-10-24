@@ -326,43 +326,38 @@ func TestRemove(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		in      string
-		names   []string
-		path    string
-		removed bool
-		out     string
-		err     string
+		name  string
+		in    string
+		names []string
+		path  string
+		out   string
+		err   string
 	}{
 		{
-			name:    "entry keeps sibling comments",
-			in:      "values:\n  pulumiConfig:\n    # a\n    proj:a: x\n    # b\n    proj:b: val\n",
-			names:   []string{"proj:a"},
-			removed: true,
-			out:     "values:\n  pulumiConfig:\n    # b\n    proj:b: val\n",
+			name:  "entry keeps sibling comments",
+			in:    "values:\n  pulumiConfig:\n    # a\n    proj:a: x\n    # b\n    proj:b: val\n",
+			names: []string{"proj:a"},
+			out:   "values:\n  pulumiConfig:\n    # b\n    proj:b: val\n",
 		},
 		{
-			name:    "every spelling is removed",
-			in:      "values:\n  pulumiConfig:\n    a: x\n    proj:a: y\n    proj:b: z\n",
-			names:   []string{"proj:a", "a"},
-			removed: true,
-			out:     "values:\n  pulumiConfig:\n    proj:b: z\n",
+			name:  "every spelling is removed",
+			in:    "values:\n  pulumiConfig:\n    a: x\n    proj:a: y\n    proj:b: z\n",
+			names: []string{"proj:a", "a"},
+			out:   "values:\n  pulumiConfig:\n    proj:b: z\n",
 		},
 		{
-			name:    "list element",
-			in:      "values:\n  pulumiConfig:\n    proj:a:\n      - one\n      - two\n",
-			names:   []string{"proj:a"},
-			path:    "[0]",
-			removed: true,
-			out:     "values:\n  pulumiConfig:\n    proj:a:\n      - two\n",
+			name:  "list element",
+			in:    "values:\n  pulumiConfig:\n    proj:a:\n      - one\n      - two\n",
+			names: []string{"proj:a"},
+			path:  "[0]",
+			out:   "values:\n  pulumiConfig:\n    proj:a:\n      - two\n",
 		},
 		{
-			name:    "map member",
-			in:      "values:\n  pulumiConfig:\n    proj:a:\n      b: 1\n      c: 2\n",
-			names:   []string{"proj:a"},
-			path:    "b",
-			removed: true,
-			out:     "values:\n  pulumiConfig:\n    proj:a:\n      c: 2\n",
+			name:  "map member",
+			in:    "values:\n  pulumiConfig:\n    proj:a:\n      b: 1\n      c: 2\n",
+			names: []string{"proj:a"},
+			path:  "b",
+			out:   "values:\n  pulumiConfig:\n    proj:a:\n      c: 2\n",
 		},
 		{
 			name:  "map member leaving a lone secure string",
@@ -381,12 +376,11 @@ func TestRemove(t *testing.T) {
 			err:   `maps with the single key "secure" are reserved`,
 		},
 		{
-			name:    "map member leaving a lone secure bool",
-			in:      "values:\n  pulumiConfig:\n    proj:a:\n      b: 1\n      secure: true\n",
-			names:   []string{"proj:a"},
-			path:    "b",
-			removed: true,
-			out:     "values:\n  pulumiConfig:\n    proj:a:\n      secure: true\n",
+			name:  "map member leaving a lone secure bool",
+			in:    "values:\n  pulumiConfig:\n    proj:a:\n      b: 1\n      secure: true\n",
+			names: []string{"proj:a"},
+			path:  "b",
+			out:   "values:\n  pulumiConfig:\n    proj:a:\n      secure: true\n",
 		},
 		{
 			name:  "missing parent is a no-op",
@@ -414,12 +408,11 @@ func TestRemove(t *testing.T) {
 			out:   "values:\n  pulumiConfig:\n",
 		},
 		{
-			name:    "escaped path segment",
-			in:      "values:\n  pulumiConfig:\n    proj:a:\n      $$: 1\n      c: 2\n",
-			names:   []string{"proj:a"},
-			path:    `["$"]`,
-			removed: true,
-			out:     "values:\n  pulumiConfig:\n    proj:a:\n      c: 2\n",
+			name:  "escaped path segment",
+			in:    "values:\n  pulumiConfig:\n    proj:a:\n      $$: 1\n      c: 2\n",
+			names: []string{"proj:a"},
+			path:  `["$"]`,
+			out:   "values:\n  pulumiConfig:\n    proj:a:\n      c: 2\n",
 		},
 	}
 
@@ -428,18 +421,17 @@ func TestRemove(t *testing.T) {
 			t.Parallel()
 
 			doc := parse(t, tt.in)
-			removed, err := Remove(doc, tt.names, mustPath(t, tt.path))
+			err := Remove(doc, tt.names, mustPath(t, tt.path))
 			if tt.err != "" {
 				require.ErrorContains(t, err, tt.err)
 			} else {
 				require.NoError(t, err)
 			}
-			assert.Equal(t, tt.removed, removed)
 			assert.Equal(t, tt.out, render(t, doc))
 		})
 	}
 
-	_, err := Remove(parse(t, "values:\n  pulumiConfig:\n    proj:a: x\n"), []string{"proj:a"}, mustPath(t, `["fn::x"]`))
+	err := Remove(parse(t, "values:\n  pulumiConfig:\n    proj:a: x\n"), []string{"proj:a"}, mustPath(t, `["fn::x"]`))
 	require.ErrorIs(t, err, errReservedName)
 }
 
