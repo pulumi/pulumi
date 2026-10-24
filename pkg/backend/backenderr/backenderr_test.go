@@ -25,3 +25,41 @@ func TestNotFoundErrorIs(t *testing.T) {
 	t.Parallel()
 	assert.ErrorIs(t, ErrNotFound, registry.ErrNotFound)
 }
+
+func TestStackNotFoundError(t *testing.T) {
+	t.Parallel()
+
+	assert.EqualError(t,
+		StackNotFoundError{StackName: "dev"},
+		"no stack named 'dev' found")
+	assert.EqualError(t,
+		StackNotFoundError{StackName: "dev", OfferCreate: true},
+		"no stack named 'dev' found; use `pulumi stack select dev --create` to create it")
+}
+
+func TestNoStackSelectedError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		hasStacks bool
+		expected  string
+	}{
+		{
+			name:     "no stacks exist",
+			expected: "no stack selected; use `pulumi stack init <name>` to create one",
+		},
+		{
+			name:      "stacks exist",
+			hasStacks: true,
+			expected: "no stack selected; use `pulumi stack select <name>` to choose one " +
+				"(list available stacks with `pulumi stack ls`)",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.EqualError(t, NoStackSelectedError{HasStacks: tt.hasStacks}, tt.expected)
+		})
+	}
+}
