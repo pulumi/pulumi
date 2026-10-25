@@ -262,37 +262,47 @@ func (dg *DependencyGraph) Contains(res *pkgresource.State) bool {
 
 // `TransitiveDependenciesOf` calculates the set of resources upon which the given resource depends, directly or
 // indirectly. This includes the resource's provider, parent, any resources in the `Dependencies` list, any resources in
-// the `PropertyDependencies` map, and any resource referenced by the `DeletedWith` field.
+// the `PropertyDependencies` map, and any resource referenced by the `DeletedWith` or `ReplaceWith` fields.
 //
-// This function is linear in the number of resources in the `DependencyGraph`.
+// This function is linear in the number of resources and dependencies in the `DependencyGraph`.
 func (dg *DependencyGraph) TransitiveDependenciesOf(r *pkgresource.State) mapset.Set[*pkgresource.State] {
+	dependencies := mapset.NewSet[*pkgresource.State]()
+	index, ok := dg.index[r]
+	if !ok {
+		return dependencies
+	}
+
 	// When traversing dependencies, we'll need to look them up by URN. It is possible that the same URN exists multiple
 	// times in a dependency graph: in the case that the graph represents the state mid-way through one or more
 	// replacements, both the old and new resources could appear. Dependencies between old and new resources are
 	// permitted, so it's important that we know which is which and don't disambiguate by URN alone. To this end we keep
 	// track of two lookup tables -- old resources (identifiable by their Delete flag being set) and new resources.
 	//
-	// NOTE: In the event of multiple old resources with the same URN, we can only implement a best-effort approach to
-	// sorting, since there is technically no way to disambiguate.
-	oldsByURN := map[resource.URN]*node{}
-	newsByURN := map[resource.URN]*node{}
-	for _, gr := range dg.resources {
+	// Multiple old resources with the same URN cannot be disambiguated, so retain all of them.
+	oldsByURN := map[resource.URN][]*node{}
+	newsByURN := map[resource.URN][]*node{}
+	var rn *node
+	for i, gr := range dg.resources {
+		n := &node{resource: gr}
+		if i == index {
+			rn = n
+		}
 		if gr.Delete {
-			oldsByURN[gr.URN] = &node{resource: gr}
+			oldsByURN[gr.URN] = append(oldsByURN[gr.URN], n)
 		} else {
-			newsByURN[gr.URN] = &node{resource: gr}
+			newsByURN[gr.URN] = append(newsByURN[gr.URN], n)
 		}
 	}
 
 	// A helper function for looking up a dependency of a resource by URN. As mentioned above, URN alone is not a unique
 	// key as a resource may exist in both old and new forms. We proceed as follows:
 	//
-	// * If there are both old and new resources with the same URN, and we are old, we take the old one. Since we are old,
+	// * If there are both old and new resources with the same URN, and we are old, we take the old ones. Since we are old,
 	//   there is no way we could refer to a new state (since that state didn't exist when we were last updated).
 	// * If there are both old and new resources with the same URN, and we are new, we take the new one; it would be
 	//   invalid for us to refer to the old state since it is going to be deleted.
-	// * If there is only one resource with the given URN, we take it.
-	lookup := func(from *pkgresource.State, urn resource.URN) *node {
+	// * If there are only old or only new resources with the given URN, we take them.
+	lookup := func(from *pkgresource.State, urn resource.URN) []*node {
 		old, hasOld := oldsByURN[urn]
 		new, hasNew := newsByURN[urn]
 		if hasOld && hasNew {
@@ -310,27 +320,24 @@ func (dg *DependencyGraph) TransitiveDependenciesOf(r *pkgresource.State) mapset
 		return nil
 	}
 
-	dependencies := mapset.NewSet[*pkgresource.State]()
-
-	rn := lookup(r, r.URN)
-	if rn == nil {
-		return dependencies
-	}
-
 	markAsDependency(rn, lookup)
-	for _, r := range oldsByURN {
-		if r.marked {
-			dependencies.Add(r.resource)
+	for _, nodes := range oldsByURN {
+		for _, n := range nodes {
+			if n.marked {
+				dependencies.Add(n.resource)
+			}
 		}
 	}
-	for _, r := range newsByURN {
-		if r.marked {
-			dependencies.Add(r.resource)
+	for _, nodes := range newsByURN {
+		for _, n := range nodes {
+			if n.marked {
+				dependencies.Add(n.resource)
+			}
 		}
 	}
 
 	// We don't want to include `r` as its own dependency.
-	dependencies.Remove(r)
+	dependencies.Remove(rn.resource)
 	return dependencies
 }
 
@@ -358,36 +365,25 @@ func (dg *DependencyGraph) ParentsOf(res *pkgresource.State) []*pkgresource.Stat
 	return parents
 }
 
-// Mark a resource and its provider, parent, dependencies, property dependencies, and deletion dependencies, as a
-// dependency. This is a helper function for `TransitiveDependenciesOf`.
-func markAsDependency(r *node, lookup func(*pkgresource.State, resource.URN) *node) {
-	for {
-		r.marked = true
-		provider, allDeps := r.resource.GetAllDependencies()
-		if provider != "" {
-			ref, err := providers.ParseReference(provider)
-			contract.AssertNoErrorf(err, "cannot parse provider reference %q", provider)
+// Mark a resource and its transitive dependencies.
+func markAsDependency(r *node, lookup func(*pkgresource.State, resource.URN) []*node) {
+	if r.marked {
+		return
+	}
+	r.marked = true
+	provider, allDeps := r.resource.GetAllDependencies()
+	if provider != "" {
+		ref, err := providers.ParseReference(provider)
+		contract.AssertNoErrorf(err, "cannot parse provider reference %q", provider)
 
-			p := lookup(r.resource, ref.URN())
+		for _, p := range lookup(r.resource, ref.URN()) {
 			markAsDependency(p, lookup)
 		}
+	}
 
-		for _, dep := range allDeps {
-			if dep.Type == pkgresource.ResourceParent {
-				// We handle parents later on, so we won't include them here.
-				continue
-			}
-
-			d := lookup(r.resource, dep.URN)
+	for _, dep := range allDeps {
+		for _, d := range lookup(r.resource, dep.URN) {
 			markAsDependency(d, lookup)
-		}
-
-		// If the resource's parent is already marked, we don't need to continue to traverse. All nodes above its parent
-		// will have already been marked. This is a property of the set of resources being topologically sorted.
-		if p := lookup(r.resource, r.resource.Parent); p != nil && !p.marked {
-			r = p
-		} else {
-			break
 		}
 	}
 }

@@ -246,14 +246,10 @@ func TestDestroyWithUntargetedPendingDelete(t *testing.T) {
 	require.Equal(t, true, snap.Resources[0].Delete)
 }
 
-// The state holds two pending-delete copies of parent, one before and one after its protected child. The destroy
-// cannot delete the child, but deletes the first copy of parent, which leaves the child before the only remaining
-// copy of its parent.
+// A failed delete of a protected child must preserve both pending-delete copies of its parent, including the
+// copy that precedes the child in the snapshot.
 func TestDestroyProtectedChildOfDuplicatePendingDeleteParent(t *testing.T) {
 	t.Parallel()
-
-	// TODO[https://github.com/pulumi/pulumi/issues/25004]: Fix the underlying issue and re-enable this test.
-	t.Skip("Skipping: destroy deletes a pending-delete parent copy that precedes its protected child")
 
 	p := &lt.TestPlan{
 		Project: "test-project",
@@ -312,14 +308,24 @@ func TestDestroyProtectedChildOfDuplicatePendingDeleteParent(t *testing.T) {
 	})
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
-	opts := lt.TestUpdateOptions{
-		T:                t,
-		HostF:            hostF,
-		SkipDisplayTests: true,
-	}
+	for name, op := range map[string]lt.TestOp{
+		"destroy":   Destroy,
+		"destroyV2": DestroyV2,
+		"update":    Update,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-	_, err := lt.TestOp(Destroy).RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
-	require.ErrorContains(t, err, "cannot be deleted")
-	_, isSIE := snapshot.AsSnapshotIntegrityError(err)
-	require.False(t, isSIE, "unexpected snapshot integrity error: %v", err)
+			opts := lt.TestUpdateOptions{
+				T:                t,
+				HostF:            hostF,
+				SkipDisplayTests: true,
+			}
+
+			_, err := op.RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+			require.ErrorContains(t, err, "cannot be deleted")
+			_, isSIE := snapshot.AsSnapshotIntegrityError(err)
+			require.False(t, isSIE, "unexpected snapshot integrity error: %v", err)
+		})
+	}
 }

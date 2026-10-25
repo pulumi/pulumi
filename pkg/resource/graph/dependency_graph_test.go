@@ -908,6 +908,19 @@ func TestDependencyGraph(t *testing.T) {
 	t.Run("TransitiveDependenciesOf", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("duplicate pending deletes", func(t *testing.T) {
+			t.Parallel()
+
+			dependency := &pkgresource.State{URN: "dependency"}
+			first := &pkgresource.State{URN: "parent", Delete: true, Dependencies: []resource.URN{dependency.URN}}
+			child := &pkgresource.State{URN: "child", Parent: first.URN}
+			second := &pkgresource.State{URN: first.URN, Delete: true, Dependencies: []resource.URN{child.URN}}
+			graph := NewDependencyGraph([]*pkgresource.State{dependency, first, child, second})
+
+			assertSameSets(t, mapset.NewSet(dependency, first, second), graph.TransitiveDependenciesOf(child))
+			assertSameSets(t, mapset.NewSet(dependency), graph.TransitiveDependenciesOf(first))
+		})
+
 		t.Run("providerA", func(t *testing.T) {
 			t.Parallel()
 
