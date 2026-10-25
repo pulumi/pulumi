@@ -966,7 +966,8 @@ func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
 
 	got := <-getterDone
 	require.NoError(t, got.err)
-	require.Equal(t, expectedOutputs, got.reg.Outputs, "observer should have received the registered outputs")
+	require.Equal(t, resource.FromResourcePropertyMap(expectedOutputs),
+		got.reg.Outputs, "observer should have received the registered outputs")
 	require.Equal(t, resource.ID("id1"), got.reg.ID, "observer should have received the registered ID")
 }
 
@@ -1235,7 +1236,7 @@ func TestRegistrationObserverComponentResolvedAtRegisterResourceOutputs(t *testi
 	// After both RegisterResource and RegisterResourceOutputs have run, the observer should resolve.
 	got, err := observeRegistration(observer, expectedURN).Result(t.Context())
 	require.NoError(t, err)
-	require.Equal(t, expectedOutputs, got.Outputs, "observer should publish ROC outputs")
+	require.Equal(t, resource.FromResourcePropertyMap(expectedOutputs), got.Outputs, "observer should publish ROC outputs")
 	require.Equal(t, resource.ID(""), got.ID, "component ID should be empty")
 }
 
@@ -1391,7 +1392,7 @@ func TestRegistrationObserverCustomResourceAliasesArePublished(t *testing.T) {
 	for _, urn := range []resource.URN{canonicalURN, aliasURN} {
 		got, err := observeRegistration(observer, urn).Result(t.Context())
 		require.NoError(t, err, "observe %s", urn)
-		require.Equal(t, expectedOutputs, got.Outputs, "outputs for %s", urn)
+		require.Equal(t, resource.FromResourcePropertyMap(expectedOutputs), got.Outputs, "outputs for %s", urn)
 		require.Equal(t, resource.ID("id1"), got.ID, "id for %s", urn)
 	}
 }
@@ -1449,7 +1450,8 @@ func TestRegistrationObserverComponentAliasesArePublishedAtROC(t *testing.T) {
 	for _, urn := range []resource.URN{canonicalURN, aliasURN} {
 		got, err := observeRegistration(observer, urn).Result(t.Context())
 		require.NoError(t, err, "observe %s", urn)
-		require.Equal(t, expectedOutputs, got.Outputs, "outputs for %s should be the ROC outputs", urn)
+		require.Equal(t, resource.FromResourcePropertyMap(expectedOutputs),
+			got.Outputs, "outputs for %s should be the ROC outputs", urn)
 		require.Equal(t, resource.ID(""), got.ID, "component %s ID should be empty", urn)
 	}
 }
