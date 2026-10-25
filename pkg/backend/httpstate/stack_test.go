@@ -128,30 +128,25 @@ func TestNewStackManagedEnvironmentConfigLocation(t *testing.T) {
 	b := &cloudBackend{defaultOrg: defaultOrg.Promise()}
 
 	tests := []struct {
-		name    string
-		env     string
-		missing bool
+		name     string
+		env      *string
+		expected string
 	}{
 		{name: "unmanaged"},
-		{name: "managed", env: "proj/renamed"},
-		{name: "managed environment missing", env: "proj/renamed", missing: true},
+		{name: "managed", env: new("proj/renamed"), expected: "proj/renamed"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			stack, err := newStack(t.Context(), apitype.Stack{
-				OrgName:                   "org",
-				ProjectName:               "proj",
-				StackName:                 "dev",
-				ManagedEnvironment:        tt.env,
-				ManagedEnvironmentMissing: tt.missing,
+				OrgName:            "org",
+				ProjectName:        "proj",
+				StackName:          "dev",
+				ManagedEnvironment: tt.env,
 			}, b)
 			require.NoError(t, err)
-			assert.Equal(t, backend.StackConfigLocation{
-				ManagedEnvironment:        tt.env,
-				ManagedEnvironmentMissing: tt.missing,
-			}, stack.ConfigLocation())
+			assert.Equal(t, backend.StackConfigLocation{ManagedEnvironment: tt.expected}, stack.ConfigLocation())
 		})
 	}
 }

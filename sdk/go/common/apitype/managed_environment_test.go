@@ -32,9 +32,9 @@ func TestManagedEnvironmentJSON(t *testing.T) {
 	}{
 		{
 			name:  "stack",
-			value: Stack{ManagedEnvironment: "proj/env", ManagedEnvironmentMissing: true},
+			value: Stack{ManagedEnvironment: new("proj/env")},
 			expected: `{"id":"","orgName":"","projectName":"","stackName":"","activeUpdate":"","version":0,` +
-				`"managedEnvironment":"proj/env","managedEnvironmentMissing":true}`,
+				`"managedEnvironment":"proj/env"}`,
 		},
 		{
 			name:     "unmanaged stack",

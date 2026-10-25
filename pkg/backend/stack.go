@@ -42,8 +42,6 @@ type StackConfigLocation struct {
 	// ManagedEnvironment is "<project>/<name>" of the ESC environment the stack publishes its config to on
 	// update. Empty means the stack is not managed.
 	ManagedEnvironment string
-	// ManagedEnvironmentMissing reports a managed stack whose environment was deleted.
-	ManagedEnvironmentMissing bool
 }
 
 // ManagedEnvironmentRef returns the managed environment's project and name, which can differ from the stack's after

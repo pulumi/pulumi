@@ -672,10 +672,8 @@ type Stack struct {
 	Config *StackConfig `json:"config,omitempty"`
 
 	// ManagedEnvironment is "<project>/<name>" of the ESC environment the stack publishes its config to.
-	// Empty means the stack is not managed.
-	ManagedEnvironment string `json:"managedEnvironment,omitempty"`
-	// ManagedEnvironmentMissing reports a managed stack whose environment was deleted.
-	ManagedEnvironmentMissing bool `json:"managedEnvironmentMissing,omitempty"`
+	// Nil means the stack is not managed. The service keeps returning the name after the environment is deleted.
+	ManagedEnvironment *string `json:"managedEnvironment,omitempty"`
 
 	Version int `json:"version"`
 }
