@@ -3252,13 +3252,14 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// snippet's References map is rewritten to the canonical URN at snapshot-write time by NormalizeURNReferences.
 	if rm.observer != nil && result.Result == ResultStateSuccess && result.State.URN != "" {
 		if custom {
-			rm.observer.Resolve(result.State.URN, result.State.ID, outputs)
+			outs := resource.FromResourcePropertyMap(outputs)
+			rm.observer.Resolve(result.State.URN, result.State.ID, outs)
 			// Publish under each alias too. We use parsedAliases (the request's aliases) rather than
 			// result.State.Aliases because the Construct path only fills in URN+Outputs on the result, leaving
 			// Aliases empty.
 			for _, alias := range parsedAliases {
 				if aliasURN := alias.GetURN(); aliasURN != "" && aliasURN != result.State.URN {
-					rm.observer.Resolve(aliasURN, result.State.ID, outputs)
+					rm.observer.Resolve(aliasURN, result.State.ID, outs)
 				}
 			}
 		} else if !remote {
@@ -3400,7 +3401,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal output properties: %w", err)
 	}
-	filteredOuts, err := plugin.FilterProperties(rawOuts, plugin.FilterOptions{
+	outs, err := plugin.FilterProperties(rawOuts, plugin.FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
@@ -3409,12 +3410,12 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal output properties: %w", err)
 	}
-	logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs received: urn=%v, #outs=%v", urn, filteredOuts.Len())
+	logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs received: urn=%v, #outs=%v", urn, outs.Len())
 
 	// Now send the step over to the engine to perform.
 	step := &registerResourceOutputsEvent{
 		urn:     urn,
-		outputs: filteredOuts,
+		outputs: outs,
 		done:    make(chan bool),
 	}
 
@@ -3437,7 +3438,6 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	// publish at RegisterResource time and never reach this path; only components (local or remote)
 	// land here. ID is empty for components by construction. Aliases were stashed at register time
 	// and are republished here so consumers blocked on a pre-rename URN find the resource.
-	outs := resource.ToResourcePropertyMap(filteredOuts)
 	if rm.observer != nil {
 		rm.observer.Resolve(urn, "", outs)
 		rm.componentAliasesLock.Lock()
@@ -3450,7 +3450,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	}
 
 	logging.V(5).Infof(
-		"ResourceMonitor.RegisterResourceOutputs operation finished: urn=%v, #outs=%v", urn, len(outs),
+		"ResourceMonitor.RegisterResourceOutputs operation finished: urn=%v, #outs=%v", urn, outs.Len(),
 	)
 	return &emptypb.Empty{}, nil
 }
