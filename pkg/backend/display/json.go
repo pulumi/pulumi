@@ -157,7 +157,8 @@ func ShowJSONEvents(events <-chan engine.StampedEvent, done chan<- bool, opts Op
 	}
 }
 
-// ShowPreviewDigest renders engine events from a preview into a well-formed JSON document. Note that this does not
+// ShowPreviewDigest renders engine events from a preview, including any policy violations, into a well-formed JSON
+// document written to opts.Stdout (or os.Stdout if unset). Note that this does not
 // emit events incrementally so that it can guarantee anything emitted to stdout is well-formed. This means that,
 // if used interactively, the experience will lead to potentially very long pauses. If run in CI, it is up to the
 // end user to ensure that output is periodically printed to prevent tools from thinking preview has hung.
@@ -244,9 +245,21 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 			continue
 
 		// Events occurring late:
-		case engine.PolicyViolationEvent, engine.PolicyLoadEvent, engine.PolicyRemediationEvent,
-			engine.PolicyAnalyzeSummaryEvent, engine.PolicyRemediateSummaryEvent, engine.PolicyAnalyzeStackSummaryEvent:
-			// At this point in time, we don't handle policy events in JSON serialization
+		case engine.PolicyViolationEvent:
+			// Record the violation in the same shape as the streaming JSON policyEvent, eliding all colorization.
+			apiEvent, err := ConvertEngineEvent(e, false /* showSecrets */)
+			if err != nil {
+				logging.V(7).Infof("not adding policy violation as there was an error converting it: %s", err)
+				continue
+			}
+			if p := apiEvent.PolicyEvent; p != nil {
+				p.Message = colors.Never.Colorize(p.Message)
+				p.Color = string(colors.Never)
+				digest.PolicyViolations = append(digest.PolicyViolations, *p)
+			}
+		case engine.PolicyLoadEvent, engine.PolicyRemediationEvent, engine.PolicyAnalyzeSummaryEvent,
+			engine.PolicyRemediateSummaryEvent, engine.PolicyAnalyzeStackSummaryEvent:
+			// Other policy events are not included in the JSON digest.
 			continue
 		case engine.SummaryEvent:
 			// At the end of the preview, a summary event indicates the final conclusions.
@@ -267,7 +280,11 @@ func ShowPreviewDigest(events <-chan engine.Event, done chan<- bool, opts Option
 	// Finally, go ahead and render the JSON to stdout.
 	out, err := json.MarshalIndent(&digest, "", "    ")
 	contract.Assertf(err == nil, "unexpected JSON error: %v", err)
-	fmt.Println(string(out))
+	stdout := opts.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	fmt.Fprintln(stdout, string(out))
 }
 
 // getPreviewMetadataStep constructs a preview step that can be rendered to JSON

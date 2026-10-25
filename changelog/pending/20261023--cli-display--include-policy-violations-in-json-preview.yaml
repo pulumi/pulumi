@@ -1,0 +1,4 @@
+component: cli/display
+kind: fix
+body: Include policy violations in the `--json` output of `pulumi preview` and `pulumi up`
+time: 2026-10-23T00:00:00Z
