@@ -1115,8 +1115,8 @@ func (rm *resmon) Invoke(
 		}
 		rootSet.Add(urn)
 	}
-	for _, v := range resource.ToResourcePropertyMap(args) {
-		addOutputDependencies(rootSet, v)
+	for _, v := range args.All {
+		addOutputDependencies2(rootSet, v)
 	}
 
 	if rootSet.Cardinality() > 0 && rm.registrations.HasUnresolved(rootSet) {
@@ -1314,7 +1314,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
-	filteredArgs, err := plugin.FilterProperties(rawArgs, plugin.FilterOptions{
+	args, err := plugin.FilterProperties(rawArgs, plugin.FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
@@ -1324,7 +1324,6 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal %v args: %w", tok, err)
 	}
-	args := resource.ToResourcePropertyMap(filteredArgs)
 
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
 	for name, deps := range req.GetArgDependencies() {
@@ -1343,8 +1342,9 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	defer stackTraceHandle.Release()
 
 	// If we have output values we can add the dependencies from them to the args dependencies map we send to the provider.
-	for key, output := range args {
-		argDependencies[key] = extendOutputDependencies(argDependencies[key], output)
+	for key, output := range args.All {
+		pk := resource.PropertyKey(key)
+		argDependencies[pk] = extendOutputDependencies2(argDependencies[pk], output)
 	}
 
 	info := plugin.CallInfo{
@@ -1365,11 +1365,11 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	loggedInfo.Config = nil
 	logging.V(5).Infof(
 		"ResourceMonitor.Call received: tok=%v #args=%v #info=%v config=%v #options=%v",
-		tok, len(args), loggedInfo, configLogValue(info.Config, rm.constructInfo.ConfigSecretKeys), options,
+		tok, args.Len(), loggedInfo, configLogValue(info.Config, rm.constructInfo.ConfigSecretKeys), options,
 	)
 	ret, err := prov.Call(ctx, plugin.CallRequest{
 		Tok:     tok,
-		Args:    resource.FromResourcePropertyMap(args),
+		Args:    args,
 		Info:    info,
 		Options: options,
 	})
@@ -1380,7 +1380,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 			rpcError = err
 		}
 
-		message := errorToMessage(rpcError, args, rm.opts.ShowSecrets)
+		message := errorToMessage(rpcError, resource.ToResourcePropertyMap(args), rm.opts.ShowSecrets)
 		rm.diagnostics.Errorf(diag.GetCallFailedError(), tok, message)
 
 		rm.abortChan <- true
@@ -1391,9 +1391,9 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 	if ret.ReturnDependencies == nil {
 		ret.ReturnDependencies = map[resource.PropertyKey][]resource.URN{}
 	}
-	retReturn := resource.ToResourcePropertyMap(ret.Return)
-	for k, v := range retReturn {
-		ret.ReturnDependencies[k] = extendOutputDependencies(ret.ReturnDependencies[k], v)
+	for k, v := range ret.Return.All {
+		pk := resource.PropertyKey(k)
+		ret.ReturnDependencies[pk] = extendOutputDependencies2(ret.ReturnDependencies[pk], v)
 	}
 
 	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
@@ -1405,7 +1405,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
-	filteredRet, err := plugin.FilterProperties(resource.FromResourcePropertyMap(retReturn), plugin.FilterOptions{
+	filteredRet, err := plugin.FilterProperties(ret.Return, plugin.FilterOptions{
 		KeepUnknowns:         true,
 		KeepSecrets:          true,
 		KeepResources:        true,
@@ -3696,5 +3696,30 @@ func addOutputDependencies(deps mapset.Set[resource.URN], v resource.PropertyVal
 	}
 	if v.IsSecret() {
 		addOutputDependencies(deps, v.SecretValue().Element)
+	}
+}
+
+func extendOutputDependencies2(deps []resource.URN, v property.Value) []resource.URN {
+	set := mapset.NewSet(deps...)
+	addOutputDependencies2(set, v)
+	return set.ToSlice()
+}
+
+func addOutputDependencies2(deps mapset.Set[resource.URN], v property.Value) {
+	deps.Append(v.Dependencies()...)
+
+	if v.IsResourceReference() {
+		ref := v.AsResourceReference()
+		addOutputDependencies2(deps, ref.ID)
+	}
+	if v.IsMap() {
+		for _, elem := range v.AsMap().All {
+			addOutputDependencies2(deps, elem)
+		}
+	}
+	if v.IsArray() {
+		for _, elem := range v.AsArray().All {
+			addOutputDependencies2(deps, elem)
+		}
 	}
 }
