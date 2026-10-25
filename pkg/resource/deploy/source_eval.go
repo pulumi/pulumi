@@ -347,9 +347,9 @@ func (iter *evalSourceIterator) forkRun(
 type TransformFunction func(
 	ctx context.Context,
 	name, typ string, custom bool, parent resource.URN,
-	props resource.PropertyMap,
+	props property.Map,
 	opts *pulumirpc.TransformResourceOptions,
-) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error)
+) (property.Map, *pulumirpc.TransformResourceOptions, error)
 
 // A transformation function that can be applied to an invoke.
 type TransformInvokeFunction func(
@@ -1694,8 +1694,8 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 	token := cb.Token
 	return func(
 		ctx context.Context, name, typ string, custom bool, parent resource.URN,
-		props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
-	) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+		props property.Map, opts *pulumirpc.TransformResourceOptions,
+	) (property.Map, *pulumirpc.TransformResourceOptions, error) {
 		logging.V(5).Infof("Transform: name=%v type=%v custom=%v parent=%v props=%v opts=%v",
 			name, typ, custom, parent, props, opts)
 
@@ -1708,9 +1708,9 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			WorkingDirectory:     rm.workingDirectory,
 		}
 
-		filteredProps, err := plugin.FilterProperties(resource.FromResourcePropertyMap(props), filterOpts)
+		filteredProps, err := plugin.FilterProperties(props, filterOpts)
 		if err != nil {
-			return nil, nil, fmt.Errorf("marshaling transform properties: %w", err)
+			return property.Map{}, nil, fmt.Errorf("marshaling transform properties: %w", err)
 		}
 		mprops := propertyrpc.Marshal(filteredProps)
 
@@ -1723,7 +1723,7 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 			Options:    opts,
 		})
 		if err != nil {
-			return nil, nil, fmt.Errorf("marshaling transform request: %w", err)
+			return property.Map{}, nil, fmt.Errorf("marshaling transform request: %w", err)
 		}
 
 		resp, err := client.Invoke(ctx, &pulumirpc.CallbackInvokeRequest{
@@ -1732,13 +1732,13 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 		})
 		if err != nil {
 			logging.V(5).Infof("transform callback error: %v", err)
-			return nil, nil, err
+			return property.Map{}, nil, err
 		}
 
 		var response pulumirpc.TransformResponse
 		err = proto.Unmarshal(resp.Response, &response)
 		if err != nil {
-			return nil, nil, fmt.Errorf("unmarshaling transform response: %w", err)
+			return property.Map{}, nil, fmt.Errorf("unmarshaling transform response: %w", err)
 		}
 
 		newOpts := opts
@@ -1750,13 +1750,12 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 		if response.Properties != nil {
 			rawNew, err := propertyrpc.Unmarshal(response.Properties)
 			if err != nil {
-				return nil, nil, fmt.Errorf("unmarshalling transform properties: %w", err)
+				return property.Map{}, nil, fmt.Errorf("unmarshalling transform properties: %w", err)
 			}
-			filteredNew, err := plugin.FilterProperties(rawNew, filterOpts)
+			newProps, err = plugin.FilterProperties(rawNew, filterOpts)
 			if err != nil {
-				return nil, nil, fmt.Errorf("unmarshalling transform properties: %w", err)
+				return property.Map{}, nil, fmt.Errorf("unmarshalling transform properties: %w", err)
 			}
-			newProps = resource.ToResourcePropertyMap(filteredNew)
 		}
 
 		logging.V(5).Infof("Transform: props=%v opts=%v", newProps, newOpts)
@@ -2649,11 +2648,12 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	// Before we calculate anything else run the transformations. First run the transforms for this resource,
 	// then it's parents, then the stack
 	for _, transform := range transforms {
-		newProps, newOpts, err := transform(ctx, name, string(t), custom, parent, props, opts)
+		newProps, newOpts, err := transform(
+			ctx, name, string(t), custom, parent, resource.FromResourcePropertyMap(props), opts)
 		if err != nil {
 			return nil, fmt.Errorf("invoke transform: %w", err)
 		}
-		props = newProps
+		props = resource.ToResourcePropertyMap(newProps)
 		opts = newOpts
 	}
 
