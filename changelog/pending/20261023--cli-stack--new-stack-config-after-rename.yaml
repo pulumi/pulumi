@@ -1,0 +1,4 @@
+component: cli/stack
+kind: fix
+body: Read a new stack's config and secrets settings from its own `Pulumi.<stack>.yaml` when `pulumi stack init`, `pulumi new` or another command creates a stack under the old name of a Pulumi Cloud stack that was renamed or moved to another project, instead of from the renamed or moved stack's config
+time: 2026-10-23T00:00:00Z
