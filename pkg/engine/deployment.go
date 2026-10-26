@@ -190,8 +190,8 @@ type deploymentOptions struct {
 	// and configured. This is the list that the step generator will run for policy checks.
 	LoadedAnalyzers []plugin.Analyzer
 
-	// PolicyExceptions is populated by loadPolicyPlugins with the loaded policy packs' exceptions, keyed by pack name.
-	PolicyExceptions map[string]resourceanalyzer.PolicyExceptions
+	// PolicyExceptions is populated by loadPolicyPlugins with each loaded analyzer's policy exceptions.
+	PolicyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions
 }
 
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.

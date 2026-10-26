@@ -343,7 +343,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		Custom:                  true,
 		Delete:                  false,
 		ID:                      event.ID(),
-		Inputs:                  event.Properties(),
+		Inputs:                  resource.ToResourcePropertyMap(event.Properties()),
 		Outputs:                 make(resource.PropertyMap),
 		Parent:                  parent,
 		Protect:                 false,
@@ -1145,7 +1145,10 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 
 	// If this resource depends on a resource (or provider) that failed or was skipped under --continue-on-error, the
 	// executor will skip its step too. Generate that step now, without involving its provider or any analyzers: its
-	// inputs may be missing values that the failed resources would have provided, and its provider may have failed.
+	// inputs may be missing values that the failed resources would have provided, which Check would reject, and its
+	// provider may have failed. It's a same step rather than a create or update, because nothing happens to the
+	// resource: any existing state is kept, and an update plan allows a same step wherever it allows a create or
+	// update. SameStep.Skip reports what the create or update would have produced.
 	if sg.dependsOnSkipped(new) {
 		sg.sames[urn] = true
 		if old != nil {
@@ -3739,7 +3742,7 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 				urn := resolveStackPolicyViolationURN(d.URN,
 					resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project()),
 					func(u resource.URN) bool { _, ok := sg.deployment.news.Load(u); return ok })
-				exceptions := sg.deployment.policyExceptions[info.Name].Match(d.PolicyName, urn)
+				exceptions := sg.deployment.policyExceptions[analyzer].Match(d.PolicyName, urn)
 				if d.EnforcementLevel == apitype.Mandatory && len(exceptions) == 0 {
 					sawError.Store(true)
 				}

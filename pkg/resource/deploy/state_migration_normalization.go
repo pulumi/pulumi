@@ -20,6 +20,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // rewriteStateMigrationState returns state unchanged if no migration rewrite applies, or a prepared rewritten copy.
@@ -81,22 +82,22 @@ type normalizedReadResourceEvent struct {
 	ReadResourceEvent
 	parent       resource.URN
 	provider     string
-	properties   resource.PropertyMap
+	properties   property.Map
 	dependencies []resource.URN
 }
 
-func (e *normalizedReadResourceEvent) Parent() resource.URN             { return e.parent }
-func (e *normalizedReadResourceEvent) Provider() string                 { return e.provider }
-func (e *normalizedReadResourceEvent) Properties() resource.PropertyMap { return e.properties }
-func (e *normalizedReadResourceEvent) Dependencies() []resource.URN     { return e.dependencies }
+func (e *normalizedReadResourceEvent) Parent() resource.URN         { return e.parent }
+func (e *normalizedReadResourceEvent) Provider() string             { return e.provider }
+func (e *normalizedReadResourceEvent) Properties() property.Map     { return e.properties }
+func (e *normalizedReadResourceEvent) Dependencies() []resource.URN { return e.dependencies }
 
 // normalizedRegisterResourceOutputsEvent wraps an outputs event with rewritten state migration references.
 type normalizedRegisterResourceOutputsEvent struct {
 	RegisterResourceOutputsEvent
-	outputs resource.PropertyMap
+	outputs property.Map
 }
 
-func (e *normalizedRegisterResourceOutputsEvent) Outputs() resource.PropertyMap { return e.outputs }
+func (e *normalizedRegisterResourceOutputsEvent) Outputs() property.Map { return e.outputs }
 
 // normalizeStateMigrationSourceEvent applies saved state migration rewrites to program events.
 func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (SourceEvent, error) {
@@ -112,7 +113,7 @@ func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (Sour
 		return event, nil
 	case ReadResourceEvent:
 		state := &pkgresource.State{
-			Inputs:       e.Properties(),
+			Inputs:       resource.ToResourcePropertyMap(e.Properties()),
 			Parent:       e.Parent(),
 			Dependencies: e.Dependencies(),
 			Provider:     e.Provider(),
@@ -128,11 +129,11 @@ func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (Sour
 			ReadResourceEvent: e,
 			parent:            rewritten.Parent,
 			provider:          rewritten.Provider,
-			properties:        rewritten.Inputs,
+			properties:        resource.FromResourcePropertyMap(rewritten.Inputs),
 			dependencies:      rewritten.Dependencies,
 		}, nil
 	case RegisterResourceOutputsEvent:
-		state := &pkgresource.State{Outputs: e.Outputs()}
+		state := &pkgresource.State{Outputs: resource.ToResourcePropertyMap(e.Outputs())}
 		rewritten, err := d.rewriteStateMigrationState(state)
 		if err != nil {
 			return nil, fmt.Errorf("normalizing outputs for %s after state migration: %w", e.URN(), err)
@@ -142,7 +143,7 @@ func (d *Deployment) normalizeStateMigrationSourceEvent(event SourceEvent) (Sour
 		}
 		return &normalizedRegisterResourceOutputsEvent{
 			RegisterResourceOutputsEvent: e,
-			outputs:                      rewritten.Outputs,
+			outputs:                      resource.FromResourcePropertyMap(rewritten.Outputs),
 		}, nil
 	default:
 		contract.Failf("unrecognized source event type %T", event)

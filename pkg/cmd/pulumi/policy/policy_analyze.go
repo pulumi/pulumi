@@ -354,6 +354,7 @@ func newAnalyzeEvents(
 		Color:                  colorization,
 		Type:                   displayType,
 		ShowPolicyRemediations: true,
+		ShowPolicyExceptions:   true,
 		IsInteractive:          cmdutil.Interactive(),
 		JSONDisplay:            jsonDisplay,
 		Stdout:                 out,
@@ -413,7 +414,7 @@ func (e *analyzeEvents) writeEvent(event engine.Event) {
 		return
 	}
 
-	msg := display.RenderDiffEvent(event, 0, e.seen, e.opts)
+	msg := display.RenderDiffEvent(event, 0, 0, e.seen, e.opts)
 	if msg == "" {
 		return
 	}

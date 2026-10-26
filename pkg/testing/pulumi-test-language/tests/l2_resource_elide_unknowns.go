@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -72,37 +73,40 @@ func init() {
 					RequireStackResource(l, err, changes)
 
 					simples := RequireNResources(l, snap.Resources, "simple:index:Resource", 4)
-					want := resource.PropertyMap{
-						"value": resource.NewProperty(true),
-					}
+					want := property.NewMap(map[string]property.Value{
+						"value": property.New(true),
+					})
 					for _, simple := range simples {
-						assert.Equal(l, want, simple.Inputs, "expected resource inputs to match %v", want)
+						assert.Equal(l, want, resource.FromResourcePropertyMap(simple.Inputs),
+							"expected resource inputs to match %v", want)
 					}
 
 					complex := RequireSingleNamedResource(l, snap.Resources, "complex")
-					assert.Equal(l, resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty("hello"),
-					}), complex.Outputs["outputArray"])
-					assert.Equal(l, resource.NewProperty(resource.PropertyMap{
-						"a": resource.NewProperty("hello"),
-						"d": resource.NewProperty("hello"),
-						"m": resource.NewProperty("hello"),
-						"t": resource.NewProperty("hello"),
-						"x": resource.NewProperty("hello"),
-						"z": resource.NewProperty("hello"),
-					}), complex.Outputs["outputMap"])
-					assert.Equal(l, resource.NewProperty(resource.PropertyMap{
-						"output": resource.NewProperty("hello"),
-					}), complex.Outputs["outputObject"])
+					complexOutputs := resource.FromResourcePropertyMap(complex.Outputs)
+					assert.Equal(l, property.New([]property.Value{
+						property.New("hello"),
+					}), complexOutputs.Get("outputArray"))
+					assert.Equal(l, property.New(map[string]property.Value{
+						"a": property.New("hello"),
+						"d": property.New("hello"),
+						"m": property.New("hello"),
+						"t": property.New("hello"),
+						"x": property.New("hello"),
+						"z": property.New("hello"),
+					}), complexOutputs.Get("outputMap"))
+					assert.Equal(l, property.New(map[string]property.Value{
+						"output": property.New("hello"),
+					}), complexOutputs.Get("outputObject"))
 
 					stk := RequireSingleResource(l, snap.Resources, resource.RootStackType)
-					want = resource.PropertyMap{
-						"out":       resource.NewProperty("hello"),
-						"outArray":  resource.NewProperty("hello"),
-						"outMap":    resource.NewProperty("hello"),
-						"outObject": resource.NewProperty("hello"),
-					}
-					assert.Equal(l, want, stk.Outputs, "expected stack outputs to match %v", want)
+					wantStk := property.NewMap(map[string]property.Value{
+						"out":       property.New("hello"),
+						"outArray":  property.New("hello"),
+						"outMap":    property.New("hello"),
+						"outObject": property.New("hello"),
+					})
+					assert.Equal(l, wantStk, resource.FromResourcePropertyMap(stk.Outputs),
+						"expected stack outputs to match %v", wantStk)
 				},
 			},
 		},
