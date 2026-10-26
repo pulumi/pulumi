@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,21 +42,23 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:index-mod")
 
 					res1 := RequireSingleNamedResource(l, snap.Resources, "res1")
-					want := resource.NewPropertyMapFromMap(map[string]any{"text": "hello world"})
-					assert.Equal(l, want, res1.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, res1.Inputs, res1.Outputs, "expected inputs and outputs to match")
+					want := property.NewMap(map[string]property.Value{"text": property.New("hello world")})
+					res1Inputs := resource.FromResourcePropertyMap(res1.Inputs)
+					assert.Equal(l, want, res1Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, res1Inputs, resource.FromResourcePropertyMap(res1.Outputs), "expected inputs and outputs to match")
 
 					res2 := RequireSingleNamedResource(l, snap.Resources, "res2")
-					want = resource.NewPropertyMapFromMap(map[string]any{"text": "goodbye world"})
-					assert.Equal(l, want, res2.Inputs, "expected inputs to be %v", want)
-					assert.Equal(l, res2.Inputs, res2.Outputs, "expected inputs and outputs to match")
+					want = property.NewMap(map[string]property.Value{"text": property.New("goodbye world")})
+					res2Inputs := resource.FromResourcePropertyMap(res2.Inputs)
+					assert.Equal(l, want, res2Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, res2Inputs, resource.FromResourcePropertyMap(res2.Outputs), "expected inputs and outputs to match")
 
 					stk := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"out1": 12,
-						"out2": 15,
+					want = property.NewMap(map[string]property.Value{
+						"out1": property.New(12.0),
+						"out2": property.New(15.0),
 					})
-					assert.Equal(l, want, stk.Outputs, "expected stack outputs to be %v", want)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(stk.Outputs), "expected stack outputs to be %v", want)
 				},
 			},
 		},

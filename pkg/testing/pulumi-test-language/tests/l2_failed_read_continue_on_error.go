@@ -41,10 +41,12 @@ func init() {
 					require.True(l, result.IsBail(res.Err), "expected a bail result")
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					for _, key := range []resource.PropertyKey{"failingValue", "failingLookup"} {
-						require.Contains(l, stack.Outputs, key)
-						assert.True(l, stack.Outputs[key].IsComputed(),
-							"expected %s to be unknown, got %v", key, stack.Outputs[key])
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					for _, key := range []string{"failingValue", "failingLookup"} {
+						v, ok := stackOutputs.GetOk(key)
+						require.True(l, ok)
+						assert.True(l, v.IsComputed(),
+							"expected %s to be unknown, got %v", key, v)
 					}
 				},
 			},

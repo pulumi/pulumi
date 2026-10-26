@@ -25,8 +25,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -90,13 +90,13 @@ func RequireSingleNamedResource(
 // AssertPropertyMapMember asserts that the given property map has a member with the given key and value.
 func AssertPropertyMapMember(
 	t TestingT,
-	props resource.PropertyMap,
+	props property.Map,
 	key string,
-	want resource.PropertyValue,
+	want property.Value,
 ) (ok bool) {
 	t.Helper()
 
-	got, ok := props[resource.PropertyKey(key)]
+	got, ok := props.GetOk(key)
 	if !assert.True(t, ok, "expected property %q", key) {
 		return false
 	}

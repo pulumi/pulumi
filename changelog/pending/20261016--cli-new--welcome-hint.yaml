@@ -1,3 +1,0 @@
-component: cli/new
-kind: improvement
-body: Stop suggesting `pulumi new` in the first-login welcome message when the login was started by `pulumi new`

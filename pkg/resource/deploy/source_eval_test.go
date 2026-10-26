@@ -966,7 +966,8 @@ func TestRegistrationObserverResolveOnRegisterResource(t *testing.T) {
 
 	got := <-getterDone
 	require.NoError(t, got.err)
-	require.Equal(t, expectedOutputs, got.reg.Outputs, "observer should have received the registered outputs")
+	require.Equal(t, resource.FromResourcePropertyMap(expectedOutputs),
+		got.reg.Outputs, "observer should have received the registered outputs")
 	require.Equal(t, resource.ID("id1"), got.reg.ID, "observer should have received the registered ID")
 }
 
@@ -1235,7 +1236,7 @@ func TestRegistrationObserverComponentResolvedAtRegisterResourceOutputs(t *testi
 	// After both RegisterResource and RegisterResourceOutputs have run, the observer should resolve.
 	got, err := observeRegistration(observer, expectedURN).Result(t.Context())
 	require.NoError(t, err)
-	require.Equal(t, expectedOutputs, got.Outputs, "observer should publish ROC outputs")
+	require.Equal(t, resource.FromResourcePropertyMap(expectedOutputs), got.Outputs, "observer should publish ROC outputs")
 	require.Equal(t, resource.ID(""), got.ID, "component ID should be empty")
 }
 
@@ -1391,7 +1392,7 @@ func TestRegistrationObserverCustomResourceAliasesArePublished(t *testing.T) {
 	for _, urn := range []resource.URN{canonicalURN, aliasURN} {
 		got, err := observeRegistration(observer, urn).Result(t.Context())
 		require.NoError(t, err, "observe %s", urn)
-		require.Equal(t, expectedOutputs, got.Outputs, "outputs for %s", urn)
+		require.Equal(t, resource.FromResourcePropertyMap(expectedOutputs), got.Outputs, "outputs for %s", urn)
 		require.Equal(t, resource.ID("id1"), got.ID, "id for %s", urn)
 	}
 }
@@ -1449,7 +1450,8 @@ func TestRegistrationObserverComponentAliasesArePublishedAtROC(t *testing.T) {
 	for _, urn := range []resource.URN{canonicalURN, aliasURN} {
 		got, err := observeRegistration(observer, urn).Result(t.Context())
 		require.NoError(t, err, "observe %s", urn)
-		require.Equal(t, expectedOutputs, got.Outputs, "outputs for %s should be the ROC outputs", urn)
+		require.Equal(t, resource.FromResourcePropertyMap(expectedOutputs),
+			got.Outputs, "outputs for %s should be the ROC outputs", urn)
 		require.Equal(t, resource.ID(""), got.ID, "component %s ID should be empty", urn)
 	}
 }
@@ -1550,7 +1552,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 				Custom:                  true,
 				Delete:                  false,
 				ID:                      read.ID(),
-				Inputs:                  read.Properties(),
+				Inputs:                  resource.ToResourcePropertyMap(read.Properties()),
 				Outputs:                 resource.PropertyMap{},
 				Parent:                  read.Parent(),
 				Protect:                 false,
@@ -1728,7 +1730,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 					Custom:                  true,
 					Delete:                  false,
 					ID:                      e.ID(),
-					Inputs:                  e.Properties(),
+					Inputs:                  resource.ToResourcePropertyMap(e.Properties()),
 					Outputs:                 resource.PropertyMap{},
 					Parent:                  e.Parent(),
 					Protect:                 false,
@@ -1924,7 +1926,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 							Custom:                  true,
 							Delete:                  false,
 							ID:                      event.ID(),
-							Inputs:                  event.Properties(),
+							Inputs:                  resource.ToResourcePropertyMap(event.Properties()),
 							Outputs:                 resource.PropertyMap{},
 							Parent:                  event.Parent(),
 							Protect:                 false,
@@ -4057,6 +4059,10 @@ func TestValidationFailures(t *testing.T) {
 					Reason:       "nested property error",
 					PropertyPath: "nested[0]",
 				},
+				{
+					Reason:       "invalid",
+					PropertyPath: "secretproperty",
+				},
 			},
 		},
 	)
@@ -4065,6 +4071,7 @@ func TestValidationFailures(t *testing.T) {
 	cases := []struct {
 		name           string
 		err            error
+		showSecrets    bool
 		expectedStderr string
 	}{
 		{
@@ -4077,7 +4084,17 @@ func TestValidationFailures(t *testing.T) {
 			err:  badRequestError,
 			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request\n" +
 				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
-				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n",
+				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n" +
+				"\t\t- property secretproperty with value '{[secret]}' has a problem: invalid\n",
+		},
+		{
+			name:        "bad request with --show-secrets",
+			err:         badRequestError,
+			showSecrets: true,
+			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request\n" +
+				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
+				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n" +
+				"\t\t- property secretproperty with value '{&{{secretvalue}}}' has a problem: invalid\n",
 		},
 	}
 	for _, c := range cases {
@@ -4108,6 +4125,7 @@ func TestValidationFailures(t *testing.T) {
 			diagnostics: diagtest.MockSink(&stdout, &stderr),
 			cancel:      cancel,
 			abortChan:   abortChan,
+			opts:        EvalSourceOptions{ShowSecrets: c.showSecrets},
 			defaultProviders: &defaultProviders{
 				requests: requests,
 				config:   &configSourceMock{},
@@ -4132,9 +4150,10 @@ func TestValidationFailures(t *testing.T) {
 			"nested": resource.NewProperty(
 				[]resource.PropertyValue{resource.NewPropertyValue("nestedvalue")},
 			),
+			"secretproperty": resource.MakeSecret(resource.NewPropertyValue("secretvalue")),
 		}
 
-		marshalledProps, err := plugin.MarshalProperties(props, plugin.MarshalOptions{})
+		marshalledProps, err := plugin.MarshalProperties(props, plugin.MarshalOptions{KeepSecrets: true})
 		require.NoError(t, err)
 
 		req := &pulumirpc.RegisterResourceRequest{

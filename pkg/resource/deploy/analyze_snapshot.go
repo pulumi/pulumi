@@ -40,7 +40,7 @@ import (
 func analyzeResource(
 	ctx context.Context,
 	analyzers []plugin.Analyzer,
-	policyExceptions map[string]resourceanalyzer.PolicyExceptions,
+	policyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions,
 	r plugin.AnalyzerResource,
 	events PolicyEvents,
 	dryRun bool,
@@ -76,7 +76,7 @@ func analyzeResource(
 					d.EnforcementLevel = apitype.Mandatory
 				}
 
-				exceptions := policyExceptions[info.Name].Match(d.PolicyName, r.URN)
+				exceptions := policyExceptions[analyzer].Match(d.PolicyName, r.URN)
 				if d.EnforcementLevel == apitype.Mandatory && len(exceptions) == 0 {
 					if !dryRun {
 						invalidAtomic.Store(true)
@@ -191,7 +191,7 @@ func AnalyzeSnapshot(
 	ctx context.Context,
 	snap *Snapshot,
 	analyzers []plugin.Analyzer,
-	policyExceptions map[string]resourceanalyzer.PolicyExceptions,
+	policyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions,
 	events PolicyEvents,
 ) (bool, error) {
 	if snap == nil || len(analyzers) == 0 {
@@ -308,7 +308,7 @@ func AnalyzeSnapshot(
 				}
 				urn := resolveStackPolicyViolationURN(d.URN, rootStackURN,
 					func(u resource.URN) bool { _, ok := snapshotURNs[u]; return ok })
-				exceptions := policyExceptions[info.Name].Match(d.PolicyName, urn)
+				exceptions := policyExceptions[analyzer].Match(d.PolicyName, urn)
 				if d.EnforcementLevel == apitype.Mandatory && len(exceptions) == 0 {
 					sawStackError.Store(true)
 				}

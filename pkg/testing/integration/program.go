@@ -43,14 +43,10 @@ import (
 	"golang.org/x/mod/module"
 	"gopkg.in/yaml.v3"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -768,36 +764,6 @@ func init() {
 	// → package resolution failures. Setting this process-wide ensures all subprocesses
 	// (including component_setup.sh and language host plugins) inherit it.
 	os.Setenv("PIP_NO_CACHE_DIR", "1")
-}
-
-// GetLogs retrieves the logs for a given stack in a particular region making the query provided.
-//
-// [provider] should be one of "aws" or "azure"
-func GetLogs(
-	t *testing.T,
-	provider, region string,
-	stackInfo RuntimeValidationStackInfo,
-	query operations.LogQuery,
-) *[]operations.LogEntry {
-	snap, err := stack.DeserializeDeploymentV3(
-		t.Context(),
-		*stackInfo.Deployment,
-		secrets.DefaultProvider)
-	require.NoError(t, err)
-
-	tree := operations.NewResourceTree(snap.Resources)
-	require.NotNil(t, tree)
-
-	cfg := map[config.Key]string{
-		config.MustMakeKey(provider, "region"): region,
-	}
-	ops := tree.OperationsProvider(cfg)
-
-	// Validate logs from example
-	logs, err := ops.GetLogs(t.Context(), query)
-	require.NoError(t, err)
-
-	return logs
 }
 
 func prepareProgram(t *testing.T, opts *ProgramTestOptions) {

@@ -1,5 +1,48 @@
 # Changelog
 
+## 3.272.0 (2026-10-22)
+
+### Features
+
+- [cli/display] Collapse policy violations that an exception exempts under `Policies:` into one line per policy, and add `--show-policy-exceptions` to `up` and `preview` to list them with their exceptions [#25290](https://github.com/pulumi/pulumi/pull/25290)
+- [engine] Add an AwaitError provider protocol error indicating an operation needs to be awaited; the deployment continues, the resource's outputs are unknown, and the CLI exits with the dedicated ExitAwaitError code (10) [#25278](https://github.com/pulumi/pulumi/pull/25278)
+- [cli/env] Add `pulumi env change-request` commands for working with change requests [#25122](https://github.com/pulumi/pulumi/pull/25122)
+
+### Bug Fixes
+
+- [cli] Name the directory searched in the `no Pulumi.yaml project file found` error of `pulumi preview`, `refresh`, `import`, `logs` and `install` instead of leaving it empty [#25187](https://github.com/pulumi/pulumi/pull/25187)
+- [sdk] Keep the unknown outputs of remote components, such as those that depend on an awaiting or failed child, instead of resolving them as empty values [#25291](https://github.com/pulumi/pulumi/pull/25291)
+
+### Improvements
+
+- [cli/env] Use `--organization`/`-o` to select the organization in `pulumi env setup` commands [#25231](https://github.com/pulumi/pulumi/pull/25231)
+- [engine] Return dry-run outputs to dependents of resources skipped under `--continue-on-error`, instead of failing their registrations [#25227](https://github.com/pulumi/pulumi/pull/25227)
+## 3.271.0 (2026-10-21)
+
+### Features
+
+- [engine] Add an `id` field to `ReadResourceResponse` so providers can return a resolved id that differs from the one supplied on the request; SDKs now surface this id via `.id` and resolve it as unknown when empty during preview [#25228](https://github.com/pulumi/pulumi/pull/25228)
+- [cli/policy] Create version 2 of the `--policy-pack-config` format, nesting policy configs under `policies` and adding an `exceptions` field [#25280](https://github.com/pulumi/pulumi/pull/25280)
+- [cli/policy] Apply the policy exceptions Pulumi Cloud sends for required policy packs [#25284](https://github.com/pulumi/pulumi/pull/25284)
+- [auto] Add `state` commands to the generated automation APIs for NodeJS, Python and Go [#25071](https://github.com/pulumi/pulumi/pull/25071)
+- [auto] Add `env` commands to the generated automation APIs for NodeJS, Python and Go [#25073](https://github.com/pulumi/pulumi/pull/25073)
+
+### Bug Fixes
+
+- [engine] Skip the provider Read in preview when a read's dependency is being created or replaced, and return unknown outputs to the SDK [#25222](https://github.com/pulumi/pulumi/pull/25222)
+- [cli] Fix `pulumi org audit-log` ignoring `--user` and `--event-type`, switch to the V2 audit log API, and add `--end-time` [#24665](https://github.com/pulumi/pulumi/pull/24665)
+- [engine] Stop sending resource inputs as the `State` field of `Read` to providers; providers can now distinguish a user-driven `Get`/import from a refresh by whether `State` is populated [#24973](https://github.com/pulumi/pulumi/pull/24973)
+- [engine] Redact secret values in invalid input diagnostics unless `--show-secrets` is passed [#24995](https://github.com/pulumi/pulumi/pull/24995)
+- [pcl] Make the PCL interpreter's `lookup` return the default unchanged when the key is absent from a map [#25112](https://github.com/pulumi/pulumi/pull/25112)
+- [sdk] Resolve the outputs of a resource that fails under `--continue-on-error` as unknown instead of failing them, so the rest of the program keeps running; `recover` no longer catches these failures [#25168](https://github.com/pulumi/pulumi/pull/25168)
+- [sdk] Resolve the outputs of a read that fails under `--continue-on-error` as unknown instead of as known empty values [#25169](https://github.com/pulumi/pulumi/pull/25169)
+- [sdk/python] Fix false missing-argument errors from ty on Output.apply and other Output methods [#25181](https://github.com/pulumi/pulumi/pull/25181)
+- [sdk/nodejs] Support single-member enums and `as const` objects in Node.js component inputs and outputs [#25273](https://github.com/pulumi/pulumi/pull/25273)
+
+### Improvements
+
+- [cli/new] Stop suggesting `pulumi new` in the first-login welcome message when the login was started by `pulumi new` [#25257](https://github.com/pulumi/pulumi/pull/25257)
+- [protobuf] Pass a mapper target to language hosts in `GenerateProgram` and `GenerateProject` requests [#25277](https://github.com/pulumi/pulumi/pull/25277)
 ## 3.270.0 (2026-10-16)
 
 ### Bug Fixes
