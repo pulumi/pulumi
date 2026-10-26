@@ -99,10 +99,12 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
+	"l2-resource-exists":            "Go program generation does not support resourceExists yet",
 	"l2-resource-any":               "a list inside an any-typed input generates pulumi.Any{...}, but pulumi.Any is a func not a type; does not compile", //nolint:lll
 	"l2-config-default-from-invoke": "config variable defaulting to an invoke result is never declared; generated code does not compile",                 //nolint:lll
 	"l1-config-types-object":        "fails to compile",
-	"l1-config-types-optional":      "fails to compile: cfg.GetObject signature mismatch (same as l1-config-types-object)", //nolint:lll
+	"l1-operator-precedence":        "exporting a conditional expression of type string passes a string, not a pulumi.Input; does not compile", //nolint:lll
+	"l1-config-types-optional":      "fails to compile: cfg.GetObject signature mismatch (same as l1-config-types-object)",                     //nolint:lll
 	"l1-builtin-try":                "pulumi#18506 Support try in Go program generation",
 	"l1-expand-final":               "Go program generation does not support `...` argument expansion",
 	"l1-builtin-can":                "pulumi#18570 Support can in Go program generation",

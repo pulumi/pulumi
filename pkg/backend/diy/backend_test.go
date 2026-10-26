@@ -38,7 +38,6 @@ import (
 	"gocloud.dev/blob/fileblob"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
@@ -49,7 +48,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
@@ -216,21 +214,6 @@ func TestMassageBlobPath(t *testing.T) {
 		testMassagePath(t, FilePathPrefix+"/1?no_tmp_dir=false", FilePathPrefix+"/1")
 		testMassagePath(t, FilePathPrefix+"/1?foo=bar&no_tmp_dir=false", FilePathPrefix+"/1?foo=bar")
 	})
-}
-
-func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
-	t.Parallel()
-
-	target := &deploy.Target{
-		Name:      tokens.MustParseStackName("test"),
-		Config:    config.Map{},
-		Decrypter: config.NopDecrypter,
-		Snapshot:  nil,
-	}
-	query := operations.LogQuery{}
-	res, err := GetLogsForTarget(t.Context(), target, query)
-	require.NoError(t, err)
-	assert.Nil(t, res)
 }
 
 func makeUntypedDeployment(t *testing.T, name string, phrase, state string) (*apitype.UntypedDeployment, error) {

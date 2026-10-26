@@ -1,0 +1,4 @@
+component: programgen/nodejs,python
+kind: fix
+body: Parenthesize nested conditional expressions in generated TypeScript and Python programs
+time: 2026-10-22T00:00:00Z

@@ -51,7 +51,6 @@ import (
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgLogging "github.com/pulumi/pulumi/pkg/v3/logging"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
@@ -103,8 +102,8 @@ func agentCredentialUseFromContext(ctx context.Context) *agentCredentialUse {
 
 type skipAgentSignupContextKey struct{}
 
-// ContextWithoutAgentSignup returns a context in which agent mode never creates a new agent account,
-// for use by `pulumi login`.
+// ContextWithoutAgentSignup returns a context in which agent mode neither reuses shared agent credentials
+// nor creates a new agent account, for use by `pulumi login`.
 func ContextWithoutAgentSignup(ctx context.Context) context.Context {
 	return context.WithValue(ctx, skipAgentSignupContextKey{}, true)
 }
@@ -677,6 +676,16 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		logging.V(7).Infof("Deleted expired shared agent credentials")
 	}
 
+	// `pulumi login` logs the user in as themselves, so it neither reuses nor creates agent credentials.
+	// An existing agent account stays reachable through its claim URL.
+	if skipAgentSignup(ctx) {
+		if workspace.IsUndecryptableCredentials(defaultCredsErr) {
+			return nil, defaultCredsErr
+		}
+		logging.V(7).Infof("Agent signup disabled for this command; ignoring shared agent credentials for %q", cloudURL)
+		return nil, nil
+	}
+
 	agentAccount, err := workspace.GetAgentAccount(cloudURL)
 	if err != nil {
 		return nil, err
@@ -695,11 +704,6 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 			}
 			MarkAgentCredentialsUsed(ctx, cloudURL)
 			return &agentAccount, nil
-		}
-		// `pulumi login` is how users recover from rejected agent credentials.
-		if skipAgentSignup(ctx) && !workspace.IsUndecryptableCredentials(defaultCredsErr) {
-			logging.V(7).Infof("Shared agent credentials for %q are not valid; ignoring them for this login", cloudURL)
-			return nil, nil
 		}
 		if expiresAt, tokenValid := workspace.AgentAccessTokenExpiresAt(agentAccount, now); tokenValid {
 			logging.V(7).Infof(
@@ -732,11 +736,6 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	// not be papered over with a fresh ephemeral agent identity.
 	if workspace.IsUndecryptableCredentials(defaultCredsErr) {
 		return nil, defaultCredsErr
-	}
-
-	if skipAgentSignup(ctx) {
-		logging.V(7).Infof("Agent signup disabled for this command; not creating a new agent account")
-		return nil, nil
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
@@ -971,12 +970,9 @@ func (b *cloudBackend) Name() string {
 	return b.url
 }
 
+// URL returns the root of the Pulumi Cloud console, which opens the user's default organization.
 func (b *cloudBackend) URL() string {
-	user, _, _, err := b.CurrentUser()
-	if err != nil {
-		return client.CloudConsoleURL(b.url)
-	}
-	return client.CloudConsoleURL(b.url, user)
+	return client.CloudConsoleURL(b.url)
 }
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
@@ -1709,12 +1705,6 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b, nil)
 }
 
-func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
-	op backend.UpdateOperation, paths []string,
-) error {
-	return backend.Watch(ctx, b, stk, op, b.apply, paths)
-}
-
 func (b *cloudBackend) Search(
 	ctx context.Context, orgName string, queryParams *apitype.PulumiQueryRequest,
 ) (*apitype.ResourceSearchResponse, error) {
@@ -2020,8 +2010,7 @@ func (b *cloudBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&
-		op.Opts.Display.Type != display.DisplayWatch {
+	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
 		// than a logical span, but this is a convenient way to record this information.
 		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
@@ -2504,17 +2493,6 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 		}
 	}
 	return c, nil
-}
-
-func (b *cloudBackend) GetLogs(ctx context.Context,
-	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
-	logQuery operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	target, targetErr := b.getTarget(ctx, secretsProvider, stack.Ref(), cfg.Config, cfg.Decrypter)
-	if targetErr != nil {
-		return nil, targetErr
-	}
-	return diy.GetLogsForTarget(ctx, target, logQuery)
 }
 
 // ExportDeployment exports a deployment _from_ the backend service.

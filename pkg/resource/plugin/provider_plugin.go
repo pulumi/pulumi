@@ -44,8 +44,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -743,7 +741,6 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		return CheckConfigResponse{}, err
 	}
 	mnews := propertyrpc.Marshal(filteredNews)
-	news := resource.ToResourcePropertyMap(req.News)
 
 	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:  string(req.URN),
@@ -766,13 +763,13 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	}
 
 	// Unmarshal the provider inputs.
-	var inputs resource.PropertyMap
+	var inputs property.Map
 	if ins := resp.GetInputs(); ins != nil {
 		raw, err := propertyrpc.Unmarshal(ins)
 		if err != nil {
 			return CheckConfigResponse{}, err
 		}
-		filtered, err := FilterProperties(raw, FilterOptions{
+		inputs, err = FilterProperties(raw, FilterOptions{
 			KeepUnknowns:   req.AllowUnknowns,
 			RejectUnknowns: !req.AllowUnknowns,
 			KeepSecrets:    true,
@@ -781,7 +778,6 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		if err != nil {
 			return CheckConfigResponse{}, err
 		}
-		inputs = resource.ToResourcePropertyMap(filtered)
 	}
 
 	// And now any properties that failed verification.
@@ -791,10 +787,10 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	}
 
 	// Copy over any secret annotations, since we could not pass any to the provider, and return.
-	annotateSecrets(inputs, news)
-	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
+	inputs = annotateSecrets(inputs, req.News)
+	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, inputs.Len(), len(failures))
 	return CheckConfigResponse{
-		Properties: resource.FromResourcePropertyMap(inputs),
+		Properties: inputs,
 		Failures:   failures,
 	}, nil
 }
@@ -951,22 +947,20 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 // marked as a secret. This is actually a very nice result, because often arrays are treated like sets by providers
 // and the order may not be preserved across an operation. This means we do end up encrypting the entire array
 // but that's better than accidentally leaking a value which just moved to a different location.
-func annotateSecrets(outs, ins resource.PropertyMap) {
-	if outs == nil || ins == nil {
-		return
-	}
-
-	for key, inValue := range ins {
-		outValue, has := outs[key]
+func annotateSecrets(outs, ins property.Map) property.Map {
+	result := outs.AsMap()
+	for key, inValue := range ins.All {
+		outValue, has := result[key]
 		if !has {
 			continue
 		}
-		if outValue.IsObject() && inValue.IsObject() {
-			annotateSecrets(outValue.ObjectValue(), inValue.ObjectValue())
-		} else if !outValue.IsSecret() && inValue.ContainsSecrets() {
-			outs[key] = resource.MakeSecret(outValue)
+		if outValue.IsMap() && inValue.IsMap() && !inValue.Secret() {
+			result[key] = property.New(annotateSecrets(outValue.AsMap(), inValue.AsMap()))
+		} else if !outValue.Secret() && inValue.HasSecrets() {
+			result[key] = outValue.WithSecret(true)
 		}
 	}
+	return property.NewMap(result)
 }
 
 func removeSecrets(v property.Value) any {
@@ -1001,85 +995,85 @@ func removeSecrets(v property.Value) any {
 	}
 }
 
-func traverseProperty(element resource.PropertyValue, f func(resource.PropertyValue)) {
-	f(element)
-	if element.IsSecret() {
-		traverseSecret(element.SecretValue(), f)
-	} else if element.IsObject() {
-		traverseMap(element.ObjectValue(), f)
-	} else if element.IsArray() {
-		traverseArray(element.ArrayValue(), f)
-	}
-}
-
-func traverseArray(elements []resource.PropertyValue, f func(resource.PropertyValue)) {
-	for _, element := range elements {
-		traverseProperty(element, f)
-	}
-}
-
-func traverseSecret(v *resource.Secret, f func(resource.PropertyValue)) {
-	traverseProperty(v.Element, f)
-}
-
-func traverseMap(m resource.PropertyMap, f func(resource.PropertyValue)) {
-	for _, value := range m {
-		traverseProperty(value, f)
-	}
-}
-
 // restoreElidedAssetContents is used to restore contents of assets inside resource property maps after
 // we have skipped serializing contents of assets in order to avoid sending them over the wire to resource
 // providers. Mainly used in `Read` operations after we receive the live inputs from the resource provider plugin.
 // Those inputs may echo back the input assets and the engine writes them out to the state. We need to make sure that
 // we don't write out empty assets to the state, so we restore the asset contents from the original inputs.
-func restoreElidedAssetContents(original resource.PropertyMap, transformed resource.PropertyMap) {
-	isEmptyAsset := func(v *asset.Asset) bool {
+func restoreElidedAssetContents(original property.Map, transformed property.Map) property.Map {
+	isEmptyAsset := func(v property.Asset) bool {
 		return v.Text == "" && v.Path == "" && v.URI == ""
 	}
 
-	isEmptyArchive := func(v *archive.Archive) bool {
+	isEmptyArchive := func(v property.Archive) bool {
 		return v.Path == "" && v.URI == "" && v.Assets == nil
 	}
 
-	originalAssets := map[string]*asset.Asset{}
-	originalArchives := map[string]*archive.Archive{}
+	originalAssets := map[string]property.Asset{}
+	originalArchives := map[string]property.Archive{}
 
-	traverseMap(original, func(value resource.PropertyValue) {
-		if value.IsAsset() {
-			originalAsset := value.AssetValue()
-			originalAssets[originalAsset.Hash] = originalAsset
-		}
-
-		if value.IsArchive() {
-			originalArchive := value.ArchiveValue()
-			originalArchives[originalArchive.Hash] = originalArchive
-		}
-	})
-
-	traverseMap(transformed, func(value resource.PropertyValue) {
-		if value.IsAsset() {
-			transformedAsset := value.AssetValue()
-			originalAsset, has := originalAssets[transformedAsset.Hash]
-			if has && isEmptyAsset(transformedAsset) {
-				transformedAsset.Sig = originalAsset.Sig
-				transformedAsset.Text = originalAsset.Text
-				transformedAsset.Path = originalAsset.Path
-				transformedAsset.URI = originalAsset.URI
+	var collect func(property.Value)
+	collect = func(v property.Value) {
+		switch {
+		case v.IsAsset():
+			a := v.AsAsset()
+			originalAssets[a.Hash] = a
+		case v.IsArchive():
+			a := v.AsArchive()
+			originalArchives[a.Hash] = a
+		case v.IsArray():
+			for _, e := range v.AsArray().All {
+				collect(e)
+			}
+		case v.IsMap():
+			for _, e := range v.AsMap().All {
+				collect(e)
 			}
 		}
+	}
+	for _, v := range original.All {
+		collect(v)
+	}
 
-		if value.IsArchive() {
-			transformedArchive := value.ArchiveValue()
-			originalArchive, has := originalArchives[transformedArchive.Hash]
-			if has && isEmptyArchive(transformedArchive) {
-				transformedArchive.Sig = originalArchive.Sig
-				transformedArchive.URI = originalArchive.URI
-				transformedArchive.Path = originalArchive.Path
-				transformedArchive.Assets = originalArchive.Assets
+	var rebuild func(property.Value) property.Value
+	rebuild = func(v property.Value) property.Value {
+		switch {
+		case v.IsAsset():
+			a := v.AsAsset()
+			if orig, ok := originalAssets[a.Hash]; ok && isEmptyAsset(a) {
+				return property.WithGoValue(v, orig)
 			}
+			return v
+		case v.IsArchive():
+			a := v.AsArchive()
+			if orig, ok := originalArchives[a.Hash]; ok && isEmptyArchive(a) {
+				return property.WithGoValue(v, orig)
+			}
+			return v
+		case v.IsArray():
+			arr := v.AsArray().AsSlice()
+			out := make([]property.Value, len(arr))
+			for i, e := range arr {
+				out[i] = rebuild(e)
+			}
+			return property.WithGoValue(v, property.NewArray(out))
+		case v.IsMap():
+			inner := v.AsMap()
+			out := make(map[string]property.Value, inner.Len())
+			for k, e := range inner.All {
+				out[k] = rebuild(e)
+			}
+			return property.WithGoValue(v, property.NewMap(out))
+		default:
+			return v
 		}
-	})
+	}
+
+	out := make(map[string]property.Value, transformed.Len())
+	for k, v := range transformed.All {
+		out[k] = rebuild(v)
+	}
+	return property.NewMap(out)
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
@@ -1286,13 +1280,13 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	// Unmarshal the provider inputs.
-	var inputs resource.PropertyMap
+	var inputs property.Map
 	if ins := resp.GetInputs(); ins != nil {
 		raw, err := propertyrpc.Unmarshal(ins)
 		if err != nil {
 			return CheckResponse{}, err
 		}
-		filtered, err := FilterProperties(raw, FilterOptions{
+		inputs, err = FilterProperties(raw, FilterOptions{
 			KeepUnknowns:   req.AllowUnknowns,
 			RejectUnknowns: !req.AllowUnknowns,
 			KeepSecrets:    true,
@@ -1301,14 +1295,13 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		if err != nil {
 			return CheckResponse{}, err
 		}
-		inputs = resource.ToResourcePropertyMap(filtered)
 	}
 
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
 	if !protocol.acceptSecrets {
-		annotateSecrets(inputs, resource.ToResourcePropertyMap(req.NewInputs))
+		inputs = annotateSecrets(inputs, req.NewInputs)
 	}
 
 	// And now any properties that failed verification.
@@ -1317,8 +1310,8 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
-	return CheckResponse{Properties: resource.FromResourcePropertyMap(inputs), Failures: failures}, nil
+	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, inputs.Len(), len(failures))
+	return CheckResponse{Properties: inputs, Failures: failures}, nil
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -1528,7 +1521,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	if err != nil {
 		return CreateResponse{Status: resourceStatus}, err
 	}
-	filteredOuts, err := FilterProperties(rawOuts, FilterOptions{
+	outs, err := FilterProperties(rawOuts, FilterOptions{
 		RejectUnknowns: !req.Preview,
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    true,
@@ -1537,20 +1530,19 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	if err != nil {
 		return CreateResponse{Status: resourceStatus}, err
 	}
-	outs := resource.ToResourcePropertyMap(filteredOuts)
 
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
 	if !protocol.acceptSecrets {
-		annotateSecrets(outs, resource.ToResourcePropertyMap(req.Properties))
+		outs = annotateSecrets(outs, req.Properties)
 	}
 
-	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
+	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, outs.Len())
 
 	return CreateResponse{
 		ID:                  id,
-		Properties:          resource.FromResourcePropertyMap(outs),
+		Properties:          outs,
 		Status:              resourceStatus,
 		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceError
@@ -1655,13 +1647,13 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	}
 
 	// Finally, unmarshal the resulting state properties and return them.
-	var newState resource.PropertyMap
+	var newState *property.Map
 	if liveObject != nil {
 		rawState, err := propertyrpc.Unmarshal(liveObject)
 		if err != nil {
 			return ReadResponse{Status: resourceStatus}, err
 		}
-		filteredState2, err := FilterProperties(rawState, FilterOptions{
+		state, err := FilterProperties(rawState, FilterOptions{
 			RejectUnknowns: true,
 			KeepSecrets:    true,
 			KeepResources:  true,
@@ -1669,16 +1661,16 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		if err != nil {
 			return ReadResponse{Status: resourceStatus}, err
 		}
-		newState = resource.ToResourcePropertyMap(filteredState2)
+		newState = &state
 	}
 
-	var newInputs resource.PropertyMap
+	var newInputs *property.Map
 	if liveInputs != nil {
 		rawInputs, err := propertyrpc.Unmarshal(liveInputs)
 		if err != nil {
 			return ReadResponse{Status: resourceStatus}, err
 		}
-		filteredInputs, err := FilterProperties(rawInputs, FilterOptions{
+		inputs, err := FilterProperties(rawInputs, FilterOptions{
 			RejectUnknowns: true,
 			KeepSecrets:    true,
 			KeepResources:  true,
@@ -1686,38 +1678,42 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 		if err != nil {
 			return ReadResponse{Status: resourceStatus}, err
 		}
-		newInputs = resource.ToResourcePropertyMap(filteredInputs)
+		newInputs = &inputs
 	}
 
-	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
-	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
-	// natively.
-	reqInputs := resource.ToResourcePropertyMap(req.Inputs)
-	reqState := resource.ToResourcePropertyMap(req.State)
-	if !protocol.acceptSecrets {
-		annotateSecrets(newInputs, reqInputs)
-		annotateSecrets(newState, reqState)
+	mlen := func(m *property.Map) int {
+		if m == nil {
+			return 0
+		}
+		return m.Len()
 	}
 
-	// make sure any echoed properties restore their original asset contents if they have not changed. Assets
-	// may appear in either the old inputs or the old state, and are matched by hash, so check both sources.
-	restoreElidedAssetContents(reqInputs, newInputs)
-	restoreElidedAssetContents(reqState, newInputs)
-	restoreElidedAssetContents(reqInputs, newState)
-	restoreElidedAssetContents(reqState, newState)
+	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, mlen(newState), mlen(newInputs))
 
-	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, len(newState), len(newInputs))
-	var outputs, inputs *property.Map
 	if newState != nil {
-		outputs = new(resource.FromResourcePropertyMap(newState))
+		// make sure any echoed properties restore their original asset contents if they have not changed. Assets
+		// may appear in either the old inputs or the old state, and are matched by hash, so check both sources.
+		newState = new(restoreElidedAssetContents(req.Inputs, *newState))
+		newState = new(restoreElidedAssetContents(req.State, *newState))
+		// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+		// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+		// natively.
+		if !protocol.acceptSecrets {
+			newState = new(annotateSecrets(*newState, req.State))
+		}
 	}
 	if newInputs != nil {
-		inputs = new(resource.FromResourcePropertyMap(newInputs))
+		newInputs = new(restoreElidedAssetContents(req.Inputs, *newInputs))
+		newInputs = new(restoreElidedAssetContents(req.State, *newInputs))
+		if !protocol.acceptSecrets {
+			newInputs = new(annotateSecrets(*newInputs, req.Inputs))
+		}
 	}
+
 	return ReadResponse{ReadResult{
 		ID:                  readID,
-		Outputs:             outputs,
-		Inputs:              inputs,
+		Outputs:             newState,
+		Inputs:              newInputs,
 		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceStatus}, resourceError
 }
@@ -1848,7 +1844,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	if err != nil {
 		return UpdateResponse{Status: resourceStatus}, err
 	}
-	filteredOuts, err := FilterProperties(rawOuts, FilterOptions{
+	outs, err := FilterProperties(rawOuts, FilterOptions{
 		RejectUnknowns: !req.Preview,
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    true,
@@ -1857,23 +1853,22 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	if err != nil {
 		return UpdateResponse{Status: resourceStatus}, err
 	}
-	outs := resource.ToResourcePropertyMap(filteredOuts)
 
 	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
 	if !protocol.acceptSecrets {
-		annotateSecrets(outs, resource.ToResourcePropertyMap(req.NewInputs))
+		outs = annotateSecrets(outs, req.NewInputs)
 	}
 
 	// make sure any echoed properties restore their original asset contents if they have not changed
-	restoreElidedAssetContents(resource.ToResourcePropertyMap(req.OldInputs), outs)
-	restoreElidedAssetContents(resource.ToResourcePropertyMap(req.OldOutputs), outs)
+	outs = restoreElidedAssetContents(req.OldInputs, outs)
+	outs = restoreElidedAssetContents(req.OldOutputs, outs)
 
-	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
+	logging.V(7).Infof("%s success; #outs=%d", label, outs.Len())
 
 	return UpdateResponse{
-		Properties:          resource.FromResourcePropertyMap(outs),
+		Properties:          outs,
 		Status:              resourceStatus,
 		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
 	}, resourceError
@@ -2241,7 +2236,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		return ConstructResult{}, err
 	}
 	outputs, err := FilterProperties(rawOutputs, FilterOptions{
-		KeepUnknowns:     req.Info.DryRun,
+		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
 		KeepDependencies: true,
@@ -2270,71 +2265,26 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 // Invoke dynamically executes a built-in function in the provider.
 // collectArgDependencies returns the union of dependencies from every OutputValue nested in args (arrays, objects,
 // secrets, and other OutputValues are walked recursively).
-func collectArgDependencies(args resource.PropertyMap) []resource.URN {
-	seen := map[resource.URN]struct{}{}
+func collectArgDependencies(args property.Map) []resource.URN {
 	var out []resource.URN
-	var walk func(v resource.PropertyValue)
-	walk = func(v resource.PropertyValue) {
+	var walk func(v property.Value)
+	walk = func(v property.Value) {
 		switch {
-		case v.IsOutput():
-			o := v.OutputValue()
-			for _, d := range o.Dependencies {
-				if _, ok := seen[d]; !ok {
-					seen[d] = struct{}{}
-					out = append(out, d)
-				}
-			}
-			if o.Known {
-				walk(o.Element)
-			}
-		case v.IsSecret():
-			walk(v.SecretValue().Element)
-		case v.IsObject():
-			for _, e := range v.ObjectValue() {
+		case v.IsMap():
+			for _, e := range v.AsMap().All {
 				walk(e)
 			}
 		case v.IsArray():
-			for _, e := range v.ArrayValue() {
+			for _, e := range v.AsArray().All {
 				walk(e)
 			}
 		}
+		out = append(out, v.Dependencies()...)
 	}
-	for _, v := range args {
+	for _, v := range args.All {
 		walk(v)
 	}
 	return out
-}
-
-// wrapWithDependencies wraps v in an OutputValue carrying the given dependencies. If v is already an OutputValue,
-// its existing dependencies are merged in.
-func wrapWithDependencies(v resource.PropertyValue, deps []resource.URN) resource.PropertyValue {
-	if v.IsOutput() {
-		o := v.OutputValue()
-		merged := append([]resource.URN(nil), o.Dependencies...)
-		seen := map[resource.URN]struct{}{}
-		for _, d := range o.Dependencies {
-			seen[d] = struct{}{}
-		}
-		for _, d := range deps {
-			if _, ok := seen[d]; !ok {
-				seen[d] = struct{}{}
-				merged = append(merged, d)
-			}
-		}
-		o.Dependencies = merged
-		return resource.NewProperty(o)
-	}
-	secret := v.IsSecret()
-	element := v
-	if secret {
-		element = v.SecretValue().Element
-	}
-	return resource.NewProperty(resource.Output{
-		Element:      element,
-		Known:        !v.IsComputed(),
-		Secret:       secret,
-		Dependencies: deps,
-	})
 }
 
 func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeResponse, error) {
@@ -2355,14 +2305,12 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		return InvokeResponse{Properties: property.Map{}}, nil
 	}
 
-	args := resource.ToResourcePropertyMap(req.Args)
-
 	// If the provider does not accept OutputValues we lose the per-value dependency information on the wire.
 	// Collect the union of dependencies from the args first so we can re-hydrate the return values below,
 	// preserving a (coarser) dependency relationship for a downstream SDK that accepts OutputValues.
 	var argDeps []resource.URN
 	if !protocol.acceptsOutputsInInvoke {
-		argDeps = collectArgDependencies(args)
+		argDeps = collectArgDependencies(req.Args)
 	}
 
 	filteredArgs, err := FilterProperties(req.Args, FilterOptions{
@@ -2392,7 +2340,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	if err != nil {
 		return InvokeResponse{}, err
 	}
-	filteredRet, err := FilterProperties(rawRet, FilterOptions{
+	ret, err := FilterProperties(rawRet, FilterOptions{
 		RejectUnknowns:   true,
 		KeepSecrets:      true,
 		KeepResources:    true,
@@ -2401,7 +2349,6 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	if err != nil {
 		return InvokeResponse{}, err
 	}
-	ret := resource.ToResourcePropertyMap(filteredRet)
 
 	// And now any properties that failed verification.
 	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
@@ -2409,26 +2356,27 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	if args.ContainsSecrets() && !protocol.acceptSecrets {
-		for k, v := range ret {
-			if v.IsSecret() || (v.IsOutput() && v.OutputValue().Secret) {
+	result := ret.AsMap()
+	if req.Args.HasSecrets() && !protocol.acceptSecrets {
+		for k, v := range result {
+			if v.HasSecrets() {
 				continue
 			}
-			ret[k] = resource.MakeSecret(v)
+			result[k] = v.WithSecret(true)
 		}
 	}
 
 	// Re-hydrate OutputValues on the return with the union of arg dependencies when the provider did not
 	// support OutputValues on Invoke. See `argDeps` above.
 	if len(argDeps) > 0 {
-		for k, v := range ret {
-			ret[k] = wrapWithDependencies(v, argDeps)
+		for k, v := range result {
+			result[k] = v.WithDependencies(argDeps)
 		}
 	}
 
-	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
+	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(result), len(failures))
 	return InvokeResponse{
-		Properties: resource.FromResourcePropertyMap(ret),
+		Properties: property.NewMap(result),
 		Failures:   failures,
 	}, nil
 }
@@ -2452,14 +2400,12 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		return CallResult{}, nil
 	}
 
-	args := resource.ToResourcePropertyMap(req.Args)
-
 	// If the provider does not accept OutputValues we lose the per-value dependency information on the wire.
 	// Collect the union of dependencies from the args first so we can re-hydrate the return values below,
 	// preserving a (coarser) dependency relationship for a downstream SDK that accepts OutputValues.
 	var argDeps []resource.URN
 	if !protocol.acceptsOutputsInCall {
-		argDeps = collectArgDependencies(args)
+		argDeps = collectArgDependencies(req.Args)
 	}
 
 	filteredArgs, err := FilterProperties(req.Args, FilterOptions{
@@ -2514,7 +2460,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	if err != nil {
 		return CallResult{}, err
 	}
-	filteredRet, err := FilterProperties(rawRet, FilterOptions{
+	ret, err := FilterProperties(rawRet, FilterOptions{
 		KeepUnknowns:     req.Info.DryRun,
 		KeepSecrets:      true,
 		KeepResources:    true,
@@ -2523,7 +2469,6 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	if err != nil {
 		return CallResult{}, err
 	}
-	ret := resource.ToResourcePropertyMap(filteredRet)
 
 	returnDependencies := map[resource.PropertyKey][]resource.URN{}
 	for k, rpcDeps := range resp.GetReturnDependencies() {
@@ -2537,13 +2482,15 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	// Re-hydrate OutputValues on the return with the union of arg dependencies and the per-key return
 	// dependencies when the provider did not support OutputValues on Call. See `argDeps` above.
 	if !protocol.acceptsOutputsInCall {
-		for k, v := range ret {
-			deps := append([]resource.URN(nil), argDeps...)
-			deps = append(deps, returnDependencies[k]...)
+		result := ret.AsMap()
+		for k, v := range result {
+			deps := append(v.Dependencies(), argDeps...)
+			deps = append(deps, returnDependencies[resource.PropertyKey(k)]...)
 			if len(deps) > 0 {
-				ret[k] = wrapWithDependencies(v, deps)
+				result[k] = v.WithDependencies(deps)
 			}
 		}
+		ret = property.NewMap(result)
 	}
 
 	// And now any properties that failed verification.
@@ -2552,10 +2499,11 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
+	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, ret.Len(), len(failures))
 	return CallResult{
-		Return:             resource.FromResourcePropertyMap(ret),
-		ReturnDependencies: returnDependencies, Failures: failures,
+		Return:             ret,
+		ReturnDependencies: returnDependencies,
+		Failures:           failures,
 	}, nil
 }
 
@@ -2721,6 +2669,10 @@ func parseError(err error) (
 			resourceErr = &InitError{Reasons: initErr.Reasons}
 			break
 		}
+		if _, ok := detail.(*pulumirpc.ErrorResourceAwaitFailed); ok {
+			resourceErr = &AwaitError{}
+			break
+		}
 	}
 
 	return resourceStatus, id, liveObject, liveInputs, refreshBeforeUpdate, resourceErr
@@ -2743,6 +2695,17 @@ func (ie *InitError) Error() string {
 		return "resource init failed"
 	}
 	return err.Error()
+}
+
+// AwaitError indicates the provider had to await the operation. Unlike InitError, no resource state was written
+// (Create) or the prior state is preserved unchanged (Update). The engine reports the resource failed to the SDK and
+// continues the deployment, but the CLI exits with a dedicated non-zero code.
+type AwaitError struct{}
+
+var _ error = (*AwaitError)(nil)
+
+func (ae *AwaitError) Error() string {
+	return "resource is awaiting"
 }
 
 func decorateSpanWithType(span opentracing.Span, urn string) {

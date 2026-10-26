@@ -27,7 +27,6 @@ import (
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -95,10 +94,6 @@ type MockBackend struct {
 		UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	DestroyF func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, error)
-	WatchF func(context.Context, Stack,
-		UpdateOperation, []string) error
-	GetLogsF func(context.Context, secrets.Provider, Stack, StackConfiguration,
-		operations.LogQuery) ([]operations.LogEntry, error)
 
 	CancelCurrentUpdateF func(ctx context.Context, stackRef StackReference) error
 
@@ -352,15 +347,6 @@ func (be *MockBackend) Destroy(ctx context.Context, stack Stack,
 	panic("not implemented")
 }
 
-func (be *MockBackend) Watch(ctx context.Context, stack Stack,
-	op UpdateOperation, paths []string,
-) error {
-	if be.WatchF != nil {
-		return be.WatchF(ctx, stack, op, paths)
-	}
-	panic("not implemented")
-}
-
 func (be *MockBackend) GetHistory(ctx context.Context,
 	stackRef StackReference,
 	pageSize int,
@@ -368,16 +354,6 @@ func (be *MockBackend) GetHistory(ctx context.Context,
 ) ([]UpdateInfo, error) {
 	if be.GetHistoryF != nil {
 		return be.GetHistoryF(ctx, stackRef, pageSize, page)
-	}
-	panic("not implemented")
-}
-
-func (be *MockBackend) GetLogs(
-	ctx context.Context, secretsProvider secrets.Provider, stack Stack,
-	cfg StackConfiguration, query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	if be.GetLogsF != nil {
-		return be.GetLogsF(ctx, secretsProvider, stack, cfg, query)
 	}
 	panic("not implemented")
 }
