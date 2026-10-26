@@ -80,3 +80,11 @@ output "setOptionalData" {
 output "unsetOptionalData" {
     value = unsetRes.optionalData == null ? "null" : "not null"
 }
+
+optionalLists = [setRes.data.numberArray, unsetRes.data.numberArray]
+
+resource "fromOptionalLists" "optional-primitive-ref:index:Resource" {
+    data = {
+        numberArray = optionalLists[0]
+    }
+}
