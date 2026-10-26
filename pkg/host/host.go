@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
 
@@ -367,12 +368,9 @@ func (host *defaultHost) PolicyAnalyzer(
 	return hostedPlugin.(plugin.Analyzer), nil
 }
 
-// Provider boots a resource provider for ctx. Resource providers are not memoized, so only the
-// bookkeeping runs on the loader goroutine; the boot itself runs here. A provider may ask the
-// engine to load another provider while it boots -- a component provider resolves the providers it
-// wraps before it reports its port -- and that nested load needs the loader goroutine to be free.
-func (host *defaultHost) Provider(
-	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+func (host *defaultHost) loadProvider(
+	ctx *plugin.Context, e env.Env,
+	load func() (plugin.Provider, string, *semver.Version, error),
 ) (plugin.Provider, error) {
 	release, err := host.beginLoad()
 	if err != nil {
@@ -380,26 +378,7 @@ func (host *defaultHost) Provider(
 	}
 	defer release()
 
-	pkg := descriptor.Name
-	version := descriptor.Version
-
-	// Try to load and bind to a plugin.
-
-	result := make(map[string]string)
-	for k, v := range ctx.Config() {
-		if k.Namespace() != pkg {
-			continue
-		}
-		result[k.Name()] = v
-	}
-	jsonConfig, err := json.Marshal(result)
-	if err != nil {
-		return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
-	}
-	plug, err := plugin.NewProvider(
-		host, ctx, descriptor,
-		ctx.RuntimeOptions(), ctx.DisableProviderPreview(), string(jsonConfig), ctx.ProjectName(), e,
-	)
+	plug, pkg, version, err := load()
 	if err != nil || plug == nil {
 		return nil, err
 	}
@@ -446,6 +425,46 @@ func (host *defaultHost) Provider(
 	}
 
 	return hostManagedProvider{plug, host}, nil
+}
+
+// Provider boots a resource provider for ctx. Resource providers are not memoized, so only the
+// bookkeeping runs on the loader goroutine; the boot itself runs here. A provider may ask the
+// engine to load another provider while it boots -- a component provider resolves the providers it
+// wraps before it reports its port -- and that nested load needs the loader goroutine to be free.
+func (host *defaultHost) Provider(
+	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
+	pkg := descriptor.Name
+	version := descriptor.Version
+
+	// Try to load and bind to a plugin.
+
+	result := make(map[string]string)
+	for k, v := range ctx.Config() {
+		if k.Namespace() != pkg {
+			continue
+		}
+		result[k.Name()] = v
+	}
+	jsonConfig, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
+	}
+
+	return host.loadProvider(ctx, e, func() (plugin.Provider, string, *semver.Version, error) {
+		plug, err := plugin.NewProvider(
+			host, ctx, descriptor,
+			ctx.RuntimeOptions(), ctx.DisableProviderPreview(), string(jsonConfig), ctx.ProjectName(), e,
+		)
+		return plug, pkg, version, err
+	})
+}
+
+func (host *defaultHost) ProviderFromPath(ctx *plugin.Context, path string, e env.Env) (plugin.Provider, error) {
+	return host.loadProvider(ctx, e, func() (plugin.Provider, string, *semver.Version, error) {
+		plug, err := plugin.NewProviderFromPath(host, ctx, path, e)
+		return plug, "", nil, err
+	})
 }
 
 // hostManagedProvider wraps a Provider such that it can be closed by the host that created it.

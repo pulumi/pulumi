@@ -22,6 +22,7 @@ import (
 
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -31,7 +32,7 @@ import (
 
 func testProvider(ctx context.Context, host plugin.Host, pCtx *plugin.Context, name string) error {
 	providerLocation := filepath.Join("..", name)
-	prov, err := plugin.NewProviderFromPath(host, pCtx, providerLocation)
+	prov, err := plugin.NewProviderFromPath(host, pCtx, providerLocation, env.Global())
 	if err != nil {
 		return err
 	}

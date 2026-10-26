@@ -39,6 +39,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	diagutils "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -467,7 +468,7 @@ func (w Workspace) RunPackage(
 	pctx.CloudCredentialEnv = w.pctx.CloudCredentialEnv
 	pctx.DialOptions = w.pctx.DialOptions
 	pctx.DebugTraceMutex = w.pctx.DebugTraceMutex
-	p, err := plugin.NewProviderFromPath(w.pctx.Host, pctx, pluginPath)
+	p, err := w.pctx.Host.ProviderFromPath(pctx, pluginPath, env.Global())
 	if err != nil {
 		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)
 	}

@@ -454,7 +454,7 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 }
 
 // NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
-func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error) {
+func NewProviderFromPath(host Host, ctx *Context, path string, env env.Env) (Provider, error) {
 	mapperAddr := mapperTarget(ctx)
 	loaderAddr := loaderTarget(ctx)
 	resolverAddr := resolverTarget(ctx)
@@ -483,7 +483,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 	}
 
 	plug, handshakeRes, err := newPlugin(ctx, ctx.Pwd, path, "",
-		apitype.ResourcePlugin, []string{host.ServerAddr()}, env.Global(),
+		apitype.ResourcePlugin, []string{host.ServerAddr()}, env,
 		handshake, providerPluginDialOptions(ctx, "", path),
 		!ctx.DisableProviderDebugging() &&
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: path}))
