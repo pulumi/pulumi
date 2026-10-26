@@ -1111,7 +1111,7 @@ func (c *testPulumiClient) EncryptSecrets(
 ) ([]string, error) {
 	ciphertexts := make([]string, len(plaintexts))
 	for i, plaintext := range plaintexts {
-		ciphertext, err := rot128{}.Encrypt(ctx, plaintext)
+		ciphertext, err := eval.EncryptSecret(ctx, rot128{}, plaintext)
 		if err != nil {
 			return nil, err
 		}
