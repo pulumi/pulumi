@@ -43,6 +43,7 @@ import (
 
 const (
 	etagHeader     = "ETag"
+	ifMatchHeader  = "If-Match"
 	revisionHeader = "Pulumi-ESC-Revision"
 	DefaultProject = "default"
 )
@@ -194,6 +195,60 @@ type Client interface {
 		changeRequestID string,
 		description *string,
 	) error
+
+	// ListChangeRequests returns a page of change requests in org orgName and the continuation token
+	// for the next page. The continuation token is empty when there are no more pages.
+	ListChangeRequests(
+		ctx context.Context,
+		orgName string,
+		continuationToken string,
+	) ([]ChangeRequest, string, error)
+
+	// GetChangeRequest returns the change request with the specified ID and its gate evaluation.
+	GetChangeRequest(ctx context.Context, orgName, changeRequestID string) (*GetChangeRequestResponse, error)
+
+	// ApproveChangeRequest approves the given revision of a change request.
+	ApproveChangeRequest(ctx context.Context, orgName, changeRequestID string, revisionNumber int, comment string) error
+
+	// UnapproveChangeRequest removes the caller's approval from a change request.
+	UnapproveChangeRequest(ctx context.Context, orgName, changeRequestID string) error
+
+	// ApplyChangeRequest applies an approved change request.
+	ApplyChangeRequest(ctx context.Context, orgName, changeRequestID string) (*ChangeRequestApplyResult, error)
+
+	// CloseChangeRequest closes a change request without applying it.
+	CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error
+
+	// AddChangeRequestComment adds a comment to a change request.
+	AddChangeRequestComment(ctx context.Context, orgName, changeRequestID, comment string) error
+
+	// ListChangeRequestEvents returns a page of a change request's events and the continuation token
+	// for the next page. The continuation token is empty when there are no more pages.
+	ListChangeRequestEvents(
+		ctx context.Context,
+		orgName string,
+		changeRequestID string,
+		continuationToken string,
+	) ([]ChangeRequestEvent, string, error)
+
+	// GetEnvironmentDraftStatus returns the draft's base revision and the environment's current revision.
+	GetEnvironmentDraftStatus(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		changeRequestID string,
+	) (*EnvironmentDraftStatus, error)
+
+	// RebaseEnvironmentDraft replays a draft onto the environment's current revision. If the rebase
+	// conflicts, the draft is unchanged and the conflicts are returned.
+	RebaseEnvironmentDraft(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		changeRequestID string,
+	) (*EnvironmentDraftRebaseResponse, error)
 
 	// DeleteEnvironment deletes the environment envName in org orgName.
 	DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error
@@ -775,7 +830,7 @@ func (pc *client) UpdateEnvironment(
 ) ([]EnvironmentDiagnostic, int, error) {
 	header := http.Header{}
 	if tag != "" {
-		header.Set(etagHeader, tag)
+		header.Set(ifMatchHeader, tag)
 	}
 
 	var errResp EnvironmentErrorResponse
@@ -868,7 +923,7 @@ func (pc *client) UpdateEnvironmentDraft(
 	etag string,
 ) ([]EnvironmentDiagnostic, error) {
 	header := http.Header{}
-	header.Set("If-Match", etag)
+	header.Set(ifMatchHeader, etag)
 
 	var errResp EnvironmentErrorResponse
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v", orgName, projectName, envName, changeRequestID)
@@ -897,6 +952,124 @@ func (pc *client) SubmitChangeRequest(
 	path := fmt.Sprintf("/api/change-requests/%v/%v/submit", orgName, changeRequestID)
 	err := pc.restCall(ctx, http.MethodPost, path, nil, &req, nil)
 	return err
+}
+
+func (pc *client) ListChangeRequests(
+	ctx context.Context,
+	orgName string,
+	continuationToken string,
+) ([]ChangeRequest, string, error) {
+	queryObj := struct {
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{ContinuationToken: continuationToken}
+
+	var resp ListChangeRequestsResponse
+	path := fmt.Sprintf("/api/change-requests/%v", orgName)
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
+		return nil, "", err
+	}
+	return resp.ChangeRequests, resp.ContinuationToken, nil
+}
+
+func (pc *client) GetChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+) (*GetChangeRequestResponse, error) {
+	var resp GetChangeRequestResponse
+	path := fmt.Sprintf("/api/change-requests/%v/%v", orgName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (pc *client) ApproveChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	revisionNumber int,
+	comment string,
+) error {
+	req := ApproveChangeRequestRequest{RevisionNumber: revisionNumber, Comment: comment}
+	path := fmt.Sprintf("/api/change-requests/%v/%v/approve", orgName, changeRequestID)
+	return pc.restCall(ctx, http.MethodPost, path, nil, &req, nil)
+}
+
+func (pc *client) UnapproveChangeRequest(ctx context.Context, orgName, changeRequestID string) error {
+	path := fmt.Sprintf("/api/change-requests/%v/%v/approve", orgName, changeRequestID)
+	return pc.restCall(ctx, http.MethodDelete, path, nil, &ChangeRequestComment{}, nil)
+}
+
+func (pc *client) ApplyChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+) (*ChangeRequestApplyResult, error) {
+	var resp ChangeRequestApplyResult
+	path := fmt.Sprintf("/api/change-requests/%v/%v/apply", orgName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (pc *client) CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error {
+	path := fmt.Sprintf("/api/change-requests/%v/%v/close", orgName, changeRequestID)
+	return pc.restCall(ctx, http.MethodPost, path, nil, &ChangeRequestComment{Comment: comment}, nil)
+}
+
+func (pc *client) AddChangeRequestComment(ctx context.Context, orgName, changeRequestID, comment string) error {
+	path := fmt.Sprintf("/api/change-requests/%v/%v/comments", orgName, changeRequestID)
+	return pc.restCall(ctx, http.MethodPost, path, nil, &ChangeRequestComment{Comment: comment}, nil)
+}
+
+func (pc *client) ListChangeRequestEvents(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	continuationToken string,
+) ([]ChangeRequestEvent, string, error) {
+	queryObj := struct {
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{ContinuationToken: continuationToken}
+
+	var resp ListChangeRequestEventsResponse
+	path := fmt.Sprintf("/api/change-requests/%v/%v/events", orgName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
+		return nil, "", err
+	}
+	return resp.Events, resp.ContinuationToken, nil
+}
+
+func (pc *client) GetEnvironmentDraftStatus(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) (*EnvironmentDraftStatus, error) {
+	var resp EnvironmentDraftStatus
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/status", orgName, projectName, envName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (pc *client) RebaseEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) (*EnvironmentDraftRebaseResponse, error) {
+	var resp EnvironmentDraftRebaseResponse
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/rebase", orgName, projectName, envName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 func (pc *client) DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error {
@@ -1812,12 +1985,12 @@ func (pc *client) httpCall(
 
 	// Provide a better error if using an authenticated call without having logged in first.
 	if resp.StatusCode == 401 && pc.apiToken == "" {
-		return nil, errors.New("this command requires logging in; try running `esc login` first")
+		return nil, errors.New("this command requires logging in; try running `pulumi login` first")
 	}
 
 	// Provide a better error if rate-limit is exceeded(429: Too Many Requests)
 	if resp.StatusCode == 429 {
-		return nil, errors.New("esc: request rate-limit exceeded")
+		return nil, errors.New("request rate-limit exceeded")
 	}
 
 	// For 4xx and 5xx failures, attempt to provide better diagnostics about what may have gone wrong.

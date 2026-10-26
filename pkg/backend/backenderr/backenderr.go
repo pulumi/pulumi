@@ -178,6 +178,20 @@ func (err NotFoundError) Is(other error) bool {
 	}
 }
 
+// DefaultOrgError indicates that an operation failed because the organization taken from
+// the default organization setting does not exist or cannot be accessed by the current user.
+type DefaultOrgError struct {
+	Org string
+	Err error
+}
+
+func (err DefaultOrgError) Error() string {
+	return fmt.Sprintf("the organization %q set as the default organization does not exist or you do not have "+
+		"access to it; use `pulumi org set-default` to change the default organization: %v", err.Org, err.Err)
+}
+
+func (err DefaultOrgError) Unwrap() error { return err.Err }
+
 type ForbiddenError struct{ Err error }
 
 func (err ForbiddenError) Unwrap() error {

@@ -103,8 +103,7 @@ func (ps *ProgramSpec) AsLanguageRuntimeF(t require.TestingT) deploytest.Languag
 				deletedWith = ""
 			}
 			opts := deploytest.ResourceOptions{
-				// TODO(https://github.com/pulumi/pulumi/issues/18934): We should sometimes leave this null
-				Protect:        &r.Protect,
+				Protect:        r.Protect,
 				RetainOnDelete: &r.RetainOnDelete,
 				Parent:         rewriteURN(parent),
 				Provider:       rewriteProviderRef(r.Provider),
@@ -204,7 +203,7 @@ type ProgramSpecOptions struct {
 	PrependResourceOpts  ResourceSpecOptions
 	Action               *rapid.Generator[ProgramSpecAction]
 	InsertResourceOpts   ResourceSpecOptions
-	UpdateProtect        *rapid.Generator[bool]
+	UpdateProtect        *rapid.Generator[*bool]
 	UpdateRetainOnDelete *rapid.Generator[bool]
 	AddAliases           *rapid.Generator[bool]
 	AppendCount          *rapid.Generator[int]
@@ -259,7 +258,7 @@ var defaultProgramSpecOptions = ProgramSpecOptions{
 	PrependResourceOpts:  defaultResourceSpecOptions,
 	Action:               rapid.SampledFrom(programSpecActions),
 	InsertResourceOpts:   defaultResourceSpecOptions,
-	UpdateProtect:        rapid.Bool(),
+	UpdateProtect:        rapid.Ptr(rapid.Bool(), true),
 	UpdateRetainOnDelete: rapid.Bool(),
 	AddAliases:           rapid.Bool(),
 	AppendCount:          rapid.IntRange(0, 2),

@@ -132,7 +132,7 @@ hook resource "foo" {
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
 		Summary: "cannot assign expression of type ((), {}) to location of type " +
-			"list(output(string) | string) | output(list(string)): ",
+			"list(string | output(string)) | output(list(string)): ",
 		Subject: &hcl.Range{
 			Filename: "program.pp",
 			Start: hcl.Pos{

@@ -326,9 +326,9 @@ func TestGenerateHCL2Definition(t *testing.T) {
 	cases, err := readTestCases("testdata/cases.json")
 	require.NoError(t, err)
 
-	//nolint:paralleltest // false positive because range var isn't used directly in t.Run(name) arg
 	for _, s := range cases.Resources {
 		t.Run(string(s.URN), func(t *testing.T) {
+			t.Parallel()
 			state, err := stack.DeserializeResource(s, config.NopDecrypter)
 			require.NoError(t, err)
 
@@ -1365,10 +1365,11 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 	t.Run("ResourceReference", func(t *testing.T) {
 		t.Parallel()
-		value := property.New(property.ResourceReference{
-			URN: "urn:pulumi:s::p::pkg:index:R::r",
-			ID:  property.New("id"),
-		})
+		value := property.New(property.NewResourceReference(
+			"urn:pulumi:s::p::pkg:index:R::r",
+			property.New("id"),
+			"",
+		))
 		resType := &schema.ResourceType{Token: "pkg:index:R"}
 
 		assert.True(t, valueStructurallyTypedAs(value, resType))

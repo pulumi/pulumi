@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -51,43 +52,47 @@ func init() {
 					require.Empty(l, unsetB.Inputs, "unsetB inputs should be empty")
 					require.Empty(l, unsetB.Outputs, "unsetB outputs should be empty")
 
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean":     true,
-						"float":       3.14,
-						"integer":     42,
-						"string":      "hello",
-						"numberArray": []any{-1.0, 0.0, 1.0},
-						"booleanMap":  map[string]any{"t": true, "f": false},
+					want := property.NewMap(map[string]property.Value{
+						"boolean": property.New(true),
+						"float":   property.New(3.14),
+						"integer": property.New(42.0),
+						"string":  property.New("hello"),
+						"numberArray": property.New([]property.Value{
+							property.New(-1.0), property.New(0.0), property.New(1.0),
+						}),
+						"booleanMap": property.New(map[string]property.Value{
+							"t": property.New(true), "f": property.New(false),
+						}),
 					})
-					require.Equal(l, want, setA.Inputs)
-					require.Equal(l, want, setA.Outputs)
-					require.Equal(l, want, setB.Inputs)
-					require.Equal(l, want, setB.Outputs)
-					require.Equal(l, want, fromPrimitive.Inputs)
-					require.Equal(l, want, fromPrimitive.Outputs)
+					require.Equal(l, want, resource.FromResourcePropertyMap(setA.Inputs))
+					require.Equal(l, want, resource.FromResourcePropertyMap(setA.Outputs))
+					require.Equal(l, want, resource.FromResourcePropertyMap(setB.Inputs))
+					require.Equal(l, want, resource.FromResourcePropertyMap(setB.Outputs))
+					require.Equal(l, want, resource.FromResourcePropertyMap(fromPrimitive.Inputs))
+					require.Equal(l, want, resource.FromResourcePropertyMap(fromPrimitive.Outputs))
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					AssertPropertyMapMember(l, outputs, "unsetBoolean", resource.NewProperty("null"))
-					AssertPropertyMapMember(l, outputs, "unsetFloat", resource.NewProperty("null"))
-					AssertPropertyMapMember(l, outputs, "unsetInteger", resource.NewProperty("null"))
-					AssertPropertyMapMember(l, outputs, "unsetString", resource.NewProperty("null"))
-					AssertPropertyMapMember(l, outputs, "unsetNumberArray", resource.NewProperty("null"))
-					AssertPropertyMapMember(l, outputs, "unsetBooleanMap", resource.NewProperty("null"))
+					AssertPropertyMapMember(l, outputs, "unsetBoolean", property.New("null"))
+					AssertPropertyMapMember(l, outputs, "unsetFloat", property.New("null"))
+					AssertPropertyMapMember(l, outputs, "unsetInteger", property.New("null"))
+					AssertPropertyMapMember(l, outputs, "unsetString", property.New("null"))
+					AssertPropertyMapMember(l, outputs, "unsetNumberArray", property.New("null"))
+					AssertPropertyMapMember(l, outputs, "unsetBooleanMap", property.New("null"))
 
-					AssertPropertyMapMember(l, outputs, "setBoolean", resource.NewProperty(true))
-					AssertPropertyMapMember(l, outputs, "setFloat", resource.NewProperty(3.14))
-					AssertPropertyMapMember(l, outputs, "setInteger", resource.NewProperty(42.0))
-					AssertPropertyMapMember(l, outputs, "setString", resource.NewProperty("hello"))
-					AssertPropertyMapMember(l, outputs, "setNumberArray", resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty(-1.0),
-						resource.NewProperty(0.0),
-						resource.NewProperty(1.0),
+					AssertPropertyMapMember(l, outputs, "setBoolean", property.New(true))
+					AssertPropertyMapMember(l, outputs, "setFloat", property.New(3.14))
+					AssertPropertyMapMember(l, outputs, "setInteger", property.New(42.0))
+					AssertPropertyMapMember(l, outputs, "setString", property.New("hello"))
+					AssertPropertyMapMember(l, outputs, "setNumberArray", property.New([]property.Value{
+						property.New(-1.0),
+						property.New(0.0),
+						property.New(1.0),
 					}))
-					AssertPropertyMapMember(l, outputs, "setBooleanMap", resource.NewProperty(resource.PropertyMap{
-						"t": resource.NewProperty(true),
-						"f": resource.NewProperty(false),
+					AssertPropertyMapMember(l, outputs, "setBooleanMap", property.New(map[string]property.Value{
+						"t": property.New(true),
+						"f": property.New(false),
 					}))
 				},
 			},

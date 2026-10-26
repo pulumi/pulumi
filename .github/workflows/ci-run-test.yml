@@ -2,6 +2,7 @@ name: Test
 
 permissions:
   contents: read
+  id-token: write
 
 on:
   workflow_call:
@@ -75,12 +76,12 @@ env:
   PULUMI_TEST_OWNER: "moolumi"
   PULUMI_TEST_ORG: "moolumi"
   PULUMI_TEST_USE_NPM: "true"
-  PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   # Release builds use the service, PR checks and snapshots will use the local backend if possible.
   PULUMI_TEST_USE_SERVICE: ${{ !contains(inputs.version, '-') }}
   # We're hitting a lot of github limits because of deploytest trying to auto install plugins, skip that for now.
   PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION: "true"
   PYTHON: python
+  UV_PYTHON_PREFERENCE: only-system
   GO_TEST_PARALLELISM: 8
   GO_TEST_PKG_PARALLELISM: 2
   GO_TEST_SHUFFLE: off
@@ -88,7 +89,8 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   DOTNET_ROLL_FORWARD: "Major"
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
-  OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: PULUMI_ACCESS_TOKEN=PULUMI_PROD_ACCESS_TOKEN,OTEL_EXPORTER_OTLP_ENDPOINT
 
 jobs:
   test:
@@ -112,6 +114,18 @@ jobs:
     timeout-minutes: 70
     continue-on-error: ${{ inputs.continue-on-error }}
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       # Create a coverage file to register a testing job was started.
       # This artifact will be overwritten with "OK" at the end of the job.
       - name: Write test started file
@@ -247,12 +261,19 @@ jobs:
         with:
           java-version: '11'
           distribution: 'temurin'
-      - name: Setup Gradle
-        uses: ./.github/actions/retry
-        with:
-          action: gradle/actions/setup-gradle@v6
-          with: |
-            gradle-version: "7.6"
+      - name: Pin Maven 3.9.16 (pulumi-java plugin discovery breaks with Maven 3.10)
+        env:
+          MAVEN_VERSION: 3.9.16
+          MAVEN_DIR: ${{ runner.temp }}/maven
+        run: |
+          set -euo pipefail
+          mkdir -p "${MAVEN_DIR}"
+          cd "${MAVEN_DIR}"
+          curl -fsSL --retry 5 --retry-all-errors -o maven.tar.gz \
+            "https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz"
+          tar xzf maven.tar.gz
+          echo "${MAVEN_DIR}/apache-maven-${MAVEN_VERSION}/bin" | tee -a "$GITHUB_PATH"
+          "${MAVEN_DIR}/apache-maven-${MAVEN_VERSION}/bin/mvn" --version
       - name: Uninstall pre-installed Pulumi (windows)
         if: inputs.platform == 'windows-latest'
         run: |
@@ -269,6 +290,8 @@ jobs:
         uses: ./.github/actions/retry
         with:
           action: oven-sh/setup-bun@v2
+          with: |
+            bun-version: 1.4.3
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
@@ -395,7 +418,7 @@ jobs:
         run: echo "PULUMI_ACCEPT=TRUE" >> "${GITHUB_ENV}"
       - name: Create GCP service account key file
         run: |
-          echo -n '${{ secrets.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
+          echo -n '${{ steps.esc-secrets.outputs.GCP_SERVICE_ACCOUNT }}' > '${{ runner.temp }}/application_default_credentials.json'
       - if: contains(inputs.platform, 'ubuntu')
         name: Wait for disk cleanup (Ubuntu)
         run: ./.github/scripts/free-disk-space wait
@@ -404,16 +427,16 @@ jobs:
         run: ${{ inputs.test-command }}
         continue-on-error: ${{ inputs.continue-on-error }}
         env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_STORAGE_SAS_TOKEN: ${{ secrets.AZURE_STORAGE_SAS_TOKEN }}
+          AZURE_TENANT_ID: ${{ steps.esc-secrets.outputs.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ steps.esc-secrets.outputs.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ steps.esc-secrets.outputs.AZURE_CLIENT_SECRET }}
+          AZURE_STORAGE_SAS_TOKEN: ${{ steps.esc-secrets.outputs.AZURE_STORAGE_SAS_TOKEN }}
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/application_default_credentials.json
-          AWS_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_KEY }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_CI_ACCESS_SECRET }}
+          AWS_ACCESS_KEY: ${{ steps.esc-secrets.outputs.AWS_CI_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.esc-secrets.outputs.AWS_CI_ACCESS_SECRET }}
           DOTNET_VERSION: ${{ fromJson(inputs.version-set).dotnet }}
       - name: Convert Node coverage data
         if: ${{ inputs.platform != 'windows-latest' }}
@@ -455,6 +478,7 @@ jobs:
           action: actions/upload-artifact@v7
           with: |
             name: coverage-${{ env.TEST_HASH_ID }}
+            overwrite: true
             path: |
               coverage/*
               !coverage/.gitkeep
@@ -466,7 +490,7 @@ jobs:
           fail_ci_if_error: false
           override_branch: ${{ github.event_name == 'merge_group' && 'master' || github.head_ref }}
           verbose: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ steps.esc-secrets.outputs.CODECOV_TOKEN }}
       - name: Summarize Test Time by Package
         continue-on-error: true
         env:
@@ -497,4 +521,5 @@ jobs:
           action: actions/upload-artifact@v7
           with: |
             name: gotestsum-test-results-${{ env.TEST_HASH_ID }}
+            overwrite: true
             path: test-results/*.json

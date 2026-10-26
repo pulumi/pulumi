@@ -21,7 +21,9 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"time"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -30,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -41,7 +42,7 @@ import (
 type policyIssueGetClient interface {
 	GetPolicyIssue(
 		ctx context.Context, orgName, issueID string,
-	) (apitype.PolicyIssue, error)
+	) (cloudapitype.PolicyIssue, error)
 }
 
 // policyIssueGetClientFactory resolves a cloud client and the organization
@@ -171,9 +172,9 @@ func runPolicyIssueGet(
 	return args.outputFormat.Get()(w, resp)
 }
 
-type policyIssueGetRenderFunc func(w io.Writer, resp apitype.PolicyIssue) error
+type policyIssueGetRenderFunc func(w io.Writer, resp cloudapitype.PolicyIssue) error
 
-func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
+func renderPolicyIssueGetText(w io.Writer, issue cloudapitype.PolicyIssue) error {
 	pack := issue.PolicyPack
 	if issue.PolicyPackTag != "" {
 		pack = fmt.Sprintf("%s@%s", issue.PolicyPack, issue.PolicyPackTag)
@@ -202,8 +203,8 @@ func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
 	if issue.ResourceType != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Resource type:", issue.ResourceType)
 	}
-	if issue.ObservedAt != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Observed at:", issue.ObservedAt)
+	if observedAt := formatPolicyIssueTime(issue.ObservedAt); observedAt != "" {
+		fmt.Fprintf(w, "%-20s %s\n", "Observed at:", observedAt)
 	}
 	if issue.Message != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Message:", issue.Message)
@@ -211,45 +212,16 @@ func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
 	return nil
 }
 
-// policyIssueGetJSON is the JSON envelope emitted by
-// `pulumi policy issue get --output=json`.
-type policyIssueGetJSON struct {
-	ID            string                 `json:"id"`
-	PolicyName    string                 `json:"policyName"`
-	PolicyPack    string                 `json:"policyPack"`
-	PolicyPackTag string                 `json:"policyPackTag,omitempty"`
-	Level         string                 `json:"level"`
-	Severity      apitype.PolicySeverity `json:"severity,omitempty"`
-	Status        string                 `json:"status,omitempty"`
-	ResourceURN   string                 `json:"resourceURN,omitempty"`
-	ResourceType  string                 `json:"resourceType,omitempty"`
-	EntityProject string                 `json:"entityProject,omitempty"`
-	EntityID      string                 `json:"entityId,omitempty"`
-	Message       string                 `json:"message,omitempty"`
-	ObservedAt    string                 `json:"observedAt,omitempty"`
-}
-
-func toPolicyIssueGetJSON(issue apitype.PolicyIssue) policyIssueGetJSON {
-	return policyIssueGetJSON{
-		ID:            issue.ID,
-		PolicyName:    issue.PolicyName,
-		PolicyPack:    issue.PolicyPack,
-		PolicyPackTag: issue.PolicyPackTag,
-		Level:         issue.Level,
-		Severity:      issue.Severity,
-		Status:        issue.Status,
-		ResourceURN:   issue.ResourceURN,
-		ResourceType:  issue.ResourceType,
-		EntityProject: issue.EntityProject,
-		EntityID:      issue.EntityID,
-		Message:       issue.Message,
-		ObservedAt:    issue.ObservedAt,
+func formatPolicyIssueTime(t *time.Time) string {
+	if t == nil {
+		return ""
 	}
+	return t.Format(time.RFC3339Nano)
 }
 
-func renderPolicyIssueGetJSON(w io.Writer, issue apitype.PolicyIssue) error {
+func renderPolicyIssueGetJSON(w io.Writer, issue cloudapitype.PolicyIssue) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(toPolicyIssueGetJSON(issue))
+	return enc.Encode(issue)
 }

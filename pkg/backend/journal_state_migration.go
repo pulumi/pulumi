@@ -39,27 +39,45 @@ func (r *JournalReplayer) applyStateMigration(entry apitype.JournalEntry) error 
 				"state migration journal entry cannot be applied with incomplete operation %d", operationID)
 		}
 	}
-	if len(entry.RemoveOlds) == 0 {
-		return errors.New("state migration journal entry removes no resources")
-	}
 	if len(entry.States) == 0 {
 		return errors.New("state migration journal entry inserts no resources")
 	}
 
-	removed := make(map[int64]struct{}, len(entry.RemoveOlds))
-	var greatestRemovedIndex int64 = -1
-	for _, index := range entry.RemoveOlds {
-		if index < 0 || index >= int64(len(r.base.Resources)) {
-			return fmt.Errorf("state migration remove index %d is outside base snapshot with %d resources",
-				index, len(r.base.Resources))
+	newIndices := make(map[int64]int64, len(entry.Layout))
+	placedStates := make(map[int64]struct{}, len(entry.States))
+	for position, item := range entry.Layout {
+		switch {
+		case item.BaseIndex != nil && item.StateIndex != nil:
+			return fmt.Errorf("state migration layout item %d refers to both a base resource and an inserted state",
+				position)
+		case item.BaseIndex != nil:
+			index := *item.BaseIndex
+			if index < 0 || index >= int64(len(r.base.Resources)) {
+				return fmt.Errorf("state migration layout refers to base index %d outside base snapshot with %d resources",
+					index, len(r.base.Resources))
+			}
+			if _, duplicate := newIndices[index]; duplicate {
+				return fmt.Errorf("state migration layout places base resource %d more than once", index)
+			}
+			newIndices[index] = int64(position)
+		case item.StateIndex != nil:
+			index := *item.StateIndex
+			if index < 0 || index >= int64(len(entry.States)) {
+				return fmt.Errorf("state migration layout refers to inserted state %d, but the entry has %d states",
+					index, len(entry.States))
+			}
+			if _, duplicate := placedStates[index]; duplicate {
+				return fmt.Errorf("state migration layout places inserted state %d more than once", index)
+			}
+			placedStates[index] = struct{}{}
+		default:
+			return fmt.Errorf("state migration layout item %d refers to neither a base resource nor an inserted state",
+				position)
 		}
-		if _, duplicate := removed[index]; duplicate {
-			return fmt.Errorf("state migration contains duplicate remove index %d", index)
-		}
-		removed[index] = struct{}{}
-		if index > greatestRemovedIndex {
-			greatestRemovedIndex = index
-		}
+	}
+	if len(placedStates) != len(entry.States) {
+		return fmt.Errorf("state migration layout places %d of %d inserted states",
+			len(placedStates), len(entry.States))
 	}
 
 	// Apply changes to a copy so an error leaves the replayer unchanged.
@@ -74,8 +92,8 @@ func (r *JournalReplayer) applyStateMigration(entry apitype.JournalEntry) error 
 			return fmt.Errorf("state migration base patch index %d is outside base snapshot with %d resources",
 				patch.Index, len(baseResources))
 		}
-		if _, removed := removed[patch.Index]; removed {
-			return fmt.Errorf("state migration base patch index %d is also removed", patch.Index)
+		if _, retained := newIndices[patch.Index]; !retained {
+			return fmt.Errorf("state migration base patch index %d is not retained by the layout", patch.Index)
 		}
 		if _, duplicate := patchedBase[patch.Index]; duplicate {
 			return fmt.Errorf("state migration contains duplicate base patch index %d", patch.Index)
@@ -142,18 +160,13 @@ func (r *JournalReplayer) applyStateMigration(entry apitype.JournalEntry) error 
 		insertedURNs[state.URN] = struct{}{}
 	}
 
-	// Replace the old subtree and track the new index of each remaining resource.
-	newIndices := make(map[int64]int64, len(baseResources))
-	resources := make([]apitype.ResourceV3, 0, len(baseResources)-len(entry.RemoveOlds)+len(entry.States))
-	for i, res := range baseResources {
-		if _, ok := removed[int64(i)]; ok {
-			if int64(i) == greatestRemovedIndex {
-				resources = append(resources, entry.States...)
-			}
-			continue
+	resources := make([]apitype.ResourceV3, 0, len(entry.Layout))
+	for _, item := range entry.Layout {
+		if item.BaseIndex != nil {
+			resources = append(resources, baseResources[*item.BaseIndex])
+		} else {
+			resources = append(resources, entry.States[*item.StateIndex])
 		}
-		newIndices[int64(i)] = int64(len(resources))
-		resources = append(resources, res)
 	}
 
 	newBase := *r.base

@@ -118,6 +118,7 @@ func (p *PrimitiveDefaultsProvider) CheckConfig(
 func (p *PrimitiveDefaultsProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "primitive-defaults:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -133,7 +134,7 @@ func (p *PrimitiveDefaultsProvider) Check(
 
 	// Start with user-provided values.
 	props := resource.PropertyMap{}
-	maps.Copy(props, req.News)
+	maps.Copy(props, news)
 
 	// For each optional property: assert it is present and validate its type.
 	assertPresentAndType := func(
@@ -143,16 +144,14 @@ func (p *PrimitiveDefaultsProvider) Check(
 	) *plugin.CheckResponse {
 		v, ok := props[key]
 		if !ok {
-			resp := plugin.CheckResponse{
+			return new(plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "missing required property"),
-			}
-			return &resp
+			})
 		}
 		if !assertType(unsecret(v)) {
-			resp := plugin.CheckResponse{
+			return new(plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "value is not a "+typeName),
-			}
-			return &resp
+			})
 		}
 		return nil
 	}
@@ -170,12 +169,13 @@ func (p *PrimitiveDefaultsProvider) Check(
 		return *resp, nil
 	}
 
-	return plugin.CheckResponse{Properties: props}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(props)}, nil
 }
 
 func (p *PrimitiveDefaultsProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "primitive-defaults:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -189,7 +189,7 @@ func (p *PrimitiveDefaultsProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

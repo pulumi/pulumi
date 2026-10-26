@@ -101,12 +101,8 @@ func TestExtensionParameterizedProvider(t *testing.T) {
 					paramLock.Unlock()
 					assert.NotZero(t, witnessed,
 						"Parameterize must be witnessed before Read on the extension plugin")
-					state := req.State
-					if state == nil {
-						state = resource.PropertyMap{}
-					}
 					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{ID: req.ID, Outputs: state, Inputs: req.Inputs},
+						ReadResult: plugin.ReadResult{ID: req.ID, Outputs: &req.State, Inputs: &req.Inputs},
 						Status:     resource.StatusOK,
 					}, nil
 				},

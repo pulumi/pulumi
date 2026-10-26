@@ -41,12 +41,6 @@ func credentialStoreMode() (securestore.Mode, error) {
 	}
 }
 
-// Tests that change PULUMI_CREDENTIAL_STORE or install the mock must call this.
-func resetCredStoreForTesting() {
-	replacedEnvelope.Store(false)
-	plaintextPendingOnce = sync.Once{}
-}
-
 // Cheap to call repeatedly: the store probes memoize their own prechecks.
 func resolveWriteStore() (keyStore, error) {
 	mode, err := credentialStoreMode()

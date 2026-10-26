@@ -183,10 +183,11 @@ func (b *cloudBackend) completeUpdate(
 	tokenSource *tokenSource,
 	update client.UpdateIdentifier,
 	status apitype.UpdateStatus,
+	outputs *apitype.StackOutputsResponse,
 ) error {
 	defer tokenSource.Close()
 
-	return b.client.CompleteUpdate(ctx, update, status, tokenSource)
+	return b.client.CompleteUpdate(ctx, update, status, tokenSource, outputs)
 }
 
 func (b *cloudBackend) getSnapshot(ctx context.Context,
@@ -240,13 +241,22 @@ func (b *cloudBackend) getSnapshotStackOutputs(ctx context.Context,
 		if err != nil {
 			return property.Map{}, err
 		}
-		resp, err := b.client.GetStackOutputs(ctx, stackID)
+		resp, err := b.awaitStackOutputs(ctx, stackID)
 		if err != nil {
 			return property.Map{}, err
 		}
 		outputs, err := stack.DecryptStackOutputs(ctx, resp.Outputs, resp.SecretsProviders, secretsProvider)
 		if err != nil {
 			return property.Map{}, err
+		}
+		if resp.Unknown {
+			for name, value := range outputs {
+				unknown := resource.MakeComputed(resource.NewProperty(""))
+				if value.IsSecret() {
+					unknown = resource.MakeSecret(unknown)
+				}
+				outputs[name] = unknown
+			}
 		}
 		return resource.FromResourcePropertyMap(outputs), nil
 	}
@@ -282,9 +292,16 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 		return nil, stack.FormatDeploymentDeserializationError(err, stackRef.Name().String())
 	}
 
-	stk, err := b.client.GetStack(ctx, stackID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get stack tags for %s: %w", stackRef.Name().String(), err)
+	var tags map[apitype.StackTagName]string
+	if b.cachedUpdateData != nil && b.cachedUpdateData.stackRef.String() == stackRef.String() {
+		logging.V(7).Infof("Using cached stack tags from begin-update for %s", stackRef)
+		tags = b.cachedUpdateData.stackTags
+	} else {
+		stk, err := b.client.GetStack(ctx, stackID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get stack tags for %s: %w", stackRef.Name().String(), err)
+		}
+		tags = stk.Tags
 	}
 
 	return &deploy.Target{
@@ -293,7 +310,7 @@ func (b *cloudBackend) getTarget(ctx context.Context, secretsProvider secrets.Pr
 		Config:       cfg,
 		Decrypter:    dec,
 		Snapshot:     snapshot,
-		Tags:         stk.Tags,
+		Tags:         tags,
 	}, nil
 }
 

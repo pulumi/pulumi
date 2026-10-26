@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,8 +34,9 @@ func init() {
 					require.Len(l, res.Snap.Resources, 2, "expected 2 resources")
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "result", resource.NewProperty("default"))
-					AssertPropertyMapMember(l, stack.Outputs, "explicitResult", resource.NewProperty("explicit"))
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, stackOutputs, "result", property.New("default"))
+					AssertPropertyMapMember(l, stackOutputs, "explicitResult", property.New("explicit"))
 				},
 			},
 		},

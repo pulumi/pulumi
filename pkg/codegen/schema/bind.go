@@ -32,6 +32,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"unicode"
 
 	"github.com/blang/semver"
@@ -349,6 +350,8 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		Attribution:               info.Attribution,
 		Repository:                info.Repository,
 		PluginDownloadURL:         info.PluginDownloadURL,
+		ConfigurationDocsURL:      info.ConfigurationDocsURL,
+		ValidateCredentialsOnNew:  info.ValidateCredentialsOnNew,
 		Publisher:                 info.Publisher,
 		Namespace:                 info.Namespace,
 		Dependencies:              info.Dependencies,
@@ -445,6 +448,10 @@ func ImportPartialSpecWithContext(
 		return nil, diags
 	}
 	pkg.types = types
+	types.bindLock = &pkg.m
+	types.pkg.interpretPulumiRefs = func(description string, resolver PulumiRefResolver) (string, error) {
+		return interpretPulumiRefsInDescription(description, types, resolver)
+	}
 	return pkg, nil
 }
 
@@ -560,6 +567,10 @@ type types struct {
 
 	// A pointer to the package reference that `types` is a part of if it exists.
 	bindToReference PackageReference
+
+	// bindLock is the owning PartialPackage's lock. Cached packages are shared across goroutines,
+	// so anything that binds members lazily, including doc ref lookups, must hold it.
+	bindLock sync.Locker
 }
 
 // The package which bound types will link back to.
@@ -625,10 +636,6 @@ func (spec *PackageSpec) validateTypeToken(
 		err := errorf(path, "invalid token '%s' (must have package name '%s')", token, spec.Name)
 		diags = diags.Append(err)
 	}
-	if (parts[1] == "" || strings.EqualFold(parts[1], "index")) && strings.EqualFold(parts[2], "provider") {
-		err := errorf(path, "invalid token '%s' (provider is a reserved word for the root module)", token)
-		diags = diags.Append(err)
-	}
 	moduleName := parts[1]
 
 	// Check if this is a nested index module, we need to use the module format regex to determine this because
@@ -649,6 +656,11 @@ func (spec *PackageSpec) validateTypeToken(
 		}
 	}
 
+	// Check the module after applying moduleFormat, so tokens like "pkg:index/provider:Provider" are caught too.
+	if (moduleName == "" || strings.EqualFold(moduleName, "index")) && strings.EqualFold(parts[2], "provider") {
+		err := errorf(path, "invalid token '%s' (provider is a reserved word for the root module)", token)
+		diags = diags.Append(err)
+	}
 	if strings.HasPrefix(moduleName, "index/") {
 		err := errorf(path, "invalid token '%s' (nested modules under index are not allowed)", token)
 		diags = diags.Append(err)

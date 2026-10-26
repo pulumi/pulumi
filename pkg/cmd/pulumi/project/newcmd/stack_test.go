@@ -63,8 +63,9 @@ func stackCreationBackend(t *testing.T, failures int, created *[]string) *backen
 	}
 }
 
-//nolint:paralleltest // uses process stdout
 func TestPromptAndCreateStackNamedStackHardErrors(t *testing.T) {
+	t.Parallel()
+
 	var created []string
 	b := stackCreationBackend(t, 1, &created)
 	prompts := 0

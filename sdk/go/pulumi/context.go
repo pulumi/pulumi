@@ -82,6 +82,7 @@ type contextState struct {
 	supportsResourceHooks    bool         // true if resource hooks are supported by pulumi
 	supportsErrorHooks       bool         // true if error hooks are supported by pulumi
 	supportsInvokeDependsOn  bool         // true if the monitor gates invokes on their declared dependencies.
+	supportsStateMigrations  bool         // true if state migrations are supported by pulumi
 	rpcs                     int          // the number of outstanding RPC requests.
 	rpcsDone                 *sync.Cond   // an event signaling completion of RPCs.
 	rpcsLock                 sync.Mutex   // a lock protecting the RPC count and event.
@@ -91,8 +92,14 @@ type contextState struct {
 
 	join workGroup // the waitgroup for non-RPC async work associated with this context
 
-	packageRefs gsync.Map[string, *packageRefEntry] // per-context cache of parameterized provider package refs
+	packageRefs   gsync.Map[packageName, *packageRefEntry] // per-context cache of parameterized provider package refs
+	packagesByRef gsync.Map[packageRef, packageName]
 }
+
+type (
+	packageRef  = string
+	packageName = string
+)
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
 type Context struct {
@@ -189,6 +196,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		supportsResourceHooks:    has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS),
 		supportsErrorHooks:       has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS),
 		supportsInvokeDependsOn:  has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON),
+		supportsStateMigrations:  has(pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS),
 		registeredOutputs:        make(map[URN]bool),
 	}
 	contextState.rpcsDone = sync.NewCond(&contextState.rpcsLock)
@@ -1438,7 +1446,7 @@ func (ctx *Context) readPackageResource(
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := ctx.getProvider(t, packageRef, options.Provider, providers)
 	protect := options.Protect
 	if parent != nil && protect == nil {
 		protect = parent.getProtect()
@@ -1448,10 +1456,10 @@ func (ctx *Context) readPackageResource(
 	res := ctx.makeResourceState(t, name, resource, providers, provider, protect,
 		options.Version, options.PluginDownloadURL, aliasURNs, transformations)
 
-	// Get the stack trace and source position for the resource registration. Note that this assumes that there is an
-	// intermediate frame between the this function and user code.
-	stackTrace := ctx.getStackTrace(3)
-	sourcePosition := ctx.getSourcePosition(3)
+	// Get the stack trace and source position for the resource read. Note that this assumes that there are two
+	// intermediate frames between this function and user code: the public entry point and the generated getter.
+	stackTrace := ctx.getStackTrace(4)
+	sourcePosition := ctx.getSourcePosition(4)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -1459,9 +1467,10 @@ func (ctx *Context) readPackageResource(
 		var urn, resID string
 		var inputs *resourceInputs
 		var state *structpb.Struct
+		var keepUnknowns bool
 		var err error
 		defer func() {
-			res.resolve(ctx, err, inputs, urn, resID, state, nil, false)
+			res.resolve(ctx, err, inputs, urn, resID, state, nil, keepUnknowns)
 			ctx.endRPC(err)
 		}()
 
@@ -1483,6 +1492,7 @@ func (ctx *Context) readPackageResource(
 			Parent:                  inputs.parent,
 			Properties:              inputs.rpcProps,
 			Provider:                inputs.provider,
+			Dependencies:            inputs.deps,
 			Id:                      string(idToRead),
 			AcceptSecrets:           true,
 			AcceptResources:         !disableResourceReferences,
@@ -1498,12 +1508,133 @@ func (ctx *Context) readPackageResource(
 			logging.V(9).Infof("ReadResource(%s, %s): success: %s %s ...", t, name, resp.Urn, id)
 		}
 		if resp != nil {
-			urn, resID = resp.Urn, string(idToRead)
+			urn = resp.Urn
 			state = resp.Properties
+			// A skipped read reports Unknown=true and a failed read reports a non-success result;
+			// resolve outputs as unknown in both cases so dependents propagate unknowns instead of
+			// seeing empty values as real.
+			if resp.Result != pulumirpc.Result_SUCCESS {
+				state = nil
+			}
+			keepUnknowns = resp.Result != pulumirpc.Result_SUCCESS || resp.Unknown
+			// Prefer the id returned by the provider's Read, which may differ from the id
+			// supplied on the request. An empty response id during preview means "unknown"
+			// (resolve() will mark the output as computed); during update it indicates an
+			// older engine that did not populate the field, so fall back to the request id.
+			switch {
+			case resp.Id != "":
+				resID = resp.Id
+			case ctx.DryRun():
+				resID = ""
+			default:
+				resID = string(idToRead)
+			}
 		}
 	}()
 
 	return nil
+}
+
+// ExistsResource checks whether a resource with the given type and ID exists, using the specified package
+// reference, which may be empty. It returns a BoolOutput that resolves to true if the resource exists, false
+// otherwise.
+func (ctx *Context) ExistsResource(
+	t string, id IDInput, props Input, packageRef string, opts ...ResourceOption,
+) BoolOutput {
+	output := ctx.newOutput(reflect.TypeFor[BoolOutput]())
+
+	go func() {
+		options := merge(opts...)
+		if options.Parent == nil {
+			options.Parent = ctx.state.stack
+		}
+
+		// Merge providers.
+		providers, err := ctx.mergeProviders(t, options.Parent, options.Provider, options.Providers)
+		if err != nil {
+			internal.RejectOutput(output, err)
+			return
+		}
+
+		// Get the provider for the resource.
+		provider := ctx.getProvider(t, packageRef, options.Provider, providers)
+
+		// Resolve the provider reference.
+		var providerRef string
+		if provider != nil {
+			pr, err := ctx.resolveProviderReference(provider)
+			if err != nil {
+				internal.RejectOutput(output, err)
+				return
+			}
+			providerRef = pr
+		}
+
+		// Resolve the parent URN.
+		var parentURN string
+		if options.Parent != nil {
+			urn, _, _, err := options.Parent.URN().awaitURN(context.TODO())
+			if err != nil {
+				internal.RejectOutput(output, err)
+				return
+			}
+			parentURN = string(urn)
+		}
+
+		// Await the ID.
+		idToCheck, known, _, err := id.ToIDOutput().awaitID(context.TODO())
+		if err != nil {
+			internal.RejectOutput(output, err)
+			return
+		}
+		if !known {
+			internal.ResolveOutput(output, false, false /* known */, false /* secret */, nil)
+			return
+		}
+
+		// Serialize properties if provided.
+		var rpcProps *structpb.Struct
+		if props != nil {
+			resolvedProps, _, _, err := marshalInputs(props)
+			if err != nil {
+				internal.RejectOutput(output, err)
+				return
+			}
+			rpcProps, err = plugin.MarshalProperties(
+				resolvedProps,
+				plugin.MarshalOptions{
+					KeepUnknowns:  true,
+					KeepSecrets:   true,
+					KeepResources: ctx.state.keepResources,
+				})
+			if err != nil {
+				internal.RejectOutput(output, err)
+				return
+			}
+		}
+
+		logging.V(9).Infof("ExistsResource(%s): RPC call being made", t)
+		resp, err := ctx.state.monitor.ExistsResource(ctx.ctx, &pulumirpc.ExistsResourceRequest{
+			Type:              t,
+			Id:                string(idToCheck),
+			Parent:            parentURN,
+			Properties:        rpcProps,
+			Provider:          providerRef,
+			Version:           options.Version,
+			PluginDownloadURL: options.PluginDownloadURL,
+			PackageRef:        packageRef,
+		})
+		if err != nil {
+			logging.V(9).Infof("ExistsResource(%s): error: %v", t, err)
+			internal.RejectOutput(output, err)
+			return
+		}
+
+		logging.V(9).Infof("ExistsResource(%s): success: exists=%v unknown=%v", t, resp.Exists, resp.Unknown)
+		internal.ResolveOutput(output, resp.Exists, !resp.Unknown, false /* secret */, nil)
+	}()
+
+	return output.(BoolOutput)
 }
 
 func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse, error) {
@@ -1815,7 +1946,7 @@ func (ctx *Context) registerResource(
 	}
 
 	// Get the provider for the resource.
-	provider := getProvider(t, options.Provider, providers)
+	provider := ctx.getProvider(t, packageRef, options.Provider, providers)
 	protect := options.Protect
 	if parent != nil && protect == nil {
 		protect = parent.getProtect()
@@ -1854,6 +1985,17 @@ func (ctx *Context) registerResource(
 				return
 			}
 			transforms = append(transforms, cb)
+		}
+
+		// Register the state migration functions.
+		stateMigrations := make([]*pulumirpc.Callback, 0, len(options.StateMigrations))
+		for _, migration := range options.StateMigrations {
+			var cb *pulumirpc.Callback
+			cb, err = ctx.registerStateMigration(migration)
+			if err != nil {
+				return
+			}
+			stateMigrations = append(stateMigrations, cb)
 		}
 
 		// Collect all the hooks, waiting for their registrations.
@@ -1940,7 +2082,9 @@ func (ctx *Context) registerResource(
 				SourcePosition:             sourcePosition,
 				StackTrace:                 stackTrace,
 				Transforms:                 transforms,
+				StateMigrations:            stateMigrations,
 				SupportsResultReporting:    true,
+				SupportsPartialValues:      true,
 				PackageRef:                 packageRef,
 				Hooks:                      hooks,
 				EnvVarMappings:             inputs.envVarMappings,
@@ -1958,19 +2102,16 @@ func (ctx *Context) registerResource(
 			for key, propertyDependencies := range resp.GetPropertyDependencies() {
 				var resources []Resource
 				for _, urn := range propertyDependencies.GetUrns() {
-					resources = append(resources, &ResourceState{
-						urn: URNInput(URN(urn)).ToURNOutput(),
-					})
+					resources = append(resources, ctx.newDependencyResource(URN(urn)))
 				}
 				deps[key] = resources
 			}
-			// If the engine reported that the resource failed or was skipped, synthesize an
-			// error so downstream outputs fault. This allows Output.Recover to intercept the
-			// failure.
-			if err == nil && resp.Result != pulumirpc.Result_SUCCESS {
-				err = fmt.Errorf("resource %s [%s] failed to register", name, t)
-			}
-			if custom && resp.Result == pulumirpc.Result_SUCCESS && resp.Unknown {
+			// If the engine reported that the resource failed, resolve all of its outputs as
+			// unknown so the rest of the program can continue.
+			if resp.Result != pulumirpc.Result_SUCCESS {
+				state = nil
+				keepUnknowns = true
+			} else if custom && resp.Unknown {
 				keepUnknowns = true
 			}
 		}
@@ -2045,7 +2186,14 @@ func (ctx *Context) RegisterPackage(
 	if !ctx.state.supportsParameterization {
 		return nil, errors.New("the Pulumi CLI does not support parameterization. Please update the Pulumi CLI")
 	}
-	return ctx.state.monitor.RegisterPackage(ctx.ctx, in)
+	resp, err := ctx.state.monitor.RegisterPackage(ctx.ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	if ext := in.GetExtension(); ext != nil && in.GetName() != "" {
+		ctx.state.packagesByRef.Store(resp.Ref, in.GetName())
+	}
+	return resp, nil
 }
 
 // packageRefEntry holds a cached package reference for a parameterized provider.
@@ -2172,8 +2320,15 @@ func (ctx *Context) mergeProviders(t string, parent Resource, provider ProviderR
 }
 
 // getProvider gets the provider for the resource.
-func getProvider(t string, provider ProviderResource, providers map[string]ProviderResource) ProviderResource {
+func (ctx *Context) getProvider(
+	t string, packageRef packageRef, provider ProviderResource, providers map[string]ProviderResource,
+) ProviderResource {
 	pkg := getPackage(t)
+	if packageRef != "" {
+		if p, ok := ctx.state.packagesByRef.Load(packageRef); ok {
+			pkg = p
+		}
+	}
 	if provider == nil || provider.getPackage() != pkg {
 		provider = providers[pkg]
 	}
@@ -2419,7 +2574,9 @@ func (state *resourceState) resolve(ctx *Context, err error, inputs *resourceInp
 		}
 
 		known := true
-		if v.IsNull() || v.IsComputed() || v.IsOutput() {
+		if v.ContainsUnknowns() {
+			known = false
+		} else if v.IsNull() || v.IsOutput() {
 			known = !keepUnknowns
 		}
 

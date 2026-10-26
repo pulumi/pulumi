@@ -199,9 +199,6 @@ func TestGetCLIVersionInfo_SendsMetadataToPulumiCloud(t *testing.T) {
 				AccessToken: token,
 			},
 		},
-		AccessTokens: map[string]string{
-			srv.URL: token,
-		},
 	})
 	require.NoError(t, err)
 
@@ -266,9 +263,6 @@ func TestGetCLIVersionInfo_DoesNotSendMetadataToOtherBackends(t *testing.T) {
 			srv.URL: {
 				AccessToken: token,
 			},
-		},
-		AccessTokens: map[string]string{
-			srv.URL: token,
 		},
 	})
 	require.NoError(t, err)

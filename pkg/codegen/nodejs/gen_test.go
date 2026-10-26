@@ -129,6 +129,51 @@ func TestGenerateTypeNames(t *testing.T) {
 	}, filepath.FromSlash("../testing/test/testdata/"))
 }
 
+func TestGenerateSelfReferencingResource(t *testing.T) {
+	t.Parallel()
+
+	for _, shape := range []string{"direct", "array", "map", "union"} {
+		t.Run(shape, func(t *testing.T) {
+			t.Parallel()
+
+			properties := map[string]schema.PropertySpec{}
+			for _, name := range []string{"Node", "Other"} {
+				ref := schema.TypeSpec{Ref: "#/resources/example:index:" + name}
+				typ := ref
+				switch shape {
+				case "array":
+					typ = schema.TypeSpec{Type: "array", Items: &ref}
+				case "map":
+					typ = schema.TypeSpec{Type: "object", AdditionalProperties: &ref}
+				case "union":
+					typ = schema.TypeSpec{OneOf: []schema.TypeSpec{typ, {Type: "string"}}}
+				}
+				properties[strings.ToLower(name)] = schema.PropertySpec{TypeSpec: typ}
+			}
+			pkg, err := schema.ImportSpec(schema.PackageSpec{
+				Name: "example",
+				Resources: map[string]schema.ResourceSpec{
+					"example:index:Node":  {InputProperties: properties},
+					"example:index:Other": {},
+				},
+			}, nil, schema.NewNullLoader(), schema.ValidationOptions{})
+			require.NoError(t, err)
+
+			files, err := GeneratePackage("test", pkg, nil, nil, false, nil)
+			require.NoError(t, err)
+			require.Contains(t, files, "node.ts")
+			source := string(files["node.ts"])
+			require.Contains(t, source, "export class Node extends pulumi.CustomResource")
+			require.Contains(t, source, `import {Other} from "./index";`)
+			for line := range strings.SplitSeq(source, "\n") {
+				if strings.HasPrefix(line, "import ") {
+					require.NotContains(t, line, "Node")
+				}
+			}
+		})
+	}
+}
+
 func TestPascalCases(t *testing.T) {
 	t.Parallel()
 

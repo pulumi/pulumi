@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
+	"github.com/pulumi/pulumi/pkg/v3/util"
 	"github.com/pulumi/pulumi/pkg/v3/util/progress"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -55,15 +56,32 @@ func newPluginInstallCmd() *cobra.Command {
 		Short: "Install one or more plugins",
 		Long: "Install one or more plugins.\n" +
 			"\n" +
-			"This command is used to manually install plugins required by your program. It\n" +
-			"may be run with a specific KIND, NAME, and optionally, VERSION, or by omitting\n" +
-			"these arguments and letting Pulumi compute the set of plugins required by the\n" +
-			"current project. When Pulumi computes the download set automatically, it may\n" +
-			"download more plugins than are strictly necessary.\n" +
+			"Pulumi installs the plugins your program requires automatically, so most users\n" +
+			"never need to run this command. Use it to install plugins ahead of time, for\n" +
+			"example to warm a CI cache or to prepare a machine that will run without\n" +
+			"network access.\n" +
+			"\n" +
+			"It may be run with a specific KIND, NAME, and optionally, VERSION, or by\n" +
+			"omitting these arguments and letting Pulumi compute the set of plugins required\n" +
+			"by the current project. When Pulumi computes the download set automatically, it\n" +
+			"may download more plugins than are strictly necessary.\n" +
+			"\n" +
+			"KIND must be one of:\n" +
+			"\n" +
+			"  - `analyzer`: a resource analyzer, which enforces policies against resources.\n" +
+			"  - `language`: a language host, which runs Pulumi programs written in a given\n" +
+			"    language. The languages Pulumi supports ship with the CLI, so you only need\n" +
+			"    to install a language plugin to use a third-party one.\n" +
+			"  - `resource`: a resource provider, which performs CRUD operations on the\n" +
+			"    resources of a cloud or service.\n" +
+			"  - `converter`: a converter, which converts from another ecosystem to Pulumi.\n" +
+			"  - `tool`: an arbitrary plugin that can be run as a tool.\n" +
 			"\n" +
 			"If VERSION is specified, it cannot be a range; it must be a specific number.\n" +
-			"If VERSION is unspecified, Pulumi will attempt to look up the latest version of\n" +
-			"the plugin, though the result is not guaranteed.",
+			"If VERSION is unspecified, a language plugin that is distributed separately from\n" +
+			"the CLI installs the version this release of the CLI is pinned to. For any other\n" +
+			"plugin, Pulumi will attempt to look up the latest version, though the result is\n" +
+			"not guaranteed.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			picmd.stderr = cmd.ErrOrStderr()
@@ -155,7 +173,9 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 	if len(args) > 0 {
 		var kind apitype.PluginKind
 		if !apitype.IsPluginKind(args[0]) {
-			return fmt.Errorf("unrecognized plugin kind: %s", args[0])
+			return fmt.Errorf(
+				"unrecognized plugin kind: %s (must be one of: analyzer, language, resource, converter, tool)",
+				args[0])
 		} else if len(args) < 2 {
 			return errors.New("missing plugin name argument")
 		}
@@ -243,13 +263,17 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 				}
 				pluginSpec = updatedSpec
 			}
-		} else if version == nil && pluginSpec.Version == nil {
-			// If we don't have a version try to look one up
-			latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec, ctx)
-			if err != nil {
-				return err
+		} else {
+			// Unbundled language runtimes the CLI knows about are pinned to the release it auto-installs,
+			// which may live outside the default pulumi/pulumi-<name> repository.
+			util.SetKnownPluginDownloadURL(&pluginSpec)
+			if pluginSpec.Version == nil {
+				latestVersion, err := cmd.pluginGetLatestVersion(pluginSpec, ctx)
+				if err != nil {
+					return err
+				}
+				pluginSpec.Version = latestVersion
 			}
-			pluginSpec.Version = latestVersion
 		}
 		installs = append(installs, pluginSpec)
 	} else {
@@ -288,7 +312,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
 		if !cmd.reinstall {
 			if cmd.exact {
-				if pluginstorage.Instance.HasPlugin(ctx, install) {
+				if pluginstorage.Instance.HasPlugin(ctx, install).Available() {
 					slog.InfoContext(ctx, "skipping install (existing == match)", "label", label)
 					continue
 				}

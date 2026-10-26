@@ -28,6 +28,7 @@ from collections.abc import Awaitable, Mapping, Sequence
 import grpc
 
 from ._context import wrap_with_context
+from ._state_migration_context import _ensure_not_in_state_migration
 from google.protobuf import struct_pb2
 
 from .. import _types, log
@@ -175,6 +176,27 @@ async def _create_provider_ref(provider: "ProviderResource") -> str:
     urn = await provider.urn.future()
     pid = await provider.id.future() or rpc.UNKNOWN
     return f"{urn}::{pid}"
+
+
+def _select_base_provider(
+    res: "Resource",
+    ty: str,
+    opts: "ResourceOptions",
+    package_ref: Optional[str],
+    has_provider: bool,
+) -> None:
+    """
+    An extension package is served by its base provider, so a resource of an
+    extension package must use the provider selected for the base package. The
+    base package is only known once the package reference has resolved, so this
+    replaces the provider that was selected when the resource was constructed.
+    """
+    base = settings.get_base_provider_for_ref(package_ref)
+    if base is None:
+        return
+    opts.provider, opts.providers = res._get_providers(ty, base, opts)
+    if has_provider:
+        res._provider = opts.provider
 
 
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
@@ -816,6 +838,16 @@ def read_resource(
 
     async def do_read():
         try:
+            package_ref_str = None
+            if package_ref is not None:
+                package_ref_str = await package_ref
+                # A package reference carries the version and download URL.
+                if package_ref_str is not None:
+                    opts.plugin_download_url = None
+                    opts.version = None
+                    log.debug(f"Read using package reference {package_ref_str}")
+                _select_base_provider(res, ty, opts, package_ref_str, True)
+
             resolver = await prepare_resource(res, ty, True, False, props, opts, typ)
 
             # Resolve the ID that we were given. Note that we are explicitly discarding the list of
@@ -835,17 +867,6 @@ def read_resource(
             accept_resources = os.getenv(
                 "PULUMI_DISABLE_RESOURCE_REFERENCES", ""
             ).upper() not in {"TRUE", "1"}
-
-            # If we have a package reference, we need to wait for it to resolve.
-            package_ref_str = None
-            if package_ref is not None:
-                package_ref_str = await package_ref
-                # If we have a package reference we can clear some of the invoke
-                # options.
-                if package_ref_str is not None:
-                    opts.plugin_download_url = None
-                    opts.version = None
-                    log.debug(f"Read using package reference {package_ref_str}")
 
             req = resource_pb2.ReadResourceRequest(
                 type=ty,
@@ -895,18 +916,145 @@ def read_resource(
 
         log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn, True, False, None)
-        resolve_id(resolved_id, True, False, None)  # Read IDs are always known.
+        # Prefer the id returned by the provider's Read, which may differ from the id supplied
+        # on the request (e.g. a provider that normalizes it). An empty response id during preview
+        # means "unknown"; during update it indicates an older engine that did not populate the
+        # field, in which case we fall back to the request id for back-compat.
+        resp_id = getattr(resp, "id", "") or ""
+        if resp_id:
+            resolve_id(resp_id, True, False, None)
+        elif settings.is_dry_run():
+            resolve_id(None, False, False, None)
+        else:
+            resolve_id(resolved_id, True, False, None)
+        # A skipped read reports unknown=true and a failed read reports a non-success result;
+        # resolve outputs as unknown in both cases so dependents propagate unknowns instead of
+        # seeing empty values as real.
+        result_failed = resp.result != resource_pb2.Result.SUCCESS
+        unknown = not settings.is_dry_run() and resp.unknown
         rpc.resolve_outputs(
             res,
-            resolver.serialized_props,
-            resp.properties,
+            struct_pb2.Struct() if result_failed else resolver.serialized_props,
+            struct_pb2.Struct() if result_failed else resp.properties,
             {},
             resolvers,
             custom,
             transform_using_type_metadata,
+            resolve_missing_as_unknown=result_failed or unknown,
         )
 
     asyncio.ensure_future(_get_rpc_manager().do_rpc("read resource", do_read)())
+
+
+def exists_resource(
+    res: Optional["Resource"],
+    ty: str,
+    id: "Input[str]",
+    props: "Inputs",
+    opts: "ResourceOptions",
+    package_ref: Optional[Awaitable[Optional[str]]] = None,
+) -> "Output[bool]":
+    """
+    Checks whether a resource with the given ID exists.
+
+    Returns an Output[bool] that resolves to True if the resource exists, False otherwise.
+
+    `res` is an optional backing resource used to resolve the provider and parent. It is None when there
+    is no backing resource, e.g. for the PCL `resourceExists` builtin, in which case the engine resolves
+    the default provider.
+    """
+    log.debug(f"checking resource exists: ty={ty}, id={_safe_str(id)}")
+    monitor = settings.get_monitor()
+
+    # Create futures for the output value.
+    value_future: asyncio.Future[bool] = asyncio.Future()
+    known_future: asyncio.Future[bool] = asyncio.Future()
+    secret_future: asyncio.Future[bool] = asyncio.Future()
+
+    deps = {res} if res is not None else set()
+    result_output: Output[bool] = Output(
+        deps, value_future, known_future, secret_future
+    )
+
+    async def do_exists():
+        try:
+            # Resolve the ID.
+            resolved_id = await rpc.serialize_property(id, [], None)
+            log.debug(f"exists prepared: ty={ty}, id={_safe_str(id)}")
+
+            # If we have a package reference, wait for it to resolve.
+            package_ref_str = None
+            if package_ref is not None:
+                package_ref_str = await package_ref
+                if package_ref_str is not None:
+                    opts.plugin_download_url = None
+                    opts.version = None
+                    log.debug(f"Exists using package reference {package_ref_str}")
+
+            if res is not None:
+                resolver = await prepare_resource(res, ty, True, False, props, opts)
+                parent_urn = resolver.parent_urn
+                provider_ref = resolver.provider_ref
+                serialized_props = resolver.serialized_props
+            else:
+                # No backing resource: resolve the parent and provider directly from opts and let the
+                # engine resolve the default provider when none is given.
+                parent_urn = (
+                    await opts.parent.urn.future() if opts.parent is not None else None
+                )
+                provider_ref = None
+                if opts.provider is not None:
+                    provider_urn = await opts.provider.urn.future()
+                    provider_id = await opts.provider.id.future()
+                    provider_ref = f"{provider_urn}::{provider_id or ''}"
+                serialized_props = (
+                    await rpc.serialize_properties(props, {}, None) if props else None
+                )
+
+            req = resource_pb2.ExistsResourceRequest(
+                type=ty,
+                id=resolved_id,
+                parent=parent_urn,
+                provider=provider_ref,
+                properties=serialized_props,
+                version=opts.version or "",
+                pluginDownloadURL=opts.plugin_download_url or "",
+                packageRef=package_ref_str or "",
+            )
+
+            def do_rpc_call():
+                if monitor is None:
+                    # If no monitor is available, report a known non-existent resource for testing.
+                    return resource_pb2.ExistsResourceResponse(exists=False)
+
+                try:
+                    return monitor.ExistsResource(req)
+                except grpc.RpcError as exn:
+                    handle_grpc_error(exn)
+
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, wrap_with_context(do_rpc_call)
+            )
+
+        except Exception as exn:
+            log.debug(
+                f"exception when preparing or executing rpc: {traceback.format_exc()}"
+            )
+            value_future.set_exception(exn)
+            known_future.set_exception(exn)
+            secret_future.set_exception(exn)
+            raise
+
+        log.debug(
+            f"resource exists check successful: ty={ty}, exists={resp.exists}, unknown={resp.unknown}"
+        )
+        value_future.set_result(resp.exists)
+        known_future.set_result(not resp.unknown)
+        secret_future.set_result(False)
+
+    asyncio.ensure_future(_get_rpc_manager().do_rpc("exists resource", do_exists)())
+
+    return result_output
 
 
 def _create_custom_timeouts(
@@ -1029,6 +1177,7 @@ def register_resource(
                 if package_ref_str is not None:
                     opts.plugin_download_url = None
                     opts.version = None
+                _select_base_provider(res, ty, opts, package_ref_str, custom or remote)
 
             try:
                 resolver = await prepare_resource(
@@ -1059,6 +1208,22 @@ def register_resource(
                     raise Exception("Callback server not initialized")
                 for transform in opts.transforms:
                     callbacks.append(callback_server.register_transform(transform))
+
+            state_migration_callbacks: list[callback_pb2.Callback] = []
+            if opts.state_migrations:
+                if not monitor_supports_feature(
+                    resource_pb2.RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS
+                ):
+                    raise Exception(
+                        "The Pulumi CLI does not support state migrations. Please update the Pulumi CLI."
+                    )
+                callback_server = await _get_callbacks()
+                if callback_server is None:
+                    raise Exception("Callback server not initialized")
+                for migration in opts.state_migrations:
+                    state_migration_callbacks.append(
+                        callback_server.register_state_migration(migration)
+                    )
 
             property_dependencies = {}
             for key, deps in resolver.property_dependencies.items():
@@ -1151,6 +1316,7 @@ def register_resource(
                 sourcePosition=source_position,
                 stackTrace=stack_trace,
                 transforms=callbacks,
+                state_migrations=state_migration_callbacks,
                 supportsResultReporting=True,
                 packageRef=package_ref_str or "",
                 hooks=hooks,
@@ -1205,22 +1371,11 @@ def register_resource(
         try:
             log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
 
-            # If the engine reported that the resource failed or was skipped, synthesize an
-            # exception so downstream outputs fault. This allows `Output.recover` to intercept
-            # the failure. `ResourceRegistrationFailed` is a marker class that `wait_for_rpcs`
-            # skips at program exit, so unrecovered outputs don't tear down continue-on-error
-            # updates.
+            # If the engine reported that the resource failed, resolve all of its outputs as
+            # unknown so the rest of the program can continue.
             result_failed = resp.result != resource_pb2.Result.SUCCESS
-            register_exn: Optional[Exception] = None
-            if result_failed:
-                # Lazy import to avoid a circular import at module load.
-                from .stack import ResourceRegistrationFailed
 
-                register_exn = ResourceRegistrationFailed(
-                    f"resource {name} [{ty}] failed to register"
-                )
-
-            resolve_urn(resp.urn, True, False, register_exn)
+            resolve_urn(resp.urn, True, False, None)
             resolve_urn_called = True
 
             if resolve_id is not None:
@@ -1228,7 +1383,7 @@ def register_resource(
                 # empty string, we should treat it as unknown. TFBridge in particular is known to send
                 # the empty string as an ID when doing a preview.
                 is_known = bool(resp.id)
-                resolve_id(resp.id, is_known, False, register_exn)
+                resolve_id(resp.id, is_known, False, None)
                 resolve_id_called = True
 
             property_deps = {}
@@ -1238,22 +1393,18 @@ def register_resource(
                     urns = list(v.urns)
                     property_deps[k] = set(map(new_dependency, urns))
 
-            if register_exn is not None:
-                rpc.resolve_outputs_due_to_exception(resolvers, register_exn)
-            else:
-                keep_unknowns = resp.result == resource_pb2.Result.SUCCESS
-                unknown = custom and not settings.is_dry_run() and resp.unknown
-                rpc.resolve_outputs(
-                    res,
-                    resolver.serialized_props,
-                    resp.object,
-                    property_deps,
-                    resolvers,
-                    custom,
-                    transform_using_type_metadata,
-                    keep_unknowns,
-                    resolve_missing_as_unknown=unknown,
-                )
+            unknown = custom and not settings.is_dry_run() and resp.unknown
+            rpc.resolve_outputs(
+                res,
+                struct_pb2.Struct() if result_failed else resolver.serialized_props,
+                struct_pb2.Struct() if result_failed else resp.object,
+                property_deps,
+                resolvers,
+                custom,
+                transform_using_type_metadata,
+                not result_failed,
+                resolve_missing_as_unknown=result_failed or unknown,
+            )
             resolve_outputs_called = True
 
         except Exception as exn:
@@ -1278,6 +1429,8 @@ def register_resource(
 def register_resource_outputs(
     res: "Resource", outputs: "Union[Inputs, Output[Inputs]]"
 ):
+    _ensure_not_in_state_migration("register resource outputs")
+
     async def do_register_resource_outputs():
         urn = await res.urn.future()
         # serialize_properties expects a collection (empty is fine) but not None, but this is called pretty
@@ -1444,6 +1597,8 @@ async def _prepare_resource_hooks(
 
 
 def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
+    _ensure_not_in_state_migration("register resource hook")
+
     async def do_register() -> None:
         callbacks = await _get_callbacks()
         if callbacks is None:
@@ -1469,6 +1624,8 @@ def register_resource_hook(hook: "ResourceHook") -> asyncio.Future[None]:
 
 
 def register_error_hook(hook: "ErrorHook") -> asyncio.Future[None]:
+    _ensure_not_in_state_migration("register error hook")
+
     async def do_register() -> None:
         callbacks = await _get_callbacks()
         if callbacks is None:

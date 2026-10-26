@@ -60,6 +60,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
@@ -696,7 +697,7 @@ func hasDependency(pkg *schema.Package, dep string) bool {
 
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
-) (*testingrpc.RunLanguageTestResponse, error) {
+) (resp *testingrpc.RunLanguageTestResponse, err error) {
 	eng.runSlots <- struct{}{}
 	defer func() { <-eng.runSlots }()
 
@@ -715,6 +716,11 @@ func (eng *languageTestServer) RunLanguageTest(
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
 	}
+	defer func() {
+		if err == nil && resp != nil && resp.Success {
+			removeTestDirectories(token.TemporaryDirectory, req.Test)
+		}
+	}()
 
 	// If the language defines any snapshot edits compile those regexs to apply now
 	snapshotEdits := []compiledReplacement{}
@@ -1005,6 +1011,10 @@ func (eng *languageTestServer) RunLanguageTest(
 
 				// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
 				// any intermediate build files don't end up getting captured in the snapshot folder.
+				generatedFiles, err := listFiles(sdkTempDir)
+				if err != nil {
+					return nil, fmt.Errorf("list generated sdk files for %s: %w", pkg.Name, err)
+				}
 				sdkArtifact, err = languageClient.Pack(ctx, sdkTempDir, artifactsDir)
 				if err != nil {
 					return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
@@ -1033,6 +1043,12 @@ func (eng *languageTestServer) RunLanguageTest(
 					return makeTestResponse(
 						fmt.Sprintf("sdk post pack change validation for %s failed:\n%s",
 							pkg.Name, strings.Join(validations, "\n"))), nil
+				}
+
+				if !isWithin(sdkArtifact, sdkTempDir) {
+					if err := removeNewFiles(sdkTempDir, generatedFiles); err != nil {
+						return nil, fmt.Errorf("remove sdk build files for %s: %w", pkg.Name, err)
+					}
 				}
 
 				return nil, nil
@@ -1115,7 +1131,7 @@ func (eng *languageTestServer) RunLanguageTest(
 }
 
 func createStackReferences(
-	ctx context.Context, sm secrets.Manager, b diy.Backend, stackRefs map[string]resource.PropertyMap,
+	ctx context.Context, sm secrets.Manager, b diy.Backend, stackRefs map[string]property.Map,
 ) error {
 	for name, outputs := range stackRefs {
 		ref, err := b.ParseStackReference(name)
@@ -1142,7 +1158,7 @@ func createStackReferences(
 					Type: resource.RootStackType,
 					URN: resource.CreateURN(resourceName, string(resource.RootStackType), "",
 						string(projectName), stackName.String()),
-					Outputs: outputs,
+					Outputs: resource.ToResourcePropertyMap(outputs),
 				},
 			},
 		}
@@ -1267,7 +1283,7 @@ func runLanguageTests(
 			} else {
 				diagnostics, err = languageClient.GenerateProject(
 					ctx,
-					sourceDir, projectDir, projectJSON, true, pctx.LoaderAddr(), localDependencies)
+					sourceDir, projectDir, projectJSON, true, pctx.LoaderAddr(), pctx.MapperAddr(), localDependencies)
 				if err != nil {
 					return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
 				}
@@ -1804,9 +1820,10 @@ type roundTripClient struct {
 
 func (rtc roundTripClient) GenerateProject(ctx context.Context,
 	sourceDirectory, targetDirectory, project string,
-	strict bool, loaderTarget string, localDependencies map[string]string,
+	strict bool, loaderTarget, mapperTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
-	pclDir, diags, err := rtc.roundTrip(context.TODO(), sourceDirectory, project, loaderTarget, strict, localDependencies)
+	pclDir, diags, err := rtc.roundTrip(
+		context.TODO(), sourceDirectory, project, loaderTarget, mapperTarget, strict, localDependencies)
 	if err != nil || diags.HasErrors() {
 		return diags, err
 	}
@@ -1835,12 +1852,12 @@ func (rtc roundTripClient) GenerateProject(ctx context.Context,
 	}
 
 	diags2, err := rtc.LanguageRuntime.GenerateProject(ctx, pclDir, targetDirectory, project,
-		strict, loaderTarget, localDependencies)
+		strict, loaderTarget, mapperTarget, localDependencies)
 	return diags.Extend(diags2), err
 }
 
 func (rtc roundTripClient) GenerateProgram(ctx context.Context,
-	program map[string]string, loaderTarget string, strict bool,
+	program map[string]string, loaderTarget, mapperTarget string, strict bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	sourceDir, err := os.MkdirTemp("", "lang-to-pcl-source-*")
 	if err != nil {
@@ -1859,7 +1876,7 @@ func (rtc roundTripClient) GenerateProgram(ctx context.Context,
 	}
 
 	project := "{\"name\": \"roundtrip\"}"
-	pclDir, diags, err := rtc.roundTrip(ctx, sourceDir, project, loaderTarget, strict, nil)
+	pclDir, diags, err := rtc.roundTrip(ctx, sourceDir, project, loaderTarget, mapperTarget, strict, nil)
 	if err != nil || diags.HasErrors() {
 		return nil, diags, err
 	}
@@ -1881,13 +1898,13 @@ func (rtc roundTripClient) GenerateProgram(ctx context.Context,
 		return nil, diags, err
 	}
 	// TODO: Snapshot files
-	lang, diags2, err := rtc.LanguageRuntime.GenerateProgram(ctx, pclFiles, loaderTarget, strict)
+	lang, diags2, err := rtc.LanguageRuntime.GenerateProgram(ctx, pclFiles, loaderTarget, mapperTarget, strict)
 	return lang, diags.Extend(diags2), err
 }
 
 func (rtc roundTripClient) roundTrip(
 	ctx context.Context,
-	sourceDirectory, project, loaderTarget string, strict bool,
+	sourceDirectory, project, loaderTarget, mapperTarget string, strict bool,
 	localDependencies map[string]string,
 ) (string, hcl.Diagnostics, error) {
 	tmpDir, err := os.MkdirTemp("", "pcl-to-lang-1-*")
@@ -1897,7 +1914,7 @@ func (rtc roundTripClient) roundTrip(
 	defer func() { contract.IgnoreError(os.RemoveAll(tmpDir)) }()
 
 	diags, err := rtc.LanguageRuntime.GenerateProject(ctx,
-		sourceDirectory, tmpDir, project, strict, loaderTarget, localDependencies)
+		sourceDirectory, tmpDir, project, strict, loaderTarget, mapperTarget, localDependencies)
 	if err != nil || diags.HasErrors() {
 		return "", diags, err
 	}
@@ -1911,6 +1928,7 @@ func (rtc roundTripClient) roundTrip(
 		SourceDirectory: tmpDir,
 		TargetDirectory: ejectDir,
 		LoaderTarget:    loaderTarget,
+		MapperTarget:    mapperTarget,
 	})
 	for _, diag := range resp.GetDiagnostics() {
 		diags = append(diags, plugin.RPCDiagnosticToHclDiagnostic(diag))

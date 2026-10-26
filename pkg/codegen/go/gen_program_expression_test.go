@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type exprTestCase struct {
@@ -210,6 +211,17 @@ func TestArgumentTypeName(t *testing.T) {
 	assert.Equal(t, "[]interface{}", plainDynamicListType)
 	inputDynamicListType := g.argumentTypeName(model.NewListType(model.DynamicType), true /*isInput*/)
 	assert.Equal(t, "pulumi.Array", inputDynamicListType)
+
+	// A tuple of constants collapses to the array type of their values, at any depth of nesting.
+	intConst := func(n int64) model.Type { return model.NewConstType(model.IntType, cty.NumberIntVal(n)) }
+	one, two, three, four := intConst(1), intConst(2), intConst(3), intConst(4)
+	assert.Equal(t, "pulumi.IntArray", g.argumentTypeName(model.NewTupleType(one, two), true /*isInput*/))
+	assert.Equal(t, "[]int", g.argumentTypeName(model.NewTupleType(one, two), false /*isInput*/))
+	nestedTuple := model.NewTupleType(model.NewTupleType(one, two), model.NewTupleType(three, four))
+	assert.Equal(t, "pulumi.IntArrayArray", g.argumentTypeName(nestedTuple, true /*isInput*/))
+	assert.Equal(t, "[][]int", g.argumentTypeName(nestedTuple, false /*isInput*/))
+	mixedTuple := model.NewTupleType(model.NewTupleType(one, two), model.NewTupleType(model.StringType))
+	assert.Equal(t, "pulumi.Array", g.argumentTypeName(mixedTuple, true /*isInput*/))
 
 	// Asset and Archive opaque types must be qualified with the pulumi package, otherwise nested compositions
 	// render bare names like []AssetMap which is invalid Go.
@@ -436,6 +448,49 @@ func TestIntrinsicConvertScopeTraversalToInputScalarNoDoubleWrap(t *testing.T) {
 	assert.Equal(t, "pulumi.String(bucketName)", index.String())
 }
 
+// An ID output is a string input in Go, so string destinations take it as is. Other scalars parse it.
+func TestIntrinsicConvertIDOutputToScalarInput(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		to       model.Type
+		schemaTo schema.Type
+		expected string
+	}{
+		{model.StringType, schema.StringType, "resourceID"},
+		{model.BoolType, schema.BoolType, "resourceID.ToStringOutput().ApplyT(strconv.ParseBool).(pulumi.BoolOutput)"},
+		{model.IntType, schema.IntType, "resourceID.ToStringOutput().ApplyT(strconv.Atoi).(pulumi.IntOutput)"},
+		{
+			model.NumberType, schema.NumberType,
+			"resourceID.ToStringOutput().ApplyT(func(id string) (float64, error) {" +
+				" return strconv.ParseFloat(id, 64) }).(pulumi.Float64Output)",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.to.String(), func(t *testing.T) {
+			t.Parallel()
+
+			g := newTestGenerator(t, filepath.Join("transpiled_examples", "random-pp", "random.pp"))
+			var index bytes.Buffer
+
+			inputType := model.NewUnionTypeAnnotated(
+				[]model.Type{c.to, model.NewOutputType(c.to)},
+				&schema.InputType{ElementType: c.schemaTo},
+			)
+			expr := pcl.NewConvertCall(
+				model.VariableReference(&model.Variable{
+					Name:         "resourceID",
+					VariableType: model.NewOutputType(model.IDType),
+				}),
+				inputType,
+			)
+
+			g.Fgenf(&index, "%v", expr)
+			assert.Equal(t, c.expected, index.String())
+		})
+	}
+}
+
 func TestTupleConsExpression(t *testing.T) {
 	t.Parallel()
 
@@ -491,4 +546,26 @@ func testGenerateExpression(
 
 		assert.Equal(t, goCode, index.String())
 	})
+}
+
+// TestConvertLiteralToOutputNumberIsNotLifted pins the behavior of lowering an expression that
+// compares an output-typed number against an int literal: `v > 5` where v: output<number>. In this
+// position the binder's rewriteConversions wraps `5` in `__convert(5, InputType(number))` because
+// int is not strictly assignable to number.
+func TestConvertLiteralToOutputNumberIsNotLifted(t *testing.T) {
+	t.Parallel()
+
+	env := environment(map[string]any{
+		"v": model.NewOutputType(model.NumberType),
+	})
+	scope := env.scope()
+	genFunc := func(w io.Writer, g *generator, e model.Expression) {
+		e, temps := g.lowerExpression(e, model.NewOutputType(model.BoolType))
+		g.genTemps(w, temps)
+		g.Fgenf(w, "%v", e)
+	}
+	testGenerateExpression(t,
+		"v > 5",
+		"v.ApplyT(func(v float64) (bool, error) {\nreturn v > 5, nil\n}).(pulumi.BoolOutput)",
+		scope, genFunc)
 }

@@ -891,7 +891,7 @@ func TestInvokePlainWithOutputArgument(t *testing.T) {
 		res := result{}
 		return ctx.Invoke("test:invoke:success", args, &res)
 	}, WithMocks("project", "stack", mocks))
-	require.ErrorContains(t, err, "cannot marshal an input of type")
+	require.ErrorContains(t, err, "cannot marshal Output value of type pulumi.StringOutput")
 }
 
 // This test ensures that ctx.RegisterResourceOutputs is a no-op on subsequent
@@ -1268,4 +1268,27 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		}
 		assert.Equal(t, int32(1), mon.calls.Load(), "concurrent calls should result in single registration")
 	})
+}
+
+func TestExistsResource(t *testing.T) {
+	t.Parallel()
+
+	err := RunErr(func(ctx *Context) error {
+		var res testResource
+		require.NoError(t, ctx.RegisterResource("pkg:index:Resource", "existing", nil, &res))
+		_, _, _, _, err := await(res.ID())
+		require.NoError(t, err)
+
+		exists, known, _, _, err := await(ctx.ExistsResource("pkg:index:Resource", ID("existing"), nil, ""))
+		require.NoError(t, err)
+		assert.True(t, known)
+		assert.Equal(t, true, exists)
+
+		exists, known, _, _, err = await(ctx.ExistsResource("pkg:index:Resource", ID("missing"), nil, ""))
+		require.NoError(t, err)
+		assert.True(t, known)
+		assert.Equal(t, false, exists)
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	require.NoError(t, err)
 }

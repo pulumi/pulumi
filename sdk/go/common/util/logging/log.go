@@ -113,7 +113,7 @@ func redactAttr(a slog.Attr) slog.Attr {
 func redactSecretsInJSON(v any) any {
 	switch val := v.(type) {
 	case map[string]any:
-		if s, ok := val[sig.Key].(string); ok && s == sig.Secret {
+		if isSerializedSecret(val) {
 			return "[secret]"
 		}
 		redacted := make(map[string]any, len(val))
@@ -129,6 +129,24 @@ func redactSecretsInJSON(v any) any {
 		return redacted
 	default:
 		return val
+	}
+}
+
+// isSerializedSecret reports whether an already-serialized JSON object holds a secret. Secrets
+// reach the wire in two shapes: a plain secret, and an output value whose secret flag is set.
+func isSerializedSecret(m map[string]any) bool {
+	s, ok := m[sig.Key].(string)
+	if !ok {
+		return false
+	}
+	switch s {
+	case sig.Secret:
+		return true
+	case sig.OutputValue:
+		secret, ok := m["secret"].(bool)
+		return ok && secret
+	default:
+		return false
 	}
 }
 

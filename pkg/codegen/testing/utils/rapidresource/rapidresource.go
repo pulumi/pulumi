@@ -337,19 +337,25 @@ func liftGoValue(v any) property.Value {
 
 // drawResourceReferenceValue emits a reference to a resource of typ's type.
 func drawResourceReferenceValue(t *rapid.T, typ *schema.ResourceType, label string) property.Value {
+	// A trailing ":" would merge with the following "::" delimiter, shifting
+	// the delimiter positions so the URN parses into different components.
 	component := rapid.String().
-		Filter(func(s string) bool { return !strings.Contains(s, urn.NameDelimiter) })
+		Filter(func(s string) bool {
+			return !strings.Contains(s, urn.NameDelimiter) && !strings.HasSuffix(s, ":")
+		})
 	var parentType tokens.Type
 	if rapid.Bool().Draw(t, label+":haveParent") {
 		parentType = tokens.Type(component.Draw(t, label+":parent"))
 	}
-	return property.New(property.ResourceReference{
-		URN: urn.New(
+	return property.New(property.NewResourceReference(
+		urn.New(
 			tokens.QName(component.Draw(t, label+":stack")),
 			tokens.PackageName(component.Draw(t, label+":project")),
 			parentType,
 			tokens.Type(typ.Token),
 			rapid.String().Draw(t, label+":name"),
 		),
-	})
+		property.Value{},
+		""),
+	)
 }

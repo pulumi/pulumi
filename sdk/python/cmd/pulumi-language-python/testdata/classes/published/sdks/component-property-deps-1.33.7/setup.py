@@ -31,7 +31,7 @@ setup(name='pulumi_component_property_deps',
           ]
       },
       install_requires=[
-          'parver>=0.2.1',
+          'packaging>=24.0',
           'pulumi>=3.231.0,<4.0.0',
           'semver>=2.8.1'
       ],

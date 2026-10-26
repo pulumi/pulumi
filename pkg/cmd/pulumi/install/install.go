@@ -191,7 +191,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 			if !noPlugins {
 				// Pass the continuation from InstallPackagesFromProject so the packages it
 				// already installed and linked are not reinstalled or regenerated here.
-				err := newcmd.InstallRequiredPackages(ctx, pctx, proj, root, main,
+				_, err := newcmd.InstallRequiredPackages(ctx, pctx, proj, root, main,
 					continuation, parallel, useLanguageVersionTools, registry,
 					cmd.OutOrStderr(), cmd.ErrOrStderr())
 				if err != nil {

@@ -464,12 +464,12 @@ func TestSendBatchesSendsAfterTimerTick(t *testing.T) {
 
 	// Spin until all entries have been received from the channel
 	timeout := time.After(50 * time.Millisecond)
+spin:
 	for len(entries) > 0 {
 		select {
 		case <-timeout:
-			break
+			break spin
 		default:
-			continue
 		}
 	}
 

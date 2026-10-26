@@ -16,6 +16,8 @@ package pcl
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -194,7 +196,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				return model.StaticFunctionSignature{
 					Parameters: []model.Parameter{{
 						Name: "value",
-						Type: valueType,
+						Type: model.ResolveOutputs(valueType),
 					}},
 					ReturnType: returnType,
 				}, diagnostics
@@ -211,7 +213,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						mapType, elementType = model.ResolveOutputs(args[0].Type()), t.ElementType
 					case *model.ObjectType:
 						var unifiedType model.Type
-						for _, t := range t.Properties {
+						for _, t := range slices.SortedFunc(maps.Values(t.Properties), model.Compare) {
 							_, unifiedType = model.UnifyTypes(unifiedType, t)
 						}
 						mapType, elementType = model.ResolveOutputs(args[0].Type()), unifiedType
@@ -227,7 +229,11 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					argIsEventual = p || o
 				}
 
-				returnType := elementType
+				returnType, defaultType := elementType, elementType
+				if len(args) > 2 {
+					defaultType = args[2].Type()
+					returnType, _ = model.UnifyTypes(elementType, defaultType)
+				}
 				if argIsEventual {
 					returnType = model.NewOutputType(returnType)
 				}
@@ -244,7 +250,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						},
 						{
 							Name: "default",
-							Type: model.NewOptionalType(elementType),
+							Type: defaultType,
 						},
 					},
 					ReturnType: returnType,
@@ -609,20 +615,40 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 		// "resource type" as we do for `call` expressions.
 		"pulumiResourceType": newResourceFunction("pulumiResourceType"),
 		"pulumiResourceName": newResourceFunction("pulumiResourceName"),
+		"resourceExists": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "type",
+					Type: model.StringType,
+				},
+				{
+					Name: "id",
+					Type: model.NewOutputType(model.StringType),
+				},
+				{
+					Name: "state",
+					Type: model.NewOptionalType(model.DynamicType),
+				},
+			},
+			ReturnType: model.NewOutputType(model.BoolType),
+		}),
 	}
 }
 
 // newMinMaxFunction produces the type signature for the "min" & "max" PCL functions.
 //
-// It is a function from `(int, ...int) -> int` when no argument is a [model.NumberType], and `(number, ...number) ->
-// number` otherwise.
+// It is a function from `(int, ...int) -> int` unless some numeric argument does not convert safely to
+// [model.IntType], in which case it is `(number, ...number) -> number`. A number literal has a const type, so the
+// check is by conversion rather than by identity with [model.NumberType].
 func newMinMaxFunction() *model.Function {
 	return model.NewFunction(model.GenericFunctionSignature(
 		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
 			var diags hcl.Diagnostics
 			var typ model.Type = model.IntType
 			for _, v := range args {
-				if model.ResolveOutputs(v.Type()) == model.NumberType {
+				argType := model.ResolveOutputs(v.Type())
+				if model.NumberType.ConversionFrom(argType).Exists() &&
+					model.IntType.ConversionFrom(argType) != model.SafeConversion {
 					typ = model.NumberType
 				}
 			}

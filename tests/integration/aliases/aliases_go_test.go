@@ -36,7 +36,7 @@ func TestGoAliases(t *testing.T) {
 		Quick: true,
 		EditDirs: []integration.EditDir{
 			{
-				Dir:             filepath.Join("go", "step2"),
+				Dir:             filepath.Join("go", "_step2"),
 				ExpectNoChanges: true,
 				Additive:        true,
 			},

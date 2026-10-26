@@ -47,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
@@ -145,8 +146,8 @@ func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource
 				Name:   urn.Name(),
 				Type:   urn.Type(),
 				ID:     id,
-				Inputs: resource.PropertyMap{},
-				State:  resource.PropertyMap{},
+				Inputs: property.Map{},
+				State:  property.Map{},
 			})
 			if err != nil {
 				return err
@@ -160,7 +161,7 @@ func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource
 				return fmt.Errorf("parse input file: %w", err)
 			}
 			if readNotFound(read) {
-				return pc.runStatelessCreate(cmd, res, yes, func() (resource.PropertyMap, error) {
+				return pc.runStatelessCreate(cmd, res, yes, func() (property.Map, error) {
 					return inputs, nil
 				})
 			}
@@ -740,19 +741,19 @@ func (pc *packageCommand) buildProviderSnippet(
 			if err != nil {
 				return nil, nil, nil, fmt.Errorf("--provider: %w", err)
 			}
-			baseLiterals := make(map[string]string, len(base))
-			for k, v := range base {
+			baseLiterals := make(map[string]string, base.Len())
+			for k, v := range base.All {
 				// Skip engine bookkeeping (__internal) and the pinned plugin version — carrying
 				// these into a new snippet would collide with the plugin selection the descriptor
 				// already encodes.
 				if k == "__internal" || k == "version" {
 					continue
 				}
-				lit, err := propertyValueToPCLLiteral(string(k), v)
+				lit, err := propertyValueToPCLLiteral(k, v)
 				if err != nil {
 					return nil, nil, nil, fmt.Errorf("--provider: %w", err)
 				}
-				baseLiterals[string(k)] = lit
+				baseLiterals[k] = lit
 			}
 			providerCode, err = mergeAbsentAttributeLiteralsIntoPCL(providerCode, providerFilename, "provider", baseLiterals)
 			if err != nil {

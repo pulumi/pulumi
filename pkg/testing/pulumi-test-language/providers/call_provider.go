@@ -267,8 +267,9 @@ func (p *CallProvider) Check(
 	_ context.Context,
 	req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() == "call:index:Custom" {
-		value, ok := req.News["value"]
+		value, ok := news["value"]
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("value", "missing value"),
@@ -281,13 +282,13 @@ func (p *CallProvider) Check(
 			}, nil
 		}
 
-		if len(req.News) != 1 {
+		if len(news) != 1 {
 			return plugin.CheckResponse{
-				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 			}, nil
 		}
 
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 	}
 
 	return plugin.CheckResponse{
@@ -305,6 +306,7 @@ func (p *CallProvider) Create(
 	_ context.Context,
 	req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() == "call:index:Custom" {
 		id := "id-" + req.URN.Name()
 		if req.Preview {
@@ -313,7 +315,7 @@ func (p *CallProvider) Create(
 
 		return plugin.CreateResponse{
 			ID:         resource.ID(id),
-			Properties: req.Properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	}

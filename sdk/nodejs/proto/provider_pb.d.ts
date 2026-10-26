@@ -50,6 +50,12 @@ export class ProviderHandshakeRequest extends jspb.Message {
     setAcceptsByteString(value: boolean): ProviderHandshakeRequest;
     getSendsOldOutputsToCheck(): boolean;
     setSendsOldOutputsToCheck(value: boolean): ProviderHandshakeRequest;
+    getAcceptsOutputsInInvoke(): boolean;
+    setAcceptsOutputsInInvoke(value: boolean): ProviderHandshakeRequest;
+    getAcceptsOutputsInCall(): boolean;
+    setAcceptsOutputsInCall(value: boolean): ProviderHandshakeRequest;
+    getAcceptsOutputsInCheck(): boolean;
+    setAcceptsOutputsInCheck(value: boolean): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -75,6 +81,9 @@ export namespace ProviderHandshakeRequest {
         resolverTarget?: string,
         acceptsByteString: boolean,
         sendsOldOutputsToCheck: boolean,
+        acceptsOutputsInInvoke: boolean,
+        acceptsOutputsInCall: boolean,
+        acceptsOutputsInCheck: boolean,
     }
 }
 
@@ -89,6 +98,12 @@ export class ProviderHandshakeResponse extends jspb.Message {
     setSupportsAutonamingConfiguration(value: boolean): ProviderHandshakeResponse;
     getAcceptsByteString(): boolean;
     setAcceptsByteString(value: boolean): ProviderHandshakeResponse;
+    getAcceptsOutputsInInvoke(): boolean;
+    setAcceptsOutputsInInvoke(value: boolean): ProviderHandshakeResponse;
+    getAcceptsOutputsInCall(): boolean;
+    setAcceptsOutputsInCall(value: boolean): ProviderHandshakeResponse;
+    getAcceptsOutputsInCheck(): boolean;
+    setAcceptsOutputsInCheck(value: boolean): ProviderHandshakeResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeResponse.AsObject;
@@ -107,6 +122,9 @@ export namespace ProviderHandshakeResponse {
         acceptOutputs: boolean,
         supportsAutonamingConfiguration: boolean,
         acceptsByteString: boolean,
+        acceptsOutputsInInvoke: boolean,
+        acceptsOutputsInCall: boolean,
+        acceptsOutputsInCheck: boolean,
     }
 }
 
@@ -1688,6 +1706,23 @@ export namespace ErrorResourceInitFailed {
         reasonsList: Array<string>,
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
         refreshBeforeUpdate: boolean,
+    }
+}
+
+export class ErrorResourceAwaitFailed extends jspb.Message { 
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ErrorResourceAwaitFailed.AsObject;
+    static toObject(includeInstance: boolean, msg: ErrorResourceAwaitFailed): ErrorResourceAwaitFailed.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ErrorResourceAwaitFailed, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ErrorResourceAwaitFailed;
+    static deserializeBinaryFromReader(message: ErrorResourceAwaitFailed, reader: jspb.BinaryReader): ErrorResourceAwaitFailed;
+}
+
+export namespace ErrorResourceAwaitFailed {
+    export type AsObject = {
     }
 }
 

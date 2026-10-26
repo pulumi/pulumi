@@ -136,7 +136,7 @@ func (prov *Provider) Configure(ctx context.Context, req plugin.ConfigureRequest
 func (prov *Provider) Check(ctx context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 	contract.Requiref(req.RandomSeed != nil, "randomSeed", "must not be nil")
 	if prov.CheckF == nil {
-		return plugin.CheckResponse{Properties: req.News}, nil
+		return plugin.CheckResponse{Properties: req.NewInputs}, nil
 	}
 	return prov.CheckF(ctx, req)
 }
@@ -145,7 +145,7 @@ func (prov *Provider) Create(ctx context.Context, req plugin.CreateRequest) (plu
 	if prov.CreateF == nil {
 		// A real provider cannot know the id of a resource it has not created yet.
 		if req.Preview {
-			return plugin.CreateResponse{Properties: resource.PropertyMap{}}, nil
+			return plugin.CreateResponse{Properties: property.Map{}}, nil
 		}
 		// generate a new uuid
 		uuid, err := uuid.NewV4()
@@ -154,7 +154,7 @@ func (prov *Provider) Create(ctx context.Context, req plugin.CreateRequest) (plu
 		}
 		return plugin.CreateResponse{
 			ID:         resource.ID(uuid.String()),
-			Properties: resource.PropertyMap{},
+			Properties: property.Map{},
 		}, nil
 	}
 	return prov.CreateF(ctx, req)
@@ -192,20 +192,11 @@ func (prov *Provider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.
 	contract.Assertf(req.URN != "", "Read URN was empty")
 	contract.Assertf(req.ID != "", "Read ID was empty")
 	if prov.ReadF == nil {
-		state := req.State
-		if state == nil {
-			state = resource.PropertyMap{}
-		}
-		inputs := req.Inputs
-		if inputs == nil {
-			inputs = resource.PropertyMap{}
-		}
-
 		return plugin.ReadResponse{
 			ReadResult: plugin.ReadResult{
 				ID:      req.ID,
-				Outputs: state,
-				Inputs:  inputs,
+				Outputs: &req.State,
+				Inputs:  &req.Inputs,
 			},
 			Status: resource.StatusOK,
 		}, nil

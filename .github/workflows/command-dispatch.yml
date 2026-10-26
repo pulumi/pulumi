@@ -1,3 +1,7 @@
+permissions: write-all # Equivalent to default permissions plus id-token: write
+env:
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 name: Command Dispatch for PR events
 on:
   issue_comment:
@@ -9,10 +13,22 @@ jobs:
   command-dispatch:
     runs-on: ubuntu-latest
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Dispatch command
         uses: peter-evans/slash-command-dispatch@40877f718dce0101edfc7aea2b3800cc192f9ed5 # v2
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
           reaction-token: ${{ secrets.GITHUB_TOKEN }}
           permission: write
           issue-type: pull-request

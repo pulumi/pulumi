@@ -49,38 +49,64 @@ func Stderr() *Group {
 // terminal: each active bar gets its own line, and the whole block is redrawn
 // in place. Finished bars are printed once more in their final state and then
 // scroll away with the regular output.
+//
+// Closing the last active bar waits for the group to finish drawing, so output
+// printed afterwards lands below this group's bars.
 type Group struct {
-	out io.Writer
+	out  io.Writer
+	opts []mpb.ContainerOption
 
-	mu sync.Mutex
-	p  *mpb.Progress
+	// mu guards p and active, which change together: p is set exactly while
+	// bars are active, so a bar's renderer stays up until the bar is closed.
+	// It is held while the renderer shuts down, so a new bar can't start a
+	// second renderer while the old one is still drawing.
+	mu     sync.Mutex
+	p      *mpb.Progress
+	active int
 }
 
 func NewGroup(out io.Writer) *Group {
-	return &Group{out: out}
+	return newGroup(out)
+}
+
+// newGroup returns a Group whose renderers are created with the given options
+// in addition to the defaults.
+func newGroup(out io.Writer, opts ...mpb.ContainerOption) *Group {
+	return &Group{
+		out: out,
+		opts: append([]mpb.ContainerOption{
+			mpb.WithOutput(out),
+			mpb.WithRefreshRate(150 * time.Millisecond),
+			mpb.PopCompletedMode(),
+		}, opts...),
+	}
 }
 
 // Wrap attaches a progress bar to the given stream, coordinating with the
 // other bars in the group. When the size is unknown or the output is not
 // interactive, a plain message is printed instead. Closing the returned reader
-// finishes the bar; closing it more than once is safe.
+// finishes the bar; closing it more than once is safe. Closing the group's last
+// active bar blocks until the bars are fully drawn, and Wrap blocks meanwhile.
 func (g *Group) Wrap(
 	closer io.ReadCloser, size int64, message string, colorization colors.Colorization,
 ) io.ReadCloser {
-	if size == -1 || !cmdutil.Interactive() {
+	return g.wrap(closer, size, message, colorization, cmdutil.Interactive())
+}
+
+func (g *Group) wrap(
+	closer io.ReadCloser, size int64, message string, colorization colors.Colorization, interactive bool,
+) io.ReadCloser {
+	if size == -1 || !interactive {
 		fmt.Fprintln(g.out, colorization.Colorize(colors.SpecUnimportant+message+colors.Reset))
 		return closer
 	}
 
 	g.mu.Lock()
 	if g.p == nil {
-		g.p = mpb.New(
-			mpb.WithOutput(g.out),
-			mpb.WithRefreshRate(150*time.Millisecond),
-			mpb.PopCompletedMode(),
-		)
+		g.p = mpb.New(g.opts...)
 	}
 	p := g.p
+	g.active++
 	g.mu.Unlock()
 
 	bar := p.New(size,
@@ -95,10 +121,24 @@ func (g *Group) Wrap(
 			decor.Elapsed(decor.ET_STYLE_GO),
 		),
 	)
-	return &barCloser{bar: bar, readCloser: bar.ProxyReader(closer)}
+	return &barCloser{group: g, bar: bar, readCloser: bar.ProxyReader(closer)}
+}
+
+// release is called as each bar finishes. When the last active bar finishes,
+// it waits for the renderer to draw its final frame and stop.
+func (g *Group) release() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.active--
+	if g.active > 0 {
+		return
+	}
+	g.p.Wait()
+	g.p = nil
 }
 
 type barCloser struct {
+	group      *Group
 	bar        *mpb.Bar
 	readCloser io.ReadCloser
 	closeOnce  sync.Once
@@ -113,6 +153,7 @@ func (bc *barCloser) Close() error {
 	bc.closeOnce.Do(func() {
 		err = bc.readCloser.Close()
 		bc.bar.SetTotal(-1, true)
+		bc.group.release()
 	})
 	return err
 }

@@ -17,7 +17,6 @@ package model
 import (
 	"fmt"
 	"slices"
-	"sort"
 	"strings"
 	"sync/atomic"
 
@@ -26,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // UnionType represents values that may be any one of a specified set of types.
@@ -38,7 +36,7 @@ type UnionType struct {
 
 	s atomic.Value // Value<string>
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 // NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
@@ -59,9 +57,7 @@ func NewUnionTypeAnnotated(types []Type, annotations ...any) Type {
 
 	// Remove duplicate types
 	// We first sort the types so duplicates will be adjacent
-	sort.Slice(elementTypes, func(i, j int) bool {
-		return elementTypes[i].String() < elementTypes[j].String()
-	})
+	slices.SortFunc(elementTypes, Compare)
 	// We then filter out adjacent duplicates
 	dst := 0
 	for src := 0; src < len(elementTypes); {
@@ -82,7 +78,7 @@ func NewUnionTypeAnnotated(types []Type, annotations ...any) Type {
 		return elementTypes[0]
 	}
 
-	return &UnionType{ElementTypes: elementTypes, Annotations: annotations, cache: &gsync.Map[Type, cacheEntry]{}}
+	return &UnionType{ElementTypes: elementTypes, Annotations: annotations, cache: &typeCache{}}
 }
 
 // NewUnionType creates a new union type with the given element types. Any element types that are union types are
@@ -193,7 +189,7 @@ func (t *UnionType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *UnionType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *UnionType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
@@ -204,21 +200,38 @@ func (t *UnionType) equals(other Type, seen map[Type]struct{}) bool {
 	if len(t.ElementTypes) != len(otherUnion.ElementTypes) {
 		return false
 	}
-	for i, t := range t.ElementTypes {
-		if !t.equals(otherUnion.ElementTypes[i], seen) {
+	elementTypes, otherElementTypes := t.sortedElementTypes(nil), otherUnion.sortedElementTypes(nil)
+	for i, t := range elementTypes {
+		if !t.equals(otherElementTypes[i], seen) {
 			return false
 		}
 	}
 	return true
 }
 
+// sortedElementTypes returns the members in the order Compare defines. They are sorted when the union is built,
+// but a member that was a recursive object type still under construction may have sorted differently, so a union
+// is compared and tested for equality as a set. The comparison in flight, if any, passes its pairs so that a
+// member that refers back to an object being compared does not start the comparison over.
+func (t *UnionType) sortedElementTypes(seen comparePairs) []Type {
+	compare := func(a, b Type) int { return compareTypes(a, b, seen) }
+	if slices.IsSortedFunc(t.ElementTypes, compare) {
+		return t.ElementTypes
+	}
+	return slices.SortedFunc(slices.Values(t.ElementTypes), compare)
+}
+
 // AssignableFrom returns true if this type is assignable from the indicated source type. A union(T_0, ..., T_N)
 // from values of type union(U_0, ..., U_M) where all of U_0 through U_M are assignable to some type in
 // (T_0, ..., T_N) and V where V is assignable to at least one of (T_0, ..., T_N).
 func (t *UnionType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *UnionType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		for _, t := range t.ElementTypes {
-			if t.AssignableFrom(src) {
+			if t.assignableFrom(src, seen) {
 				return true
 			}
 		}
@@ -235,7 +248,7 @@ func (t *UnionType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *UnionType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *UnionType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		var conversionKind ConversionKind
 		var diags []lazyDiagnostics
@@ -271,7 +284,7 @@ func (t *UnionType) conversionFrom(src Type, unifying bool, seen cycleSet) (Conv
 // If all conversions to a dest type from a union type are safe, the conversion is safe.
 // If no conversions to a dest type from a union type exist, the conversion does not exist.
 // Otherwise, the conversion is unsafe.
-func (t *UnionType) conversionTo(dest Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *UnionType) conversionTo(dest Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	conversionKind, exists := SafeConversion, false
 	for _, t := range t.ElementTypes {
 		switch kind, _ := dest.conversionFrom(t, unifying, seen); kind {
@@ -313,13 +326,13 @@ func (t *UnionType) string(seen map[Type]struct{}) string {
 	return s
 }
 
-func (t *UnionType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
-		return t.unifyTo(other)
+func (t *UnionType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
+		return t.unifyTo(other, seen)
 	})
 }
 
-func (t *UnionType) unifyTo(other Type) (Type, ConversionKind) {
+func (t *UnionType) unifyTo(other Type, seen *cycleSet) (Type, ConversionKind) {
 	switch other := other.(type) {
 	case *UnionType:
 		// If the other type is also a union type, produce a new type that is the union of their elements.
@@ -331,7 +344,7 @@ func (t *UnionType) unifyTo(other Type) (Type, ConversionKind) {
 		// Otherwise, unify the other type with each element of the union and return a new union type.
 		elements, conversionKind := make([]Type, len(t.ElementTypes)), SafeConversion
 		for i, t := range t.ElementTypes {
-			element, ck := t.unify(other)
+			element, ck := t.unify(other, seen)
 			if ck < conversionKind {
 				conversionKind = ck
 			}

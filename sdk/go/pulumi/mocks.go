@@ -206,6 +206,7 @@ func (m *mockMonitor) GetDeploymentInfo(ctx context.Context, in *emptypb.Empty,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS,
 	}
 
 	return &pulumirpc.DeploymentInfo{
@@ -347,6 +348,20 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 	return &pulumirpc.ReadResourceResponse{
 		Urn:        urn,
 		Properties: stateOut,
+	}, nil
+}
+
+func (m *mockMonitor) ExistsResource(ctx context.Context, in *pulumirpc.ExistsResourceRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.ExistsResourceResponse, error) {
+	exists := false
+	m.resources.Range(func(key, value any) bool {
+		res := value.(resource.PropertyMap)
+		exists = string(resource.URN(key.(string)).Type()) == in.GetType() && res["id"].StringValue() == in.GetId()
+		return !exists
+	})
+	return &pulumirpc.ExistsResourceResponse{
+		Exists: exists,
 	}, nil
 }
 

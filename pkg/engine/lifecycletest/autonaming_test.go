@@ -43,7 +43,7 @@ func TestAutonaming(t *testing.T) {
 					// Capture the autonaming options
 					receivedAutonaming = req.Autonaming
 					return plugin.CheckResponse{
-						Properties: req.News,
+						Properties: req.NewInputs,
 					}, nil
 				},
 			}, nil

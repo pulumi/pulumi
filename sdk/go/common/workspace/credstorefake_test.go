@@ -17,10 +17,10 @@ package workspace
 import (
 	"crypto/rand"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/securestore"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -68,6 +68,7 @@ func (f *fakeKeyStore) GetOrCreateKey() ([]byte, error) {
 
 func (f *fakeKeyStore) DeleteKey() error {
 	f.key = nil
+	f.getErr = nil
 	return nil
 }
 
@@ -159,15 +160,13 @@ func installStores(t *testing.T, s keyStores) {
 	previous := stores
 	stores = s
 	t.Cleanup(func() { stores = previous })
-	resetCredStoreForTesting()
-	t.Cleanup(resetCredStoreForTesting)
+	resetCredentialStoreState()
+	t.Cleanup(resetCredentialStoreState)
 }
 
-func fakeStore(t *testing.T) *fakeKeyStore {
-	t.Helper()
-	fakes, ok := stores.(*fakeStores)
-	require.True(t, ok, "no fake stores installed")
-	return fakes.byBackend[fakeBackend]
+func resetCredentialStoreState() {
+	replacedEnvelope.Store(false)
+	plaintextPendingOnce = sync.Once{}
 }
 
 // The stronger backend becomes available only once promote is called.

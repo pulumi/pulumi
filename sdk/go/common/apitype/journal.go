@@ -78,6 +78,14 @@ type JournalNewStatePatch struct {
 	State       ResourceV3 `json:"state"`
 }
 
+// JournalLayoutItem places one resource in the base snapshot produced by a state migration. Exactly one of BaseIndex
+// and StateIndex is set: BaseIndex refers to a retained resource by its index in the base snapshot before the
+// migration, and StateIndex refers to one of the entry's inserted States.
+type JournalLayoutItem struct {
+	BaseIndex  *int64 `json:"baseIndex,omitempty"`
+	StateIndex *int64 `json:"stateIndex,omitempty"`
+}
+
 type JournalEntry struct {
 	// Version of the journal entry format.
 	Version int `json:"version"`
@@ -124,15 +132,14 @@ type JournalEntry struct {
 	// time for replay to gate rebuilt deployments on the byteString feature.
 	RequiresByteString bool `json:"requiresByteString,omitempty"`
 
-	// RemoveOlds holds the indices of the resources in the base snapshot that a state migration removes.
+	// Layout lists the complete base snapshot produced by a state migration, in order. Base resources absent from
+	// Layout are removed. Only set for JournalEntryKindStateMigration entries.
+	Layout []JournalLayoutItem `json:"layout,omitempty"`
+	// States holds the resources a state migration inserts into the base snapshot at the positions given by Layout.
 	// Only set for JournalEntryKindStateMigration entries.
-	RemoveOlds []int64 `json:"removeOlds,omitempty"`
-	// States holds the resources a state migration splices into the base snapshot, in order. They take the
-	// position of the resource with the greatest removed index. Only set for JournalEntryKindStateMigration entries.
 	States []ResourceV3 `json:"states,omitempty"`
 	// BaseStatePatches contains complete replacements for retained base resources whose references were rewritten.
-	// Indices refer to the base snapshot before RemoveOlds is applied. Only set for JournalEntryKindStateMigration
-	// entries.
+	// Indices refer to the base snapshot before the migration. Only set for JournalEntryKindStateMigration entries.
 	BaseStatePatches []JournalBaseStatePatch `json:"baseStatePatches,omitempty"`
 	// NewStatePatches contains complete replacements for resources produced by operations earlier in this update.
 	// Only set for JournalEntryKindStateMigration entries.
@@ -179,17 +186,40 @@ func (e JournalEntry) String() string {
 	if e.Snippets != nil {
 		fmt.Fprintf(&sb, ", snippets(%v)", len(e.Snippets))
 	}
-	if e.RemoveOlds != nil {
-		fmt.Fprintf(&sb, ", removeOlds(%v)", len(e.RemoveOlds))
+	if e.Layout != nil {
+		items := make([]string, len(e.Layout))
+		for i, item := range e.Layout {
+			var indices []string
+			if item.BaseIndex != nil {
+				indices = append(indices, fmt.Sprintf("base:%d", *item.BaseIndex))
+			}
+			if item.StateIndex != nil {
+				indices = append(indices, fmt.Sprintf("state:%d", *item.StateIndex))
+			}
+			items[i] = "{" + strings.Join(indices, " ") + "}"
+		}
+		fmt.Fprintf(&sb, ", layout(%v)", items)
 	}
 	if e.States != nil {
-		fmt.Fprintf(&sb, ", states(%v)", len(e.States))
+		urns := make([]string, len(e.States))
+		for i, state := range e.States {
+			urns[i] = string(state.URN)
+		}
+		fmt.Fprintf(&sb, ", states(%v)", urns)
 	}
 	if e.BaseStatePatches != nil {
-		fmt.Fprintf(&sb, ", baseStatePatches(%v)", len(e.BaseStatePatches))
+		patches := make([]string, len(e.BaseStatePatches))
+		for i, patch := range e.BaseStatePatches {
+			patches[i] = fmt.Sprintf("%d:%s", patch.Index, patch.State.URN)
+		}
+		fmt.Fprintf(&sb, ", baseStatePatches(%v)", patches)
 	}
 	if e.NewStatePatches != nil {
-		fmt.Fprintf(&sb, ", newStatePatches(%v)", len(e.NewStatePatches))
+		patches := make([]string, len(e.NewStatePatches))
+		for i, patch := range e.NewStatePatches {
+			patches[i] = fmt.Sprintf("%d:%s", patch.OperationID, patch.State.URN)
+		}
+		fmt.Fprintf(&sb, ", newStatePatches(%v)", patches)
 	}
 
 	return sb.String()

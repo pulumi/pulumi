@@ -220,6 +220,16 @@ export class MockMonitor {
         }
     }
 
+    public existsResource(req: any, callback: (err: any, innerResponse: any) => void) {
+        const prefix = "urn:pulumi:" + [getStack(), getProject()].join("::") + "::";
+        const exists = [...this.resources.values()].some(
+            (r) => r.id === req.getId() && r.urn.slice(prefix.length).split("::")[0].split("$").pop() === req.getType(),
+        );
+        const response = new resproto.ExistsResourceResponse();
+        response.setExists(exists);
+        callback(null, response);
+    }
+
     public async registerResource(req: any, callback: (err: any, innerResponse: any) => void) {
         try {
             const transforms = req
@@ -314,6 +324,7 @@ export class MockMonitor {
             resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
             resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
             resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS,
         ]);
         callback(null, resp);
     }

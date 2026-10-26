@@ -437,6 +437,7 @@ func (p *ModuleFormatProvider) Call(
 func (p *ModuleFormatProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	switch req.URN.Type().String() {
 	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource": //nolint:lll
 	default:
@@ -445,13 +446,13 @@ func (p *ModuleFormatProvider) Check(
 		}, nil
 	}
 
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("expected exactly one property: %v", news)),
 		}, nil
 	}
 
-	text, ok := req.News["text"]
+	text, ok := news["text"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("text", "missing required property 'text'"),
@@ -464,12 +465,13 @@ func (p *ModuleFormatProvider) Check(
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ModuleFormatProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	switch req.URN.Type().String() {
 	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource": //nolint:lll
 	default:
@@ -485,9 +487,9 @@ func (p *ModuleFormatProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
-		Properties: resource.PropertyMap{
-			"text": req.Properties["text"],
-		},
+		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
+			"text": properties["text"],
+		}),
 		Status: resource.StatusOK,
 	}, nil
 }

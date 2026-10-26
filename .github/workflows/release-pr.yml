@@ -1,9 +1,13 @@
+env:
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 name: Post-Release PR
 
 permissions:
   # To create a PR
   contents: write
   pull-requests: write
+  id-token: write
 
 on:
   workflow_call:
@@ -35,6 +39,18 @@ jobs:
     name: version bump
     runs-on: ubuntu-latest
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           # `inputs.ref` is the release tag, which points at a commit created
@@ -49,14 +65,14 @@ jobs:
         with:
           action: jdx/mise-action@v2
           with: |
-            # Pin mise: the latest advertised version, 2026.9.3, has no release assets.
-            version: 2026.9.2
+            version: 2026.10.3
             experimental: true
       - name: Create PR
         env:
           PULUMI_VERSION: ${{ inputs.version }}
           QUEUE_MERGE: ${{ inputs.queue-merge }}
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
+          REVIEW_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_REVIEW_TOKEN }}
         run: |
           set -euo pipefail
           git switch --create "automation/release-v${PULUMI_VERSION}"
@@ -88,6 +104,8 @@ jobs:
           # Note that the title of the PR is used in the on-push workflow.  If the title needs to
           # change here, please also check on-push.yml
           PR=$(gh pr create --title "Changelog and go.mod updates for v${PULUMI_VERSION}" --body "")
+
+          GITHUB_TOKEN="${REVIEW_TOKEN}" gh pr review --approve "${PR}"
 
           if [ "${QUEUE_MERGE}" = "true" ]; then
             gh pr merge --auto --squash "${PR}"

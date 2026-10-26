@@ -136,6 +136,16 @@ describe("options", () => {
             });
         });
 
+        describe("stateMigrations", () => {
+            const a = () => undefined;
+            const b = () => undefined;
+
+            it("merges migrations in order", () => {
+                const result = mergeOptions({ stateMigrations: [a] }, { stateMigrations: [b] });
+                assert.deepStrictEqual(result.stateMigrations, [a, b]);
+            });
+        });
+
         describe("providers", () => {
             const awsProvider = <ProviderResource>{ getPackage: () => "aws" };
             const azureProvider = <ProviderResource>{ getPackage: () => "azure" };

@@ -18,6 +18,7 @@ package display
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,6 +49,66 @@ func defaultOpts() Options {
 		DeterministicOutput:  true,
 		ShowLinkToNeo:        false,
 		RenderOnDirty:        true,
+	}
+}
+
+func TestProgressEventsNeoDiagnosticLink(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name      string
+		severity  diag.Severity
+		ephemeral bool
+		wantLink  bool
+	}{
+		{name: "migration info", severity: diag.Info},
+		{name: "info on stderr", severity: diag.Infoerr},
+		{name: "debug", severity: diag.Debug},
+		{name: "warning", severity: diag.Warning, wantLink: true},
+		{name: "error", severity: diag.Error, wantLink: true},
+		{name: "ephemeral warning", severity: diag.Warning, ephemeral: true},
+		{name: "ephemeral error", severity: diag.Error, ephemeral: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var jsonEvent apitype.EngineEvent
+			require.NoError(t, json.Unmarshal([]byte(fmt.Sprintf(`{
+				"diagnosticEvent": {
+					"urn": "urn:pulumi:stack::project::example:index:Component::root",
+					"message": "State migration applied (state entries: 2 before, 2 after).\n",
+					"color": "never",
+					"severity": %q,
+					"ephemeral": %t
+				}
+			}`, tt.severity, tt.ephemeral)), &jsonEvent))
+			event, err := ConvertJSONEvent(jsonEvent)
+			require.NoError(t, err)
+
+			var stdout, stderr bytes.Buffer
+			opts := defaultOpts()
+			opts.Color = colors.Never
+			opts.Stdout, opts.Stderr = &stdout, &stderr
+			opts.ShowLinkToNeo = true
+			opts.Debug = true
+			events := sliceToBufferedChan([]engine.Event{event, engine.NewCancelEvent()})
+			done := make(chan bool)
+			go ShowProgressEvents("test", "update", tokens.MustParseStackName("stack"), "project", "link",
+				events, done, opts, false)
+			<-done
+
+			if tt.wantLink {
+				assert.Contains(t, stdout.String(), "link?explainFailure")
+				assert.Contains(t, stdout.String(), "pulumi neo --debug-update")
+			} else {
+				assert.NotContains(t, stdout.String(), "[Pulumi Neo]")
+				assert.NotContains(t, stdout.String(), "explainFailure")
+				assert.NotContains(t, stdout.String(), "pulumi neo --debug-update")
+			}
+			if !tt.ephemeral {
+				assert.Contains(t, stdout.String(), "State migration applied (state entries: 2 before, 2 after).")
+			}
+		})
 	}
 }
 
@@ -387,11 +448,13 @@ func TestStatusDisplayFlags(t *testing.T) {
 			doneStatus := d.getStepStatus(step,
 				true,  // done
 				false, // failed
+				false, // awaited
 				false, // interrupted
 			)
 			inProgressStatus := d.getStepStatus(step,
 				false, // done
 				false, // failed
+				false, // awaited
 				false, // interrupted
 			)
 			if tt.shouldRetain {
@@ -586,4 +649,75 @@ func TestSystemEventDoesNotDeadlockMessageRenderer(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatal("display deadlocked processing system event with messageRenderer")
 	}
+}
+
+func TestProgressPoliciesExemptedViolations(t *testing.T) {
+	t.Parallel()
+
+	resA := resource.NewURN("stack", "project", "", "pkgA:index:typA", "resA")
+	rootStack := resource.DefaultRootStackURN("stack", "project")
+	violation := func(urn resource.URN, policy string, level apitype.EnforcementLevel,
+		exceptions []apitype.PolicyEventException,
+	) engine.Event {
+		return engine.NewEvent(engine.PolicyViolationEventPayload{
+			ResourceURN:       urn,
+			Message:           policy + " failed",
+			PolicyName:        policy,
+			PolicyPackName:    "pack",
+			PolicyPackVersion: "1.0.0",
+			EnforcementLevel:  level,
+			Exceptions:        exceptions,
+		})
+	}
+
+	run := func(t *testing.T, showExceptions bool) string {
+		eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+		var stdout, stderr bytes.Buffer
+		go ShowProgressEvents(
+			"test", "update", tokens.MustParseStackName("stack"), "project", "", eventChannel, doneChannel,
+			Options{
+				Color:                colors.Never,
+				Stdout:               &stdout,
+				Stderr:               &stderr,
+				DeterministicOutput:  true,
+				ShowPolicyExceptions: showExceptions,
+			}, false)
+
+		eventChannel <- violation(resA, "versioning", apitype.Advisory, nil)
+		eventChannel <- violation(resA, "public-read", apitype.Mandatory,
+			[]apitype.PolicyEventException{{ID: "EXC-42", Reason: "Log target bucket"}, {ID: "EXC-50", Reason: "Old"}})
+		eventChannel <- violation(rootStack, "public-read", apitype.Mandatory,
+			[]apitype.PolicyEventException{{ID: "EXC-7", Reason: "Legacy stack"}})
+		eventChannel <- engine.NewEvent(engine.SummaryEventPayload{PolicyPacks: map[string]string{"pack": "1.0.0"}})
+		close(eventChannel)
+		<-doneChannel
+		return stdout.String()
+	}
+
+	t.Run("collapsed", func(t *testing.T) {
+		t.Parallel()
+		// The pack's status reflects only the advisory violation, and the exempted ones are summarized.
+		assert.Contains(t, run(t, false), ""+
+			"Policies:\n"+
+			"    ⚠️ pack@v1.0.0\n"+
+			"        - [advisory]  versioning  (pkgA:index:typA: resA)\n"+
+			"          versioning failed\n"+
+			"        · [exempted]  public-read  (2 violations)\n\n")
+	})
+
+	t.Run("expanded", func(t *testing.T) {
+		t.Parallel()
+		assert.Contains(t, run(t, true), ""+
+			"Policies:\n"+
+			"    ⚠️ pack@v1.0.0\n"+
+			"        - [advisory]  versioning  (pkgA:index:typA: resA)\n"+
+			"          versioning failed\n"+
+			"        · [exempted] [mandatory]  public-read  (pkgA:index:typA: resA)\n"+
+			"          public-read failed\n"+
+			"          EXC-42: Log target bucket\n"+
+			"          EXC-50: Old\n"+
+			"        · [exempted] [mandatory]  public-read  (pulumi:pulumi:Stack: project-stack)\n"+
+			"          public-read failed\n"+
+			"          EXC-7: Legacy stack\n\n")
+	})
 }

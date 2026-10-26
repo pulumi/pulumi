@@ -1,3 +1,6 @@
+env:
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 name: Create dev release
 
 permissions:
@@ -55,13 +58,10 @@ jobs:
           cache-dependency-path: pkg/go.sum
           go-version-file: pkg/go.mod
       - uses: ./.github/actions/retry
-        env:
-          MISE_NPM_SHELL_OUT: "true"
         with:
           action: jdx/mise-action@v2
           with: |
-            # Pin mise: the latest advertised version, 2026.9.3, has no release assets.
-            version: 2026.9.2
+            version: 2026.10.3
             experimental: true
             cache_key_prefix: mise-npm-shell-out-v0
       - name: Install CLI
@@ -105,6 +105,7 @@ jobs:
       build-platform: ${{ matrix.build-platform }}
       version-set: ${{ needs.matrix.outputs.version-set }}
       enable-coverage: false
+      sign-windows-binaries: true
     secrets: inherit
 
   build-sdks:
@@ -158,6 +159,18 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.sdk-check-release.outputs.nodejs-release == 'true' }}
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Make artifacts directory
@@ -186,24 +199,35 @@ jobs:
           registry-url: https://registry.npmjs.org
           always-auth: true
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ steps.esc-secrets.outputs.NPM_TOKEN }}
+          NPM_TOKEN: ${{ steps.esc-secrets.outputs.NPM_TOKEN }}
       - name: Publish nodejs release
         run: |
           find artifacts
           make -C sdk/nodejs publish
         env:
           PULUMI_VERSION: ${{ needs.gather-info.outputs.dev-version }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ steps.esc-secrets.outputs.NPM_TOKEN }}
+          NPM_TOKEN: ${{ steps.esc-secrets.outputs.NPM_TOKEN }}
           GIT_REF: ${{ inputs.ref }}
-
 
   python-dev-sdk-release:
     needs: [gather-info, build-sdks, sdk-check-release, matrix]
     runs-on: ubuntu-latest
     if: ${{ needs.sdk-check-release.outputs.python-release == 'true' }}
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Set up Python ${{ fromJson(needs.matrix.outputs.version-set).python }}
@@ -241,23 +265,35 @@ jobs:
           make -C sdk/python publish
         env:
           PYPI_USERNAME: __token__
-          PYPI_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          PYPI_PASSWORD: ${{ steps.esc-secrets.outputs.PYPI_API_TOKEN }}
 
   s3-blobs:
     name: s3 blobs
     runs-on: ubuntu-latest
     needs: [sign, gather-info]
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ steps.esc-secrets.outputs.AWS_ACCESS_KEY_ID }}
           aws-region: us-east-2
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-secret-access-key: ${{ steps.esc-secrets.outputs.AWS_SECRET_ACCESS_KEY }}
           role-duration-seconds: 3600
           role-external-id: upload-pulumi-release
           role-session-name: pulumi@githubActions
-          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
+          role-to-assume: ${{ steps.esc-secrets.outputs.AWS_UPLOAD_ROLE_ARN }}
       - name: Make artifacts directory
         run: |
           mkdir -p artifacts.tmp

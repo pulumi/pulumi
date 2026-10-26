@@ -163,7 +163,7 @@ func (Workspace) IsExecutable(ctx context.Context, binaryPath string) (bool, err
 // Download a plugin onto disk, returning the path the plugin was downloaded to.
 func (w Workspace) DownloadPlugin(
 	ctx context.Context, pluginSpec workspace.PluginDescriptor,
-) (string, func(done bool), error) {
+) (string, func(done bool) error, error) {
 	tracer := otel.Tracer("pulumi-cli")
 	ctx, span := diagutils.StartSpan(ctx, tracer, "download-plugin",
 		trace.WithAttributes(attribute.String("plugin", pluginSpec.Name)))
@@ -213,7 +213,7 @@ func (w Workspace) DownloadPlugin(
 	}
 	outDir, err := pluginSpec.DirPath()
 	if err != nil {
-		cleanup(false)
+		contract.IgnoreError(cleanup(false))
 		return "", nil, err
 	}
 	return filepath.Join(outDir, pluginSpec.SubDir()), cleanup, nil
@@ -461,10 +461,12 @@ func (w Workspace) RunPackage(
 	})
 
 	pctx, err := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan)
-	pctx.CloudCredentialEnv = w.pctx.CloudCredentialEnv
 	if err != nil {
 		return nil, fmt.Errorf("could not start context for plugin at %q: %w", pluginPath, err)
 	}
+	pctx.CloudCredentialEnv = w.pctx.CloudCredentialEnv
+	pctx.DialOptions = w.pctx.DialOptions
+	pctx.DebugTraceMutex = w.pctx.DebugTraceMutex
 	p, err := plugin.NewProviderFromPath(w.pctx.Host, pctx, pluginPath)
 	if err != nil {
 		return nil, fmt.Errorf("could not run plugin at %q: %w", pluginPath, err)

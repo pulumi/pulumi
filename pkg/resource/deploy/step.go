@@ -100,6 +100,15 @@ type SameStep struct {
 	// If this is a same-step emitted for a resource that was not included in a
 	// target-constrained operation.
 	untargeted bool
+
+	// A list of URNs (all dependencies of the step) that this step needs to wait on before completing. In
+	// untargeted same steps this is used to wait for any dependencies that may no longer be in the users
+	// program, but still in the state, so they need to be waited on to have correct state ordering.  They are
+	// turned into waitTokens when the step is applied, so URNs that no longer exist in the program don't get a
+	// wait token and will not be waited on to prevent deadlocks.
+	waitURNs []resource.URN
+	// The list of completion tokens that the step actually waits on.
+	waitTokens []completionToken
 }
 
 var _ Step = (*SameStep)(nil)
@@ -129,9 +138,12 @@ func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *pk
 
 // NewUntargetedSameStep produces a SameStep for a resource that is only "same" because it was not
 // included in a target-constrained operation, as opposed to having been diffed and found unchanged.
-func NewUntargetedSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *pkgresource.State) Step {
+func NewUntargetedSameStep(
+	deployment *Deployment, reg RegisterResourceEvent, old, new *pkgresource.State, waitURNs []resource.URN,
+) Step {
 	step := NewSameStep(deployment, reg, old, new).(*SameStep)
 	step.untargeted = true
+	step.waitURNs = waitURNs
 	return step
 }
 
@@ -226,7 +238,17 @@ func (s *SameStep) Fail() {
 }
 
 func (s *SameStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// A skipped same step stands in for a create or update that isn't attempted because a dependency failed (see
+	// continueStepsFromRefresh), so its old outputs aren't what the program asked for. Instead, ask the provider
+	// what a dry-run of that create or update would produce. The snapshot is not affected: nothing happened, so
+	// s.new is not persisted.
+	var old *pkgresource.State
+	if !s.skippedCreate {
+		old = s.old
+	}
+	skipState := s.new.Copy()
+	skipState.Outputs = dryRunOutputs(s, nil, old, s.new, s.reg.Goal().Properties, s.reg.Goal().IgnoreChanges)
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
@@ -360,19 +382,48 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		var resp plugin.CreateResponse
 
+		// If a create partially fails, the resource exists, so any retries must update it rather than create
+		// another one.
+		var partial *plugin.CreateResponse
+
 		resp, err = withRetries(
 			maxErrorHookRetries,
 			func() (plugin.CreateResponse, error) {
-				resp, err := prov.Create(context.TODO(), plugin.CreateRequest{
-					URN:                   s.URN(),
-					Name:                  s.new.URN.Name(),
-					Type:                  s.new.URN.Type(),
-					Properties:            s.new.Inputs,
-					Timeout:               s.new.CustomTimeouts.Create,
-					Preview:               s.deployment.opts.DryRun,
-					ResourceStatusAddress: resourceStatusAddress,
-					ResourceStatusToken:   resourceStatusToken,
-				})
+				var resp plugin.CreateResponse
+				var err error
+				if partial == nil {
+					resp, err = prov.Create(context.TODO(), plugin.CreateRequest{
+						URN:                   s.URN(),
+						Name:                  s.new.URN.Name(),
+						Type:                  s.new.URN.Type(),
+						Properties:            resource.FromResourcePropertyMap(s.new.Inputs),
+						Timeout:               s.new.CustomTimeouts.Create,
+						Preview:               s.deployment.opts.DryRun,
+						ResourceStatusAddress: resourceStatusAddress,
+						ResourceStatusToken:   resourceStatusToken,
+					})
+				} else {
+					var upd plugin.UpdateResponse
+					upd, err = prov.Update(context.TODO(), plugin.UpdateRequest{
+						URN:                   s.URN(),
+						Name:                  s.new.URN.Name(),
+						Type:                  s.new.URN.Type(),
+						ID:                    partial.ID,
+						OldInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
+						OldOutputs:            partial.Properties,
+						NewInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
+						Timeout:               s.new.CustomTimeouts.Create,
+						Preview:               s.deployment.opts.DryRun,
+						ResourceStatusAddress: resourceStatusAddress,
+						ResourceStatusToken:   resourceStatusToken,
+					})
+					resp = plugin.CreateResponse{
+						ID:                  partial.ID,
+						Properties:          upd.Properties,
+						Status:              upd.Status,
+						RefreshBeforeUpdate: upd.RefreshBeforeUpdate,
+					}
+				}
 
 				if err == nil {
 					resourceError = nil
@@ -386,6 +437,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 				resourceError = err
 				resourceStatus = resp.Status
+				if resp.ID != "" {
+					partial = &resp
+				}
 
 				if initErr, isInitErr := err.(*plugin.InitError); isInitErr {
 					s.new.InitErrors = initErr.Reasons
@@ -442,7 +496,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		if err == nil || resourceStatus == resource.StatusPartialFailure {
 			id = resp.ID
-			outs = resp.Properties
+			outs = resource.ToResourcePropertyMap(resp.Properties)
 			refreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 			if err == nil && !s.deployment.opts.DryRun && id == "" {
@@ -458,6 +512,9 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	s.new.ID = id
 	s.new.Outputs = outs
 	s.new.RefreshBeforeUpdate = refreshBeforeUpdate
+	if resourceError == nil {
+		s.new.InitErrors = nil
+	}
 
 	// Create should set the Create and Modified timestamps as the resource state has been created.
 	now := time.Now().UTC()
@@ -511,7 +568,62 @@ func (s *CreateStep) Fail() {
 }
 
 func (s *CreateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Ask the provider what a dry-run of this create would produce so dependents get precise
+	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
+	// The snapshot is not affected: no create happened, so s.new is not persisted.
+	skipState := s.new.Copy()
+	skipState.Outputs = dryRunOutputs(s, s.provider, nil, s.new, resource.FromResourcePropertyMap(s.new.Inputs), nil)
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
+}
+
+// dryRunOutputs asks the provider for the outputs of a dry-run create (if old is nil) or update of a skipped resource.
+// If that isn't possible, everything is unknown.
+func dryRunOutputs(
+	s Step, provider plugin.Provider, old, new *pkgresource.State, inputs property.Map, ignoreChanges []string,
+) resource.PropertyMap {
+	if !new.Custom {
+		return resource.PropertyMap{}
+	}
+	prov, err := getProvider(s, provider)
+	if err != nil {
+		logging.V(5).Infof("could not resolve provider for skipped %s, falling back to fully unknown outputs: %v",
+			s.URN(), err)
+		return resource.PropertyMap{}
+	}
+
+	var outputs property.Map
+	if old == nil {
+		var resp plugin.CreateResponse
+		resp, err = prov.Create(context.TODO(), plugin.CreateRequest{
+			URN:        s.URN(),
+			Name:       new.URN.Name(),
+			Type:       new.URN.Type(),
+			Properties: inputs,
+			Timeout:    new.CustomTimeouts.Create,
+			Preview:    true,
+		})
+		outputs = resp.Properties
+	} else {
+		var resp plugin.UpdateResponse
+		resp, err = prov.Update(context.TODO(), plugin.UpdateRequest{
+			URN:           s.URN(),
+			Name:          new.URN.Name(),
+			Type:          new.URN.Type(),
+			ID:            old.ID,
+			OldInputs:     resource.FromResourcePropertyMap(old.Inputs),
+			OldOutputs:    resource.FromResourcePropertyMap(old.Outputs),
+			NewInputs:     inputs,
+			Timeout:       new.CustomTimeouts.Update,
+			IgnoreChanges: ignoreChanges,
+			Preview:       true,
+		})
+		outputs = resp.Properties
+	}
+	if err != nil {
+		logging.V(5).Infof("dry-run failed for skipped %s, falling back to fully unknown outputs: %v", s.URN(), err)
+		return resource.PropertyMap{}
+	}
+	return resource.ToResourcePropertyMap(outputs)
 }
 
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
@@ -624,6 +736,11 @@ func (d deleteProtectedError) Error() string {
 }
 
 func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
+	// A pending-replacement resource was already deleted by an interrupted delete-before-replace
+	// operation, so the step generator must never issue another delete for it.
+	contract.Assertf(!s.old.PendingReplacement,
+		"attempting to delete resource %q which is pending replacement", s.old.URN)
+
 	if err := s.Deployment().RunHooks(
 		s.old.ResourceHooks[resource.BeforeDelete],
 		resource.BeforeDelete,
@@ -690,8 +807,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Name:                  s.URN().Name(),
 					Type:                  s.URN().Type(),
 					ID:                    s.old.ID,
-					Inputs:                s.old.Inputs,
-					Outputs:               s.old.Outputs,
+					Inputs:                resource.FromResourcePropertyMap(s.old.Inputs),
+					Outputs:               resource.FromResourcePropertyMap(s.old.Outputs),
 					Timeout:               s.old.CustomTimeouts.Delete,
 					ResourceStatusAddress: resourceStatusAddress,
 					ResourceStatusToken:   resourceStatusToken,
@@ -1010,9 +1127,9 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					Name:                  s.URN().Name(),
 					Type:                  s.URN().Type(),
 					ID:                    s.old.ID,
-					OldInputs:             s.old.Inputs,
-					OldOutputs:            s.old.Outputs,
-					NewInputs:             s.new.Inputs,
+					OldInputs:             resource.FromResourcePropertyMap(s.old.Inputs),
+					OldOutputs:            resource.FromResourcePropertyMap(s.old.Outputs),
+					NewInputs:             resource.FromResourcePropertyMap(s.new.Inputs),
 					Timeout:               s.new.CustomTimeouts.Update,
 					IgnoreChanges:         s.ignoreChanges,
 					Preview:               s.deployment.opts.DryRun,
@@ -1091,7 +1208,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		defer s.new.Lock.Unlock()
 
 		// Now copy any output state back in case the update triggered cascading updates to other properties.
-		s.new.Outputs = resp.Properties
+		s.new.Outputs = resource.ToResourcePropertyMap(resp.Properties)
 		s.new.RefreshBeforeUpdate = resp.RefreshBeforeUpdate
 
 		// UpdateStep doesn't create, but does modify state.
@@ -1143,7 +1260,13 @@ func (s *UpdateStep) Fail() {
 }
 
 func (s *UpdateStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Ask the provider what a dry-run of this update would produce so dependents get precise
+	// unknowns for the outputs that would actually vary, rather than an everything-unknown answer.
+	// The snapshot still writes s.new with its prior outputs; only the SDK response is affected.
+	skipState := s.new.Copy()
+	skipState.Outputs = dryRunOutputs(s, s.provider, s.old, s.new, resource.FromResourcePropertyMap(s.new.Inputs),
+		s.ignoreChanges)
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 // ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
@@ -1228,16 +1351,19 @@ func (s *ReplaceStep) Skip() {
 // ReadResource in the next deployment, a ReadReplacement step will be issued to indicate the transition from owned to
 // external.
 type ReadStep struct {
-	deployment *Deployment        // the deployment that produced this read
-	event      ReadResourceEvent  // the event that should be signaled upon completion
-	old        *pkgresource.State // the old resource state, if one exists for this urn
-	new        *pkgresource.State // the new resource state, to be used to query the provider
-	replacing  bool               // whether or not the new resource is replacing the old resource
-	provider   plugin.Provider    // the optional provider to use.
+	deployment   *Deployment        // the deployment that produced this read
+	event        ReadResourceEvent  // the event that should be signaled upon completion
+	old          *pkgresource.State // the old resource state, if one exists for this urn
+	new          *pkgresource.State // the new resource state, to be used to query the provider
+	replacing    bool               // whether or not the new resource is replacing the old resource
+	provider     plugin.Provider    // the optional provider to use.
+	skipProvider bool               // if true, do not call the provider's Read; outputs are unknown.
 }
 
-// NewReadStep creates a new Read step.
-func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State) Step {
+// NewReadStep creates a new Read step. If skipProvider is true, the provider's Read is not called
+// and the resulting outputs are signaled as unknown; this is used in preview when a dependsOn
+// target is being newly created or replaced and so the read cannot be meaningfully performed.
+func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State, skipProvider bool) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
 	contract.Requiref(new.ID != "", "new", "must have an ID")
@@ -1255,17 +1381,20 @@ func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgr
 	}
 
 	return &ReadStep{
-		deployment: deployment,
-		event:      event,
-		old:        old,
-		new:        new,
-		replacing:  false,
+		deployment:   deployment,
+		event:        event,
+		old:          old,
+		new:          new,
+		replacing:    false,
+		skipProvider: skipProvider,
 	}
 }
 
 // NewReadReplacementStep creates a new Read step with the `replacing` flag set. When executed,
 // it will pend deletion of the "old" resource, which must not be an external resource.
-func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State) Step {
+func NewReadReplacementStep(
+	deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State, skipProvider bool,
+) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
 	contract.Requiref(new.ID != "", "new", "must have an ID")
@@ -1279,11 +1408,12 @@ func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old
 	contract.Requiref(new.ViewOf == "", "new", "must not be a view")
 
 	return &ReadStep{
-		deployment: deployment,
-		event:      event,
-		old:        old,
-		new:        new,
-		replacing:  true,
+		deployment:   deployment,
+		event:        event,
+		old:          old,
+		new:          new,
+		replacing:    true,
+		skipProvider: skipProvider,
 	}
 }
 
@@ -1311,13 +1441,19 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	// Unlike most steps, Read steps run during previews. The only time
-	// we can't run is if the ID we are given is unknown.
-	if id == plugin.UnknownStringValue {
+	// Unlike most steps, Read steps run during previews. We skip the provider call when either
+	// the ID is unknown, or when a dependsOn target is being newly created/replaced in this
+	// preview and so the real resource doesn't exist yet (issue #16395). In both cases the
+	// outputs are signaled as unknown back to the SDK.
+	if id == plugin.UnknownStringValue || s.skipProvider {
 		s.new.Lock.Lock()
 		defer s.new.Lock.Unlock()
 
 		s.new.Outputs = resource.PropertyMap{}
+		// The read never happened. Clear the id so downstream signals (the response id SDKs
+		// surface via .id, and trackSettledResource's "did this resource settle" check) all
+		// agree the resource didn't exist.
+		s.new.ID = ""
 	} else {
 		prov, err := getProvider(s, s.provider)
 		if err != nil {
@@ -1332,16 +1468,26 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			return resource.StatusOK, nil, err
 		}
 
-		// Technically the only data we have at this point is "inputs", but we've been passing that as "state" to
-		// providers since forever and it would probably break things to stop sending that now. Thus this strange double
-		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
+		var state property.Map
+		typ := string(urn.Type())
+		if strings.HasPrefix(typ, "pulumi-nodejs:dynamic") || strings.HasPrefix(typ, "pulumi-python:dynamic") {
+			state = resource.FromResourcePropertyMap(s.new.Inputs)
+		}
+
 		result, err := prov.Read(context.TODO(), plugin.ReadRequest{
-			URN:                   urn,
-			Name:                  urn.Name(),
-			Type:                  urn.Type(),
-			ID:                    id,
-			Inputs:                s.new.Inputs,
-			State:                 s.new.Inputs,
+			URN:    urn,
+			Name:   urn.Name(),
+			Type:   urn.Type(),
+			ID:     id,
+			Inputs: resource.FromResourcePropertyMap(s.new.Inputs),
+			// N.B. We used to send "inputs" as "state" only, but since 2019 have been filling in both Inputs and State.
+			// This was a back-compat to deal with providers that were only looking at "state" (because originally there
+			// was no "inputs" field). Enough time has passed that we can assume providers have updated to looking at
+			// "inputs" now. This allows providers to tell the difference between a read/import and a refresh because
+			// only refresh will send non-nil state. Caveat that dynamic providers may still expect state to be non-nil,
+			// they were only updated in https://github.com/pulumi/pulumi/pull/24977 October 2026. So for those we
+			// special case and keep sending inputs in state, eventually we can clean that up as well.
+			State:                 state,
 			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
@@ -1367,7 +1513,7 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		if result.Outputs == nil {
 			return resource.StatusOK, nil, fmt.Errorf("resource '%s' does not exist", id)
 		}
-		s.new.Outputs = result.Outputs
+		s.new.Outputs = resource.ToResourcePropertyMap(*result.Outputs)
 
 		if result.ID != "" {
 			s.new.ID = result.ID
@@ -1396,7 +1542,8 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.Modified = &now
 	}
 
-	complete := func() { s.event.Done(&ReadResult{State: s.new}) }
+	unknown := s.skipProvider || id == plugin.UnknownStringValue
+	complete := func() { s.event.Done(&ReadResult{State: s.new, Unknown: unknown}) }
 	if resourceError == nil {
 		return resourceStatus, complete, nil
 	}
@@ -1408,7 +1555,19 @@ func (s *ReadStep) Fail() {
 }
 
 func (s *ReadStep) Skip() {
-	s.event.Done(&ReadResult{State: s.new, Result: ResultStateSkipped})
+	// A skipped read has no dry-run analogue. If we have prior state for this resource we return its last-known outputs
+	// so dependents can still make progress; otherwise there is nothing meaningful to return. If we don't have prior
+	// state, we return the result as Unknown so SDKs can propagate unknowns to dependents rather than treating the
+	// empty output as valid.
+	skipState := s.new.Copy()
+	var unknown bool
+	if s.old != nil {
+		skipState.Outputs = s.old.Outputs
+	} else {
+		skipState.Outputs = resource.PropertyMap{}
+		unknown = true
+	}
+	s.event.Done(&ReadResult{State: skipState, Result: ResultStateSkipped, Unknown: unknown})
 }
 
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
@@ -1582,8 +1741,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		Name:                  s.new.URN.Name(),
 		Type:                  s.new.URN.Type(),
 		ID:                    resourceID,
-		Inputs:                s.old.Inputs,
-		State:                 s.old.Outputs,
+		Inputs:                resource.FromResourcePropertyMap(s.old.Inputs),
+		State:                 resource.FromResourcePropertyMap(s.old.Outputs),
 		Timeout:               s.old.CustomTimeouts.Read,
 		ResourceStatusAddress: resourceStatusAddress,
 		ResourceStatusToken:   resourceStatusToken,
@@ -1610,19 +1769,26 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 	}
 
+	var refreshedInputs, refreshedOutputs resource.PropertyMap
+	if refreshed.Inputs != nil {
+		refreshedInputs = resource.ToResourcePropertyMap(*refreshed.Inputs)
+	}
+	if refreshed.Outputs != nil {
+		refreshedOutputs = resource.ToResourcePropertyMap(*refreshed.Outputs)
+	}
 	logging.V(10).Infof("Refreshed resource ID: %q, Inputs: #%d, Outputs: #%d",
-		refreshed.ID, len(refreshed.Inputs), len(refreshed.Outputs))
+		refreshed.ID, len(refreshedInputs), len(refreshedOutputs))
 
 	// If the ID is blank treat this as a delete, and leave outputs blank.
 	var outputs resource.PropertyMap
 	if refreshed.ID != "" {
-		outputs = refreshed.Outputs
+		outputs = refreshedOutputs
 	}
 
 	// If the provider specified new inputs for this resource, pick them up now. Otherwise, retain the current inputs.
 	inputs := s.old.Inputs
 	if refreshed.Inputs != nil {
-		inputs = refreshed.Inputs
+		inputs = refreshedInputs
 	}
 
 	if outputs != nil {
@@ -1659,8 +1825,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// * The user has explicitly opted into this legacy behaviour by setting
 			//   the `UseLegacyRefreshDiff` option to true.
 			if s.old.External || s.deployment.opts.UseLegacyRefreshDiff {
-				inputsChange = !refreshed.Inputs.DeepEquals(s.old.Inputs)
-				outputsChange = !refreshed.Outputs.DeepEquals(s.old.Outputs)
+				inputsChange = !refreshedInputs.DeepEquals(s.old.Inputs)
+				outputsChange = !refreshedOutputs.DeepEquals(s.old.Outputs)
 			} else {
 				inputsChange = !inputs.DeepEquals(s.old.Inputs)
 				outputsChange = !outputs.DeepEquals(s.old.Outputs)
@@ -2072,10 +2238,11 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		} else {
 			s.new.ID = s.new.ImportID
 		}
-		inputs = read.Inputs
-		outputs = read.Outputs
+		readInputs := resource.ToResourcePropertyMap(*read.Inputs)
+		inputs = readInputs
+		outputs = resource.ToResourcePropertyMap(*read.Outputs)
 		if s.planned {
-			inputs = mergeSuppliedProperties(read.Inputs, suppliedInputs)
+			inputs = mergeSuppliedProperties(readInputs, suppliedInputs)
 		}
 		s.new.RefreshBeforeUpdate = read.RefreshBeforeUpdate
 	} else {
@@ -2178,8 +2345,8 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			URN:           s.new.URN,
 			Name:          s.URN().Name(),
 			Type:          s.URN().Type(),
-			Olds:          s.old.Inputs,
-			News:          s.new.Inputs,
+			OldInputs:     resource.FromResourcePropertyMap(s.old.Inputs),
+			NewInputs:     resource.FromResourcePropertyMap(s.new.Inputs),
 			AllowUnknowns: s.deployment.opts.DryRun,
 			RandomSeed:    s.randomSeed,
 		})
@@ -2207,7 +2374,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 				errorMessage)
 		}
 
-		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, resp.Failures)
+		issueCheckFailures(s.deployment.Diag().Warningf, s.new, s.new.URN, resp.Failures, s.deployment.opts.ShowSecrets)
 
 		return rst, complete, nil
 	}
@@ -2229,7 +2396,15 @@ func (s *ImportStep) Fail() {
 }
 
 func (s *ImportStep) Skip() {
-	s.reg.Done(&RegisterResult{State: s.new, Result: ResultStateSkipped})
+	// Reject the completion source so the step generator's continueStepsFromImport goroutine
+	// stops waiting and exits without generating follow-up steps.
+	if s.cts != nil {
+		s.cts.MustReject(errors.New("import skipped"))
+	}
+	// Imports have no dry-run analogue, so a skipped import surfaces as fully unknown.
+	skipState := s.new.Copy()
+	skipState.Outputs = resource.PropertyMap{}
+	s.reg.Done(&RegisterResult{State: skipState, Result: ResultStateSkipped, Unknown: true})
 }
 
 const (

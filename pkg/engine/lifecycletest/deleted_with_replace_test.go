@@ -22,9 +22,12 @@ import (
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +44,7 @@ func TestDeletedWithDependentReplacedOnDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:             plugin.DiffSome,
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
@@ -133,7 +136,7 @@ func TestDeletedWithTransitiveChain(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:             plugin.DiffSome,
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
@@ -232,7 +235,7 @@ func TestDeletedWithDependentReplacedOnCreateBeforeDelete(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
 							ReplaceKeys: []resource.PropertyKey{"foo"},
@@ -320,7 +323,7 @@ func TestDeletedWithAddedSameStepAsReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:             plugin.DiffSome,
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
@@ -486,7 +489,7 @@ func TestDeletedWithProtectedDependentBlocksReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:             plugin.DiffSome,
 							ReplaceKeys:         []resource.PropertyKey{"foo"},
@@ -512,7 +515,9 @@ func TestDeletedWithProtectedDependentBlocksReplace(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{Inputs: ins})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		protect := true
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
@@ -539,4 +544,115 @@ func TestDeletedWithProtectedDependentBlocksReplace(t *testing.T) {
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 	require.Error(t, err)
 	require.ErrorContains(t, err, "marked for protection")
+}
+
+// A targeted update delete-before-replaces resA. resB is deleted with resA, is no longer in the program, and is not
+// targeted. resC is not targeted and depends on resB. The engine deletes resB as part of the replacement and keeps it
+// in the state as pending replacement, while resC is written as a same step ahead of it.
+func TestTargetedDeleteBeforeReplaceWithDroppedDeletedWithDependency(t *testing.T) {
+	t.Parallel()
+
+	// TODO[https://github.com/pulumi/pulumi/issues/24989]: Fix the underlying issue and re-enable this test.
+	t.Skip("Skipping: targeted delete-before-replace orders a dependent before its dropped deleted-with dependency")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+
+	snap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov := &pkgresource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::default",
+			Custom: true,
+			ID:     "id-prov",
+		}
+		s.Resources = append(s.Resources, prov)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		resA := &pkgresource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resA",
+			Custom:   true,
+			ID:       "id-resA",
+			Provider: provRef.String(),
+		}
+		s.Resources = append(s.Resources, resA)
+
+		resB := &pkgresource.State{
+			Type:        "pkgA:m:typA",
+			URN:         "urn:pulumi:test-stack::test-project::pkgA:m:typA::resB",
+			Custom:      true,
+			ID:          "id-resB",
+			Provider:    provRef.String(),
+			DeletedWith: resA.URN,
+		}
+		s.Resources = append(s.Resources, resB)
+
+		resC := &pkgresource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resC",
+			Custom:   true,
+			ID:       "id-resC",
+			Provider: provRef.String(),
+			PropertyDependencies: map[resource.PropertyKey][]resource.URN{
+				"prop": {resB.URN},
+			},
+		}
+		s.Resources = append(s.Resources, resC)
+
+		return s
+	}()
+	require.NoError(t, snap.VerifyIntegrity())
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+					if req.URN.Name() == "resA" {
+						return plugin.DiffResponse{
+							Changes:             plugin.DiffSome,
+							ReplaceKeys:         []resource.PropertyKey{"foo"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					return plugin.DiffResponse{}, nil
+				},
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "new-id-" + resource.ID(req.URN.Name()),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		if err != nil {
+			return err
+		}
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true)
+		return err
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: UpdateOptions{
+			Targets: deploy.NewUrnTargets([]string{"urn:pulumi:test-stack::test-project::pkgA:m:typA::resA"}),
+		},
+	}
+
+	_, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	_, isSIE := snapshot.AsSnapshotIntegrityError(err)
+	require.False(t, isSIE, "unexpected snapshot integrity error: %v", err)
 }

@@ -8,3 +8,5 @@ export const lookupOutputDefault = res.outputMap.apply(outputMap => outputMap["y
 export const entriesObjectOutput = res.outputObject.apply(outputObject => Object.entries(outputObject).sort().map(([k, v]) => ({key: k, value: v})));
 export const lookupObjectOutput = res.outputObject.apply(outputObject => (outputObject as Record<string, any>)["output"] || "default");
 export const lookupObjectOutputDefault = res.outputObject.apply(outputObject => (outputObject as Record<string, any>)["missing"] || "default");
+export const lengthOutput = res.outputMap.apply(outputMap => Object.keys(outputMap).length);
+export const lengthObjectOutput = res.outputObject.apply(outputObject => Object.keys(outputObject).length);

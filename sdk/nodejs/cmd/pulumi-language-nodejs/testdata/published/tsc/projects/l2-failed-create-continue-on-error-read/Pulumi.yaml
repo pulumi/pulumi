@@ -1,0 +1,5 @@
+name: l2-failed-create-continue-on-error-read
+runtime:
+  name: nodejs
+  options:
+    typescript: false

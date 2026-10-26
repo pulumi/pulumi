@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // EnumType represents values of a single type, and a closed set of possible values.
@@ -56,7 +55,7 @@ type EnumType struct {
 
 	s atomic.Value // Value<string>
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...any) *EnumType {
@@ -73,7 +72,7 @@ func NewEnumType(token string, typ Type, elements []cty.Value, annotations ...an
 		Annotations: annotations,
 		Elements:    elements,
 		Token:       token,
-		cache:       &gsync.Map[Type, cacheEntry]{},
+		cache:       &typeCache{},
 	}
 }
 
@@ -117,7 +116,7 @@ func (t *EnumType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *EnumType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *EnumType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
@@ -138,7 +137,11 @@ func (t *EnumType) equals(other Type, seen map[Type]struct{}) bool {
 // source type. The whole point of enums is they are a unique type, so we can't
 // convert between them.
 func (t *EnumType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *EnumType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		return false
 	})
 }
@@ -152,16 +155,16 @@ func (t *EnumType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *EnumType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *EnumType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
-		// We have a constant, of the correct type, so we might have a safe
-		// conversion.
-		if src, ok := src.(*ConstType); ok && !t.Type.Equals(src.Type) {
+		// A constant converts safely when it is a member of the enum and not at all otherwise.
+		if src, ok := src.(*ConstType); ok {
 			for _, el := range t.Elements {
-				if el.Equals(src.Value).True() {
+				if el.Type().Equals(src.Value.Type()) && el.Equals(src.Value).True() {
 					return SafeConversion, nil
 				}
 			}
+			return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 		}
 		con, diags := t.Type.conversionFrom(src, unifying, seen)
 		if con == NoConversion {
@@ -193,8 +196,8 @@ func (t *EnumType) string(seen map[Type]struct{}) string {
 	return s
 }
 
-func (t *EnumType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *EnumType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		return nil, NoConversion
 	})
 }

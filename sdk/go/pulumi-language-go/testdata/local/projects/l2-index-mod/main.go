@@ -22,9 +22,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("out1", callCall.ApplyT(func(call indexmine.ResourceCallResult) (float64, error) {
-			return call.Output, nil
-		}).(pulumi.Float64Output))
+		ctx.Export("out1", callCall.Output())
 		res2, err := nested.NewResource(ctx, "res2", &nested.ResourceArgs{
 			Text: nested.ConcatWorldOutput(ctx, nested.ConcatWorldOutputArgs{
 				Value: pulumi.String("goodbye"),
@@ -39,9 +37,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("out2", callCall1.ApplyT(func(call nested.ResourceCallResult) (float64, error) {
-			return call.Output, nil
-		}).(pulumi.Float64Output))
+		ctx.Export("out2", callCall1.Output())
 		return nil
 	})
 }

@@ -88,6 +88,18 @@ type ProviderHandshakeRequest struct {
 	// True if the engine populates OldOutputs on CheckRequest for update-path Check calls. Older engines never
 	// set this, so providers should treat an absent value as false and fall back to legacy behavior.
 	SendsOldOutputsToCheck bool
+
+	// True if the engine can send OutputValues nested in Invoke args and will accept OutputValues in Invoke return
+	// values. Providers that opt in should set AcceptsOutputsInInvoke on the response.
+	AcceptsOutputsInInvoke bool
+
+	// True if the engine can send OutputValues nested in Call args and will accept OutputValues in Call return
+	// values. Providers that opt in should set AcceptsOutputsInCall on the response.
+	AcceptsOutputsInCall bool
+
+	// True if the engine can send OutputValues nested in Check olds/news/old_outputs and will accept OutputValues
+	// in Check return values. Providers that opt in should set AcceptsOutputsInCheck on the response.
+	AcceptsOutputsInCheck bool
 }
 
 // The type of responses sent as part of a Handshake call.
@@ -112,6 +124,19 @@ type ProviderHandshakeResponse struct {
 	// objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
 	// caller may pass such values to the provider.
 	AcceptsByteString bool
+
+	// True if and only if the provider accepts OutputValues nested in Invoke args and may return OutputValues in
+	// Invoke return values. Only meaningful when the engine advertised AcceptsOutputsInInvoke on the handshake request.
+	AcceptsOutputsInInvoke bool
+
+	// True if and only if the provider accepts OutputValues nested in Call args and may return OutputValues in
+	// Call return values. Only meaningful when the engine advertised AcceptsOutputsInCall on the handshake request.
+	AcceptsOutputsInCall bool
+
+	// True if and only if the provider accepts OutputValues nested in Check olds/news/old_outputs and may return
+	// OutputValues in Check return values. Only meaningful when the engine advertised AcceptsOutputsInCheck on
+	// the handshake request.
+	AcceptsOutputsInCheck bool
 }
 
 // ParameterizeParameters can either be of concrete type ParameterizeArgs or ParameterizeValue, for when parameterizing
@@ -201,7 +226,7 @@ type DiffConfigRequest struct {
 	URN                              resource.URN
 	Name                             string
 	Type                             tokens.Type
-	OldInputs, OldOutputs, NewInputs resource.PropertyMap
+	OldInputs, OldOutputs, NewInputs property.Map
 	AllowUnknowns                    bool
 	IgnoreChanges                    []string
 }
@@ -258,17 +283,19 @@ type CheckRequest struct {
 	URN  resource.URN
 	Name string
 	Type tokens.Type
-	// TODO Change to (State, Input)
-	Olds, News resource.PropertyMap
-	// OldOutputs is the previously persisted outputs of the resource, if any.
-	OldOutputs    resource.PropertyMap
+	// NewInputs are the new inputs for the resource from the program.
+	NewInputs property.Map
+	// OldInputs are the previously persisted inputs of the resource, if any.
+	OldInputs property.Map
+	// OldOutputs are the previously persisted outputs of the resource, if any.
+	OldOutputs    property.Map
 	AllowUnknowns bool
 	RandomSeed    []byte
 	Autonaming    *AutonamingOptions
 }
 
 type CheckResponse struct {
-	Properties resource.PropertyMap
+	Properties property.Map
 	Failures   []CheckFailure
 }
 
@@ -277,10 +304,14 @@ type DiffRequest struct {
 	Name string
 	Type tokens.Type
 	ID   resource.ID
-	// TODO Change to (OldInputs, OldState, NewInputs)
-	OldInputs, OldOutputs, NewInputs resource.PropertyMap
-	AllowUnknowns                    bool
-	IgnoreChanges                    []string
+	// NewInputs are the new inputs for the resource from the program.
+	NewInputs property.Map
+	// OldInputs are the previously persisted inputs of the resource, if any.
+	OldInputs property.Map
+	// OldOutputs are the previously persisted outputs of the resource, if any.
+	OldOutputs    property.Map
+	AllowUnknowns bool
+	IgnoreChanges []string
 }
 
 type DiffResponse = DiffResult
@@ -289,7 +320,7 @@ type CreateRequest struct {
 	URN        resource.URN
 	Name       string
 	Type       tokens.Type
-	Properties resource.PropertyMap
+	Properties property.Map
 	Timeout    float64
 	Preview    bool
 	// The gRPC address of the ResourceStatus service which can be used to create view resources.
@@ -300,7 +331,7 @@ type CreateRequest struct {
 
 type CreateResponse struct {
 	ID         resource.ID
-	Properties resource.PropertyMap
+	Properties property.Map
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
@@ -311,7 +342,7 @@ type ReadRequest struct {
 	Name          string
 	Type          tokens.Type
 	ID            resource.ID
-	Inputs, State resource.PropertyMap
+	Inputs, State property.Map
 	// Timeout is the time, in seconds, that the caller is prepared to wait for the operation to complete.
 	Timeout float64
 	// The gRPC address of the ResourceStatus service which can be used to read view resources.
@@ -333,7 +364,7 @@ type UpdateRequest struct {
 	Name                             string
 	Type                             tokens.Type
 	ID                               resource.ID
-	OldInputs, OldOutputs, NewInputs resource.PropertyMap
+	OldInputs, OldOutputs, NewInputs property.Map
 	Timeout                          float64
 	IgnoreChanges                    []string
 	Preview                          bool
@@ -346,7 +377,7 @@ type UpdateRequest struct {
 }
 
 type UpdateResponse struct {
-	Properties resource.PropertyMap
+	Properties property.Map
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
@@ -357,7 +388,7 @@ type DeleteRequest struct {
 	Name            string
 	Type            tokens.Type
 	ID              resource.ID
-	Inputs, Outputs resource.PropertyMap
+	Inputs, Outputs property.Map
 	Timeout         float64
 	// The gRPC address of the ResourceStatus service which can be used to delete view resources.
 	ResourceStatusAddress string
@@ -882,10 +913,10 @@ type ReadResult struct {
 	ID resource.ID
 	// Inputs contains the new inputs for the resource, if any. If this field is nil, the provider does not support
 	// returning inputs from a call to Read and the old inputs (if any) should be preserved.
-	Inputs resource.PropertyMap
+	Inputs *property.Map
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
-	Outputs resource.PropertyMap
+	Outputs *property.Map
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
 }

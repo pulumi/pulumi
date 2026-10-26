@@ -123,8 +123,11 @@ func (pnpm *pnpmManager) allowBuildScripts(
 
 	if version.GTE(semver.MustParse("11.0.0")) {
 		return pnpm.mergeProjectConfig(ctx, dir, "allowBuilds", func(current []byte) (any, error) {
-			allowBuilds := map[string]bool{}
+			var allowBuilds map[string]bool
 			_ = json.Unmarshal(current, &allowBuilds)
+			if allowBuilds == nil {
+				allowBuilds = map[string]bool{}
+			}
 			allowBuilds[depPath] = true
 			return allowBuilds, nil
 		})
@@ -150,7 +153,7 @@ func (pnpm *pnpmManager) allowBuildScripts(
 func (pnpm *pnpmManager) mergeProjectConfig(
 	ctx context.Context, dir, setting string, update func(current []byte) (any, error),
 ) error {
-	get := exec.CommandContext(ctx, "pnpm", "config", "get", setting, "--json")
+	get := exec.CommandContext(ctx, pnpm.executable, "config", "get", setting, "--json")
 	get.Dir = dir
 	out, err := get.CombinedOutput()
 	if err != nil {
@@ -167,7 +170,8 @@ func (pnpm *pnpmManager) mergeProjectConfig(
 	if err != nil {
 		return fmt.Errorf("error marshaling %s to JSON: %w", setting, err)
 	}
-	set := exec.CommandContext(ctx, "pnpm", "config", "set", setting, string(data), "--location", "project", "--json")
+	set := exec.CommandContext(ctx, pnpm.executable,
+		"config", "set", setting, string(data), "--location", "project", "--json")
 	set.Dir = dir
 	if out, err := set.CombinedOutput(); err != nil {
 		return fmt.Errorf("error running %s: %w, output: %s", set.String(), err, out)

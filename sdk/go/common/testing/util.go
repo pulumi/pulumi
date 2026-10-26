@@ -24,7 +24,13 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/stretchr/testify/require"
 )
+
+func Unsetenv(t testing.TB, key string) {
+	t.Setenv(key, "")
+	require.NoError(t, os.Unsetenv(key))
+}
 
 func RandomStackName() string {
 	b := make([]byte, 8)

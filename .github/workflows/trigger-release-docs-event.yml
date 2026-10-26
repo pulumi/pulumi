@@ -1,7 +1,9 @@
+permissions: write-all # Equivalent to default permissions plus id-token: write
 env:
-  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
   VERSION: ${{ github.event.client_payload.ref }}
   COMMIT_SHA: ${{ github.event.client_payload.commitSha }}
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: GITHUB_TOKEN=PULUMI_BOT_TOKEN
 
 on:
   repository_dispatch:
@@ -13,6 +15,18 @@ jobs:
     name: Build Package Docs
     runs-on: ubuntu-latest
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Checkout Scripts Repo
@@ -25,5 +39,5 @@ jobs:
           ./ci-scripts/ci/build-package-docs.sh "pulumi"
         env:
           TRAVIS: true
-          PULUMI_BOT_GITHUB_API_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          PULUMI_BOT_GITHUB_API_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
           TRAVIS_TAG: ${{ env.VERSION }}

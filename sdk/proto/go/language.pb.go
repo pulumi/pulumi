@@ -1663,7 +1663,9 @@ type GenerateProgramRequest struct {
 	// The target of a codegen.LoaderServer to use for loading schemas.
 	LoaderTarget string `protobuf:"bytes,2,opt,name=loader_target,json=loaderTarget,proto3" json:"loader_target,omitempty"`
 	// True if [PCL binding](pcl-binding) should be strict.
-	Strict        bool `protobuf:"varint,3,opt,name=strict,proto3" json:"strict,omitempty"`
+	Strict bool `protobuf:"varint,3,opt,name=strict,proto3" json:"strict,omitempty"`
+	// The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi.
+	MapperTarget  string `protobuf:"bytes,4,opt,name=mapper_target,json=mapperTarget,proto3" json:"mapper_target,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1717,6 +1719,13 @@ func (x *GenerateProgramRequest) GetStrict() bool {
 		return x.Strict
 	}
 	return false
+}
+
+func (x *GenerateProgramRequest) GetMapperTarget() string {
+	if x != nil {
+		return x.MapperTarget
+	}
+	return ""
 }
 
 // `GenerateProgramResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProgram) call.
@@ -1794,8 +1803,10 @@ type GenerateProjectRequest struct {
 	// used, such as `{ "@pulumi/aws": "/some/path/to/aws.tgz" }` if a local tarball is to be used instead of the
 	// published `@pulumi/aws` package.
 	LocalDependencies map[string]string `protobuf:"bytes,6,rep,name=local_dependencies,json=localDependencies,proto3" json:"local_dependencies,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The target of a codegen.MapperServer to use for getting mappings from other ecosystems to Pulumi.
+	MapperTarget  string `protobuf:"bytes,7,opt,name=mapper_target,json=mapperTarget,proto3" json:"mapper_target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GenerateProjectRequest) Reset() {
@@ -1868,6 +1879,13 @@ func (x *GenerateProjectRequest) GetLocalDependencies() map[string]string {
 		return x.LocalDependencies
 	}
 	return nil
+}
+
+func (x *GenerateProjectRequest) GetMapperTarget() string {
+	if x != nil {
+		return x.MapperTarget
+	}
+	return ""
 }
 
 // `GenerateProjectResponse` is the type of responses sent by a [](pulumirpc.LanguageRuntime.GenerateProject) call.
@@ -2631,11 +2649,12 @@ const file_pulumi_language_proto_rawDesc = "" +
 	"\x06stdout\x18\x01 \x01(\fH\x00R\x06stdout\x12\x18\n" +
 	"\x06stderr\x18\x02 \x01(\fH\x00R\x06stderr\x12\x1c\n" +
 	"\bexitcode\x18\x03 \x01(\x05H\x00R\bexitcodeB\b\n" +
-	"\x06output\"\xd7\x01\n" +
+	"\x06output\"\xfc\x01\n" +
 	"\x16GenerateProgramRequest\x12E\n" +
 	"\x06source\x18\x01 \x03(\v2-.pulumirpc.GenerateProgramRequest.SourceEntryR\x06source\x12#\n" +
 	"\rloader_target\x18\x02 \x01(\tR\floaderTarget\x12\x16\n" +
-	"\x06strict\x18\x03 \x01(\bR\x06strict\x1a9\n" +
+	"\x06strict\x18\x03 \x01(\bR\x06strict\x12#\n" +
+	"\rmapper_target\x18\x04 \x01(\tR\fmapperTarget\x1a9\n" +
 	"\vSourceEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xdd\x01\n" +
@@ -2644,14 +2663,15 @@ const file_pulumi_language_proto_rawDesc = "" +
 	"\x06source\x18\x02 \x03(\v2..pulumirpc.GenerateProgramResponse.SourceEntryR\x06source\x1a9\n" +
 	"\vSourceEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xf4\x02\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\x99\x03\n" +
 	"\x16GenerateProjectRequest\x12)\n" +
 	"\x10source_directory\x18\x01 \x01(\tR\x0fsourceDirectory\x12)\n" +
 	"\x10target_directory\x18\x02 \x01(\tR\x0ftargetDirectory\x12\x18\n" +
 	"\aproject\x18\x03 \x01(\tR\aproject\x12\x16\n" +
 	"\x06strict\x18\x04 \x01(\bR\x06strict\x12#\n" +
 	"\rloader_target\x18\x05 \x01(\tR\floaderTarget\x12g\n" +
-	"\x12local_dependencies\x18\x06 \x03(\v28.pulumirpc.GenerateProjectRequest.LocalDependenciesEntryR\x11localDependencies\x1aD\n" +
+	"\x12local_dependencies\x18\x06 \x03(\v28.pulumirpc.GenerateProjectRequest.LocalDependenciesEntryR\x11localDependencies\x12#\n" +
+	"\rmapper_target\x18\a \x01(\tR\fmapperTarget\x1aD\n" +
 	"\x16LocalDependenciesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"Z\n" +

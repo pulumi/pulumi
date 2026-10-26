@@ -68,7 +68,8 @@ func (noCredsLoginManager) LoginWithOIDCToken(
 	return nil, errors.New("unauthorized")
 }
 
-func TestNoCreds(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
+func TestNoCreds(t *testing.T) {
+	t.Parallel()
 	esc := &escCommand{
 		ws:    mockWorkspace(pulumi_workspace.Credentials{}),
 		login: noCredsLoginManager(0),
@@ -117,7 +118,8 @@ func (invalidatedCredsLoginManager) LoginWithOIDCToken(
 }
 
 // Test for https://github.com/pulumi/esc/issues/367
-func TestCurrentAccountButInvalidToken(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
+func TestCurrentAccountButInvalidToken(t *testing.T) {
+	t.Parallel()
 	esc := &escCommand{
 		command: "esc",
 		ws: mockWorkspace(pulumi_workspace.Credentials{
@@ -245,7 +247,8 @@ func TestPulumiBackendURLEnvOverridesPulumiAPI(t *testing.T) {
 	assert.Contains(t, login.accounts, "http://localhost:8081")
 }
 
-func TestInvalidSelfHostedBackend(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
+func TestInvalidSelfHostedBackend(t *testing.T) {
+	t.Parallel()
 	esc := &escCommand{ws: mockWorkspace(pulumi_workspace.Credentials{
 		Current: "http://pulumi.com",
 		Accounts: map[string]pulumi_workspace.Account{
@@ -260,7 +263,8 @@ func TestInvalidSelfHostedBackend(t *testing.T) { //nolint:paralleltest // non-t
 	assert.ErrorContains(t, err, "pulumi login")
 }
 
-func TestFilestateBackend(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
+func TestFilestateBackend(t *testing.T) {
+	t.Parallel()
 	esc := &escCommand{ws: mockWorkspace(pulumi_workspace.Credentials{
 		Current: "gs://foo",
 		Accounts: map[string]pulumi_workspace.Account{

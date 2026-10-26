@@ -312,9 +312,8 @@ func TestFlushAccumulated_DefaultWritesEnvelope(t *testing.T) {
 // TestRunPaginate_TruncationEmitsPartialPaginationError pins the contract
 // that hitting PaginationLimit with a still-active cursor produces an
 // ErrPartialPagination envelope and a non-zero exit, not a silent "complete".
-//
-//nolint:paralleltest // mutates PaginationLimit
 func TestRunPaginate_TruncationEmitsPartialPaginationError(t *testing.T) {
+	t.Parallel()
 	// Always hand back a new cursor so the loop can never exit naturally.
 	var pagesServed int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -322,10 +321,6 @@ func TestRunPaginate_TruncationEmitsPartialPaginationError(t *testing.T) {
 		fmt.Fprintf(w, `{"items":[{"p":%d}],"continuationToken":"c%d"}`, pagesServed, pagesServed)
 	}))
 	t.Cleanup(srv.Close)
-
-	origLimit := PaginationLimit
-	PaginationLimit = 3
-	t.Cleanup(func() { PaginationLimit = origLimit })
 
 	apiClient := client.NewClient(srv.URL, "", false, nil)
 	req := paginateRequest{Method: "GET", Path: "/list", BaseQuery: url.Values{}, Accept: "application/json"}
@@ -337,8 +332,11 @@ func TestRunPaginate_TruncationEmitsPartialPaginationError(t *testing.T) {
 	assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
 	assert.Equal(t, ErrPartialPagination, apiErr.Envelope.Error.Code)
 	assert.True(t, apiErr.Silent, "truncation error must be Silent so stderr is not double-written")
-	assert.Contains(t, apiErr.Envelope.Error.Message, "truncated at 3 pages")
-	assert.Equal(t, 3, pagesServed)
+	assert.Equal(t,
+		fmt.Sprintf("pagination truncated at %d pages; %d items collected; more data available",
+			PaginationLimit, PaginationLimit),
+		apiErr.Envelope.Error.Message)
+	assert.Equal(t, PaginationLimit, pagesServed)
 }
 
 func TestRunPaginate_FirstPageShapeErrorEmitsEnvelope(t *testing.T) {
@@ -485,22 +483,23 @@ func TestRunPaginate_SafetyValveBreaksAreNotTruncation(t *testing.T) {
 
 // TestRunPaginate_TruncationRespectsSilent pins that the accumulated-body
 // flush on truncation still respects --silent (no stdout payload).
-//
-//nolint:paralleltest // mutates os.Stdout and PaginationLimit
 func TestRunPaginate_TruncationRespectsSilent(t *testing.T) {
+	t.Parallel()
+	// Always hand back a new cursor so the loop can never exit naturally.
+	var pagesServed int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `{"items":[{"a":1}],"continuationToken":"keep-going"}`)
+		pagesServed++
+		fmt.Fprintf(w, `{"items":[{"a":1}],"continuationToken":"c%d"}`, pagesServed)
 	}))
 	t.Cleanup(srv.Close)
-
-	origLimit := PaginationLimit
-	PaginationLimit = 2
-	t.Cleanup(func() { PaginationLimit = origLimit })
 
 	apiClient := client.NewClient(srv.URL, "", false, nil)
 	req := paginateRequest{Method: "GET", Path: "/list", BaseQuery: url.Values{}, Accept: "application/json"}
 	var buf bytes.Buffer
-	_ = runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{silent: true})
+	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{silent: true})
+	apiErr, ok := errors.AsType[*APIError](err)
+	require.True(t, ok)
+	assert.Equal(t, ErrPartialPagination, apiErr.Envelope.Error.Code)
 	assert.Empty(t, strings.TrimSpace(buf.String()), "--silent must suppress truncation flush")
 }
 

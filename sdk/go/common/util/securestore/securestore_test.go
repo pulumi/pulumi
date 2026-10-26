@@ -173,7 +173,7 @@ func TestCorruptStoredItemSurfacesErrorNotRegeneration(t *testing.T) {
 	require.NoError(t, st.b.store.set("garbage"))
 
 	_, err = st.GetOrCreateKey()
-	assert.Error(t, err, "corrupt stored key must surface an error, never be silently replaced")
+	assert.ErrorIs(t, err, ErrKeyCorrupt, "corrupt stored key must surface an error, never be silently replaced")
 	value, err := st.b.store.get()
 	require.NoError(t, err)
 	assert.Equal(t, "garbage", value, "corrupt item must be left untouched")

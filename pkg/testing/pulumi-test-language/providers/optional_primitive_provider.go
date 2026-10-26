@@ -124,6 +124,7 @@ func (p *OptionalPrimitiveProvider) CheckConfig(
 func (p *OptionalPrimitiveProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "optionalprimitive:index:Resource"
 	if req.URN.Type() != "optionalprimitive:index:Resource" {
 		return plugin.CheckResponse{
@@ -165,7 +166,7 @@ func (p *OptionalPrimitiveProvider) Check(
 	}
 
 	result := resource.PropertyMap{}
-	for key, value := range req.News {
+	for key, value := range news {
 		switch key {
 		case "boolean":
 			check := validate("boolean", value, resource.PropertyValue.IsBool, "boolean")
@@ -236,12 +237,13 @@ func (p *OptionalPrimitiveProvider) Check(
 		}
 	}
 
-	return plugin.CheckResponse{Properties: result}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(result)}, nil
 }
 
 func (p *OptionalPrimitiveProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	inputs := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "optionalprimitive:index:Resource"
 	if req.URN.Type() != "optionalprimitive:index:Resource" {
 		return plugin.CreateResponse{
@@ -268,7 +270,7 @@ func (p *OptionalPrimitiveProvider) Create(
 	}
 
 	properties := resource.PropertyMap{}
-	for k, v := range req.Properties {
+	for k, v := range inputs {
 		if isMissingLike(v) {
 			continue
 		}
@@ -277,7 +279,7 @@ func (p *OptionalPrimitiveProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

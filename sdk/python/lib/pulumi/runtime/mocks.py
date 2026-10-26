@@ -296,6 +296,15 @@ class MockMonitor:
 
         return resource_pb2.ReadResourceResponse(urn=urn, properties=props_proto)
 
+    def ExistsResource(self, request):
+        prefix = "urn:pulumi:" + "::".join([get_stack(), get_project()]) + "::"
+        exists = any(
+            r.id == request.id
+            and r.urn[len(prefix) :].split("::")[0].split("$")[-1] == request.type
+            for r in self.resources.values()
+        )
+        return resource_pb2.ExistsResourceResponse(exists=exists)
+
     def RegisterResource(self, request):
         urn = self.make_urn(request.parent, request.type, request.name)
 

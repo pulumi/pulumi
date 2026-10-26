@@ -39,6 +39,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -242,9 +243,8 @@ type Client struct {
 	DisableCapabilityProbing bool
 }
 
-// newClient creates a new Pulumi API client with the given URL and API token. It is a variable instead of a regular
-// function so it can be set to a different implementation at runtime, if necessary.
-var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
+// NewClient creates a new Pulumi API client with the given URL and API token.
+func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 	var httpClient *http.Client
 	if insecure {
 		tr := &http.Transport{
@@ -262,9 +262,7 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 		diag:     d,
 		insecure: insecure,
 		restClient: &defaultRESTClient{
-			client: &defaultHTTPClient{
-				client: httpClient,
-			},
+			client: newDefaultHTTPClient(httpClient, apiURL),
 		},
 	}
 }
@@ -274,20 +272,22 @@ func (pc *Client) Insecure() bool {
 	return pc.insecure
 }
 
-// NewClient creates a new Pulumi API client with the given URL and API token.
-func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
-	return newClient(apiURL, apiToken, insecure, d)
-}
-
 // WithHTTPClient sets the HTTP client for the API client.
 // Useful for testing.
 func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 	pc.restClient = &defaultRESTClient{
-		client: &defaultHTTPClient{
-			client: httpClient,
-		},
+		client: newDefaultHTTPClient(httpClient, pc.apiURL),
 	}
 	return pc
+}
+
+// newDefaultHTTPClient returns a defaultHTTPClient that sends the trace context to the host of apiURL.
+func newDefaultHTTPClient(client *http.Client, apiURL string) *defaultHTTPClient {
+	var apiHost string
+	if u, err := url.Parse(apiURL); err == nil {
+		apiHost = u.Host
+	}
+	return &defaultHTTPClient{client: client, apiHost: apiHost}
 }
 
 // WithRefresh wires an OAuth refresh token + a credentials-writeback callback into this client.
@@ -1474,14 +1474,18 @@ func (pc *Client) ExportStackDeployment(
 
 // GetStackOutputs reads the outputs of the latest deployment of the indicated stack.
 func (pc *Client) GetStackOutputs(
-	ctx context.Context, stack StackIdentifier,
+	ctx context.Context, stack StackIdentifier, readingUpdateID string,
 ) (apitype.StackOutputsResponse, error) {
 	tracer := otel.Tracer("pulumi-cli")
 	ctx, span := cmdutil.StartSpan(ctx, tracer, "GetStackOutputs")
 	defer span.End()
 
+	queryObj := struct {
+		ReadingUpdateID string `url:"readingUpdateID,omitempty"`
+	}{ReadingUpdateID: readingUpdateID}
+
 	var resp apitype.StackOutputsResponse
-	if err := pc.restCall(ctx, "GET", getStackPath(stack, "outputs"), nil, nil, &resp); err != nil {
+	if err := pc.restCall(ctx, "GET", getStackPath(stack, "outputs"), queryObj, nil, &resp); err != nil {
 		return apitype.StackOutputsResponse{}, err
 	}
 	return resp, nil
@@ -1516,7 +1520,7 @@ type CreateUpdateDetails struct {
 func (pc *Client) CreateUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
 	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
-	dryRun bool,
+	dryRun bool, coherenceWindow string,
 ) (UpdateIdentifier, CreateUpdateDetails, error) {
 	// First create the update program request.
 	wireConfig := make(map[string]apitype.ConfigValue)
@@ -1551,7 +1555,8 @@ func (pc *Client) CreateUpdate(
 			ShowReplacementSteps: false, // This is a legacy option now, the engine will always emit this information
 			ShowSames:            false, // This is a legacy option now, the engine will always emit this information
 		},
-		Metadata: m,
+		Metadata:        m,
+		CoherenceWindow: coherenceWindow,
 	}
 
 	// Create the initial update object.
@@ -1578,14 +1583,14 @@ func (pc *Client) CreateUpdate(
 	}
 
 	return UpdateIdentifier{
-			StackIdentifier: stack,
-			UpdateKind:      kind,
-			UpdateID:        updateResponse.UpdateID,
-		}, CreateUpdateDetails{
-			Messages:                updateResponse.Messages,
-			RequiredPolicies:        updateResponse.RequiredPolicies,
-			IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
-		}, nil
+		StackIdentifier: stack,
+		UpdateKind:      kind,
+		UpdateID:        updateResponse.UpdateID,
+	}, CreateUpdateDetails{
+		Messages:                updateResponse.Messages,
+		RequiredPolicies:        updateResponse.RequiredPolicies,
+		IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
+	}, nil
 }
 
 // RenameStack renames the provided stack to have the new identifier.
@@ -1612,7 +1617,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	}
 
 	if !env.DisableJournaling.Value() {
-		req.JournalVersion = 1
+		req.JournalVersion = apitype.LatestJournalVersion
 	}
 
 	var resp apitype.StartUpdateResponse
@@ -1621,6 +1626,70 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 	}
 
 	return resp.Version, resp.Token, resp.JournalVersion, nil
+}
+
+// BeginUpdate combines CreateUpdate, StartUpdate, ExportStackDeployment, and GetStack into a
+// single API call to reduce latency. Returns all data needed to start the engine execution.
+// This is only supported on backends with the "begin-update" capability.
+func (pc *Client) BeginUpdate(
+	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
+	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
+	tags map[apitype.StackTagName]string, dryRun bool, coherenceWindow string,
+) (*apitype.BeginUpdateResponse, error) {
+	if err := validation.ValidateStackTags(tags); err != nil {
+		return nil, fmt.Errorf("validating stack properties: %w", err)
+	}
+
+	wireConfig := make(map[string]apitype.ConfigValue)
+	for k, cv := range cfg {
+		v, err := cv.Value(config.NopDecrypter)
+		contract.AssertNoErrorf(err, "error fetching config value for key %v", k)
+
+		wireConfig[k.String()] = apitype.ConfigValue{
+			String: v,
+			Secret: cv.Secure(),
+			Object: cv.Object(),
+		}
+	}
+
+	description := ""
+	if proj.Description != nil {
+		description = *proj.Description
+	}
+
+	updateRequest := apitype.UpdateProgramRequest{
+		Name:        string(proj.Name),
+		Runtime:     proj.Runtime.Name(),
+		Main:        proj.Main,
+		Description: description,
+		Config:      wireConfig,
+		Options: apitype.UpdateOptions{
+			LocalPolicyPackPaths: engine.ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks),
+			Color:                colors.Raw,
+			DryRun:               dryRun,
+			Parallel:             opts.Parallel,
+		},
+		Metadata:        m,
+		CoherenceWindow: coherenceWindow,
+	}
+
+	req := apitype.BeginUpdateRequest{
+		UpdateKind:         kind,
+		Program:            updateRequest,
+		StartUpdateRequest: apitype.StartUpdateRequest{Tags: tags},
+	}
+
+	if !env.DisableJournaling.Value() {
+		req.JournalVersion = apitype.LatestJournalVersion
+	}
+
+	var resp apitype.BeginUpdateResponse
+	path := getStackPath(stack, "begin-update")
+	if err := pc.restCall(ctx, "POST", path, nil, &req, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
 }
 
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
@@ -1660,16 +1729,14 @@ func (pc *Client) GetPolicyGroup(
 	return resp, nil
 }
 
-// UpdatePolicyGroup issues a PATCH against the Policy Group endpoint. The
-// service's UpdatePolicyGroup endpoint accepts at most one mutation per
-// request (rename, add/remove stack, add/remove policy pack, add/remove
-// insights account), so callers performing multiple mutations must issue
-// multiple calls.
-func (pc *Client) UpdatePolicyGroup(
-	ctx context.Context, orgName, policyGroup string, req apitype.UpdatePolicyGroupRequest,
+// BatchUpdatePolicyGroup applies the given updates to a Policy Group in one
+// request. Each update carries one mutation: a rename, or the addition or
+// removal of one stack, Policy Pack, or Insights account.
+func (pc *Client) BatchUpdatePolicyGroup(
+	ctx context.Context, orgName, policyGroup string, reqs []apitype.UpdatePolicyGroupRequest,
 ) error {
 	if err := pc.restCall(
-		ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup), nil, req, nil,
+		ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup)+"/batch", nil, reqs, nil,
 	); err != nil {
 		return fmt.Errorf("updating policy group: %w", err)
 	}
@@ -1726,9 +1793,12 @@ type ListAuditLogsOptions struct {
 	// User filters the audit log to events triggered by a single user, by
 	// GitHub login. Empty means no filter.
 	User string
-	// StartTime is the upper-bound timestamp of the time range to query, as
-	// understood by the V1 endpoint. Empty means the service default.
+	// StartTime is the lower-bound Unix timestamp of the time range to query.
+	// Empty means the service default.
 	StartTime string
+	// EndTime is the upper-bound Unix timestamp of the time range to query.
+	// Empty means the service default.
+	EndTime string
 	// ContinuationToken pages through results; pass the ContinuationToken
 	// returned by a previous response to fetch the next page.
 	ContinuationToken string
@@ -1736,24 +1806,26 @@ type ListAuditLogsOptions struct {
 
 // ListAuditLogs returns a single page of audit log events for the given
 // organization, wrapping the `ListAuditLogEvents` Pulumi Cloud REST endpoint
-// (GET /api/orgs/{orgName}/auditlogs).
+// (GET /api/orgs/{orgName}/auditlogs/v2).
 func (pc *Client) ListAuditLogs(
 	ctx context.Context, orgName string, opts ListAuditLogsOptions,
 ) (apitype.ListAuditLogEventsResponse, error) {
 	queryObj := struct {
-		EventType         string `url:"eventType,omitempty"`
-		User              string `url:"user,omitempty"`
+		EventType         string `url:"eventFilter,omitempty"`
+		User              string `url:"userFilter,omitempty"`
 		StartTime         string `url:"startTime,omitempty"`
+		EndTime           string `url:"endTime,omitempty"`
 		ContinuationToken string `url:"continuationToken,omitempty"`
 	}{
 		EventType:         opts.EventType,
 		User:              opts.User,
 		StartTime:         opts.StartTime,
+		EndTime:           opts.EndTime,
 		ContinuationToken: opts.ContinuationToken,
 	}
 
 	var resp apitype.ListAuditLogEventsResponse
-	path := fmt.Sprintf("/api/orgs/%s/auditlogs", url.PathEscape(orgName))
+	path := fmt.Sprintf("/api/orgs/%s/auditlogs/v2", url.PathEscape(orgName))
 	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
 		return resp, fmt.Errorf("listing audit logs: %w", err)
 	}
@@ -1772,9 +1844,12 @@ type ExportAuditLogsOptions struct {
 	// User filters the audit log to events triggered by a single user, by
 	// GitHub login. Empty means no filter.
 	User string
-	// StartTime is the upper-bound timestamp of the time range to query, as
-	// understood by the V1 endpoint. Empty means the service default.
+	// StartTime is the lower-bound Unix timestamp of the time range to query.
+	// Empty means the service default.
 	StartTime string
+	// EndTime is the upper-bound Unix timestamp of the time range to query.
+	// Empty means the service default.
+	EndTime string
 	// ContinuationToken pages through results; pass the ContinuationToken
 	// returned by a previous response to fetch the next page.
 	ContinuationToken string
@@ -1783,7 +1858,7 @@ type ExportAuditLogsOptions struct {
 // ExportAuditLogs streams an export of audit log events for the given
 // organization in the requested format (csv or cef), wrapping the
 // `ExportAuditLogEvents` Pulumi Cloud REST endpoint
-// (GET /api/orgs/{orgName}/auditlogs/export). Unlike ListAuditLogs, the
+// (GET /api/orgs/{orgName}/auditlogs/v2/export). Unlike ListAuditLogs, the
 // response is plain text (CSV or CEF lines), not JSON; the caller is
 // responsible for closing the returned ReadCloser.
 func (pc *Client) ExportAuditLogs(
@@ -1795,20 +1870,22 @@ func (pc *Client) ExportAuditLogs(
 	}
 	queryObj := struct {
 		Format            string `url:"format,omitempty"`
-		EventType         string `url:"eventType,omitempty"`
-		User              string `url:"user,omitempty"`
+		EventType         string `url:"eventFilter,omitempty"`
+		User              string `url:"userFilter,omitempty"`
 		StartTime         string `url:"startTime,omitempty"`
+		EndTime           string `url:"endTime,omitempty"`
 		ContinuationToken string `url:"continuationToken,omitempty"`
 	}{
 		Format:            format,
 		EventType:         opts.EventType,
 		User:              opts.User,
 		StartTime:         opts.StartTime,
+		EndTime:           opts.EndTime,
 		ContinuationToken: opts.ContinuationToken,
 	}
 
 	var body io.ReadCloser
-	path := fmt.Sprintf("/api/orgs/%s/auditlogs/export", url.PathEscape(orgName))
+	path := fmt.Sprintf("/api/orgs/%s/auditlogs/v2/export", url.PathEscape(orgName))
 	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &body); err != nil {
 		return nil, fmt.Errorf("exporting audit logs: %w", err)
 	}
@@ -1842,34 +1919,25 @@ func (pc *Client) RemoveOrganizationMember(ctx context.Context, orgName, userLog
 	return nil
 }
 
-// ListPolicyIssuesOptions are the optional pagination parameters accepted by
-// ListPolicyIssues. Zero values mean "let the server pick the default":
-// Page < 1 → 1, PageSize ≤ 0 → server default, Asc false → descending order.
-// ListPolicyIssuesOptions configures the policy issues list request.
-type ListPolicyIssuesOptions struct {
-	// StartRow is the 0-based offset of the first result.
-	StartRow int
-	// EndRow is the exclusive upper bound (startRow + pageSize).
-	EndRow int
-}
-
 // ListPolicyIssues returns a paginated list of policy issues for the given
 // organization, wrapping the `ListPolicyIssues` Pulumi Cloud REST endpoint
 // (POST /api/orgs/{orgName}/policyresults/issues). The endpoint uses POST
 // because the request body carries pagination parameters in an AngularGrid
 // format.
 func (pc *Client) ListPolicyIssues(
-	ctx context.Context, orgName string, opts ListPolicyIssuesOptions,
-) (apitype.ListPolicyIssuesResponse, error) {
-	req := apitype.ListPolicyIssuesRequest{
-		StartRow: opts.StartRow,
-		EndRow:   opts.EndRow,
-	}
+	ctx context.Context, orgName string, req cloudapitype.AngularGridGetRowsRequest,
+) (cloudapitype.ListPolicyIssuesResponse, error) {
+	// Send startRow and endRow even when zero; the generated type omits them.
+	body := struct {
+		cloudapitype.AngularGridGetRowsRequest
+		StartRow int `json:"startRow"`
+		EndRow   int `json:"endRow"`
+	}{req, req.StartRow, req.EndRow}
 	path := fmt.Sprintf("/api/orgs/%s/policyresults/issues", url.PathEscape(orgName))
 
-	var resp apitype.ListPolicyIssuesResponse
-	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
-		return apitype.ListPolicyIssuesResponse{}, fmt.Errorf("listing policy issues: %w", err)
+	var resp cloudapitype.ListPolicyIssuesResponse
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, body, &resp); err != nil {
+		return cloudapitype.ListPolicyIssuesResponse{}, fmt.Errorf("listing policy issues: %w", err)
 	}
 	return resp, nil
 }
@@ -1877,12 +1945,12 @@ func (pc *Client) ListPolicyIssues(
 // GetPolicyComplianceResults returns compliance results for policy issues
 // grouped by entity.
 func (pc *Client) GetPolicyComplianceResults(
-	ctx context.Context, orgName string, req apitype.GetPolicyComplianceResultsRequest,
-) (apitype.GetPolicyComplianceResultsResponse, error) {
+	ctx context.Context, orgName string, req cloudapitype.GetPolicyComplianceResultsRequest,
+) (cloudapitype.GetPolicyComplianceResultsResponse, error) {
 	path := fmt.Sprintf("/api/orgs/%s/policyresults/compliance", url.PathEscape(orgName))
-	var resp apitype.GetPolicyComplianceResultsResponse
+	var resp cloudapitype.GetPolicyComplianceResultsResponse
 	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
-		return apitype.GetPolicyComplianceResultsResponse{},
+		return cloudapitype.GetPolicyComplianceResultsResponse{},
 			fmt.Errorf("getting policy compliance results: %w", err)
 	}
 	return resp, nil
@@ -1893,14 +1961,14 @@ func (pc *Client) GetPolicyComplianceResults(
 // (GET /api/orgs/{orgName}/policyresults/issues/{issueId}).
 func (pc *Client) GetPolicyIssue(
 	ctx context.Context, orgName, issueID string,
-) (apitype.PolicyIssue, error) {
+) (cloudapitype.PolicyIssue, error) {
 	path := fmt.Sprintf(
 		"/api/orgs/%s/policyresults/issues/%s",
 		url.PathEscape(orgName), url.PathEscape(issueID))
 
-	var resp apitype.GetPolicyIssueResponse
+	var resp cloudapitype.GetPolicyIssueResponse
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
-		return apitype.PolicyIssue{}, fmt.Errorf("getting policy issue: %w", err)
+		return cloudapitype.PolicyIssue{}, fmt.Errorf("getting policy issue: %w", err)
 	}
 	return resp.PolicyIssue, nil
 }
@@ -2403,10 +2471,14 @@ func (pc *Client) CancelUpdate(ctx context.Context, update UpdateIdentifier) err
 
 // CompleteUpdate completes the indicated update with the given status.
 func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, status apitype.UpdateStatus,
-	token UpdateTokenSource,
+	token UpdateTokenSource, outputs *apitype.StackOutputsResponse,
 ) error {
 	req := apitype.CompleteUpdateRequest{
 		Status: status,
+	}
+	if outputs != nil {
+		req.Outputs = outputs.Outputs
+		req.SecretsProviders = outputs.SecretsProviders
 	}
 
 	// It is safe to retry this PATCH operation, because it is logically idempotent.

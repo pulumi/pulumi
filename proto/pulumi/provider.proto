@@ -296,6 +296,22 @@ message ProviderHandshakeRequest {
     // set this field, so providers should treat an absent value as false and fall back to legacy behavior that does
     // not rely on previously persisted outputs during Check.
     bool sends_old_outputs_to_check = 12;
+
+    // If true the engine can send OutputValues nested in `InvokeRequest.args` and will accept OutputValues in
+    // `InvokeResponse.return`. Providers that opt in should set `accepts_outputs_in_invoke` on
+    // `ProviderHandshakeResponse`. Older engines never set this field.
+    bool accepts_outputs_in_invoke = 13;
+
+    // If true the engine can send OutputValues nested in `ResourceCallRequest.args` and will accept OutputValues in
+    // `CallResponse.return`. Providers that opt in should set `accepts_outputs_in_call` on
+    // `ProviderHandshakeResponse`. Older engines never set this field.
+    bool accepts_outputs_in_call = 14;
+
+    // If true the engine can send OutputValues nested in `CheckRequest.olds`, `CheckRequest.news`, and
+    // `CheckRequest.old_outputs`, and will accept OutputValues in `CheckResponse.inputs`. Providers that opt
+    // in should set `accepts_outputs_in_check` on `ProviderHandshakeResponse`. Older engines never set this
+    // field.
+    bool accepts_outputs_in_check = 15;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -327,6 +343,21 @@ message ProviderHandshakeResponse {
     // objects carrying the byte string signature and a base64 encoding of the string's bytes. If true, the
     // caller may pass such values to the provider.
     bool accepts_byte_string = 6;
+
+    // True if and only if the provider accepts OutputValues nested in `InvokeRequest.args` and may return
+    // OutputValues in `InvokeResponse.return`. Only meaningful when the engine advertised
+    // `accepts_outputs_in_invoke` on the handshake request.
+    bool accepts_outputs_in_invoke = 7;
+
+    // True if and only if the provider accepts OutputValues nested in `ResourceCallRequest.args` and may return
+    // OutputValues in `CallResponse.return`. Only meaningful when the engine advertised
+    // `accepts_outputs_in_call` on the handshake request.
+    bool accepts_outputs_in_call = 8;
+
+    // True if and only if the provider accepts OutputValues nested in `CheckRequest.olds`, `CheckRequest.news`,
+    // and `CheckRequest.old_outputs`, and may return OutputValues in `CheckResponse.inputs`. Only meaningful
+    // when the engine advertised `accepts_outputs_in_check` on the handshake request.
+    bool accepts_outputs_in_check = 9;
 }
 
 // `ParameterizeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Parameterize) call. A
@@ -1274,6 +1305,11 @@ message ErrorResourceInitFailed {
     bool refresh_before_update = 5;
 }
 
+// ErrorResourceAwaitFailed is sent as a Detail when `ResourceProvider.{Create, Update}` fail because the provider had
+// to await the operation. Unlike [](pulumirpc.ErrorResourceInitFailed), no resource state was written (Create) or the
+// prior state is preserved unchanged (Update). The engine reports the resource as failed to the SDK and continues the
+// deployment, but the CLI exits with a dedicated non-zero code.
+message ErrorResourceAwaitFailed {}
 
 
 // `GetMappingRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.GetMapping) call.

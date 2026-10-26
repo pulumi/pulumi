@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -156,29 +156,25 @@ func TestApplySchemaInputs_Defaults(t *testing.T) {
 			DefaultValue: &schema.DefaultValue{Value: false},
 		},
 		{
-			Name:         "numberArray",
-			DefaultValue: &schema.DefaultValue{Value: []any{0.0}},
+			Name:         "string",
+			DefaultValue: &schema.DefaultValue{Value: "s"},
 		},
 		{
-			Name:         "booleanMap",
-			DefaultValue: &schema.DefaultValue{Value: map[string]any{"default": false}},
+			Name:         "number",
+			DefaultValue: &schema.DefaultValue{Value: int32(5)},
 		},
 	}
 
-	inputs := resource.PropertyMap{
-		"boolean": resource.NewProperty(true),
-	}
+	inputs := property.NewMap(map[string]property.Value{
+		"boolean": property.New(true),
+	})
 
 	converted, err := applySchemaInputs(inputs, properties)
 	require.NoError(t, err)
 
-	assert.Equal(t, resource.NewProperty(true), converted["boolean"])
-	assert.Equal(t, resource.NewProperty([]resource.PropertyValue{
-		resource.NewProperty(0.0),
-	}), converted["numberArray"])
-	assert.Equal(t, resource.NewProperty(resource.PropertyMap{
-		"default": resource.NewProperty(false),
-	}), converted["booleanMap"])
+	assert.Equal(t, property.New(true), converted.Get("boolean"))
+	assert.Equal(t, property.New("s"), converted.Get("string"))
+	assert.Equal(t, property.New(5.0), converted.Get("number"))
 }
 
 func TestApplySchemaInputs_Conversions(t *testing.T) {
@@ -200,54 +196,51 @@ func TestApplySchemaInputs_Conversions(t *testing.T) {
 		{Name: "nested", Type: nested},
 	}
 
-	inputs := resource.PropertyMap{
+	inputs := property.NewMap(map[string]property.Value{
 		// String "44" coerces to number 44 when the schema says number.
-		"number":  resource.NewProperty("44"),
-		"integer": resource.NewProperty("7"),
+		"number":  property.New("44"),
+		"integer": property.New("7"),
 		// String "true" coerces to bool.
-		"boolean": resource.NewProperty("true"),
+		"boolean": property.New("true"),
 		// Number coerces to its decimal string.
-		"string": resource.NewProperty(3.5),
+		"string": property.New(3.5),
 		// Array elements coerce per the element type.
-		"numbers": resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("1"),
-			resource.NewProperty("2.5"),
+		"numbers": property.New([]property.Value{
+			property.New("1"),
+			property.New("2.5"),
 		}),
 		// Map values coerce per the element type.
-		"flags": resource.NewProperty(resource.PropertyMap{
-			"a": resource.NewProperty("true"),
-			"b": resource.NewProperty("false"),
+		"flags": property.New(map[string]property.Value{
+			"a": property.New("true"),
+			"b": property.New("false"),
 		}),
 		// Nested object fields coerce too.
-		"nested": resource.NewProperty(resource.PropertyMap{
-			"count": resource.NewProperty("99"),
+		"nested": property.New(map[string]property.Value{
+			"count": property.New("99"),
 		}),
 		// Properties not in the schema pass through unchanged.
-		"extra": resource.NewProperty("untouched"),
-	}
+		"extra": property.New("untouched"),
+	})
 
 	converted, err := applySchemaInputs(inputs, properties)
 	require.NoError(t, err)
 
-	assert.Equal(t, resource.NewProperty(true), converted["boolean"])
-	assert.Equal(t, resource.NewProperty(44.0), converted["number"])
-	assert.Equal(t, resource.NewProperty(7.0), converted["integer"])
-	assert.Equal(t, resource.NewProperty("3.5"), converted["string"])
-	assert.Equal(t, resource.NewProperty([]resource.PropertyValue{
-		resource.NewProperty(1.0),
-		resource.NewProperty(2.5),
-	}), converted["numbers"])
-	assert.Equal(t, resource.NewProperty(resource.PropertyMap{
-		"a": resource.NewProperty(true),
-		"b": resource.NewProperty(false),
-	}), converted["flags"])
-	assert.Equal(t, resource.NewProperty(resource.PropertyMap{
-		"count": resource.NewProperty(99.0),
-	}), converted["nested"])
-	assert.Equal(t, resource.NewProperty("untouched"), converted["extra"])
-
-	// applySchemaInputs is non-destructive: the original map is unchanged.
-	assert.Equal(t, resource.NewProperty("44"), inputs["number"])
+	assert.Equal(t, property.New(true), converted.Get("boolean"))
+	assert.Equal(t, property.New(44.0), converted.Get("number"))
+	assert.Equal(t, property.New(7.0), converted.Get("integer"))
+	assert.Equal(t, property.New("3.5"), converted.Get("string"))
+	assert.Equal(t, property.New([]property.Value{
+		property.New(1.0),
+		property.New(2.5),
+	}), converted.Get("numbers"))
+	assert.Equal(t, property.New(map[string]property.Value{
+		"a": property.New(true),
+		"b": property.New(false),
+	}), converted.Get("flags"))
+	assert.Equal(t, property.New(map[string]property.Value{
+		"count": property.New(99.0),
+	}), converted.Get("nested"))
+	assert.Equal(t, property.New("untouched"), converted.Get("extra"))
 }
 
 func TestApplySchemaInputs_PreservesSecrets(t *testing.T) {
@@ -257,13 +250,13 @@ func TestApplySchemaInputs_PreservesSecrets(t *testing.T) {
 		{Name: "count", Type: schema.IntType},
 	}
 
-	inputs := resource.PropertyMap{
-		"count": resource.MakeSecret(resource.NewProperty("42")),
-	}
+	inputs := property.NewMap(map[string]property.Value{
+		"count": property.New("42").WithSecret(true),
+	})
 
 	converted, err := applySchemaInputs(inputs, properties)
 	require.NoError(t, err)
-	assert.Equal(t, resource.MakeSecret(resource.NewProperty(42.0)), converted["count"])
+	assert.Equal(t, property.New(42.0).WithSecret(true), converted.Get("count"))
 }
 
 func TestApplySchemaInputs_Secrets(t *testing.T) {
@@ -276,22 +269,22 @@ func TestApplySchemaInputs_Secrets(t *testing.T) {
 		{Name: "missing", Type: schema.StringType, Secret: true},
 	}
 
-	inputs := resource.PropertyMap{
-		"token":     resource.NewProperty("s3cret"),
-		"name":      resource.NewProperty("hello"),
-		"preMarked": resource.MakeSecret(resource.NewProperty("already")),
-	}
+	inputs := property.NewMap(map[string]property.Value{
+		"token":     property.New("s3cret"),
+		"name":      property.New("hello"),
+		"preMarked": property.New("already").WithSecret(true),
+	})
 
 	converted, err := applySchemaInputs(inputs, properties)
 	require.NoError(t, err)
 
-	assert.Equal(t, resource.MakeSecret(resource.NewProperty("s3cret")), converted["token"])
+	assert.Equal(t, property.New("s3cret").WithSecret(true), converted.Get("token"))
 	// Non-secret property is left alone.
-	assert.Equal(t, resource.NewProperty("hello"), converted["name"])
+	assert.Equal(t, property.New("hello"), converted.Get("name"))
 	// Already-secret property isn't double-wrapped.
-	assert.Equal(t, resource.MakeSecret(resource.NewProperty("already")), converted["preMarked"])
+	assert.Equal(t, property.New("already").WithSecret(true), converted.Get("preMarked"))
 	// Missing properties without defaults are not synthesized, even if marked secret.
-	_, has := converted["missing"]
+	_, has := converted.GetOk("missing")
 	assert.False(t, has)
 }
 
@@ -319,35 +312,35 @@ func TestApplySchemaInputs_RecursesIntoNestedObjects(t *testing.T) {
 		{Name: "outer", Type: data},
 	}
 
-	inputs := resource.PropertyMap{
-		"outerSecret": resource.NewProperty(resource.PropertyMap{
-			"public":  resource.NewProperty("o"),
-			"private": resource.NewProperty("p"),
+	inputs := property.NewMap(map[string]property.Value{
+		"outerSecret": property.New(map[string]property.Value{
+			"public":  property.New("o"),
+			"private": property.New("p"),
 		}),
-		"outer": resource.NewProperty(resource.PropertyMap{
-			"public":  resource.NewProperty("o"),
-			"private": resource.NewProperty("p"),
+		"outer": property.New(map[string]property.Value{
+			"public":  property.New("o"),
+			"private": property.New("p"),
 		}),
-	}
+	})
 
 	converted, err := applySchemaInputs(inputs, properties)
 	require.NoError(t, err)
 
 	// outer (not secret-wrapped at top level): nested private is marked, region default fills in.
-	assert.Equal(t, resource.NewProperty(resource.PropertyMap{
-		"public":  resource.NewProperty("o"),
-		"private": resource.MakeSecret(resource.NewProperty("p")),
-		"region":  resource.NewProperty("us-west-2"),
-	}), converted["outer"])
+	assert.Equal(t, property.New(map[string]property.Value{
+		"public":  property.New("o"),
+		"private": property.New("p").WithSecret(true),
+		"region":  property.New("us-west-2"),
+	}), converted.Get("outer"))
 
 	// outerSecret: the whole thing is wrapped, defaults still fill in inside, but the
 	// schema-driven secret mark on "private" is suppressed because the outer wrap already
 	// covers everything.
-	assert.Equal(t, resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-		"public":  resource.NewProperty("o"),
-		"private": resource.NewProperty("p"),
-		"region":  resource.NewProperty("us-west-2"),
-	})), converted["outerSecret"])
+	assert.Equal(t, property.New(map[string]property.Value{
+		"public":  property.New("o"),
+		"private": property.New("p"),
+		"region":  property.New("us-west-2"),
+	}).WithSecret(true), converted.Get("outerSecret"))
 }
 
 func TestApplySchemaInputs_PreservesUserSecretInsideSecretParent(t *testing.T) {
@@ -364,20 +357,20 @@ func TestApplySchemaInputs_PreservesUserSecretInsideSecretParent(t *testing.T) {
 	}
 
 	// User explicitly marked the inner "private" as secret. The outer wrap shouldn't strip it.
-	inputs := resource.PropertyMap{
-		"outer": resource.NewProperty(resource.PropertyMap{
-			"private": resource.MakeSecret(resource.NewProperty("user-marked")),
-			"public":  resource.NewProperty("p"),
+	inputs := property.NewMap(map[string]property.Value{
+		"outer": property.New(map[string]property.Value{
+			"private": property.New("user-marked").WithSecret(true),
+			"public":  property.New("p"),
 		}),
-	}
+	})
 
 	converted, err := applySchemaInputs(inputs, properties)
 	require.NoError(t, err)
 
-	assert.Equal(t, resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-		"private": resource.MakeSecret(resource.NewProperty("user-marked")),
-		"public":  resource.NewProperty("p"),
-	})), converted["outer"])
+	assert.Equal(t, property.New(map[string]property.Value{
+		"private": property.New("user-marked").WithSecret(true),
+		"public":  property.New("p"),
+	}).WithSecret(true), converted.Get("outer"))
 }
 
 func TestApplySchemaInputs(t *testing.T) {
@@ -395,19 +388,19 @@ func TestApplySchemaInputs(t *testing.T) {
 		},
 	}
 
-	inputs := resource.PropertyMap{
-		"count": resource.NewProperty("12"),
-		"token": resource.NewProperty("plain"),
-	}
+	inputs := property.NewMap(map[string]property.Value{
+		"count": property.New("12"),
+		"token": property.New("plain"),
+	})
 
 	converted, err := applySchemaInputs(inputs, properties)
 	require.NoError(t, err)
 
-	assert.Equal(t, resource.NewProperty(12.0), converted["count"])
-	assert.Equal(t, resource.MakeSecret(resource.NewProperty("plain")), converted["token"])
-	assert.Equal(t, resource.NewProperty("us-west-2"), converted["region"])
+	assert.Equal(t, property.New(12.0), converted.Get("count"))
+	assert.Equal(t, property.New("plain").WithSecret(true), converted.Get("token"))
+	assert.Equal(t, property.New("us-west-2"), converted.Get("region"))
 	// Defaults that fill in for secret properties get wrapped too.
-	assert.Equal(t, resource.MakeSecret(resource.NewProperty("fallback")), converted["secretWithDefault"])
+	assert.Equal(t, property.New("fallback").WithSecret(true), converted.Get("secretWithDefault"))
 }
 
 func TestFillSchemaOutputs_MissingSecret(t *testing.T) {
@@ -417,13 +410,9 @@ func TestFillSchemaOutputs_MissingSecret(t *testing.T) {
 		{Name: "secretOutput", Type: schema.StringType, Secret: true},
 	}
 
-	previewOutputs := resource.PropertyMap{}
-	fillSchemaOutputs(previewOutputs, properties, true)
-	assert.Equal(t, resource.MakeSecret(resource.NewProperty(resource.Computed{
-		Element: resource.NewProperty(""),
-	})), previewOutputs["secretOutput"])
+	previewOutputs := fillSchemaOutputs(property.Map{}, properties, true)
+	assert.Equal(t, property.New(property.Computed).WithSecret(true), previewOutputs.Get("secretOutput"))
 
-	updateOutputs := resource.PropertyMap{}
-	fillSchemaOutputs(updateOutputs, properties, false)
-	assert.Equal(t, resource.MakeSecret(resource.NewNullProperty()), updateOutputs["secretOutput"])
+	updateOutputs := fillSchemaOutputs(property.Map{}, properties, false)
+	assert.Equal(t, property.New(property.Null).WithSecret(true), updateOutputs.Get("secretOutput"))
 }

@@ -24,6 +24,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 type FailOnCreateProvider struct {
@@ -68,6 +69,23 @@ func (p *FailOnCreateProvider) GetSchema(
 				RequiredInputs:  resourceRequired,
 			},
 		},
+		Functions: map[string]schema.FunctionSpec{
+			"fail_on_create:index:fail": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: resourceProperties,
+					Required:   resourceRequired,
+				},
+				Outputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"value":   {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+						"message": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+					Required: []string{"value", "message"},
+				},
+			},
+		},
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
@@ -101,6 +119,7 @@ func (p *FailOnCreateProvider) CheckConfig(
 func (p *FailOnCreateProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "fail_on_create:index:Resource"
 	if req.URN.Type() != "fail_on_create:index:Resource" {
 		return plugin.CheckResponse{
@@ -109,7 +128,7 @@ func (p *FailOnCreateProvider) Check(
 	}
 
 	// Expect just the boolean value
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "missing value"),
@@ -120,19 +139,25 @@ func (p *FailOnCreateProvider) Check(
 			Failures: makeCheckFailure("value", "value is not a boolean"),
 		}, nil
 	}
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *FailOnCreateProvider) Create(
 	context.Context, plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
 	return plugin.CreateResponse{}, errors.New("failed create")
+}
+
+func (p *FailOnCreateProvider) Invoke(
+	context.Context, plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	return plugin.InvokeResponse{}, errors.New("failed invoke")
 }
 
 func (p *FailOnCreateProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {

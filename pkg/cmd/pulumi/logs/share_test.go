@@ -141,6 +141,48 @@ func TestRedactSecretsNested(t *testing.T) {
 	assert.Equal(t, "[secret]", privVal["plaintext"])
 }
 
+func TestRedactSecretsOutputValues(t *testing.T) {
+	t.Parallel()
+
+	// A secret that carries dependencies is marshalled as an output value with its secret flag
+	// set, rather than as a plain secret.
+	rec := map[string]any{
+		"msg": "registering resource",
+		"inputs": map[string]any{
+			"password": map[string]any{
+				resource.SigKey: resource.OutputValueSig,
+				"value":         "hunter2",
+				"secret":        true,
+				"dependencies":  []any{"urn:pulumi:dev::proj::pkg:m:R::db"},
+			},
+			"host": map[string]any{
+				resource.SigKey: resource.OutputValueSig,
+				"value":         "db.example.com",
+				"dependencies":  []any{"urn:pulumi:dev::proj::pkg:m:R::db"},
+			},
+		},
+	}
+	line, err := json.Marshal(rec)
+	require.NoError(t, err)
+
+	var redacted bytes.Buffer
+	require.NoError(t, formatLogRecords(bytes.NewReader(append(line, '\n')), &redacted, true))
+	assert.NotContains(t, redacted.String(), "hunter2")
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(redacted.Bytes(), &got))
+
+	inputs := got["inputs"].(map[string]any)
+	pw := inputs["password"].(map[string]any)
+	assert.Equal(t, "[secret]", pw["plaintext"])
+	_, hasValue := pw["value"]
+	assert.False(t, hasValue, "value should be removed")
+
+	// A non-secret output value keeps its contents.
+	host := inputs["host"].(map[string]any)
+	assert.Equal(t, "db.example.com", host["value"])
+}
+
 func TestRedactSecretsNonJSON(t *testing.T) {
 	t.Parallel()
 
@@ -173,6 +215,19 @@ func TestIsSecretValue(t *testing.T) {
 	assert.True(t, isSecretValue(map[string]any{
 		resource.SigKey: resource.SecretSig,
 		"ciphertext":    "...",
+	}))
+
+	// An output value with its secret flag set.
+	assert.True(t, isSecretValue(map[string]any{
+		resource.SigKey: resource.OutputValueSig,
+		"value":         "...",
+		"secret":        true,
+	}))
+
+	// An output value without the secret flag.
+	assert.False(t, isSecretValue(map[string]any{
+		resource.SigKey: resource.OutputValueSig,
+		"value":         "...",
 	}))
 
 	// Non-secret signature.

@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -75,6 +76,8 @@ type SourceResourceMonitor interface {
 	Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	ReadResource(ctx context.Context,
 		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
+	ExistsResource(ctx context.Context,
+		req *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error)
 	RegisterResource(ctx context.Context,
 		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
 	RegisterResourceOutputs(ctx context.Context,
@@ -119,7 +122,7 @@ type RegisterResourceOutputsEvent interface {
 	// URN is the resource URN that this completion applies to.
 	URN() resource.URN
 	// Outputs returns a property map of output properties to add to a resource before completing.
-	Outputs() resource.PropertyMap
+	Outputs() property.Map
 	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
 	Done()
 }
@@ -139,7 +142,7 @@ type ReadResourceEvent interface {
 	// Parent is the parent resource of the resource being read.
 	Parent() resource.URN
 	// Properties is the property bag that will be passed to Read as search parameters.
-	Properties() resource.PropertyMap
+	Properties() property.Map
 	// Dependencies returns the list of URNs upon which this read depends.
 	Dependencies() []resource.URN
 	// Done indicates that we are done with this event.
@@ -153,6 +156,7 @@ type ReadResourceEvent interface {
 }
 
 type ReadResult struct {
-	State  *pkgresource.State
-	Result ResultState
+	State   *pkgresource.State
+	Result  ResultState
+	Unknown bool // true if the read was elided; SDKs should resolve outputs as unknown.
 }

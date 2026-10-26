@@ -4,6 +4,7 @@ permissions:
   # To create a PR
   contents: write
   pull-requests: write
+  id-token: write
 
 on:
   workflow_call:
@@ -51,13 +52,10 @@ on:
 env:
   PULUMI_VERSION: ${{ inputs.version }}
   GIT_REF: ${{ inputs.ref }}
-  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-  PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   PULUMI_TEST_OWNER: "moolumi"
-  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
   PYPI_USERNAME: __token__
-  PYPI_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: GITHUB_TOKEN=PULUMI_BOT_TOKEN,PULUMI_ACCESS_TOKEN=PULUMI_PROD_ACCESS_TOKEN,NODE_AUTH_TOKEN=NPM_TOKEN,NPM_TOKEN,PYPI_PASSWORD=PYPI_API_TOKEN
 
 jobs:
   sdks:
@@ -68,6 +66,18 @@ jobs:
       matrix:
         language: ["nodejs", "python", "go"]
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Checkout Repo
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -94,7 +104,7 @@ jobs:
         if: ${{ matrix.language != 'go' }}
         run: |
           mkdir -p artifacts
-          gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'sdk-${{ matrix.language }}-*'
+          bash .github/scripts/download-release-artifacts --dir ./artifacts --pattern 'sdk-${{ matrix.language }}-*'
           find artifacts
       - name: Publish Packages
         run: |
@@ -104,6 +114,18 @@ jobs:
     name: npm cli wrapper
     runs-on: ubuntu-latest
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Checkout Repo
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -117,7 +139,7 @@ jobs:
       - name: Download release artifacts
         run: |
           mkdir -p artifacts
-          gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'sdk-npm-*'
+          bash .github/scripts/download-release-artifacts --dir ./artifacts --pattern 'sdk-npm-*'
           find artifacts
       - name: Publish npm CLI wrapper
         run: |
@@ -127,6 +149,18 @@ jobs:
     name: s3 blobs
     runs-on: ubuntu-latest
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Checkout Repo
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -134,17 +168,17 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ steps.esc-secrets.outputs.AWS_ACCESS_KEY_ID }}
           aws-region: us-east-2
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-secret-access-key: ${{ steps.esc-secrets.outputs.AWS_SECRET_ACCESS_KEY }}
           role-duration-seconds: 3600
           role-external-id: upload-pulumi-release
           role-session-name: pulumi@githubActions
-          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
+          role-to-assume: ${{ steps.esc-secrets.outputs.AWS_UPLOAD_ROLE_ARN }}
       - name: Download release artifacts
         run: |
           mkdir -p artifacts
-          gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'pulumi-*'
+          bash .github/scripts/download-release-artifacts --dir ./artifacts --pattern 'pulumi-*'
           find artifacts
       - name: Publish Blobs
         run: |
@@ -158,6 +192,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      id-token: write
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}
@@ -187,6 +222,18 @@ jobs:
           - name: Docker containers
             run-command: pulumictl dispatch -r pulumi/pulumi-docker-containers -c release-build "${PULUMI_VERSION}"
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Checkout Repo
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -194,14 +241,13 @@ jobs:
       - name: Install Pulumictl
         uses: jaxxstorm/action-install-gh-release@v3.0.0
         env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
         with:
           repo: pulumi/pulumictl
           tag: v0.0.50
           cache: enable
       - name: Repository Dispatch
         run: ${{ matrix.job.run-command }}
-
 
   update-homebrew-tap:
     name: Update Homebrew Tap
@@ -210,6 +256,7 @@ jobs:
     uses: ./.github/workflows/release-homebrew-tap.yml
     permissions:
       contents: read
+      id-token: write
     with:
       ref: ${{ inputs.ref }}
       version: ${{ inputs.version }}

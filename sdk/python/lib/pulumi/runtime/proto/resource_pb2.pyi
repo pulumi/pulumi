@@ -68,6 +68,16 @@ class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_
     """The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`."""
     RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: _ResourceMonitorFeature.ValueType  # 16
     """The monitor accepts state migration callbacks on resource registrations."""
+    RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES: _ResourceMonitorFeature.ValueType  # 17
+    """The monitor accepts OutputValues nested in `ResourceInvokeRequest.args` (and will harvest their
+    dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
+    OutputValues in `ResourceInvokeResponse.return`.
+    """
+    RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES: _ResourceMonitorFeature.ValueType  # 18
+    """The monitor accepts OutputValues nested in `ResourceCallRequest.args` (and will harvest their
+    dependencies into the call's wait-set), and will honour `accept_output_values` on the request to return
+    OutputValues in `CallResponse.return`.
+    """
 
 class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitorFeatureEnumTypeWrapper):
     """ResourceMonitorFeature is a strongly typed monitor capability identifier.
@@ -101,6 +111,16 @@ RESOURCE_MONITOR_FEATURE_INVOKE_PARENT: ResourceMonitorFeature.ValueType  # 15
 """The monitor resolves an invoke's provider from the `parent` field on `ResourceInvokeRequest`."""
 RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: ResourceMonitorFeature.ValueType  # 16
 """The monitor accepts state migration callbacks on resource registrations."""
+RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES: ResourceMonitorFeature.ValueType  # 17
+"""The monitor accepts OutputValues nested in `ResourceInvokeRequest.args` (and will harvest their
+dependencies into the invoke's wait-set), and will honour `accept_output_values` on the request to return
+OutputValues in `ResourceInvokeResponse.return`.
+"""
+RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES: ResourceMonitorFeature.ValueType  # 18
+"""The monitor accepts OutputValues nested in `ResourceCallRequest.args` (and will harvest their
+dependencies into the call's wait-set), and will honour `accept_output_values` on the request to return
+OutputValues in `CallResponse.return`.
+"""
 global___ResourceMonitorFeature = ResourceMonitorFeature
 
 class _Result:
@@ -111,13 +131,11 @@ class _ResultEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTyp
     DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
     SUCCESS: _Result.ValueType  # 0
     FAIL: _Result.ValueType  # 1
-    SKIP: _Result.ValueType  # 2
 
 class Result(_Result, metaclass=_ResultEnumTypeWrapper): ...
 
 SUCCESS: Result.ValueType  # 0
 FAIL: Result.ValueType  # 1
-SKIP: Result.ValueType  # 2
 global___Result = Result
 
 @typing.final
@@ -358,8 +376,17 @@ class ReadResourceResponse(google.protobuf.message.Message):
 
     URN_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
+    RESULT_FIELD_NUMBER: builtins.int
+    UNKNOWN_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """the URN for this resource."""
+    result: global___Result.ValueType
+    """the reason, whether the read was successful or failed."""
+    unknown: builtins.bool
+    """true if the result of the read is unknown, e.g. because the read was skipped as part of a --continue-on-error run; result is still SUCCESS and SDKs should resolve outputs as unknown."""
+    id: builtins.str
+    """the id resolved by the provider's Read. If empty, SDKs should treat the id as unknown during preview, otherwise fall back to the id supplied on the request for back-compat with older engines."""
     @property
     def properties(self) -> google.protobuf.struct_pb2.Struct:
         """the state of the resource read from the live environment."""
@@ -369,11 +396,107 @@ class ReadResourceResponse(google.protobuf.message.Message):
         *,
         urn: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
+        result: global___Result.ValueType = ...,
+        unknown: builtins.bool = ...,
+        id: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["properties", b"properties", "urn", b"urn"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "properties", b"properties", "result", b"result", "unknown", b"unknown", "urn", b"urn"]) -> None: ...
 
 global___ReadResourceResponse = ReadResourceResponse
+
+@typing.final
+class ExistsResourceRequest(google.protobuf.message.Message):
+    """ExistsResourceRequest contains enough information to check whether a resource with a given ID exists."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class PluginChecksumsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.bytes
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.bytes = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    TYPE_FIELD_NUMBER: builtins.int
+    ID_FIELD_NUMBER: builtins.int
+    PARENT_FIELD_NUMBER: builtins.int
+    PROPERTIES_FIELD_NUMBER: builtins.int
+    PROVIDER_FIELD_NUMBER: builtins.int
+    VERSION_FIELD_NUMBER: builtins.int
+    PLUGINDOWNLOADURL_FIELD_NUMBER: builtins.int
+    PLUGINCHECKSUMS_FIELD_NUMBER: builtins.int
+    PACKAGEREF_FIELD_NUMBER: builtins.int
+    type: builtins.str
+    """the type of the resource object."""
+    id: builtins.str
+    """the ID of the resource to check."""
+    parent: builtins.str
+    """an optional parent URN that this child resource belongs to."""
+    provider: builtins.str
+    """an optional reference to the provider to use for this check."""
+    version: builtins.str
+    """the version of the provider to use when servicing this request."""
+    pluginDownloadURL: builtins.str
+    """the server url of the provider to use when servicing this request."""
+    packageRef: builtins.str
+    """a reference from RegisterPackageRequest."""
+    @property
+    def properties(self) -> google.protobuf.struct_pb2.Struct:
+        """optional state sufficient to uniquely identify the resource."""
+
+    @property
+    def pluginChecksums(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.bytes]:
+        """a map of checksums of the provider to use when servicing this request."""
+
+    def __init__(
+        self,
+        *,
+        type: builtins.str = ...,
+        id: builtins.str = ...,
+        parent: builtins.str = ...,
+        properties: google.protobuf.struct_pb2.Struct | None = ...,
+        provider: builtins.str = ...,
+        version: builtins.str = ...,
+        pluginDownloadURL: builtins.str = ...,
+        pluginChecksums: collections.abc.Mapping[builtins.str, builtins.bytes] | None = ...,
+        packageRef: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["properties", b"properties"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "packageRef", b"packageRef", "parent", b"parent", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "properties", b"properties", "provider", b"provider", "type", b"type", "version", b"version"]) -> None: ...
+
+global___ExistsResourceRequest = ExistsResourceRequest
+
+@typing.final
+class ExistsResourceResponse(google.protobuf.message.Message):
+    """ExistsResourceResponse contains the result of checking whether a resource exists."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    EXISTS_FIELD_NUMBER: builtins.int
+    UNKNOWN_FIELD_NUMBER: builtins.int
+    exists: builtins.bool
+    """whether the resource exists; only meaningful when unknown is false."""
+    unknown: builtins.bool
+    """true if existence could not be determined, e.g. because the id is unknown during preview or the provider was configured with unknown values."""
+    def __init__(
+        self,
+        *,
+        exists: builtins.bool = ...,
+        unknown: builtins.bool = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["exists", b"exists", "unknown", b"unknown"]) -> None: ...
+
+global___ExistsResourceResponse = ExistsResourceResponse
 
 @typing.final
 class RegisterResourceRequest(google.protobuf.message.Message):
@@ -915,6 +1038,7 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
     DEPENDSON_FIELD_NUMBER: builtins.int
     PARENT_FIELD_NUMBER: builtins.int
+    ACCEPT_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     provider: builtins.str
@@ -937,6 +1061,10 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
     """An optional URN of the resource this invoke is parented to. When `provider` is empty, the invoke is served by
     the provider its parent's `providers` option names for the invoke's package, the same resolution applied to
     resource registrations. Only respected when the monitor advertises `INVOKE_PARENT`.
+    """
+    accept_output_values: builtins.bool
+    """When true the SDK accepts OutputValues in `ResourceInvokeResponse.return`. Only meaningful when the monitor
+    advertises `INVOKE_OUTPUT_VALUES`; older monitors will ignore this field.
     """
     @property
     def args(self) -> google.protobuf.struct_pb2.Struct:
@@ -978,9 +1106,10 @@ class ResourceInvokeRequest(google.protobuf.message.Message):
         accepts_byte_string: builtins.bool = ...,
         dependsOn: collections.abc.Iterable[builtins.str] | None = ...,
         parent: builtins.str = ...,
+        accept_output_values: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["args", b"args", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "accepts_byte_string", b"accepts_byte_string", "args", b"args", "dependsOn", b"dependsOn", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["acceptResources", b"acceptResources", "accept_output_values", b"accept_output_values", "accepts_byte_string", b"accepts_byte_string", "args", b"args", "dependsOn", b"dependsOn", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceInvokeRequest = ResourceInvokeRequest
 
@@ -1078,6 +1207,7 @@ class ResourceCallRequest(google.protobuf.message.Message):
     PARENTSTACKTRACEHANDLE_FIELD_NUMBER: builtins.int
     PACKAGEREF_FIELD_NUMBER: builtins.int
     ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
+    ACCEPT_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     tok: builtins.str
     """the function token to invoke."""
     provider: builtins.str
@@ -1093,6 +1223,10 @@ class ResourceCallRequest(google.protobuf.message.Message):
     accepts_byte_string: builtins.bool
     """When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     carrying the byte string signature and a base64 encoding of the string's bytes.
+    """
+    accept_output_values: builtins.bool
+    """When true the SDK accepts OutputValues in `CallResponse.return`. Only meaningful when the monitor
+    advertises `CALL_OUTPUT_VALUES`; older monitors will ignore this field.
     """
     @property
     def args(self) -> google.protobuf.struct_pb2.Struct:
@@ -1129,9 +1263,10 @@ class ResourceCallRequest(google.protobuf.message.Message):
         parentStackTraceHandle: builtins.str = ...,
         packageRef: builtins.str = ...,
         accepts_byte_string: builtins.bool = ...,
+        accept_output_values: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["args", b"args", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["accepts_byte_string", b"accepts_byte_string", "argDependencies", b"argDependencies", "args", b"args", "packageRef", b"packageRef", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["accept_output_values", b"accept_output_values", "accepts_byte_string", b"accepts_byte_string", "argDependencies", b"argDependencies", "args", b"args", "packageRef", b"packageRef", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "provider", b"provider", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "tok", b"tok", "version", b"version"]) -> None: ...
 
 global___ResourceCallRequest = ResourceCallRequest
 

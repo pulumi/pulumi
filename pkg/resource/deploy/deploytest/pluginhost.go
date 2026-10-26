@@ -454,6 +454,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 				InvokeWithPreview:           true,
 				AcceptsByteString:           true,
 				SendsOldOutputsToCheck:      true,
+				AcceptsOutputsInInvoke:      true,
 			})
 			if err != nil {
 				return nil, errors.Join(err, provider.Close())
@@ -549,6 +550,9 @@ func (host *pluginHost) SignalCancellation() error {
 func (host *pluginHost) Close() error {
 	if host.isClosed() {
 		return nil // Close is idempotent
+	}
+	if lr, ok := host.languageRuntime.(*languageRuntime); ok {
+		lr.running.Wait()
 	}
 	host.m.Lock()
 	defer host.m.Unlock()

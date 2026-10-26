@@ -18,7 +18,11 @@ import pytest
 
 from pulumi.runtime import settings
 from pulumi.runtime.proto import resource_pb2
-from pulumi.runtime.settings import Settings, register_package
+from pulumi.runtime.settings import (
+    Settings,
+    get_base_provider_for_ref,
+    register_package,
+)
 
 
 class MockMonitor:
@@ -117,3 +121,17 @@ async def test_raises_when_there_is_no_monitor():
     settings.configure(s)
     with pytest.raises(Exception, match="No monitor available"):
         await register_package(**BASE_ARGS)
+
+
+@pytest.mark.asyncio
+async def test_records_the_base_provider_of_an_extension_package():
+    configure_monitor("uuid-ext")
+    ref = await register_package(**{**BASE_ARGS, "extension": True})
+    assert get_base_provider_for_ref(ref) == "base"
+
+
+@pytest.mark.asyncio
+async def test_records_no_base_provider_for_a_replacement_package():
+    configure_monitor("uuid-param")
+    ref = await register_package(**BASE_ARGS)
+    assert get_base_provider_for_ref(ref) is None

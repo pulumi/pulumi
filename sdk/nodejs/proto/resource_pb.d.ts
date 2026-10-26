@@ -193,6 +193,12 @@ export class ReadResourceResponse extends jspb.Message {
     clearProperties(): void;
     getProperties(): google_protobuf_struct_pb.Struct | undefined;
     setProperties(value?: google_protobuf_struct_pb.Struct): ReadResourceResponse;
+    getResult(): Result;
+    setResult(value: Result): ReadResourceResponse;
+    getUnknown(): boolean;
+    setUnknown(value: boolean): ReadResourceResponse;
+    getId(): string;
+    setId(value: string): ReadResourceResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadResourceResponse.AsObject;
@@ -208,6 +214,81 @@ export namespace ReadResourceResponse {
     export type AsObject = {
         urn: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
+        result: Result,
+        unknown: boolean,
+        id: string,
+    }
+}
+
+export class ExistsResourceRequest extends jspb.Message { 
+    getType(): string;
+    setType(value: string): ExistsResourceRequest;
+    getId(): string;
+    setId(value: string): ExistsResourceRequest;
+    getParent(): string;
+    setParent(value: string): ExistsResourceRequest;
+
+    hasProperties(): boolean;
+    clearProperties(): void;
+    getProperties(): google_protobuf_struct_pb.Struct | undefined;
+    setProperties(value?: google_protobuf_struct_pb.Struct): ExistsResourceRequest;
+    getProvider(): string;
+    setProvider(value: string): ExistsResourceRequest;
+    getVersion(): string;
+    setVersion(value: string): ExistsResourceRequest;
+    getPlugindownloadurl(): string;
+    setPlugindownloadurl(value: string): ExistsResourceRequest;
+
+    getPluginchecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearPluginchecksumsMap(): void;
+    getPackageref(): string;
+    setPackageref(value: string): ExistsResourceRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ExistsResourceRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ExistsResourceRequest): ExistsResourceRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ExistsResourceRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ExistsResourceRequest;
+    static deserializeBinaryFromReader(message: ExistsResourceRequest, reader: jspb.BinaryReader): ExistsResourceRequest;
+}
+
+export namespace ExistsResourceRequest {
+    export type AsObject = {
+        type: string,
+        id: string,
+        parent: string,
+        properties?: google_protobuf_struct_pb.Struct.AsObject,
+        provider: string,
+        version: string,
+        plugindownloadurl: string,
+
+        pluginchecksumsMap: Array<[string, Uint8Array | string]>,
+        packageref: string,
+    }
+}
+
+export class ExistsResourceResponse extends jspb.Message { 
+    getExists(): boolean;
+    setExists(value: boolean): ExistsResourceResponse;
+    getUnknown(): boolean;
+    setUnknown(value: boolean): ExistsResourceResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ExistsResourceResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ExistsResourceResponse): ExistsResourceResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ExistsResourceResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ExistsResourceResponse;
+    static deserializeBinaryFromReader(message: ExistsResourceResponse, reader: jspb.BinaryReader): ExistsResourceResponse;
+}
+
+export namespace ExistsResourceResponse {
+    export type AsObject = {
+        exists: boolean,
+        unknown: boolean,
     }
 }
 
@@ -653,6 +734,8 @@ export class ResourceInvokeRequest extends jspb.Message {
     addDependson(value: string, index?: number): string;
     getParent(): string;
     setParent(value: string): ResourceInvokeRequest;
+    getAcceptOutputValues(): boolean;
+    setAcceptOutputValues(value: boolean): ResourceInvokeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceInvokeRequest.AsObject;
@@ -681,6 +764,7 @@ export namespace ResourceInvokeRequest {
         acceptsByteString: boolean,
         dependsonList: Array<string>,
         parent: string,
+        acceptOutputValues: boolean,
     }
 }
 
@@ -751,6 +835,8 @@ export class ResourceCallRequest extends jspb.Message {
     setPackageref(value: string): ResourceCallRequest;
     getAcceptsByteString(): boolean;
     setAcceptsByteString(value: boolean): ResourceCallRequest;
+    getAcceptOutputValues(): boolean;
+    setAcceptOutputValues(value: boolean): ResourceCallRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceCallRequest.AsObject;
@@ -778,6 +864,7 @@ export namespace ResourceCallRequest {
         parentstacktracehandle: string,
         packageref: string,
         acceptsByteString: boolean,
+        acceptOutputValues: boolean,
     }
 
 
@@ -1590,10 +1677,11 @@ export enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON = 14,
     RESOURCE_MONITOR_FEATURE_INVOKE_PARENT = 15,
     RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS = 16,
+    RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES = 17,
+    RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES = 18,
 }
 
 export enum Result {
     SUCCESS = 0,
     FAIL = 1,
-    SKIP = 2,
 }

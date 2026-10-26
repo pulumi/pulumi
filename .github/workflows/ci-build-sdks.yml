@@ -69,6 +69,7 @@ jobs:
           action: actions/upload-artifact@v7
           with: |
             name: artifacts-python-sdk
+            overwrite: true
             path: sdk/python/build/*.whl
             retention-days: 1
             if-no-files-found: error
@@ -118,6 +119,7 @@ jobs:
           action: actions/upload-artifact@v7
           with: |
             name: artifacts-nodejs-sdk
+            overwrite: true
             path: sdk/nodejs/bin/*.tgz
             retention-days: 1
             if-no-files-found: error
@@ -150,6 +152,7 @@ jobs:
           action: actions/upload-artifact@v7
           with: |
             name: artifacts-npm-package
+            overwrite: true
             path: npm/*.tgz
             retention-days: 1
             if-no-files-found: error

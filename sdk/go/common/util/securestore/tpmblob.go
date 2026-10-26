@@ -48,14 +48,14 @@ func encodeSealedBlob(priv, pub []byte) ([]byte, error) {
 func decodeSealedBlob(blob []byte) (priv, pub []byte, err error) {
 	priv, rest, err := readSealedChunk(blob)
 	if err != nil {
-		return nil, nil, fmt.Errorf("stored key is corrupt (bad TPM blob): %w", err)
+		return nil, nil, fmt.Errorf("%w (bad TPM blob): %w", ErrKeyCorrupt, err)
 	}
 	pub, rest, err = readSealedChunk(rest)
 	if err != nil {
-		return nil, nil, fmt.Errorf("stored key is corrupt (bad TPM blob): %w", err)
+		return nil, nil, fmt.Errorf("%w (bad TPM blob): %w", ErrKeyCorrupt, err)
 	}
 	if len(rest) != 0 {
-		return nil, nil, fmt.Errorf("stored key is corrupt (%d trailing bytes in TPM blob)", len(rest))
+		return nil, nil, fmt.Errorf("%w (%d trailing bytes in TPM blob)", ErrKeyCorrupt, len(rest))
 	}
 	return priv, pub, nil
 }

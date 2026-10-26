@@ -16,6 +16,8 @@ package ui
 
 import (
 	"bytes"
+	"errors"
+	"os"
 	"strings"
 	"testing"
 
@@ -67,6 +69,30 @@ func TestConfirmDeletion(t *testing.T) {
 		assert.True(t, result.IsBail(err), "declining must return a bail error")
 		assert.Contains(t, w.String(), "confirmation declined")
 	})
+}
+
+//nolint:paralleltest // replaces os.Stdin and os.Stdout
+func TestPromptForValueBailsOnForbiddenError(t *testing.T) {
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	_, err = w.WriteString("some-project\n")
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+	outR, outW, err := os.Pipe()
+	require.NoError(t, err)
+	oldStdin, oldStdout := os.Stdin, os.Stdout
+	os.Stdin, os.Stdout = r, outW
+	t.Cleanup(func() {
+		os.Stdin, os.Stdout = oldStdin, oldStdout
+		require.NoError(t, outW.Close())
+		require.NoError(t, outR.Close())
+	})
+
+	forbidden := backenderr.ForbiddenError{Err: errors.New("access to org denied")}
+	_, err = PromptForValue(false /*yes*/, "Project name", "default-name", false, /*secret*/
+		func(value string) error { return forbidden },
+		display.Options{Color: colors.Never})
+	require.ErrorIs(t, err, backenderr.ErrForbidden)
 }
 
 // failingReader fails the test if anything tries to read from it

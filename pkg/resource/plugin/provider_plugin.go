@@ -44,8 +44,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -56,6 +54,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -121,6 +120,15 @@ type pluginProtocol struct {
 
 	// True if this plugin accepts strings containing bytes that are not valid UTF-8.
 	acceptsByteString bool
+
+	// True if this plugin accepts OutputValues on Invoke args and may return OutputValues on Invoke.
+	acceptsOutputsInInvoke bool
+
+	// True if this plugin accepts OutputValues on Call args and may return OutputValues on Call.
+	acceptsOutputsInCall bool
+
+	// True if this plugin accepts OutputValues on Check olds/news/old_outputs and may return OutputValues on Check.
+	acceptsOutputsInCheck bool
 }
 
 // pluginConfig holds the configuration of the provider
@@ -215,6 +223,9 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				ResolverTarget:              resolverAddr,
 				AcceptsByteString:           true,
 				SendsOldOutputsToCheck:      true,
+				AcceptsOutputsInInvoke:      true,
+				AcceptsOutputsInCall:        true,
+				AcceptsOutputsInCheck:       false,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -253,7 +264,6 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			if pkg == tokens.Package(nodejsDynamicProviderPackage) {
 				// The Node.js SDK uses PULUMI_NODEJS_PROJECT to set the project name.
 				// Eventually, we should standardize on PULUMI_PROJECT for all SDKs.
-				// Also see `constructEnv` in pkg/resource/plugin/analyzer_plugin.go
 				optionsStore["PULUMI_NODEJS_PROJECT"] = projectName.String()
 			}
 			optionsStore["PULUMI_PROJECT"] = projectName.String()
@@ -283,6 +293,9 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				ResolverTarget:              resolverAddr,
 				AcceptsByteString:           true,
 				SendsOldOutputsToCheck:      true,
+				AcceptsOutputsInInvoke:      true,
+				AcceptsOutputsInCall:        true,
+				AcceptsOutputsInCheck:       false,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -324,6 +337,9 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
 			acceptsByteString:               handshakeRes.AcceptsByteString,
+			acceptsOutputsInInvoke:          handshakeRes.AcceptsOutputsInInvoke,
+			acceptsOutputsInCall:            handshakeRes.AcceptsOutputsInCall,
+			acceptsOutputsInCheck:           handshakeRes.AcceptsOutputsInCheck,
 		}
 	}
 
@@ -386,6 +402,9 @@ func handshake(
 		ResolverTarget:              req.ResolverTarget,
 		AcceptsByteString:           req.AcceptsByteString,
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
+		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
+		AcceptsOutputsInCall:        req.AcceptsOutputsInCall,
+		AcceptsOutputsInCheck:       req.AcceptsOutputsInCheck,
 	})
 	if err != nil {
 		status, ok := status.FromError(err)
@@ -404,6 +423,9 @@ func handshake(
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
 		AcceptsByteString:               res.GetAcceptsByteString(),
+		AcceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
+		AcceptsOutputsInCall:            res.GetAcceptsOutputsInCall(),
+		AcceptsOutputsInCheck:           res.GetAcceptsOutputsInCheck(),
 	}, nil
 }
 
@@ -453,6 +475,9 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			ResolverTarget:              resolverAddr,
 			AcceptsByteString:           true,
 			SendsOldOutputsToCheck:      true,
+			AcceptsOutputsInInvoke:      true,
+			AcceptsOutputsInCall:        true,
+			AcceptsOutputsInCheck:       false,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -485,6 +510,9 @@ func NewProviderFromPath(host Host, ctx *Context, path string) (Provider, error)
 			acceptOutputs:                   handshakeRes.AcceptOutputs,
 			supportsAutonamingConfiguration: handshakeRes.SupportsAutonamingConfiguration,
 			acceptsByteString:               handshakeRes.AcceptsByteString,
+			acceptsOutputsInInvoke:          handshakeRes.AcceptsOutputsInInvoke,
+			acceptsOutputsInCall:            handshakeRes.AcceptsOutputsInCall,
+			acceptsOutputsInCheck:           handshakeRes.AcceptsOutputsInCheck,
 		}
 	}
 
@@ -586,6 +614,9 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		ResolverTarget:              req.ResolverTarget,
 		AcceptsByteString:           req.AcceptsByteString,
 		SendsOldOutputsToCheck:      req.SendsOldOutputsToCheck,
+		AcceptsOutputsInInvoke:      req.AcceptsOutputsInInvoke,
+		AcceptsOutputsInCall:        req.AcceptsOutputsInCall,
+		AcceptsOutputsInCheck:       req.AcceptsOutputsInCheck,
 	})
 	if err != nil {
 		return nil, err
@@ -600,6 +631,9 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		acceptOutputs:                   res.GetAcceptOutputs(),
 		supportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
 		acceptsByteString:               res.GetAcceptsByteString(),
+		acceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
+		acceptsOutputsInCall:            res.GetAcceptsOutputsInCall(),
+		acceptsOutputsInCheck:           res.GetAcceptsOutputsInCheck(),
 	}
 
 	return &ProviderHandshakeResponse{
@@ -608,6 +642,9 @@ func (p *provider) Handshake(ctx context.Context, req ProviderHandshakeRequest) 
 		AcceptOutputs:                   res.GetAcceptOutputs(),
 		SupportsAutonamingConfiguration: res.GetSupportsAutonamingConfiguration(),
 		AcceptsByteString:               res.GetAcceptsByteString(),
+		AcceptsOutputsInInvoke:          res.GetAcceptsOutputsInInvoke(),
+		AcceptsOutputsInCall:            res.GetAcceptsOutputsInCall(),
+		AcceptsOutputsInCheck:           res.GetAcceptsOutputsInCheck(),
 	}, nil
 }
 
@@ -689,24 +726,21 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), req.URN)
 	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, req.Olds.Len(), req.News.Len())
 
-	molds, err := MarshalProperties(resource.ToResourcePropertyMap(req.Olds), MarshalOptions{
-		Label:        label + ".olds",
+	filteredOlds, err := FilterProperties(req.Olds, FilterOptions{
 		KeepUnknowns: req.AllowUnknowns,
-		PropagateNil: true,
 	})
 	if err != nil {
 		return CheckConfigResponse{}, err
 	}
+	molds := propertyrpc.Marshal(filteredOlds)
 
-	news := resource.ToResourcePropertyMap(req.News)
-	mnews, err := MarshalProperties(news, MarshalOptions{
-		Label:        label + ".news",
+	filteredNews, err := FilterProperties(req.News, FilterOptions{
 		KeepUnknowns: req.AllowUnknowns,
-		PropagateNil: true,
 	})
 	if err != nil {
 		return CheckConfigResponse{}, err
 	}
+	mnews := propertyrpc.Marshal(filteredNews)
 
 	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:  string(req.URN),
@@ -729,15 +763,17 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	}
 
 	// Unmarshal the provider inputs.
-	var inputs resource.PropertyMap
+	var inputs property.Map
 	if ins := resp.GetInputs(); ins != nil {
-		inputs, err = UnmarshalProperties(ins, MarshalOptions{
-			Label:          label + ".inputs",
+		raw, err := propertyrpc.Unmarshal(ins)
+		if err != nil {
+			return CheckConfigResponse{}, err
+		}
+		inputs, err = FilterProperties(raw, FilterOptions{
 			KeepUnknowns:   req.AllowUnknowns,
 			RejectUnknowns: !req.AllowUnknowns,
 			KeepSecrets:    true,
 			KeepResources:  true,
-			PropagateNil:   true,
 		})
 		if err != nil {
 			return CheckConfigResponse{}, err
@@ -751,10 +787,10 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	}
 
 	// Copy over any secret annotations, since we could not pass any to the provider, and return.
-	annotateSecrets(inputs, news)
-	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
+	inputs = annotateSecrets(inputs, req.News)
+	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, inputs.Len(), len(failures))
 	return CheckConfigResponse{
-		Properties: resource.FromResourcePropertyMap(inputs),
+		Properties: inputs,
 		Failures:   failures,
 	}, nil
 }
@@ -803,34 +839,25 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), req.URN)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+		label, req.OldInputs.Len(), req.OldOutputs.Len(), req.NewInputs.Len())
 
-	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
-		Label:        label + ".oldInputs",
-		KeepUnknowns: true,
-		PropagateNil: true,
-	})
+	filteredOldInputs, err := FilterProperties(req.OldInputs, FilterOptions{KeepUnknowns: true})
 	if err != nil {
 		return DiffResult{}, err
 	}
+	mOldInputs := propertyrpc.Marshal(filteredOldInputs)
 
-	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
-		Label:        label + ".oldOutputs",
-		KeepUnknowns: true,
-		PropagateNil: true,
-	})
+	filteredOldOutputs, err := FilterProperties(req.OldOutputs, FilterOptions{KeepUnknowns: true})
 	if err != nil {
 		return DiffResult{}, err
 	}
+	mOldOutputs := propertyrpc.Marshal(filteredOldOutputs)
 
-	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
-		Label:        label + ".newInputs",
-		KeepUnknowns: true,
-		PropagateNil: true,
-	})
+	filteredNewInputs, err := FilterProperties(req.NewInputs, FilterOptions{KeepUnknowns: true})
 	if err != nil {
 		return DiffResult{}, err
 	}
+	mNewInputs := propertyrpc.Marshal(filteredNewInputs)
 
 	resp, err := p.clientRaw.DiffConfig(p.requestContext(), &pulumirpc.DiffRequest{
 		Urn:           string(req.URN),
@@ -920,22 +947,20 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 // marked as a secret. This is actually a very nice result, because often arrays are treated like sets by providers
 // and the order may not be preserved across an operation. This means we do end up encrypting the entire array
 // but that's better than accidentally leaking a value which just moved to a different location.
-func annotateSecrets(outs, ins resource.PropertyMap) {
-	if outs == nil || ins == nil {
-		return
-	}
-
-	for key, inValue := range ins {
-		outValue, has := outs[key]
+func annotateSecrets(outs, ins property.Map) property.Map {
+	result := outs.AsMap()
+	for key, inValue := range ins.All {
+		outValue, has := result[key]
 		if !has {
 			continue
 		}
-		if outValue.IsObject() && inValue.IsObject() {
-			annotateSecrets(outValue.ObjectValue(), inValue.ObjectValue())
-		} else if !outValue.IsSecret() && inValue.ContainsSecrets() {
-			outs[key] = resource.MakeSecret(outValue)
+		if outValue.IsMap() && inValue.IsMap() && !inValue.Secret() {
+			result[key] = property.New(annotateSecrets(outValue.AsMap(), inValue.AsMap()))
+		} else if !outValue.Secret() && inValue.HasSecrets() {
+			result[key] = outValue.WithSecret(true)
 		}
 	}
+	return property.NewMap(result)
 }
 
 func removeSecrets(v property.Value) any {
@@ -970,85 +995,85 @@ func removeSecrets(v property.Value) any {
 	}
 }
 
-func traverseProperty(element resource.PropertyValue, f func(resource.PropertyValue)) {
-	f(element)
-	if element.IsSecret() {
-		traverseSecret(element.SecretValue(), f)
-	} else if element.IsObject() {
-		traverseMap(element.ObjectValue(), f)
-	} else if element.IsArray() {
-		traverseArray(element.ArrayValue(), f)
-	}
-}
-
-func traverseArray(elements []resource.PropertyValue, f func(resource.PropertyValue)) {
-	for _, element := range elements {
-		traverseProperty(element, f)
-	}
-}
-
-func traverseSecret(v *resource.Secret, f func(resource.PropertyValue)) {
-	traverseProperty(v.Element, f)
-}
-
-func traverseMap(m resource.PropertyMap, f func(resource.PropertyValue)) {
-	for _, value := range m {
-		traverseProperty(value, f)
-	}
-}
-
 // restoreElidedAssetContents is used to restore contents of assets inside resource property maps after
 // we have skipped serializing contents of assets in order to avoid sending them over the wire to resource
 // providers. Mainly used in `Read` operations after we receive the live inputs from the resource provider plugin.
 // Those inputs may echo back the input assets and the engine writes them out to the state. We need to make sure that
 // we don't write out empty assets to the state, so we restore the asset contents from the original inputs.
-func restoreElidedAssetContents(original resource.PropertyMap, transformed resource.PropertyMap) {
-	isEmptyAsset := func(v *asset.Asset) bool {
+func restoreElidedAssetContents(original property.Map, transformed property.Map) property.Map {
+	isEmptyAsset := func(v property.Asset) bool {
 		return v.Text == "" && v.Path == "" && v.URI == ""
 	}
 
-	isEmptyArchive := func(v *archive.Archive) bool {
+	isEmptyArchive := func(v property.Archive) bool {
 		return v.Path == "" && v.URI == "" && v.Assets == nil
 	}
 
-	originalAssets := map[string]*asset.Asset{}
-	originalArchives := map[string]*archive.Archive{}
+	originalAssets := map[string]property.Asset{}
+	originalArchives := map[string]property.Archive{}
 
-	traverseMap(original, func(value resource.PropertyValue) {
-		if value.IsAsset() {
-			originalAsset := value.AssetValue()
-			originalAssets[originalAsset.Hash] = originalAsset
-		}
-
-		if value.IsArchive() {
-			originalArchive := value.ArchiveValue()
-			originalArchives[originalArchive.Hash] = originalArchive
-		}
-	})
-
-	traverseMap(transformed, func(value resource.PropertyValue) {
-		if value.IsAsset() {
-			transformedAsset := value.AssetValue()
-			originalAsset, has := originalAssets[transformedAsset.Hash]
-			if has && isEmptyAsset(transformedAsset) {
-				transformedAsset.Sig = originalAsset.Sig
-				transformedAsset.Text = originalAsset.Text
-				transformedAsset.Path = originalAsset.Path
-				transformedAsset.URI = originalAsset.URI
+	var collect func(property.Value)
+	collect = func(v property.Value) {
+		switch {
+		case v.IsAsset():
+			a := v.AsAsset()
+			originalAssets[a.Hash] = a
+		case v.IsArchive():
+			a := v.AsArchive()
+			originalArchives[a.Hash] = a
+		case v.IsArray():
+			for _, e := range v.AsArray().All {
+				collect(e)
+			}
+		case v.IsMap():
+			for _, e := range v.AsMap().All {
+				collect(e)
 			}
 		}
+	}
+	for _, v := range original.All {
+		collect(v)
+	}
 
-		if value.IsArchive() {
-			transformedArchive := value.ArchiveValue()
-			originalArchive, has := originalArchives[transformedArchive.Hash]
-			if has && isEmptyArchive(transformedArchive) {
-				transformedArchive.Sig = originalArchive.Sig
-				transformedArchive.URI = originalArchive.URI
-				transformedArchive.Path = originalArchive.Path
-				transformedArchive.Assets = originalArchive.Assets
+	var rebuild func(property.Value) property.Value
+	rebuild = func(v property.Value) property.Value {
+		switch {
+		case v.IsAsset():
+			a := v.AsAsset()
+			if orig, ok := originalAssets[a.Hash]; ok && isEmptyAsset(a) {
+				return property.WithGoValue(v, orig)
 			}
+			return v
+		case v.IsArchive():
+			a := v.AsArchive()
+			if orig, ok := originalArchives[a.Hash]; ok && isEmptyArchive(a) {
+				return property.WithGoValue(v, orig)
+			}
+			return v
+		case v.IsArray():
+			arr := v.AsArray().AsSlice()
+			out := make([]property.Value, len(arr))
+			for i, e := range arr {
+				out[i] = rebuild(e)
+			}
+			return property.WithGoValue(v, property.NewArray(out))
+		case v.IsMap():
+			inner := v.AsMap()
+			out := make(map[string]property.Value, inner.Len())
+			for k, e := range inner.All {
+				out[k] = rebuild(e)
+			}
+			return property.WithGoValue(v, property.NewMap(out))
+		default:
+			return v
 		}
-	})
+	}
+
+	out := make(map[string]property.Value, transformed.Len())
+	for k, v := range transformed.All {
+		out[k] = rebuild(v)
+	}
+	return property.NewMap(out)
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
@@ -1095,72 +1120,67 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		variables[string(pkg)+":config:"+k] = mapped.(string)
 	}
 
-	minputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.Inputs), MarshalOptions{
-		Label:         label + ".inputs",
+	filteredInputs, err := FilterProperties(req.Inputs, FilterOptions{
 		KeepUnknowns:  true,
 		KeepSecrets:   true,
 		KeepResources: true,
-		PropagateNil:  true,
 	})
 	if err != nil {
 		err := fmt.Errorf("marshaling provider inputs: %w", err)
 		p.configSource.MustReject(err)
 		return ConfigureResponse{}, err
 	}
+	minputs := propertyrpc.Marshal(filteredInputs)
 
-	// Spawn the configure to happen in parallel.  This ensures that we remain responsive elsewhere that might
-	// want to make forward progress, even as the configure call is happening.
-	go func() {
-		var urn, typ, id *string
-		if req.URN != nil {
-			urnVal := string(*req.URN)
-			urn = &urnVal
-		}
-		if req.ID != nil {
-			idVal := string(*req.ID)
-			id = &idVal
-		}
-		if req.Type != nil {
-			typVal := string(*req.Type)
-			typ = &typVal
-		}
+	var urn, typ, id *string
+	if req.URN != nil {
+		urnVal := string(*req.URN)
+		urn = &urnVal
+	}
+	if req.ID != nil {
+		idVal := string(*req.ID)
+		id = &idVal
+	}
+	if req.Type != nil {
+		typVal := string(*req.Type)
+		typ = &typVal
+	}
 
-		resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
-			Urn:                    urn,
-			Name:                   req.Name,
-			Type:                   typ,
-			Id:                     id,
-			AcceptSecrets:          true,
-			AcceptResources:        true,
-			SendsOldInputs:         true,
-			SendsOldInputsToDelete: true,
-			Variables:              variables, //nolint:staticcheck
-			Args:                   minputs,
-		})
-		if err != nil {
-			rpcError := rpcerror.Convert(err)
-			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
-			err = createConfigureError(rpcError)
-			p.configSource.MustReject(err)
-			return
-		}
+	resp, err := p.clientRaw.Configure(p.requestContext(), &pulumirpc.ConfigureRequest{
+		Urn:                    urn,
+		Name:                   req.Name,
+		Type:                   typ,
+		Id:                     id,
+		AcceptSecrets:          true,
+		AcceptResources:        true,
+		SendsOldInputs:         true,
+		SendsOldInputsToDelete: true,
+		Variables:              variables, //nolint:staticcheck
+		Args:                   minputs,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		err = createConfigureError(rpcError)
+		p.configSource.MustReject(err)
+		return ConfigureResponse{}, err
+	}
 
-		if p.protocol == nil {
-			// Byte string support is negotiated only at handshake time; providers that did not
-			// handshake never receive such values.
-			p.protocol = &pluginProtocol{
-				acceptSecrets:                   resp.GetAcceptSecrets(),
-				acceptResources:                 resp.GetAcceptResources(),
-				supportsPreview:                 resp.GetSupportsPreview(),
-				acceptOutputs:                   resp.GetAcceptOutputs(),
-				supportsAutonamingConfiguration: resp.GetSupportsAutonamingConfiguration(),
-			}
+	if p.protocol == nil {
+		// Byte string support is negotiated only at handshake time; providers that did not
+		// handshake never receive such values.
+		p.protocol = &pluginProtocol{
+			acceptSecrets:                   resp.GetAcceptSecrets(),
+			acceptResources:                 resp.GetAcceptResources(),
+			supportsPreview:                 resp.GetSupportsPreview(),
+			acceptOutputs:                   resp.GetAcceptOutputs(),
+			supportsAutonamingConfiguration: resp.GetSupportsAutonamingConfiguration(),
 		}
+	}
 
-		p.configSource.MustFulfill(pluginConfig{
-			known: true,
-		})
-	}()
+	p.configSource.MustFulfill(pluginConfig{
+		known: true,
+	})
 
 	return ConfigureResponse{}, nil
 }
@@ -1172,10 +1192,10 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
 	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
-	contract.Assertf(req.News != nil, "Check requires new properties")
 
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), req.URN)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
+	logging.V(7).Infof("%s executing (#oldInputs=%d,#newInputs=%d)",
+		label, req.OldInputs.Len(), req.NewInputs.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1187,36 +1207,35 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	// If the configuration for this provider was not fully known--e.g. if we are doing a preview and some input
 	// property was sourced from another resource's output properties--don't call into the underlying provider.
 	if !pcfg.known {
-		return CheckResponse{Properties: req.News}, nil
+		return CheckResponse{Properties: req.NewInputs}, nil
 	}
 
-	molds, err := MarshalProperties(req.Olds, MarshalOptions{
-		Label:          label + ".olds",
-		KeepUnknowns:   req.AllowUnknowns,
-		KeepSecrets:    protocol.acceptSecrets,
-		KeepResources:  protocol.acceptResources,
-		KeepByteString: protocol.acceptsByteString,
-		// Technically, olds can be nil and we ought to be able to send it as nil so that provivders could distinguish
-		// between no old state (as in the case of create) vs the old state being empty (an unlikely but possible
-		// scenario for a resource with no set inputs). However, we have been unconditionally forcing this to empty
-		// instead of nil for a long time and at least the NodeJS provider implementation relies on this behavior, so we
-		// must continue to do so for compatibility.
-		PropagateNil: false,
+	filteredOldInputs, err := FilterProperties(req.OldInputs, FilterOptions{
+		KeepUnknowns:         req.AllowUnknowns,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return CheckResponse{}, err
 	}
-	mnews, err := MarshalProperties(req.News, MarshalOptions{
-		Label:          label + ".news",
-		KeepUnknowns:   req.AllowUnknowns,
-		KeepSecrets:    protocol.acceptSecrets,
-		KeepResources:  protocol.acceptResources,
-		KeepByteString: protocol.acceptsByteString,
-		PropagateNil:   true,
+	// Technically, olds can be nil and we ought to be able to send it as nil so that provivders could distinguish
+	// between no old state (as in the case of create) vs the old state being empty (an unlikely but possible
+	// scenario for a resource with no set inputs). However, we have been unconditionally forcing this to empty
+	// instead of nil for a long time and at least the NodeJS provider implementation relies on this behavior, so we
+	// must continue to do so for compatibility.
+	moldInputs := propertyrpc.Marshal(filteredOldInputs)
+
+	filteredNewInputs, err := FilterProperties(req.NewInputs, FilterOptions{
+		KeepUnknowns:         req.AllowUnknowns,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return CheckResponse{}, err
 	}
+	mNewInputs := propertyrpc.Marshal(filteredNewInputs)
 
 	var autonaming *pulumirpc.CheckRequest_AutonamingOptions
 	if req.Autonaming != nil {
@@ -1233,27 +1252,23 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		}
 	}
 
-	var moldOutputs *structpb.Struct
-	if req.OldOutputs != nil {
-		moldOutputs, err = MarshalProperties(req.OldOutputs, MarshalOptions{
-			Label:          label + ".oldOutputs",
-			KeepUnknowns:   req.AllowUnknowns,
-			KeepSecrets:    protocol.acceptSecrets,
-			KeepResources:  protocol.acceptResources,
-			KeepByteString: protocol.acceptsByteString,
-			PropagateNil:   true,
-		})
-		if err != nil {
-			return CheckResponse{}, err
-		}
+	filteredOldOutputs, err := FilterProperties(req.OldOutputs, FilterOptions{
+		KeepUnknowns:         req.AllowUnknowns,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
+	})
+	if err != nil {
+		return CheckResponse{}, err
 	}
+	moldOutputs := propertyrpc.Marshal(filteredOldOutputs)
 
 	resp, err := client.Check(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:        string(req.URN),
 		Name:       req.URN.Name(),
 		Type:       req.URN.Type().String(),
-		Olds:       molds,
-		News:       mnews,
+		Olds:       moldInputs,
+		News:       mNewInputs,
 		OldOutputs: moldOutputs,
 		RandomSeed: req.RandomSeed,
 		Autonaming: autonaming,
@@ -1265,15 +1280,17 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	// Unmarshal the provider inputs.
-	var inputs resource.PropertyMap
+	var inputs property.Map
 	if ins := resp.GetInputs(); ins != nil {
-		inputs, err = UnmarshalProperties(ins, MarshalOptions{
-			Label:          label + ".inputs",
+		raw, err := propertyrpc.Unmarshal(ins)
+		if err != nil {
+			return CheckResponse{}, err
+		}
+		inputs, err = FilterProperties(raw, FilterOptions{
 			KeepUnknowns:   req.AllowUnknowns,
 			RejectUnknowns: !req.AllowUnknowns,
 			KeepSecrets:    true,
 			KeepResources:  true,
-			PropagateNil:   true,
 		})
 		if err != nil {
 			return CheckResponse{}, err
@@ -1284,7 +1301,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
 	if !protocol.acceptSecrets {
-		annotateSecrets(inputs, req.News)
+		inputs = annotateSecrets(inputs, req.NewInputs)
 	}
 
 	// And now any properties that failed verification.
@@ -1293,7 +1310,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
+	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, inputs.Len(), len(failures))
 	return CheckResponse{Properties: inputs, Failures: failures}, nil
 }
 
@@ -1307,13 +1324,10 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 
 	contract.Assertf(req.URN != "", "Diff requires a URN")
 	contract.Assertf(req.ID != "", "Diff requires an ID")
-	contract.Assertf(req.OldInputs != nil, "Diff requires old input properties")
-	contract.Assertf(req.NewInputs != nil, "Diff requires new input properties")
-	contract.Assertf(req.OldOutputs != nil, "Diff requires old output properties")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), req.URN, req.ID)
 	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+		label, req.OldInputs.Len(), req.OldOutputs.Len(), req.NewInputs.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1332,44 +1346,41 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		return DiffResult{}, DiffUnavailable(message)
 	}
 
-	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
-		Label:              label + ".oldInputs",
-		ElideAssetContents: true,
-		KeepUnknowns:       req.AllowUnknowns,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		KeepByteString:     protocol.acceptsByteString,
-		PropagateNil:       true,
+	filteredOldInputs, err := FilterProperties(req.OldInputs, FilterOptions{
+		ElideAssetContents:   true,
+		KeepUnknowns:         req.AllowUnknowns,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
+	mOldInputs := propertyrpc.Marshal(filteredOldInputs)
 
-	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
-		Label:              label + ".oldOutputs",
-		ElideAssetContents: true,
-		KeepUnknowns:       req.AllowUnknowns,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		KeepByteString:     protocol.acceptsByteString,
-		PropagateNil:       true,
+	filteredOldOutputs, err := FilterProperties(req.OldOutputs, FilterOptions{
+		ElideAssetContents:   true,
+		KeepUnknowns:         req.AllowUnknowns,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
+	mOldOutputs := propertyrpc.Marshal(filteredOldOutputs)
 
-	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
-		Label:              label + ".newInputs",
-		ElideAssetContents: true,
-		KeepUnknowns:       req.AllowUnknowns,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		KeepByteString:     protocol.acceptsByteString,
-		PropagateNil:       true,
+	filteredNewInputs, err := FilterProperties(req.NewInputs, FilterOptions{
+		ElideAssetContents:   true,
+		KeepUnknowns:         req.AllowUnknowns,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return DiffResult{}, err
 	}
+	mNewInputs := propertyrpc.Marshal(filteredNewInputs)
 
 	resp, err := client.Diff(p.requestContext(), &pulumirpc.DiffRequest{
 		Id:            string(req.ID),
@@ -1423,13 +1434,10 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
 	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
-	contract.Assertf(req.Properties != nil, "Create requires new input properties")
-
 	contract.Assertf(req.URN != "", "Create requires a URN")
-	contract.Assertf(req.Properties != nil, "Create requires properties")
 
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), req.URN)
-	logging.V(7).Infof("%s executing (#props=%v)", label, len(req.Properties))
+	logging.V(7).Infof("%s executing (#props=%v)", label, req.Properties.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1464,17 +1472,16 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assertf(pcfg.known, "Create cannot be called if the configuration is unknown")
 
-	mprops, err := MarshalProperties(req.Properties, MarshalOptions{
-		Label:          label + ".inputs",
-		KeepUnknowns:   req.Preview,
-		KeepSecrets:    protocol.acceptSecrets,
-		KeepResources:  protocol.acceptResources,
-		KeepByteString: protocol.acceptsByteString,
-		PropagateNil:   true,
+	filteredProps, err := FilterProperties(req.Properties, FilterOptions{
+		KeepUnknowns:         req.Preview,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return CreateResponse{}, err
 	}
+	mprops := propertyrpc.Marshal(filteredProps)
 
 	var id resource.ID
 	var liveObject *structpb.Struct
@@ -1510,13 +1517,15 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 			fmt.Errorf("plugin returned empty resource.ID from create '%v'", req.URN)
 	}
 
-	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label:          label + ".outputs",
+	rawOuts, err := propertyrpc.Unmarshal(liveObject)
+	if err != nil {
+		return CreateResponse{Status: resourceStatus}, err
+	}
+	outs, err := FilterProperties(rawOuts, FilterOptions{
 		RejectUnknowns: !req.Preview,
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    true,
 		KeepResources:  true,
-		PropagateNil:   true,
 	})
 	if err != nil {
 		return CreateResponse{Status: resourceStatus}, err
@@ -1526,10 +1535,10 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
 	if !protocol.acceptSecrets {
-		annotateSecrets(outs, req.Properties)
+		outs = annotateSecrets(outs, req.Properties)
 	}
 
-	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
+	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, outs.Len())
 
 	return CreateResponse{
 		ID:                  id,
@@ -1552,7 +1561,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	contract.Assertf(req.ID != "", "Read ID was empty")
 
 	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), req.ID, req.URN)
-	logging.V(7).Infof("%s executing (#inputs=%v, #state=%v)", label, len(req.Inputs), len(req.State))
+	logging.V(7).Infof("%s executing (#inputs=%v, #state=%v)", label, req.Inputs.Len(), req.State.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1564,45 +1573,40 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	// If the provider is not fully configured, return an empty bag.
 	if !pcfg.known {
 		return ReadResponse{ReadResult{
-			Outputs: resource.PropertyMap{},
-			Inputs:  resource.PropertyMap{},
+			Outputs: new(property.Map{}),
+			Inputs:  new(property.Map{}),
 		}, resource.StatusUnknown}, nil
 	}
 
 	// Marshal the resource inputs and state so we can perform the RPC.
 	var minputs *structpb.Struct
-	if req.Inputs != nil {
-		m, err := MarshalProperties(req.Inputs, MarshalOptions{
-			Label:              label,
-			ElideAssetContents: true,
-			KeepSecrets:        protocol.acceptSecrets,
-			KeepResources:      protocol.acceptResources,
-			KeepByteString:     protocol.acceptsByteString,
-			PropagateNil:       true,
+	if req.Inputs.Len() != 0 {
+		filteredInputs, err := FilterProperties(req.Inputs, FilterOptions{
+			ElideAssetContents:   true,
+			KeepSecrets:          protocol.acceptSecrets,
+			KeepResources:        protocol.acceptResources,
+			RejectNonUTF8Strings: !protocol.acceptsByteString,
 		})
 		if err != nil {
 			return ReadResponse{Status: resource.StatusUnknown}, err
 		}
-		minputs = m
+		minputs = propertyrpc.Marshal(filteredInputs)
 	}
-	mstate, err := MarshalProperties(req.State, MarshalOptions{
-		Label:              label,
-		ElideAssetContents: true,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		KeepByteString:     protocol.acceptsByteString,
-		PropagateNil:       true,
+	filteredState, err := FilterProperties(req.State, FilterOptions{
+		ElideAssetContents:   true,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
 	}
+	mstate := propertyrpc.Marshal(filteredState)
 
-	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:          label,
-		KeepSecrets:    protocol.acceptSecrets,
-		KeepResources:  protocol.acceptResources,
-		KeepByteString: protocol.acceptsByteString,
-		PropagateNil:   true,
+	oldViews, err := marshalViews(req.OldViews, FilterOptions{
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return ReadResponse{Status: resource.StatusUnknown}, err
@@ -1643,44 +1647,69 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	}
 
 	// Finally, unmarshal the resulting state properties and return them.
-	newState, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label:          label + ".outputs",
-		RejectUnknowns: true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		PropagateNil:   true,
-	})
-	if err != nil {
-		return ReadResponse{Status: resourceStatus}, err
-	}
-
-	var newInputs resource.PropertyMap
-	if liveInputs != nil {
-		newInputs, err = UnmarshalProperties(liveInputs, MarshalOptions{
-			Label:          label + ".inputs",
+	var newState *property.Map
+	if liveObject != nil {
+		rawState, err := propertyrpc.Unmarshal(liveObject)
+		if err != nil {
+			return ReadResponse{Status: resourceStatus}, err
+		}
+		state, err := FilterProperties(rawState, FilterOptions{
 			RejectUnknowns: true,
 			KeepSecrets:    true,
 			KeepResources:  true,
-			PropagateNil:   true,
 		})
 		if err != nil {
 			return ReadResponse{Status: resourceStatus}, err
 		}
+		newState = &state
 	}
 
-	// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
-	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
-	// natively.
-	if !protocol.acceptSecrets {
-		annotateSecrets(newInputs, req.Inputs)
-		annotateSecrets(newState, req.State)
+	var newInputs *property.Map
+	if liveInputs != nil {
+		rawInputs, err := propertyrpc.Unmarshal(liveInputs)
+		if err != nil {
+			return ReadResponse{Status: resourceStatus}, err
+		}
+		inputs, err := FilterProperties(rawInputs, FilterOptions{
+			RejectUnknowns: true,
+			KeepSecrets:    true,
+			KeepResources:  true,
+		})
+		if err != nil {
+			return ReadResponse{Status: resourceStatus}, err
+		}
+		newInputs = &inputs
 	}
 
-	// make sure any echoed properties restore their original asset contents if they have not changed
-	restoreElidedAssetContents(req.Inputs, newInputs)
-	restoreElidedAssetContents(req.Inputs, newState)
+	mlen := func(m *property.Map) int {
+		if m == nil {
+			return 0
+		}
+		return m.Len()
+	}
 
-	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, len(newState), len(newInputs))
+	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, mlen(newState), mlen(newInputs))
+
+	if newState != nil {
+		// make sure any echoed properties restore their original asset contents if they have not changed. Assets
+		// may appear in either the old inputs or the old state, and are matched by hash, so check both sources.
+		newState = new(restoreElidedAssetContents(req.Inputs, *newState))
+		newState = new(restoreElidedAssetContents(req.State, *newState))
+		// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
+		// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
+		// natively.
+		if !protocol.acceptSecrets {
+			newState = new(annotateSecrets(*newState, req.State))
+		}
+	}
+	if newInputs != nil {
+		newInputs = new(restoreElidedAssetContents(req.Inputs, *newInputs))
+		newInputs = new(restoreElidedAssetContents(req.State, *newInputs))
+		if !protocol.acceptSecrets {
+			newInputs = new(annotateSecrets(*newInputs, req.Inputs))
+		}
+	}
+
 	return ReadResponse{ReadResult{
 		ID:                  readID,
 		Outputs:             newState,
@@ -1699,13 +1728,10 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 
 	contract.Assertf(req.URN != "", "Update requires a URN")
 	contract.Assertf(req.ID != "", "Update requires an ID")
-	contract.Assertf(req.OldInputs != nil, "Update requires old inputs")
-	contract.Assertf(req.OldOutputs != nil, "Update requires old outputs")
-	contract.Assertf(req.NewInputs != nil, "Update requires new properties")
 
 	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), req.ID, req.URN)
 	logging.V(7).Infof("%s executing (#oldInputs=%v,#oldOutputs=%v,#newInputs=%v)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+		label, req.OldInputs.Len(), req.OldOutputs.Len(), req.NewInputs.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1730,7 +1756,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 			if p.legacyPreview {
 				return UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
 			}
-			return UpdateResponse{Properties: resource.PropertyMap{}, Status: resource.StatusOK}, nil
+			return UpdateResponse{Properties: property.Map{}, Status: resource.StatusOK}, nil
 		}
 		if !protocol.supportsPreview || p.disableProviderPreview {
 			return UpdateResponse{Properties: req.NewInputs, Status: resource.StatusOK}, nil
@@ -1740,46 +1766,43 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
 	contract.Assertf(pcfg.known, "Update cannot be called if the configuration is unknown")
 
-	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
-		Label:              label + ".oldInputs",
-		ElideAssetContents: true,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		KeepByteString:     protocol.acceptsByteString,
-		PropagateNil:       true,
+	filteredOldInputs, err := FilterProperties(req.OldInputs, FilterOptions{
+		ElideAssetContents:   true,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
 	}
-	mOldOutputs, err := MarshalProperties(req.OldOutputs, MarshalOptions{
-		Label:              label + ".oldOutputs",
-		ElideAssetContents: true,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		KeepByteString:     protocol.acceptsByteString,
-		PropagateNil:       true,
-	})
-	if err != nil {
-		return UpdateResponse{Status: resource.StatusOK}, err
-	}
-	mNewInputs, err := MarshalProperties(req.NewInputs, MarshalOptions{
-		Label:          label + ".newInputs",
-		KeepUnknowns:   req.Preview,
-		KeepSecrets:    protocol.acceptSecrets,
-		KeepResources:  protocol.acceptResources,
-		KeepByteString: protocol.acceptsByteString,
-		PropagateNil:   true,
-	})
-	if err != nil {
-		return UpdateResponse{Status: resource.StatusOK}, err
-	}
+	mOldInputs := propertyrpc.Marshal(filteredOldInputs)
 
-	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:          label + ".oldViews",
-		KeepSecrets:    protocol.acceptSecrets,
-		KeepResources:  protocol.acceptResources,
-		KeepByteString: protocol.acceptsByteString,
-		PropagateNil:   true,
+	filteredOldOutputs, err := FilterProperties(req.OldOutputs, FilterOptions{
+		ElideAssetContents:   true,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
+	})
+	if err != nil {
+		return UpdateResponse{Status: resource.StatusOK}, err
+	}
+	mOldOutputs := propertyrpc.Marshal(filteredOldOutputs)
+
+	filteredNewInputs, err := FilterProperties(req.NewInputs, FilterOptions{
+		KeepUnknowns:         req.Preview,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
+	})
+	if err != nil {
+		return UpdateResponse{Status: resource.StatusOK}, err
+	}
+	mNewInputs := propertyrpc.Marshal(filteredNewInputs)
+
+	oldViews, err := marshalViews(req.OldViews, FilterOptions{
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resource.StatusOK}, err
@@ -1817,13 +1840,15 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
 	}
 
-	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label:          label + ".outputs",
+	rawOuts, err := propertyrpc.Unmarshal(liveObject)
+	if err != nil {
+		return UpdateResponse{Status: resourceStatus}, err
+	}
+	outs, err := FilterProperties(rawOuts, FilterOptions{
 		RejectUnknowns: !req.Preview,
 		KeepUnknowns:   req.Preview,
 		KeepSecrets:    true,
 		KeepResources:  true,
-		PropagateNil:   true,
 	})
 	if err != nil {
 		return UpdateResponse{Status: resourceStatus}, err
@@ -1833,9 +1858,14 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
 	// natively.
 	if !protocol.acceptSecrets {
-		annotateSecrets(outs, req.NewInputs)
+		outs = annotateSecrets(outs, req.NewInputs)
 	}
-	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
+
+	// make sure any echoed properties restore their original asset contents if they have not changed
+	outs = restoreElidedAssetContents(req.OldInputs, outs)
+	outs = restoreElidedAssetContents(req.OldOutputs, outs)
+
+	logging.V(7).Infof("%s success; #outs=%d", label, outs.Len())
 
 	return UpdateResponse{
 		Properties:          outs,
@@ -1855,11 +1885,8 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	contract.Assertf(req.URN != "", "Delete requires a URN")
 	contract.Assertf(req.ID != "", "Delete requires an ID")
 
-	contract.Assertf(req.Inputs != nil, "Delete requires input properties")
-	contract.Assertf(req.Outputs != nil, "Delete requires output properties")
-
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), req.URN, req.ID)
-	logging.V(7).Infof("%s executing (#inputs=%d, #outputs=%d)", label, len(req.Inputs), len(req.Outputs))
+	logging.V(7).Infof("%s executing (#inputs=%d, #outputs=%d)", label, req.Inputs.Len(), req.Outputs.Len())
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1871,36 +1898,32 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	// We should never call delete at preview time, so we should never see unknowns here
 	contract.Assertf(pcfg.known, "Delete cannot be called if the configuration is unknown")
 
-	minputs, err := MarshalProperties(req.Inputs, MarshalOptions{
-		Label:              label,
-		ElideAssetContents: true,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		KeepByteString:     protocol.acceptsByteString,
-		PropagateNil:       true,
+	filteredInputs, err := FilterProperties(req.Inputs, FilterOptions{
+		ElideAssetContents:   true,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
 	}
+	minputs := propertyrpc.Marshal(filteredInputs)
 
-	moutputs, err := MarshalProperties(req.Outputs, MarshalOptions{
-		Label:              label,
-		ElideAssetContents: true,
-		KeepSecrets:        protocol.acceptSecrets,
-		KeepResources:      protocol.acceptResources,
-		KeepByteString:     protocol.acceptsByteString,
-		PropagateNil:       true,
+	filteredOutputs, err := FilterProperties(req.Outputs, FilterOptions{
+		ElideAssetContents:   true,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
 	}
+	moutputs := propertyrpc.Marshal(filteredOutputs)
 
-	oldViews, err := marshalViews(req.OldViews, MarshalOptions{
-		Label:          label + ".oldViews",
-		KeepSecrets:    protocol.acceptSecrets,
-		KeepResources:  protocol.acceptResources,
-		KeepByteString: protocol.acceptsByteString,
-		PropagateNil:   true,
+	oldViews, err := marshalViews(req.OldViews, FilterOptions{
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return DeleteResponse{}, err
@@ -1943,16 +1966,15 @@ func (p *provider) List(ctx context.Context, req ListRequest) (*ListStream, erro
 		return NewComputedListStream(), nil
 	}
 
-	query, err := MarshalProperties(resource.ToResourcePropertyMap(req.Query), MarshalOptions{
-		Label:          label + ".query",
-		KeepSecrets:    protocol.acceptSecrets,
-		KeepResources:  protocol.acceptResources,
-		KeepByteString: protocol.acceptsByteString,
-		PropagateNil:   true,
+	filteredQuery, err := FilterProperties(req.Query, FilterOptions{
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 	})
 	if err != nil {
 		return nil, err
 	}
+	query := propertyrpc.Marshal(filteredQuery)
 
 	// Use a cancellable child of the context. We hold onto the cancel so we can release the underlying gRPC stream
 	// resources on every exit path from the iterator below — including when the caller breaks out of the range loop
@@ -2056,21 +2078,21 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	}
 
 	// Marshal the input properties.
-	minputs, err := MarshalProperties(resource.ToResourcePropertyMap(req.Inputs), MarshalOptions{
-		Label:          label + ".inputs",
-		KeepUnknowns:   true,
-		KeepSecrets:    protocol.acceptSecrets,
-		KeepResources:  protocol.acceptResources,
-		KeepByteString: protocol.acceptsByteString,
+	filteredInputs, err := FilterProperties(req.Inputs, FilterOptions{
+		KeepUnknowns:         true,
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
 		// To initially scope the use of this new feature, we only keep output values for
 		// Construct and Call (when the client accepts them).
-		KeepOutputValues:      protocol.acceptOutputs,
-		UpgradeToOutputValues: protocol.acceptOutputs,
-		PropagateNil:          true,
+		KeepDependencies: protocol.acceptOutputs,
 	})
 	if err != nil {
 		return ConstructResult{}, err
 	}
+	minputs := propertyrpc.MarshalWithOptions(filteredInputs, propertyrpc.MarshalOptions{
+		PreferOutputValues: protocol.acceptOutputs,
+	})
 
 	// Marshal the aliases.
 	aliasURNs := make([]string, len(req.Options.Aliases))
@@ -2113,18 +2135,18 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	// Marshal the replacement trigger.
 	var replacementTrigger *structpb.Value
 	if !req.Options.ReplacementTrigger.IsNull() {
-		value := resource.ToResourcePropertyValue(req.Options.ReplacementTrigger)
-		trigger, err := MarshalPropertyValue("replacementTrigger", value, MarshalOptions{
-			Label:            label + ".replacementTrigger",
+		filtered, keep, err := FilterPropertyValue(req.Options.ReplacementTrigger, FilterOptions{
 			KeepUnknowns:     req.Info.DryRun,
 			KeepSecrets:      true,
 			KeepResources:    true,
-			KeepOutputValues: true,
+			KeepDependencies: true,
 		})
 		if err != nil {
 			return ConstructResult{}, err
 		}
-		replacementTrigger = trigger
+		if keep {
+			replacementTrigger = propertyrpc.MarshalValue(filtered)
+		}
 	}
 
 	// Marshal the resource hook bindings.
@@ -2137,6 +2159,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		resourceHook.AfterUpdate = req.Options.ResourceHooks[resource.AfterUpdate]
 		resourceHook.BeforeDelete = req.Options.ResourceHooks[resource.BeforeDelete]
 		resourceHook.AfterDelete = req.Options.ResourceHooks[resource.AfterDelete]
+		resourceHook.OnError = req.Options.ResourceHooks[resource.OnError]
 	}
 
 	aliases := make([]*pulumirpc.Alias, len(req.Options.Aliases))
@@ -2208,13 +2231,15 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		return ConstructResult{}, err
 	}
 
-	outputs, err := UnmarshalProperties(resp.GetState(), MarshalOptions{
-		Label:            label + ".outputs",
-		KeepUnknowns:     req.Info.DryRun,
+	rawOutputs, err := propertyrpc.Unmarshal(resp.GetState())
+	if err != nil {
+		return ConstructResult{}, err
+	}
+	outputs, err := FilterProperties(rawOutputs, FilterOptions{
+		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
-		KeepOutputValues: true,
-		PropagateNil:     true,
+		KeepDependencies: true,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -2229,15 +2254,39 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		outputDependencies[resource.PropertyKey(k)] = urns
 	}
 
-	logging.V(7).Infof("%s success: #outputs=%d", label, len(outputs))
+	logging.V(7).Infof("%s success: #outputs=%d", label, outputs.Len())
 	return ConstructResponse{
 		URN:                resource.URN(resp.GetUrn()),
-		Outputs:            resource.FromResourcePropertyMap(outputs),
+		Outputs:            outputs,
 		OutputDependencies: outputDependencies,
 	}, nil
 }
 
 // Invoke dynamically executes a built-in function in the provider.
+// collectArgDependencies returns the union of dependencies from every OutputValue nested in args (arrays, objects,
+// secrets, and other OutputValues are walked recursively).
+func collectArgDependencies(args property.Map) []resource.URN {
+	var out []resource.URN
+	var walk func(v property.Value)
+	walk = func(v property.Value) {
+		switch {
+		case v.IsMap():
+			for _, e := range v.AsMap().All {
+				walk(e)
+			}
+		case v.IsArray():
+			for _, e := range v.AsArray().All {
+				walk(e)
+			}
+		}
+		out = append(out, v.Dependencies()...)
+	}
+	for _, v := range args.All {
+		walk(v)
+	}
+	return out
+}
+
 func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeResponse, error) {
 	contract.Assertf(req.Tok != "", "Invoke requires a token")
 
@@ -2256,17 +2305,24 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		return InvokeResponse{Properties: property.Map{}}, nil
 	}
 
-	args := resource.ToResourcePropertyMap(req.Args)
-	margs, err := MarshalProperties(args, MarshalOptions{
-		Label:          label + ".args",
-		KeepSecrets:    protocol.acceptSecrets,
-		KeepResources:  protocol.acceptResources,
-		KeepByteString: protocol.acceptsByteString,
-		PropagateNil:   true,
+	// If the provider does not accept OutputValues we lose the per-value dependency information on the wire.
+	// Collect the union of dependencies from the args first so we can re-hydrate the return values below,
+	// preserving a (coarser) dependency relationship for a downstream SDK that accepts OutputValues.
+	var argDeps []resource.URN
+	if !protocol.acceptsOutputsInInvoke {
+		argDeps = collectArgDependencies(req.Args)
+	}
+
+	filteredArgs, err := FilterProperties(req.Args, FilterOptions{
+		KeepSecrets:          protocol.acceptSecrets,
+		KeepResources:        protocol.acceptResources,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
+		KeepDependencies:     protocol.acceptsOutputsInInvoke,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
 	}
+	margs := propertyrpc.Marshal(filteredArgs)
 
 	resp, err := client.Invoke(p.requestContext(), &pulumirpc.InvokeRequest{
 		Tok:     string(req.Tok),
@@ -2280,12 +2336,15 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	}
 
 	// Unmarshal any return values.
-	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
-		Label:          label + ".returns",
-		RejectUnknowns: true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		PropagateNil:   true,
+	rawRet, err := propertyrpc.Unmarshal(resp.GetReturn())
+	if err != nil {
+		return InvokeResponse{}, err
+	}
+	ret, err := FilterProperties(rawRet, FilterOptions{
+		RejectUnknowns:   true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepDependencies: protocol.acceptsOutputsInInvoke,
 	})
 	if err != nil {
 		return InvokeResponse{}, err
@@ -2297,18 +2356,27 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	if args.ContainsSecrets() && !protocol.acceptSecrets {
-		for k, v := range ret {
-			if v.IsSecret() || (v.IsOutput() && v.OutputValue().Secret) {
+	result := ret.AsMap()
+	if req.Args.HasSecrets() && !protocol.acceptSecrets {
+		for k, v := range result {
+			if v.HasSecrets() {
 				continue
 			}
-			ret[k] = resource.MakeSecret(v)
+			result[k] = v.WithSecret(true)
 		}
 	}
 
-	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
+	// Re-hydrate OutputValues on the return with the union of arg dependencies when the provider did not
+	// support OutputValues on Invoke. See `argDeps` above.
+	if len(argDeps) > 0 {
+		for k, v := range result {
+			result[k] = v.WithDependencies(argDeps)
+		}
+	}
+
+	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(result), len(failures))
 	return InvokeResponse{
-		Properties: resource.FromResourcePropertyMap(ret),
+		Properties: property.NewMap(result),
 		Failures:   failures,
 	}, nil
 }
@@ -2332,20 +2400,25 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		return CallResult{}, nil
 	}
 
-	margs, err := MarshalProperties(resource.ToResourcePropertyMap(req.Args), MarshalOptions{
-		Label:          label + ".args",
-		KeepUnknowns:   true,
-		KeepSecrets:    true,
-		KeepResources:  true,
-		KeepByteString: protocol.acceptsByteString,
-		// To initially scope the use of this new feature, we only keep output values for
-		// Construct and Call (when the client accepts them).
-		KeepOutputValues: protocol.acceptOutputs,
-		PropagateNil:     true,
+	// If the provider does not accept OutputValues we lose the per-value dependency information on the wire.
+	// Collect the union of dependencies from the args first so we can re-hydrate the return values below,
+	// preserving a (coarser) dependency relationship for a downstream SDK that accepts OutputValues.
+	var argDeps []resource.URN
+	if !protocol.acceptsOutputsInCall {
+		argDeps = collectArgDependencies(req.Args)
+	}
+
+	filteredArgs, err := FilterProperties(req.Args, FilterOptions{
+		KeepUnknowns:         true,
+		KeepSecrets:          true,
+		KeepResources:        true,
+		RejectNonUTF8Strings: !protocol.acceptsByteString,
+		KeepDependencies:     protocol.acceptsOutputsInCall,
 	})
 	if err != nil {
 		return CallResult{}, err
 	}
+	margs := propertyrpc.Marshal(filteredArgs)
 
 	// Marshal the arg dependencies.
 	argDependencies := map[string]*pulumirpc.CallRequest_ArgumentDependencies{}
@@ -2383,13 +2456,15 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	}
 
 	// Unmarshal any return values.
-	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
-		Label:            label + ".returns",
+	rawRet, err := propertyrpc.Unmarshal(resp.GetReturn())
+	if err != nil {
+		return CallResult{}, err
+	}
+	ret, err := FilterProperties(rawRet, FilterOptions{
 		KeepUnknowns:     req.Info.DryRun,
 		KeepSecrets:      true,
 		KeepResources:    true,
-		KeepOutputValues: true,
-		PropagateNil:     true,
+		KeepDependencies: true,
 	})
 	if err != nil {
 		return CallResult{}, err
@@ -2404,16 +2479,31 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		returnDependencies[resource.PropertyKey(k)] = urns
 	}
 
+	// Re-hydrate OutputValues on the return with the union of arg dependencies and the per-key return
+	// dependencies when the provider did not support OutputValues on Call. See `argDeps` above.
+	if !protocol.acceptsOutputsInCall {
+		result := ret.AsMap()
+		for k, v := range result {
+			deps := append(v.Dependencies(), argDeps...)
+			deps = append(deps, returnDependencies[resource.PropertyKey(k)]...)
+			if len(deps) > 0 {
+				result[k] = v.WithDependencies(deps)
+			}
+		}
+		ret = property.NewMap(result)
+	}
+
 	// And now any properties that failed verification.
 	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
+	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, ret.Len(), len(failures))
 	return CallResult{
-		Return:             resource.FromResourcePropertyMap(ret),
-		ReturnDependencies: returnDependencies, Failures: failures,
+		Return:             ret,
+		ReturnDependencies: returnDependencies,
+		Failures:           failures,
 	}, nil
 }
 
@@ -2579,6 +2669,10 @@ func parseError(err error) (
 			resourceErr = &InitError{Reasons: initErr.Reasons}
 			break
 		}
+		if _, ok := detail.(*pulumirpc.ErrorResourceAwaitFailed); ok {
+			resourceErr = &AwaitError{}
+			break
+		}
 	}
 
 	return resourceStatus, id, liveObject, liveInputs, refreshBeforeUpdate, resourceErr
@@ -2601,6 +2695,17 @@ func (ie *InitError) Error() string {
 		return "resource init failed"
 	}
 	return err.Error()
+}
+
+// AwaitError indicates the provider had to await the operation. Unlike InitError, no resource state was written
+// (Create) or the prior state is preserved unchanged (Update). The engine reports the resource failed to the SDK and
+// continues the deployment, but the CLI exits with a dedicated non-zero code.
+type AwaitError struct{}
+
+var _ error = (*AwaitError)(nil)
+
+func (ae *AwaitError) Error() string {
+	return "resource is awaiting"
 }
 
 func decorateSpanWithType(span opentracing.Span, urn string) {
@@ -2687,23 +2792,25 @@ func (p *provider) GetMappings(ctx context.Context, req GetMappingsRequest) (Get
 }
 
 // marshalViews is a helper that marshals a slice of views into the gRPC equivalent.
-func marshalViews(views []View, opts MarshalOptions) ([]*pulumirpc.View, error) {
+func marshalViews(views []View, opts FilterOptions) ([]*pulumirpc.View, error) {
 	return slice.MapError(views, func(v View) (*pulumirpc.View, error) {
 		return marshalView(v, opts)
 	})
 }
 
 // marshalView is a helper that marshals a view into the gRPC equivalent.
-func marshalView(v View, opts MarshalOptions) (*pulumirpc.View, error) {
-	inputs, err := MarshalProperties(resource.ToResourcePropertyMap(v.Inputs), opts)
+func marshalView(v View, opts FilterOptions) (*pulumirpc.View, error) {
+	filteredInputs, err := FilterProperties(v.Inputs, opts)
 	if err != nil {
 		return nil, err
 	}
+	inputs := propertyrpc.Marshal(filteredInputs)
 
-	outputs, err := MarshalProperties(resource.ToResourcePropertyMap(v.Outputs), opts)
+	filteredOutputs, err := FilterProperties(v.Outputs, opts)
 	if err != nil {
 		return nil, err
 	}
+	outputs := propertyrpc.Marshal(filteredOutputs)
 
 	return &pulumirpc.View{
 		Type:       string(v.Type),

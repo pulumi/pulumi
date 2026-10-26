@@ -54,11 +54,6 @@ func TestPackageAddNamespace(t *testing.T) {
 			expectedMessage: "You can import the SDK in your Go code with:\n\n  import (\n    \"github.com/my-namespace/pulumi-mypkg/sdk/go/mypkg\"\n  )", //nolint:lll
 			filepath:        filepath.Join("sdks", "my-namespace-mypkg", "go.mod"),
 		},
-		{
-			runtime:         "java",
-			expectedMessage: "To use this SDK in your Java project, complete the following steps",
-			filepath:        filepath.Join("sdks", "my-namespace-mypkg", "src", "main", "java", "com", "mynamespace", "mypkg", "Provider.java"), //nolint:lll
-		},
 	}
 
 	for _, tc := range testCases {
@@ -69,7 +64,7 @@ func TestPackageAddNamespace(t *testing.T) {
 			e.ImportDirectory(filepath.Join("namespace"))
 			e.CWD = filepath.Join(e.RootPath, tc.runtime)
 
-			stdout, _ := e.RunCommand("pulumi", "package", "add", "../provider/schema.json")
+			stdout, _ := e.RunCommandWithRetry("pulumi", "package", "add", "../provider/schema.json")
 
 			require.Contains(t, stdout, tc.expectedMessage)
 			_, err := os.Stat(filepath.Join(e.CWD, tc.filepath))

@@ -278,8 +278,7 @@ func TestBasePluginMapper_NoPluginMatches_ButCanBeInstalled(t *testing.T) {
 		assert.Equal(t, "yetAnotherProvider", pluginName)
 		installCalled = true
 
-		ver := semver.MustParse("1.0.0")
-		return &ver
+		return new(semver.MustParse("1.0.0"))
 	}
 
 	mapper, err := newBasePluginMapper(

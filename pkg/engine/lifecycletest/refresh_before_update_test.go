@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,43 +51,45 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					props := req.Properties.Copy()
+					props := req.Properties.AsMap()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
-						Properties:          props,
+						Properties:          property.NewMap(props),
 						ID:                  "new-id",
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
-					if req.NewInputs.DeepEquals(req.OldInputs) {
+					if req.NewInputs.Equals(req.OldInputs) {
 						return plugin.DiffResponse{Changes: plugin.DiffNone}, nil
 					}
 					return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					assert.Equal(t, fmt.Sprintf("<FRESH-INPUT-%d>", readToken), req.OldInputs["input"].StringValue())
-					assert.Equal(t, fmt.Sprintf("<FRESH-RESULT-%d>", readToken), req.OldOutputs["result"].StringValue())
+					oldInputs := resource.ToResourcePropertyMap(req.OldInputs)
+					oldOutputs := resource.ToResourcePropertyMap(req.OldOutputs)
+					assert.Equal(t, fmt.Sprintf("<FRESH-INPUT-%d>", readToken), oldInputs["input"].StringValue())
+					assert.Equal(t, fmt.Sprintf("<FRESH-RESULT-%d>", readToken), oldOutputs["result"].StringValue())
 
-					props := req.NewInputs.Copy()
+					props := resource.ToResourcePropertyMap(req.NewInputs)
 					props["result"] = props["input"]
 					return plugin.UpdateResponse{
-						Properties:          props,
+						Properties:          resource.FromResourcePropertyMap(props),
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					inputs := req.Inputs.Copy()
+					inputs := resource.ToResourcePropertyMap(req.Inputs)
 					inputs["input"] = resource.NewProperty(fmt.Sprintf("<FRESH-INPUT-%d>", readToken))
-					props := req.State.Copy()
+					props := resource.ToResourcePropertyMap(req.State)
 					props["input"] = inputs["input"]
 					props["result"] = resource.NewProperty(fmt.Sprintf("<FRESH-RESULT-%d>", readToken))
 					return plugin.ReadResponse{
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
 							ID:                  "new-id",
-							Inputs:              inputs,
-							Outputs:             props,
+							Inputs:              ptrMap(inputs),
+							Outputs:             ptrMap(props),
 							RefreshBeforeUpdate: true,
 						},
 					}, nil
@@ -245,10 +248,10 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					props := req.Properties.Copy()
+					props := req.Properties.AsMap()
 					props["result"] = props["input"]
 					return plugin.CreateResponse{
-						Properties:          props,
+						Properties:          property.NewMap(props),
 						ID:                  "new-id",
 						RefreshBeforeUpdate: true,
 					}, nil
@@ -267,8 +270,8 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
 							ID:                  "new-id",
-							Inputs:              req.Inputs,
-							Outputs:             req.State,
+							Inputs:              &req.Inputs,
+							Outputs:             &req.State,
 							RefreshBeforeUpdate: true,
 						},
 					}, nil

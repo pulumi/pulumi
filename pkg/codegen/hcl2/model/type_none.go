@@ -20,7 +20,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 type noneType int
@@ -45,12 +44,16 @@ func (n noneType) Equals(other Type) bool {
 	return n.equals(other, nil)
 }
 
-func (noneType) equals(other Type, seen map[Type]struct{}) bool {
+func (noneType) equals(other Type, seen comparePairs) bool {
 	return other == NoneType
 }
 
 func (noneType) AssignableFrom(src Type) bool {
-	return assignableFrom(NoneType, src, func() bool {
+	return NoneType.assignableFrom(src, nil)
+}
+
+func (noneType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(NoneType, src, seen, func(seen *cycleSet) bool {
 		return false
 	})
 }
@@ -60,9 +63,13 @@ func (noneType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (noneType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
-	return conversionFrom(NoneType, src, unifying, seen, &gsync.Map[Type, cacheEntry]{},
+func (noneType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(NoneType, src, unifying, seen, &typeCache{},
 		func() (ConversionKind, lazyDiagnostics) {
+			// The null literal is a constant of the none type.
+			if src, ok := src.(*ConstType); ok {
+				return NoneType.conversionFrom(src.Type, unifying, seen)
+			}
 			return NoConversion, func() hcl.Diagnostics {
 				return hcl.Diagnostics{typeNotConvertible(NoneType, src)}
 			}
@@ -77,9 +84,10 @@ func (noneType) string(_ map[Type]struct{}) string {
 	return "none"
 }
 
-func (noneType) unify(other Type) (Type, ConversionKind) {
-	return unify(NoneType, other, func() (Type, ConversionKind) {
-		return NoneType, other.ConversionFrom(NoneType)
+func (noneType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(NoneType, other, seen, func() (Type, ConversionKind) {
+		kind, _ := other.conversionFrom(NoneType, true, seen)
+		return NoneType, kind
 	})
 }
 

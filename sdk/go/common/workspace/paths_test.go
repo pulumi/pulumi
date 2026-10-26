@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,34 +56,24 @@ func TestDetectProjectAndPath(t *testing.T) {
 }
 
 func TestPulumiHomeDirForPathFallsBackToAgentDir(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	agentDir := ptesting.IsolateCredentials(t).AgentDir
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
 
 	t.Setenv("CODEX_SANDBOX", "1")
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv(PulumiHomeEnvVar, "")
 
 	badHome := filepath.Join(t.TempDir(), "not-a-directory")
 	require.NoError(t, os.WriteFile(badHome, []byte("not a directory"), 0o600))
 
 	dir, err := pulumiHomeDirForPath(badHome)
 	require.NoError(t, err)
-	assert.Equal(t, agentPulumiDir, dir)
+	assert.Equal(t, agentDir, dir)
 }
 
 func TestPulumiHomeDirForPathKeepsWritableHomeForAgent(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
+	t.Setenv(pulumiTestAllowAgentFallbackEnvVar, "true")
 
 	t.Setenv("CODEX_SANDBOX", "1")
-	t.Setenv(PulumiCredentialsPathEnvVar, "")
-	t.Setenv(PulumiHomeEnvVar, "")
 
 	home := filepath.Join(t.TempDir(), BookkeepingDir)
 	dir, err := pulumiHomeDirForPath(home)
@@ -91,11 +82,7 @@ func TestPulumiHomeDirForPathKeepsWritableHomeForAgent(t *testing.T) {
 }
 
 func TestPulumiHomeDirForPathKeepsExplicitPath(t *testing.T) {
-	oldAgentPulumiDir := agentPulumiDir
-	agentPulumiDir = filepath.Join(t.TempDir(), BookkeepingDir)
-	t.Cleanup(func() {
-		agentPulumiDir = oldAgentPulumiDir
-	})
+	ptesting.IsolateCredentials(t)
 
 	t.Setenv("CODEX_SANDBOX", "1")
 	t.Setenv(PulumiHomeEnvVar, filepath.Join(t.TempDir(), "explicit-home"))
@@ -255,4 +242,18 @@ func TestDetectProjectPathFrom(t *testing.T) {
 	negative, err := DetectProjectPathFrom(d1)
 	assert.ErrorContains(t, err, "no Pulumi.yaml project file found")
 	assert.Equal(t, "", negative)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/25125. Searching from a relative directory,
+// including the empty one that many commands pass for the current directory, names that directory in the
+// error.
+func TestDetectProjectPathFromRelativeDir(t *testing.T) { //nolint:paralleltest
+	tmpDir := mkTempDir(t)
+	t.Chdir(tmpDir)
+
+	for _, dir := range []string{"", "."} {
+		negative, err := DetectProjectPathFrom(dir)
+		assert.ErrorContains(t, err, "no Pulumi.yaml project file found (searching upwards from "+tmpDir+")")
+		assert.Equal(t, "", negative)
+	}
 }

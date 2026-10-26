@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -52,7 +53,11 @@ type mockInstallContext struct {
 
 const mockPluginDir = "/fake/plugins/resource-test-provider-v1.0.0"
 
-func (mockInstallContext) HasPlugin(context.Context, workspace.PluginDescriptor) bool { return true }
+func (mockInstallContext) HasPlugin(
+	context.Context, workspace.PluginDescriptor,
+) pluginstorage.InstallState {
+	return pluginstorage.PluginInstalled
+}
 
 func (mockInstallContext) HasPluginGTE(
 	context.Context, workspace.PluginDescriptor,

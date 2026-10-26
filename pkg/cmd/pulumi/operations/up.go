@@ -92,6 +92,7 @@ func NewUpCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
+	var coherenceWindow string
 	var execKind string
 	var execAgent string
 	var stackName string
@@ -117,6 +118,7 @@ func NewUpCmd() *cobra.Command {
 	var skipConfigValidation bool
 	var showConfig bool
 	var showPolicyRemediations bool
+	var showPolicyExceptions bool
 	var showReplacementSteps bool
 	var showSames bool
 	var showSecrets bool
@@ -229,7 +231,7 @@ func NewUpCmd() *cobra.Command {
 			replaceURNs = append(replaceURNs, tr)
 		}
 
-		refreshOption, err := getRefreshOption(proj, refresh)
+		refreshOption, err := GetRefreshOption(proj, refresh)
 		if err != nil {
 			return err
 		}
@@ -296,6 +298,7 @@ func NewUpCmd() *cobra.Command {
 			SecretsManager:     sm,
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
+			CoherenceWindow:    coherenceWindow,
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
@@ -520,7 +523,7 @@ func NewUpCmd() *cobra.Command {
 			}
 		}
 
-		refreshOption, err := getRefreshOption(proj, refresh)
+		refreshOption, err := GetRefreshOption(proj, refresh)
 		if err != nil {
 			return err
 		}
@@ -569,6 +572,7 @@ func NewUpCmd() *cobra.Command {
 			SecretsManager:     sm,
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
+			CoherenceWindow:    coherenceWindow,
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
@@ -600,7 +604,7 @@ func NewUpCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.\n" +
 			"\n" +
 			"Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary\n" +
-			" project is created, deployed, and then deleted, leaving only the stack state.",
+			"project is created, deployed, and then deleted, leaving only the stack state.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
@@ -661,6 +665,7 @@ func NewUpCmd() *cobra.Command {
 				Color:                  cmdutil.GetGlobalColorization(),
 				ShowConfig:             showConfig,
 				ShowPolicyRemediations: showPolicyRemediations,
+				ShowPolicyExceptions:   showPolicyExceptions,
 				ShowReplacementSteps:   showReplacementSteps,
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
@@ -687,9 +692,9 @@ func NewUpCmd() *cobra.Command {
 
 			if remoteArgs.Remote {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
-					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
-					showReads, suppressOutputs, secretsProvider, &targets, &excludes, replaces, targetReplaces,
-					targetDependents, planFilePath, configFile, runProgram)
+					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showPolicyExceptions,
+					showReplacementSteps, showSames, showReads, suppressOutputs, secretsProvider, &targets, &excludes,
+					replaces, targetReplaces, targetDependents, planFilePath, configFile, runProgram, coherenceWindow)
 				if err != nil {
 					return err
 				}
@@ -877,6 +882,10 @@ func NewUpCmd() *cobra.Command {
 		"Show per-resource policy remediation details instead of a summary",
 	)
 	cmd.PersistentFlags().BoolVar(
+		&showPolicyExceptions, "show-policy-exceptions", false,
+		"Show each exempted policy violation instead of a summary",
+	)
+	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step",
 	)
@@ -1001,6 +1010,8 @@ func NewUpCmd() *cobra.Command {
 	}
 
 	// internal flags
+	cmd.PersistentFlags().StringVar(&coherenceWindow, "coherence-window", "", "")
+	_ = cmd.PersistentFlags().MarkHidden("coherence-window")
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")

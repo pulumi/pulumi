@@ -49,7 +49,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -668,6 +667,13 @@ func massageBlobPath(path string) (string, error) {
 		}
 	}
 
+	// On Windows a URI like file:///C:/my/path leaves "/C:/my/path" once the scheme is
+	// stripped. Drop the leading slash so filepath.Abs below doesn't treat the path as
+	// relative to the current drive and duplicate the drive letter (C:\C:\my\path).
+	if os.PathSeparator != '/' && strings.HasPrefix(path, "/") && filepath.VolumeName(path[1:]) != "" {
+		path = path[1:]
+	}
+
 	// For file:// backend, ensure a relative path is resolved. fileblob only supports absolute paths.
 	path, err = filepath.Abs(path)
 	if err != nil {
@@ -689,7 +695,9 @@ func massageBlobPath(path string) (string, error) {
 // before the upgrade keep working:
 //
 //   - disableSSL becomes disable_https; gocloud.dev v0.46 rejects the v1 name as an unknown
-//     query parameter.
+//     query parameter. When the endpoint carries an explicit scheme, disableSSL is dropped
+//     instead: the v1 SDK only used it to pick a scheme for scheme-less endpoints, while
+//     disable_https unconditionally downgrades requests to HTTP.
 //   - a scheme-less endpoint (e.g. endpoint=minio:9000) gets an explicit http:// or https://
 //     scheme depending on disableSSL; the v1 SDK implied the scheme, while the v2 SDK
 //     requires one.
@@ -716,7 +724,9 @@ func translateLegacyS3Params(urlstr string) (string, error) {
 			return "", fmt.Errorf("invalid value for query parameter %q: %w", "disableSSL", err)
 		}
 		query.Del("disableSSL")
-		query.Set("disable_https", strconv.FormatBool(disableSSL))
+		if !strings.Contains(query.Get("endpoint"), "://") {
+			query.Set("disable_https", strconv.FormatBool(disableSSL))
+		}
 		changed = true
 	}
 
@@ -1292,12 +1302,6 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil, nil)
 }
 
-func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
-	op backend.UpdateOperation, paths []string,
-) error {
-	return backend.Watch(ctx, b, stk, op, b.apply, paths)
-}
-
 // apply actually performs the provided type of update on a diy hosted stack.
 func (b *diyBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
@@ -1316,10 +1320,13 @@ func (b *diyBackend) apply(
 		return nil, nil, err
 	}
 
+	if op.CoherenceWindow != "" {
+		return nil, nil, errors.New("coherence windows are only supported by the Pulumi Cloud backend")
+	}
+
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&
-		op.Opts.Display.Type != display.DisplayWatch {
+	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
 		// than a logical span, but this is a convenient way to record this information.
 		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
@@ -1529,48 +1536,6 @@ func (b *diyBackend) GetHistory(
 		return nil, err
 	}
 	return updates, nil
-}
-
-func (b *diyBackend) GetLogs(ctx context.Context,
-	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
-	query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	diyStackRef, err := b.getReference(stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-
-	target, err := b.getTarget(ctx, secretsProvider, diyStackRef, cfg.Config, cfg.Decrypter)
-	if err != nil {
-		return nil, err
-	}
-
-	return GetLogsForTarget(ctx, target, query)
-}
-
-// GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
-func GetLogsForTarget(
-	ctx context.Context, target *deploy.Target, query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	contract.Requiref(target != nil, "target", "must not be nil")
-
-	if target.Snapshot == nil {
-		// If the stack has not been deployed yet, return no logs.
-		return nil, nil
-	}
-
-	config, err := target.Config.Decrypt(target.Decrypter)
-	if err != nil {
-		return nil, err
-	}
-
-	components := operations.NewResourceTree(target.Snapshot.Resources)
-	ops := components.OperationsProvider(config)
-	logs, err := ops.GetLogs(ctx, query)
-	if logs == nil {
-		return nil, err
-	}
-	return *logs, err
 }
 
 func (b *diyBackend) ExportDeployment(ctx context.Context,

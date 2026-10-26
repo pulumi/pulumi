@@ -1,6 +1,18 @@
-// Copyright 2016, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build !all
-// +build !all
 
 package main
 
@@ -31,7 +43,7 @@ type BarArgs struct {
 }
 
 func (BarArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*Bar)(nil)).Elem()
+	return reflect.TypeFor[Bar]()
 }
 
 func (i BarArgs) ToBarOutput() BarOutput {
@@ -68,7 +80,7 @@ type BarPtrInput interface {
 type BarOutput struct{ *pulumi.OutputState }
 
 func (BarOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Bar)(nil)).Elem()
+	return reflect.TypeFor[Bar]()
 }
 
 func (o BarOutput) ToBarOutput() BarOutput {
@@ -96,7 +108,7 @@ func (o BarOutput) Tags() pulumi.StringMapOutput {
 type BarPtrOutput struct{ *pulumi.OutputState }
 
 func (BarPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Bar)(nil)).Elem()
+	return reflect.TypeFor[*Bar]()
 }
 
 func (o BarPtrOutput) ToBarPtrOutput() BarPtrOutput {
@@ -146,7 +158,7 @@ type FooArgs struct {
 }
 
 func (FooArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*Foo)(nil)).Elem()
+	return reflect.TypeFor[Foo]()
 }
 
 func (i FooArgs) ToFooOutput() FooOutput {
@@ -183,7 +195,7 @@ type FooPtrInput interface {
 type FooOutput struct{ *pulumi.OutputState }
 
 func (FooOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Foo)(nil)).Elem()
+	return reflect.TypeFor[Foo]()
 }
 
 func (o FooOutput) ToFooOutput() FooOutput {
@@ -211,7 +223,7 @@ func (o FooOutput) Something() pulumi.StringPtrOutput {
 type FooPtrOutput struct{ *pulumi.OutputState }
 
 func (FooPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Foo)(nil)).Elem()
+	return reflect.TypeFor[*Foo]()
 }
 
 func (o FooPtrOutput) ToFooPtrOutput() FooPtrOutput {
@@ -242,10 +254,10 @@ func (o FooPtrOutput) Something() pulumi.StringPtrOutput {
 }
 
 func init() {
-	pulumi.RegisterInputType(reflect.TypeOf((*BarInput)(nil)).Elem(), BarArgs{})
-	pulumi.RegisterInputType(reflect.TypeOf((*BarPtrInput)(nil)).Elem(), BarArgs{})
-	pulumi.RegisterInputType(reflect.TypeOf((*FooInput)(nil)).Elem(), FooArgs{})
-	pulumi.RegisterInputType(reflect.TypeOf((*FooPtrInput)(nil)).Elem(), FooArgs{})
+	pulumi.RegisterInputType(reflect.TypeFor[BarInput](), BarArgs{})
+	pulumi.RegisterInputType(reflect.TypeFor[BarPtrInput](), BarArgs{})
+	pulumi.RegisterInputType(reflect.TypeFor[FooInput](), FooArgs{})
+	pulumi.RegisterInputType(reflect.TypeFor[FooPtrInput](), FooArgs{})
 	pulumi.RegisterOutputType(BarOutput{})
 	pulumi.RegisterOutputType(BarPtrOutput{})
 	pulumi.RegisterOutputType(FooOutput{})

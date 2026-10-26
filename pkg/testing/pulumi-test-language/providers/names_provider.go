@@ -130,6 +130,7 @@ func (p *NamesProvider) CheckConfig(
 func (p *NamesProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if !slices.Contains(p.Types(), req.URN.Type().String()) {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -137,7 +138,7 @@ func (p *NamesProvider) Check(
 	}
 
 	// Expect just the boolean value
-	value, ok := req.News["value"]
+	value, ok := news["value"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "missing value"),
@@ -148,18 +149,19 @@ func (p *NamesProvider) Check(
 			Failures: makeCheckFailure("value", "value is not a boolean"),
 		}, nil
 	}
-	if len(req.News) != 1 {
+	if len(news) != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *NamesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if !slices.Contains(p.Types(), req.URN.Type().String()) {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -173,7 +175,7 @@ func (p *NamesProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }
@@ -241,15 +243,17 @@ func (p *NamesProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugi
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
+	readInputs := resource.FromResourcePropertyMap(resource.PropertyMap{
+		"value": resource.NewProperty(true),
+	})
+	readOutputs := resource.FromResourcePropertyMap(resource.PropertyMap{
+		"value": resource.NewProperty(true),
+	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
-			ID: req.ID,
-			Inputs: resource.PropertyMap{
-				"value": resource.NewProperty(true),
-			},
-			Outputs: resource.PropertyMap{
-				"value": resource.NewProperty(true),
-			},
+			ID:      req.ID,
+			Inputs:  &readInputs,
+			Outputs: &readOutputs,
 		},
 		Status: resource.StatusOK,
 	}, nil

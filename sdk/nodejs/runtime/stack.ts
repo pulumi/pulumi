@@ -20,6 +20,7 @@ import { ComponentResource, Resource, ResourceTransform, ResourceTransformation 
 import { InvokeTransform } from "../invoke";
 import { getCallbacks, isDryRun, setRootResource } from "./settings";
 import { getStore, setStackResource, getStackResource as stateGetStackResource } from "./state";
+import { ensureNotInStateMigration } from "./stateMigration";
 
 /**
  * The type name that should be used to construct the root component in the tree
@@ -197,6 +198,8 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
  * stack.
  */
 export function registerStackTransformation(t: ResourceTransformation) {
+    ensureNotInStateMigration("register stack transformation");
+
     const stackResource = getStackResource();
     if (!stackResource) {
         throw new Error("The root stack resource was referenced before it was initialized.");
@@ -209,6 +212,8 @@ export function registerStackTransformation(t: ResourceTransformation) {
  * stack.
  */
 export function registerResourceTransform(t: ResourceTransform): void {
+    ensureNotInStateMigration("register resource transform");
+
     if (!getStore().supportsTransforms) {
         throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
     }
@@ -234,6 +239,8 @@ export function registerStackTransform(t: ResourceTransform) {
  * Add a transformation to all future invoke calls in this Pulumi stack.
  */
 export function registerInvokeTransform(t: InvokeTransform): void {
+    ensureNotInStateMigration("register invoke transform");
+
     if (!getStore().supportsInvokeTransforms) {
         throw new Error("The Pulumi CLI does not support transforms. Please update the Pulumi CLI");
     }

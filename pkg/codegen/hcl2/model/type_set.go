@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // SetType represents sets of particular element types.
@@ -29,12 +28,12 @@ type SetType struct {
 	// ElementType is the element type of the set.
 	ElementType Type
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 // NewSetType creates a new set type with the given element type.
 func NewSetType(elementType Type) *SetType {
-	return &SetType{ElementType: elementType, cache: &gsync.Map[Type, cacheEntry]{}}
+	return &SetType{ElementType: elementType, cache: &typeCache{}}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -52,7 +51,7 @@ func (t *SetType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *SetType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *SetType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
@@ -63,9 +62,13 @@ func (t *SetType) equals(other Type, seen map[Type]struct{}) bool {
 // AssignableFrom returns true if this type is assignable from the indicated source type. A set(T) is assignable
 // from values of type set(U) where T is assignable from U.
 func (t *SetType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *SetType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		if src, ok := src.(*SetType); ok {
-			return t.ElementType.AssignableFrom(src.ElementType)
+			return t.ElementType.assignableFrom(src.ElementType, seen)
 		}
 		return false
 	})
@@ -80,7 +83,7 @@ func (t *SetType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *SetType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *SetType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *SetType:
@@ -130,22 +133,22 @@ func (t *SetType) string(seen map[Type]struct{}) string {
 	return fmt.Sprintf("set(%s)", t.ElementType.string(seen))
 }
 
-func (t *SetType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *SetType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		switch other := other.(type) {
 		case *SetType:
 			// If the other type is a set type, unify based on the element type.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType)
+			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
 			return NewSetType(elementType), conversionKind
 		case *ListType:
 			// Prefer the list type, but unify the element types.
-			element, conversionKind := t.ElementType.unify(other.ElementType)
+			element, conversionKind := t.ElementType.unify(other.ElementType, seen)
 			return NewListType(element), conversionKind
 		case *TupleType:
 			// Prefer the set type, but unify the element type.
 			elementType, conversionKind := t.ElementType, UnsafeConversion
 			for _, other := range other.ElementTypes {
-				element, ck := elementType.unify(other)
+				element, ck := elementType.unify(other, seen)
 				if ck < conversionKind {
 					conversionKind = ck
 				}
@@ -154,7 +157,7 @@ func (t *SetType) unify(other Type) (Type, ConversionKind) {
 			return NewSetType(elementType), conversionKind
 		default:
 			// Prefer the set type.
-			kind, _ := t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, seen)
 			return t, kind
 		}
 	})

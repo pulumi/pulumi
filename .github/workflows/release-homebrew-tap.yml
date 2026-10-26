@@ -2,6 +2,7 @@ name: Post-Release Homebrew Tap
 
 permissions:
   contents: read
+  id-token: write
 
 on:
   workflow_call:
@@ -37,13 +38,26 @@ on:
 
 env:
   PULUMI_VERSION: ${{ inputs.version }}
-  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: GITHUB_TOKEN=PULUMI_BOT_TOKEN
 
 jobs:
   update-homebrew-tap:
     name: Update Homebrew Tap
     runs-on: ubuntu-latest
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Checkout Repo
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
@@ -54,7 +68,7 @@ jobs:
         with:
           repository: pulumi/homebrew-tap
           path: homebrew-tap
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
       - name: Update Homebrew Tap
         run: |
           set -euo pipefail

@@ -195,6 +195,10 @@ func newPolicyAnalyzeCmd(
 				return fmt.Errorf("loading policy packs: %w", err)
 			}
 			defer cleanup()
+			exceptions, err := engine.LocalPolicyPackExceptions(ctx, cmdutil.Diag(), packs, analyzers)
+			if err != nil {
+				return fmt.Errorf("loading policy exceptions: %w", err)
+			}
 
 			// Run analysis against the snapshot.
 			events, finish, err := newAnalyzeEvents(
@@ -204,7 +208,7 @@ func newPolicyAnalyzeCmd(
 			if err != nil {
 				return fmt.Errorf("configuring analysis display: %w", err)
 			}
-			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, events)
+			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, exceptions, events)
 			result := apitype.OperationResultFromError(err)
 			if err == nil && hasMandatory {
 				result = apitype.OperationResultFailed
@@ -350,6 +354,7 @@ func newAnalyzeEvents(
 		Color:                  colorization,
 		Type:                   displayType,
 		ShowPolicyRemediations: true,
+		ShowPolicyExceptions:   true,
 		IsInteractive:          cmdutil.Interactive(),
 		JSONDisplay:            jsonDisplay,
 		Stdout:                 out,
@@ -364,19 +369,19 @@ func newAnalyzeEvents(
 		"", events, done, opts, false)
 
 	return &analyzeEvents{
-			events: events,
-		}, func(result apitype.OperationResult) {
-			events <- engine.NewEvent(engine.SummaryEventPayload{
-				IsPreview:       false,
-				MaybeCorrupt:    false,
-				Duration:        0 * time.Second,
-				ResourceChanges: nil,
-				PolicyPacks:     policyPacks,
-				Result:          result,
-			})
-			close(events)
-			<-done
-		}, nil
+		events: events,
+	}, func(result apitype.OperationResult) {
+		events <- engine.NewEvent(engine.SummaryEventPayload{
+			IsPreview:       false,
+			MaybeCorrupt:    false,
+			Duration:        0 * time.Second,
+			ResourceChanges: nil,
+			PolicyPacks:     policyPacks,
+			Result:          result,
+		})
+		close(events)
+		<-done
+	}, nil
 }
 
 func policyPackVersions(ctx context.Context, analyzers []plugin.Analyzer) (map[string]string, error) {
@@ -409,14 +414,16 @@ func (e *analyzeEvents) writeEvent(event engine.Event) {
 		return
 	}
 
-	msg := display.RenderDiffEvent(event, 0, e.seen, e.opts)
+	msg := display.RenderDiffEvent(event, 0, 0, e.seen, e.opts)
 	if msg == "" {
 		return
 	}
 	fmt.Fprint(e.out, msg)
 }
 
-func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+func (e *analyzeEvents) OnPolicyViolation(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
 	e.outLock.Lock()
 	defer e.outLock.Unlock()
 	e.writeEvent(engine.NewEvent(engine.PolicyViolationEventPayload{
@@ -427,6 +434,7 @@ func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiag
 		PolicyPackVersion: d.PolicyPackVersion,
 		EnforcementLevel:  d.EnforcementLevel,
 		Severity:          d.Severity,
+		Exceptions:        exceptions,
 	}))
 }
 

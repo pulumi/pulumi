@@ -101,6 +101,7 @@ func (p *ConstProvider) CheckConfig(
 func (p *ConstProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "constant:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -117,7 +118,7 @@ func (p *ConstProvider) Check(
 		{"ratio", resource.NewProperty(1.5)},
 	}
 	for _, c := range constants {
-		v, ok := req.News[c.name]
+		v, ok := news[c.name]
 		if !ok {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure(c.name, "missing value"),
@@ -130,12 +131,13 @@ func (p *ConstProvider) Check(
 		}
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *ConstProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "constant:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -149,7 +151,7 @@ func (p *ConstProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

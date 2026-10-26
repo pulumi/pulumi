@@ -126,7 +126,7 @@ func (p *snapshotBenchProvider) Create(ctx context.Context, req plugin.CreateReq
 	}
 	return plugin.CreateResponse{
 		ID:         "id",
-		Properties: outputs,
+		Properties: resource.FromResourcePropertyMap(outputs),
 	}, nil
 }
 
@@ -138,7 +138,7 @@ func (p *snapshotBenchProvider) Read(ctx context.Context, req plugin.ReadRequest
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      "id",
-			Outputs: outputs,
+			Outputs: new(resource.FromResourcePropertyMap(outputs)),
 		},
 	}, nil
 }
@@ -149,7 +149,7 @@ func (p *snapshotBenchProvider) Update(ctx context.Context, req plugin.UpdateReq
 		return plugin.UpdateResponse{}, fmt.Errorf("unknown resource %v", req.URN)
 	}
 	return plugin.UpdateResponse{
-		Properties: outputs,
+		Properties: resource.FromResourcePropertyMap(outputs),
 	}, nil
 }
 

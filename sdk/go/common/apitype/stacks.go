@@ -68,12 +68,18 @@ type CreateStackRequest struct {
 	State *UntypedDeployment `json:"state,omitempty"`
 
 	Config *StackConfig `json:"config,omitempty"`
+
+	// ManagedEnvironment asks the service to create an ESC environment that the stack manages.
+	ManagedEnvironment bool `json:"managedEnvironment,omitempty"`
 }
 
 // CreateStackResponse is the response from a create Stack request.
 type CreateStackResponse struct {
 	// Messages is a list of messages that should be displayed to the user.
 	Messages []Message `json:"messages,omitempty"`
+
+	// ManagedEnvironment is "<project>/<name>" of the ESC environment created for the stack, if any.
+	ManagedEnvironment string `json:"managedEnvironment,omitempty"`
 }
 
 // EncryptValueRequest defines the request body for encrypting a value.
@@ -142,7 +148,26 @@ type StackOutputsResponse struct {
 	// SecretsProviders is the secrets provider for the secret values in Outputs.
 	// It is absent when the stack has no state.
 	SecretsProviders *SecretsProvidersV1 `json:"secretsProviders,omitempty"`
+
+	// Unknown reports that the values in Outputs are placeholders to be treated as unknown: the
+	// coherence window reads the stack from a preview that failed before reporting them.
+	Unknown bool `json:"unknown,omitempty"`
+
+	// State is StackOutputsPending while the outputs are not known yet, in which case the response
+	// carries none and the request is repeated until it completes. An absent State is completed.
+	State StackOutputsState `json:"state,omitempty"`
 }
+
+// StackOutputsState reports whether a stack's outputs are known yet.
+type StackOutputsState string
+
+const (
+	// StackOutputsCompleted reports outputs that are in the response.
+	StackOutputsCompleted StackOutputsState = "completed"
+	// StackOutputsPending reports outputs that are not known yet, because a coherence window
+	// subgroup may still run an update of the stack the reading update must observe.
+	StackOutputsPending StackOutputsState = "pending"
+)
 
 // ImportStackRequest defines the request body for importing a Stack.
 type ImportStackRequest UntypedDeployment

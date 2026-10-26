@@ -392,6 +392,10 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 			base = tokenToName(ref.Function.Token) + "Result"
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
 			base = tokenToName(ref.Type.String())
+		case schema.DocRefKindProvider, schema.DocRefKindProviderProperty:
+			base = "Provider"
+		case schema.DocRefKindProviderInputProperty:
+			base = "ProviderArgs"
 		case schema.DocRefKindUnknown:
 			return "", false
 		}
@@ -402,9 +406,9 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 
 		var property string
 		switch ref.Kind {
-		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType:
+		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType, schema.DocRefKindProvider:
 			return base, true
-		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty:
+		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty, schema.DocRefKindProviderProperty, schema.DocRefKindProviderInputProperty:
 			property = cgstrings.Camel(ref.Property)
 		}
 
@@ -1596,13 +1600,13 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 
 	switch t := t.(type) {
 	case *schema.OptionalType:
-		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
+		return mod.getTypeImportsForResource(t.ElementType, recurse, externalImports, imports, seen, res)
 	case *schema.InputType:
-		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
+		return mod.getTypeImportsForResource(t.ElementType, recurse, externalImports, imports, seen, res)
 	case *schema.ArrayType:
-		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
+		return mod.getTypeImportsForResource(t.ElementType, recurse, externalImports, imports, seen, res)
 	case *schema.MapType:
-		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
+		return mod.getTypeImportsForResource(t.ElementType, recurse, externalImports, imports, seen, res)
 	case *schema.EnumType:
 		// If the enum is from another package, add an import for the external package.
 		if t.PackageReference != nil && !codegen.PkgEquals(t.PackageReference, mod.pkg) {
@@ -1642,7 +1646,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 	case *schema.UnionType:
 		needsTypes := false
 		for _, e := range t.ElementTypes {
-			needsTypes = mod.getTypeImports(e, recurse, externalImports, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImportsForResource(e, recurse, externalImports, imports, seen, res) || needsTypes
 		}
 		return needsTypes
 	default:

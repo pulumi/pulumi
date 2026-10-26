@@ -33,6 +33,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -69,6 +70,29 @@ func (p *pip) InstallDependencies(ctx context.Context, cwd string, useLanguageVe
 		showOutput,
 		infoWriter,
 		errorWriter)
+}
+
+func (p *pip) InstallPackage(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool,
+	infoWriter io.Writer, errorWriter io.Writer,
+) error {
+	if err := p.EnsureVenv(ctx, cwd, useLanguageVersionTools, showOutput, infoWriter, errorWriter); err != nil {
+		return fmt.Errorf("creating virtual environment: %w", err)
+	}
+
+	// InstallDependencies installs only the dependencies that requirements.txt lists, so pip must install the
+	// package itself.
+	cmd, err := p.ModuleCommand(ctx, "pip", "install", cwd)
+	if err != nil {
+		return fmt.Errorf("preparing pip install command: %w", err)
+	}
+	if showOutput {
+		cmd.Stdout = infoWriter
+		cmd.Stderr = errorWriter
+		err = cmd.Run()
+	} else {
+		_, err = cmd.Output()
+	}
+	return errutil.ErrorWithStderr(err, "installing package")
 }
 
 func (p *pip) LinkPackages(ctx context.Context, packages map[string]string) error {

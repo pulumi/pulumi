@@ -41,7 +41,7 @@ type ResourceSpec struct {
 	ID                   resource.ID
 	Custom               bool
 	Delete               bool
-	Protect              bool
+	Protect              *bool
 	PendingReplacement   bool
 	RetainOnDelete       bool
 	Provider             string
@@ -71,7 +71,7 @@ func FromResource(r *pkgresource.State) *ResourceSpec {
 		Custom:               r.Custom,
 		Delete:               r.Delete,
 		ID:                   r.ID,
-		Protect:              r.Protect,
+		Protect:              new(r.Protect),
 		PendingReplacement:   r.PendingReplacement,
 		RetainOnDelete:       r.RetainOnDelete,
 		Provider:             r.Provider,
@@ -98,7 +98,7 @@ func FromResourceV3(r apitype.ResourceV3) *ResourceSpec {
 		Custom:               r.Custom,
 		Delete:               r.Delete,
 		ID:                   r.ID,
-		Protect:              r.Protect,
+		Protect:              new(r.Protect),
 		PendingReplacement:   r.PendingReplacement,
 		RetainOnDelete:       r.RetainOnDelete,
 		Provider:             r.Provider,
@@ -142,6 +142,11 @@ func (r *ResourceSpec) Copy() *ResourceSpec {
 	aliases := copystructure.Must(copystructure.Copy(r.Aliases)).([]resource.URN)
 	tags := copystructure.Must(copystructure.Copy(r.Tags)).(map[string]bool)
 
+	var protect *bool
+	if r.Protect != nil {
+		protect = new(*r.Protect)
+	}
+
 	return &ResourceSpec{
 		Project:              r.Project,
 		Stack:                r.Stack,
@@ -150,7 +155,7 @@ func (r *ResourceSpec) Copy() *ResourceSpec {
 		Custom:               r.Custom,
 		Delete:               r.Delete,
 		ID:                   r.ID,
-		Protect:              r.Protect,
+		Protect:              protect,
 		PendingReplacement:   r.PendingReplacement,
 		RetainOnDelete:       r.RetainOnDelete,
 		Parent:               r.Parent,
@@ -176,7 +181,7 @@ func (r *ResourceSpec) AsResource() *pkgresource.State {
 		Custom:               r.Custom,
 		Delete:               r.Delete,
 		ID:                   r.ID,
-		Protect:              r.Protect,
+		Protect:              r.Protect != nil && *r.Protect,
 		PendingReplacement:   r.PendingReplacement,
 		RetainOnDelete:       r.RetainOnDelete,
 		Provider:             r.Provider,
@@ -243,8 +248,8 @@ func (r *ResourceSpec) Pretty(indent string) string {
 		fmt.Fprintf(&b, "\n%s  ID:                  %s", indent, r.ID)
 	}
 
-	if r.Protect {
-		fmt.Fprintf(&b, "\n%s  Protect:             true", indent)
+	if r.Protect != nil {
+		fmt.Fprintf(&b, "\n%s  Protect:             %v", indent, *r.Protect)
 	}
 
 	if r.PendingReplacement {
@@ -337,7 +342,7 @@ var GeneratedResourceID = rapid.Custom(func(t *rapid.T) resource.ID {
 // A set of options for configuring the generation of a ResourceSpec.
 type ResourceSpecOptions struct {
 	Custom             *rapid.Generator[bool]
-	Protect            *rapid.Generator[bool]
+	Protect            *rapid.Generator[*bool]
 	PendingReplacement *rapid.Generator[bool]
 	RetainOnDelete     *rapid.Generator[bool]
 }
@@ -363,7 +368,7 @@ func (rso ResourceSpecOptions) With(overrides ResourceSpecOptions) ResourceSpecO
 // A default set of ResourceSpecOptions. By default, all configurations are equally likely.
 var defaultResourceSpecOptions = ResourceSpecOptions{
 	Custom:             rapid.Bool(),
-	Protect:            rapid.Bool(),
+	Protect:            rapid.Ptr(rapid.Bool(), true),
 	PendingReplacement: rapid.Bool(),
 	RetainOnDelete:     rapid.Bool(),
 }
@@ -389,7 +394,7 @@ func GeneratedProviderResourceSpec(
 
 			Custom:             true,
 			Delete:             false,
-			Protect:            false,
+			Protect:            nil,
 			PendingReplacement: false,
 			RetainOnDelete:     false,
 

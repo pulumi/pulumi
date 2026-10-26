@@ -27,6 +27,7 @@ import grpc
 
 from . import settings
 from ._context import wrap_with_context
+from ._state_migration_context import _ensure_not_in_state_migration
 from .proto import resource_pb2
 from .. import _types, log
 from ..resource import (
@@ -121,15 +122,6 @@ async def _wait_for_shutdown() -> None:
             log.debug("Monitor does not implement `SignalAndWaitForShutdown`")
 
 
-class ResourceRegistrationFailed(Exception):
-    """
-    Marker exception used to fault the outputs of a resource whose registration the engine
-    reported as failed (via a non-SUCCESS result). Consumers can catch it via `Output.recover`;
-    unrecovered instances are silently ignored by `wait_for_rpcs` at program exit so that
-    continue-on-error updates can keep going.
-    """
-
-
 async def run_pulumi_func(
     func: Callable[[], Optional[Awaitable[None]]],
 ) -> None:
@@ -216,15 +208,7 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
 
                 # Await the completed task so any exception is re-raised here.
                 for task in done:
-                    try:
-                        await task
-                    except ResourceRegistrationFailed:
-                        # Outputs of a resource whose registration the engine reported as failed
-                        # are intentionally faulted. Users can consume the failure via
-                        # `Output.recover`; if they don't, we still shouldn't tear down the
-                        # program at exit — continue-on-error updates want other resources to
-                        # keep running.
-                        pass
+                    await task
 
                 # Put unfinished tasks back for the next iteration.
                 if not_done:
@@ -480,6 +464,8 @@ def register_stack_transformation(t: ResourceTransformation):
     """
     Add a transformation to all future resources constructed in this Pulumi stack.
     """
+    _ensure_not_in_state_migration("register stack transformation")
+
     root_resource = get_root_resource()
     if root_resource is None:
         raise Exception(
@@ -502,6 +488,8 @@ def register_resource_transform(t: ResourceTransform) -> None:
     """
     Add a transform to all future resources constructed in this Pulumi stack.
     """
+    _ensure_not_in_state_migration("register resource transform")
+
     if not monitor_supports_feature(resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS):
         raise Exception(
             "The Pulumi CLI does not support transforms. Please update the Pulumi CLI."
@@ -531,6 +519,8 @@ def register_invoke_transform(t: InvokeTransform) -> None:
     """
     Add a transforms to all future invokes called in this Pulumi stack.
     """
+
+    _ensure_not_in_state_migration("register invoke transform")
 
     if not monitor_supports_feature(
         resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS

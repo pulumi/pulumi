@@ -94,11 +94,12 @@ func (b *binder) bindReadResourceBody(node *ReadResource) hcl.Diagnostics {
 		node.logicalName = logicalName
 	}
 
-	resourceProperties := make(map[string]schema.Type)
-	resourceProperties["id"] = schema.StringType
+	resourceProperties := map[string]*schema.Property{
+		"id": {Name: "id", Type: schema.StringType},
+	}
 	if node.Schema != nil && node.Schema.StateInputs != nil {
 		for _, property := range node.Schema.StateInputs.Properties {
-			resourceProperties[property.Name] = property.Type
+			resourceProperties[property.Name] = property
 		}
 	}
 

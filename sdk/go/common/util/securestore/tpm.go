@@ -161,11 +161,11 @@ func (tpmWrapper) unwrap(blob []byte) ([]byte, error) {
 	}
 	priv, err := tpm2.Unmarshal[tpm2.TPM2BPrivate](privBytes)
 	if err != nil {
-		return nil, fmt.Errorf("stored key is corrupt (bad TPM private blob): %w", err)
+		return nil, fmt.Errorf("%w (bad TPM private blob): %w", ErrKeyCorrupt, err)
 	}
 	pub, err := tpm2.Unmarshal[tpm2.TPM2BPublic](pubBytes)
 	if err != nil {
-		return nil, fmt.Errorf("stored key is corrupt (bad TPM public blob): %w", err)
+		return nil, fmt.Errorf("%w (bad TPM public blob): %w", ErrKeyCorrupt, err)
 	}
 
 	return withTimeout(tpmOpTimeout, func() ([]byte, error) {

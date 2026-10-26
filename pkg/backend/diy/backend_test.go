@@ -38,7 +38,6 @@ import (
 	"gocloud.dev/blob/fileblob"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
@@ -49,7 +48,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -191,6 +190,12 @@ func TestMassageBlobPath(t *testing.T) {
 		testMassagePath(t, FilePathPrefix+"/1/2/3/../4/..", FilePathPrefix+expected+noTmpDirSuffix)
 	})
 
+	t.Run("DriveLetterURI", func(t *testing.T) {
+		t.Parallel()
+
+		testMassagePath(t, FilePathPrefix+"/C:/Users/steve", FilePathPrefix+"/C:/Users/steve"+noTmpDirSuffix)
+	})
+
 	t.Run("AlreadySuffixedWithNoTmpDir", func(t *testing.T) {
 		t.Parallel()
 
@@ -209,21 +214,6 @@ func TestMassageBlobPath(t *testing.T) {
 		testMassagePath(t, FilePathPrefix+"/1?no_tmp_dir=false", FilePathPrefix+"/1")
 		testMassagePath(t, FilePathPrefix+"/1?foo=bar&no_tmp_dir=false", FilePathPrefix+"/1?foo=bar")
 	})
-}
-
-func TestGetLogsForTargetWithNoSnapshot(t *testing.T) {
-	t.Parallel()
-
-	target := &deploy.Target{
-		Name:      tokens.MustParseStackName("test"),
-		Config:    config.Map{},
-		Decrypter: config.NopDecrypter,
-		Snapshot:  nil,
-	}
-	query := operations.LogQuery{}
-	res, err := GetLogsForTarget(t.Context(), target, query)
-	require.NoError(t, err)
-	assert.Nil(t, res)
 }
 
 func makeUntypedDeployment(t *testing.T, name string, phrase, state string) (*apitype.UntypedDeployment, error) {
@@ -307,8 +297,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	require.NoError(t, err)
 
 	// Remove the config passphrase so that we can no longer deserialize the checkpoints
-	err = os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
-	require.NoError(t, err)
+	ptesting.Unsetenv(t, "PULUMI_CONFIG_PASSPHRASE")
 
 	// Ensure that we can list the stacks we created even without a passphrase
 	stacks, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
@@ -2240,4 +2229,21 @@ func TestStateStoreNoun(t *testing.T) {
 			assert.Equal(t, tt.expected, stateStoreNoun(tt.url))
 		})
 	}
+}
+
+func TestDIYRejectsCoherenceWindows(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(t.TempDir()), nil)
+	require.NoError(t, err)
+	ref, err := b.ParseStackReference("organization/project/stack")
+	require.NoError(t, err)
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+
+	_, _, err = b.Preview(ctx, s, backend.UpdateOperation{
+		CoherenceWindow: "d333a711-4aa0-402f-be6d-72af9665fc37",
+	}, nil)
+	require.EqualError(t, err, "coherence windows are only supported by the Pulumi Cloud backend")
 }

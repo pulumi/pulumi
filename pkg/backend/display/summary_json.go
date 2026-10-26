@@ -97,8 +97,7 @@ func resourceJSONFromEvent(p engine.ResourcePreEventPayload, showSames bool) *Re
 		parent = string(p.Metadata.Old.Parent)
 	}
 
-	r := NewResourceJSON(p.Metadata.URN, apitype.OpType(p.Metadata.Op), parent)
-	return &r
+	return new(NewResourceJSON(p.Metadata.URN, apitype.OpType(p.Metadata.Op), parent))
 }
 
 // NewResourceJSON builds the per-resource summary entry from the fields

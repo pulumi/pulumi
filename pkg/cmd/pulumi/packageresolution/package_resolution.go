@@ -117,9 +117,10 @@ func (PathResolution) isResolution()    {}
 type (
 	// A fully resolved package.
 	PackageResolution struct {
-		Spec                 workspace.PackageSpec
-		Pkg                  workspace.PackageDescriptor
-		InstalledInWorkspace bool // If package is already installed in the global workplace.
+		Spec workspace.PackageSpec
+		Pkg  workspace.PackageDescriptor
+		// If the package is already available, and how.
+		InstallState pluginstorage.InstallState
 	}
 	// A fully resolved plugin with not yet resolved parameterization.
 	//
@@ -134,9 +135,9 @@ type (
 	// would know the name and version of the resolved plugin
 	// (terraform-provider@<latest>).
 	PluginResolution struct {
-		Spec                 workspace.PackageSpec
-		Pkg                  workspace.UnresolvedPackageDescriptor
-		InstalledInWorkspace bool
+		Spec         workspace.PackageSpec
+		Pkg          workspace.UnresolvedPackageDescriptor
+		InstallState pluginstorage.InstallState
 	}
 	// A local path based plugin.
 	PathResolution struct {
@@ -176,7 +177,8 @@ func naivePackageDescriptor(
 }
 
 func naiveResolution(
-	spec workspace.PackageSpec, desc workspace.UnresolvedPackageDescriptor, installed bool,
+	spec workspace.PackageSpec, desc workspace.UnresolvedPackageDescriptor,
+	installState pluginstorage.InstallState,
 ) Resolution {
 	if desc.IsGitPlugin() && spec.PluginDownloadURL == "" {
 		spec.Source = strings.TrimPrefix(desc.PluginDownloadURL, "git://")
@@ -195,20 +197,21 @@ func naiveResolution(
 			Pkg: workspace.PackageDescriptor{
 				PluginDescriptor: desc.PluginDescriptor,
 			},
-			InstalledInWorkspace: installed,
+			InstallState: installState,
 		}
 	}
 
 	// Otherwise we at least have the plugin.
 	return PluginResolution{
-		Spec:                 spec,
-		Pkg:                  desc,
-		InstalledInWorkspace: installed,
+		Spec:         spec,
+		Pkg:          desc,
+		InstallState: installState,
 	}
 }
 
 func registryResolution(
-	spec workspace.PackageSpec, metadata apitype.PackageMetadata, installed bool,
+	spec workspace.PackageSpec, metadata apitype.PackageMetadata,
+	installState pluginstorage.InstallState,
 ) (Resolution, error) {
 	spec = workspace.PackageSpec{
 		Source:     path.Join(metadata.Source, metadata.Publisher, metadata.Name),
@@ -240,10 +243,10 @@ func registryResolution(
 				PluginDescriptor:     pluginDescriptor,
 				ParameterizationArgs: parameterizeArgs(spec),
 			},
-			InstalledInWorkspace: installed,
+			InstallState: installState,
 		}
 		slog.Info("Resolved package via the registry to plugin",
-			"package", spec.Source, "plugin", plugin, "installed-in-workspace", installed)
+			"package", spec.Source, "plugin", plugin, "install-state", fmt.Sprintf("%#v", installState))
 
 		return plugin, nil
 	}
@@ -263,30 +266,37 @@ func registryResolution(
 	}
 
 	pkg := PackageResolution{
-		Spec:                 spec,
-		Pkg:                  pkgDescriptor,
-		InstalledInWorkspace: installed,
+		Spec:         spec,
+		Pkg:          pkgDescriptor,
+		InstallState: installState,
 	}
 	slog.Info("Resolved package via the registry to package",
-		"package", spec.Source, "resolution", pkg, "installed-in-workspace", installed)
+		"package", spec.Source, "resolution", pkg, "install-state", fmt.Sprintf("%#v", installState))
 	return pkg, nil
 }
 
-func IsPluginInstalled(
+// GetInstallState reports if a plugin is available to run, and at which version.
+//
+// A plugin that is attached is available, but it has no version and no directory in the
+// plugin cache.
+func GetInstallState(
 	ctx context.Context,
 	plugin workspace.PluginDescriptor, ws pluginstorage.Context, options Options,
-) (bool, *semver.Version, error) {
-	if ws.HasPlugin(ctx, plugin) {
-		return true, plugin.Version, nil
+) (pluginstorage.InstallState, *semver.Version, error) {
+	if state := ws.HasPlugin(ctx, plugin); state.Available() {
+		return state, plugin.Version, nil
 	}
 
 	if plugin.Version == nil && options.ResolveVersionWithLocalWorkspace {
 		has, version, err := ws.HasPluginGTE(ctx, plugin)
-		if err != nil || has {
-			return has, version, err
+		if err != nil {
+			return pluginstorage.PluginNotInstalled, nil, err
+		}
+		if has {
+			return pluginstorage.PluginInstalled, version, nil
 		}
 	}
-	return false, nil, nil
+	return pluginstorage.PluginNotInstalled, nil, nil
 }
 
 func Resolve(
@@ -311,32 +321,32 @@ func Resolve(
 	}
 
 	if options.AllowNonInvertableLocalWorkspaceResolution {
-		installed, atVersion, err := IsPluginInstalled(ctx, naivePackageDescriptor.PluginDescriptor, ws, options)
+		installState, atVersion, err := GetInstallState(ctx, naivePackageDescriptor.PluginDescriptor, ws, options)
 		if err != nil {
 			return nil, err
 		}
-		if installed {
+		if installState.Available() {
 			if atVersion != nil {
 				spec.Version = atVersion.String()
 				naivePackageDescriptor.Version = atVersion
 			}
-			return naiveResolution(spec, naivePackageDescriptor, true), nil
+			return naiveResolution(spec, naivePackageDescriptor, installState), nil
 		}
 	}
 
 	remoteResolution := func() (Resolution, error) {
 		slog.InfoContext(ctx, "Resolved package to an external source",
 			"spec", spec, "descriptor", naivePackageDescriptor)
-		installed, atVersion, err := IsPluginInstalled(ctx, naivePackageDescriptor.PluginDescriptor, ws, options)
+		installState, atVersion, err := GetInstallState(ctx, naivePackageDescriptor.PluginDescriptor, ws, options)
 		if err != nil {
 			return nil, err
 		}
-		if installed {
+		if installState.Available() {
 			if atVersion != nil {
 				naivePackageDescriptor.Version = atVersion
 				spec.Version = atVersion.String()
 			}
-			return naiveResolution(spec, naivePackageDescriptor, true), nil
+			return naiveResolution(spec, naivePackageDescriptor, installState), nil
 		}
 
 		// We still don't have a version, so let's look up the latest version.
@@ -353,7 +363,7 @@ func Resolve(
 		}
 
 		// At this point, we either have a version or aren't going to have one
-		return naiveResolution(spec, naivePackageDescriptor, false), nil
+		return naiveResolution(spec, naivePackageDescriptor, pluginstorage.PluginNotInstalled), nil
 	}
 
 	if workspace.IsExternalURL(spec.Source) || naivePackageDescriptor.IsGitPlugin() {
@@ -402,7 +412,11 @@ func Resolve(
 			// There is no local version of this plugin that meets our version requirements, so we just
 			// request the latest.
 			if !has || version == nil {
-				return registryResolution(spec, metadata, has)
+				installState := pluginstorage.PluginNotInstalled
+				if has {
+					installState = pluginstorage.PluginInstalled
+				}
+				return registryResolution(spec, metadata, installState)
 			}
 
 			// We have a version that's already installed at the right major version, so we should use
@@ -412,13 +426,13 @@ func Resolve(
 			if errors.Is(err, registry.ErrNotFound) {
 				// The version we have isn't in the registry so it doesn't
 				// count. Use the latest version from the registry.
-				return registryResolution(spec, metadata, false)
+				return registryResolution(spec, metadata, pluginstorage.PluginNotInstalled)
 			}
 			if err != nil {
 				return nil, err
 			}
 			spec.Version = version.String()
-			return registryResolution(spec, newMetadata, true)
+			return registryResolution(spec, newMetadata, pluginstorage.PluginInstalled)
 		}
 		if errors.Is(err, registry.ErrNotFound) {
 			registryNotFoundErr = err

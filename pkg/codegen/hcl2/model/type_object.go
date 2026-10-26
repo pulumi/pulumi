@@ -17,6 +17,7 @@ package model
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"sync/atomic"
@@ -30,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // ObjectType represents schematized maps from strings to particular types.
@@ -43,7 +43,7 @@ type ObjectType struct {
 	propertyUnion Type
 	s             atomic.Value // Value<string>
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 	// Whether typechecking and traversal emit error or warning diagnostics. Non-strict mode returns warnings.
 	Strict bool
 }
@@ -53,7 +53,7 @@ func NewObjectType(properties map[string]Type, annotations ...any) *ObjectType {
 	return &ObjectType{
 		Properties:  properties,
 		Annotations: annotations,
-		cache:       &gsync.Map[Type, cacheEntry]{},
+		cache:       &typeCache{},
 		Strict:      true,
 	}
 }
@@ -176,18 +176,19 @@ func (t *ObjectType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *ObjectType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *ObjectType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
+	pair := [2]Type{t, other}
 	if seen != nil {
-		if _, ok := seen[t]; ok {
+		if _, ok := seen[pair]; ok {
 			return true
 		}
 	} else {
-		seen = map[Type]struct{}{}
+		seen = comparePairs{}
 	}
-	seen[t] = struct{}{}
+	seen[pair] = struct{}{}
 
 	otherObject, ok := other.(*ObjectType)
 	if !ok {
@@ -208,14 +209,18 @@ func (t *ObjectType) equals(other Type, seen map[Type]struct{}) bool {
 // An object({K_0 = T_0, ..., K_N = T_N}) is assignable from U = object({K_0 = U_0, ... K_M = U_M}), where T_I is
 // assignable from U[K_I] for all I from 0 to N.
 func (t *ObjectType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *ObjectType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		if src, ok := src.(*ObjectType); ok {
 			for key, t := range t.Properties {
 				src, ok := src.Properties[key]
 				if !ok {
 					src = NoneType
 				}
-				if !t.AssignableFrom(src) {
+				if !t.assignableFrom(src, seen) {
 					return false
 				}
 			}
@@ -231,7 +236,7 @@ type objectTypeUnifier struct {
 	conversionKind ConversionKind
 }
 
-func (u *objectTypeUnifier) unify(t *ObjectType) {
+func (u *objectTypeUnifier) unify(t *ObjectType, seen *cycleSet) {
 	if !u.any {
 		u.properties = map[string]Type{}
 		maps.Copy(u.properties, t.Properties)
@@ -245,7 +250,7 @@ func (u *objectTypeUnifier) unify(t *ObjectType) {
 
 		for key, t := range t.Properties {
 			if pt, exists := u.properties[key]; exists {
-				unified, ck := pt.unify(t)
+				unified, ck := pt.unify(t, seen)
 				if ck < u.conversionKind {
 					u.conversionKind = ck
 				}
@@ -272,7 +277,7 @@ func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *ObjectType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *ObjectType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ObjectType:
@@ -283,15 +288,15 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool, seen cycleSet) (Con
 				return SafeConversion, nil
 			}
 			if seen == nil {
-				seen = cycleSet{}
+				seen = &cycleSet{}
 			}
 			seen.push(t, src)
 			defer seen.pop(t, src)
 
 			if unifying {
 				var unifier objectTypeUnifier
-				unifier.unify(t)
-				unifier.unify(src)
+				unifier.unify(t, seen)
+				unifier.unify(src, seen)
 				return unifier.conversionKind, nil
 			}
 
@@ -361,14 +366,14 @@ func (t *ObjectType) string(seen map[Type]struct{}) string {
 	return s
 }
 
-func (t *ObjectType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *ObjectType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		switch other := other.(type) {
 		case *MapType:
 			// Prefer the map type, but unify the element type.
 			elementType, conversionKind := other.ElementType, SafeConversion
-			for _, t := range t.Properties {
-				element, ck := elementType.unify(t)
+			for _, t := range slices.SortedFunc(maps.Values(t.Properties), Compare) {
+				element, ck := elementType.unify(t, seen)
 				if ck < conversionKind {
 					conversionKind = ck
 				}
@@ -377,14 +382,23 @@ func (t *ObjectType) unify(other Type) (Type, ConversionKind) {
 			return NewMapType(elementType), conversionKind
 		case *ObjectType:
 			// If the other type is an object type, produce a new type whose properties are the union of the two types.
-			// The types of intersecting properties will be unified.
+			// The types of intersecting properties will be unified. A pair that is already being unified is recursive,
+			// and its unification is the object that the outer call builds.
+			if unified, ok := seen.unification(t, other); ok {
+				return unified, SafeConversion
+			}
+			unified := NewObjectType(nil)
+			seen.pushUnification(t, other, unified)
+			defer seen.popUnification(t, other)
+
 			var unifier objectTypeUnifier
-			unifier.unify(t)
-			unifier.unify(other)
-			return NewObjectType(unifier.properties), unifier.conversionKind
+			unifier.unify(t, seen)
+			unifier.unify(other, seen)
+			unified.Properties = unifier.properties
+			return unified, unifier.conversionKind
 		default:
 			// Otherwise, prefer the object type.
-			kind, _ := t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, seen)
 			return t, kind
 		}
 	})

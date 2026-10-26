@@ -101,13 +101,15 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
+	"l2-resource-exists":                 "Python program generation does not support resourceExists yet",
 	"l1-builtin-try":                     "Temporarily disabled until pr #18915 is submitted",
 	"l1-builtin-can":                     "Temporarily disabled until pr #18916 is submitted",
 	"l3-deferred-outputs":                "does not type-check",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l2-resource-schema-secret":          "does not preserve schema-secret unknown outputs",
-	"l3-range-invoke-output-traversal":   "len()/apply on an Output: generated program fails mypy",
 	"l2-raw-string-bytes":                "the Python SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
+	"l2-invoke-per-value-deps":           "output aware invokes not yet implemented",
+	"l2-call-per-value-deps":             "output aware calls not yet implemented",
 }
 
 type languageTestConfig struct {

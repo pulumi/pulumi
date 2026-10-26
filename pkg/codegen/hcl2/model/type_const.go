@@ -23,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // ConstType represents a type that is a single constant value.
@@ -33,12 +32,12 @@ type ConstType struct {
 	// Value is the constant value.
 	Value cty.Value
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 // NewConstType creates a new constant type with the given type and value.
 func NewConstType(typ Type, value cty.Value) *ConstType {
-	return &ConstType{Type: typ, Value: value, cache: &gsync.Map[Type, cacheEntry]{}}
+	return &ConstType{Type: typ, Value: value, cache: &typeCache{}}
 }
 
 func (t *ConstType) pretty(seenFormatters map[Type]pretty.Formatter) pretty.Formatter {
@@ -80,7 +79,7 @@ func (t *ConstType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *ConstType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *ConstType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
@@ -92,7 +91,11 @@ func (t *ConstType) equals(other Type, seen map[Type]struct{}) bool {
 // AssignableFrom returns true if this type is assignable from the indicated source type. A const(value) is assignable
 // from const(value).
 func (t *ConstType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *ConstType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		return false
 	})
 }
@@ -104,12 +107,20 @@ func (t *ConstType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *ConstType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *ConstType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
-		if t.Type.ConversionFrom(src) != NoConversion {
+		notConvertible := func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
+		if src, ok := src.(*ConstType); ok {
+			// A constant either matches or does not, since we know the value.
+			if !t.Value.RawEquals(src.Value) {
+				return NoConversion, notConvertible
+			}
+			return SafeConversion, nil
+		}
+		if kind, _ := t.Type.conversionFrom(src, unifying, seen); kind != NoConversion {
 			return UnsafeConversion, nil
 		}
-		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
+		return NoConversion, notConvertible
 	})
 }
 
@@ -121,9 +132,10 @@ func (t *ConstType) string(_ map[Type]struct{}) string {
 	return t.String()
 }
 
-func (t *ConstType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
-		return t, other.ConversionFrom(t)
+func (t *ConstType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
+		kind, _ := other.conversionFrom(t, true, seen)
+		return t, kind
 	})
 }
 

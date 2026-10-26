@@ -215,9 +215,9 @@ func TestImporter(t *testing.T) {
 							Name:     "res",
 							ID:       "some-id",
 							Provider: providerURN,
-							ProviderInputs: resource.PropertyMap{
-								"region": resource.NewProperty("eu-west-1"),
-							},
+							ProviderInputs: property.NewMap(map[string]property.Value{
+								"region": property.New("eu-west-1"),
+							}),
 						},
 					},
 				},
@@ -258,9 +258,9 @@ func TestImporter(t *testing.T) {
 						{
 							Type: "pulumi:providers:foo",
 							Name: "my-provider",
-							Inputs: resource.PropertyMap{
-								"region": resource.NewProperty("eu-west-1"),
-							},
+							Inputs: property.NewMap(map[string]property.Value{
+								"region": property.New("eu-west-1"),
+							}),
 						},
 						{
 							Type:     "foo:bar:Bar",
@@ -347,18 +347,18 @@ func TestImporter(t *testing.T) {
 							Name:     "res1",
 							ID:       "id-1",
 							Provider: providerURN,
-							ProviderInputs: resource.PropertyMap{
-								"region": resource.NewProperty("eu-west-1"),
-							},
+							ProviderInputs: property.NewMap(map[string]property.Value{
+								"region": property.New("eu-west-1"),
+							}),
 						},
 						{
 							Type:     "foo:bar:Baz",
 							Name:     "res2",
 							ID:       "id-2",
 							Provider: providerURN,
-							ProviderInputs: resource.PropertyMap{
-								"region": resource.NewProperty("eu-west-1"),
-							},
+							ProviderInputs: property.NewMap(map[string]property.Value{
+								"region": property.New("eu-west-1"),
+							}),
 						},
 					},
 				},
@@ -485,6 +485,7 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			ctx: ctx,
 		},
 		deployment: &Deployment{
+			opts:  &Options{},
 			goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 			target: &Target{
@@ -556,6 +557,7 @@ func TestImporterParameterizedExplicitProvider(t *testing.T) {
 			ctx: ctx,
 		},
 		deployment: &Deployment{
+			opts:  &Options{},
 			goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 			target: &Target{
@@ -576,9 +578,9 @@ func TestImporterParameterizedExplicitProvider(t *testing.T) {
 					Name:     "res",
 					ID:       "some-id",
 					Provider: providerURN,
-					ProviderInputs: resource.PropertyMap{
-						"region": resource.NewProperty("eu-west-1"),
-					},
+					ProviderInputs: property.NewMap(map[string]property.Value{
+						"region": property.New("eu-west-1"),
+					}),
 					Parameterization: &Parameterization{
 						PluginName:    "foo",
 						PluginVersion: semver.MustParse("1.0.0"),
@@ -626,6 +628,7 @@ func TestImporterParameterizedDeclaredProvider(t *testing.T) {
 			ctx: ctx,
 		},
 		deployment: &Deployment{
+			opts:  &Options{},
 			goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 			target: &Target{
@@ -644,9 +647,9 @@ func TestImporterParameterizedDeclaredProvider(t *testing.T) {
 					Version: &version,
 					Type:    "pulumi:providers:ParameterizationName",
 					Name:    "my-provider",
-					Inputs: resource.PropertyMap{
-						"region": resource.NewProperty("eu-west-1"),
-					},
+					Inputs: property.NewMap(map[string]property.Value{
+						"region": property.New("eu-west-1"),
+					}),
 					Parameterization: &Parameterization{
 						PluginName:    "foo",
 						PluginVersion: semver.MustParse("1.0.0"),

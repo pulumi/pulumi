@@ -94,22 +94,36 @@ func resolveTemplate(
 	if err != nil {
 		return nil, err
 	}
-	return declinedToChoose(pickFromSet(all, args.yes, opts, selector))
+	return declinedToChoose(pickFromSet(all, args.templateNameOrURL, args.yes, opts, selector))
 }
 
-// `--yes` never prompts, and takes no template rather than guessing among several.
+// `--yes` never prompts: a requested template matching several is an error, and no
+// requested template takes none rather than guessing among all of them.
 func pickFromSet(
-	templates []cmdTemplates.Template, yes bool, opts display.Options, selector selectFunc,
+	templates []cmdTemplates.Template, requested string, yes bool, opts display.Options, selector selectFunc,
 ) (cmdTemplates.Template, error) {
 	switch {
 	case len(templates) == 1:
 		return templates[0], nil
+	case yes && requested != "" && len(templates) > 1:
+		return nil, ambiguousTemplateError(requested, templates)
 	case yes:
 		return nil, nil
 	case len(templates) == 0:
 		return nil, errors.New("no templates")
 	}
 	return chooseTemplateFromList(sortedForDisplay(templates), opts, selector)
+}
+
+func ambiguousTemplateError(requested string, templates []cmdTemplates.Template) error {
+	names := make([]string, 0, len(templates))
+	for _, t := range sortedForDisplay(templates) {
+		names = append(names, t.DisplayName())
+	}
+	return fmt.Errorf("template %q is ambiguous, it matches: %s; "+
+		"rerun without --yes to choose one interactively, or use a more specific "+
+		"name such as <publisher>/%s",
+		requested, strings.Join(names, ", "), requested)
 }
 
 func templateLabeler(templates []cmdTemplates.Template) func(cmdTemplates.Template) string {

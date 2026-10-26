@@ -32,6 +32,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -124,6 +125,8 @@ type Options struct {
 	ShowSecrets bool
 	// Analyzers is the list of policy analyzers to run during this deployment.
 	Analyzers []plugin.Analyzer
+	// PolicyExceptions are the policy exceptions to apply to each analyzer's violations.
+	PolicyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions
 	// StateMigrationSerializer converts resource states to and from the checkpoint representation used by state
 	// migration callbacks. The engine injects it because the serialization logic lives in pkg/resource/stack, which
 	// already imports this package and therefore cannot be imported here.
@@ -265,7 +268,7 @@ type StateMigrationEvents interface {
 
 // PolicyEvents is an interface that can be used to hook policy events.
 type PolicyEvents interface {
-	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
+	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic, []apitype.PolicyEventException)
 	OnPolicyRemediation(resource.URN, plugin.Remediation, property.Map, property.Map)
 	OnPolicyAnalyzeSummary(plugin.PolicySummary)
 	OnPolicyRemediateSummary(plugin.PolicySummary)
@@ -360,6 +363,8 @@ type Deployment struct {
 	source Source
 	// the policy analyzers to run during this deployment.
 	analyzers []plugin.Analyzer
+	// the policy exceptions to apply to each analyzer's violations.
+	policyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions
 	// the dependency graph of the old snapshot.
 	depGraph *graph.DependencyGraph
 	// the provider registry for this deployment.
@@ -681,6 +686,7 @@ func NewDeployment(
 		oldViews:                        oldViews,
 		source:                          source,
 		analyzers:                       opts.Analyzers,
+		policyExceptions:                opts.PolicyExceptions,
 		depGraph:                        depGraph,
 		providers:                       reg,
 		goals:                           newGoals,
@@ -848,7 +854,7 @@ func (d *Deployment) generateEventURN(event SourceEvent) resource.URN {
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview or update.
 func (d *Deployment) Execute(ctx context.Context) (*Plan, error) {
-	deploymentExec := &deploymentExecutor{deployment: d}
+	deploymentExec := newDeploymentExecutor(d)
 	return deploymentExec.Execute(ctx)
 }
 
@@ -862,6 +868,15 @@ func (d *Deployment) Close() error {
 	}
 
 	return nil
+}
+
+// toPropertyMapPtr converts a resource.PropertyMap to a *property.Map, preserving the
+// nil-vs-empty distinction (nil input yields a nil pointer).
+func toPropertyMapPtr(m resource.PropertyMap) *property.Map {
+	if m == nil {
+		return nil
+	}
+	return new(resource.FromResourcePropertyMap(m))
 }
 
 // RunHooks runs all the before/after hooks on the given state. A hook that returns an error will cause an error return,
@@ -885,7 +900,10 @@ func (d *Deployment) RunHooks(
 			urn, id, name, typ,
 			oldOptions,
 			newOptions,
-			newInputs, oldInputs, newOutputs, oldOutputs,
+			toPropertyMapPtr(newInputs),
+			toPropertyMapPtr(oldInputs),
+			toPropertyMapPtr(newOutputs),
+			toPropertyMapPtr(oldOutputs),
 		)
 		if err != nil {
 			if hook.IgnoreErrors {
@@ -928,7 +946,9 @@ func (d *Deployment) RunErrorHooks(
 			urn, id, name, typ,
 			oldOptions,
 			newOptions,
-			newInputs, oldInputs, oldOutputs,
+			toPropertyMapPtr(newInputs),
+			toPropertyMapPtr(oldInputs),
+			toPropertyMapPtr(oldOutputs),
 			failedOperation,
 			errors,
 		)

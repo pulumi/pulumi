@@ -27,7 +27,17 @@ import (
 // bundled with the `pulumi` binary and must be downloaded on demand.
 var knownLanguageRuntimes = map[string]semver.Version{
 	// renovate: datasource=github-releases depName=pulumi/pulumi-hcl extractVersion=^v(?<version>.+)$
-	"hcl": semver.MustParse("0.16.2"),
+	"hcl": semver.MustParse("0.18.8"),
+	// renovate: datasource=github-releases depName=pulumi/pulumi-java extractVersion=^v(?<version>.+)$
+	"java": semver.MustParse("1.37.7"),
+	// renovate: datasource=github-releases depName=pulumi/pulumi-policy-opa extractVersion=^v(?<version>.+)$
+	"opa": semver.MustParse("1.1.3"),
+}
+
+// knownLanguageRuntimeURLs locates language runtimes whose releases are not in the default
+// `pulumi/pulumi-<name>` repository.
+var knownLanguageRuntimeURLs = map[string]string{
+	"opa": "github://api.github.com/pulumi/pulumi-policy-opa",
 }
 
 // SetKnownPluginDownloadURL fills in metadata on the given PluginDescriptor that the CLI
@@ -48,6 +58,9 @@ func SetKnownPluginDownloadURL(spec *workspace.PluginDescriptor) bool {
 	}
 
 	if spec.Kind == apitype.LanguagePlugin {
+		if url, ok := knownLanguageRuntimeURLs[spec.Name]; ok {
+			spec.PluginDownloadURL = url
+		}
 		if version, ok := knownLanguageRuntimes[spec.Name]; ok && spec.Version == nil {
 			spec.Version = &version
 			return true

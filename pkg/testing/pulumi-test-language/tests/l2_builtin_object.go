@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,44 +34,46 @@ func init() {
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
 					// Entries must be sorted alphabetically by key.
-					assert.Equal(l, resource.PropertyMap{
-						"entriesOutput": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("a"),
-								"value": resource.NewProperty("hello"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"entriesOutput": property.New([]property.Value{
+							property.New(map[string]property.Value{
+								"key":   property.New("a"),
+								"value": property.New("hello"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("d"),
-								"value": resource.NewProperty("hello"),
+							property.New(map[string]property.Value{
+								"key":   property.New("d"),
+								"value": property.New("hello"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("m"),
-								"value": resource.NewProperty("hello"),
+							property.New(map[string]property.Value{
+								"key":   property.New("m"),
+								"value": property.New("hello"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("t"),
-								"value": resource.NewProperty("hello"),
+							property.New(map[string]property.Value{
+								"key":   property.New("t"),
+								"value": property.New("hello"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("x"),
-								"value": resource.NewProperty("hello"),
+							property.New(map[string]property.Value{
+								"key":   property.New("x"),
+								"value": property.New("hello"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("z"),
-								"value": resource.NewProperty("hello"),
-							}),
-						}),
-						"lookupOutput":        resource.NewProperty("hello"),
-						"lookupOutputDefault": resource.NewProperty("default"),
-						"entriesObjectOutput": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("output"),
-								"value": resource.NewProperty("hello"),
+							property.New(map[string]property.Value{
+								"key":   property.New("z"),
+								"value": property.New("hello"),
 							}),
 						}),
-						"lookupObjectOutput":        resource.NewProperty("hello"),
-						"lookupObjectOutputDefault": resource.NewProperty("default"),
-					}, stack.Outputs)
+						"lookupOutput":        property.New("hello"),
+						"lookupOutputDefault": property.New("default"),
+						"entriesObjectOutput": property.New([]property.Value{
+							property.New(map[string]property.Value{
+								"key":   property.New("output"),
+								"value": property.New("hello"),
+							}),
+						}),
+						"lookupObjectOutput":        property.New("hello"),
+						"lookupObjectOutputDefault": property.New("default"),
+						"lengthOutput":              property.New(6.0),
+						"lengthObjectOutput":        property.New(1.0),
+					}), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

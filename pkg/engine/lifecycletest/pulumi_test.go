@@ -374,6 +374,114 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 	p.Run(t, nil)
 }
 
+func TestInvalidInputDiagnosticsRedactSecrets(t *testing.T) {
+	t.Parallel()
+
+	st, err := status.New(codes.InvalidArgument, "bad request").WithDetails(&pulumirpc.InputPropertiesError{
+		Errors: []*pulumirpc.InputPropertiesError_PropertyError{{PropertyPath: "conn", Reason: "bad conn"}},
+	})
+	require.NoError(t, err)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CheckF: func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error) {
+					return plugin.CheckResponse{
+						Failures: []plugin.CheckFailure{{Property: "conn", Reason: "bad conn"}},
+					}, nil
+				},
+				ConstructF: func(
+					context.Context, plugin.ConstructRequest, *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					return plugin.ConstructResponse{}, st.Err()
+				},
+			}, nil
+		}),
+	}
+
+	inputs := resource.PropertyMap{
+		"conn": resource.NewProperty(resource.PropertyMap{
+			"host":     resource.NewProperty("example.com"),
+			"password": resource.MakeSecret(resource.NewProperty("secret-input-value")),
+		}),
+	}
+
+	cases := []struct {
+		name        string
+		remote      bool
+		showSecrets bool
+		expected    string
+	}{
+		{
+			name: "check redacted",
+			expected: "pkgA:m:typA resource 'resA': property conn value " +
+				"{map[host:{example.com} password:{[secret]}]} has a problem: bad conn\n",
+		},
+		{
+			name:        "check with --show-secrets",
+			showSecrets: true,
+			expected: "pkgA:m:typA resource 'resA': property conn value " +
+				"{map[host:{example.com} password:{&{{secret-input-value}}}]} has a problem: bad conn\n",
+		},
+		{
+			name:   "construct redacted",
+			remote: true,
+			expected: "pkgA:m:typA resource 'resA' has a problem: bad request\n" +
+				"\t\t- property conn with value '{map[host:{example.com} password:{[secret]}]}' has a problem: bad conn\n",
+		},
+		{
+			name:        "construct with --show-secrets",
+			remote:      true,
+			showSecrets: true,
+			expected: "pkgA:m:typA resource 'resA' has a problem: bad request\n" +
+				"\t\t- property conn with value '{map[host:{example.com} password:{&{{secret-input-value}}}]}' " +
+				"has a problem: bad conn\n",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", !c.remote, deploytest.ResourceOptions{
+					Remote: c.remote,
+					Inputs: inputs,
+				})
+				assert.Error(t, err)
+				return err
+			})
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+			p := &lt.TestPlan{
+				Options: lt.TestUpdateOptions{
+					T:                t,
+					HostF:            hostF,
+					UpdateOptions:    UpdateOptions{ShowSecrets: c.showSecrets},
+					SkipDisplayTests: true,
+				},
+				Steps: []lt.TestStep{{
+					Op:            Update,
+					ExpectFailure: true,
+					SkipPreview:   true,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+						evts []Event, err error,
+					) error {
+						var msgs []string
+						for _, evt := range evts {
+							if evt.Type == DiagEvent {
+								msgs = append(msgs, colors.Never.Colorize(evt.Payload().(DiagEventPayload).Message))
+							}
+						}
+						assert.Contains(t, msgs, c.expected)
+						return err
+					},
+				}},
+			}
+
+			p.Run(t, nil)
+		})
+	}
+}
+
 // Tests that errors returned directly from the language host get logged by the engine.
 func TestLanguageHostDiagnostics(t *testing.T) {
 	t.Parallel()
@@ -565,7 +673,7 @@ func TestProviderCancellation(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(req.URN.Name()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -958,7 +1066,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 					})
 
 					return plugin.UpdateResponse{
-						Properties: outputs,
+						Properties: resource.FromResourcePropertyMap(outputs),
 						Status:     resource.StatusPartialFailure,
 					}, errors.New("update failed to apply")
 				},
@@ -1374,8 +1482,6 @@ func TestLoadFailureShutdown(t *testing.T) {
 		require.NoError(t, err)
 
 		_, _ = monitor.RegisterResource(providers.MakeProviderType("pkgB"), "provB", true)
-		require.Fail(t, "RegisterResource should not return")
-
 		return nil
 	})
 
@@ -1787,17 +1893,18 @@ func TestReplaceOnChanges(t *testing.T) {
 			// To establish a observable difference between the provider and engine diff function,
 			// we treat 42 as an OpSame. We use this to check that the right diff function is being
 			// used.
-			for k, v := range req.NewInputs {
-				if v == resource.NewProperty(42.0) {
-					req.NewInputs[k] = req.OldOutputs[k]
+			for k, v := range req.NewInputs.All {
+				if v.Equals(property.New(42.0)) {
+					req.NewInputs = req.NewInputs.Set(k, req.OldOutputs.Get(k))
 				}
 			}
 			diff := req.OldOutputs.Diff(req.NewInputs)
 			if diff == nil {
 				return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 			}
-			detailedDiff := plugin.NewDetailedDiffFromObjectDiff(diff, false)
-			changedKeys := diff.ChangedKeys()
+			resourceDiff := resource.ToResourceObjectDiff(diff)
+			detailedDiff := plugin.NewDetailedDiffFromObjectDiff(resourceDiff, false)
+			changedKeys := resourceDiff.ChangedKeys()
 
 			return plugin.DiffResult{
 				Changes:      plugin.DiffSome,
@@ -1994,10 +2101,10 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
 					// Always require replacement if any diff exists.
-					if !req.OldOutputs.DeepEquals(req.NewInputs) {
-						keys := slice.Prealloc[resource.PropertyKey](len(req.NewInputs))
-						for k := range req.NewInputs {
-							keys = append(keys, k)
+					if !req.OldOutputs.Equals(req.NewInputs) {
+						keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
+						for k := range req.NewInputs.All {
+							keys = append(keys, resource.PropertyKey(k))
 						}
 						return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: keys}, nil
 					}
@@ -2130,7 +2237,7 @@ func TestProviderPreview(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.Properties.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.Properties).ContainsUnknowns())
 					return plugin.CreateResponse{
 						ID:         "created-id",
 						Properties: req.Properties,
@@ -2142,7 +2249,7 @@ func TestProviderPreview(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.NewInputs.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.NewInputs).ContainsUnknowns())
 					return plugin.UpdateResponse{
 						Properties: req.NewInputs,
 						Status:     resource.StatusOK,
@@ -2220,7 +2327,7 @@ func TestProviderPreviewGrpc(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.Properties.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.Properties).ContainsUnknowns())
 					return plugin.CreateResponse{
 						ID:         "created-id",
 						Properties: req.Properties,
@@ -2232,7 +2339,7 @@ func TestProviderPreviewGrpc(t *testing.T) {
 						sawPreview = true
 					}
 
-					assert.Equal(t, req.Preview, req.NewInputs.ContainsUnknowns())
+					assert.Equal(t, req.Preview, resource.ToResourcePropertyMap(req.NewInputs).ContainsUnknowns())
 					return plugin.UpdateResponse{
 						Properties: req.NewInputs,
 						Status:     resource.StatusOK,
@@ -2727,7 +2834,7 @@ func TestProtect(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
@@ -2768,7 +2875,7 @@ func TestProtect(t *testing.T) {
 				Protect: &shouldProtect,
 			})
 			if expectError {
-				require.Fail(t, "RegisterResource should not return")
+				return nil
 			} else {
 				require.NoError(t, err)
 			}
@@ -2898,14 +3005,14 @@ func TestImportDiff(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  props,
-							Outputs: props,
+							Inputs:  ptrMap(props),
+							Outputs: ptrMap(props),
 						},
 						Status: resource.StatusOK,
 					}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
@@ -2927,7 +3034,9 @@ func TestImportDiff(t *testing.T) {
 			Inputs:   ins,
 			ImportID: "imported-id",
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -2992,7 +3101,7 @@ func TestDeletedWith(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						// If foo changes do a replace, we use this to check we don't delete on replace
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
@@ -3099,13 +3208,13 @@ func TestReplaceWithAndPropertyChange(t *testing.T) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					// Both "foo" and "bar" properties require replacement when changed
-					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
 							ReplaceKeys: []resource.PropertyKey{"foo"},
 						}, nil
 					}
-					if !req.OldOutputs["bar"].DeepEquals(req.NewInputs["bar"]) {
+					if !req.OldOutputs.Get("bar").Equals(req.NewInputs.Get("bar")) {
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
 							ReplaceKeys: []resource.PropertyKey{"bar"},
@@ -3228,8 +3337,9 @@ func TestEventSecrets(t *testing.T) {
 					if diff == nil {
 						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 					}
-					detailedDiff := plugin.NewDetailedDiffFromObjectDiff(diff, false)
-					changedKeys := diff.ChangedKeys()
+					resourceDiff := resource.ToResourceObjectDiff(diff)
+					detailedDiff := plugin.NewDetailedDiffFromObjectDiff(resourceDiff, false)
+					changedKeys := resourceDiff.ChangedKeys()
 
 					return plugin.DiffResult{
 						Changes:      plugin.DiffSome,
@@ -3487,7 +3597,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 
 					id := resource.ID(strconv.Itoa(len(cloudState)))
 					if !req.Preview {
-						cloudState[id] = req.Properties
+						cloudState[id] = resource.ToResourcePropertyMap(req.Properties)
 					}
 					return plugin.CreateResponse{
 						ID:         id,
@@ -3510,7 +3620,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if strings.Contains(string(req.URN), "typA") {
-						if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"foo"},
@@ -3525,7 +3635,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 						}
 					}
 					if strings.Contains(string(req.URN), "typB") {
-						if !req.OldOutputs["parent"].DeepEquals(req.NewInputs["parent"]) {
+						if !req.OldOutputs.Get("parent").Equals(req.NewInputs.Get("parent")) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"parent"},
@@ -3566,7 +3676,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 			Dependencies: []resource.URN{resp.URN},
 		})
 		if failCreationOfTypB {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -3630,7 +3740,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 					if !req.Preview {
 						id = resource.ID(strconv.Itoa(cloudID))
 						cloudID = cloudID + 1
-						cloudState[id] = req.Properties
+						cloudState[id] = resource.ToResourcePropertyMap(req.Properties)
 					}
 					return plugin.CreateResponse{
 						ID:         id,
@@ -3657,7 +3767,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					if strings.Contains(string(req.URN), "typA") {
-						if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"foo"},
@@ -3672,7 +3782,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 						}
 					}
 					if strings.Contains(string(req.URN), "typB") {
-						if !req.OldOutputs["parent"].DeepEquals(req.NewInputs["parent"]) {
+						if !req.OldOutputs.Get("parent").Equals(req.NewInputs.Get("parent")) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"parent"},
@@ -3685,7 +3795,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 								DeleteBeforeReplace: false,
 							}, nil
 						}
-						if !req.OldOutputs["frob"].DeepEquals(req.NewInputs["frob"]) {
+						if !req.OldOutputs.Get("frob").Equals(req.NewInputs.Get("frob")) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"frob"},
@@ -3801,7 +3911,7 @@ func TestTimestampTracking(t *testing.T) {
 						"foo": "bar",
 					})
 					return plugin.UpdateResponse{
-						Properties: outputs,
+						Properties: resource.FromResourcePropertyMap(outputs),
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -3906,48 +4016,48 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				) (plugin.CheckResponse, error) {
 					// Check that the old inputs are passed to CheckF
 					if firstUpdate {
-						assert.Nil(t, req.Olds)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-							"foo": "bar",
-						}), req.News)
+						assert.Equal(t, property.Map{}, req.OldInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo": property.New("bar"),
+						}), req.NewInputs)
 					} else {
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-							"foo":     "bar",
-							"default": "default",
-						}), req.Olds)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-							"foo": "baz",
-						}), req.News)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":     property.New("bar"),
+							"default": property.New("default"),
+						}), req.OldInputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo": property.New("baz"),
+						}), req.NewInputs)
 					}
 
 					// Add a default property
 					results := resource.PropertyMap{}
-					maps.Copy(results, req.News)
+					maps.Copy(results, resource.ToResourcePropertyMap(req.NewInputs))
 					results["default"] = resource.NewProperty("default")
 
-					return plugin.CheckResponse{Properties: results}, nil
+					return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(results)}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 					// Check that the old inputs and outputs are passed to DiffF
 					if firstUpdate {
-						assert.Nil(t, req.OldInputs)
-						assert.Nil(t, req.OldOutputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-							"foo": "bar",
+						assert.Equal(t, property.Map{}, req.OldInputs)
+						assert.Equal(t, property.Map{}, req.OldOutputs)
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo": property.New("bar"),
 						}), req.NewInputs)
 					} else {
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-							"foo":     "bar",
-							"default": "default",
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":     property.New("bar"),
+							"default": property.New("default"),
 						}), req.OldInputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-							"foo":      "bar",
-							"default":  "default",
-							"computed": "computed",
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":      property.New("bar"),
+							"default":  property.New("default"),
+							"computed": property.New("computed"),
 						}), req.OldOutputs)
-						assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-							"foo":     "baz",
-							"default": "default",
+						assert.Equal(t, property.NewMap(map[string]property.Value{
+							"foo":     property.New("baz"),
+							"default": property.New("default"),
 						}), req.NewInputs)
 					}
 
@@ -3957,7 +4067,7 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					id := resource.ID("")
 					results := resource.PropertyMap{}
-					maps.Copy(results, req.Properties)
+					maps.Copy(results, resource.ToResourcePropertyMap(req.Properties))
 					// Add a computed property
 					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 
@@ -3967,28 +4077,29 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					}
 					return plugin.CreateResponse{
 						ID:         id,
-						Properties: results,
+						Properties: resource.FromResourcePropertyMap(results),
 						Status:     resource.StatusOK,
 					}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					// Check that the old inputs and outputs are passed to UpdateF
+					newInputs := resource.ToResourcePropertyMap(req.NewInputs)
 					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "bar",
 						"default": "default",
-					}), req.OldInputs)
+					}), resource.ToResourcePropertyMap(req.OldInputs))
 					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":      "bar",
 						"default":  "default",
 						"computed": "computed",
-					}), req.OldOutputs)
+					}), resource.ToResourcePropertyMap(req.OldOutputs))
 					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
 						"foo":     "baz",
 						"default": "default",
-					}), req.NewInputs)
+					}), newInputs)
 
 					results := resource.PropertyMap{}
-					maps.Copy(results, req.NewInputs)
+					maps.Copy(results, newInputs)
 					// Add a computed property
 					results["computed"] = resource.MakeComputed(resource.NewProperty(""))
 
@@ -3997,20 +4108,20 @@ func TestOldCheckedInputsAreSent(t *testing.T) {
 					}
 
 					return plugin.UpdateResponse{
-						Properties: results,
+						Properties: resource.FromResourcePropertyMap(results),
 						Status:     resource.StatusOK,
 					}, nil
 				},
 				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
 					// Check that the old inputs and outputs are passed to UpdateF
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-						"foo":     "baz",
-						"default": "default",
+					assert.Equal(t, property.NewMap(map[string]property.Value{
+						"foo":     property.New("baz"),
+						"default": property.New("default"),
 					}), req.Inputs)
-					assert.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
-						"foo":      "baz",
-						"default":  "default",
-						"computed": "computed",
+					assert.Equal(t, property.NewMap(map[string]property.Value{
+						"foo":      property.New("baz"),
+						"default":  property.New("default"),
+						"computed": property.New("computed"),
 					}), req.Outputs)
 
 					return plugin.DeleteResponse{}, nil
@@ -4115,7 +4226,7 @@ func TestResourceNames(t *testing.T) {
 						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 							return plugin.CreateResponse{
 								ID:         "1",
-								Properties: resource.PropertyMap{},
+								Properties: property.Map{},
 								Status:     resource.StatusOK,
 							}, nil
 						},
@@ -4245,8 +4356,8 @@ func TestSourcePositions(t *testing.T) {
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
-							Inputs:  req.Inputs,
-							Outputs: req.State,
+							Inputs:  &req.Inputs,
+							Outputs: coalesceReadOutputs(req),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -4725,7 +4836,6 @@ func TestStackOutputsResourceError(t *testing.T) {
 
 		case 1:
 			_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			require.Fail(t, "RegisterResource should not return")
 			// RegisterResourceOutputs not called here, simulating what happens in SDKs when an output of resA
 			// is exported as a stack output.
 
@@ -4737,7 +4847,6 @@ func TestStackOutputsResourceError(t *testing.T) {
 			require.NoError(t, outsErr)
 
 			_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-			require.Fail(t, "RegisterResource should not return")
 		}
 
 		return err
@@ -5006,9 +5115,6 @@ func TestResourceError(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		// The resource registration fails, and the engine knows this and
-		// cancels the deployment. RegisterResource will not return.
-		t.Fatalf("We should not return from RegisterResource")
 		return nil
 	})
 

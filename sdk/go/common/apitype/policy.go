@@ -99,6 +99,25 @@ type RequiredPolicy struct {
 
 	// ESC environment references to resolve for this policy pack.
 	Environments []string `json:"environments,omitempty"`
+
+	// The active policy exceptions for this Policy Pack, keyed by exception ID. Each value is a PolicyException.
+	Exceptions map[string]json.RawMessage `json:"exceptions,omitempty"`
+}
+
+// PolicyException excepts the violations it matches, so that they don't fail an operation.
+type PolicyException struct {
+	// The justification for the exception.
+	Reason string `json:"reason"`
+	// The violations to except. A violation is excepted when it matches any entry.
+	Match []PolicyExceptionMatch `json:"match"`
+}
+
+// PolicyExceptionMatch matches the violations of any of its policies on any of its targets.
+type PolicyExceptionMatch struct {
+	// The names of policies within the Policy Pack.
+	Policies []string `json:"policies"`
+	// The URNs of the resources the violations are reported against, compared exactly.
+	Targets []string `json:"targets"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.
@@ -269,16 +288,10 @@ type CreatePolicyGroupRequest struct {
 	AgentPoolID string `json:"agentPoolId,omitempty"`
 }
 
-// UpdatePolicyGroupRequest modifies a Policy Group. Callers may set:
-//
-//   - NewName to rename the group.
-//   - A singular AddX/RemoveX field for a single per-PATCH membership change.
-//   - A list field (Stacks, PolicyPacks, InsightsAccounts) to replace the
-//     corresponding list outright; the values sent become the new full list.
-//     Use the pointer-to-slice indirection to distinguish "leave list
-//     unchanged" (nil pointer) from "set list to empty" (non-nil empty slice).
-//
-// Multiple of these may be combined in a single request to batch changes.
+// UpdatePolicyGroupRequest modifies a Policy Group. Each field holds one
+// mutation: NewName renames the group, and each AddX or RemoveX field adds or
+// removes one member. To apply more than one mutation of the same kind, send
+// one request per mutation to the batch endpoint.
 type UpdatePolicyGroupRequest struct {
 	NewName *string `json:"newName,omitempty"`
 
@@ -290,15 +303,6 @@ type UpdatePolicyGroupRequest struct {
 
 	AddInsightsAccount    *InsightsAccountReference `json:"addInsightsAccount,omitempty"`
 	RemoveInsightsAccount *InsightsAccountReference `json:"removeInsightsAccount,omitempty"`
-
-	// Stacks, when non-nil, replaces the full list of stacks in the group.
-	Stacks *[]PulumiStackReference `json:"stacks,omitempty"`
-	// PolicyPacks, when non-nil, replaces the full list of Policy Packs
-	// applied to the group.
-	PolicyPacks *[]PolicyPackMetadata `json:"policyPacks,omitempty"`
-	// InsightsAccounts, when non-nil, replaces the full list of Insights
-	// accounts in the group.
-	InsightsAccounts *[]string `json:"insightsAccounts,omitempty"`
 }
 
 // InsightsAccountReference identifies an Insights account for policy group
@@ -414,6 +418,8 @@ type PolicyComplianceFramework struct {
 // ListPolicyIssuesRequest is the request body for the ListPolicyIssues endpoint
 // (POST /api/orgs/{orgName}/policyresults/issues). The server expects an
 // AngularGrid-style request with startRow/endRow pagination.
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.AngularGridGetRowsRequest.
 type ListPolicyIssuesRequest struct {
 	StartRow  int                    `json:"startRow"`
 	EndRow    int                    `json:"endRow"`
@@ -421,6 +427,8 @@ type ListPolicyIssuesRequest struct {
 }
 
 // PolicyIssueSortModel describes a sort column for the policy issues endpoint.
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.AngularGridSortModelItem.
 type PolicyIssueSortModel struct {
 	ColID string `json:"colId"`
 	Sort  string `json:"sort"` // "asc" or "desc"
@@ -429,6 +437,8 @@ type PolicyIssueSortModel struct {
 // PolicyIssue is a single policy violation detected by a Policy Pack during a
 // stack update or a continuous-compliance scan. Field names match the server's
 // JSON response.
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyIssue.
 type PolicyIssue struct {
 	ID               string         `json:"id"`
 	EntityType       string         `json:"entityType,omitempty"`
@@ -453,12 +463,16 @@ type PolicyIssue struct {
 
 // GetPolicyIssueResponse is the response wrapper for the GetPolicyIssue
 // endpoint (GET /api/orgs/{orgName}/policyresults/issues/{issueId}).
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.GetPolicyIssueResponse.
 type GetPolicyIssueResponse struct {
 	PolicyIssue PolicyIssue `json:"policyIssue"`
 }
 
 // ListPolicyIssuesResponse is the response body for the ListPolicyIssues
 // endpoint.
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.ListPolicyIssuesResponse.
 type ListPolicyIssuesResponse struct {
 	// Issues is the page of policy issues.
 	Issues []PolicyIssue `json:"policyIssues"`
@@ -468,6 +482,8 @@ type ListPolicyIssuesResponse struct {
 
 // GetPolicyComplianceResultsRequest is the request body for the compliance
 // results endpoint (POST /api/orgs/{orgName}/policy-results/compliance).
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.GetPolicyComplianceResultsRequest.
 type GetPolicyComplianceResultsRequest struct {
 	// Entity is how to group results: "stack", "account", or "severity".
 	Entity string `json:"entity"`
@@ -479,6 +495,8 @@ type GetPolicyComplianceResultsRequest struct {
 
 // GetPolicyComplianceResultsResponse is the response from the compliance
 // results endpoint.
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.GetPolicyComplianceResultsResponse.
 type GetPolicyComplianceResultsResponse struct {
 	// Columns lists the policy group/pack identifiers or severity levels.
 	Columns []string `json:"columns"`
@@ -489,6 +507,8 @@ type GetPolicyComplianceResultsResponse struct {
 }
 
 // PolicyComplianceResult is a single row in the compliance results table.
+//
+// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyComplianceResult.
 type PolicyComplianceResult struct {
 	// EntityName identifies the entity (e.g. "project/stack" or account name).
 	EntityName string `json:"entityName"`

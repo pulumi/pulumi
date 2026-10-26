@@ -22,7 +22,7 @@ TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/
 VERSION         = $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
-LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python sdk/pcl
+LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/nodejs/cmd/pulumi-language-bun sdk/python/cmd/pulumi-language-python sdk/pcl
 
 # Additional arguments to pass to golangci-lint.
 GOLANGCI_LINT_ARGS ?=
@@ -77,11 +77,12 @@ generate::
 
 .PHONY: generate-cli-spec
 generate-cli-spec::
-	go run -C pkg ./cmd/pulumi generate-cli-spec --overrides ../tools/automation/automation-overrides.json > tools/automation/specification.json
+	SHELL=sh go run -C pkg ./cmd/pulumi generate-cli-spec --overrides ../tools/automation/automation-overrides.json > tools/automation/specification.json
 
 .PHONY: generate-nodejs-automation-api
 generate-nodejs-automation-api:: generate-cli-spec
 	cd sdk/nodejs/tools/automation && npm ci && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts ../../automation/interface
+	cd sdk/nodejs && make ensure && npx --no-install biome format --write automation/interface
 
 .PHONY: test-nodejs-automation-api
 test-nodejs-automation-api:: generate-cli-spec
@@ -251,6 +252,7 @@ test_lifecycle_fuzz:
 	@cd pkg && go test github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest \
 		-run '^TestFuzz$$' \
 		-tags all \
+		-timeout 0 \
 		-rapid.checks=$(LIFECYCLE_TEST_FUZZ_CHECKS)
 
 test_lifecycle_fuzz_from_state_file: GO_TEST_RACE = false

@@ -44,6 +44,7 @@ jobs:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
       enable-coverage: true
+      sign-windows-binaries: true
       fail-fast: true
       test-retries: 2
       acceptance-test-platforms: 'macos-latest'
@@ -58,6 +59,8 @@ jobs:
       fail-fast: true
     permissions:
       contents: read
+      # To fetch secrets from ESC with OIDC.
+      id-token: write
     with:
       ref: ${{ github.ref }}
       version: ${{ needs.info.outputs.version }}
@@ -113,7 +116,7 @@ jobs:
           if [ -f .release-pending ]; then
             echo "release-in-progress=true" >> "$GITHUB_OUTPUT"
             echo "::error::A release is in progress (.release-pending exists)."
-            echo "Only the post-release changelog/go.mod PR can merge until the marker is removed."
+            echo "Only the post-release changelog/go.mod PR or a revert of the freeze can merge until the marker is removed."
             exit 1
           fi
 
@@ -135,6 +138,14 @@ jobs:
             echo "::error::The merge base ($BASE_SHA) did not introduce .release-pending - it was already present in its parent."
             echo "Another commit slipped between the freeze and this PR."
             exit 1
+          fi
+
+          # A revert of the freeze abandons the release. It restores every file
+          # that the freeze changed, so there is no new sdk/v3 version to depend on.
+          mapfile -t FREEZE_FILES < <(git diff --name-only "$BASE_SHA^" "$BASE_SHA")
+          if git diff --quiet "$BASE_SHA^" HEAD -- "${FREEZE_FILES[@]}"; then
+            echo "This PR reverts the freeze commit ($BASE_SHA)."
+            exit 0
           fi
 
           EXPECTED_VERSION=$(git show "$BASE_SHA^":sdk/.version | tr -d '[:space:]')

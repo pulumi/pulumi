@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 //go:build !all
-// +build !all
 
 package main
 
@@ -22,7 +22,7 @@ import (
 	"strconv"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -42,48 +42,52 @@ type failsOnDeleteProvider struct {
 	id int
 }
 
-func (p *failsOnDeleteProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
-	return &rpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
+func (p *failsOnDeleteProvider) Check(ctx context.Context,
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
+	return &pulumirpc.CheckResponse{Inputs: req.News, Failures: nil}, nil
 }
 
-func (p *failsOnDeleteProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
-	return &rpc.DiffResponse{
-		Changes: rpc.DiffResponse_DIFF_NONE,
+func (p *failsOnDeleteProvider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	return &pulumirpc.DiffResponse{
+		Changes: pulumirpc.DiffResponse_DIFF_NONE,
 	}, nil
 }
 
 func (p *failsOnDeleteProvider) Create(
-	ctx context.Context, req *rpc.CreateRequest,
-) (*rpc.CreateResponse, error) {
+	ctx context.Context, req *pulumirpc.CreateRequest,
+) (*pulumirpc.CreateResponse, error) {
 	p.id++
-	return &rpc.CreateResponse{
+	return &pulumirpc.CreateResponse{
 		Id: strconv.Itoa(p.id),
 	}, nil
 }
 
-func (p *failsOnDeleteProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
-	return &rpc.ReadResponse{
+func (p *failsOnDeleteProvider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+	return &pulumirpc.ReadResponse{
 		Id:         req.Id,
 		Properties: req.Properties,
 	}, nil
 }
 
 func (p *failsOnDeleteProvider) Update(
-	ctx context.Context, req *rpc.UpdateRequest,
-) (*rpc.UpdateResponse, error) {
+	ctx context.Context, req *pulumirpc.UpdateRequest,
+) (*pulumirpc.UpdateResponse, error) {
 	panic("Update not implemented")
 }
 
-func (p *failsOnDeleteProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+func (p *failsOnDeleteProvider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
 	return nil, errors.New("Delete always fails for the FailsOnDelete resource")
 }
 
-func (p *failsOnDeleteProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
+func (p *failsOnDeleteProvider) Invoke(ctx context.Context,
+	req *pulumirpc.InvokeRequest,
+) (*pulumirpc.InvokeResponse, error) {
 	// The fails-on-delete provider doesn't support any invokes currently.
 	panic("Invoke not implemented")
 }
 
-func (p *failsOnDeleteProvider) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+func (p *failsOnDeleteProvider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	// The random provider doesn't support any call currently.
 	panic("Call not implemented")
 }

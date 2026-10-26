@@ -204,10 +204,12 @@ type ObjectTypeFromConfigMetadata = struct {
 }
 
 func annotateObjectTypedConfig(componentName string, typeName string, objectType *model.ObjectType) *model.ObjectType {
-	objectType.Annotate(&ObjectTypeFromConfigMetadata{
-		TypeName:      typeName,
-		ComponentName: componentName,
-	})
+	if _, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](objectType); !ok {
+		objectType.Annotate(&ObjectTypeFromConfigMetadata{
+			TypeName:      typeName,
+			ComponentName: componentName,
+		})
+	}
 
 	return objectType
 }
@@ -1207,9 +1209,6 @@ func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 func (g *generator) genHelpers(w io.Writer) {
 	for _, v := range g.arrayHelpers {
 		inputType := strings.TrimSuffix(v.destType, "Array")
-		if inputType == "pulumi.IDArray" {
-			inputType = "pulumi.IDInput"
-		}
 		parts := strings.Split(inputType, ".")
 		contract.Assertf(len(parts) == 2, "genHelpers inputType expected to have two parts.")
 		typ := parts[1]
@@ -1489,7 +1488,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 					g.Fgenf(valBuffer, ", ")
 				}
 				// If the expression is a string literal, we can inline it directly.
-				if expr.Type().Equals(model.StringType) {
+				if model.StringType.AssignableFrom(expr.Type()) {
 					g.Fgenf(valBuffer, "pulumi.Alias{ URN: pulumi.URN(%v) }", expr)
 					continue
 				}
@@ -1891,71 +1890,22 @@ func (g *generator) genReadResource(w io.Writer, r *pcl.ReadResource) {
 	}
 }
 
-func AnnotateComponentInputs(component *pcl.Component) {
-	componentName := Title(component.Name())
-	configVars := component.Program.ConfigVariables()
-
-	for index := range component.Inputs {
-		attribute := component.Inputs[index]
-		switch expr := attribute.Value.(type) {
-		case *model.ObjectConsExpression:
-			for _, configVar := range configVars {
-				if configVar.Name() == attribute.Name {
-					switch configVar.Type().(type) {
-					case *model.ObjectType:
-						expr.WithType(func(objectExprType model.Type) *model.ObjectConsExpression {
-							switch exprType := objectExprType.(type) {
-							case *model.ObjectType:
-								typeName := configObjectTypeName(configVar.Name())
-								annotateObjectTypedConfig(componentName, typeName, exprType)
-							}
-
-							return expr
-						})
-					case *model.MapType:
-						for _, item := range expr.Items {
-							switch mapValue := item.Value.(type) {
-							case *model.ObjectConsExpression:
-								mapValue.WithType(func(objectExprType model.Type) *model.ObjectConsExpression {
-									switch exprType := objectExprType.(type) {
-									case *model.ObjectType:
-										typeName := configObjectTypeName(configVar.Name())
-										annotateObjectTypedConfig(componentName, typeName, exprType)
-									}
-
-									return mapValue
-								})
-							}
-						}
-					}
-				}
-			}
-		case *model.TupleConsExpression:
-			for _, configVar := range configVars {
-				if configVar.Name() == attribute.Name {
-					switch listType := configVar.Type().(type) {
-					case *model.ListType:
-						switch listType.ElementType.(type) {
-						case *model.ObjectType:
-							for _, item := range expr.Expressions {
-								switch itemExpr := item.(type) {
-								case *model.ObjectConsExpression:
-									itemExpr.WithType(func(objectExprType model.Type) *model.ObjectConsExpression {
-										switch exprType := objectExprType.(type) {
-										case *model.ObjectType:
-											typeName := configObjectTypeName(configVar.Name())
-											annotateObjectTypedConfig(componentName, typeName, exprType)
-										}
-										return itemExpr
-									})
-								}
-							}
-						}
-					}
-				}
-			}
+// genComponentInput generates a component input against the type its config variable declares, so that an
+// object or tuple literal takes the args struct the component file defines for that variable.
+func (g *generator) genComponentInput(w io.Writer, expr model.Expression, configType model.Type) {
+	switch expr := expr.(type) {
+	case *model.TupleConsExpression:
+		if configType != nil {
+			g.genTupleConsExpression(w, expr, configType)
+			return
+		}
+	case *model.ObjectConsExpression:
+		if configType != nil {
+			g.genObjectConsExpression(w, expr, configType, false)
+			return
 		}
 	}
+	g.Fgenf(w, "%.v", expr)
 }
 
 func deferredOutputTypeParameter(outputType model.Type) string {
@@ -2100,7 +2050,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	options, temps := g.lowerResourceOptions(r.Options, nil)
 	g.genTemps(w, temps)
 
-	AnnotateComponentInputs(r)
+	collectObjectTypedConfigVariables(r)
 
 	configVariables := r.Program.ConfigVariables()
 
@@ -2155,9 +2105,11 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	}
 
 	// Add conversions to input properties
+	configTypes := map[string]model.Type{}
 	for _, input := range componentInputs {
 		for _, config := range configVariables {
 			if config.Name() == input.Name {
+				configTypes[input.Name] = config.Type()
 				destType := model.NewOutputType(config.Type())
 				expr := input.Value
 				if !isDeferredOutputCast(input.Value) {
@@ -2191,7 +2143,9 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		if len(componentInputs) > 0 {
 			g.Fgenf(w, "&%sArgs{\n", componentName)
 			for _, attr := range componentInputs {
-				g.Fgenf(w, "%s: %.v,\n", Title(attr.Name), attr.Value)
+				g.Fgenf(w, "%s: ", Title(attr.Name))
+				g.genComponentInput(w, attr.Value, configTypes[attr.Name])
+				g.Fgenf(w, ",\n")
 			}
 			g.Fprint(w, "}")
 		} else {
@@ -2323,51 +2277,7 @@ func (g *generator) genOutputAssignment(w io.Writer, v *pcl.OutputVariable) {
 	value, destType := liftValueToOutput(v.Value)
 	expr, temps := g.lowerExpression(value, destType)
 	g.genTemps(w, temps)
-	// If the value renders as a typed Go map/slice of Pulumi Input interfaces
-	// (e.g. map[string]pulumi.IDInput), cast it to the corresponding named
-	// Pulumi container so it satisfies pulumi.Input.
-	if wrap, ok := g.typedInputContainerWrap(expr); ok {
-		g.Fgenf(w, "ctx.Export(%q, %s%.3v))\n", v.LogicalName(), wrap, expr)
-		return
-	}
 	g.Fgenf(w, "ctx.Export(%q, %.3v)\n", v.LogicalName(), expr)
-}
-
-// typedInputContainerWrap returns a `pulumi.XMap(` / `pulumi.XArray(` prefix
-// when expr renders as a raw Go map/slice of Pulumi Input interfaces (e.g.
-// map[string]pulumi.IDInput). Those raw containers don't satisfy pulumi.Input
-// by themselves, but casting to the named type does — the underlying types
-// are identical. Only recognized for traversals into a local variable, where
-// the local's Go type is derivable without hitting schema resolution.
-func (g *generator) typedInputContainerWrap(expr model.Expression) (string, bool) {
-	// Look through the IntrinsicConvert liftValueToOutput wraps.
-	inner := expr
-	for {
-		call, ok := inner.(*model.FunctionCallExpression)
-		if !ok || call.Name != pcl.IntrinsicConvert || len(call.Args) != 1 {
-			break
-		}
-		inner = call.Args[0]
-	}
-	st, ok := inner.(*model.ScopeTraversalExpression)
-	if !ok || len(st.Parts) == 0 {
-		return "", false
-	}
-	if _, ok := st.Parts[0].(*pcl.LocalVariable); !ok {
-		return "", false
-	}
-	goType := g.argumentTypeName(inner.Type(), false)
-	if elm, ok := strings.CutPrefix(goType, "map[string]"); ok {
-		if named, ok := pulumiInputElementCastName(elm); ok {
-			return "pulumi." + named + "Map(", true
-		}
-	}
-	if elm, ok := strings.CutPrefix(goType, "[]"); ok {
-		if named, ok := pulumiInputElementCastName(elm); ok {
-			return "pulumi." + named + "Array(", true
-		}
-	}
-	return "", false
 }
 
 func (g *generator) genTemps(w io.Writer, temps []any) {
@@ -2421,9 +2331,6 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 		case *splatTemp:
 			argTyp := g.argumentTypeName(t.Value.Each.Type(), false)
 			if strings.Contains(argTyp, ".") {
-				if argTyp == "pulumi.IDInput" {
-					argTyp = "pulumi.ID"
-				}
 				g.Fgenf(w, "var %s %sArray\n", t.Name, argTyp)
 			} else {
 				g.Fgenf(w, "var %s []%s\n", t.Name, argTyp)

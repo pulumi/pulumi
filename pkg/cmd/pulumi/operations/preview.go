@@ -307,6 +307,7 @@ func NewPreviewCmd() *cobra.Command {
 	var debug bool
 	var expectNop bool
 	var message string
+	var coherenceWindow string
 	var execKind string
 	var execAgent string
 	var stackName string
@@ -336,6 +337,7 @@ func NewPreviewCmd() *cobra.Command {
 	var skipConfigValidation bool
 	var showConfig bool
 	var showPolicyRemediations bool
+	var showPolicyExceptions bool
 	var showReplacementSteps bool
 	var showSames bool
 	var showReads bool
@@ -418,6 +420,7 @@ func NewPreviewCmd() *cobra.Command {
 				Color:                  cmdutil.GetGlobalColorization(),
 				ShowConfig:             showConfig,
 				ShowPolicyRemediations: showPolicyRemediations,
+				ShowPolicyExceptions:   showPolicyExceptions,
 				ShowReplacementSteps:   showReplacementSteps,
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
@@ -444,9 +447,9 @@ func NewPreviewCmd() *cobra.Command {
 
 			if remoteArgs.Remote {
 				err := deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
-					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
+					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showPolicyExceptions,
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, nil, replaces,
-					targetReplaces, targetDependents, planFilePath, configFile, runProgram)
+					targetReplaces, targetDependents, planFilePath, configFile, runProgram, coherenceWindow)
 				if err != nil {
 					return err
 				}
@@ -553,7 +556,7 @@ func NewPreviewCmd() *cobra.Command {
 				replaceURNs = append(replaceURNs, tr)
 			}
 
-			refreshOption, err := getRefreshOption(proj, refresh)
+			refreshOption, err := GetRefreshOption(proj, refresh)
 			if err != nil {
 				return err
 			}
@@ -621,6 +624,7 @@ func NewPreviewCmd() *cobra.Command {
 				SecretsManager:     sm,
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
+				CoherenceWindow:    coherenceWindow,
 			}, events)
 			// If we made an events channel then we need to close it to trigger the exit of the import goroutine above.
 			// The engine doesn't close the channel for us, but once its returned here we know it won't append any more
@@ -788,6 +792,9 @@ func NewPreviewCmd() *cobra.Command {
 		&showPolicyRemediations, "show-policy-remediations", false,
 		"Show per-resource policy remediation details instead of a summary")
 	cmd.PersistentFlags().BoolVar(
+		&showPolicyExceptions, "show-policy-exceptions", false,
+		"Show each exempted policy violation instead of a summary")
+	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")
 
@@ -859,6 +866,8 @@ func NewPreviewCmd() *cobra.Command {
 	}
 
 	// internal flags
+	cmd.PersistentFlags().StringVar(&coherenceWindow, "coherence-window", "", "")
+	_ = cmd.PersistentFlags().MarkHidden("coherence-window")
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")

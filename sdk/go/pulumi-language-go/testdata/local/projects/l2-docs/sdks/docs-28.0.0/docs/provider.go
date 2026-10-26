@@ -11,8 +11,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+// Provider is the provider for docs, configured via SomeConfig.
 type Provider struct {
 	pulumi.ProviderResourceState
+
+	// A configuration value for Provider.
+	SomeConfig pulumi.StringPtrOutput `pulumi:"someConfig"`
 }
 
 // NewProvider registers a new resource with the given unique name, arguments, and options.
@@ -32,10 +36,14 @@ func NewProvider(ctx *pulumi.Context,
 }
 
 type providerArgs struct {
+	// A configuration value for Provider.
+	SomeConfig *string `pulumi:"someConfig"`
 }
 
 // The set of arguments for constructing a Provider resource.
 type ProviderArgs struct {
+	// A configuration value for Provider.
+	SomeConfig pulumi.StringPtrInput
 }
 
 func (ProviderArgs) ElementType() reflect.Type {
@@ -73,6 +81,11 @@ func (o ProviderOutput) ToProviderOutput() ProviderOutput {
 
 func (o ProviderOutput) ToProviderOutputWithContext(ctx context.Context) ProviderOutput {
 	return o
+}
+
+// A configuration value for Provider.
+func (o ProviderOutput) SomeConfig() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *Provider) pulumi.StringPtrOutput { return v.SomeConfig }).(pulumi.StringPtrOutput)
 }
 
 func init() {

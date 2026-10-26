@@ -1,0 +1,3 @@
+name: source-position
+description: Registers and reads a resource through a generated SDK
+runtime: go

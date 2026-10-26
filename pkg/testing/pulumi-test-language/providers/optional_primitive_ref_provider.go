@@ -154,26 +154,27 @@ func (p *OptionalPrimitiveRefProvider) CheckConfig(
 func (p *OptionalPrimitiveRefProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	news := resource.ToResourcePropertyMap(req.NewInputs)
 	if req.URN.Type() != "optional-primitive-ref:index:Resource" {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
 		}, nil
 	}
 
-	data, ok := req.News["data"]
+	data, ok := news["data"]
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("data", "missing value"),
 		}, nil
 	}
-	if len(req.News) > 2 {
+	if len(news) > 2 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
 		}, nil
 	}
-	if _, ok := req.News["optionalData"]; len(req.News) == 2 && !ok {
+	if _, ok := news["optionalData"]; len(news) == 2 && !ok {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("unexpected properties: %v", news)),
 		}, nil
 	}
 
@@ -229,18 +230,19 @@ func (p *OptionalPrimitiveRefProvider) Check(
 	if failures := checkData("data", data); len(failures) != 0 {
 		return plugin.CheckResponse{Failures: failures}, nil
 	}
-	if optionalData, ok := req.News["optionalData"]; ok {
+	if optionalData, ok := news["optionalData"]; ok {
 		if failures := checkData("optionalData", optionalData); len(failures) != 0 {
 			return plugin.CheckResponse{Failures: failures}, nil
 		}
 	}
 
-	return plugin.CheckResponse{Properties: req.News}, nil
+	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
 }
 
 func (p *OptionalPrimitiveRefProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "optional-primitive-ref:index:Resource" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -254,7 +256,7 @@ func (p *OptionalPrimitiveRefProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

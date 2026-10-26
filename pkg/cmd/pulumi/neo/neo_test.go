@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -40,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -307,7 +307,7 @@ func TestResolveTaskTarget_WorkspaceStackOwnerWinsOverDefaultOrg(t *testing.T) {
 	// mocked workspace. For this test we need the workspace path to run, so
 	// fully unset PULUMI_STACK; isolateWorkspace's t.Setenv cleanup still
 	// restores the original after the test.
-	require.NoError(t, os.Unsetenv("PULUMI_STACK"))
+	ptesting.Unsetenv(t, "PULUMI_STACK")
 
 	// Regression: same bug as the --stack path but via the workspace-selected
 	// stack. If `.pulumi/workspace.json` selects `otherorg/proj/dev`, Neo must

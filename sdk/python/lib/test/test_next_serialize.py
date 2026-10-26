@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import re
 import unittest
+from unittest import mock
 from enum import Enum
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, cast
 
@@ -405,9 +407,12 @@ class NextSerializationTests(unittest.IsolatedAsyncioTestCase):
         out = Output({res}, fut, known_fut)
 
         other = Output.from_input(99)
-        self.assertRaises(ValueError, Output.all, out, other=other)
         self.assertRaisesRegex(
-            ValueError, "Output.all() was supplied a mix of named and unnamed inputs"
+            ValueError,
+            re.escape("Output.all() was supplied a mix of named and unnamed inputs"),
+            Output.all,
+            out,
+            other=other,
         )
 
     @pulumi_test
@@ -1618,6 +1623,29 @@ class DeserializationOutput(dict):
     @property
     @pulumi.getter(name="someBar")
     def some_bar(self) -> Mapping[str, SomeFooOutput]: ...  # type: ignore
+
+
+class SerializationErrorContextTests(unittest.IsolatedAsyncioTestCase):
+    async def test_serialize_properties_adds_input_context(self):
+        for exception_type in [ValueError, AssertionError]:
+            with self.subTest(exception_type=exception_type):
+                with mock.patch.object(
+                    rpc,
+                    "serialize_property",
+                    new=mock.AsyncMock(
+                        side_effect=exception_type("serialization failed")
+                    ),
+                ):
+                    with self.assertRaises(exception_type) as raised:
+                        await rpc.serialize_properties({"property_name": "value"}, {})
+
+                message = str(raised.exception)
+                self.assertIn("While processing input: 'property_name'", message)
+                self.assertIn("value 'value'", message)
+                self.assertIn(
+                    f"{exception_type.__name__} has risen: serialization failed",
+                    message,
+                )
 
 
 class TypeMetaDataSerializationTests(unittest.IsolatedAsyncioTestCase):

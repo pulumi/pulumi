@@ -101,8 +101,13 @@ var (
 // DetectProjectPathFrom locates the closest project from the given path, searching "upwards" in the directory
 // hierarchy.  If no project is found, ErrProjectNotFound is returned.
 func DetectProjectPathFrom(dir string) (string, error) {
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", err
+	}
+
 	var path string
-	_, err := fsutil.WalkUpDirs(dir, func(dir string) bool {
+	_, err = fsutil.WalkUpDirs(dir, func(dir string) bool {
 		var ok bool
 		path, ok = findProjectInDir(dir)
 		return ok
@@ -300,8 +305,7 @@ func GetPulumiPath(elem ...string) (string, error) {
 // construction, falling back to the shared agent directory when an agent cannot
 // write the default home directory.
 func pulumiHomeDirForPath(homeDir string) (string, error) {
-	agent := agentdetect.Detect(os.Getenv)
-	if agent == "" || hasExplicitPulumiPathEnv() {
+	if !AgentCredentialsFallbackEnabled() {
 		return homeDir, nil
 	}
 	if err := ensurePulumiHomeWritable(homeDir); err == nil {
@@ -309,7 +313,7 @@ func pulumiHomeDirForPath(homeDir string) (string, error) {
 	} else {
 		logging.V(7).Infof(
 			"Could not use default Pulumi home directory %q in agent mode (%s); using shared agent Pulumi directory: %v",
-			homeDir, agent, err,
+			homeDir, agentdetect.Detect(os.Getenv), err,
 		)
 	}
 	return getAgentPulumiDir()

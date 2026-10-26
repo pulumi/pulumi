@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/pretty"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
 // ListType represents lists of particular element types.
@@ -30,12 +29,12 @@ type ListType struct {
 	// ElementType is the element type of the list.
 	ElementType Type
 
-	cache *gsync.Map[Type, cacheEntry]
+	cache *typeCache
 }
 
 // NewListType creates a new list type with the given element type.
 func NewListType(elementType Type) *ListType {
-	return &ListType{ElementType: elementType, cache: &gsync.Map[Type, cacheEntry]{}}
+	return &ListType{ElementType: elementType, cache: &typeCache{}}
 }
 
 // SyntaxNode returns the syntax node for the type. This is always syntax.None.
@@ -86,7 +85,7 @@ func (t *ListType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *ListType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *ListType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
@@ -98,13 +97,17 @@ func (t *ListType) equals(other Type, seen map[Type]struct{}) bool {
 // AssignableFrom returns true if this type is assignable from the indicated source type. A list(T) is assignable
 // from values of type list(U) where T is assignable from U.
 func (t *ListType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *ListType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		switch src := src.(type) {
 		case *ListType:
-			return t.ElementType.AssignableFrom(src.ElementType)
+			return t.ElementType.assignableFrom(src.ElementType, seen)
 		case *TupleType:
 			for _, src := range src.ElementTypes {
-				if !t.ElementType.AssignableFrom(src) {
+				if !t.ElementType.assignableFrom(src, seen) {
 					return false
 				}
 			}
@@ -123,7 +126,7 @@ func (t *ListType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *ListType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *ListType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ListType:
@@ -155,14 +158,14 @@ func (t *ListType) string(seen map[Type]struct{}) string {
 	return fmt.Sprintf("list(%s)", t.ElementType.string(seen))
 }
 
-func (t *ListType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *ListType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		switch other := other.(type) {
 		case *TupleType:
 			// If the other element is a list type, prefer the list type, but unify the element type.
 			elementType, conversionKind := t.ElementType, SafeConversion
 			for _, other := range other.ElementTypes {
-				element, ck := elementType.unify(other)
+				element, ck := elementType.unify(other, seen)
 				if ck < conversionKind {
 					conversionKind = ck
 				}
@@ -171,15 +174,15 @@ func (t *ListType) unify(other Type) (Type, ConversionKind) {
 			return NewListType(elementType), conversionKind
 		case *SetType:
 			// If the other element is a set type, prefer the list type, but unify the element types.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType)
+			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
 			return NewListType(elementType), conversionKind
 		case *ListType:
 			// If the other type is a list type, unify based on the element type.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType)
+			elementType, conversionKind := t.ElementType.unify(other.ElementType, seen)
 			return NewListType(elementType), conversionKind
 		default:
 			// Prefer the list type.
-			kind, _ := t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, seen)
 			return t, kind
 		}
 	})

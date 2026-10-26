@@ -571,6 +571,7 @@ func mockCurrentBackend(t *testing.T, mockBackend backend.Backend) {
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+			_ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -1078,7 +1079,7 @@ func TestPulumiNewWithOrgTemplates(t *testing.T) {
 Available Templates:
 `)
 	// Check that our org based templates are there
-	assert.Contains(t, stdout.String(), `
+	assertTemplateContains(t, stdout.String(), `
   template-1                         Describe 1
   template-2                         Describe 2
 `)
@@ -1140,9 +1141,12 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 	assert.Contains(t, stdout.String(), `
 Available Templates:
 `)
+
 	// Check that our registry based templates are there with the appropriate disambiguation prefix.
-	assert.Contains(t, stdout.String(), "template-1 [Some org]              Describe 1")
-	assert.Contains(t, stdout.String(), "template-2 [some-org/repo]         Describe 2")
+	assertTemplateContains(t, stdout.String(), `
+template-1 [Some org]              Describe 1
+template-2 [some-org/repo]         Describe 2
+`)
 
 	// Check that normal templates are there
 	assertTemplateContains(t, stdout.String(), `
@@ -1223,6 +1227,8 @@ func TestPulumiNewWithoutTemplateSupport(t *testing.T) {
 	// Check that normal templates are there
 	assert.Contains(t, stdout.String(), `
 Available Templates:
+`)
+	assertTemplateContains(t, stdout.String(), `
   aiven-go                           A minimal Aiven Go Pulumi program
 `)
 	assert.Equal(t, "", stderr.String())

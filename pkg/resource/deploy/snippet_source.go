@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"strings"
 	"sync"
 
@@ -38,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -163,7 +163,7 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 		// Wait on the observer for every Reference. Once they resolve, shape each entry as a Pulumi resource
 		// value (object with urn + id + outputs, wrapped in an Output so traversals work) so the interpreter
 		// sees it the same way it would see a sibling resource declared in the same program.
-		scopeVars := make(map[string]resource.PropertyValue, len(s.snippet.References))
+		scopeVars := make(map[string]property.Value, len(s.snippet.References))
 		if len(s.snippet.References) > 0 {
 			refURNs := make(map[string]resource.URN, len(s.snippet.References))
 			for name, raw := range s.snippet.References {
@@ -216,18 +216,13 @@ func (s *snippet) run(resourceMonitorTarget string) *promise.Promise[struct{}] {
 	return cts.Promise()
 }
 
-func snippetReferenceValue(urn resource.URN, reg URNRegistration) resource.PropertyValue {
-	obj := make(resource.PropertyMap, len(reg.Outputs)+4)
-	maps.Copy(obj, reg.Outputs)
-	obj["urn"] = resource.NewProperty(string(urn))
-	obj["id"] = resource.NewProperty(string(reg.ID))
-	obj["__name"] = resource.NewProperty(urn.Name())
-	obj["__type"] = resource.NewProperty(string(urn.Type()))
-	return resource.NewProperty(resource.Output{
-		Element:      resource.NewProperty(obj),
-		Dependencies: []resource.URN{urn},
-		Known:        true,
-	})
+func snippetReferenceValue(urn resource.URN, reg URNRegistration) property.Value {
+	obj := reg.Outputs.AsMap()
+	obj["urn"] = property.New(string(urn))
+	obj["id"] = property.New(string(reg.ID))
+	obj["__name"] = property.New(urn.Name())
+	obj["__type"] = property.New(string(urn.Type()))
+	return property.New(obj).WithDependencies([]resource.URN{urn})
 }
 
 func snippetRunInfo(

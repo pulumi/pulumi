@@ -34,6 +34,7 @@ function storeFeatureFlags() {
         supportsParameterization: store.supportsParameterization,
         supportsResourceHooks: store.supportsResourceHooks,
         supportsErrorHooks: store.supportsErrorHooks,
+        supportsStateMigrations: store.supportsStateMigrations,
     };
 }
 
@@ -50,7 +51,8 @@ describe("runtime/featureSupport", () => {
                         Feature.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
                         Feature.RESOURCE_MONITOR_FEATURE_TRANSFORMS,
                         Feature.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
-                        // Features with no legacy string ID never map to a store flag.
+                        Feature.RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS,
+                        // Preserve features that this version of the SDK does not use.
                         Feature.RESOURCE_MONITOR_FEATURE_BYTE_STRING,
                     ]);
                     cb(null, resp);
@@ -75,6 +77,7 @@ describe("runtime/featureSupport", () => {
                 supportsParameterization: false,
                 supportsResourceHooks: true,
                 supportsErrorHooks: false,
+                supportsStateMigrations: true,
             });
             assert.strictEqual(supportsFeatureCalls, 0);
         });
@@ -108,6 +111,7 @@ describe("runtime/featureSupport", () => {
                 supportsParameterization: false,
                 supportsResourceHooks: false,
                 supportsErrorHooks: false,
+                supportsStateMigrations: false,
             });
             assert.deepStrictEqual(probed.sort(), [
                 "aliasSpecs",

@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -202,12 +203,12 @@ func TestCreateStep(t *testing.T) {
 					provider: &deploytest.Provider{
 						CreateF: func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error) {
 							return plugin.CreateResponse{
-									Status: resource.StatusPartialFailure,
-								}, &plugin.InitError{
-									Reasons: []string{
-										"intentional error",
-									},
-								}
+								Status: resource.StatusPartialFailure,
+							}, &plugin.InitError{
+								Reasons: []string{
+									"intentional error",
+								},
+							}
 						},
 					},
 				}
@@ -455,15 +456,15 @@ func TestUpdateStep(t *testing.T) {
 				provider: &deploytest.Provider{
 					UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 						return plugin.UpdateResponse{
-								Properties: resource.PropertyMap{
-									"key": resource.NewProperty("expected-value"),
-								},
-								Status: resource.StatusPartialFailure,
-							}, &plugin.InitError{
-								Reasons: []string{
-									"intentional error",
-								},
-							}
+							Properties: property.NewMap(map[string]property.Value{
+								"key": property.New("expected-value"),
+							}),
+							Status: resource.StatusPartialFailure,
+						}, &plugin.InitError{
+							Reasons: []string{
+								"intentional error",
+							},
+						}
 					},
 				},
 			}
@@ -559,21 +560,21 @@ func TestReadStep(t *testing.T) {
 				provider: &deploytest.Provider{
 					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 						return plugin.ReadResponse{
-								ReadResult: plugin.ReadResult{
-									ID: "new-id",
-									Inputs: resource.PropertyMap{
-										"inputs-key": resource.NewProperty("expected-value"),
-									},
-									Outputs: resource.PropertyMap{
-										"outputs-key": resource.NewProperty("expected-value"),
-									},
-								},
-								Status: resource.StatusPartialFailure,
-							}, &plugin.InitError{
-								Reasons: []string{
-									"intentional error",
-								},
-							}
+							ReadResult: plugin.ReadResult{
+								ID: "new-id",
+								Inputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
+									"inputs-key": resource.NewProperty("expected-value"),
+								})),
+								Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
+									"outputs-key": resource.NewProperty("expected-value"),
+								})),
+							},
+							Status: resource.StatusPartialFailure,
+						}, &plugin.InitError{
+							Reasons: []string{
+								"intentional error",
+							},
+						}
 					},
 				},
 			}
@@ -831,8 +832,8 @@ func TestRefreshStepPatterns(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  tc.readInputs,
-							Outputs: tc.readOutputs,
+							Inputs:  new(resource.FromResourcePropertyMap(tc.readInputs)),
+							Outputs: new(resource.FromResourcePropertyMap(tc.readOutputs)),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -914,21 +915,21 @@ func TestRefreshStep(t *testing.T) {
 			s.provider = &deploytest.Provider{
 				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 					return plugin.ReadResponse{
-							ReadResult: plugin.ReadResult{
-								ID: "new-id",
-								Inputs: resource.PropertyMap{
-									"inputs-key": resource.NewProperty("expected-value"),
-								},
-								Outputs: resource.PropertyMap{
-									"outputs-key": resource.NewProperty("expected-value"),
-								},
-							},
-							Status: resource.StatusPartialFailure,
-						}, &plugin.InitError{
-							Reasons: []string{
-								"intentional error",
-							},
-						}
+						ReadResult: plugin.ReadResult{
+							ID: "new-id",
+							Inputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
+								"inputs-key": resource.NewProperty("expected-value"),
+							})),
+							Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
+								"outputs-key": resource.NewProperty("expected-value"),
+							})),
+						},
+						Status: resource.StatusPartialFailure,
+					}, &plugin.InitError{
+						Reasons: []string{
+							"intentional error",
+						},
+					}
 				},
 			}
 			status, _, err := s.Apply()
@@ -1090,7 +1091,7 @@ func TestImportStep(t *testing.T) {
 						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
 							return plugin.ReadResponse{
 								ReadResult: plugin.ReadResult{
-									Outputs: resource.PropertyMap{},
+									Outputs: new(property.Map{}),
 								},
 								Status: resource.StatusOK,
 							}, nil

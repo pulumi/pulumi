@@ -370,3 +370,88 @@ func TestParseDocRef(t *testing.T) {
 		assert.Equal(t, expected, parseDocRef(ref))
 	})
 }
+
+func TestPartialPackageInterpretPulumiRefs(t *testing.T) {
+	t.Parallel()
+
+	spec := PartialPackageSpec{
+		PackageInfoSpec: PackageInfoSpec{Name: "test", Version: "1.0.0"},
+		Resources: map[string]json.RawMessage{
+			"test:index:Thing": json.RawMessage(`{"properties": {"name": {"type": "string"}}}`),
+		},
+	}
+	description := "See {{% ref #/resources/test:index:Thing/properties/name %}}."
+	resolver := func(ref DocRef) (string, bool) { return "resolved " + ref.Property, true }
+	expected := "See resolved name."
+
+	interpret := map[string]func(t *testing.T) (string, error){
+		"before Definition": func(t *testing.T) (string, error) {
+			pkg, err := ImportPartialSpec(spec, nil, NewNullLoader())
+			require.NoError(t, err)
+			return pkg.InterpretPulumiRefs(description, resolver)
+		},
+		"after Definition": func(t *testing.T) (string, error) {
+			pkg, err := ImportPartialSpec(spec, nil, NewNullLoader())
+			require.NoError(t, err)
+			_, err = pkg.Definition()
+			require.NoError(t, err)
+			return pkg.InterpretPulumiRefs(description, resolver)
+		},
+		"on Definition": func(t *testing.T) (string, error) {
+			pkg, err := ImportPartialSpec(spec, nil, NewNullLoader())
+			require.NoError(t, err)
+			def, err := pkg.Definition()
+			require.NoError(t, err)
+			return def.InterpretPulumiRefs(description, resolver)
+		},
+		"on Snapshot": func(t *testing.T) (string, error) {
+			pkg, err := ImportPartialSpec(spec, nil, NewNullLoader())
+			require.NoError(t, err)
+			snapshot, err := pkg.Snapshot()
+			require.NoError(t, err)
+			return snapshot.InterpretPulumiRefs(description, resolver)
+		},
+	}
+
+	for name, run := range interpret {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			actual, err := run(t)
+			require.NoError(t, err)
+			assert.Equal(t, expected, actual)
+		})
+	}
+
+	t.Run("resolver reads the package", func(t *testing.T) {
+		t.Parallel()
+
+		pkg, err := ImportPartialSpec(spec, nil, NewNullLoader())
+		require.NoError(t, err)
+		readingResolver := func(ref DocRef) (string, bool) {
+			_, ok, err := pkg.Resources().Get("test:index:Thing")
+			require.NoError(t, err)
+			require.True(t, ok)
+			return resolver(ref)
+		}
+
+		actual, err := pkg.InterpretPulumiRefs(description, readingResolver)
+		require.NoError(t, err)
+		assert.Equal(t, expected, actual)
+
+		_, err = pkg.Definition()
+		require.NoError(t, err)
+		actual, err = pkg.InterpretPulumiRefs(description, readingResolver)
+		require.NoError(t, err)
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("missing target", func(t *testing.T) {
+		t.Parallel()
+
+		pkg, err := ImportPartialSpec(spec, nil, NewNullLoader())
+		require.NoError(t, err)
+		_, err = pkg.InterpretPulumiRefs("See {{% ref #/resources/test:index:Missing %}}.", resolver)
+		assert.ErrorContains(t, err, "reference to resource '/resources/test:index:Missing' not found")
+	})
+}

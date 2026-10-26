@@ -139,3 +139,15 @@ func TestCurrentProjectContradictsWorkspace(t *testing.T) {
 		`stack organization/old-name/dev belongs to project "old-name", `+
 			`but Pulumi.yaml declares project "new-name"`)
 }
+
+func TestManagedEnvironmentRef(t *testing.T) {
+	t.Parallel()
+
+	project, name := StackConfigLocation{ManagedEnvironment: "proj/renamed"}.ManagedEnvironmentRef()
+	assert.Equal(t, "proj", project)
+	assert.Equal(t, "renamed", name)
+
+	project, name = StackConfigLocation{}.ManagedEnvironmentRef()
+	assert.Empty(t, project)
+	assert.Empty(t, name)
+}

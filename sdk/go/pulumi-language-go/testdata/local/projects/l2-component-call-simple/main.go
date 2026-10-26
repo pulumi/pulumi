@@ -17,18 +17,14 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("from_identity", callIdentity.ApplyT(func(call component.ComponentCallableIdentityResult) (string, error) {
-			return call.Result, nil
-		}).(pulumi.StringOutput))
+		ctx.Export("from_identity", callIdentity.Result())
 		callPrefixed1, err := component1.Prefixed(ctx, &component.ComponentCallablePrefixedArgs{
 			Prefix: pulumi.String("foo-"),
 		})
 		if err != nil {
 			return err
 		}
-		ctx.Export("from_prefixed", callPrefixed1.ApplyT(func(call component.ComponentCallablePrefixedResult) (string, error) {
-			return call.Result, nil
-		}).(pulumi.StringOutput))
+		ctx.Export("from_prefixed", callPrefixed1.Result())
 		return nil
 	})
 }

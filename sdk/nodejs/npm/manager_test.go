@@ -348,8 +348,9 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest
 func TestBunPackNonExistentPackageJSON(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	stderr := new(bytes.Buffer)
 	errorMessage := "error: No package.json was found for directory"

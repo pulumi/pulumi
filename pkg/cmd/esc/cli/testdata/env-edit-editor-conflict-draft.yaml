@@ -1,0 +1,64 @@
+run: |
+  esc env set default/test foo draft --draft
+  printf '\n' | esc env edit default/test --draft=EXAMPLE
+process:
+  environ:
+    EDITOR: my-editor
+  commands:
+    my-editor: |
+      reopened=
+      while IFS= read -r line; do
+        case "$line" in
+          *"changed after it was read"*) reopened=yes ;;
+        esac
+      done <$1
+      if [ -z "$reopened" ]; then
+        esc env set default/test bar concurrent --draft=EXAMPLE
+        echo -e "values:\n  foo: baz\n" >$1
+      else
+        while IFS= read -r line; do echo "| $line"; done <$1
+        echo -e "values:\n  foo: baz\n  bar: concurrent\n" >$1
+      fi
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env set default/test foo draft --draft
+Change request created: 00000000-0000-0000-0000-000000000000
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000
+Change request submitted
+> esc env edit default/test --draft=EXAMPLE
+> esc env set default/test bar concurrent --draft=EXAMPLE
+Change request updated
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=EXAMPLE
+| values:
+|   foo: baz
+| 
+| ---
+| # The definition changed after it was read, so the edits above were
+| # not saved. The current definition is below. Saving replaces it with
+| # the definition above, so copy in any changes you want to keep.
+| #
+| # values:
+| #   foo: draft
+| #   bar: concurrent
+| ---
+| # Please edit the environment definition above.
+| # The object below is the current result of
+| # evaluating the environment and will not be
+| # saved. An empty definition aborts the edit.
+| 
+| {
+|   "foo": "draft"
+| }
+Change request updated
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=EXAMPLE
+
+---
+> esc env set default/test foo draft --draft
+> esc env edit default/test --draft=EXAMPLE
+> esc env set default/test bar concurrent --draft=EXAMPLE
+Your edits were not saved because the definition changed after it was read.
+Press ENTER to continue editing or ^D to exit

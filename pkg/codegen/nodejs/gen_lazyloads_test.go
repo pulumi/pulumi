@@ -26,7 +26,8 @@ func TestLazyLoadsGeneration(t *testing.T) {
 
 	ll := newLazyLoadGen()
 
-	t.Run("resource", func(t *testing.T) { //nolint:paralleltest
+	t.Run("resource", func(t *testing.T) {
+		t.Parallel()
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: resourceFileType,
@@ -45,7 +46,8 @@ utilities.lazyLoad(exports, ["MyRes"], () => require("./myResource"));
 			buf.String())
 	})
 
-	t.Run("resource-with-state", func(t *testing.T) { //nolint:paralleltest
+	t.Run("resource-with-state", func(t *testing.T) {
+		t.Parallel()
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: resourceFileType,
@@ -65,7 +67,8 @@ utilities.lazyLoad(exports, ["MyRes1"], () => require("./myResource1"));
 			buf.String())
 	})
 
-	t.Run("resource-with-methods", func(t *testing.T) { //nolint:paralleltest
+	t.Run("resource-with-methods", func(t *testing.T) {
+		t.Parallel()
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: resourceFileType,
@@ -82,7 +85,8 @@ import { MyRes2 } from "./myResource2";
 `, buf.String())
 	})
 
-	t.Run("function", func(t *testing.T) { //nolint:paralleltest
+	t.Run("function", func(t *testing.T) {
+		t.Parallel()
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: functionFileType,
@@ -100,7 +104,8 @@ utilities.lazyLoad(exports, ["myFunc"], () => require("./myFunc"));
 `, buf.String())
 	})
 
-	t.Run("function-with-output-version", func(t *testing.T) { //nolint:paralleltest
+	t.Run("function-with-output-version", func(t *testing.T) {
+		t.Parallel()
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: functionFileType,
@@ -121,7 +126,8 @@ utilities.lazyLoad(exports, ["myFunc1","myFunc1Output"], () => require("./myFunc
 `, buf.String())
 	})
 
-	t.Run("fallthrough-reexport", func(t *testing.T) { //nolint:paralleltest
+	t.Run("fallthrough-reexport", func(t *testing.T) {
+		t.Parallel()
 		var buf bytes.Buffer
 		ll.genReexport(&buf, fileInfo{
 			fileType: otherFileType,

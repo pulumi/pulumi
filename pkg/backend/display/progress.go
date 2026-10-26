@@ -777,11 +777,12 @@ func (display *ProgressDisplay) printResourceDiffs() {
 }
 
 // printDiagnostics prints a new "Diagnostics:" section with all of the diagnostics grouped by
-// resource. If no diagnostics were emitted, prints nothing. Returns whether an error was encountered.
+// resource. If no diagnostics were emitted, prints nothing.
 func (display *ProgressDisplay) printDiagnostics() {
 	// Since we display diagnostic information eagerly, we need to keep track of the first
 	// time we wrote some output so we don't inadvertently print the header twice.
 	wroteDiagnosticHeader := false
+	wroteWarningOrError := false
 
 	eventRows := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
 
@@ -835,6 +836,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 				}
 
 				wrote = true
+				wroteWarningOrError = wroteWarningOrError || v.Severity == diag.Warning || v.Severity == diag.Error
 			}
 
 			if wrote {
@@ -843,11 +845,11 @@ func (display *ProgressDisplay) printDiagnostics() {
 		}
 	}
 
-	// Print a link to Neo to explain the failure.
+	// Print a link to Neo to explain warnings or errors.
 	// "ShowNeoFeatures" renders the link if it is enabled so don't render it here.
 	showNeoLink := display.opts.ShowLinkToNeo && !display.opts.ShowNeoFeatures
 	// Check for SuppressPermalink ensures we don't print the link for DIY backends
-	if wroteDiagnosticHeader && !display.opts.SuppressPermalink && showNeoLink {
+	if wroteWarningOrError && !display.opts.SuppressPermalink && showNeoLink {
 		display.println("    " +
 			colors.SpecCreateReplacement + "[Pulumi Neo]" + colors.Reset + " Would you like help with these diagnostics?")
 		display.println("    " +
@@ -936,6 +938,9 @@ func (display *ProgressDisplay) printPolicies() bool {
 		// Print the policy pack status and name/version as a header:
 		passFailWarn := "✅"
 		for _, violation := range info.ViolationEvents {
+			if len(violation.Exceptions) > 0 {
+				continue
+			}
 			if violation.EnforcementLevel == apitype.Mandatory {
 				passFailWarn = "❌"
 				hadMandatoryViolations = true
@@ -999,9 +1004,12 @@ func (display *ProgressDisplay) printPolicies() bool {
 			}
 		}
 
-		// Next up, display all violations. Sort policy events by: enforcement level, severity, policy name,
+		// Next up, display all violations. Sort policy events by: exempted last, enforcement level, severity, policy name,
 		// and finally the URN of the resource.
 		slices.SortStableFunc(info.ViolationEvents, func(a, b engine.PolicyViolationEventPayload) int {
+			if d := cmp.Compare(min(len(a.Exceptions), 1), min(len(b.Exceptions), 1)); d != 0 {
+				return d
+			}
 			if d := cmp.Compare(enforcementRank(a.EnforcementLevel), enforcementRank(b.EnforcementLevel)); d != 0 {
 				return d
 			}
@@ -1013,12 +1021,34 @@ func (display *ProgressDisplay) printPolicies() bool {
 			}
 			return cmp.Compare(string(a.ResourceURN), string(b.ResourceURN))
 		})
+		exemptedNames := make([]string, 0)
+		exemptedCounts := make(map[string]int)
 		for _, policyEvent := range info.ViolationEvents {
-			// Print the individual policy event.
+			if len(policyEvent.Exceptions) > 0 && !display.opts.ShowPolicyExceptions {
+				if exemptedCounts[policyEvent.PolicyName] == 0 {
+					exemptedNames = append(exemptedNames, policyEvent.PolicyName)
+				}
+				exemptedCounts[policyEvent.PolicyName]++
+				continue
+			}
+			// Print the individual policy event, with a dot for an exempted one.
+			bullet := "- "
+			if len(policyEvent.Exceptions) > 0 {
+				bullet = "· "
+			}
 			policyLine := renderDiffPolicyViolationEvent(
-				policyEvent, subItemIndent+"- ", subItemIndent+"  ", display.opts)
+				policyEvent, subItemIndent+bullet, subItemIndent+"  ", display.opts)
 			policyLine = strings.TrimSuffix(policyLine, "\n")
 			display.println(policyLine)
+		}
+
+		// Unless the user has requested detailed exceptions, summarize the exempted violations of each policy.
+		sort.Strings(exemptedNames)
+		for _, policyName := range exemptedNames {
+			count := exemptedCounts[policyName]
+			display.println(fmt.Sprintf("%s· %s[exempted]  %s  (%d %s)%s",
+				subItemIndent, colors.BrightBlack, policyName,
+				count, english.PluralWord(count, "violation", ""), colors.Reset))
 		}
 	}
 
@@ -1081,17 +1111,21 @@ func (display *ProgressDisplay) printSummary() {
 	if display.summaryEventPayload == nil {
 		return
 	}
-	// track resources errored
+	// track resources errored and awaiting
 	resourcesErrored := 0
+	resourcesAwaited := 0
 
 	rr := toResourceRows(display.eventUrnToResourceRow, display.opts.DeterministicOutput)
 
 	for _, r := range rr {
-		if r.DiagInfo().ErrorCount > 0 {
+		switch {
+		case r.Awaited():
+			resourcesAwaited++
+		case r.DiagInfo().ErrorCount > 0:
 			resourcesErrored++
 		}
 	}
-	msg := renderSummaryEvent(*display.summaryEventPayload, resourcesErrored, false, display.opts)
+	msg := renderSummaryEvent(*display.summaryEventPayload, resourcesErrored, resourcesAwaited, false, display.opts)
 	display.println(msg)
 }
 
@@ -1278,6 +1312,8 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 		}
 	case engine.StartDebuggingEvent:
 		return
+	case engine.UpdateStartedEvent:
+		return
 	case engine.StdoutColorEvent:
 		display.handleSystemEvent(event.Payload().(engine.StdoutEventPayload))
 		return
@@ -1389,6 +1425,9 @@ func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
 	case engine.ResourceOperationFailed:
 		display.failed = true
 		row.SetFailed()
+		if event.Awaited() {
+			row.SetAwaited()
+		}
 	case engine.DiagEvent:
 		// also record this diagnostic so we print it at the end.
 		row.RecordDiagEvent(event)
@@ -1517,13 +1556,15 @@ func (display *ProgressDisplay) renderProgressDiagEvent(payload engine.DiagEvent
 }
 
 // getStepStatus handles getting the value to put in the status column.
-func (display *ProgressDisplay) getStepStatus(step engine.StepEventMetadata, done, failed, interrupted bool) string {
+func (display *ProgressDisplay) getStepStatus(
+	step engine.StepEventMetadata, done, failed, awaited, interrupted bool,
+) string {
 	var status string
 	switch {
 	case interrupted:
 		status = display.getStepInterruptedDescription(step)
 	case done:
-		status = display.getStepDoneDescription(step, failed)
+		status = display.getStepDoneDescription(step, failed, awaited)
 	default:
 		status = display.getStepInProgressDescription(step)
 	}
@@ -1580,9 +1621,14 @@ func getStepInProgressOpText(op display.StepOp) string {
 	}
 }
 
-func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMetadata, failed bool) string {
+func (display *ProgressDisplay) getStepDoneDescription(
+	step engine.StepEventMetadata, failed, awaited bool,
+) string {
 	makeError := func(v string) string {
 		return colors.SpecError + "**" + v + "**" + colors.Reset
+	}
+	makeAwaited := func(v string) string {
+		return colors.SpecWarning + "**" + v + "**" + colors.Reset
 	}
 
 	op := display.getStepOp(step)
@@ -1595,7 +1641,16 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 
 	getDescription := func() string {
 		var opText string
-		if failed {
+		if awaited {
+			switch op {
+			case deploy.OpCreate, deploy.OpCreateReplacement:
+				opText = "create awaiting"
+			case deploy.OpUpdate:
+				opText = "update awaiting"
+			default:
+				opText = "awaiting"
+			}
+		} else if failed {
 			switch op {
 			case deploy.OpSame:
 				opText = "failed"
@@ -1687,6 +1742,9 @@ func (display *ProgressDisplay) getStepDoneDescription(step engine.StepEventMeta
 		return fmt.Sprintf("%s (%ds)", opText, int(opDuration))
 	}
 
+	if awaited {
+		return makeAwaited(getDescription())
+	}
 	if failed {
 		return makeError(getDescription())
 	}

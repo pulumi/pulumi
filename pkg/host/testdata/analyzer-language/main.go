@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,6 +18,9 @@ import (
 
 type analyzer struct {
 	pulumirpc.UnimplementedAnalyzerServer
+
+	// noConfig is set by the policy pack's `noconfig` runtime option, for packs started without stack options.
+	noConfig bool
 }
 
 func (a *analyzer) Handshake(ctx context.Context, req *pulumirpc.AnalyzerHandshakeRequest) (*pulumirpc.AnalyzerHandshakeResponse, error) {
@@ -27,7 +31,10 @@ func (a *analyzer) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Emp
 	return &emptypb.Empty{}, nil
 }
 
-func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerStackConfigureRequest) (*pulumirpc.AnalyzerStackConfigureResponse, error) {
+func (a *analyzer) ConfigureStack(ctx context.Context, req *pulumirpc.AnalyzerStackConfigureRequest) (*pulumirpc.AnalyzerStackConfigureResponse, error) {
+	if a.noConfig {
+		return nil, errors.New("stack configure should not be called")
+	}
 	if req.Stack != "test-stack" {
 		return nil, fmt.Errorf("expected stack to be test-stack, got %s", req.Stack)
 	}
@@ -48,7 +55,7 @@ func (a *analyzer) StackConfigure(ctx context.Context, req *pulumirpc.AnalyzerSt
 		"test-project:bool":   "true",
 		"test-project:float":  "1.5",
 		"test-project:string": "hello",
-		"test-project:obj":    "{\"key\":\"value\"}",
+		"test-project:obj":    "{\"key\": \"value\"}",
 	}
 
 	if !reflect.DeepEqual(req.Config, expectedConfig) {
@@ -100,7 +107,9 @@ func (l *language) RunPlugin(req *pulumirpc.RunPluginRequest, srv pulumirpc.Lang
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: cancelChannel,
 		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterAnalyzerServer(srv, &analyzer{})
+			pulumirpc.RegisterAnalyzerServer(srv, &analyzer{
+				noConfig: req.Info.Options.GetFields()["noconfig"].GetBoolValue(),
+			})
 			return nil
 		},
 		Options: rpcutil.OpenTracingServerInterceptorOptions(nil),

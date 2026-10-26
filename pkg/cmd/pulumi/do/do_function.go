@@ -25,10 +25,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func functionSchemaHelp(fn *schema.Function) string {
@@ -101,23 +101,23 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 
 			response, err := pc.provider.Invoke(ctx, plugin.InvokeRequest{
 				Tok:     tokens.ModuleMember(fn.Token),
-				Args:    resource.FromResourcePropertyMap(inputs),
+				Args:    inputs,
 				Preview: pc.dryrun,
 			})
 			if err != nil {
 				return err
 			}
 
-			outputProperties := resource.ToResourcePropertyMap(response.Properties)
-			var result resource.PropertyValue
+			outputProperties := response.Properties
+			var result property.Value
 			if fn.Outputs != nil {
-				result = resource.NewProperty(filterOutputs(outputProperties, fn.Outputs.Properties))
+				result = property.New(filterOutputs(outputProperties, fn.Outputs.Properties))
 			} else if fn.ReturnType != nil {
-				if len(outputProperties) != 1 {
-					return fmt.Errorf("expected exactly one return value from function but got %d", len(outputProperties))
+				if outputProperties.Len() != 1 {
+					return fmt.Errorf("expected exactly one return value from function but got %d", outputProperties.Len())
 				}
 
-				for _, value := range outputProperties {
+				for _, value := range outputProperties.All {
 					result = filterOutput(value, fn.ReturnType)
 					break
 				}

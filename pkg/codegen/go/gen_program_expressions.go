@@ -304,7 +304,18 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			to = cns.Type
 		}
 		fromType := from.Type()
+		// An optional source converts as its element does: LowerConversion picked the member of the
+		// destination for the element, so the none member must not force a cast, as in the other
+		// generators.
+		if model.IsOptionalType(fromType) {
+			fromType = pcl.UnwrapOption(fromType)
+		}
 		isFromOutput, _ := model.ContainsEventuals(fromType)
+		// A resource reference is a plain value whose properties are outputs. It must not be cast
+		// as if the reference itself were an output.
+		if isResourceReference(fromType) {
+			isFromOutput = false
+		}
 
 		switch to := to.(type) {
 		case *model.EnumType:
@@ -342,10 +353,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			return
 		}
 		// PCL treats ID as a string-like type that can be coerced to any
-		// primitive scalar. In Go the IDInput/IDOutput interfaces don't
-		// declare ToStringOutput/ToBoolOutput/etc, so the target field
-		// won't accept an IDInput directly. Emit an ApplyT that parses
-		// the ID string into the destination scalar.
+		// primitive scalar. In Go every IDInput is a StringInput, so string
+		// destinations accept the value as is, but bool and numeric
+		// destinations need an ApplyT that parses the ID string.
 		if isFromOutput {
 			fromInner := model.ResolveOutputs(fromType)
 			if cns, ok := fromInner.(*model.ConstType); ok {
@@ -390,22 +400,10 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 						// For collection types (maps, objects, lists), wrap with pulumi.ToMap/ToArray.
 						// If the source has a typed Go representation (e.g. map[string]string,
 						// []int), use the matching typed converter (ToStringMap, ToIntArray)
-						// since pulumi.ToMap/ToArray only accept map[string]any / []any. For
-						// maps/arrays of Pulumi input interfaces (map[string]pulumi.XInput), a
-						// direct type cast to pulumi.XMap / pulumi.XArray suffices — the
-						// underlying types are identical and the named type satisfies
-						// pulumi.Input.
+						// since pulumi.ToMap/ToArray only accept map[string]any / []any.
 						argGoType := g.argumentTypeName(arg.Type(), false)
 						switch scalarType.(type) {
 						case *model.ObjectType, *model.MapType:
-							if elm, ok := strings.CutPrefix(argGoType, "map[string]"); ok {
-								if named, ok := pulumiInputElementCastName(elm); ok {
-									g.Fgenf(w, "pulumi.%sMap(", named)
-									g.genScopeTraversalExpression(w, arg, expr.Type())
-									g.Fgenf(w, ")")
-									return
-								}
-							}
 							fn := "pulumi.ToMap"
 							if elm, ok := strings.CutPrefix(argGoType, "map[string]"); ok &&
 								elm != "interface{}" {
@@ -418,14 +416,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 							g.Fgenf(w, ")")
 							return
 						case *model.ListType, *model.TupleType:
-							if elm, ok := strings.CutPrefix(argGoType, "[]"); ok {
-								if named, ok := pulumiInputElementCastName(elm); ok {
-									g.Fgenf(w, "pulumi.%sArray(", named)
-									g.genScopeTraversalExpression(w, arg, expr.Type())
-									g.Fgenf(w, ")")
-									return
-								}
-							}
 							fn := "pulumi.ToArray"
 							if elm, ok := strings.CutPrefix(argGoType, "[]"); ok &&
 								elm != "interface{}" {
@@ -475,7 +465,26 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					if isOutput && to.Equals(model.DynamicType) {
 						typeName = "pulumi.AnyOutput"
 					}
-					g.Fgenf(w, "%.v.(%s)", from, typeName)
+					// A Dynamic PCL source may emit as either an interface value (e.g. a function
+					// returning `any`) or a concrete value (e.g. a resource reference whose static
+					// Go type is a struct pointer). Go's `.(T)` type assertion requires an
+					// interface LHS, and Go's `T(x)` conversion only works when `T` is an
+					// interface or `x` is already assignable to `T`. Pick the form by looking at
+					// the target: for interface-typed Pulumi SDK targets, `T(x)` is a plain
+					// interface conversion that works regardless of whether `x` is already an
+					// interface. For plain scalar targets, `.(T)` is the only form that works
+					// when `x` is an interface.
+					if isPulumiInterfaceType(typeName) {
+						g.Fgenf(w, "%s(%.v)", typeName, from)
+					} else {
+						g.Fgenf(w, "%.v.(%s)", from, typeName)
+					}
+				} else if conv, ok := plainCollectionConverter(g, fromType, typeName); ok && !isFromOutput {
+					// `pulumi.StringArray` is `[]pulumi.String`, not `[]string`, so a plain
+					// `[]string` value (e.g. from `strings.Split`) can't be wrapped with the
+					// input type directly. Use the SDK's `pulumi.ToStringArray` helper
+					// (and similarly for other scalar array/map types).
+					g.Fgenf(w, "%s(%.v)", conv, from)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}
@@ -646,7 +655,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "join":
 		g.Fgenf(w, "strings.Join(%v, %v)", expr.Args[1], expr.Args[0])
 	case "length":
-		g.Fgenf(w, "len(%.20v)", expr.Args[0])
+		// PCL's `length` on a string returns the Unicode grapheme cluster
+		// count (so "🕹️" is 1), not the byte or rune length, so use
+		// uniseg.GraphemeClusterCount for strings.
+		argType := model.ResolveOutputs(expr.Args[0].Type())
+		if argType.Equals(model.StringType) {
+			g.Fgenf(w, "uniseg.GraphemeClusterCount(%.20v)", expr.Args[0])
+		} else {
+			g.Fgenf(w, "len(%.20v)", expr.Args[0])
+		}
 	case "readFile":
 		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "readFileOrPanic(%v)", expr.Args[0])
@@ -987,14 +1004,6 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 }
 
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
-	switch argType := expr.Type().(type) {
-	case *model.ObjectType:
-		if configMetadata, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](argType); ok {
-			g.genObjectConsExpressionWithTypeName(w, expr, expr.Type(), configMetadata.TypeName)
-			return
-		}
-	}
-
 	isInput := false
 	g.genObjectConsExpression(w, expr, expr.Type(), isInput)
 }
@@ -1005,6 +1014,13 @@ func (g *generator) genObjectConsExpression(
 	destType model.Type,
 	isInput bool,
 ) {
+	if objectType, ok := model.ResolveOutputs(destType).(*model.ObjectType); ok {
+		if configMetadata, ok := model.GetObjectTypeAnnotation[*ObjectTypeFromConfigMetadata](objectType); ok {
+			g.genObjectConsExpressionWithTypeName(w, expr, destType, configMetadata.TypeName)
+			return
+		}
+	}
+
 	isInput = isInput || isInputty(destType)
 	// If the destination is a schema-typed object whose input shape exists
 	// (i.e. the SDK generates a paired ...Args type), we're populating that
@@ -1145,6 +1161,16 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 						}
 					}
 				}
+			}
+		}
+
+		if obj, ok := item.Value.(*model.ObjectConsExpression); ok && isMap {
+			if mapType, ok := model.ResolveOutputs(destType).(*model.MapType); ok {
+				g.Fgenf(w, ": ")
+				g.genObjectConsExpression(w, obj, mapType.ElementType, false)
+				g.Fgenf(w, ",\n")
+				g.inPlainObjectField = savedPlain
+				continue
 			}
 		}
 
@@ -1497,10 +1523,46 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 		}
 	}
 	g.Fgenf(w, "%s{\n", argType)
-	for _, v := range expr.Expressions {
+	for i, v := range expr.Expressions {
+		if obj, ok := v.(*model.ObjectConsExpression); ok {
+			if elementType := tupleElementType(destType, i); elementType != nil {
+				g.genObjectConsExpression(w, obj, elementType, isInput)
+				g.Fgenf(w, ",\n")
+				continue
+			}
+		}
 		g.Fgenf(w, "%v,\n", v)
 	}
 	g.Fgenf(w, "}")
+}
+
+// constantsToValueTypes replaces each constant in a type, at any tuple depth, with the type of its value, so
+// that the elements of a literal such as [[1, 2], [3, 4]] share one Go array type.
+func constantsToValueTypes(t model.Type) model.Type {
+	switch t := t.(type) {
+	case *model.ConstType:
+		return t.Type
+	case *model.TupleType:
+		elementTypes := make([]model.Type, len(t.ElementTypes))
+		for i, elementType := range t.ElementTypes {
+			elementTypes[i] = constantsToValueTypes(elementType)
+		}
+		return model.NewTupleType(elementTypes...)
+	}
+	return t
+}
+
+// tupleElementType returns the type a tuple literal's destination declares for its i-th element, if any.
+func tupleElementType(destType model.Type, i int) model.Type {
+	switch destType := model.ResolveOutputs(destType).(type) {
+	case *model.ListType:
+		return destType.ElementType
+	case *model.TupleType:
+		if i < len(destType.ElementTypes) {
+			return destType.ElementTypes[i]
+		}
+	}
+	return nil
 }
 
 func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) {
@@ -1513,6 +1575,19 @@ func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpress
 		opstr = "-"
 	}
 	g.Fgenf(w, "%[2]v%.[1]*[3]v", precedence, opstr, expr.Operand)
+}
+
+// isPulumiInterfaceType reports whether a Pulumi SDK Go type name denotes a non-generic interface
+// (as opposed to a plain scalar wrapper like `pulumi.String`). Used by `__convert` emission to
+// decide between the `T(x)` interface-conversion form (works for both concrete and interface
+// sources) and the `x.(T)` type-assertion form (needed when the target is a plain scalar).
+func isPulumiInterfaceType(typeName string) bool {
+	switch typeName {
+	case "pulumi.Resource", "pulumi.ProviderResource",
+		"pulumi.Asset", "pulumi.Archive", "pulumi.AssetOrArchive":
+		return true
+	}
+	return false
 }
 
 // argumentTypeName computes the go type for the given model type.
@@ -1540,6 +1615,14 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			if isInput {
 				if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok && obj.InputShape != nil {
 					schemaType = obj.InputShape
+				}
+			}
+			// GetSchemaForType drops the `none` member of an optional union. A plain optional
+			// object or enum is a pointer in Go (the element type of a `FooPtrOutput` is `*Foo`).
+			if _, isUnion := destType.(*model.UnionType); isUnion && !isInput && model.IsOptionalType(destType) {
+				switch schemaType.(type) {
+				case *schema.ObjectType, *schema.EnumType:
+					schemaType = &schema.OptionalType{ElementType: schemaType}
 				}
 			}
 			return (&pkgContext{
@@ -1575,9 +1658,6 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			}
 			return "string"
 		case *model.IDType:
-			if isInput {
-				return "pulumi.IDInput"
-			}
 			return "pulumi.ID"
 		case *model.BoolType:
 			if isInput {
@@ -1646,6 +1726,15 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 				!strings.HasPrefix(elmType, "[]") && !strings.HasPrefix(elmType, "pulumi.") {
 				elmType = "*" + elmType
 			}
+			// Output-typed values render as Pulumi input types. A raw Go map can neither hold
+			// them nor act as an Input, so use the SDK's named map, as lists use `XArray`.
+			isResourceTypeName := elmType == "pulumi.Resource" || elmType == "pulumi.ProviderResource"
+			if strings.HasPrefix(elmType, "pulumi.") && !isResourceTypeName {
+				if elmType == "pulumi.Any" {
+					return "pulumi.Map"
+				}
+				return elmType + "Map"
+			}
 			return "map[string]" + elmType
 		}
 		return "map[string]interface{}"
@@ -1663,9 +1752,6 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			if argTypeName == "pulumi.Any" {
 				return "pulumi.Array"
 			}
-			if argTypeName == "pulumi.IDInput" {
-				return "pulumi.IDArray"
-			}
 			return argTypeName + "Array"
 		}
 		return "[]" + argTypeName
@@ -1675,10 +1761,7 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		var elmType model.Type
 		for i, t := range destType.ElementTypes {
 			if i == 0 {
-				elmType = t
-				if cns, ok := elmType.(*model.ConstType); ok {
-					elmType = cns.Type
-				}
+				elmType = constantsToValueTypes(t)
 				continue
 			}
 
@@ -1694,9 +1777,6 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 				if argTypeName == "pulumi.Any" {
 					return "pulumi.Array"
-				}
-				if argTypeName == "pulumi.IDInput" {
-					return "pulumi.IDArray"
 				}
 				return argTypeName + "Array"
 			}
@@ -1832,34 +1912,27 @@ func (g *generator) secretOutputTypeName(expr *model.FunctionCallExpression) str
 	return g.argumentTypeName(expr.Type(), false)
 }
 
-// genIDConversion emits an ApplyT-based cast from an ID-typed expression
-// to a primitive scalar `to`. Returns false if `to` isn't a scalar we know
-// how to parse an ID string into.
+// genIDConversion emits an ApplyT that parses an ID-typed output expression
+// into the bool or numeric scalar `to`. It goes through ToStringOutput, which
+// both IDOutput and the IDInput interface provide. Returns false for every
+// other `to`, including string, where the value is assignable as is.
 func (g *generator) genIDConversion(w io.Writer, from model.Expression, to model.Type) bool {
+	var applier, output string
 	switch to {
-	case model.StringType:
-		g.Fgenf(w, "%.v.ToIDOutput().ToStringOutput()", from)
-		return true
 	case model.BoolType:
-		g.importer.Import("strconv", "strconv")
-		g.Fgenf(w,
-			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (bool, error) {"+
-				" return strconv.ParseBool(string(id)) }).(pulumi.BoolOutput)", from)
-		return true
+		applier, output = "strconv.ParseBool", "pulumi.BoolOutput"
 	case model.IntType:
-		g.importer.Import("strconv", "strconv")
-		g.Fgenf(w,
-			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (int, error) {"+
-				" return strconv.Atoi(string(id)) }).(pulumi.IntOutput)", from)
-		return true
+		applier, output = "strconv.Atoi", "pulumi.IntOutput"
 	case model.NumberType:
-		g.importer.Import("strconv", "strconv")
-		g.Fgenf(w,
-			"%.v.ToIDOutput().ApplyT(func(id pulumi.ID) (float64, error) {"+
-				" return strconv.ParseFloat(string(id), 64) }).(pulumi.Float64Output)", from)
-		return true
+		// ParseFloat takes a bit size, so it does not fit ApplyT's one-argument applier shape.
+		applier = "func(id string) (float64, error) { return strconv.ParseFloat(id, 64) }"
+		output = "pulumi.Float64Output"
+	default:
+		return false
 	}
-	return false
+	g.importer.Import("strconv", "strconv")
+	g.Fgenf(w, "%.v.ToStringOutput().ApplyT(%s).(%s)", from, applier, output)
+	return true
 }
 
 // pulumiConverterSuffix maps a Go type name (e.g. "string", "*bool",
@@ -1894,22 +1967,24 @@ func pulumiConverterSuffix(goType string) (string, bool) {
 	return pulumiScalarSuffix(goType)
 }
 
-// pulumiInputElementCastName recognizes a Go element type of the form
-// "pulumi.XInput" and returns "X". This is used to convert a raw Go
-// map/slice of such element types (e.g. map[string]pulumi.IDInput) into
-// the corresponding named Pulumi container (pulumi.IDMap) via a direct
-// type cast — the underlying types are identical but the named type
-// satisfies pulumi.Input.
-func pulumiInputElementCastName(elm string) (string, bool) {
-	name, ok := strings.CutPrefix(elm, "pulumi.")
+// plainCollectionConverter returns the `pulumi.To<Suffix>` helper that
+// converts a plain Go slice/map value (e.g. `[]string`) into the matching
+// Pulumi input type (e.g. `pulumi.StringArray`). Returns ok=false if the
+// source isn't a convertible slice/map or the destination doesn't name the
+// corresponding input container type.
+func plainCollectionConverter(g *generator, fromType model.Type, destTypeName string) (string, bool) {
+	argGoType := g.argumentTypeName(fromType, false)
+	suffix, ok := pulumiConverterSuffix(argGoType)
 	if !ok {
 		return "", false
 	}
-	name, ok = strings.CutSuffix(name, "Input")
-	if !ok || name == "" {
+	if destTypeName != "pulumi."+suffix {
 		return "", false
 	}
-	return name, true
+	if !strings.HasSuffix(suffix, "Array") && !strings.HasSuffix(suffix, "Map") {
+		return "", false
+	}
+	return "pulumi.To" + suffix, true
 }
 
 // pulumiScalarSuffix returns the Pulumi suffix for a scalar Go type. Only
@@ -1995,11 +2070,13 @@ func (g *generator) genMapKeyAccess(w io.Writer, source model.Traversable, key s
 	// Non-schema ObjectTypes are represented as map[string]interface{} in Go,
 	// so map access returns interface{} and needs a type assertion.
 	// MapTypes (and ObjectTypes that unify to a typed map) use typed Go maps
-	// (e.g., map[string]string), so no assertion is needed since the access
-	// already returns the correct type.
+	// (e.g., map[string]string or pulumi.StringMap), so no assertion is needed
+	// since the access already returns the correct type.
 	if objType, ok := sourceType.(*model.ObjectType); ok {
 		sourceGoType := g.argumentTypeName(sourceType, false)
-		if strings.HasPrefix(sourceGoType, "map[string]") && sourceGoType != "map[string]interface{}" {
+		isTypedGoMap := strings.HasPrefix(sourceGoType, "map[string]") && sourceGoType != "map[string]interface{}"
+		isNamedSDKMap := strings.HasPrefix(sourceGoType, "pulumi.") && strings.HasSuffix(sourceGoType, "Map")
+		if isTypedGoMap || isNamedSDKMap {
 			return
 		}
 		if propType, hasProp := objType.Properties[key]; hasProp {
@@ -2333,5 +2410,24 @@ var functionPackages = map[string][]string{
 }
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {
+	if x.Name == "length" && len(x.Args) == 1 {
+		if model.ResolveOutputs(x.Args[0].Type()).Equals(model.StringType) {
+			return []string{"github.com/rivo/uniseg"}
+		}
+	}
 	return functionPackages[x.Name]
+}
+
+// isResourceReference reports whether t is the type of a resource or of a schema property that
+// references a resource type.
+func isResourceReference(t model.Type) bool {
+	obj, ok := model.ResolveOutputs(t).(*model.ObjectType)
+	if !ok {
+		return false
+	}
+	if _, ok := model.GetObjectTypeAnnotation[*schema.ResourceType](obj); ok {
+		return true
+	}
+	_, ok = model.GetObjectTypeAnnotation[*pcl.ResourceAnnotation](obj)
+	return ok
 }

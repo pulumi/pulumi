@@ -18,11 +18,27 @@ __all__ = ['ProviderArgs', 'Provider']
 
 @pulumi.input_type
 class ProviderArgs:
-    def __init__(__self__):
+    def __init__(__self__, *,
+                 some_config: pulumi.Input[Optional[_builtins.str]] = None):
         """
         The set of arguments for constructing a Provider resource.
+
+        :param pulumi.Input[_builtins.str] some_config: A configuration value for Provider.
         """
-        pass
+        if some_config is not None:
+            pulumi.set(__self__, "some_config", some_config)
+
+    @_builtins.property
+    @pulumi.getter(name="someConfig")
+    def some_config(self) -> pulumi.Input[Optional[_builtins.str]]:
+        """
+        A configuration value for Provider.
+        """
+        return pulumi.get(self, "some_config")
+
+    @some_config.setter
+    def some_config(self, value: pulumi.Input[Optional[_builtins.str]]):
+        pulumi.set(self, "some_config", value)
 
 
 @pulumi.type_token("pulumi:providers:docs")
@@ -31,12 +47,14 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 some_config: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
-        Create a Docs resource with the given unique name, props, and options.
+        Provider is the provider for docs, configured via some_config.
 
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
+        :param pulumi.Input[_builtins.str] some_config: A configuration value for Provider.
         """
         ...
     @overload
@@ -45,7 +63,7 @@ class Provider(pulumi.ProviderResource):
                  args: Optional[ProviderArgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Create a Docs resource with the given unique name, props, and options.
+        Provider is the provider for docs, configured via some_config.
 
         :param str resource_name: The name of the resource.
         :param ProviderArgs args: The arguments to use to populate this resource's properties.
@@ -62,6 +80,7 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 some_config: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -71,9 +90,18 @@ class Provider(pulumi.ProviderResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = ProviderArgs.__new__(ProviderArgs)
 
+            __props__.__dict__["some_config"] = some_config
         super(Provider, __self__).__init__(
             'docs',
             resource_name,
             __props__,
             opts)
+
+    @_builtins.property
+    @pulumi.getter(name="someConfig")
+    def some_config(self) -> pulumi.Output[Optional[_builtins.str]]:
+        """
+        A configuration value for Provider.
+        """
+        return pulumi.get(self, "some_config")
 

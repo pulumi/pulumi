@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,38 +48,38 @@ func init() {
 					assert.Equal(l, "1234", string(source1.ID))
 					assert.Equal(l, "true", string(source2.ID))
 
-					assert.Equal(l, resource.PropertyMap{
-						"boolean": resource.NewProperty(false),
-						"float":   resource.NewProperty(1234.0),
-						"integer": resource.NewProperty(1234.0),
-						"string":  resource.NewProperty("1234"),
-						"numberArray": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(1234.0),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"boolean": property.New(false),
+						"float":   property.New(1234.0),
+						"integer": property.New(1234.0),
+						"string":  property.New("1234"),
+						"numberArray": property.New([]property.Value{
+							property.New(1234.0),
 						}),
-						"booleanMap": resource.NewProperty(resource.PropertyMap{
-							"sink": resource.NewProperty(false),
+						"booleanMap": property.New(map[string]property.Value{
+							"sink": property.New(false),
 						}),
-					}, sink1.Inputs)
-					assert.Equal(l, resource.PropertyMap{
-						"boolean": resource.NewProperty(true),
-						"float":   resource.NewProperty(1.0),
-						"integer": resource.NewProperty(2.0),
-						"string":  resource.NewProperty("abc"),
-						"numberArray": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(3.0),
+					}), resource.FromResourcePropertyMap(sink1.Inputs))
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"boolean": property.New(true),
+						"float":   property.New(1.0),
+						"integer": property.New(2.0),
+						"string":  property.New("abc"),
+						"numberArray": property.New([]property.Value{
+							property.New(3.0),
 						}),
-						"booleanMap": resource.NewProperty(resource.PropertyMap{
-							"sink": resource.NewProperty(true),
+						"booleanMap": property.New(map[string]property.Value{
+							"sink": property.New(true),
 						}),
-					}, sink2.Inputs)
+					}), resource.FromResourcePropertyMap(sink2.Inputs))
 
-					assert.Equal(l, resource.PropertyMap{
-						"ids": resource.NewProperty(resource.PropertyMap{
-							"source2Token": resource.NewProperty("true"),
-							"source1Token": resource.NewProperty("1234"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"ids": property.New(map[string]property.Value{
+							"source2Token": property.New("true"),
+							"source1Token": property.New("1234"),
 						}),
-						"base64": resource.NewProperty("YWJj"),
-					}, stack.Outputs)
+						"base64": property.New("YWJj"),
+					}), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

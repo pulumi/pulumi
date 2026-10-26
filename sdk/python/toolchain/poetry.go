@@ -171,6 +171,14 @@ func (p *poetry) InstallDependencies(ctx context.Context,
 	}
 }
 
+func (p *poetry) InstallPackage(ctx context.Context,
+	cwd string, useLanguageVersionTools, showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
+	// InstallDependencies runs `poetry install`, which installs the root package of the project, so there is
+	// nothing to do here.
+	return nil
+}
+
 func (p *poetry) PrepareProject(
 	ctx context.Context, projectName, cwd string, showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {

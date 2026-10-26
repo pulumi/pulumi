@@ -31,6 +31,9 @@ import (
 var {{.Name | Unexported}}Type = reflect.TypeOf((*{{.ElementType}})(nil)).Elem()
 
 // {{.Name}}Input is an input type that accepts {{.Name}} and {{.Name}}Output values.
+{{- with $builtin := .}}{{range $t := .Implements}}
+// {{$builtin.Name}}Input values also satisfy {{$t.Name}}Input.
+{{- end}}{{end}}
 type {{.Name}}Input interface {
 	Input
 
@@ -40,6 +43,14 @@ type {{.Name}}Input interface {
 	To{{.Name}}PtrOutput() {{.Name}}PtrOutput
 	To{{.Name}}PtrOutputWithContext(ctx context.Context) {{.Name}}PtrOutput
 	{{end}}
+	{{- range $t := .Implements}}
+	To{{$t.Name}}Output() {{$t.Name}}Output
+	To{{$t.Name}}OutputWithContext(ctx context.Context) {{$t.Name}}Output
+	{{if $t.ImplementsPtrType}}
+	To{{$t.Name}}PtrOutput() {{$t.Name}}PtrOutput
+	To{{$t.Name}}PtrOutputWithContext(ctx context.Context) {{$t.Name}}PtrOutput
+	{{end}}
+	{{- end}}
 }
 {{if .DefineInputType}}
 // {{.Name}} is an input type for {{.Type}} values.
@@ -89,6 +100,15 @@ func (in {{$builtin.InputType}}) To{{$t.Name}}Output() {{$t.Name}}Output {
 func (in {{$builtin.InputType}}) To{{$t.Name}}OutputWithContext(ctx context.Context) {{$t.Name}}Output {
 	return in.To{{$builtin.Name}}OutputWithContext(ctx).To{{$t.Name}}OutputWithContext(ctx)
 }
+{{if $t.ImplementsPtrType}}
+func (in {{$builtin.InputType}}) To{{$t.Name}}PtrOutput() {{$t.Name}}PtrOutput {
+	return in.To{{$t.Name}}PtrOutputWithContext(context.Background())
+}
+
+func (in {{$builtin.InputType}}) To{{$t.Name}}PtrOutputWithContext(ctx context.Context) {{$t.Name}}PtrOutput {
+	return in.To{{$t.Name}}OutputWithContext(ctx).To{{$t.Name}}PtrOutputWithContext(ctx)
+}
+{{end}}
 {{end}}
 {{end}}
 {{if .ImplementsPtrType}}
@@ -137,6 +157,15 @@ func (o {{$builtin.Name}}Output) To{{$t.Name}}OutputWithContext(ctx context.Cont
 		return ({{$t.ElementType}})(v)
 	}).({{$t.Name}}Output)
 }
+{{if $t.ImplementsPtrType}}
+func (o {{$builtin.Name}}Output) To{{$t.Name}}PtrOutput() {{$t.Name}}PtrOutput {
+	return o.To{{$t.Name}}PtrOutputWithContext(context.Background())
+}
+
+func (o {{$builtin.Name}}Output) To{{$t.Name}}PtrOutputWithContext(ctx context.Context) {{$t.Name}}PtrOutput {
+	return o.To{{$t.Name}}OutputWithContext(ctx).To{{$t.Name}}PtrOutputWithContext(ctx)
+}
+{{end}}
 {{end}}
 {{if .ImplementsPtrType}}
 func (o {{.Name}}Output) To{{.Name}}PtrOutput() {{.Name}}PtrOutput {

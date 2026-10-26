@@ -174,7 +174,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 					_ context.Context,
 					req plugin.DiffConfigRequest,
 				) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
@@ -183,7 +183,7 @@ func TestDeleteBeforeReplace(t *testing.T) {
 					return plugin.DiffResult{}, nil
 				},
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
 					}
 					return plugin.DiffResult{}, nil
@@ -297,6 +297,72 @@ func TestPropertyDependenciesAdapter(t *testing.T) {
 	}
 }
 
+// TestPropertyDependenciesBackfillDoesNotLeakAcrossProperties exercises the engine's per-property dependency
+// backfill when a resource is registered with no explicit propertyDependencies but its inputs carry Output
+// property values with dependencies of their own. Each input's dependencies must stay isolated to that input;
+// a shared underlying set would cause one property's Output dependencies to bleed into every other property.
+func TestPropertyDependenciesBackfillDoesNotLeakAcrossProperties(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	const resType = "pkgA:m:typA"
+	var urnA, urnB, urnC resource.URN
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource(resType, "A", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+		urnA = respA.URN
+
+		respB, err := monitor.RegisterResource(resType, "B", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+		urnB = respB.URN
+
+		// Register C with two inputs, each of which is an Output value pointing at a *different* upstream
+		// resource. No flat Dependencies or PropertyDeps are sent, so the engine backfills per-property
+		// dependencies and then merges the Output-value dependencies in. propA should depend only on A and
+		// propB only on B.
+		respC, err := monitor.RegisterResource(resType, "C", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"propA": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("a"),
+					Known:        true,
+					Dependencies: []resource.URN{urnA},
+				}),
+				"propB": resource.NewProperty(resource.Output{
+					Element:      resource.NewProperty("b"),
+					Known:        true,
+					Dependencies: []resource.URN{urnB},
+				}),
+			},
+			KeepOutputValues: true,
+		})
+		require.NoError(t, err)
+		urnC = respC.URN
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+		Steps:   []lt.TestStep{{Op: Update}},
+	}
+	snap := p.Run(t, nil)
+	for _, res := range snap.Resources {
+		if res.URN != urnC {
+			continue
+		}
+		assert.ElementsMatch(t, []resource.URN{urnA}, res.PropertyDependencies["propA"],
+			"propA should only depend on A, not on B")
+		assert.ElementsMatch(t, []resource.URN{urnB}, res.PropertyDependencies["propB"],
+			"propB should only depend on B, not on A")
+	}
+}
+
 func TestExplicitDeleteBeforeReplace(t *testing.T) {
 	t.Parallel()
 
@@ -307,7 +373,7 @@ func TestExplicitDeleteBeforeReplace(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: dbrDiff,
@@ -517,13 +583,13 @@ func TestDependencyChangeDBR(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
 						}, nil
 					}
-					if !req.OldOutputs["B"].DeepEquals(req.NewInputs["B"]) {
+					if !req.OldOutputs.Get("B").Equals(req.NewInputs.Get("B")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -628,13 +694,13 @@ func TestDBRProtect(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldOutputs["A"].DeepEquals(req.NewInputs["A"]) {
+					if !req.OldOutputs.Get("A").Equals(req.NewInputs.Get("A")) {
 						return plugin.DiffResult{
 							ReplaceKeys:         []resource.PropertyKey{"A"},
 							DeleteBeforeReplace: true,
 						}, nil
 					}
-					if !req.OldOutputs["B"].DeepEquals(req.NewInputs["B"]) {
+					if !req.OldOutputs.Get("B").Equals(req.NewInputs.Get("B")) {
 						return plugin.DiffResult{
 							Changes: plugin.DiffSome,
 						}, nil
@@ -673,7 +739,7 @@ func TestDBRProtect(t *testing.T) {
 			})
 			require.NoError(t, err)
 		} else {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		}
 
 		return nil
@@ -861,7 +927,7 @@ func TestDBRParallel(t *testing.T) {
 								}
 							}()
 
-							if !req.OldInputs["A"].DeepEquals(req.NewInputs["A"]) {
+							if !req.OldInputs.Get("A").Equals(req.NewInputs.Get("A")) {
 								return plugin.DiffResult{
 									ReplaceKeys:         []resource.PropertyKey{"A"},
 									DeleteBeforeReplace: true,
@@ -959,7 +1025,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 	newPkgAProvider := func() *deploytest.Provider {
 		return &deploytest.Provider{
 			DiffConfigF: func(_ context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
-				if !req.OldInputs["version"].DeepEquals(req.NewInputs["version"]) {
+				if !req.OldInputs.Get("version").Equals(req.NewInputs.Get("version")) {
 					return plugin.DiffResult{
 						Changes:     plugin.DiffSome,
 						ChangedKeys: []resource.PropertyKey{"version"},
@@ -968,7 +1034,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 				return plugin.DiffResult{}, nil
 			},
 			DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-				if !req.OldInputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+				if !req.OldInputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
 					return plugin.DiffResult{
 						Changes:     plugin.DiffSome,
 						ChangedKeys: []resource.PropertyKey{"foo"},
@@ -995,7 +1061,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
-					if !req.OldInputs["length"].DeepEquals(req.NewInputs["length"]) {
+					if !req.OldInputs.Get("length").Equals(req.NewInputs.Get("length")) {
 						return plugin.DiffResult{
 							Changes:     plugin.DiffSome,
 							ChangedKeys: []resource.PropertyKey{"length"},
