@@ -50,12 +50,11 @@ func init() {
 					//nolint:lll // Breaking the URN up makes it harder to read
 					want := property.NewMap(map[string]property.Value{
 						"value": property.New(true),
-						"resourceRef": property.New(property.ResourceReference{
-							URN:  "urn:pulumi:test::l2-namespaced-provider::component:index:ComponentCustomRefOutput$component:index:Custom::componentRes-child",
-							Name: "componentRes-child",
-							Type: "component:index:Custom",
-							ID:   property.New("id-foo-bar-baz"),
-						}),
+						"resourceRef": property.New(property.NewResourceReference(
+							"urn:pulumi:test::l2-namespaced-provider::component:index:ComponentCustomRefOutput$component:index:Custom::componentRes-child",
+							property.New("id-foo-bar-baz"),
+							"",
+						)),
 					})
 					require.Equal(l, want, resource.FromResourcePropertyMap(namespaced.Inputs))
 					require.Equal(l, namespaced.Inputs, namespaced.Outputs, "expected inputs and outputs to match")

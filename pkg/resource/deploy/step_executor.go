@@ -259,7 +259,7 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 
 	// Unconditionally set the resource's outputs to what was provided.  This intentionally overwrites whatever
 	// might already be there, since otherwise "deleting" outputs would have no affect.
-	outs := e.Outputs()
+	outs := resource.ToResourcePropertyMap(e.Outputs())
 	se.log(synchronousWorkerID,
 		"registered resource outputs %s: old=#%d, new=#%d", urn, len(reg.New().Outputs), len(outs))
 
@@ -272,8 +272,9 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	// If we're finalizing stack outputs and there was an error, the absence of an output can't safely be assumed to
 	// mean it was deleted, so we keep old outputs, overwriting new ones.
 	if finalizingStackOutputs && errored {
-		outs = oldOuts.Copy()
-		maps.Copy(outs, e.Outputs())
+		newOuts := oldOuts.Copy()
+		maps.Copy(newOuts, outs)
+		outs = newOuts
 	}
 
 	// If a plan is present check that these outputs match what we recorded before

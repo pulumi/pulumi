@@ -1239,7 +1239,7 @@ func newUpdateSource(ctx context.Context,
 			}
 			for _, r := range target.Snapshot.Resources {
 				if r != nil && !r.Delete && !slices.Contains(opts.TargetSnippets, r.SnippetID) {
-					observer.Resolve(r.URN, r.ID, r.Outputs)
+					observer.Resolve(r.URN, r.ID, resource.FromResourcePropertyMap(r.Outputs))
 				}
 			}
 		}

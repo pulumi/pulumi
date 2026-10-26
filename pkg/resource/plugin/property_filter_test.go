@@ -135,17 +135,21 @@ func TestFilterKeepSecrets(t *testing.T) {
 func TestFilterKeepResources(t *testing.T) {
 	t.Parallel()
 
-	refWithID := property.ResourceReference{
-		URN: urn.URN("urn:pulumi:stack::proj::type::name"),
-		ID:  property.New("abc123"),
-	}
-	refWithoutID := property.ResourceReference{
-		URN: urn.URN("urn:pulumi:stack::proj::type::other"),
-	}
-	refComputedID := property.ResourceReference{
-		URN: urn.URN("urn:pulumi:stack::proj::type::computed"),
-		ID:  property.New(property.Computed),
-	}
+	refWithID := property.NewResourceReference(
+		urn.URN("urn:pulumi:stack::proj::type::name"),
+		property.New("abc123"),
+		"",
+	)
+	refWithoutID := property.NewResourceReference(
+		urn.URN("urn:pulumi:stack::proj::type::other"),
+		property.Value{},
+		"",
+	)
+	refComputedID := property.NewResourceReference(
+		urn.URN("urn:pulumi:stack::proj::type::computed"),
+		property.New(property.Computed),
+		"",
+	)
 
 	m := property.NewMap(map[string]property.Value{
 		"with":    property.New(refWithID),
@@ -169,10 +173,11 @@ func TestFilterKeepResources(t *testing.T) {
 func TestFilterKeepResourcesPreservesSecretAndDeps(t *testing.T) {
 	t.Parallel()
 
-	ref := property.ResourceReference{
-		URN: urn.URN("urn:pulumi:stack::proj::type::name"),
-		ID:  property.New("abc"),
-	}
+	ref := property.NewResourceReference(
+		urn.URN("urn:pulumi:stack::proj::type::name"),
+		property.New("abc"),
+		"",
+	)
 	deps := []urn.URN{"urn:pulumi:stack::proj::type::dep"}
 	m := property.NewMap(map[string]property.Value{
 		"r": property.New(ref).WithSecret(true).WithDependencies(deps),

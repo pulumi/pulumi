@@ -1,0 +1,4 @@
+component: sdk/go
+kind: improvement
+body: Deprecate the policy issue and compliance types in sdk/go/common/apitype in favor of github.com/pulumi/pulumi-cloud-sdk/go/apitype
+time: 2026-10-20T00:00:00Z

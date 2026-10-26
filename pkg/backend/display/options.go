@@ -29,8 +29,6 @@ const (
 	DisplayProgress Type = iota
 	// DisplayDiff displays a rich diff.
 	DisplayDiff
-	// DisplayWatch displays watch output.
-	DisplayWatch
 )
 
 // Options controls how the output of events are rendered

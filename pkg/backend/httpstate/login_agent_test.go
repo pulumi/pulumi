@@ -659,13 +659,17 @@ func TestLoginWithoutAgentSignupDoesNotCreateAgentAccount(t *testing.T) {
 }
 
 //nolint:paralleltest // isolates credentials with t.Setenv
-func TestCurrentWithoutAgentSignupReusesExistingAgentCredentials(t *testing.T) {
+func TestCurrentWithoutAgentSignupIgnoresValidAgentCredentials(t *testing.T) {
 	ptesting.IsolateCredentials(t)
 
 	signupCalls := 0
+	userCalls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.URL.Path == "/api/agents/signup" {
+		switch req.URL.Path {
+		case "/api/agents/signup":
 			signupCalls++
+		case "/api/user":
+			userCalls++
 		}
 		rw.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -685,9 +689,14 @@ func TestCurrentWithoutAgentSignupReusesExistingAgentCredentials(t *testing.T) {
 	ctx := ContextWithoutAgentSignup(t.Context())
 	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
-	require.NotNil(t, account)
-	assert.Equal(t, "valid-agent-token", account.AccessToken)
+	assert.Nil(t, account)
 	assert.Equal(t, 0, signupCalls)
+	assert.Equal(t, 0, userCalls)
+
+	// The agent account is left in place so it can still be claimed.
+	fromAgent, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "valid-agent-token", fromAgent.AccessToken)
 }
 
 //nolint:paralleltest // isolates credentials with t.Setenv

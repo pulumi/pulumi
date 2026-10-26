@@ -1408,7 +1408,7 @@ func TestPropertyValueToPCLLiteral(t *testing.T) {
 	require.ErrorContains(t, err, "asset")
 
 	// Resource reference errors.
-	rref := property.ResourceReference{URN: "urn:pulumi:x::y::z::n"}
+	rref := property.NewResourceReference("urn:pulumi:x::y::z::n", property.Value{}, "")
 	_, err = propertyValueToPCLLiteral("cfg", property.New(rref))
 	require.ErrorContains(t, err, `"cfg"`)
 	require.ErrorContains(t, err, "resource reference")
