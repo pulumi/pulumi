@@ -140,8 +140,9 @@ func readStackConfiguration(ctx context.Context, sink diag.Sink, ws pkgWorkspace
 	if err != nil {
 		return &workspace.ProjectStack{}, nil
 	}
+	// GetStack follows a stack rename's redirect and a project move's alias, so it can return a different stack.
 	s, err := b.GetStack(ctx, stackRef)
-	if err != nil || s == nil {
+	if err != nil || s == nil || !sameStack(s.Ref(), stackRef) {
 		// Attempt to load file directly as it might already exist even though not in the backend
 		if configFile != "" {
 			return workspace.LoadProjectStack(sink, project, configFile)
@@ -154,6 +155,12 @@ func readStackConfiguration(ctx context.Context, sink diag.Sink, ws pkgWorkspace
 	}
 
 	return ps, err
+}
+
+func sameStack(a, b backend.StackReference) bool {
+	aProject, _ := a.Project()
+	bProject, _ := b.Project()
+	return a.Name() == b.Name() && aProject == bProject
 }
 
 // A SecretsManagerLoader provides methods for loading secrets managers and
