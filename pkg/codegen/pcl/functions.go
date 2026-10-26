@@ -615,6 +615,23 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 		// "resource type" as we do for `call` expressions.
 		"pulumiResourceType": newResourceFunction("pulumiResourceType"),
 		"pulumiResourceName": newResourceFunction("pulumiResourceName"),
+		"resourceExists": model.NewFunction(model.StaticFunctionSignature{
+			Parameters: []model.Parameter{
+				{
+					Name: "type",
+					Type: model.StringType,
+				},
+				{
+					Name: "id",
+					Type: model.NewOutputType(model.StringType),
+				},
+				{
+					Name: "state",
+					Type: model.NewOptionalType(model.DynamicType),
+				},
+			},
+			ReturnType: model.NewOutputType(model.BoolType),
+		}),
 	}
 }
 

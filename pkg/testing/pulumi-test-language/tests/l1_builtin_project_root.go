@@ -16,6 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,10 +33,10 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 1, "expected 1 outputs")
-					AssertPropertyMapMember(l, outputs, "rootDirectoryOutput", resource.NewProperty(projectDirectory))
+					require.Equal(l, 1, outputs.Len(), "expected 1 outputs")
+					AssertPropertyMapMember(l, outputs, "rootDirectoryOutput", property.New(projectDirectory))
 				},
 			},
 		},

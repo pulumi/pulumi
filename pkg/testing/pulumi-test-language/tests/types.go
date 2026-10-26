@@ -27,8 +27,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -226,7 +226,7 @@ type LanguageTest struct {
 	LanguageProviders []string
 
 	// stackReferences specifies other stack data that this test depends on.
-	StackReferences map[string]resource.PropertyMap
+	StackReferences map[string]property.Map
 
 	// runs is a list of test runs to execute.
 	Runs []TestRun

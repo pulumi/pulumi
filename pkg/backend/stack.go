@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -112,22 +111,9 @@ func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (display.Res
 	return s.Backend().Destroy(ctx, s, op)
 }
 
-// WatchStack watches the projects working directory for changes and automatically updates the
-// active stack.
-func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string) error {
-	return s.Backend().Watch(ctx, s, op, paths)
-}
-
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
 func GetLatestConfiguration(ctx context.Context, s Stack) (LatestConfiguration, error) {
 	return s.Backend().GetLatestConfiguration(ctx, s)
-}
-
-// GetStackLogs fetches a list of log entries for the current stack in the current backend.
-func GetStackLogs(ctx context.Context, secretsProvider secrets.Provider, s Stack, cfg StackConfiguration,
-	query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	return s.Backend().GetLogs(ctx, secretsProvider, s, cfg, query)
 }
 
 // ExportStackDeployment exports the given stack's deployment as an opaque JSON message.
