@@ -32,16 +32,10 @@ type Options struct {
 	Stdin io.Reader
 	// Colorize output. Choices are: always, never, raw, auto
 	Color string
-	// Use the configuration values in the specified file rather than detecting the file name
-	ConfigFile string
 	// Disable integrity checking of checkpoint files
 	DisableIntegrityChecking bool
-	// Follow the log stream in real time (like tail -f)
-	Follow bool
 	// Show fully-qualified stack names
 	FullyQualifyStackNames bool
-	// Emit output as JSON
-	Json bool
 	// Flow log settings to child processes (like plugins)
 	Logflow bool
 	// Log to stderr instead of to files
@@ -54,10 +48,6 @@ type Options struct {
 	Output string
 	// Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
 	Profiling string
-	// Only return logs for the requested resource ('name', 'type::name' or full URN).  Defaults to returning all logs.
-	Resource string
-	// Only return logs newer than a relative duration ('5s', '2m', '3h') or absolute timestamp.  Defaults to returning the last 1 hour of logs.
-	Since string
 	// The name of the stack to operate on. Defaults to the current stack
 	Stack string
 	// Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
@@ -85,13 +75,6 @@ func Color(v string) Option {
 	}
 }
 
-// ConfigFile returns an Option that sets ConfigFile.
-func ConfigFile(v string) Option {
-	return func(o *Options) {
-		o.ConfigFile = v
-	}
-}
-
 // Cwd returns an Option that sets Cwd.
 func Cwd(v string) Option {
 	return func(o *Options) {
@@ -106,24 +89,10 @@ func DisableIntegrityChecking(v bool) Option {
 	}
 }
 
-// Follow returns an Option that sets Follow.
-func Follow(v bool) Option {
-	return func(o *Options) {
-		o.Follow = v
-	}
-}
-
 // FullyQualifyStackNames returns an Option that sets FullyQualifyStackNames.
 func FullyQualifyStackNames(v bool) Option {
 	return func(o *Options) {
 		o.FullyQualifyStackNames = v
-	}
-}
-
-// Json returns an Option that sets Json.
-func Json(v bool) Option {
-	return func(o *Options) {
-		o.Json = v
 	}
 }
 
@@ -166,20 +135,6 @@ func Output(v string) Option {
 func Profiling(v string) Option {
 	return func(o *Options) {
 		o.Profiling = v
-	}
-}
-
-// Resource returns an Option that sets Resource.
-func Resource(v string) Option {
-	return func(o *Options) {
-		o.Resource = v
-	}
-}
-
-// Since returns an Option that sets Since.
-func Since(v string) Option {
-	return func(o *Options) {
-		o.Since = v
 	}
 }
 
