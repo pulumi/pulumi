@@ -4083,18 +4083,18 @@ func TestValidationFailures(t *testing.T) {
 			name: "bad request",
 			err:  badRequestError,
 			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request\n" +
-				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
-				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n" +
-				"\t\t- property secretproperty with value '{[secret]}' has a problem: invalid\n",
+				"\t\t- property testproperty with value \"testvalue\" has a problem: missing\n" +
+				"\t\t- property nested[0] with value \"nestedvalue\" has a problem: nested property error\n" +
+				"\t\t- property secretproperty with value <secret> has a problem: invalid\n",
 		},
 		{
 			name:        "bad request with --show-secrets",
 			err:         badRequestError,
 			showSecrets: true,
 			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request\n" +
-				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
-				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n" +
-				"\t\t- property secretproperty with value '{&{{secretvalue}}}' has a problem: invalid\n",
+				"\t\t- property testproperty with value \"testvalue\" has a problem: missing\n" +
+				"\t\t- property nested[0] with value \"nestedvalue\" has a problem: nested property error\n" +
+				"\t\t- property secretproperty with value \"secretvalue\" has a problem: invalid\n",
 		},
 	}
 	for _, c := range cases {
