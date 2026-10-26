@@ -39,3 +39,10 @@ export const unsetNumberArray = unsetRes.data.apply(data => data.numberArray == 
 export const unsetBooleanMap = unsetRes.data.apply(data => data.booleanMap == null ? "null" : "not null");
 export const setOptionalData = setRes.optionalData.apply(optionalData => optionalData == null ? "null" : "not null");
 export const unsetOptionalData = unsetRes.optionalData.apply(optionalData => optionalData == null ? "null" : "not null");
+const optionalLists = [
+    setRes.data.numberArray,
+    unsetRes.data.numberArray,
+];
+const fromOptionalLists = new optional_primitive_ref.Resource("fromOptionalLists", {data: {
+    numberArray: optionalLists[0],
+}});
