@@ -32,7 +32,7 @@ import (
 
 func testProvider(ctx context.Context, host plugin.Host, pCtx *plugin.Context, name string) error {
 	providerLocation := filepath.Join("..", name)
-	prov, err := plugin.NewProviderFromPath(host, pCtx, providerLocation, env.Global())
+	prov, err := host.ProviderFromPath(pCtx, providerLocation, env.Global())
 	if err != nil {
 		return err
 	}

@@ -21,6 +21,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -254,7 +255,7 @@ func (h *testHost) ReleaseContext(ctx *plugin.Context) error {
 
 	var errs []error
 	for _, provider := range providers {
-		if err := provider.Close(); err != nil {
+		if err := closeProvider(provider); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -264,6 +265,15 @@ func (h *testHost) ReleaseContext(ctx *plugin.Context) error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// closeProvider sends Cancel before Close, so that the plugin can acknowledge a graceful shutdown and
+// Close does not report its exit as a crash.
+func closeProvider(provider plugin.Provider) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	contract.IgnoreError(provider.SignalCancellation(ctx))
+	return provider.Close()
 }
 
 // Loader serves the conformance runner's provider-backed schema loader, bound to ctx. The loader

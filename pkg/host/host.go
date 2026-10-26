@@ -27,6 +27,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -35,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
@@ -368,8 +370,10 @@ func (host *defaultHost) PolicyAnalyzer(
 	return hostedPlugin.(plugin.Analyzer), nil
 }
 
+// loadProvider boots a provider with load and registers it with the host. If allowMissingInfo is set, a provider
+// that does not implement GetPluginInfo loads with an empty PluginInfo, so the version check is skipped.
 func (host *defaultHost) loadProvider(
-	ctx *plugin.Context, e env.Env,
+	ctx *plugin.Context, e env.Env, allowMissingInfo bool,
 	load func() (plugin.Provider, string, *semver.Version, error),
 ) (plugin.Provider, error) {
 	release, err := host.beginLoad()
@@ -383,7 +387,11 @@ func (host *defaultHost) loadProvider(
 		return nil, err
 	}
 	info, infoerr := plug.GetPluginInfo(ctx.Request())
-	if infoerr != nil {
+	if infoerr != nil && (!allowMissingInfo || !isUnimplemented(infoerr)) {
+		// Send Cancel before Close so that Plugin.Close does not report the plugin's exit as a crash.
+		cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 5*time.Second)
+		defer cancelCancel()
+		contract.IgnoreError(plug.SignalCancellation(cancelCtx))
 		contract.IgnoreClose(plug)
 		return nil, infoerr
 	}
@@ -451,7 +459,7 @@ func (host *defaultHost) Provider(
 		return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
 	}
 
-	return host.loadProvider(ctx, e, func() (plugin.Provider, string, *semver.Version, error) {
+	return host.loadProvider(ctx, e, false, func() (plugin.Provider, string, *semver.Version, error) {
 		plug, err := plugin.NewProvider(
 			host, ctx, descriptor,
 			ctx.RuntimeOptions(), ctx.DisableProviderPreview(), string(jsonConfig), ctx.ProjectName(), e,
@@ -460,11 +468,18 @@ func (host *defaultHost) Provider(
 	})
 }
 
+// ProviderFromPath boots the provider binary at path for ctx. A provider loaded from a path has no expected
+// version, so it may leave GetPluginInfo unimplemented.
 func (host *defaultHost) ProviderFromPath(ctx *plugin.Context, path string, e env.Env) (plugin.Provider, error) {
-	return host.loadProvider(ctx, e, func() (plugin.Provider, string, *semver.Version, error) {
+	return host.loadProvider(ctx, e, true, func() (plugin.Provider, string, *semver.Version, error) {
 		plug, err := plugin.NewProviderFromPath(host, ctx, path, e)
-		return plug, "", nil, err
+		return plug, path, nil, err
 	})
+}
+
+func isUnimplemented(err error) bool {
+	rpcErr, ok := rpcerror.FromError(err)
+	return ok && rpcErr.Code() == codes.Unimplemented
 }
 
 // hostManagedProvider wraps a Provider such that it can be closed by the host that created it.

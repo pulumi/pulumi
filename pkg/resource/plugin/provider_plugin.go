@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/blang/semver"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
@@ -453,7 +452,9 @@ func providerPluginDialOptions(ctx *Context, pkg tokens.Package, path string) []
 	return dialOpts
 }
 
-// NewProviderFromPath creates a new provider by loading the plugin binary located at `path`.
+// NewProviderFromPath creates a new provider by loading the plugin binary located at `path`. The caller owns the
+// provider's lifecycle: it must send a Cancel RPC (SignalCancellation) before Close, or Close reports the plugin's
+// exit as a crash. Use Host.ProviderFromPath to have the host manage the provider instead.
 func NewProviderFromPath(host Host, ctx *Context, path string, env env.Env) (Provider, error) {
 	mapperAddr := mapperTarget(ctx)
 	loaderAddr := loaderTarget(ctx)
@@ -523,21 +524,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string, env env.Env) (Pro
 			return nil, err
 		}
 	}
-	return &cancelOnCloseProvider{provider: p}, nil
-}
-
-// cancelOnCloseProvider wraps a Provider so that Close sends a Cancel RPC before shutting down the plugin process. This
-// is used for providers created via NewProviderFromPath, which are not managed by a Host and therefore don't get Cancel
-// via the host's close sequence.
-type cancelOnCloseProvider struct {
-	*provider
-}
-
-func (p *cancelOnCloseProvider) Close() error {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(p.requestContext()), 5*time.Second)
-	defer cancel()
-	contract.IgnoreError(p.SignalCancellation(ctx))
-	return p.provider.Close()
+	return p, nil
 }
 
 func NewProviderWithClient(ctx *Context, client pulumirpc.ResourceProviderClient,
