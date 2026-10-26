@@ -243,6 +243,19 @@ func (w Workspace) GenerateLocalSDK(
 		return workspace.LinkablePackageDescriptor{}, err
 	}
 
+	// Mirror the plugin-version fallback in [schema.pluginLoader.LoadPackageReferenceV2]: if the provider
+	// didn't embed a version in its schema, use the resolved plugin version so SupportPack binding has
+	// something to validate against. Parameterized schemas have their own decoupled version.
+	if schemaSpec.Version == "" && schemaSpec.Parameterization == nil {
+		info, err := provider.GetPluginInfo(ctx)
+		if err != nil {
+			return workspace.LinkablePackageDescriptor{}, err
+		}
+		if info.Version != nil {
+			schemaSpec.Version = info.Version.String()
+		}
+	}
+
 	boundSchema, err := bindSpec(schemaSpec, schema.NewPluginLoader(w.pctx))
 	if err != nil {
 		return workspace.LinkablePackageDescriptor{}, fmt.Errorf("failed to bind schema: %w", err)
