@@ -32,7 +32,7 @@ require (
 	github.com/klauspost/compress v1.18.7 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
-	github.com/pulumi/pulumi-cloud-sdk/go v1.20260918.0 // indirect
+	github.com/pulumi/pulumi-cloud-sdk/go v1.20261019.1659 // indirect
 	github.com/xo/terminfo v1.2.0 // indirect
 	github.com/zalando/go-keyring v0.2.8 // indirect
 	go.mongodb.org/mongo-driver v1.17.10 // indirect
