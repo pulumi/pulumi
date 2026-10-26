@@ -32,49 +32,20 @@ func Value(writer io.Writer, value property.Value, showSecrets bool) error {
 		return err
 	}
 
-	if value.IsNull() {
+	switch {
+	case value.IsNull():
 		_, err := writer.Write([]byte("null"))
 		return err
-	}
-
-	if value.IsBool() {
+	case value.IsBool():
 		_, err := fmt.Fprintf(writer, "%v", value.AsBool())
 		return err
-	}
-
-	if value.IsNumber() {
+	case value.IsNumber():
 		_, err := fmt.Fprintf(writer, "%v", value.AsNumber())
 		return err
-	}
-
-	if value.IsString() {
+	case value.IsString():
 		_, err := fmt.Fprintf(writer, "%q", value.AsString())
 		return err
-	}
-
-	if value.IsArray() {
-		_, err := writer.Write([]byte("["))
-		if err != nil {
-			return err
-		}
-		arr := value.AsArray()
-		for i, elem := range arr.All {
-			if i > 0 {
-				_, err := writer.Write([]byte(", "))
-				if err != nil {
-					return err
-				}
-			}
-			err := Value(writer, elem, showSecrets)
-			if err != nil {
-				return err
-			}
-		}
-		_, err = writer.Write([]byte("]"))
-		return err
-	}
-
-	if value.IsAsset() {
+	case value.IsAsset():
 		a := value.AsAsset()
 		var err error
 		switch {
@@ -88,9 +59,7 @@ func Value(writer io.Writer, value property.Value, showSecrets bool) error {
 			_, err = fmt.Fprintf(writer, "asset(hash=%v)", a.Hash)
 		}
 		return err
-	}
-
-	if value.IsArchive() {
+	case value.IsArchive():
 		a := value.AsArchive()
 		switch {
 		case a.Path != "":
@@ -138,9 +107,27 @@ func Value(writer io.Writer, value property.Value, showSecrets bool) error {
 			_, err := fmt.Fprintf(writer, "archive(hash=%v)", a.Hash)
 			return err
 		}
-	}
-
-	if value.IsMap() {
+	case value.IsArray():
+		_, err := writer.Write([]byte("["))
+		if err != nil {
+			return err
+		}
+		arr := value.AsArray()
+		for i, elem := range arr.All {
+			if i > 0 {
+				_, err := writer.Write([]byte(", "))
+				if err != nil {
+					return err
+				}
+			}
+			err := Value(writer, elem, showSecrets)
+			if err != nil {
+				return err
+			}
+		}
+		_, err = writer.Write([]byte("]"))
+		return err
+	case value.IsMap():
 		_, err := writer.Write([]byte("{"))
 		if err != nil {
 			return err
