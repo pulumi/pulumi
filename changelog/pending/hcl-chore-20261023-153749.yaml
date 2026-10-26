@@ -1,0 +1,4 @@
+component: hcl
+kind: chore
+body: Upgrade hcl to v0.18.8
+time: 2026-10-23T15:37:49.805958045Z

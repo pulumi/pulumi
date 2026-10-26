@@ -30,7 +30,6 @@
         {
             "path": ["up"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -207,7 +206,7 @@
         },
         {
             "path": ["logs"],
-            "propagate": true,
+            "propagate": false,
             "exclude": true,
             "flags": {}
         },
@@ -307,12 +306,6 @@
         },
         {
             "path": ["view-trace"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["watch"],
             "propagate": true,
             "exclude": true,
             "flags": {}

@@ -83,6 +83,31 @@ func FilterProperties(m property.Map, opts FilterOptions) (property.Map, error) 
 	return filterProperties(m, opts, property.Path{})
 }
 
+// ensureArchiveHashes populates missing Hash fields on an archive and every asset or
+// archive nested inside its Assets map, resolving relative paths against wd.
+func ensureArchiveHashes(a *archive.Archive, wd string, path property.Path) error {
+	for k, nested := range a.Assets {
+		switch n := nested.(type) {
+		case *asset.Asset:
+			if n.Hash == "" {
+				if err := n.EnsureHashWithWD(wd); err != nil {
+					return fmt.Errorf("failed to compute asset hash at %s: %w", pathString(path.AppendKey(k)), err)
+				}
+			}
+		case *archive.Archive:
+			if err := ensureArchiveHashes(n, wd, path.AppendKey(k)); err != nil {
+				return err
+			}
+		}
+	}
+	if a.Hash == "" {
+		if err := a.EnsureHashWithWD(wd); err != nil {
+			return fmt.Errorf("failed to compute archive hash at %s: %w", pathString(path), err)
+		}
+	}
+	return nil
+}
+
 func filterProperties(m property.Map, opts FilterOptions, path property.Path) (property.Map, error) {
 	out := make(map[string]property.Value, m.Len())
 	for k, v := range m.All {
@@ -149,8 +174,7 @@ func filterValue(v property.Value, opts FilterOptions, path property.Path) (prop
 			return property.WithGoValue(v, &asset.Asset{Hash: a.Hash}), true, nil
 		}
 		if opts.WorkingDirectory != "" && a.Hash == "" {
-			err := a.EnsureHashWithWD(opts.WorkingDirectory)
-			if err != nil {
+			if err := a.EnsureHashWithWD(opts.WorkingDirectory); err != nil {
 				return property.Value{}, false, fmt.Errorf("failed to compute asset hash at %s: %w", pathString(path), err)
 			}
 			return property.WithGoValue(v, a), true, nil
@@ -165,10 +189,9 @@ func filterValue(v property.Value, opts FilterOptions, path property.Path) (prop
 		if opts.ElideAssetContents {
 			return property.WithGoValue(v, &archive.Archive{Hash: a.Hash}), true, nil
 		}
-		if opts.WorkingDirectory != "" && a.Hash == "" {
-			err := a.EnsureHashWithWD(opts.WorkingDirectory)
-			if err != nil {
-				return property.Value{}, false, fmt.Errorf("failed to compute archive hash at %s: %w", pathString(path), err)
+		if opts.WorkingDirectory != "" {
+			if err := ensureArchiveHashes(a, opts.WorkingDirectory, path); err != nil {
+				return property.Value{}, false, err
 			}
 			return property.WithGoValue(v, a), true, nil
 		}

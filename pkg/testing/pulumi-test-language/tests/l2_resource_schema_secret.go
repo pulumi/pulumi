@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,34 +38,36 @@ func init() {
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 
-					var stackOutputs resource.PropertyMap
+					var stackOutputs *property.Map
 					for _, evt := range res.Events {
 						if evt.Type == engine.ResourceOutputsEvent {
 							payload := evt.Payload().(engine.ResourceOutputsEventPayload)
 							if payload.Metadata.URN.Type() == resource.RootStackType {
-								stackOutputs = payload.Metadata.New.Outputs
+								stackOutputs = new(resource.FromResourcePropertyMap(payload.Metadata.New.Outputs))
 							}
 						}
 					}
 					require.NotNil(l, stackOutputs, "expected stack outputs event")
 
-					for _, name := range []resource.PropertyKey{"topLevelElided", "topLevelNotElided"} {
-						value, ok := stackOutputs[name]
+					for _, name := range []string{"topLevelElided", "topLevelNotElided"} {
+						value, ok := stackOutputs.GetOk(name)
 						require.True(l, ok, "expected stack output %s", name)
-						assert.True(l, value.ContainsSecrets(), "expected stack output %s to be secret: %v", name, value)
-						assert.True(l, value.ContainsUnknowns(), "expected stack output %s to be unknown: %v", name, value)
+						assert.True(l, value.HasSecrets(), "expected stack output %s to be secret: %v", name, value)
+						assert.True(l, value.HasComputed(), "expected stack output %s to be unknown: %v", name, value)
 					}
 				},
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 
 					stack := RequireSingleResource(l, res.Snap.Resources, resource.RootStackType)
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
 					for _, name := range []string{"topLevelElided", "topLevelNotElided"} {
 						topLevel := RequireSingleNamedResource(l, res.Snap.Resources, name)
 						assert.Contains(l, topLevel.AdditionalSecretOutputs, resource.PropertyKey("secretOutput"))
-						assert.True(l, topLevel.Outputs["secretOutput"].ContainsSecrets(),
+						topLevelOutputs := resource.FromResourcePropertyMap(topLevel.Outputs)
+						assert.True(l, topLevelOutputs.Get("secretOutput").HasSecrets(),
 							"expected %s schema-secret output to be secret", name)
-						assert.True(l, stack.Outputs[resource.PropertyKey(name)].ContainsSecrets(),
+						assert.True(l, stackOutputs.Get(name).HasSecrets(),
 							"expected %s stack output to be secret", name)
 					}
 				},

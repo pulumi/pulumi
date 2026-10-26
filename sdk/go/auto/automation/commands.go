@@ -40,6 +40,16 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigset"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigsetall"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconvert"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestapply"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestapprove"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestclose"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestcomment"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestdiff"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestget"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestlist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestlog"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestrebase"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestunapprove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvclone"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvdiff"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvedit"
@@ -91,6 +101,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvwebhookremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optimport"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinstall"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogsdecrypt"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogslist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogsremove"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogsshare"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optnew"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorg"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorggetdefault"
@@ -110,6 +124,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateunprotect"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateuntaint"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateupgrade"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optwhoami"
 )
@@ -2102,6 +2117,836 @@ func (a *API) Convert(
 	}, final)
 }
 
+// EnvChangeRequestApply corresponds to `pulumi env change-request apply`.
+//
+// [EXPERIMENTAL] Apply a change request
+//
+// This command shows the change that the change request proposes and asks for confirmation,
+// then applies it to the environment. The change request must have all required approvals.
+func (a *API) EnvChangeRequestApply(
+	ctx context.Context,
+	opts ...optenvchangerequestapply.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestapply.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "apply"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestApprove corresponds to `pulumi env change-request approve`.
+//
+// [EXPERIMENTAL] Approve a change request
+//
+// This command shows the change that the change request proposes and asks for confirmation,
+// then approves its latest revision. Use `env change-request get` to see how many approvals
+// are still required.
+func (a *API) EnvChangeRequestApprove(
+	ctx context.Context,
+	opts ...optenvchangerequestapprove.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestapprove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "approve"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Message != "" {
+		final = append(final, "--message", fmt.Sprint(o.Message))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestClose corresponds to `pulumi env change-request close`.
+//
+// [EXPERIMENTAL] Close a change request
+//
+// This command closes a change request without applying it. A closed change request cannot be
+// reopened.
+func (a *API) EnvChangeRequestClose(
+	ctx context.Context,
+	opts ...optenvchangerequestclose.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestclose.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "close"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Message != "" {
+		final = append(final, "--message", fmt.Sprint(o.Message))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestComment corresponds to `pulumi env change-request comment`.
+//
+// [EXPERIMENTAL] Comment on a change request
+//
+// This command adds a comment to a change request. To comment while approving or closing,
+// use -m on `env change-request approve` or `env change-request close`.
+func (a *API) EnvChangeRequestComment(
+	ctx context.Context,
+	opts ...optenvchangerequestcomment.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestcomment.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "comment"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	final = append(final, "--message", fmt.Sprint(o.Message))
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestDiff corresponds to `pulumi env change-request diff`.
+//
+// [EXPERIMENTAL] Show the change a change request proposes
+//
+// This command shows the difference between the environment revision the draft is based on and
+// the draft.
+func (a *API) EnvChangeRequestDiff(
+	ctx context.Context,
+	opts ...optenvchangerequestdiff.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestdiff.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "diff"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestGet corresponds to `pulumi env change-request get`.
+//
+// [EXPERIMENTAL] Show a change request
+//
+// This command shows a change request's status, description, and approvals, and the environment
+// revision the draft is based on. If the environment has changed since then, use
+// `env change-request rebase` to bring the draft up to date.
+func (a *API) EnvChangeRequestGet(
+	ctx context.Context,
+	opts ...optenvchangerequestget.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestget.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "get"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestList corresponds to `pulumi env change-request list`.
+//
+// [EXPERIMENTAL] List change requests
+//
+// This command lists the open change requests in an organization, optionally filtered to a single environment.
+// Use --status to list change requests with a different status.
+func (a *API) EnvChangeRequestList(
+	ctx context.Context,
+	opts ...optenvchangerequestlist.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestlist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "list"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Status != "" {
+		final = append(final, "--status", fmt.Sprint(o.Status))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestLog corresponds to `pulumi env change-request log`.
+//
+// [EXPERIMENTAL] Show a change request's events
+//
+// This command shows a change request's events, such as new revisions, approvals, comments, and
+// status changes.
+func (a *API) EnvChangeRequestLog(
+	ctx context.Context,
+	opts ...optenvchangerequestlog.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestlog.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "log"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestRebase corresponds to `pulumi env change-request rebase`.
+//
+// [EXPERIMENTAL] Rebase a draft onto the environment's current revision
+//
+// This command replays a draft's changes onto the environment's current revision.
+// If the draft conflicts with the current revision, the draft is left unchanged and
+// each conflict is shown in the revision the draft is based on, the draft, and the current
+// revision.
+func (a *API) EnvChangeRequestRebase(
+	ctx context.Context,
+	opts ...optenvchangerequestrebase.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestrebase.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "rebase"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// EnvChangeRequestUnapprove corresponds to `pulumi env change-request unapprove`.
+//
+// [EXPERIMENTAL] Remove your approval from a change request
+//
+// This command withdraws an approval you gave earlier, for example if you approved by mistake.
+// To reject a change request outright, use `env change-request close`.
+func (a *API) EnvChangeRequestUnapprove(
+	ctx context.Context,
+	opts ...optenvchangerequestunapprove.Option,
+) (base.CommandResult, error) {
+	o := optenvchangerequestunapprove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"env", "change-request", "unapprove"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Env != "" {
+		final = append(final, "--env", fmt.Sprint(o.Env))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
 // EnvClone corresponds to `pulumi env clone`.
 //
 // Clone an existing environment into a new environment.
@@ -3705,7 +4550,7 @@ func (a *API) EnvRotate(
 // references in the command are not expanded by default. You should invoke the command
 // inside a shell if you need environment variable expansion:
 //
-//	run <environment-name> -- zsh -c '"echo $MY_ENV_VAR"'
+//	run <environment-name> -- sh -c '"echo $MY_ENV_VAR"'
 //
 // The command to run is assumed to be non-interactive by default and its output
 // streams are filtered to remove any secret values. Use the -i flag to run interactive
@@ -4631,6 +5476,10 @@ func (a *API) EnvSetupAws(
 		final = append(final, "--org", fmt.Sprint(o.Org))
 	}
 
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
 	}
@@ -4756,6 +5605,10 @@ func (a *API) EnvSetupAzure(
 		final = append(final, "--org", fmt.Sprint(o.Org))
 	}
 
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
+	}
+
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
 	}
@@ -4860,6 +5713,10 @@ func (a *API) EnvSetupGcp(
 
 	if o.Org != "" {
 		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.Organization != "" {
+		final = append(final, "--organization", fmt.Sprint(o.Organization))
 	}
 
 	if o.OtelTraces != "" {
@@ -6840,6 +7697,357 @@ func (a *API) Install(
 	}, final)
 }
 
+// LogsDecrypt corresponds to `pulumi logs decrypt`.
+//
+// Decrypt and display the contents of an automatic log file.
+//
+// If no filename is provided, a list of available log files is
+// displayed and the user is prompted to choose one. Pass
+// --latest to skip the prompt and decrypt the most recent log
+// file instead
+func (a *API) LogsDecrypt(
+	ctx context.Context,
+	opts ...optlogsdecrypt.Option,
+) (base.CommandResult, error) {
+	o := optlogsdecrypt.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"logs", "decrypt"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Latest {
+		final = append(final, "--latest")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// LogsList corresponds to `pulumi logs list`.
+//
+// # List automatic log files
+//
+// Each entry shows the stack the log belongs to, when it was
+// created, the associated update ID (or PID for CLI-level logs
+// that were never attached to a stack), the file size, and the
+// full path to the file.
+func (a *API) LogsList(
+	ctx context.Context,
+	opts ...optlogslist.Option,
+) (base.CommandResult, error) {
+	o := optlogslist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"logs", "list"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// LogsRemove corresponds to `pulumi logs remove`.
+//
+// Remove automatic log files.
+//
+// If no filters are given, a list of available log files is
+// displayed and the user is prompted to choose one to remove.
+//
+// Logs can also be removed in bulk by passing --stack to limit
+// removal to a single stack, --before to remove logs older than
+// a given date or duration, or --all to remove every log file.
+//
+// By default the user is asked to confirm by typing the stack
+// name (or 'yes' when multiple stacks are involved). Pass --yes
+// to skip the prompt.
+func (a *API) LogsRemove(
+	ctx context.Context,
+	opts ...optlogsremove.Option,
+) (base.CommandResult, error) {
+	o := optlogsremove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"logs", "remove"}
+
+	final = append(final, "--yes")
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Before != "" {
+		final = append(final, "--before", fmt.Sprint(o.Before))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// LogsShare corresponds to `pulumi logs share`.
+//
+// Create a copy of a log file that can be safely shared with
+// Pulumi support. The log content is re-encrypted with a key
+// that only Pulumi can read.
+//
+// If no filename is provided, a list of available log files is
+// displayed and the user is prompted to choose one. Pass
+// --latest to skip the prompt and share the most recent log
+// file instead.
+//
+// By default, secret values in the log are redacted. Use
+// --include-secrets to include them in the shared log.
+func (a *API) LogsShare(
+	ctx context.Context,
+	filename *string,
+	opts ...optlogsshare.Option,
+) (base.CommandResult, error) {
+	o := optlogsshare.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"logs", "share"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.IncludeSecrets {
+		final = append(final, "--include-secrets")
+	}
+
+	if o.Latest {
+		final = append(final, "--latest")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	if filename != nil {
+		args = append(args, fmt.Sprint(*filename))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
 // New corresponds to `pulumi new`.
 //
 // Create a new Pulumi project and stack from a template.
@@ -8692,6 +9900,292 @@ func (a *API) StateUpgrade(
 
 	if o.Verbose != 0 {
 		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Up corresponds to `pulumi up`.
+//
+// Create or update the resources in a stack.
+//
+// This command creates or updates resources in a stack. The new desired goal state for the target stack
+// is computed by running the current Pulumi program and observing all resource allocations to produce a
+// resource graph. This goal state is then compared against the existing state to determine what create,
+// read, update, and/or delete operations must take place to achieve the desired goal state, in the most
+// minimally disruptive way. This command records a full transactional snapshot of the stack's new state
+// afterwards so that the stack may be updated incrementally again later on.
+//
+// The program to run is loaded from the project in the current directory by default. Use the `-C` or
+// `--cwd` flag to use a different directory.
+//
+// Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary
+// project is created, deployed, and then deleted, leaving only the stack state.
+func (a *API) Up(
+	ctx context.Context,
+	templateOrUrl *string,
+	opts ...optup.Option,
+) (base.CommandResult, error) {
+	o := optup.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"up"}
+
+	final = append(final, "--skip-preview")
+
+	final = append(final, "--yes")
+
+	for _, v := range o.AttachDebugger {
+		final = append(final, "--attach-debugger", fmt.Sprint(v))
+	}
+
+	if o.Client != "" {
+		final = append(final, "--client", fmt.Sprint(o.Client))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	for _, v := range o.Config {
+		final = append(final, "--config", fmt.Sprint(v))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.ConfigPath {
+		final = append(final, "--config-path")
+	}
+
+	if o.ContinueOnError {
+		final = append(final, "--continue-on-error")
+	}
+
+	if o.Copilot {
+		final = append(final, "--copilot")
+	}
+
+	if o.Debug {
+		final = append(final, "--debug")
+	}
+
+	if o.Diff {
+		final = append(final, "--diff")
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	for _, v := range o.Exclude {
+		final = append(final, "--exclude", fmt.Sprint(v))
+	}
+
+	if o.ExcludeDependents {
+		final = append(final, "--exclude-dependents")
+	}
+
+	if o.ExecAgent != "" {
+		final = append(final, "--exec-agent", fmt.Sprint(o.ExecAgent))
+	}
+
+	if o.ExecKind != "" {
+		final = append(final, "--exec-kind", fmt.Sprint(o.ExecKind))
+	}
+
+	if o.ExpectNoChanges {
+		final = append(final, "--expect-no-changes")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.IgnoreProtect {
+		final = append(final, "--ignore-protect")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Message != "" {
+		final = append(final, "--message", fmt.Sprint(o.Message))
+	}
+
+	if o.Neo {
+		final = append(final, "--neo")
+	}
+
+	if o.NeoTaskOnFailure {
+		final = append(final, "--neo-task-on-failure")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	for _, v := range o.OverrideEnv {
+		final = append(final, "--override-env", fmt.Sprint(v))
+	}
+
+	if o.Parallel != 0 {
+		final = append(final, "--parallel", fmt.Sprint(o.Parallel))
+	}
+
+	if o.Plan != "" {
+		final = append(final, "--plan", fmt.Sprint(o.Plan))
+	}
+
+	for _, v := range o.PolicyPack {
+		final = append(final, "--policy-pack", fmt.Sprint(v))
+	}
+
+	for _, v := range o.PolicyPackConfig {
+		final = append(final, "--policy-pack-config", fmt.Sprint(v))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Refresh != "" {
+		final = append(final, "--refresh", fmt.Sprint(o.Refresh))
+	}
+
+	for _, v := range o.Replace {
+		final = append(final, "--replace", fmt.Sprint(v))
+	}
+
+	if o.RunProgram {
+		final = append(final, "--run-program")
+	}
+
+	if o.SecretsProvider != "" {
+		final = append(final, "--secrets-provider", fmt.Sprint(o.SecretsProvider))
+	}
+
+	if o.ShowConfig {
+		final = append(final, "--show-config")
+	}
+
+	if o.ShowFullOutput {
+		final = append(final, "--show-full-output")
+	}
+
+	if o.ShowPolicyExceptions {
+		final = append(final, "--show-policy-exceptions")
+	}
+
+	if o.ShowPolicyRemediations {
+		final = append(final, "--show-policy-remediations")
+	}
+
+	if o.ShowReads {
+		final = append(final, "--show-reads")
+	}
+
+	if o.ShowReplacementSteps {
+		final = append(final, "--show-replacement-steps")
+	}
+
+	if o.ShowSames {
+		final = append(final, "--show-sames")
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.SkipConfigValidation {
+		final = append(final, "--skip-config-validation")
+	}
+
+	if o.SkipPluginPreInstall {
+		final = append(final, "--skip-plugin-pre-install")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Strict {
+		final = append(final, "--strict")
+	}
+
+	if o.SuppressOutputs {
+		final = append(final, "--suppress-outputs")
+	}
+
+	if o.SuppressPermalink != "" {
+		final = append(final, "--suppress-permalink", fmt.Sprint(o.SuppressPermalink))
+	}
+
+	if o.SuppressProgress {
+		final = append(final, "--suppress-progress")
+	}
+
+	for _, v := range o.Target {
+		final = append(final, "--target", fmt.Sprint(v))
+	}
+
+	if o.TargetDependents {
+		final = append(final, "--target-dependents")
+	}
+
+	for _, v := range o.TargetReplace {
+		final = append(final, "--target-replace", fmt.Sprint(v))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Urns {
+		final = append(final, "--urns")
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	if templateOrUrl != nil {
+		args = append(args, fmt.Sprint(*templateOrUrl))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
 	}
 
 	return a.run(ctx, base.BaseOptions{
