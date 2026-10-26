@@ -60,6 +60,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
@@ -1130,7 +1131,7 @@ func (eng *languageTestServer) RunLanguageTest(
 }
 
 func createStackReferences(
-	ctx context.Context, sm secrets.Manager, b diy.Backend, stackRefs map[string]resource.PropertyMap,
+	ctx context.Context, sm secrets.Manager, b diy.Backend, stackRefs map[string]property.Map,
 ) error {
 	for name, outputs := range stackRefs {
 		ref, err := b.ParseStackReference(name)
@@ -1157,7 +1158,7 @@ func createStackReferences(
 					Type: resource.RootStackType,
 					URN: resource.CreateURN(resourceName, string(resource.RootStackType), "",
 						string(projectName), stackName.String()),
-					Outputs: outputs,
+					Outputs: resource.ToResourcePropertyMap(outputs),
 				},
 			},
 		}
@@ -1927,6 +1928,7 @@ func (rtc roundTripClient) roundTrip(
 		SourceDirectory: tmpDir,
 		TargetDirectory: ejectDir,
 		LoaderTarget:    loaderTarget,
+		MapperTarget:    mapperTarget,
 	})
 	for _, diag := range resp.GetDiagnostics() {
 		diags = append(diags, plugin.RPCDiagnosticToHclDiagnostic(diag))

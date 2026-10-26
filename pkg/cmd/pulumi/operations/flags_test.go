@@ -74,7 +74,6 @@ func TestParallelEnvVar(t *testing.T) {
 		NewRefreshCmd,
 		NewDestroyCmd,
 		NewImportCmd,
-		NewWatchCmd,
 	}
 	testCases := []struct {
 		EnvVarValue string

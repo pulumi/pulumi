@@ -54,3 +54,15 @@ func (ref ResourceReference) Equal(other ResourceReference) bool {
 	vid, oid := ref.ID, other.ID
 	return vid.Equals(oid, EqualRelaxComputed)
 }
+
+// NewResourceReference creates a new ResourceReference with the given URN, ID, and package version. The URN is used to
+// fill in the ResourceReference's Name and Type.
+func NewResourceReference(urn urn.URN, id Value, packageVersion string) ResourceReference {
+	return ResourceReference{
+		URN:            urn,
+		Name:           urn.Name(),
+		Type:           string(urn.Type()),
+		ID:             id,
+		PackageVersion: packageVersion,
+	}
+}

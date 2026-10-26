@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -99,9 +100,9 @@ func TestDeploymentNormalizesStateMigrationSourceEvents(t *testing.T) {
 			parent:       predecessorURN,
 			provider:     predecessorProvider.String(),
 			dependencies: []resource.URN{predecessorURN},
-			props: resource.PropertyMap{
-				"reference": resource.MakeCustomResourceReference(predecessorURN, "physical-id", "1.2.3"),
-			},
+			props: property.NewMap(map[string]property.Value{
+				"reference": property.New(property.NewResourceReference(predecessorURN, property.New("physical-id"), "1.2.3")),
+			}),
 		}
 
 		normalized, err := d.normalizeStateMigrationSourceEvent(event)
@@ -120,9 +121,9 @@ func TestDeploymentNormalizesStateMigrationSourceEvents(t *testing.T) {
 		assert.Equal(t, successorProviderURN, provider.URN())
 		assert.Equal(t, resource.ID("provider-b-id"), provider.ID())
 
-		ref := read.Properties()["reference"].ResourceReferenceValue()
+		ref := read.Properties().Get("reference").AsResourceReference()
 		assert.Equal(t, successorURN, ref.URN)
-		assert.Equal(t, "physical-id", ref.ID.StringValue())
+		assert.Equal(t, "physical-id", ref.ID.AsString())
 		assert.Empty(t, ref.PackageVersion)
 	})
 
@@ -131,9 +132,9 @@ func TestDeploymentNormalizesStateMigrationSourceEvents(t *testing.T) {
 
 		event := &registerResourceOutputsEvent{
 			urn: consumerURN,
-			outputs: resource.PropertyMap{
-				"reference": resource.MakeCustomResourceReference(predecessorURN, "physical-id", "1.2.3"),
-			},
+			outputs: property.NewMap(map[string]property.Value{
+				"reference": property.New(property.NewResourceReference(predecessorURN, property.New("physical-id"), "1.2.3")),
+			}),
 		}
 
 		normalized, err := d.normalizeStateMigrationSourceEvent(event)
@@ -142,7 +143,7 @@ func TestDeploymentNormalizesStateMigrationSourceEvents(t *testing.T) {
 		require.True(t, ok)
 		assert.NotSame(t, event, normalized)
 		assert.Equal(t, consumerURN, outputs.URN())
-		assert.Equal(t, successorURN, outputs.Outputs()["reference"].ResourceReferenceValue().URN)
+		assert.Equal(t, successorURN, outputs.Outputs().Get("reference").AsResourceReference().URN)
 	})
 
 	t.Run("engine and registration events pass through", func(t *testing.T) {
