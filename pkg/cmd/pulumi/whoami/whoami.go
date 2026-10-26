@@ -80,7 +80,7 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 			}
 
 			b, err := cmdBackend.NonInteractiveCurrentBackend(
-				httpstate.ContextWithoutNewAgentAccount(ctx), ws, lm, project)
+				httpstate.ContextWithoutAgentSignup(ctx), ws, lm, project)
 			if err != nil {
 				return err
 			}
