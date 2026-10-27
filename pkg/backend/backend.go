@@ -22,6 +22,7 @@ import (
 	"io"
 	"time"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -144,11 +145,11 @@ type Backend interface {
 
 	// ListPolicyGroups returns all Policy Groups for an organization in this backend or an error if it cannot be found.
 	ListPolicyGroups(ctx context.Context, orgName string, inContToken ContinuationToken) (
-		apitype.ListPolicyGroupsResponse, ContinuationToken, error)
+		cloudapitype.AppListPolicyGroupsResponse, ContinuationToken, error)
 
 	// ListPolicyPacks returns all Policy Packs for an organization in this backend, or an error if it cannot be found.
 	ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
-		apitype.ListPolicyPacksResponse, ContinuationToken, error)
+		cloudapitype.AppListPolicyPacksResponse, ContinuationToken, error)
 
 	// GetStackPolicyPacks gets the required policy packs currently applicable to the stack.
 	GetStackPolicyPacks(ctx context.Context, stackRef StackReference) ([]engine.RequiredPolicy, error)

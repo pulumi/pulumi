@@ -20,16 +20,15 @@ import (
 	"errors"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // mockPolicyGroupNewClient stubs policyGroupNewClient. It records calls and
 // optionally returns fixed responses or errors for each method.
 type mockPolicyGroupNewClient struct {
-	getResp   apitype.GetPolicyGroupResponse
+	getResp   cloudapitype.PolicyGroup
 	createErr error
 	getErr    error
 
@@ -42,7 +41,7 @@ type mockPolicyGroupNewClient struct {
 }
 
 func (m *mockPolicyGroupNewClient) CreatePolicyGroup(
-	_ context.Context, org string, req apitype.CreatePolicyGroupRequest,
+	_ context.Context, org string, req cloudapitype.NewPolicyGroupRequest,
 ) error {
 	m.createCalls++
 	m.createdOrg = org
@@ -52,12 +51,12 @@ func (m *mockPolicyGroupNewClient) CreatePolicyGroup(
 
 func (m *mockPolicyGroupNewClient) GetPolicyGroup(
 	_ context.Context, org, name string,
-) (apitype.GetPolicyGroupResponse, error) {
+) (cloudapitype.PolicyGroup, error) {
 	m.getCalls++
 	m.getOrg = org
 	m.getName = name
 	if m.getErr != nil {
-		return apitype.GetPolicyGroupResponse{}, m.getErr
+		return cloudapitype.PolicyGroup{}, m.getErr
 	}
 	return m.getResp, nil
 }
@@ -74,12 +73,12 @@ func failingPolicyGroupNewFactory(err error) policyGroupNewClientFactory {
 	}
 }
 
-func newPolicyGroupResponseFixture() apitype.GetPolicyGroupResponse {
-	return apitype.GetPolicyGroupResponse{
+func newPolicyGroupResponseFixture() cloudapitype.PolicyGroup {
+	return cloudapitype.PolicyGroup{
 		Name:         "prod-policies",
 		IsOrgDefault: false,
-		EntityType:   apitype.Stacks,
-		Mode:         apitype.PolicyGroupModePreventative,
+		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		Mode:         cloudapitype.PolicyGroupModePreventative,
 	}
 }
 

@@ -17,19 +17,19 @@ package policy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // mockPolicyGroupGetClient stubs policyGroupGetClient. It returns a fixed
 // response (or error) and records the arguments it was called with.
 type mockPolicyGroupGetClient struct {
-	resp     apitype.GetPolicyGroupResponse
+	resp     cloudapitype.PolicyGroup
 	err      error
 	gotOrg   string
 	gotGroup string
@@ -37,11 +37,11 @@ type mockPolicyGroupGetClient struct {
 
 func (m *mockPolicyGroupGetClient) GetPolicyGroup(
 	_ context.Context, org, group string,
-) (apitype.GetPolicyGroupResponse, error) {
+) (cloudapitype.PolicyGroup, error) {
 	m.gotOrg = org
 	m.gotGroup = group
 	if m.err != nil {
-		return apitype.GetPolicyGroupResponse{}, m.err
+		return cloudapitype.PolicyGroup{}, m.err
 	}
 	return m.resp, nil
 }
@@ -58,22 +58,29 @@ func failingPolicyGroupGetFactory(err error) policyGroupGetClientFactory {
 	}
 }
 
-func samplePolicyGroupResponse() apitype.GetPolicyGroupResponse {
-	return apitype.GetPolicyGroupResponse{
+func samplePolicyGroupResponse() cloudapitype.PolicyGroup {
+	return cloudapitype.PolicyGroup{
 		Name:         "prod-policies",
 		IsOrgDefault: false,
-		EntityType:   apitype.Stacks,
-		Mode:         apitype.PolicyGroupModePreventative,
-		Stacks: []apitype.PulumiStackReference{
+		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		Mode:         cloudapitype.PolicyGroupModePreventative,
+		Stacks: []cloudapitype.AppPulumiStackReference{
 			{Name: "prod", RoutingProject: "web"},
-			{Name: "staging", RoutingProject: "web"},
+			{Name: "standalone"},
 		},
-		AppliedPolicyPacks: []apitype.PolicyPackMetadata{
-			{Name: "aws-guardrails", DisplayName: "AWS Guardrails", Version: 3, VersionTag: "1.2.0"},
-			{Name: "tagging", DisplayName: "Tagging", Version: 1, VersionTag: ""},
+		AppliedPolicyPacks: []cloudapitype.AppPolicyPackMetadata{
+			{
+				Name:         "aws-guardrails",
+				DisplayName:  "AWS Guardrails",
+				Version:      3,
+				VersionTag:   "1.2.0",
+				Config:       map[string]*json.RawMessage{"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory"}`))},
+				Environments: []string{"infra/policy-secrets"},
+			},
+			{Name: "tagging", Version: 1},
 		},
-		Accounts:    []string{},
-		AgentPoolID: "pool-1",
+		Accounts:    []string{"prod-aws"},
+		AgentPoolID: new("pool-1"),
 	}
 }
 
@@ -97,8 +104,9 @@ Applied policy packs:  2
   - tagging (v1)
 Stacks:                2
   - web/prod
-  - web/staging
-Accounts:              0
+  - standalone
+Accounts:              1
+  - prod-aws
 `, buf.String())
 	assert.Equal(t, "acme", c.gotOrg)
 	assert.Equal(t, "prod-policies", c.gotGroup)
@@ -108,11 +116,11 @@ func TestPolicyGroupGet_DefaultOutput_Empty(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	resp := apitype.GetPolicyGroupResponse{
+	resp := cloudapitype.PolicyGroup{
 		Name:         "default-policy-group",
 		IsOrgDefault: true,
-		EntityType:   apitype.Stacks,
-		Mode:         apitype.PolicyGroupModeAudit,
+		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		Mode:         cloudapitype.PolicyGroupModeAudit,
 	}
 	c := &mockPolicyGroupGetClient{resp: resp}
 	err := runPolicyGroupGet(t.Context(), &buf,
@@ -148,13 +156,20 @@ func TestPolicyGroupGet_JSONOutput(t *testing.T) {
 		"mode": "preventative",
 		"stacks": [
 			{"name": "prod", "routingProject": "web"},
-			{"name": "staging", "routingProject": "web"}
+			{"name": "standalone", "routingProject": ""}
 		],
 		"appliedPolicyPacks": [
-			{"name": "aws-guardrails", "displayName": "AWS Guardrails", "version": 3, "versionTag": "1.2.0"},
-			{"name": "tagging", "displayName": "Tagging", "version": 1}
+			{
+				"name": "aws-guardrails",
+				"displayName": "AWS Guardrails",
+				"version": 3,
+				"versionTag": "1.2.0",
+				"config": {"s3-no-public": {"enforcementLevel": "mandatory"}},
+				"environments": ["infra/policy-secrets"]
+			},
+			{"name": "tagging", "displayName": "", "version": 1, "versionTag": ""}
 		],
-		"accounts": [],
+		"accounts": ["prod-aws"],
 		"agentPoolId": "pool-1"
 	}`, buf.String())
 }
@@ -162,11 +177,11 @@ func TestPolicyGroupGet_JSONOutput(t *testing.T) {
 func TestPolicyGroupGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 	t.Parallel()
 
-	resp := apitype.GetPolicyGroupResponse{
+	resp := cloudapitype.PolicyGroup{
 		Name:         "bare",
 		IsOrgDefault: true,
-		EntityType:   apitype.Stacks,
-		Mode:         apitype.PolicyGroupModeAudit,
+		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		Mode:         cloudapitype.PolicyGroupModeAudit,
 	}
 
 	var buf bytes.Buffer
@@ -186,6 +201,31 @@ func TestPolicyGroupGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 		"appliedPolicyPacks": [],
 		"accounts": []
 	}`, buf.String())
+}
+
+func TestPolicyGroupGet_JSONOutput_MatchRule(t *testing.T) {
+	t.Parallel()
+
+	group := `{
+		"name": "tagged",
+		"isOrgDefault": false,
+		"entityType": "stacks",
+		"mode": "audit",
+		"stacks": [],
+		"appliedPolicyPacks": [],
+		"accounts": [],
+		"stackMatchRule": {
+			"__type": "PermissionExpressionHasTag",
+			"context": {"__type": "PermissionExpressionStack"},
+			"key": "env"
+		}
+	}`
+	var resp cloudapitype.PolicyGroup
+	require.NoError(t, json.Unmarshal([]byte(group), &resp))
+
+	var buf bytes.Buffer
+	require.NoError(t, renderPolicyGroupGetJSON(&buf, resp))
+	assert.JSONEq(t, group, buf.String())
 }
 
 func TestPolicyGroupGet_ClientError(t *testing.T) {

@@ -20,6 +20,7 @@ import (
 	"io"
 	"strconv"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -29,13 +30,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type policyGroupsRenderFunc func(w io.Writer, policyGroups []apitype.PolicyGroupSummary) error
+type policyGroupsRenderFunc func(w io.Writer, policyGroups []cloudapitype.AppPolicyGroupSummary) error
 
 func newPolicyGroupCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -100,7 +100,7 @@ func newPolicyGroupListCmd() *cobra.Command {
 
 			// Gather all Policy Groups for the organization.
 			var (
-				allPolicyGroups []apitype.PolicyGroupSummary
+				allPolicyGroups []cloudapitype.AppPolicyGroupSummary
 				inContToken     backend.ContinuationToken
 			)
 			for {
@@ -132,7 +132,7 @@ func newPolicyGroupListCmd() *cobra.Command {
 	return cmd
 }
 
-func formatPolicyGroupsConsole(w io.Writer, policyGroups []apitype.PolicyGroupSummary) error {
+func formatPolicyGroupsConsole(w io.Writer, policyGroups []cloudapitype.AppPolicyGroupSummary) error {
 	// Header string and formatting options to align columns.
 	headers := []string{"NAME", "DEFAULT", "ENABLED POLICY PACKS", "STACKS"}
 
@@ -177,7 +177,7 @@ type policyGroupsJSON struct {
 	NumStacks      int    `json:"numStacks"`
 }
 
-func formatPolicyGroupsJSON(w io.Writer, policyGroups []apitype.PolicyGroupSummary) error {
+func formatPolicyGroupsJSON(w io.Writer, policyGroups []cloudapitype.AppPolicyGroupSummary) error {
 	output := make([]policyGroupsJSON, len(policyGroups))
 	for i, group := range policyGroups {
 		output[i] = policyGroupsJSON{
