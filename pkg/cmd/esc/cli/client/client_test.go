@@ -937,6 +937,27 @@ func TestOpenEnvironment(t *testing.T) {
 		assert.Equal(t, expected, diags)
 	})
 
+	t.Run("Diags only", func(t *testing.T) {
+		t.Parallel()
+		expected := []EnvironmentDiagnostic{{Summary: `unknown property "bar"`}}
+
+		client := newTestClient(
+			t,
+			http.MethodPost,
+			"/api/esc/environments/test-org/test-project/test-env/open",
+			func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusBadRequest)
+
+				err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{Diagnostics: expected})
+				require.NoError(t, err)
+			},
+		)
+
+		_, diags, err := client.OpenEnvironment(t.Context(), "test-org", "test-project", "test-env", "", 2*time.Hour)
+		require.NoError(t, err)
+		assert.Equal(t, expected, diags)
+	})
+
 	t.Run("Not found", func(t *testing.T) {
 		t.Parallel()
 		client := newTestClient(
