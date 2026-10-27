@@ -226,7 +226,7 @@ func (c Value) ToCoercedObject() (any, error) {
 	if err := stored.UnmarshalJSON(bytes); err != nil {
 		return nil, err
 	}
-	return stored.marshalObjectValue(true), nil
+	return stored.marshalObjectValue(false), nil
 }
 
 func (c Value) MarshalJSON() ([]byte, error) {

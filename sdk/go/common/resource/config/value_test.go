@@ -395,7 +395,7 @@ func TestToCoercedObject(t *testing.T) {
 		{Val: NewTypedValue("1.5", TypeFloat), Expected: 1.5},
 		{Val: NewTypedValue("TRUE", TypeBool), Expected: true},
 		{Val: NewObjectValue(`{"a":["1",2,true]}`), Expected: map[string]any{"a": []any{"1", int64(2), true}}},
-		{Val: NewSecureValue("ciphertext"), Expected: "ciphertext"},
+		{Val: NewSecureValue("ciphertext"), Expected: map[string]any{"secure": "ciphertext"}},
 	}
 	for _, test := range tests {
 		t.Run(test.Val.value, func(t *testing.T) {
@@ -405,9 +405,6 @@ func TestToCoercedObject(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, test.Expected, actual)
 
-			if test.Val.Secure() {
-				return
-			}
 			m := Map{}
 			require.NoError(t, m.Set(MustMakeKey("proj", "a.b"), test.Val, true))
 			root, err := m[MustMakeKey("proj", "a")].ToObject()
