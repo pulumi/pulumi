@@ -23,7 +23,6 @@ import (
 	"strconv"
 	"strings"
 
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -32,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -40,11 +40,11 @@ import (
 // command needs.
 type policyGroupEditClient interface {
 	BatchUpdatePolicyGroup(
-		ctx context.Context, orgName, policyGroup string, reqs []cloudapitype.UpdatePolicyGroupRequest,
+		ctx context.Context, orgName, policyGroup string, reqs []apitype.UpdatePolicyGroupRequest,
 	) error
 	GetPolicyGroup(
 		ctx context.Context, orgName, policyGroup string,
-	) (cloudapitype.PolicyGroup, error)
+	) (apitype.GetPolicyGroupResponse, error)
 }
 
 // policyGroupEditClientFactory resolves a cloud client and the organization
@@ -246,41 +246,37 @@ func runPolicyGroupEdit(
 // mutation, because the service reads only the singular fields of an update.
 func policyGroupUpdates(
 	args policyGroupEditArgs,
-	addStacks, removeStacks []cloudapitype.AppPulumiStackReference,
-	addPacks, removePacks []cloudapitype.AppPolicyPackMetadata,
-) []cloudapitype.UpdatePolicyGroupRequest {
-	var updates []cloudapitype.UpdatePolicyGroupRequest
+	addStacks, removeStacks []apitype.PulumiStackReference,
+	addPacks, removePacks []apitype.PolicyPackMetadata,
+) []apitype.UpdatePolicyGroupRequest {
+	var updates []apitype.UpdatePolicyGroupRequest
 
 	if args.changed["name"] {
-		updates = append(updates, policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{NewName: &args.rename}))
+		updates = append(updates, apitype.UpdatePolicyGroupRequest{NewName: &args.rename})
 	}
 	for _, s := range addStacks {
-		updates = append(updates, policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{AddStack: &s}))
+		updates = append(updates, apitype.UpdatePolicyGroupRequest{AddStack: &s})
 	}
 	for _, s := range removeStacks {
-		updates = append(updates, policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{RemoveStack: &s}))
+		updates = append(updates, apitype.UpdatePolicyGroupRequest{RemoveStack: &s})
 	}
 	for _, a := range args.addInsightsAccount {
-		updates = append(updates, policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{
-			AddInsightsAccount: &cloudapitype.AppInsightsAccountReference{Name: a},
-		}))
+		updates = append(updates, apitype.UpdatePolicyGroupRequest{
+			AddInsightsAccount: &apitype.InsightsAccountReference{Name: a},
+		})
 	}
 	for _, a := range args.removeInsightsAccount {
-		updates = append(updates, policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{
-			RemoveInsightsAccount: &cloudapitype.AppInsightsAccountReference{Name: a},
-		}))
+		updates = append(updates, apitype.UpdatePolicyGroupRequest{
+			RemoveInsightsAccount: &apitype.InsightsAccountReference{Name: a},
+		})
 	}
 	for _, p := range addPacks {
-		updates = append(updates, policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{AddPolicyPack: &p}))
+		updates = append(updates, apitype.UpdatePolicyGroupRequest{AddPolicyPack: &p})
 	}
 	for _, p := range removePacks {
-		updates = append(updates, policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{RemovePolicyPack: &p}))
+		updates = append(updates, apitype.UpdatePolicyGroupRequest{RemovePolicyPack: &p})
 	}
 	return updates
-}
-
-func policyGroupUpdate(u cloudapitype.AppUpdatePolicyGroupRequest) cloudapitype.UpdatePolicyGroupRequest {
-	return cloudapitype.UpdatePolicyGroupRequest{AppUpdatePolicyGroupRequest: u}
 }
 
 // anyMutationRequested returns true when at least one of the mutation flags
@@ -298,12 +294,12 @@ func anyMutationRequested(args policyGroupEditArgs) bool {
 // command surfaces parse errors before any network call.
 func parseStackReferences(
 	adds, removes []string,
-) ([]cloudapitype.AppPulumiStackReference, []cloudapitype.AppPulumiStackReference, error) {
-	parsedAdds := make([]cloudapitype.AppPulumiStackReference, 0, len(adds))
+) ([]apitype.PulumiStackReference, []apitype.PulumiStackReference, error) {
+	parsedAdds := make([]apitype.PulumiStackReference, 0, len(adds))
 	for _, s := range adds {
 		parsedAdds = append(parsedAdds, parseStackReference(s))
 	}
-	parsedRemoves := make([]cloudapitype.AppPulumiStackReference, 0, len(removes))
+	parsedRemoves := make([]apitype.PulumiStackReference, 0, len(removes))
 	for _, s := range removes {
 		parsedRemoves = append(parsedRemoves, parseStackReference(s))
 	}
@@ -312,10 +308,8 @@ func parseStackReferences(
 
 // parsePolicyPackRefs pre-parses every add and remove policy-pack value so
 // invalid references surface before any network call.
-func parsePolicyPackRefs(
-	adds, removes []string,
-) ([]cloudapitype.AppPolicyPackMetadata, []cloudapitype.AppPolicyPackMetadata, error) {
-	parsedAdds := make([]cloudapitype.AppPolicyPackMetadata, 0, len(adds))
+func parsePolicyPackRefs(adds, removes []string) ([]apitype.PolicyPackMetadata, []apitype.PolicyPackMetadata, error) {
+	parsedAdds := make([]apitype.PolicyPackMetadata, 0, len(adds))
 	for _, p := range adds {
 		meta, err := parsePolicyPackRef(p)
 		if err != nil {
@@ -323,7 +317,7 @@ func parsePolicyPackRefs(
 		}
 		parsedAdds = append(parsedAdds, meta)
 	}
-	parsedRemoves := make([]cloudapitype.AppPolicyPackMetadata, 0, len(removes))
+	parsedRemoves := make([]apitype.PolicyPackMetadata, 0, len(removes))
 	for _, p := range removes {
 		meta, err := parsePolicyPackRef(p)
 		if err != nil {
@@ -334,34 +328,34 @@ func parsePolicyPackRefs(
 	return parsedAdds, parsedRemoves, nil
 }
 
-// parseStackReference splits "project/stack" into an AppPulumiStackReference. A
+// parseStackReference splits "project/stack" into a PulumiStackReference. A
 // bare "stack" leaves RoutingProject empty.
-func parseStackReference(s string) cloudapitype.AppPulumiStackReference {
+func parseStackReference(s string) apitype.PulumiStackReference {
 	if before, after, ok := strings.Cut(s, "/"); ok {
-		return cloudapitype.AppPulumiStackReference{
+		return apitype.PulumiStackReference{
 			RoutingProject: before,
 			Name:           after,
 		}
 	}
-	return cloudapitype.AppPulumiStackReference{Name: s}
+	return apitype.PulumiStackReference{Name: s}
 }
 
 // parsePolicyPackRef parses "name@version" or "name". When a version is
 // present and parses as an integer it populates Version; otherwise it goes to
 // VersionTag.
-func parsePolicyPackRef(s string) (cloudapitype.AppPolicyPackMetadata, error) {
+func parsePolicyPackRef(s string) (apitype.PolicyPackMetadata, error) {
 	if s == "" {
-		return cloudapitype.AppPolicyPackMetadata{}, errors.New("policy pack reference must not be empty")
+		return apitype.PolicyPackMetadata{}, errors.New("policy pack reference must not be empty")
 	}
 	before, after, ok := strings.Cut(s, "@")
 	if !ok {
-		return cloudapitype.AppPolicyPackMetadata{Name: s}, nil
+		return apitype.PolicyPackMetadata{Name: s}, nil
 	}
 	name, ver := before, after
 	if name == "" {
-		return cloudapitype.AppPolicyPackMetadata{}, fmt.Errorf("policy pack reference %q is missing a name", s)
+		return apitype.PolicyPackMetadata{}, fmt.Errorf("policy pack reference %q is missing a name", s)
 	}
-	meta := cloudapitype.AppPolicyPackMetadata{Name: name}
+	meta := apitype.PolicyPackMetadata{Name: name}
 	if n, err := strconv.Atoi(ver); err == nil {
 		meta.Version = n
 	} else {
