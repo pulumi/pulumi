@@ -3578,10 +3578,6 @@ func decorateResourceSpans(span opentracing.Span, method string, req, resp any, 
 }
 
 // downgradeOutputValues recursively strips dependency information from a [property.Map].
-// This is the [property.Map] equivalent of [downgradeOutputValues]: once we've captured
-// per-property dependencies elsewhere, we don't want the values themselves to continue
-// carrying dependency metadata when they round-trip through the legacy resource.PropertyMap
-// representation (where it would be re-materialized as Output wrappers).
 func downgradeOutputValues(m property.Map) property.Map {
 	result := map[string]property.Value{}
 	for k, v := range m.All {
@@ -3611,9 +3607,7 @@ func downgradeOutputPropertyValue(v property.Value) property.Value {
 }
 
 // upgradeOutputValues ensures each value in m carries at least the dependencies recorded
-// for its key in propertyDependencies. This is the [property.Map] equivalent of
-// [upgradeOutputValues]: we invoke it before running transforms so dependency information
-// survives on the values themselves.
+// for its key in propertyDependencies.
 func upgradeOutputValues(
 	m property.Map, propertyDependencies map[resource.PropertyKey]mapset.Set[resource.URN],
 ) property.Map {
