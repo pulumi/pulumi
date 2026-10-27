@@ -38,6 +38,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pkg/browser"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
@@ -1035,13 +1036,13 @@ func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 }
 
 func (b *cloudBackend) ListPolicyGroups(ctx context.Context, orgName string, inContToken backend.ContinuationToken) (
-	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error,
+	cloudapitype.AppListPolicyGroupsResponse, backend.ContinuationToken, error,
 ) {
 	return b.client.ListPolicyGroups(ctx, orgName, inContToken)
 }
 
 func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inContToken backend.ContinuationToken) (
-	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error,
+	cloudapitype.AppListPolicyPacksResponse, backend.ContinuationToken, error,
 ) {
 	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
 }

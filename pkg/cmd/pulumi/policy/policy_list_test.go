@@ -15,16 +15,17 @@
 package policy
 
 import (
+	"bytes"
 	"context"
 	"testing"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -44,9 +45,9 @@ func TestPolicyLsCmd_QueriesPolicyPacksByOrgNameNotUserName(t *testing.T) {
 		},
 		ListPolicyPacksF: func(
 			_ context.Context, orgName string, _ backend.ContinuationToken,
-		) (apitype.ListPolicyPacksResponse, backend.ContinuationToken, error) {
+		) (cloudapitype.AppListPolicyPacksResponse, backend.ContinuationToken, error) {
 			queriedOrgName = orgName
-			return apitype.ListPolicyPacksResponse{}, nil, nil
+			return cloudapitype.AppListPolicyPacksResponse{}, nil, nil
 		},
 	}
 
@@ -71,4 +72,42 @@ func TestPolicyLsCmd_QueriesPolicyPacksByOrgNameNotUserName(t *testing.T) {
 	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, "default-org", queriedOrgName)
+}
+
+func samplePolicyPacks() []cloudapitype.AppPolicyPackWithVersions {
+	return []cloudapitype.AppPolicyPackWithVersions{
+		{
+			Name:        "aws-guardrails",
+			DisplayName: "AWS Guardrails",
+			Versions:    []int{1, 2, 3},
+			VersionTags: []string{"1.0.0", "2.0.0", "3.1.0"},
+		},
+		{Name: "tagging", DisplayName: "Tagging", Versions: []int{7}, VersionTags: []string{"7.0.0"}},
+	}
+}
+
+func TestPolicyList_DefaultOutput(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	require.NoError(t, formatPolicyPacksConsole(&buf, samplePolicyPacks()))
+	out := buf.String()
+
+	assert.Contains(t, out, "NAME")
+	assert.Contains(t, out, "VERSIONS")
+	assert.Contains(t, out, "aws-guardrails")
+	assert.Contains(t, out, "1.0.0, 2.0.0, 3.1.0")
+	assert.Contains(t, out, "tagging")
+	assert.Contains(t, out, "7.0.0")
+}
+
+func TestPolicyList_JSONOutput(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	require.NoError(t, formatPolicyPacksJSON(&buf, samplePolicyPacks()))
+	assert.JSONEq(t, `[
+		{"name": "aws-guardrails", "versions": ["1.0.0", "2.0.0", "3.1.0"]},
+		{"name": "tagging", "versions": ["7.0.0"]}
+	]`, buf.String())
 }

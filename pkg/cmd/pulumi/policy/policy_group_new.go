@@ -21,6 +21,8 @@ import (
 	"io"
 	"slices"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+	"github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -30,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -38,10 +39,10 @@ import (
 // policyGroupNewClient is the narrow subset of cloud-API operations the new
 // command needs.
 type policyGroupNewClient interface {
-	CreatePolicyGroup(ctx context.Context, orgName string, req apitype.CreatePolicyGroupRequest) error
+	CreatePolicyGroup(ctx context.Context, orgName string, req cloudapitype.NewPolicyGroupRequest) error
 	GetPolicyGroup(
 		ctx context.Context, orgName, policyGroup string,
-	) (apitype.GetPolicyGroupResponse, error)
+	) (cloudapitype.PolicyGroup, error)
 }
 
 // policyGroupNewClientFactory resolves a cloud client and the organization the
@@ -208,11 +209,15 @@ func runPolicyGroupNew(
 		return fmt.Errorf("invalid --mode %q; must be \"audit\" or \"preventative\"", mode)
 	}
 
-	req := apitype.CreatePolicyGroupRequest{
-		Name:        name,
-		EntityType:  entityType,
-		Mode:        mode,
-		AgentPoolID: args.agentPoolID,
+	req := cloudapitype.NewPolicyGroupRequest{
+		Name:       name,
+		EntityType: new(cloudapitype.PolicyGroupEntityType(entityType)), //nolint:staticcheck // still a CLI flag
+	}
+	if mode != "" {
+		req.Mode = new(cloudapitype.PolicyGroupMode(mode))
+	}
+	if args.agentPoolID != "" {
+		req.AgentPoolID = jsonvalue.NotNull(args.agentPoolID)
 	}
 
 	if err := c.CreatePolicyGroup(ctx, org, req); err != nil {

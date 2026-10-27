@@ -1,0 +1,3 @@
+component: sdk/go
+kind: improvement
+body: Deprecate the policy pack and policy group types in `sdk/go/common/apitype` in favor of `github.com/pulumi/pulumi-cloud-sdk/go/apitype`

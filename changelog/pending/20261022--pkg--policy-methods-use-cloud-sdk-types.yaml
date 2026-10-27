@@ -1,0 +1,3 @@
+component: pkg
+kind: chore
+body: Use `github.com/pulumi/pulumi-cloud-sdk/go/apitype` types in the policy pack and policy group methods of `backend.Backend` and `httpstate/client.Client`
