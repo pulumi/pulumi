@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Stop `pulumi whoami` from creating an agent account when not logged in
+time: 2026-10-26T18:11:19.675182+01:00
