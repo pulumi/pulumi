@@ -69,8 +69,9 @@ type CreateStackRequest struct {
 
 	Config *StackConfig `json:"config,omitempty"`
 
-	// ManagedEnvironment asks the service to create an ESC environment that the stack manages.
-	ManagedEnvironment bool `json:"managedEnvironment,omitempty"`
+	// CreateManagedEnvironment asks the service to create an ESC environment that the stack manages. Its name differs
+	// from the ManagedEnvironment fields that carry the environment's name so one JSON key never has two types.
+	CreateManagedEnvironment bool `json:"createManagedEnvironment,omitempty"`
 }
 
 // CreateStackResponse is the response from a create Stack request.
