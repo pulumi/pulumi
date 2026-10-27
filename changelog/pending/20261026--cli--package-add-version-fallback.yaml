@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Fix `pulumi package add` failing with "version must be provided when package supports packing" when a provider's schema omits its version
+time: 2026-10-26T00:00:00Z
