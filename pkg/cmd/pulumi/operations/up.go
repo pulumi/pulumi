@@ -849,7 +849,8 @@ func NewUpCmd() *cobra.Command {
 	)
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
-		"Serialize the update diffs, operations, and overall output as JSON",
+		"Serialize the update diffs, operations, and overall output as JSON."+
+			" Policy violations are included in both the preview and the update output",
 	)
 	outputflag.Var(cmd.Flags(), &output)
 	// Hidden until --output is wired up across all operations (destroy, preview, refresh, ...).

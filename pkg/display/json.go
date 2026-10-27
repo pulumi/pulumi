@@ -38,6 +38,9 @@ type PreviewDigest struct {
 	// Diagnostics contains a record of all warnings/errors that took place during the preview. Note that
 	// ephemeral and debug messages are omitted from this list, as they are meant for display purposes only.
 	Diagnostics []PreviewDiagnostic `json:"diagnostics,omitempty"`
+	// PolicyViolations contains the policy violations reported during the preview, in the same shape as the
+	// streaming JSON `policyEvent`. Excepted violations are included with their exceptions.
+	PolicyViolations []apitype.PolicyEvent `json:"policyViolations,omitempty"`
 
 	// Duration records the amount of time it took to perform the preview.
 	Duration time.Duration `json:"duration,omitempty"`
