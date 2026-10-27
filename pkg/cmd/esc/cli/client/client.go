@@ -302,6 +302,17 @@ type Client interface {
 		opts ...CheckYAMLOption,
 	) (*esc.Environment, []EnvironmentDiagnostic, error)
 
+	// EncryptSecrets encrypts each plaintext with the key of the environment projectName/envName and returns
+	// the ciphertexts in the same order. The ciphertexts are valid as the value of fn::secret.ciphertext
+	// in that environment only.
+	EncryptSecrets(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		plaintexts [][]byte,
+	) ([]string, error)
+
 	// OpenYAMLEnvironment evaluates the given environment YAML within the context of org orgName and
 	// returns the ID of the opened environment. The opened environment will be available for the indicated
 	// duration, after which it will expire.
@@ -1175,6 +1186,37 @@ func (pc *client) RotateEnvironment(
 		return nil, nil, err
 	}
 	return &resp, nil, nil
+}
+
+func (pc *client) EncryptSecrets(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	plaintexts [][]byte,
+) ([]string, error) {
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/encrypt-secrets", orgName, projectName, envName)
+
+	reqObj := struct {
+		Plaintexts []string `json:"plaintexts"`
+	}{
+		Plaintexts: make([]string, len(plaintexts)),
+	}
+	for i, plaintext := range plaintexts {
+		reqObj.Plaintexts[i] = base64.StdEncoding.EncodeToString(plaintext)
+	}
+
+	var resp struct {
+		Ciphertexts []string `json:"ciphertexts"`
+	}
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, reqObj, &resp); err != nil {
+		return nil, err
+	}
+	if len(resp.Ciphertexts) != len(plaintexts) {
+		return nil, fmt.Errorf(
+			"encrypting secrets: expected %d ciphertexts, got %d", len(plaintexts), len(resp.Ciphertexts))
+	}
+	return resp.Ciphertexts, nil
 }
 
 func (pc *client) CheckYAMLEnvironment(
