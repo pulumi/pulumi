@@ -1867,6 +1867,55 @@ func TestInvokeOutputPackageRefF(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// An invoke or call of an extension package uses the provider its parent has for the base package.
+func TestInvokeExtensionInheritsParentBaseProvider(t *testing.T) {
+	t.Parallel()
+
+	var invokeProvider, callProvider string
+	monitor := &testMonitor{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			invokeProvider = args.Provider
+			return resource.PropertyMap{}, nil
+		},
+		MethodCallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			callProvider = args.Provider
+			return resource.PropertyMap{}, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		pkg, err := ctx.RegisterPackage(&pulumirpc.RegisterPackageRequest{
+			Name:    "extbase",
+			Version: "1.0.0",
+			Extension: &pulumirpc.Parameterization{
+				Name:    "myext",
+				Version: "2.0.0",
+				Value:   []byte("param"),
+			},
+		})
+		require.NoError(t, err)
+
+		var prov struct{ ProviderResourceState }
+		require.NoError(t, ctx.RegisterResource("pulumi:providers:extbase", "prov", nil, &prov))
+		var parent struct{ CustomResourceState }
+		require.NoError(t, ctx.RegisterResource("extbase:index:Base", "parent", nil, &parent, Provider(&prov)))
+		provRef, err := ctx.resolveProviderReference(&prov)
+		require.NoError(t, err)
+
+		var result struct{}
+		require.NoError(t, ctx.InvokePackage("myext:index:greet", nil, &result, pkg.Ref, Parent(&parent)))
+		assert.Equal(t, provRef, invokeProvider)
+
+		out, err := ctx.CallPackage("myext:index:greet", Map{}, AnyOutput{}, nil, pkg.Ref, Parent(&parent))
+		require.NoError(t, err)
+		_, _, _, _, err = internal.AwaitOutput(ctx.Context(), out)
+		require.NoError(t, err)
+		assert.Equal(t, provRef, callProvider)
+		return nil
+	}, WithMocks("project", "stack", monitor))
+	require.NoError(t, err)
+}
+
 func TestInvokeDependsOnIgnored(t *testing.T) {
 	t.Parallel()
 
