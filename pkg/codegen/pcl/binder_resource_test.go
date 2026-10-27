@@ -42,6 +42,7 @@ func TestBindResourceOptions(t *testing.T) {
 			},
 			Properties: []*schema.Property{
 				{Name: "property", Type: schema.StringType},
+				{Name: "outputOnly", Type: schema.StringType},
 			},
 		},
 		Resources: []*schema.Resource{
