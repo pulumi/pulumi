@@ -2023,3 +2023,37 @@ func TestGetDefaultOrg(t *testing.T) {
 		assert.Empty(t, orgName)
 	})
 }
+
+func TestOpenEnvironmentDraftRevision(t *testing.T) {
+	t.Parallel()
+
+	zero := 0
+	cases := []struct {
+		name     string
+		revision *int
+		query    string
+	}{
+		{"nil sends no revision", nil, "duration=1h0m0s"},
+		{"zero is sent", &zero, "duration=1h0m0s&revision=0"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			client := newTestClient(
+				t,
+				http.MethodPost,
+				"/api/esc/environments/test-org/test-project/test-env/drafts/cr-1/open",
+				func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, tc.query, r.URL.RawQuery)
+					require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"id": "open-1"}))
+				},
+			)
+
+			id, diags, err := client.OpenEnvironmentDraft(
+				t.Context(), "test-org", "test-project", "test-env", "cr-1", tc.revision, time.Hour)
+			require.NoError(t, err)
+			require.Empty(t, diags)
+			assert.Equal(t, "open-1", id)
+		})
+	}
+}
