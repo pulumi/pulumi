@@ -654,6 +654,33 @@ func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
 }
 
+func TestLoginInNonInteractiveAgentModeRequiresLoginByDefault(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+
+	disableInteractive := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = true
+	t.Cleanup(func() {
+		cmdutil.DisableInteractive = disableInteractive
+	})
+
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/api/agents/signup" {
+			signupCalls++
+		}
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := NewLoginManager().Login(t.Context(), server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
+		display.Options{})
+	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
+	assert.Nil(t, account)
+	assert.Equal(t, 0, signupCalls)
+}
+
 func TestLoginWithoutAgentSignupDoesNotCreateAgentAccount(t *testing.T) {
 	ptesting.IsolateCredentials(t)
 
@@ -677,7 +704,7 @@ func TestLoginWithoutAgentSignupDoesNotCreateAgentAccount(t *testing.T) {
 	ctx := ContextWithoutAgentSignup(t.Context())
 	account, err := NewLoginManager().Login(ctx, server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
 		display.Options{})
-	require.ErrorAs(t, err, &backenderr.MissingEnvVarForNonInteractiveError{})
+	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
 	assert.Nil(t, account)
 	assert.Equal(t, 0, signupCalls)
 
