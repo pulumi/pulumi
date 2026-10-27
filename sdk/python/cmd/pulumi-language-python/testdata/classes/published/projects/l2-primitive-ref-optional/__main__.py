@@ -38,6 +38,10 @@ pulumi.export("unsetNumberArray", unset_res.data.apply(lambda data: "null" if da
 pulumi.export("unsetBooleanMap", unset_res.data.apply(lambda data: "null" if data.boolean_map is None else "not null"))
 pulumi.export("setOptionalData", set_res.optional_data.apply(lambda optional_data: "null" if optional_data is None else "not null"))
 pulumi.export("unsetOptionalData", unset_res.optional_data.apply(lambda optional_data: "null" if optional_data is None else "not null"))
+pulumi.export("tupleOfOptional", [
+    set_res.data.string,
+    unset_res.data.string,
+])
 optional_lists = [
     set_res.data.number_array,
     unset_res.data.number_array,

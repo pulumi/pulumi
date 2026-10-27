@@ -124,6 +124,12 @@ func init() {
 					// Comparison of an optional object to null yields whether the object is set.
 					AssertPropertyMapMember(l, outputs, "setOptionalData", property.New("not null"))
 					AssertPropertyMapMember(l, outputs, "unsetOptionalData", property.New("null"))
+
+					// A tuple of optional string outputs keeps nulls.
+					AssertPropertyMapMember(l, outputs, "tupleOfOptional", property.New([]property.Value{
+						property.New("hello"),
+						property.New(property.Null),
+					}))
 				},
 			},
 		},
