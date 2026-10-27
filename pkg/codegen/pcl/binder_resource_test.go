@@ -52,6 +52,7 @@ func TestBindResourceOptions(t *testing.T) {
 				},
 				Properties: []*schema.Property{
 					{Name: "property", Type: schema.StringType},
+					{Name: "outputOnly", Type: schema.StringType},
 				},
 			},
 		},
@@ -99,8 +100,8 @@ func TestBindResourceOptions(t *testing.T) {
 		},
 		{
 			name: "HideDiffs",
-			src:  `hideDiffs = [property]`,
-			want: cty.TupleVal([]cty.Value{cty.StringVal("property")}),
+			src:  `hideDiffs = [property, outputOnly]`,
+			want: cty.TupleVal([]cty.Value{cty.StringVal("property"), cty.StringVal("outputOnly")}),
 		},
 		{
 			name: "DeletedWith",
