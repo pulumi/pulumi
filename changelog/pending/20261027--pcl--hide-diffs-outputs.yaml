@@ -1,4 +1,4 @@
 component: pcl
-kind: bug-fix
+kind: fix
 body: Fix `hideDiffs` to resolve resource output properties instead of input properties
 time: 2026-10-27T00:00:00Z
