@@ -12,18 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cli
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
 func TestDeclaredEnvironmentVariable(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_REFRESH", "true")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	up, _, err := cmd.Find([]string{"up"})
@@ -37,7 +40,7 @@ func TestDeclaredEnvironmentVariable(t *testing.T) {
 func TestEnvironmentVariableWorksWithMultipleCommands(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_REFRESH", "true")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	preview, _, err := cmd.Find([]string{"preview"})
@@ -51,7 +54,7 @@ func TestEnvironmentVariableWorksWithMultipleCommands(t *testing.T) {
 func TestThatDefaultsAreNotOverriddenByEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_REFRESH", "true")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	color, err := cmd.PersistentFlags().GetString("color")
@@ -63,7 +66,7 @@ func TestThatDefaultsAreNotOverriddenByEnvironmentVariables(t *testing.T) {
 func TestBooleanEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_EMOJI", "true")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	emoji, err := cmd.PersistentFlags().GetBool("emoji")
@@ -74,7 +77,7 @@ func TestBooleanEnvironmentVariables(t *testing.T) {
 func TestNumericEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_VERBOSE", "2")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	verbose, err := cmd.PersistentFlags().GetInt("verbose")
@@ -85,7 +88,7 @@ func TestNumericEnvironmentVariables(t *testing.T) {
 func TestStringArrayEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_TARGET", "foo,bar,baz")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	up, _, err := cmd.Find([]string{"up"})
@@ -99,7 +102,7 @@ func TestStringArrayEnvironmentVariables(t *testing.T) {
 func TestStringArrayOneElement(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_TARGET", "foo")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	up, _, err := cmd.Find([]string{"up"})
@@ -113,7 +116,7 @@ func TestStringArrayOneElement(t *testing.T) {
 func TestStringSliceEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_MAPPINGS", "foo,bar,baz")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	convert, _, err := cmd.Find([]string{"convert"})
@@ -127,7 +130,7 @@ func TestStringSliceEnvironmentVariables(t *testing.T) {
 func TestStringArrayNoSplitOnComma(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_PLAINTEXT", "\"a=foo,bar,baz\"")
 
-	cmd, cleanup := NewPulumiCmd()
+	cmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	config, _, err := cmd.Find([]string{"config", "set-all"})
@@ -136,4 +139,25 @@ func TestStringArrayNoSplitOnComma(t *testing.T) {
 	plaintext, err := config.PersistentFlags().GetStringArray("plaintext")
 	require.NoError(t, err)
 	require.Equal(t, []string{"a=foo,bar,baz"}, plaintext)
+}
+
+func TestNewPulumiCmdLeavesProcessStateUnchanged(t *testing.T) {
+	t.Setenv("PULUMI_OPTION_EMOJI", "false")
+	t.Setenv("PULUMI_OPTION_NON_INTERACTIVE", "true")
+	defer func(emoji bool, interactive bool) {
+		cmdutil.Emoji = emoji
+		cmdutil.DisableInteractive = interactive
+	}(cmdutil.Emoji, cmdutil.DisableInteractive)
+	cmdutil.Emoji = true
+	cmdutil.DisableInteractive = false
+
+	_, cleanup := NewPulumiCmd(Options{})
+	defer cleanup()
+	declaredCount := len(declared.Variables())
+	_, cleanup2 := NewPulumiCmd(Options{})
+	defer cleanup2()
+
+	require.True(t, cmdutil.Emoji)
+	require.False(t, cmdutil.DisableInteractive)
+	require.Len(t, declared.Variables(), declaredCount)
 }

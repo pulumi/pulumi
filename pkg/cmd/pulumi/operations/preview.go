@@ -615,6 +615,7 @@ func NewPreviewCmd() *cobra.Command {
 				maps.Copy(m.Environment, metadata)
 			}
 
+			allEvents, waitForEvents := withContextEngineEvents(ctx, events)
 			plan, changes, res := backend.PreviewStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
@@ -625,7 +626,8 @@ func NewPreviewCmd() *cobra.Command {
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
-			}, events)
+			}, allEvents)
+			waitForEvents()
 			// If we made an events channel then we need to close it to trigger the exit of the import goroutine above.
 			// The engine doesn't close the channel for us, but once its returned here we know it won't append any more
 			// events.

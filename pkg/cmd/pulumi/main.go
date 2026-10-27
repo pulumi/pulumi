@@ -20,9 +20,12 @@ import (
 	"runtime"
 	"runtime/debug"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cli"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
+	"github.com/spf13/cobra"
 	"go.uber.org/automaxprocs/maxprocs"
 )
 
@@ -71,4 +74,9 @@ func main() {
 	}
 	*finished = true
 	cleanup()
+}
+
+// NewPulumiCmd creates the Pulumi CLI root command.
+func NewPulumiCmd() (*cobra.Command, func()) {
+	return cli.NewPulumiCmd(cli.Options{AICommands: []*cobra.Command{neo.NewNeoCmd()}})
 }

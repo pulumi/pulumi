@@ -289,6 +289,7 @@ func NewUpCmd() *cobra.Command {
 			maps.Copy(m.Environment, metadata)
 		}
 
+		events, waitForEvents := withContextEngineEvents(ctx, nil)
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
@@ -299,7 +300,8 @@ func NewUpCmd() *cobra.Command {
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 			CoherenceWindow:    coherenceWindow,
-		}, nil /* events */)
+		}, events)
+		waitForEvents()
 		switch {
 		case err == context.Canceled:
 			return backenderr.CancelledError{Operation: "update"}
@@ -563,6 +565,7 @@ func NewUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
+		events, waitForEvents := withContextEngineEvents(ctx, nil)
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
@@ -573,7 +576,8 @@ func NewUpCmd() *cobra.Command {
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 			CoherenceWindow:    coherenceWindow,
-		}, nil /* events */)
+		}, events)
+		waitForEvents()
 		switch {
 		case err == context.Canceled:
 			return backenderr.CancelledError{Operation: "update"}

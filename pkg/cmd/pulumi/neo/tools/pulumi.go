@@ -21,25 +21,19 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cli"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -224,12 +218,10 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	restoreEnv := applyEnvVars(a.EnvironmentVariables)
 	defer restoreEnv()
 
-	// cmdStack.LoadProjectStack (called via GetStackConfiguration below) walks up
-	// from os.Getwd() to find Pulumi.<stack>.yaml, so we chdir into the project
-	// directory for the duration of the call. The engine itself derives its own
-	// working directory from op.Root and doesn't depend on cwd. The Session runs
-	// tool calls serially so we don't lock here, but os.Chdir is process-global —
-	// concurrent callers from outside the Session would race.
+	// The CLI walks up from os.Getwd() to find Pulumi.yaml and Pulumi.<stack>.yaml,
+	// so we chdir into the project directory for the duration of the call. The
+	// Session runs tool calls serially so we don't lock here, but os.Chdir is
+	// process-global — concurrent callers from outside the Session would race.
 	prevDir, err := os.Getwd()
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("recording working directory: %w", err))
@@ -239,93 +231,9 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}
 	defer func() { _ = os.Chdir(prevDir) }()
 
-	proj, root, err := p.Workspace.ReadProject("")
+	proj, _, err := p.Workspace.ReadProject("")
 	if err != nil {
 		return failedResult(a, "", fmt.Errorf("reading project: %w", err))
-	}
-
-	refresh := false
-	if isPreview {
-		refresh, err = operations.GetRefreshOption(proj, os.Getenv("PULUMI_OPTION_REFRESH"))
-		if err != nil {
-			return failedResult(a, "", err)
-		}
-	}
-
-	// Resolve the backend fresh per tool call, the same way `pulumi preview`/`pulumi up`
-	// do (stack.RequireStack -> cmdBackend.CurrentBackend -> Login). Reusing the backend
-	// frozen at `pulumi neo` startup would pin the access token resolved back then, so the
-	// tool could authenticate — and decrypt service-managed secrets — as a different
-	// identity than the user's own `pulumi preview`. Resolving here, after applyEnvVars and
-	// the chdir into the project dir, keeps the two paths in lockstep.
-	be, err := cmdBackend.CurrentBackend(
-		ctx, p.Workspace, cmdBackend.DefaultLoginManager, proj, backendDisplay.Options{Color: colors.Never})
-	if err != nil {
-		return failedResult(a, "", fmt.Errorf("resolving backend: %w", err))
-	}
-
-	stackRef, err := be.ParseStackReference(a.StackName)
-	if err != nil {
-		return failedResult(a, "", fmt.Errorf("parsing stack reference: %w", err))
-	}
-	s, err := be.GetStack(ctx, stackRef)
-	if err != nil {
-		return failedResult(a, "", fmt.Errorf("getting stack: %w", err))
-	}
-	if s == nil {
-		return failedResult(a, "", fmt.Errorf("stack %q not found", a.StackName))
-	}
-
-	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, "", nil)
-	if err != nil {
-		return failedResult(a, "", fmt.Errorf("getting stack configuration: %w", err))
-	}
-
-	decrypter := sm.Decrypter()
-	encrypter := sm.Encrypter()
-	if err := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
-		ctx, s.Ref().Name().String(), proj, cfg.Environment, cfg.Config, encrypter, decrypter,
-	); err != nil {
-		return failedResult(a, "", fmt.Errorf("validating stack config: %w", err))
-	}
-
-	autonamer, err := autonaming.ParseAutonamingConfig(
-		autonamingStackContextFor(proj, s), cfg.Config, decrypter)
-	if err != nil {
-		return failedResult(a, "", fmt.Errorf("getting autonaming config: %w", err))
-	}
-
-	// Pass nil for flags: GetUpdateMetadata only uses them to record
-	// "pulumi.flag.<name>" entries, and Neo has no CLI flags to record.
-	m, err := metadata.GetUpdateMetadata("" /*message*/, root,
-		"neo" /*execKind*/, "" /*execAgent*/, false /*updatePlan*/, cfg, nil)
-	if err != nil {
-		return failedResult(a, "", fmt.Errorf("gathering metadata: %w", err))
-	}
-
-	opts := backend.UpdateOptions{
-		AutoApprove: true, // Upstream approval already gates pulumi_up before dispatch.
-		// pulumi_up follows an approved pulumi_preview, so don't run a second preview first.
-		// Matches the Automation API's `up --yes --skip-preview`. Never set for pulumi_preview.
-		SkipPreview: !isPreview,
-		Engine: engine.UpdateOptions{
-			Experimental: true,
-			Autonamer:    autonamer,
-			Refresh:      refresh,
-		},
-		Display: backendDisplay.Options{
-			// Mute the backend's own progress renderer so it doesn't fight the Neo TUI.
-			// Stdout / Stderr go to io.Discard; the Neo tool handler consumes events via
-			// the events channel instead.
-			Color:            colors.Never,
-			SuppressProgress: true,
-			SuppressOutputs:  true,
-			IsInteractive:    false,
-			Type:             backendDisplay.DisplayProgress,
-			Stdout:           io.Discard,
-			Stderr:           io.Discard,
-		},
 	}
 
 	eventsFile, err := os.CreateTemp("", "pulumi-neo-events-*.ndjson")
@@ -338,35 +246,45 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	eventsPath := eventsFile.Name()
 
 	toolName := "pulumi__pulumi_up"
+	name := "up"
 	if isPreview {
 		toolName = "pulumi__pulumi_preview"
+		name = "preview"
 	}
 
 	if p.Sink != nil && p.Sink.OnStart != nil {
 		p.Sink.OnStart(toolName, a.StackName, isPreview)
 	}
 
+	// The host process owns logging, tracing, and the update check, so skip the root's hooks.
+	root, _ := cli.NewPulumiCmd(cli.Options{})
+	root.PersistentPreRunE = nil
+	root.PersistentPostRun = nil
+	args := []string{name, "--stack=" + a.StackName, "--exec-kind=neo", "--neo=false", "--neo-task-on-failure=false"}
+	if !isPreview {
+		// Upstream approval already gates pulumi_up, and it follows an approved pulumi_preview.
+		args = append(args, "--yes", "--skip-preview")
+	}
+	if deployment.RemoteSupported() {
+		args = append(args, "--remote=false")
+	}
+	root.SetArgs(args)
+	root.SetIn(strings.NewReader(""))
+	root.SetOut(io.Discard)
+	root.SetErr(io.Discard)
+
 	eventsCh := make(chan engine.Event, 128)
 	var diagLines []string
 	var started engine.UpdateStartedEventPayload
+	var changes display.ResourceChanges
 	drainDone := make(chan struct{})
 	go func() {
 		defer close(drainDone)
-		diagLines, started = p.drainEvents(toolName, isPreview, eventsCh, eventsFile)
+		diagLines, started, changes = p.drainEvents(toolName, isPreview, eventsCh, eventsFile)
 		_ = eventsFile.Close()
 	}()
 
 	startedAt := time.Now()
-	op := backend.UpdateOperation{
-		Proj:               proj,
-		Root:               root,
-		M:                  m,
-		Opts:               opts,
-		StackConfiguration: cfg,
-		SecretsManager:     sm,
-		SecretsProvider:    secrets.DefaultProvider,
-		Scopes:             ctxOnlyCancellationSource{},
-	}
 
 	// The engine and backend print a handful of headers/messages directly to
 	// os.Stdout/os.Stderr (e.g. the "Previewing update (stack)" banner in
@@ -376,22 +294,18 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	// captured reference to the original stdout from tea.NewProgram, so this
 	// swap doesn't disturb rendering. Deferred so a panic in the engine
 	// can't leave the CLI permanently muted.
+	// cmdutil.Diag caches os.Stderr on first use, so create it before the swap.
+	_ = cmdutil.Diag()
 	restoreStd := silenceStd()
 	defer restoreStd()
 
-	var runErr error
-	var changes display.ResourceChanges
-	if isPreview {
-		_, changes, runErr = backend.PreviewStack(ctx, s, op, eventsCh)
-	} else {
-		changes, runErr = backend.UpdateStack(ctx, s, op, eventsCh)
-	}
-	// Closing eventsCh lets the drain goroutine return. The backend does not close
-	// the channel for us; once the backend call returns, no more events will arrive.
+	runErr := root.ExecuteContext(operations.ContextWithEngineEvents(ctx, eventsCh))
+	// Closing eventsCh lets the drain goroutine return. The command does not close
+	// the channel for us; once it returns, no more events will arrive.
 	close(eventsCh)
 	<-drainDone
 
-	res := newPulumiResult(proj, s.Ref(), eventsPath)
+	res := newPulumiResult(proj, a.StackName, eventsPath)
 	res.ConsoleURL = started.Permalink
 	res.UpdateID = started.UpdateID
 	res.Version = started.Version
@@ -418,14 +332,10 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}
 
 	if runErr != nil {
-		label := "up"
-		if isPreview {
-			label = "preview"
-		}
 		// Prepend the error so the agent sees the reason even when the engine
 		// returned without emitting any DiagEvents (host crash, plugin
 		// discovery, marshalling).
-		res.Logs = fmt.Sprintf("error: pulumi %s: %s\n", label, runErr) + res.Logs
+		res.Logs = fmt.Sprintf("error: pulumi %s: %s\n", name, runErr) + res.Logs
 		return res, errToolFailed
 	}
 	return res, nil
@@ -492,10 +402,11 @@ func FormatChangeCounts(changes display.ResourceChanges, joiner string) string {
 // lines are intentionally not duplicated in memory because the events file
 // already holds them. It also returns the payload of an UpdateStartedEventPayload,
 // if one arrived (zero value otherwise; if more than one arrives, the last one
-// wins), with Version already zeroed when isPreview is true.
+// wins), with Version already zeroed when isPreview is true, and the resource
+// changes from the last SummaryEvent.
 func (p *Pulumi) drainEvents(
 	toolName string, isPreview bool, events <-chan engine.Event, ndjson io.Writer,
-) (diags []string, started engine.UpdateStartedEventPayload) {
+) (diags []string, started engine.UpdateStartedEventPayload, changes display.ResourceChanges) {
 	for e := range events {
 		// Best-effort: skip events that fail to convert.
 		if apiEv, err := backendDisplay.ConvertEngineEvent(e, false /*showSecrets*/); err == nil {
@@ -572,9 +483,11 @@ func (p *Pulumi) drainEvents(
 			if p.Sink != nil && p.Sink.OnPermalink != nil {
 				p.Sink.OnPermalink(payload.Permalink, payload.UpdateID, payload.Version, isPreview)
 			}
+		case engine.SummaryEventPayload:
+			changes = payload.ResourceChanges
 		}
 	}
-	return diags, started
+	return diags, started, changes
 }
 
 // formatLogs builds the agent-facing pulumiResult.Logs string: a counts line
@@ -635,27 +548,6 @@ func applyEnvVars(vars map[string]envVal) func() {
 	}
 }
 
-// ctxOnlyCancellationSource is a minimal backend.CancellationScopeSource that observes
-// only the caller's context — no SIGINT/SIGTERM handler is installed. Under Neo the TUI
-// owns the terminal and posts AgentUserEventCancel on ESC; the backend's stock
-// CancellationScopes would install its own SIGINT handler and conflict with bubbletea.
-type ctxOnlyCancellationSource struct{}
-
-func (ctxOnlyCancellationSource) NewScope(
-	ctx context.Context, _ chan<- engine.Event, _ bool,
-) backend.CancellationScope {
-	cctx, src := cancel.NewContext(ctx)
-	return &ctxOnlyCancellationScope{ctx: cctx, src: src}
-}
-
-type ctxOnlyCancellationScope struct {
-	ctx *cancel.Context
-	src *cancel.Source
-}
-
-func (c *ctxOnlyCancellationScope) Context() *cancel.Context { return c.ctx }
-func (c *ctxOnlyCancellationScope) Close()                   { c.src.Cancel() }
-
 // silenceStd redirects os.Stdout and os.Stderr to /dev/null and returns a
 // restore func. Calls to fmt.Printf / fmt.Println / fmt.Print during the
 // redirection go nowhere. Safe even if opening /dev/null fails — in that case
@@ -678,17 +570,17 @@ func silenceStd() func() {
 }
 
 // newPulumiResult returns a pulumiResult populated with the canonical project
-// name and bare stack name from the parsed StackReference. ParseStackReference
-// accepts both bare names and fully-qualified "<org>/<project>/<stack>" forms,
+// name and bare stack name. The CLI accepts both bare names and
+// fully-qualified "<org>/<project>/<stack>" forms,
 // but downstream consumers (the Neo agent's entity extraction in particular)
 // treat the returned stack_name as a bare name. Echoing the raw input back
 // would cause the agent to construct entities with malformed names whenever
 // the LLM passes an FQSN — a phrasing the CLI itself encourages via some of
 // its own error messages.
-func newPulumiResult(proj *workspace.Project, stackRef backend.StackReference, eventsPath string) pulumiResult {
+func newPulumiResult(proj *workspace.Project, stackName string, eventsPath string) pulumiResult {
 	return pulumiResult{
 		ProjectName: proj.Name.String(),
-		StackName:   stackRef.Name().String(),
+		StackName:   path.Base(stackName),
 		EventsFile:  eventsPath,
 	}
 }
@@ -710,18 +602,4 @@ func failedResult(a pulumiArgs, eventsPath string, err error) (pulumiResult, err
 		StackName:   a.StackName,
 		EventsFile:  eventsPath,
 	}, errToolFailed
-}
-
-// autonamingStackContextFor mirrors operations.autonamingStackContext without pulling in
-// the cobra-coupled operations package.
-func autonamingStackContextFor(proj *workspace.Project, s backend.Stack) autonaming.StackContext {
-	organization := "organization"
-	if cs, ok := s.(httpstate.Stack); ok {
-		organization = cs.OrgName()
-	}
-	return autonaming.StackContext{
-		Organization: organization,
-		Project:      proj.Name.String(),
-		Stack:        s.Ref().Name().String(),
-	}
 }

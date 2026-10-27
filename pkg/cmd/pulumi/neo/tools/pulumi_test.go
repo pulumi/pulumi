@@ -28,8 +28,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -428,7 +426,7 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 	require.Error(t, err)
 	assert.True(t, resolved, "freshly resolved backend was never consulted")
 	assert.Equal(t, "live-token", capturedToken)
-	assertFailedResult(t, value, "parsing stack reference")
+	assertFailedResult(t, value, "stop after resolution")
 	// The injected env var is restored after the call.
 	_, present := os.LookupEnv("PULUMI_ACCESS_TOKEN")
 	assert.False(t, present, "PULUMI_ACCESS_TOKEN should be restored after the tool call")
@@ -485,56 +483,85 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 			value, err := p.Invoke(t.Context(), method, args)
 			require.Error(t, err)
 			assert.True(t, resolved, "backend was not resolved via CurrentBackend")
-			assertFailedResult(t, value, "parsing stack reference")
+			assertFailedResult(t, value, "stop after resolution")
 		})
 	}
 }
 
-func TestPulumi_Run_PreviewRefresh(t *testing.T) {
-	plain := func(value string) *envVal { return &envVal{Plain: value} }
+func TestPulumi_Run_CLIOptions(t *testing.T) {
+	plain := func(value string) envVal { return envVal{Plain: value} }
 	for _, tt := range []struct {
 		name           string
 		method         string
-		value          *envVal
+		env            map[string]envVal
 		ambient        string
-		projectOptions *workspace.ProjectOptions
+		refreshAlways  bool
 		wantRefresh    bool
-		wantError      bool
+		wantRunProgram bool
+		wantError      string
 	}{
 		{name: "default"},
-		{name: "true", value: plain("true"), wantRefresh: true},
-		{name: "false", value: plain("false")},
-		{name: "one", value: plain("1"), wantRefresh: true},
-		{name: "zero", value: plain("0")},
-		{name: "secret", value: &envVal{Secret: "true"}, wantRefresh: true},
-		{name: "ambient", ambient: "true", wantRefresh: true},
-		{name: "override ambient", ambient: "true", value: plain("false")},
-		{name: "project default", projectOptions: &workspace.ProjectOptions{Refresh: "always"}, wantRefresh: true},
+		{name: "refresh true", env: map[string]envVal{"PULUMI_OPTION_REFRESH": plain("true")}, wantRefresh: true},
+		{name: "refresh false", env: map[string]envVal{"PULUMI_OPTION_REFRESH": plain("false")}},
+		{name: "refresh one", env: map[string]envVal{"PULUMI_OPTION_REFRESH": plain("1")}, wantRefresh: true},
+		{name: "refresh secret", env: map[string]envVal{"PULUMI_OPTION_REFRESH": {Secret: "true"}}, wantRefresh: true},
+		{name: "refresh ambient", ambient: "true", wantRefresh: true},
 		{
-			name: "override project", value: plain("false"),
-			projectOptions: &workspace.ProjectOptions{Refresh: "always"},
+			name: "refresh override ambient", ambient: "true",
+			env: map[string]envVal{"PULUMI_OPTION_REFRESH": plain("false")},
+		},
+		{name: "refresh project default", refreshAlways: true, wantRefresh: true},
+		{
+			name: "refresh override project", refreshAlways: true,
+			env: map[string]envVal{"PULUMI_OPTION_REFRESH": plain("false")},
 		},
 		{
-			name: "empty uses project", value: plain(""),
-			projectOptions: &workspace.ProjectOptions{Refresh: "always"}, wantRefresh: true,
+			name: "refresh invalid", env: map[string]envVal{"PULUMI_OPTION_REFRESH": plain("invalid-refresh-value")},
+			wantError: "unable to determine value for --refresh",
 		},
-		{name: "invalid", value: plain("invalid-refresh-value"), wantError: true},
-		{name: "invalid secret", value: &envVal{Secret: "secret-refresh-value"}, wantError: true},
-		{name: "up ignores option", method: "pulumi_up", value: plain("true")},
-		{name: "up ignores invalid", method: "pulumi_up", value: plain("invalid-refresh-value")},
-		{name: "up ignores project", method: "pulumi_up", projectOptions: &workspace.ProjectOptions{Refresh: "always"}},
+		{
+			name: "run program with refresh", wantRefresh: true, wantRunProgram: true,
+			env: map[string]envVal{
+				"PULUMI_OPTION_REFRESH":     plain("true"),
+				"PULUMI_OPTION_RUN_PROGRAM": plain("true"),
+			},
+		},
+		{
+			name: "run program secret", wantRunProgram: true,
+			env: map[string]envVal{"PULUMI_OPTION_RUN_PROGRAM": {Secret: "true"}},
+		},
+		{
+			name: "up refresh and run program", method: "pulumi_up", wantRefresh: true, wantRunProgram: true,
+			env: map[string]envVal{
+				"PULUMI_OPTION_REFRESH":     plain("true"),
+				"PULUMI_OPTION_RUN_PROGRAM": plain("1"),
+			},
+		},
+		{name: "up project refresh", method: "pulumi_up", refreshAlways: true, wantRefresh: true},
+		{
+			name: "tool flags win over options", method: "pulumi_up",
+			env: map[string]envVal{
+				"PULUMI_OPTION_STACK":        plain("other"),
+				"PULUMI_OPTION_SKIP_PREVIEW": plain("false"),
+				"PULUMI_OPTION_YES":          plain("false"),
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("PULUMI_OPTION_REFRESH", tt.ambient)
 			t.Setenv("PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER", "false")
 			dir := newProjectDir(t)
+			if tt.refreshAlways {
+				require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"),
+					[]byte("name: p\nruntime: nodejs\noptions:\n  refresh: always\n"), 0o600))
+			}
 			beforeDir, err := os.Getwd()
 			require.NoError(t, err)
 			ref := &backend.MockStackReference{
 				NameV:               tokens.MustParseStackName("dev"),
 				FullyQualifiedNameV: "organization/p/dev",
 			}
-			be := &backend.MockBackend{}
+			be := &eventBackend{MockBackend: &backend.MockBackend{}}
 			stk := &backend.MockStack{
 				RefF:     func() backend.StackReference { return ref },
 				BackendF: func() backend.Backend { return be },
@@ -542,7 +569,10 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 					return b64.NewBase64SecretsManager(), nil
 				},
 			}
-			be.ParseStackReferenceF = func(string) (backend.StackReference, error) { return ref, nil }
+			be.ParseStackReferenceF = func(name string) (backend.StackReference, error) {
+				assert.Equal(t, "dev", name)
+				return ref, nil
+			}
 			be.GetStackF = func(context.Context, backend.StackReference) (backend.Stack, error) { return stk, nil }
 			var invoked string
 			var options backend.UpdateOptions
@@ -572,15 +602,13 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 				},
 			}
 			t.Cleanup(func() { cmdBackend.DefaultLoginManager = previous })
-			p := &Pulumi{Cwd: dir, Workspace: &pkgWorkspace.MockContext{
+			rec := &sinkRecorder{}
+			p := &Pulumi{Cwd: dir, Sink: rec.sink(), Workspace: &pkgWorkspace.MockContext{
 				ReadProjectF: func(string) (*workspace.Project, string, error) {
-					return &workspace.Project{Name: "p", Options: tt.projectOptions}, dir, nil
+					return &workspace.Project{Name: "p"}, dir, nil
 				},
 			}}
-			args := pulumiArgs{ProjectName: "p", StackName: "dev", LocalPulumiDir: dir}
-			if tt.value != nil {
-				args.EnvironmentVariables = map[string]envVal{"PULUMI_OPTION_REFRESH": *tt.value}
-			}
+			args := pulumiArgs{ProjectName: "p", StackName: "dev", LocalPulumiDir: dir, EnvironmentVariables: tt.env}
 			method := tt.method
 			if method == "" {
 				method = "pulumi_preview"
@@ -593,10 +621,9 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 			afterDir, cwdErr := os.Getwd()
 			require.NoError(t, cwdErr)
 			assert.Equal(t, beforeDir, afterDir)
-			if tt.wantError {
+			if tt.wantError != "" {
 				require.Error(t, err)
-				assertFailedResult(t, result, "unable to determine value for --refresh")
-				assert.NotContains(t, result.Logs, tt.value.Value())
+				assertFailedResult(t, result, tt.wantError)
 				assert.Empty(t, invoked)
 				return
 			}
@@ -604,9 +631,46 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 			assert.Equal(t, "succeeded", result.Status)
 			assert.Equal(t, method, invoked)
 			assert.Equal(t, tt.wantRefresh, options.Engine.Refresh)
+			assert.Equal(t, tt.wantRunProgram, options.Engine.RefreshProgram)
 			assert.Equal(t, method == "pulumi_up", options.SkipPreview)
+			assert.Equal(t, "p", result.ProjectName)
+			assert.Equal(t, "dev", result.StackName)
+			assert.Equal(t, "test-update", result.UpdateID)
+			assert.Equal(t, "https://example.com/update", result.ConsoleURL)
+			assert.Contains(t, result.Logs, "1 update")
+			assert.Contains(t, result.Logs, "test diagnostic")
+			require.Len(t, rec.permalinks, 1)
+			require.Len(t, rec.ends, 1)
+			assert.Equal(t, display.ResourceChanges{deploy.OpUpdate: 1}, rec.ends[0].counts)
 		})
 	}
+}
+
+// eventBackend sends the events a cloud backend sends during an operation.
+type eventBackend struct{ *backend.MockBackend }
+
+func emitToolTestEvents(events chan<- engine.Event) {
+	events <- engine.NewEvent(engine.UpdateStartedEventPayload{
+		UpdateID: "test-update", Version: 42, Permalink: "https://example.com/update",
+	})
+	events <- engine.NewEvent(engine.DiagEventPayload{Message: "test diagnostic", Severity: diag.Warning})
+	events <- engine.NewEvent(engine.SummaryEventPayload{
+		ResourceChanges: display.ResourceChanges{deploy.OpUpdate: 1},
+	})
+}
+
+func (b *eventBackend) Preview(
+	ctx context.Context, stack backend.Stack, op backend.UpdateOperation, events chan<- engine.Event,
+) (*deploy.Plan, display.ResourceChanges, error) {
+	emitToolTestEvents(events)
+	return b.MockBackend.Preview(ctx, stack, op, events)
+}
+
+func (b *eventBackend) Update(
+	ctx context.Context, stack backend.Stack, op backend.UpdateOperation, events chan<- engine.Event,
+) (display.ResourceChanges, error) {
+	emitToolTestEvents(events)
+	return b.MockBackend.Update(ctx, stack, op, events)
 }
 
 // recorder collects invocations into the PulumiSink so tests can assert which
@@ -697,7 +761,7 @@ func TestPulumi_DrainEvents_ResourcePre_PreviewMode(t *testing.T) {
 	close(ch)
 
 	var buf bytes.Buffer
-	diags, _ := p.drainEvents("pulumi__pulumi_preview", true, ch, &buf)
+	diags, _, _ := p.drainEvents("pulumi__pulumi_preview", true, ch, &buf)
 
 	assert.Empty(t, diags, "preview-mode pre-event must not produce diag lines")
 	require.Len(t, rec.resources, 1)
@@ -730,7 +794,7 @@ func TestPulumi_DrainEvents_ResourcePre_UpMode(t *testing.T) {
 	close(ch)
 
 	var buf bytes.Buffer
-	_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
+	_, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
 
 	require.Len(t, rec.resources, 1)
 	assert.Equal(t, "running", rec.resources[0].status,
@@ -759,7 +823,7 @@ func TestPulumi_DrainEvents_ResourcePre_FiltersInternalAndSame(t *testing.T) {
 	})
 	close(ch)
 
-	_, _ = p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
+	_, _, _ = p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
 	assert.Empty(t, rec.resources, "Internal and OpSame must not invoke OnResource")
 }
 
@@ -777,7 +841,7 @@ func TestPulumi_DrainEvents_ResourceOutputs_UpMarksDone(t *testing.T) {
 	})
 	close(ch)
 
-	_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	_, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	require.Len(t, rec.resources, 1)
 	assert.Equal(t, "done", rec.resources[0].status)
 	assert.Equal(t, deploy.OpUpdate, rec.resources[0].op)
@@ -797,7 +861,7 @@ func TestPulumi_DrainEvents_ResourceOutputs_PreviewSkipped(t *testing.T) {
 	})
 	close(ch)
 
-	_, _ = p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
+	_, _, _ = p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
 	assert.Empty(t, rec.resources, "outputs in preview mode must not invoke OnResource")
 }
 
@@ -817,7 +881,7 @@ func TestPulumi_DrainEvents_ResourceOutputs_FiltersInternalAndSame(t *testing.T)
 	})
 	close(ch)
 
-	_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	_, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	assert.Empty(t, rec.resources)
 }
 
@@ -835,7 +899,7 @@ func TestPulumi_DrainEvents_ResourceFailed_MarksFailed(t *testing.T) {
 	})
 	close(ch)
 
-	_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	_, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	require.Len(t, rec.resources, 1)
 	assert.Equal(t, "failed", rec.resources[0].status)
 }
@@ -860,7 +924,7 @@ func TestPulumi_DrainEvents_Diag_WarningAndError(t *testing.T) {
 	})
 	close(ch)
 
-	diags, _ := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	diags, _, _ := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	require.Len(t, rec.diags, 2)
 	assert.Equal(t, "warning", rec.diags[0].severity)
 	assert.Equal(t, "deprecated foo", rec.diags[0].message,
@@ -894,7 +958,7 @@ func TestPulumi_DrainEvents_Diag_FiltersEphemeralAndInfo(t *testing.T) {
 	})
 	close(ch)
 
-	diags, _ := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	diags, _, _ := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	assert.Empty(t, rec.diags)
 	assert.Empty(t, diags)
 }
@@ -924,7 +988,7 @@ func TestPulumi_DrainEvents_NilSinkSafe(t *testing.T) {
 
 	var buf bytes.Buffer
 	require.NotPanics(t, func() {
-		_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
+		_, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
 	})
 	assert.NotEmpty(t, buf.String(), "NDJSON output must still be written when sink is nil")
 }
@@ -951,7 +1015,7 @@ func TestPulumi_DrainEvents_PartialSinkSafe(t *testing.T) {
 	close(ch)
 
 	require.NotPanics(t, func() {
-		_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+		_, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 	})
 	assert.Equal(t, 1, calledDiag, "OnDiag must still fire when other callbacks are nil")
 }
@@ -973,7 +1037,7 @@ func TestPulumi_DrainEvents_NDJSONIsValidEngineEvent(t *testing.T) {
 	close(ch)
 
 	var buf bytes.Buffer
-	_, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
+	_, _, _ = p.drainEvents("pulumi__pulumi_up", false, ch, &buf)
 
 	line := bytes.TrimSpace(buf.Bytes())
 	require.NotEmpty(t, line)
@@ -997,7 +1061,7 @@ func TestPulumi_DrainEvents_UpdateStarted_Update(t *testing.T) {
 	})
 	close(ch)
 
-	diags, started := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
+	diags, started, _ := p.drainEvents("pulumi__pulumi_up", false, ch, &bytes.Buffer{})
 
 	assert.Empty(t, diags)
 	assert.Equal(t, "https://app.pulumi.com/org/proj/stack/updates/7", started.Permalink)
@@ -1026,7 +1090,7 @@ func TestPulumi_DrainEvents_UpdateStarted_PreviewReportsVersionZero(t *testing.T
 	})
 	close(ch)
 
-	_, started := p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
+	_, started, _ := p.drainEvents("pulumi__pulumi_preview", true, ch, &bytes.Buffer{})
 
 	// A preview never becomes the reported version, so drainEvents must not surface it.
 	assert.Equal(t, 0, started.Version)
@@ -1049,75 +1113,10 @@ func TestNewPulumiResultUsesParsedNames(t *testing.T) {
 	// "<org>/<project>/<stack>" form would propagate into a malformed
 	// StackEntity.
 	proj := &workspace.Project{Name: tokens.PackageName("real-proj")}
-	stackRef := &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
 
-	res := newPulumiResult(proj, stackRef, "/tmp/events.ndjson")
+	res := newPulumiResult(proj, "my-org/real-proj/dev", "/tmp/events.ndjson")
 
 	assert.Equal(t, "real-proj", res.ProjectName)
 	assert.Equal(t, "dev", res.StackName)
 	assert.Equal(t, "/tmp/events.ndjson", res.EventsFile)
 }
-
-func TestAutonamingStackContextFor_NonHTTPStateStack(t *testing.T) {
-	t.Parallel()
-
-	// A plain backend.Stack (not the cloud httpstate.Stack) cannot supply an
-	// org name — autonamingStackContextFor must fall back to the placeholder
-	// "organization" so autonaming config still loads.
-	proj := &workspace.Project{Name: tokens.PackageName("my-proj")}
-	stk := &backend.MockStack{
-		RefF: func() backend.StackReference {
-			return &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
-		},
-	}
-
-	got := autonamingStackContextFor(proj, stk)
-	assert.Equal(t, "organization", got.Organization)
-	assert.Equal(t, "my-proj", got.Project)
-	assert.Equal(t, "dev", got.Stack)
-}
-
-func TestAutonamingStackContextFor_HTTPStateStackUsesOrgName(t *testing.T) {
-	t.Parallel()
-
-	// httpstate.Stack callers expose the real organization via OrgName(); that
-	// value must propagate into the autonaming context.
-	proj := &workspace.Project{Name: tokens.PackageName("my-proj")}
-	stk := &fakeHTTPStack{
-		MockStack: &backend.MockStack{
-			RefF: func() backend.StackReference {
-				return &backend.MockStackReference{NameV: tokens.MustParseStackName("prod")}
-			},
-		},
-		orgName: "my-org",
-	}
-
-	got := autonamingStackContextFor(proj, stk)
-	assert.Equal(t, "my-org", got.Organization)
-	assert.Equal(t, "my-proj", got.Project)
-	assert.Equal(t, "prod", got.Stack)
-}
-
-// fakeHTTPStack satisfies httpstate.Stack so tests can exercise the
-// type-assertion branch in autonamingStackContextFor. Methods other than the
-// two cloud-only ones delegate to the embedded MockStack.
-type fakeHTTPStack struct {
-	*backend.MockStack
-	orgName string
-}
-
-func (f *fakeHTTPStack) OrgName() string {
-	return f.orgName
-}
-
-func (f *fakeHTTPStack) CurrentOperation() *apitype.OperationStatus {
-	return nil
-}
-
-func (f *fakeHTTPStack) StackIdentifier() client.StackIdentifier {
-	return client.StackIdentifier{}
-}
-
-// Compile-time assertion: fakeHTTPStack must satisfy httpstate.Stack so the
-// type assertion in autonamingStackContextFor succeeds.
-var _ httpstate.Stack = (*fakeHTTPStack)(nil)
