@@ -15,10 +15,12 @@
 package cli
 
 import (
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
@@ -144,20 +146,32 @@ func TestStringArrayNoSplitOnComma(t *testing.T) {
 func TestNewPulumiCmdLeavesProcessStateUnchanged(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_EMOJI", "false")
 	t.Setenv("PULUMI_OPTION_NON_INTERACTIVE", "true")
-	defer func(emoji bool, interactive bool) {
+	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
+	defer func(emoji bool, interactive bool, qualify bool, integrity bool) {
 		cmdutil.Emoji = emoji
 		cmdutil.DisableInteractive = interactive
-	}(cmdutil.Emoji, cmdutil.DisableInteractive)
+		cmdutil.FullyQualifyStackNames = qualify
+		backend.DisableIntegrityChecking = integrity
+	}(cmdutil.Emoji, cmdutil.DisableInteractive, cmdutil.FullyQualifyStackNames, backend.DisableIntegrityChecking)
 	cmdutil.Emoji = true
 	cmdutil.DisableInteractive = false
+	cmdutil.FullyQualifyStackNames = false
+	backend.DisableIntegrityChecking = false
+	// A host root command has already set up the process.
+	processSetup.Do(func() {})
 
 	_, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 	declaredCount := len(declared.Variables())
-	_, cleanup2 := NewPulumiCmd(Options{})
+	embedded, cleanup2 := NewPulumiCmd(Options{})
 	defer cleanup2()
+	embedded.SetArgs([]string{"--fully-qualify-stack-names", "--disable-integrity-checking", "version"})
+	embedded.SetOut(io.Discard)
+	require.NoError(t, embedded.Execute())
 
 	require.True(t, cmdutil.Emoji)
 	require.False(t, cmdutil.DisableInteractive)
+	require.False(t, cmdutil.FullyQualifyStackNames)
+	require.False(t, backend.DisableIntegrityChecking)
 	require.Len(t, declared.Variables(), declaredCount)
 }

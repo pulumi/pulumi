@@ -19,6 +19,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,6 +31,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cli"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -43,6 +46,28 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// TestMain runs a host root command first, as `pulumi neo` does, so tool calls do not set up the process.
+func TestMain(m *testing.M) {
+	home, err := os.MkdirTemp("", "pulumi-home")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	os.Setenv("PULUMI_HOME", home)                //nolint:forbidigo // TestMain has no t
+	os.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true") //nolint:forbidigo // TestMain has no t
+	host, cleanup := cli.NewPulumiCmd(cli.Options{})
+	host.SetArgs([]string{"version"})
+	host.SetOut(io.Discard)
+	if err := host.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	code := m.Run()
+	cleanup()
+	os.RemoveAll(home)
+	os.Exit(code)
+}
 
 func TestPulumi_NewPulumiRejectsMissingWorkspace(t *testing.T) {
 	t.Parallel()

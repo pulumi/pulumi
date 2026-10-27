@@ -210,6 +210,9 @@ type Options struct {
 
 var initTerminal sync.Once
 
+// processSetup lets only the first root command to run set process-wide state, so embedded commands reuse the host's.
+var processSetup sync.Once
+
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd(opts Options) (*cobra.Command, func()) {
 	var cwd string
@@ -228,6 +231,7 @@ func NewPulumiCmd(opts Options) (*cobra.Command, func()) {
 	var memProfileRate int
 	var rootSpan oteltrace.Span
 	var autoLogger *backendlogging.Logger
+	var ownsProcess bool
 
 	processStartTime := time.Now()
 
@@ -235,6 +239,9 @@ func NewPulumiCmd(opts Options) (*cobra.Command, func()) {
 
 	var cmd *cobra.Command
 	cleanup := func() {
+		if !ownsProcess {
+			return
+		}
 		// Logger.Close is a no-op when autoLogger is nil.
 		if err := autoLogger.Close(); err != nil {
 			slog.Info("automatic log close error", "err", err)
@@ -310,6 +317,19 @@ func NewPulumiCmd(opts Options) (*cobra.Command, func()) {
 				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
 			}
 
+			if cwd != "" {
+				if err := os.Chdir(cwd); err != nil {
+					return err
+				}
+			}
+
+			processSetup.Do(func() { ownsProcess = true })
+			if !ownsProcess {
+				ctx := httpstate.ContextWithAgentCredentialUse(cmd.Context())
+				cmd.SetContext(httpstate.ContextWithCommandName(ctx, cmd.CommandPath()))
+				return nil
+			}
+
 			cmdutil.Emoji = emoji
 			cmdutil.FullyQualifyStackNames = fullyQualifyStackNames
 			cmdutil.DisableInteractive = nonInteractive
@@ -326,12 +346,6 @@ func NewPulumiCmd(opts Options) (*cobra.Command, func()) {
 			if cmdFlag != nil {
 				err := cmdutil.SetGlobalColorization(cmdFlag.Value.String())
 				if err != nil {
-					return err
-				}
-			}
-
-			if cwd != "" {
-				if err := os.Chdir(cwd); err != nil {
 					return err
 				}
 			}

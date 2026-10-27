@@ -256,11 +256,12 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		p.Sink.OnStart(toolName, a.StackName, isPreview)
 	}
 
-	// The host process owns logging, tracing, and the update check, so skip the root's hooks.
+	// Logging and tracing outlive this call, so leave the cleanup to the process.
 	root, _ := cli.NewPulumiCmd(cli.Options{})
-	root.PersistentPreRunE = nil
-	root.PersistentPostRun = nil
-	args := []string{name, "--stack=" + a.StackName, "--exec-kind=neo", "--neo=false", "--neo-task-on-failure=false"}
+	args := []string{
+		name, "--cwd=" + dir, "--stack=" + a.StackName,
+		"--exec-kind=neo", "--neo=false", "--neo-task-on-failure=false",
+	}
 	if !isPreview {
 		// Upstream approval already gates pulumi_up, and it follows an approved pulumi_preview.
 		args = append(args, "--yes", "--skip-preview")
