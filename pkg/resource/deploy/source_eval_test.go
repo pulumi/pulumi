@@ -2501,7 +2501,7 @@ func TestResourceInheritsOptionsFromParent(t *testing.T) {
 				DeletedWith: string(test.childDeletedWith),
 			}
 
-			inheritFromParent(request, *parentGoal)
+			inheritFromParent(request, *parentGoal, childURN.Type().Package())
 
 			assert.Equal(t, string(test.wantDeletedWith), request.DeletedWith)
 		})

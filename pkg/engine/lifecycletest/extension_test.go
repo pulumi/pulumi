@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -504,4 +505,98 @@ func TestExtensionParameterizedOncePerProvider(t *testing.T) {
 			}, snap.Extensions)
 		})
 	}
+}
+
+// TestExtensionInheritsParentProvider checks that the engine gives a resource or an invoke of an
+// extension package the provider its parent has for the base package. The parent's provider is
+// keyed by the base package, while the extension's tokens name the extension package.
+func TestExtensionInheritsParentProvider(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			instance := "default"
+			return &deploytest.Provider{
+				ParameterizeF: func(
+					_ context.Context, req plugin.ParameterizeRequest,
+				) (plugin.ParameterizeResponse, error) {
+					value := req.Parameters.(*plugin.ParameterizeValue)
+					return plugin.ParameterizeResponse{Name: value.Name, Version: value.Version}, nil
+				},
+				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					if v, ok := req.Inputs.GetOk("instance"); ok && v.IsString() {
+						instance = v.AsString()
+					}
+					return plugin.ConfigureResponse{}, nil
+				},
+				InvokeF: func(_ context.Context, _ plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					return plugin.InvokeResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"instance": property.New(instance),
+						}),
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	var explicitRef string
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		ref, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, &pulumirpc.Parameterization{
+			Name: "ext", Version: "2.0.0", Value: []byte("blob"),
+		})
+		require.NoError(t, err)
+
+		prov, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "explicit", true,
+			deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{"instance": resource.NewProperty("explicit")},
+			})
+		require.NoError(t, err)
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+		explicitRef = provRef.String()
+
+		custom, err := monitor.RegisterResource("pkgA:m:typA", "custom", true, deploytest.ResourceOptions{
+			Provider: explicitRef,
+		})
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("ext:m:typA", "customChild", true, deploytest.ResourceOptions{
+			Parent:     custom.URN,
+			PackageRef: ref,
+		})
+		require.NoError(t, err)
+
+		comp, err := monitor.RegisterResource("my:component:Comp", "comp", false, deploytest.ResourceOptions{
+			Providers: map[string]string{"pkgA": explicitRef},
+		})
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("ext:m:typA", "compChild", true, deploytest.ResourceOptions{
+			Parent:     comp.URN,
+			PackageRef: ref,
+		})
+		require.NoError(t, err)
+
+		resp, _, err := monitor.Invoke("ext:index:echo", nil, "", "", ref, deploytest.InvokeOptions{
+			Parent: comp.URN,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, resource.NewProperty("explicit"), resp["instance"],
+			"an invoke parented to the component uses the component's base provider")
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	snap, err := lt.TestOp(Update).RunStep(
+		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	providerOf := map[string]string{}
+	for _, r := range snap.Resources {
+		providerOf[r.URN.Name()] = r.Provider
+	}
+	assert.Equal(t, explicitRef, providerOf["customChild"],
+		"a resource parented to a custom resource uses the parent's base provider")
+	assert.Equal(t, explicitRef, providerOf["compChild"],
+		"a resource parented to a component uses the component's base provider")
 }

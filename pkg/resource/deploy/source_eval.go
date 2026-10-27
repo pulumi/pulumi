@@ -839,6 +839,18 @@ func (rm *resmon) lookupPackageRef(ref string) (providers.ProviderRequest, bool)
 	return req, has
 }
 
+// providerPackage returns the package of the provider that serves pkg. It differs from pkg for an
+// extension package, which its base provider serves.
+func (rm *resmon) providerPackage(pkg tokens.Package, packageRef string) tokens.Package {
+	if packageRef == "" {
+		return pkg
+	}
+	if req, has := rm.lookupPackageRef(packageRef); has {
+		return req.Package()
+	}
+	return pkg
+}
+
 // ensureExtensionParameterized parameterizes provider with the extension behind
 // packageRef, if packageRef refers to an extension. Regular resources are
 // parameterized via the step generator, but remote-component Construct, Invoke
@@ -1025,13 +1037,14 @@ func (rm *resmon) Invoke(
 
 	// SDKs resolve the parent's provider themselves. The engine resolves it for a program that sends only the
 	// parent, as it does for a resource in RegisterResource.
+	providerPkg := rm.providerPackage(tok.Package(), req.GetPackageRef())
 	provider := req.GetProvider()
 	if provider == "" && parent != "" {
-		provider = rm.parentProvider(parent, tok.Package())
+		provider = rm.parentProvider(parent, providerPkg)
 	}
 
 	opts := &pulumirpc.TransformInvokeOptions{
-		Provider:          rm.resolveProvider(provider, nil, parent, tok.Package()),
+		Provider:          rm.resolveProvider(provider, nil, parent, providerPkg),
 		Version:           req.GetVersion(),
 		PluginDownloadUrl: req.GetPluginDownloadURL(),
 		PluginChecksums:   req.GetPluginChecksums(),
@@ -2118,7 +2131,10 @@ func (rm *resmon) RegisterErrorHook(
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
 // Currently only inherits DeletedWith, Protect, RetainOnDelete, and Provider from parent.
-func inheritFromParent(child *pulumirpc.RegisterResourceRequest, parent pkgresource.Goal) {
+// providerPkg is the package of the provider that serves the child.
+func inheritFromParent(
+	child *pulumirpc.RegisterResourceRequest, parent pkgresource.Goal, providerPkg tokens.Package,
+) {
 	if child.DeletedWith == "" {
 		child.DeletedWith = string(parent.DeletedWith)
 	}
@@ -2132,7 +2148,7 @@ func inheritFromParent(child *pulumirpc.RegisterResourceRequest, parent pkgresou
 		// We only inherit the provider if it matches our package, or we're a non-remote component resource.
 		ref, err := sdkproviders.ParseReference(parent.Provider)
 		if (!child.Remote && !child.Custom) ||
-			(err == nil && ref.URN().Type().Name() == tokens.TypeName(tokens.Type(child.Type).Package())) {
+			(err == nil && ref.URN().Type().Name() == tokens.TypeName(providerPkg)) {
 			child.Provider = parent.Provider
 		}
 	}
@@ -2440,7 +2456,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		rm.resGoalsLock.Lock()
 		parentGoal, ok := rm.resGoals[parent]
 		if ok {
-			inheritFromParent(req, parentGoal)
+			inheritFromParent(req, parentGoal,
+				rm.providerPackage(tokens.Type(req.GetType()).Package(), req.GetPackageRef()))
 		}
 		rm.resGoalsLock.Unlock()
 	}
@@ -2552,7 +2569,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	provider := req.GetProvider()
 	if custom || remote {
-		provider = rm.resolveProvider(req.GetProvider(), req.GetProviders(), parent, t.Package())
+		provider = rm.resolveProvider(req.GetProvider(), req.GetProviders(), parent,
+			rm.providerPackage(t.Package(), req.GetPackageRef()))
 	}
 
 	opts := &pulumirpc.TransformResourceOptions{
