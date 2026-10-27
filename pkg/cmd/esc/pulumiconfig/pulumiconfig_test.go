@@ -49,6 +49,15 @@ func TestValueNodeObject(t *testing.T) {
 	_, err = ValueNode(config.NewObjectValue(`{"Fn::GetAtt":["a","b"]}`), false)
 	require.ErrorIs(t, err, errReservedName)
 
+	_, err = ValueNode(config.NewObjectValue(`{"fn::open":"x","b":1}`), false)
+	require.ErrorIs(t, err, errReservedName)
+
+	node, err = ValueNode(config.NewObjectValue(`{"Fn::GetAtt":["a","b"],"c":1}`), false)
+	require.NoError(t, err)
+	out, err = yaml.Marshal(&node)
+	require.NoError(t, err)
+	assert.Equal(t, "Fn::GetAtt:\n    - a\n    - b\nc: 1\n", string(out))
+
 	_, err = ValueNode(config.NewSecureObjectValue(`{"b":"x"}`), false)
 	require.ErrorContains(t, err, "secret object values are not supported")
 

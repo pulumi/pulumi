@@ -34,9 +34,13 @@ var (
 	errSecureReprReserved = errors.New(`maps with the single key "secure" are reserved`)
 )
 
-// isReservedName matches ESC, which rejects a single-key object whose key starts with fn:: in any case.
-func isReservedName(k string) bool {
-	return strings.HasPrefix(strings.ToLower(k), functionPrefix)
+// isReservedName matches ESC, which rejects an fn:: key in any object, and a Fn:: key in any case when it is the
+// object's only key.
+func isReservedName(k string, onlyKey bool) bool {
+	if onlyKey {
+		k = strings.ToLower(k)
+	}
+	return strings.HasPrefix(k, functionPrefix)
 }
 
 func escape(s string) string {
@@ -119,7 +123,7 @@ func literalValue(v any) (any, error) {
 	case map[string]any:
 		out := make(map[string]any, len(v))
 		for k, elem := range v {
-			if isReservedName(k) {
+			if isReservedName(k, len(v) == 1) {
 				return nil, errReservedName
 			}
 			lit, err := literalValue(elem)
