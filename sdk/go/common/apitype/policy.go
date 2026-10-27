@@ -213,20 +213,13 @@ func (el EnforcementLevel) IsValid() bool {
 }
 
 // EntityType indicates the type of entity a policy group applies to
-//
-// Deprecated: entity type no longer determines policy group membership; use
-// github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupMode.
 type EntityType string
 
 const (
 	// Stacks indicates the policy group applies to stacks
-	//
-	// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupModePreventative.
 	Stacks EntityType = "stacks"
 
 	// Accounts indicates the policy group applies to accounts
-	//
-	// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupModeAudit.
 	Accounts EntityType = "accounts"
 )
 
@@ -240,21 +233,15 @@ func (et EntityType) IsValid() bool {
 }
 
 // PolicyGroupMode indicates the enforcement mode of a policy group
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupMode.
 type PolicyGroupMode string
 
 const (
 	// PolicyGroupModePreventative enforces policies during pulumi up/preview operations,
 	// potentially blocking resource changes when mandatory policies fail
-	//
-	// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupModePreventative.
 	PolicyGroupModePreventative PolicyGroupMode = "preventative"
 
 	// PolicyGroupModeAudit monitors resource compliance without blocking operations,
 	// reporting policy violations for continuous compliance monitoring
-	//
-	// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroupModeAudit.
 	PolicyGroupModeAudit PolicyGroupMode = "audit"
 )
 
@@ -288,8 +275,6 @@ type GetStackPolicyPacksResponse struct {
 
 // CreatePolicyGroupRequest defines the request body for creating a new Policy
 // Group in an organization.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.NewPolicyGroupRequest.
 type CreatePolicyGroupRequest struct {
 	// Name is the name of the new Policy Group.
 	Name string `json:"name"`
@@ -307,8 +292,6 @@ type CreatePolicyGroupRequest struct {
 // mutation: NewName renames the group, and each AddX or RemoveX field adds or
 // removes one member. To apply more than one mutation of the same kind, send
 // one request per mutation to the batch endpoint.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.UpdatePolicyGroupRequest.
 type UpdatePolicyGroupRequest struct {
 	NewName *string `json:"newName,omitempty"`
 
@@ -324,23 +307,17 @@ type UpdatePolicyGroupRequest struct {
 
 // InsightsAccountReference identifies an Insights account for policy group
 // membership. The server requires at least the Name field.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.AppInsightsAccountReference.
 type InsightsAccountReference struct {
 	Name string `json:"name"`
 }
 
 // PulumiStackReference contains the StackName and ProjectName of the stack.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.AppPulumiStackReference.
 type PulumiStackReference struct {
 	Name           string `json:"name"`
 	RoutingProject string `json:"routingProject,omitempty"`
 }
 
 // PolicyPackMetadata is the metadata of a Policy Pack.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.AppPolicyPackMetadata.
 type PolicyPackMetadata struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"displayName,omitempty"`
@@ -357,15 +334,11 @@ type PolicyPackMetadata struct {
 
 // ListPolicyPacksResponse is the response to list an organization's
 // Policy Packs.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.AppListPolicyPacksResponse.
 type ListPolicyPacksResponse struct {
 	PolicyPacks []PolicyPackWithVersions `json:"policyPacks"`
 }
 
 // PolicyPackWithVersions details the specifics of a Policy Pack and all its available versions.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.AppPolicyPackWithVersions.
 type PolicyPackWithVersions struct {
 	Name        string   `json:"name"`
 	DisplayName string   `json:"displayName"`
@@ -374,16 +347,12 @@ type PolicyPackWithVersions struct {
 }
 
 // ListPolicyGroupsResponse lists a summary of the organization's Policy Groups.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.AppListPolicyGroupsResponse.
 type ListPolicyGroupsResponse struct {
 	PolicyGroups []PolicyGroupSummary `json:"policyGroups"`
 }
 
 // PolicyGroupSummary details the name, applicable stacks and the applied Policy
 // Packs for an organization's Policy Group.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.AppPolicyGroupSummary.
 type PolicyGroupSummary struct {
 	Name                  string          `json:"name"`
 	IsOrgDefault          bool            `json:"isOrgDefault"`
@@ -396,8 +365,6 @@ type PolicyGroupSummary struct {
 
 // GetPolicyGroupResponse is the response to get a specific Policy Group's
 // metadata, applied Policy Packs, and member stacks or accounts.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyGroup.
 type GetPolicyGroupResponse struct {
 	// Name is the name of the Policy Group.
 	Name string `json:"name"`
@@ -451,8 +418,6 @@ type PolicyComplianceFramework struct {
 // ListPolicyIssuesRequest is the request body for the ListPolicyIssues endpoint
 // (POST /api/orgs/{orgName}/policyresults/issues). The server expects an
 // AngularGrid-style request with startRow/endRow pagination.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.AngularGridGetRowsRequest.
 type ListPolicyIssuesRequest struct {
 	StartRow  int                    `json:"startRow"`
 	EndRow    int                    `json:"endRow"`
@@ -460,8 +425,6 @@ type ListPolicyIssuesRequest struct {
 }
 
 // PolicyIssueSortModel describes a sort column for the policy issues endpoint.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.AngularGridSortModelItem.
 type PolicyIssueSortModel struct {
 	ColID string `json:"colId"`
 	Sort  string `json:"sort"` // "asc" or "desc"
@@ -470,8 +433,6 @@ type PolicyIssueSortModel struct {
 // PolicyIssue is a single policy violation detected by a Policy Pack during a
 // stack update or a continuous-compliance scan. Field names match the server's
 // JSON response.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyIssue.
 type PolicyIssue struct {
 	ID               string         `json:"id"`
 	EntityType       string         `json:"entityType,omitempty"`
@@ -496,16 +457,12 @@ type PolicyIssue struct {
 
 // GetPolicyIssueResponse is the response wrapper for the GetPolicyIssue
 // endpoint (GET /api/orgs/{orgName}/policyresults/issues/{issueId}).
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.GetPolicyIssueResponse.
 type GetPolicyIssueResponse struct {
 	PolicyIssue PolicyIssue `json:"policyIssue"`
 }
 
 // ListPolicyIssuesResponse is the response body for the ListPolicyIssues
 // endpoint.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.ListPolicyIssuesResponse.
 type ListPolicyIssuesResponse struct {
 	// Issues is the page of policy issues.
 	Issues []PolicyIssue `json:"policyIssues"`
@@ -515,8 +472,6 @@ type ListPolicyIssuesResponse struct {
 
 // GetPolicyComplianceResultsRequest is the request body for the compliance
 // results endpoint (POST /api/orgs/{orgName}/policy-results/compliance).
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.GetPolicyComplianceResultsRequest.
 type GetPolicyComplianceResultsRequest struct {
 	// Entity is how to group results: "stack", "account", or "severity".
 	Entity string `json:"entity"`
@@ -528,8 +483,6 @@ type GetPolicyComplianceResultsRequest struct {
 
 // GetPolicyComplianceResultsResponse is the response from the compliance
 // results endpoint.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.GetPolicyComplianceResultsResponse.
 type GetPolicyComplianceResultsResponse struct {
 	// Columns lists the policy group/pack identifiers or severity levels.
 	Columns []string `json:"columns"`
@@ -540,8 +493,6 @@ type GetPolicyComplianceResultsResponse struct {
 }
 
 // PolicyComplianceResult is a single row in the compliance results table.
-//
-// Deprecated: use github.com/pulumi/pulumi-cloud-sdk/go/apitype.PolicyComplianceResult.
 type PolicyComplianceResult struct {
 	// EntityName identifies the entity (e.g. "project/stack" or account name).
 	EntityName string `json:"entityName"`

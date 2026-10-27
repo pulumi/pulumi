@@ -21,8 +21,6 @@ import (
 	"io"
 	"slices"
 
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
-	"github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -32,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -39,10 +38,10 @@ import (
 // policyGroupNewClient is the narrow subset of cloud-API operations the new
 // command needs.
 type policyGroupNewClient interface {
-	CreatePolicyGroup(ctx context.Context, orgName string, req cloudapitype.NewPolicyGroupRequest) error
+	CreatePolicyGroup(ctx context.Context, orgName string, req apitype.CreatePolicyGroupRequest) error
 	GetPolicyGroup(
 		ctx context.Context, orgName, policyGroup string,
-	) (cloudapitype.PolicyGroup, error)
+	) (apitype.GetPolicyGroupResponse, error)
 }
 
 // policyGroupNewClientFactory resolves a cloud client and the organization the
@@ -88,15 +87,16 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 			"accounts, with configurable enforcement levels per pack.\n" +
 			"\n" +
 			"When run interactively, prompts for required values that aren't\n" +
-			"provided via flags. Pass --yes to skip prompts; --mode is then required.",
+			"provided via flags. Pass --yes to accept defaults without prompting.",
 		Example: "  # Create a Policy Group interactively\n" +
 			"  pulumi policy group new prod-policies\n\n" +
-			"  # Create a preventative Policy Group non-interactively\n" +
-			"  pulumi policy group new prod-policies --mode preventative --yes\n\n" +
-			"  # Create an audit Policy Group\n" +
-			"  pulumi policy group new compliance --mode audit --yes\n\n" +
+			"  # Create a stack Policy Group non-interactively\n" +
+			"  pulumi policy group new prod-policies --entity-type stacks --yes\n\n" +
+			"  # Create an audit-mode account Policy Group\n" +
+			"  pulumi policy group new compliance \\\n" +
+			"    --entity-type accounts --mode audit --yes\n\n" +
 			"  # Emit JSON\n" +
-			"  pulumi policy group new prod-policies --mode preventative \\\n" +
+			"  pulumi policy group new prod-policies --entity-type stacks \\\n" +
 			"    --yes --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runPolicyGroupNew(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
@@ -114,13 +114,12 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 		"The organization to create the Policy Group in")
 	cmd.Flags().StringVar(&args.entityType, "entity-type", "",
 		"The type of entities: stacks or accounts")
-	_ = cmd.Flags().MarkDeprecated("entity-type", "use --mode instead")
 	cmd.Flags().StringVar(&args.mode, "mode", "",
 		"The enforcement mode: audit or preventative")
 	cmd.Flags().StringVar(&args.agentPoolID, "agent-pool-id", "",
 		"Agent pool ID for policy evaluation (optional)")
 	cmd.Flags().BoolVarP(&args.yes, "yes", "y", false,
-		"Skip prompts; --mode is then required")
+		"Skip prompts and proceed with default values")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
@@ -178,11 +177,22 @@ func runPolicyGroupNew(
 	skipPrompts := args.yes || !cmdutil.Interactive()
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
+	// Entity type is required.
 	entityType := args.entityType
-	if entityType != "" && !slices.Contains(validEntityTypes, entityType) {
+	if entityType == "" {
+		if skipPrompts {
+			return errors.New("--entity-type is required (use --entity-type stacks or --entity-type accounts)")
+		}
+		entityType = ui.PromptUser(
+			"Entity type",
+			validEntityTypes, "stacks",
+			displayOpts.Color)
+	}
+	if !slices.Contains(validEntityTypes, entityType) {
 		return fmt.Errorf("invalid --entity-type %q; must be \"stacks\" or \"accounts\"", entityType)
 	}
 
+	// Mode: prompt if interactive, otherwise use server default.
 	mode := args.mode
 	if mode == "" && !skipPrompts {
 		defaultMode := "preventative"
@@ -194,23 +204,15 @@ func runPolicyGroupNew(
 			validModes, defaultMode,
 			displayOpts.Color)
 	}
-	// Without --mode, a deprecated --entity-type still lets the service pick the mode.
-	if mode == "" && entityType == "" {
-		return errors.New("--mode is required (use --mode preventative or --mode audit)")
-	}
 	if mode != "" && !slices.Contains(validModes, mode) {
 		return fmt.Errorf("invalid --mode %q; must be \"audit\" or \"preventative\"", mode)
 	}
 
-	req := cloudapitype.NewPolicyGroupRequest{Name: name}
-	if entityType != "" {
-		req.EntityType = new(cloudapitype.PolicyGroupEntityType(entityType)) //nolint:staticcheck // deprecated flag
-	}
-	if mode != "" {
-		req.Mode = new(cloudapitype.PolicyGroupMode(mode))
-	}
-	if args.agentPoolID != "" {
-		req.AgentPoolID = jsonvalue.NotNull(args.agentPoolID)
+	req := apitype.CreatePolicyGroupRequest{
+		Name:        name,
+		EntityType:  entityType,
+		Mode:        mode,
+		AgentPoolID: args.agentPoolID,
 	}
 
 	if err := c.CreatePolicyGroup(ctx, org, req); err != nil {

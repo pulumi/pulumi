@@ -20,7 +20,6 @@ import (
 	"io"
 	"strings"
 
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -30,12 +29,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-type policyPacksRenderFunc func(w io.Writer, policyPacks []cloudapitype.AppPolicyPackWithVersions) error
+type policyPacksRenderFunc func(w io.Writer, policyPacks []apitype.PolicyPackWithVersions) error
 
 func newPolicyListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	output := outputflag.OutputFlag[policyPacksRenderFunc]{
@@ -78,7 +78,7 @@ func newPolicyListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobr
 
 			// Gather all Policy Packs for the organization.
 			var (
-				allPolicyPacks []cloudapitype.AppPolicyPackWithVersions
+				allPolicyPacks []apitype.PolicyPackWithVersions
 				inContToken    backend.ContinuationToken
 			)
 			for {
@@ -110,7 +110,7 @@ func newPolicyListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobr
 	return cmd
 }
 
-func formatPolicyPacksConsole(w io.Writer, policyPacks []cloudapitype.AppPolicyPackWithVersions) error {
+func formatPolicyPacksConsole(w io.Writer, policyPacks []apitype.PolicyPackWithVersions) error {
 	// Header string and formatting options to align columns.
 	headers := []string{"NAME", "VERSIONS"}
 
@@ -142,7 +142,7 @@ type policyPacksJSON struct {
 	Versions []string `json:"versions"`
 }
 
-func formatPolicyPacksJSON(w io.Writer, policyPacks []cloudapitype.AppPolicyPackWithVersions) error {
+func formatPolicyPacksJSON(w io.Writer, policyPacks []apitype.PolicyPackWithVersions) error {
 	output := make([]policyPacksJSON, len(policyPacks))
 	for i, pack := range policyPacks {
 		output[i] = policyPacksJSON{

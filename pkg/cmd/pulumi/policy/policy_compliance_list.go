@@ -25,7 +25,6 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -35,14 +34,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type complianceListClient interface {
 	GetPolicyComplianceResults(
-		ctx context.Context, orgName string, req cloudapitype.GetPolicyComplianceResultsRequest,
-	) (cloudapitype.GetPolicyComplianceResultsResponse, error)
+		ctx context.Context, orgName string, req apitype.GetPolicyComplianceResultsRequest,
+	) (apitype.GetPolicyComplianceResultsResponse, error)
 }
 
 type complianceListClientFactory func(
@@ -51,7 +51,7 @@ type complianceListClientFactory func(
 
 type complianceListRender func(
 	cmd *complianceListCmd,
-	columns []string, rows []cloudapitype.PolicyComplianceResult,
+	columns []string, rows []apitype.PolicyComplianceResult,
 ) error
 
 var validGroupByValues = []string{"stack", "account", "severity"}
@@ -167,7 +167,7 @@ func (c *complianceListCmd) run(ctx context.Context, factory complianceListClien
 	}
 
 	// Fetch all pages.
-	var allRows []cloudapitype.PolicyComplianceResult
+	var allRows []apitype.PolicyComplianceResult
 	var columns []string
 	var continuationToken *string
 
@@ -179,8 +179,8 @@ func (c *complianceListCmd) run(ctx context.Context, factory complianceListClien
 		size := pageSize
 
 		resp, err := cl.GetPolicyComplianceResults(ctx, org,
-			cloudapitype.GetPolicyComplianceResultsRequest{
-				Entity:            cloudapitype.PolicyComplianceEntityType(c.groupBy),
+			apitype.GetPolicyComplianceResultsRequest{
+				Entity:            c.groupBy,
 				ContinuationToken: continuationToken,
 				Size:              &size,
 			})
@@ -216,7 +216,7 @@ func scoreString(score int) string {
 }
 
 func (c *complianceListCmd) renderTable(
-	columns []string, rows []cloudapitype.PolicyComplianceResult,
+	columns []string, rows []apitype.PolicyComplianceResult,
 ) error {
 	if len(rows) == 0 {
 		fmt.Fprintln(c.w, "No compliance results found.")
@@ -258,20 +258,35 @@ func (c *complianceListCmd) renderTable(
 	return nil
 }
 
+type complianceJSONRow struct {
+	Entity string         `json:"entity"`
+	Scores map[string]int `json:"scores"`
+}
+
 func (c *complianceListCmd) renderJSON(
-	columns []string, rows []cloudapitype.PolicyComplianceResult,
+	columns []string, rows []apitype.PolicyComplianceResult,
 ) error {
-	if columns == nil {
-		columns = []string{}
-	}
-	if rows == nil {
-		rows = []cloudapitype.PolicyComplianceResult{}
+	jsonRows := make([]complianceJSONRow, 0, len(rows))
+	for _, row := range rows {
+		scores := make(map[string]int, len(columns))
+		for i, col := range columns {
+			if i < len(row.Scores) {
+				scores[col] = row.Scores[i]
+			}
+		}
+		jsonRows = append(jsonRows, complianceJSONRow{
+			Entity: row.EntityName,
+			Scores: scores,
+		})
 	}
 	enc := json.NewEncoder(c.w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(cloudapitype.GetPolicyComplianceResultsResponse{
-		Columns: columns,
-		Rows:    rows,
+	return enc.Encode(struct {
+		Results []complianceJSONRow `json:"results"`
+		Count   int                 `json:"count"`
+	}{
+		Results: jsonRows,
+		Count:   len(jsonRows),
 	})
 }
