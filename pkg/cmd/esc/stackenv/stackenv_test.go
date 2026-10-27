@@ -110,7 +110,7 @@ func (f *fakeService) newClient(t *testing.T) client.Client {
 		}
 		if f.openStatus != 0 {
 			w.WriteHeader(f.openStatus)
-			_, err := fmt.Fprintf(w, `{"code":%d,"message":"forbidden","diagnostics":[{"summary":"x"}]}`, f.openStatus)
+			_, err := fmt.Fprintf(w, `{"code":%d,"message":"forbidden"}`, f.openStatus)
 			require.NoError(t, err)
 			return
 		}
@@ -242,7 +242,7 @@ func TestEvaluateErrors(t *testing.T) {
 		require.ErrorContains(t, err, "managed environment proj/env was not found; the stack cannot load its config")
 	})
 
-	t.Run("draft open fails with diagnostics in a non-400 body", func(t *testing.T) {
+	t.Run("draft open fails", func(t *testing.T) {
 		t.Parallel()
 		svc := &fakeService{openStatus: http.StatusForbidden}
 		c := svc.newClient(t)
