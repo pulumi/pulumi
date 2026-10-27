@@ -124,6 +124,12 @@ environment:
 `,
 		},
 		{
+			name: "path set starting with an index",
+			set:  []string{"app:[0].a", "v"},
+			path: true,
+			err:  "first path segment of config key must be a non-empty string",
+		},
+		{
 			name: "values under config",
 			file: managedStackFile + "config:\n  app:old: legacy\n",
 			set:  []string{"app:new", "v"},
@@ -165,6 +171,12 @@ environment:
 			remove:   []string{"app:keep"},
 			path:     true,
 			expected: "# top comment\nenvironment:\n  values:\n    pulumiConfig:\n      foo: short\n",
+		},
+		{
+			name:   "path remove starting with an index",
+			remove: []string{"app:[0]"},
+			path:   true,
+			err:    "first path segment of config key must be a non-empty string",
 		},
 		{
 			name:   "remove with values under config",
