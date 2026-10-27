@@ -111,9 +111,7 @@ class Resource(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ResourceArgs.__new__(ResourceArgs)
-
-        __props__.__dict__["data"] = None
+        __props__: dict = {}
         __inst__ = Resource.__new__(Resource)
         return pulumi.runtime.exists_resource(__inst__, 'ref-ref:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
 

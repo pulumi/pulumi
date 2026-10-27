@@ -116,9 +116,7 @@ class ElementType(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ElementTypeInitArgs.__new__(ElementTypeInitArgs)
-
-        __props__.__dict__["element_type"] = None
+        __props__: dict = {}
         __inst__ = ElementType.__new__(ElementType)
         return pulumi.runtime.exists_resource(__inst__, 'reservednames:index:ElementType', id, __props__, opts or pulumi.ResourceOptions())
 

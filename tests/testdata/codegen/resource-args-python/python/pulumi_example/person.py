@@ -131,10 +131,7 @@ class Person(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = PersonArgs.__new__(PersonArgs)
-
-        __props__.__dict__["name"] = None
-        __props__.__dict__["pets"] = None
+        __props__: dict = {}
         __inst__ = Person.__new__(Person)
         return pulumi.runtime.exists_resource(__inst__, 'example::Person', id, __props__, opts or pulumi.ResourceOptions())
 

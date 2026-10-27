@@ -125,9 +125,7 @@ class Map(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = MapArgs.__new__(MapArgs)
-
-        __props__.__dict__["value"] = None
+        __props__: dict = {}
         __inst__ = Map.__new__(Map)
         return pulumi.runtime.exists_resource(__inst__, 'large:index:Map', id, __props__, opts or pulumi.ResourceOptions())
 

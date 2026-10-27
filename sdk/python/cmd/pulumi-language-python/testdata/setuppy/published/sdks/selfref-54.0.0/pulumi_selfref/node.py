@@ -157,8 +157,7 @@ class Node(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = NodeArgs.__new__(NodeArgs)
-
+        __props__: dict = {}
         __inst__ = Node.__new__(Node)
         return pulumi.runtime.exists_resource(__inst__, 'selfref:index:Node', id, __props__, opts or pulumi.ResourceOptions())
 

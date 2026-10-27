@@ -131,9 +131,7 @@ class Cat(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = CatArgs.__new__(CatArgs)
-
-        __props__.__dict__["name"] = None
+        __props__: dict = {}
         __inst__ = Cat.__new__(Cat)
         return pulumi.runtime.exists_resource(__inst__, 'example::Cat', id, __props__, opts or pulumi.ResourceOptions())
 

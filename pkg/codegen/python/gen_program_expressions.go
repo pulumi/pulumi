@@ -707,13 +707,19 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "unsecret":
 		g.Fgenf(w, "pulumi.Output.unsecret(%v)", expr.Args[0])
 	case "resourceExists":
+		pkg, module, member, diags := functionName(expr.Args[0])
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
+		g.Fgenf(w, "%s.exists(%v", tokenToQualifiedName(g.packageAlias(pkg), module, member), expr.Args[1])
 		if len(expr.Args) > 2 {
-			g.Fgenf(w, "pulumi.runtime.exists_resource(None, %v, %v, %v, pulumi.ResourceOptions())",
-				expr.Args[0], expr.Args[1], expr.Args[2])
-		} else {
-			g.Fgenf(w, "pulumi.runtime.exists_resource(None, %v, %v, {}, pulumi.ResourceOptions())",
-				expr.Args[0], expr.Args[1])
+			if state, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
+				for _, item := range state.Items {
+					g.Fgenf(w, ", %s=%v", PyName(pcl.LiteralValueString(item.Key)), item.Value)
+				}
+			} else {
+				g.Fgenf(w, ", **%v", expr.Args[2])
+			}
 		}
+		g.Fgen(w, ")")
 	case "split":
 		g.Fgenf(w, "%.16v.split(%.v)", expr.Args[1], expr.Args[0])
 	case "toBase64":

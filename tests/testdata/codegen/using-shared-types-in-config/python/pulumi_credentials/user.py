@@ -119,10 +119,7 @@ class User(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = UserArgs.__new__(UserArgs)
-
-        __props__.__dict__["name"] = None
-        __props__.__dict__["password"] = None
+        __props__: dict = {}
         __inst__ = User.__new__(User)
         return pulumi.runtime.exists_resource(__inst__, 'credentials:index:User', id, __props__, opts or pulumi.ResourceOptions())
 

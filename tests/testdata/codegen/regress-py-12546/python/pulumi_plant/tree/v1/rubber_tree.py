@@ -239,13 +239,8 @@ class RubberTree(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None,
             farm: pulumi.Input[Optional[Union['Farm', _builtins.str]]] = None) -> pulumi.Output[bool]:
-        __props__ = _RubberTreeState.__new__(_RubberTreeState)
-
-        __props__.__dict__["farm"] = farm
-        __props__.__dict__["container"] = None
-        __props__.__dict__["diameter"] = None
-        __props__.__dict__["size"] = None
-        __props__.__dict__["type"] = None
+        __props__: dict = {}
+        __props__["farm"] = farm
         __inst__ = RubberTree.__new__(RubberTree)
         return pulumi.runtime.exists_resource(__inst__, 'plant:tree/v1:RubberTree', id, __props__, opts or pulumi.ResourceOptions())
 

@@ -113,9 +113,7 @@ class Pet(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = PetInitArgs.__new__(PetInitArgs)
-
-        __props__.__dict__["name"] = None
+        __props__: dict = {}
         __inst__ = Pet.__new__(Pet)
         return pulumi.runtime.exists_resource(__inst__, 'example::Pet', id, __props__, opts or pulumi.ResourceOptions())
 

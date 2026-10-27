@@ -101,9 +101,7 @@ class Base(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = BaseArgs.__new__(BaseArgs)
-
-        __props__.__dict__["metadata"] = None
+        __props__: dict = {}
         __inst__ = Base.__new__(Base)
         return pulumi.runtime.exists_resource(__inst__, 'borrowbase:index:Base', id, __props__, opts or pulumi.ResourceOptions())
 

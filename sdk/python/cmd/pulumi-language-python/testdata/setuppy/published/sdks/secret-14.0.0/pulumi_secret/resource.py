@@ -237,16 +237,7 @@ class Resource(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ResourceArgs.__new__(ResourceArgs)
-
-        __props__.__dict__["private"] = None
-        __props__.__dict__["private_array"] = None
-        __props__.__dict__["private_data"] = None
-        __props__.__dict__["private_data_array"] = None
-        __props__.__dict__["private_data_map"] = None
-        __props__.__dict__["private_map"] = None
-        __props__.__dict__["public"] = None
-        __props__.__dict__["public_data"] = None
+        __props__: dict = {}
         __inst__ = Resource.__new__(Resource)
         return pulumi.runtime.exists_resource(__inst__, 'secret:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
 

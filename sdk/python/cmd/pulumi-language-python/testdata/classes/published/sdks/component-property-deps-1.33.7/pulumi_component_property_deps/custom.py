@@ -109,9 +109,7 @@ class Custom(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = CustomArgs.__new__(CustomArgs)
-
-        __props__.__dict__["value"] = None
+        __props__: dict = {}
         __inst__ = Custom.__new__(Custom)
         return pulumi.runtime.exists_resource(__inst__, 'component-property-deps:index:Custom', id, __props__, opts or pulumi.ResourceOptions())
 

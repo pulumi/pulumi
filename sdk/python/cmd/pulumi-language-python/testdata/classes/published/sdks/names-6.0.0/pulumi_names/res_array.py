@@ -109,9 +109,7 @@ class ResArray(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ResArrayArgs.__new__(ResArrayArgs)
-
-        __props__.__dict__["value"] = None
+        __props__: dict = {}
         __inst__ = ResArray.__new__(ResArray)
         return pulumi.runtime.exists_resource(__inst__, 'names:index:ResArray', id, __props__, opts or pulumi.ResourceOptions())
 

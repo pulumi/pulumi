@@ -98,8 +98,7 @@ class MainComponent(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = MainComponentArgs.__new__(MainComponentArgs)
-
+        __props__: dict = {}
         __inst__ = MainComponent.__new__(MainComponent)
         return pulumi.runtime.exists_resource(__inst__, 'example::MainComponent', id, __props__, opts or pulumi.ResourceOptions())
 

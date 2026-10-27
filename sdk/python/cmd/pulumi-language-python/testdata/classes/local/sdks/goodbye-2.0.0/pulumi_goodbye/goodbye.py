@@ -96,9 +96,7 @@ class Goodbye(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = GoodbyeArgs.__new__(GoodbyeArgs)
-
-        __props__.__dict__["parameter_value"] = None
+        __props__: dict = {}
         __inst__ = Goodbye.__new__(Goodbye)
         return pulumi.runtime.exists_resource(__inst__, 'goodbye:index:Goodbye', id, __props__, opts or pulumi.ResourceOptions(), package_ref=_utilities.get_package())
 

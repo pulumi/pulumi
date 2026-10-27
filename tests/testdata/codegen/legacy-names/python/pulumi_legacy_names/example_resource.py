@@ -134,11 +134,7 @@ class Example_resource(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = Example_resourceArgs.__new__(Example_resourceArgs)
-
-        __props__.__dict__["url"] = None
-        __props__.__dict__["good__urls"] = None
-        __props__.__dict__["map_enum"] = None
+        __props__: dict = {}
         __inst__ = Example_resource.__new__(Example_resource)
         return pulumi.runtime.exists_resource(__inst__, 'legacy_names:index:example_resource', id, __props__, opts or pulumi.ResourceOptions())
 

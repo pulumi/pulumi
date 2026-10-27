@@ -101,9 +101,7 @@ class HelloWorld(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = HelloWorldArgs.__new__(HelloWorldArgs)
-
-        __props__.__dict__["parameter_value"] = None
+        __props__: dict = {}
         __inst__ = HelloWorld.__new__(HelloWorld)
         return pulumi.runtime.exists_resource(__inst__, 'hipackage:index:HelloWorld', id, __props__, opts or pulumi.ResourceOptions(), package_ref=_utilities.get_package())
 

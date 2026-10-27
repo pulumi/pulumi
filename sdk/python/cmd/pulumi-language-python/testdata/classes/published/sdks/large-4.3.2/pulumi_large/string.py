@@ -109,9 +109,7 @@ class String(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = StringArgs.__new__(StringArgs)
-
-        __props__.__dict__["value"] = None
+        __props__: dict = {}
         __inst__ = String.__new__(String)
         return pulumi.runtime.exists_resource(__inst__, 'large:index:String', id, __props__, opts or pulumi.ResourceOptions())
 

@@ -109,9 +109,7 @@ class AssetResource(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = AssetResourceArgs.__new__(AssetResourceArgs)
-
-        __props__.__dict__["value"] = None
+        __props__: dict = {}
         __inst__ = AssetResource.__new__(AssetResource)
         return pulumi.runtime.exists_resource(__inst__, 'asset-archive:index:AssetResource', id, __props__, opts or pulumi.ResourceOptions())
 

@@ -130,8 +130,7 @@ class ModuleTest(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ModuleTestArgs.__new__(ModuleTestArgs)
-
+        __props__: dict = {}
         __inst__ = ModuleTest.__new__(ModuleTest)
         return pulumi.runtime.exists_resource(__inst__, 'example:index:moduleTest', id, __props__, opts or pulumi.ResourceOptions())
 

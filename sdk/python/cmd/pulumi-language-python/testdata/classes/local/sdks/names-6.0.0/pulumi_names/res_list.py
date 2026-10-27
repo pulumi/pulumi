@@ -109,9 +109,7 @@ class ResList(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ResListArgs.__new__(ResListArgs)
-
-        __props__.__dict__["value"] = None
+        __props__: dict = {}
         __inst__ = ResList.__new__(ResList)
         return pulumi.runtime.exists_resource(__inst__, 'names:index:ResList', id, __props__, opts or pulumi.ResourceOptions())
 

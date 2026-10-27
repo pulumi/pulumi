@@ -430,9 +430,7 @@ class ModuleResource(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ModuleResourceArgs.__new__(ModuleResourceArgs)
-
-        __props__.__dict__["optional_bool"] = None
+        __props__: dict = {}
         __inst__ = ModuleResource.__new__(ModuleResource)
         return pulumi.runtime.exists_resource(__inst__, 'foobar::ModuleResource', id, __props__, opts or pulumi.ResourceOptions())
 

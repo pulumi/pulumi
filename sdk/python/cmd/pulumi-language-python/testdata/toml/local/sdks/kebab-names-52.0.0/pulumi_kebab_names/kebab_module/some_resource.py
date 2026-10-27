@@ -133,9 +133,7 @@ class SomeResource(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = SomeResourceArgs.__new__(SomeResourceArgs)
-
-        __props__.__dict__["the_output"] = None
+        __props__: dict = {}
         __inst__ = SomeResource.__new__(SomeResource)
         return pulumi.runtime.exists_resource(__inst__, 'kebab-names:kebab-module:some-resource', id, __props__, opts or pulumi.ResourceOptions())
 

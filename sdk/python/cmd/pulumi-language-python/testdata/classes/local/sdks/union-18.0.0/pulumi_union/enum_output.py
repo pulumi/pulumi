@@ -111,10 +111,7 @@ class EnumOutput(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = EnumOutputArgs.__new__(EnumOutputArgs)
-
-        __props__.__dict__["name"] = None
-        __props__.__dict__["type"] = None
+        __props__: dict = {}
         __inst__ = EnumOutput.__new__(EnumOutput)
         return pulumi.runtime.exists_resource(__inst__, 'union:index:EnumOutput', id, __props__, opts or pulumi.ResourceOptions())
 

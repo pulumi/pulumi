@@ -102,9 +102,7 @@ class Widget(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = WidgetArgs.__new__(WidgetArgs)
-
-        __props__.__dict__["metadata"] = None
+        __props__: dict = {}
         __inst__ = Widget.__new__(Widget)
         return pulumi.runtime.exists_resource(__inst__, 'myborrow:index:Widget', id, __props__, opts or pulumi.ResourceOptions())
 

@@ -114,9 +114,7 @@ class BasicResource(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = BasicResourceArgs.__new__(BasicResourceArgs)
-
-        __props__.__dict__["bar"] = None
+        __props__: dict = {}
         __inst__ = BasicResource.__new__(BasicResource)
         return pulumi.runtime.exists_resource(__inst__, 'example:index:BasicResource', id, __props__, opts or pulumi.ResourceOptions())
 

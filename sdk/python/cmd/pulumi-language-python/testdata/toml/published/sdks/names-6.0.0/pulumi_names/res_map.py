@@ -114,9 +114,7 @@ class ResMap(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ResMapArgs.__new__(ResMapArgs)
-
-        __props__.__dict__["value"] = None
+        __props__: dict = {}
         __inst__ = ResMap.__new__(ResMap)
         return pulumi.runtime.exists_resource(__inst__, 'names:index:ResMap', id, __props__, opts or pulumi.ResourceOptions())
 

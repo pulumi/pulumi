@@ -96,9 +96,7 @@ class Greeting(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = GreetingArgs.__new__(GreetingArgs)
-
-        __props__.__dict__["parameter_value"] = None
+        __props__: dict = {}
         __inst__ = Greeting.__new__(Greeting)
         return pulumi.runtime.exists_resource(__inst__, 'myext:index:Greeting', id, __props__, opts or pulumi.ResourceOptions())
 

@@ -109,9 +109,7 @@ class Sink(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = SinkArgs.__new__(SinkArgs)
-
-        __props__.__dict__["string_enum"] = None
+        __props__: dict = {}
         __inst__ = Sink.__new__(Sink)
         return pulumi.runtime.exists_resource(__inst__, 'extenumref:index:Sink', id, __props__, opts or pulumi.ResourceOptions())
 

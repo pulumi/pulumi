@@ -109,9 +109,7 @@ class Res(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ResArgs.__new__(ResArgs)
-
-        __props__.__dict__["value"] = None
+        __props__: dict = {}
         __inst__ = Res.__new__(Res)
         return pulumi.runtime.exists_resource(__inst__, 'names:mod/nested:Res', id, __props__, opts or pulumi.ResourceOptions())
 

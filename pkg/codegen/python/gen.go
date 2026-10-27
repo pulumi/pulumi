@@ -1746,26 +1746,12 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		}
 		fmt.Fprintf(w, ") -> pulumi.Output[bool]:\n")
 
-		// Build __props__ exactly like get.
+		fmt.Fprintf(w, "        __props__: dict = {}\n")
 		if hasStateInputs {
-			fmt.Fprintf(w, "        __props__ = _%[1]sState.__new__(_%[1]sState)\n\n", name)
-		} else {
-			fmt.Fprintf(w, "        __props__ = %[1]s.__new__(%[1]s)\n\n", resourceArgsName)
-		}
-
-		stateInputsExists := codegen.NewStringSet()
-		if res.StateInputs != nil {
 			for _, prop := range res.StateInputs.Properties {
-				stateInputsExists.Add(prop.Name)
-				fmt.Fprintf(w, "        __props__.__dict__[%q] = %s\n", PyName(prop.Name), InitParamName(prop.Name))
+				fmt.Fprintf(w, "        __props__[%q] = %s\n", prop.Name, InitParamName(prop.Name))
 			}
 		}
-		for _, prop := range res.Properties {
-			if !stateInputsExists.Has(prop.Name) {
-				fmt.Fprintf(w, "        __props__.__dict__[%q] = None\n", PyName(prop.Name))
-			}
-		}
-
 		fmt.Fprintf(w, "        __inst__ = %s.__new__(%s)\n", name, name)
 		fmt.Fprintf(w, "        return pulumi.runtime.exists_resource(__inst__, '%s', id, __props__, opts or pulumi.ResourceOptions()", tok)
 		pkg, err = res.PackageReference.Definition()

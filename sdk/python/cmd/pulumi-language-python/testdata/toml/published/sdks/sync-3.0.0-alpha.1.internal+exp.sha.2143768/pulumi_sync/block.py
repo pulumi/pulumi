@@ -98,8 +98,7 @@ class Block(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = BlockArgs.__new__(BlockArgs)
-
+        __props__: dict = {}
         __inst__ = Block.__new__(Block)
         return pulumi.runtime.exists_resource(__inst__, 'sync:index:Block', id, __props__, opts or pulumi.ResourceOptions())
 

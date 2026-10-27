@@ -133,9 +133,7 @@ class Some_resource(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = Some_resourceArgs.__new__(Some_resourceArgs)
-
-        __props__.__dict__["the_output"] = None
+        __props__: dict = {}
         __inst__ = Some_resource.__new__(Some_resource)
         return pulumi.runtime.exists_resource(__inst__, 'snake_names:cool_module:some_resource', id, __props__, opts or pulumi.ResourceOptions())
 

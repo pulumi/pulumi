@@ -165,13 +165,7 @@ class Config(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ConfigArgs.__new__(ConfigArgs)
-
-        __props__.__dict__["base64_encode"] = None
-        __props__.__dict__["boundary"] = None
-        __props__.__dict__["gzip"] = None
-        __props__.__dict__["parts"] = None
-        __props__.__dict__["rendered"] = None
+        __props__: dict = {}
         __inst__ = Config.__new__(Config)
         return pulumi.runtime.exists_resource(__inst__, 'cloudinit:index/config:Config', id, __props__, opts or pulumi.ResourceOptions())
 

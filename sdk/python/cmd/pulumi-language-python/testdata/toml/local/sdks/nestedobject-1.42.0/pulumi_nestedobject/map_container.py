@@ -114,9 +114,7 @@ class MapContainer(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = MapContainerArgs.__new__(MapContainerArgs)
-
-        __props__.__dict__["tags"] = None
+        __props__: dict = {}
         __inst__ = MapContainer.__new__(MapContainer)
         return pulumi.runtime.exists_resource(__inst__, 'nestedobject:index:MapContainer', id, __props__, opts or pulumi.ResourceOptions())
 

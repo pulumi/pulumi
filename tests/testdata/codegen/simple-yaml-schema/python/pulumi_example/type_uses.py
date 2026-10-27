@@ -173,16 +173,7 @@ class TypeUses(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = TypeUsesArgs.__new__(TypeUsesArgs)
-
-        __props__.__dict__["alpha"] = None
-        __props__.__dict__["bar"] = None
-        __props__.__dict__["baz"] = None
-        __props__.__dict__["beta"] = None
-        __props__.__dict__["foo"] = None
-        __props__.__dict__["gamma"] = None
-        __props__.__dict__["qux"] = None
-        __props__.__dict__["zed"] = None
+        __props__: dict = {}
         __inst__ = TypeUses.__new__(TypeUses)
         return pulumi.runtime.exists_resource(__inst__, 'example::TypeUses', id, __props__, opts or pulumi.ResourceOptions())
 

@@ -191,14 +191,7 @@ class Deluxe(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = DeluxeArgs.__new__(DeluxeArgs)
-
-        __props__.__dict__["array_of_enum"] = None
-        __props__.__dict__["holder"] = None
-        __props__.__dict__["map_of_enum"] = None
-        __props__.__dict__["number_enum"] = None
-        __props__.__dict__["union_enum"] = None
-        __props__.__dict__["wordy_enum"] = None
+        __props__: dict = {}
         __inst__ = Deluxe.__new__(Deluxe)
         return pulumi.runtime.exists_resource(__inst__, 'enum:index:Deluxe', id, __props__, opts or pulumi.ResourceOptions())
 

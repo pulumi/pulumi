@@ -225,14 +225,7 @@ class ConfigMap(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ConfigMapInitArgs.__new__(ConfigMapInitArgs)
-
-        __props__.__dict__["api_version"] = None
-        __props__.__dict__["binary_data"] = None
-        __props__.__dict__["data"] = None
-        __props__.__dict__["immutable"] = None
-        __props__.__dict__["kind"] = None
-        __props__.__dict__["metadata"] = None
+        __props__: dict = {}
         __inst__ = ConfigMap.__new__(ConfigMap)
         return pulumi.runtime.exists_resource(__inst__, 'kubernetes:core/v1:ConfigMap', id, __props__, opts or pulumi.ResourceOptions())
 

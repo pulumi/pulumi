@@ -114,9 +114,7 @@ class Target(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = TargetArgs.__new__(TargetArgs)
-
-        __props__.__dict__["name"] = None
+        __props__: dict = {}
         __inst__ = Target.__new__(Target)
         return pulumi.runtime.exists_resource(__inst__, 'nestedobject:index:Target', id, __props__, opts or pulumi.ResourceOptions())
 

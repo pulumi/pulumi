@@ -98,8 +98,7 @@ class FOOEncryptedBarClass(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = FOOEncryptedBarClassArgs.__new__(FOOEncryptedBarClassArgs)
-
+        __props__: dict = {}
         __inst__ = FOOEncryptedBarClass.__new__(FOOEncryptedBarClass)
         return pulumi.runtime.exists_resource(__inst__, 'foo-bar:submodule1:FOOEncryptedBarClass', id, __props__, opts or pulumi.ResourceOptions())
 

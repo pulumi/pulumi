@@ -162,12 +162,7 @@ class Example(pulumi.CustomResource):
     @staticmethod
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
-        __props__ = ExampleArgs.__new__(ExampleArgs)
-
-        __props__.__dict__["map_map_union_property"] = None
-        __props__.__dict__["string_enum_union_list_property"] = None
-        __props__.__dict__["string_or_integer_property"] = None
-        __props__.__dict__["typed_enum_property"] = None
+        __props__: dict = {}
         __inst__ = Example.__new__(Example)
         return pulumi.runtime.exists_resource(__inst__, 'union:index:Example', id, __props__, opts or pulumi.ResourceOptions())
 
