@@ -1,0 +1,4 @@
+component: cli/env
+kind: fix
+body: Show formatted diagnostics when `pulumi env open` or `pulumi env run` cannot evaluate an environment
+time: 2026-10-26T00:00:00Z
