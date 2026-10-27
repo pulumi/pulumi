@@ -43,8 +43,8 @@ func TestManagedEnvironmentJSON(t *testing.T) {
 		},
 		{
 			name:     "create stack request",
-			value:    CreateStackRequest{StackName: "dev", ManagedEnvironment: true},
-			expected: `{"stackName":"dev","managedEnvironment":true}`,
+			value:    CreateStackRequest{StackName: "dev", CreateManagedEnvironment: true},
+			expected: `{"stackName":"dev","createManagedEnvironment":true}`,
 		},
 		{
 			name:     "unmanaged create stack request",
