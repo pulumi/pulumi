@@ -737,6 +737,11 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		return nil, defaultCredsErr
 	}
 
+	if !env.EnableAutomaticAgentSignup.Value() {
+		logging.V(7).Infof("Automatic agent signup is disabled; not creating an agent account for %q", cloudURL)
+		return nil, nil
+	}
+
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
 	signup, err := client.NewClient(cloudURL, "", insecure, cmdutil.Diag()).SignupAgent(
 		ctx,
