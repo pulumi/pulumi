@@ -34,7 +34,6 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -2410,80 +2409,4 @@ func TestAuditLogsQueryParams(t *testing.T) {
 		"/api/orgs/org/auditlogs/v2?endTime=2&eventFilter=stack.create&startTime=1&userFilter=alice",
 		"/api/orgs/org/auditlogs/v2/export?endTime=2&eventFilter=stack.create&format=csv&startTime=1&userFilter=alice",
 	}, gotURLs)
-}
-
-func TestListPolicyIssues(t *testing.T) {
-	t.Parallel()
-
-	var method, path, body string
-	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
-		method, path = req.Method, req.URL.Path
-		b, err := io.ReadAll(req.Body)
-		require.NoError(t, err)
-		body = string(b)
-		return "{}"
-	})
-	defer server.Close()
-
-	_, err := newMockClient(server).ListPolicyIssues(t.Context(), "acme", cloudapitype.AngularGridGetRowsRequest{
-		StartRow: 100,
-		EndRow:   200,
-	})
-	require.NoError(t, err)
-
-	assert.Equal(t, http.MethodPost, method)
-	assert.Equal(t, "/api/orgs/acme/policyresults/issues", path)
-	assert.JSONEq(t, `{
-		"startRow": 100, "endRow": 200, "sortModel": null,
-		"rowGroupCols": null, "valueCols": null, "groupKeys": null, "filterModel": null}`, body)
-}
-
-func TestListPolicyIssues_FirstPageSendsZeroStartRow(t *testing.T) {
-	t.Parallel()
-
-	var body string
-	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
-		b, err := io.ReadAll(req.Body)
-		require.NoError(t, err)
-		body = string(b)
-		return "{}"
-	})
-	defer server.Close()
-
-	_, err := newMockClient(server).ListPolicyIssues(t.Context(), "acme",
-		cloudapitype.AngularGridGetRowsRequest{EndRow: 100})
-	require.NoError(t, err)
-
-	var fields map[string]json.RawMessage
-	require.NoError(t, json.Unmarshal([]byte(body), &fields))
-	assert.JSONEq(t, `0`, string(fields["startRow"]))
-	assert.JSONEq(t, `100`, string(fields["endRow"]))
-}
-
-func TestGetPolicyComplianceResults(t *testing.T) {
-	t.Parallel()
-
-	var method, path, body string
-	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
-		method, path = req.Method, req.URL.Path
-		b, err := io.ReadAll(req.Body)
-		require.NoError(t, err)
-		body = string(b)
-		return "{}"
-	})
-	defer server.Close()
-
-	size := 50
-	token := "next-page-token"
-	_, err := newMockClient(server).GetPolicyComplianceResults(t.Context(), "acme",
-		cloudapitype.GetPolicyComplianceResultsRequest{
-			Entity:            cloudapitype.PolicyComplianceEntityTypeStack,
-			Size:              &size,
-			ContinuationToken: &token,
-		})
-	require.NoError(t, err)
-
-	assert.Equal(t, http.MethodPost, method)
-	assert.Equal(t, "/api/orgs/acme/policyresults/compliance", path)
-	assert.JSONEq(t, `{"entity": "stack", "size": 50, "continuationToken": "next-page-token"}`, body)
 }
