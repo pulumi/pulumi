@@ -19,7 +19,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
@@ -27,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"gopkg.in/yaml.v3"
 )
 
@@ -134,23 +137,73 @@ func rejectPlaintextSecrets(definition []byte) error {
 	if len(diags) != 0 {
 		return diags
 	}
-	var plaintextPath string
-	_, _, err := syntax.Walk(node, func(n syntax.Node) (syntax.Node, syntax.Diagnostics, error) {
-		obj, ok := n.(*syntax.ObjectNode)
-		if !ok || plaintextPath != "" || obj.Len() != 1 || obj.Index(0).Key.Value() != "fn::secret" {
-			return n, nil, nil
+	if pulumiConfig, ok := objectProperty(objectProperty(node, "values"), "pulumiConfig").(*syntax.ObjectNode); ok {
+		for i := range pulumiConfig.Len() {
+			entry := pulumiConfig.Index(i)
+			if secret, path := findPlaintextSecret(entry.Value, nil); secret != nil {
+				return fmt.Errorf("%s is a plaintext secret; set it with `%s`",
+					secret.Syntax().Path(), configSetSecretCommand(entry.Key.Value(), path))
+			}
 		}
-		if _, ok := obj.Index(0).Value.(*syntax.StringNode); ok {
-			plaintextPath = n.Syntax().Path()
-		}
-		return n, nil, nil
-	})
-	if err != nil {
-		return err
 	}
-	if plaintextPath != "" {
-		return fmt.Errorf(
-			"replace plaintext secret at %s with `pulumi config set --secret`", plaintextPath)
+	if secret, _ := findPlaintextSecret(node, nil); secret != nil {
+		return fmt.Errorf("%s is a plaintext secret; set it under values.pulumiConfig with "+
+			"`pulumi config set --secret` and reference it from there", secret.Syntax().Path())
 	}
 	return nil
+}
+
+func objectProperty(node syntax.Node, key string) syntax.Node {
+	obj, ok := node.(*syntax.ObjectNode)
+	if !ok {
+		return nil
+	}
+	for i := range obj.Len() {
+		if obj.Index(i).Key.Value() == key {
+			return obj.Index(i).Value
+		}
+	}
+	return nil
+}
+
+func findPlaintextSecret(node syntax.Node, path resource.PropertyPath) (syntax.Node, resource.PropertyPath) {
+	switch node := node.(type) {
+	case *syntax.ObjectNode:
+		if node.Len() == 1 && node.Index(0).Key.Value() == "fn::secret" {
+			if _, ok := node.Index(0).Value.(*syntax.StringNode); ok {
+				return node, path
+			}
+			return nil, nil
+		}
+		for i := range node.Len() {
+			entry := node.Index(i)
+			entryPath := slices.Concat(path, resource.PropertyPath{entry.Key.Value()})
+			if secret, secretPath := findPlaintextSecret(entry.Value, entryPath); secret != nil {
+				return secret, secretPath
+			}
+		}
+	case *syntax.ArrayNode:
+		for i := range node.Len() {
+			elementPath := slices.Concat(path, resource.PropertyPath{i})
+			if secret, secretPath := findPlaintextSecret(node.Index(i), elementPath); secret != nil {
+				return secret, secretPath
+			}
+		}
+	}
+	return nil, nil
+}
+
+func configSetSecretCommand(configKey string, path resource.PropertyPath) string {
+	if len(path) == 0 {
+		return fmt.Sprintf("pulumi config set --secret %s <value>", configKey)
+	}
+	namespace, name, namespaced := strings.Cut(configKey, ":")
+	if !namespaced {
+		namespace, name = "", configKey
+	}
+	keyPath := append(resource.PropertyPath{name}, path...).String()
+	if namespaced {
+		keyPath = namespace + ":" + keyPath
+	}
+	return fmt.Sprintf("pulumi config set --secret --path '%s' <value>", keyPath)
 }

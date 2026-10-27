@@ -230,7 +230,7 @@ func TestEvaluateErrors(t *testing.T) {
 		c := svc.newClient(t)
 		_, _, err := Evaluate(t.Context(), c, "org", "proj", "env",
 			[]byte("values:\n  token:\n    fn::secret: hunter2\n"), time.Hour)
-		require.ErrorContains(t, err, "replace plaintext secret at values.token")
+		require.ErrorContains(t, err, "values.token is a plaintext secret")
 		assert.Empty(t, svc.requests)
 	})
 
@@ -350,10 +350,41 @@ func TestRejectPlaintextSecrets(t *testing.T) {
 		definition string
 		wantErr    string
 	}{
-		{"nested in a list", "values:\n  list:\n    - fn::secret: hunter2\n", "plaintext secret at values.list[0]"},
+		{
+			"config key",
+			"values:\n  pulumiConfig:\n    password:\n      fn::secret: hunter2\n",
+			"values.pulumiConfig.password is a plaintext secret; " +
+				"set it with `pulumi config set --secret password <value>`",
+		},
+		{
+			"namespaced config key",
+			"values:\n  pulumiConfig:\n    aws:region:\n      fn::secret: hunter2\n",
+			`values.pulumiConfig["aws:region"] is a plaintext secret; ` +
+				"set it with `pulumi config set --secret aws:region <value>`",
+		},
+		{
+			"nested under a config key",
+			"values:\n  pulumiConfig:\n    db:\n      users:\n        - fn::secret: hunter2\n",
+			"values.pulumiConfig.db.users[0] is a plaintext secret; " +
+				"set it with `pulumi config set --secret --path 'db.users[0]' <value>`",
+		},
+		{
+			"nested under a namespaced config key",
+			"values:\n  pulumiConfig:\n    app:db:\n      password:\n        fn::secret: hunter2\n",
+			`values.pulumiConfig["app:db"].password is a plaintext secret; ` +
+				"set it with `pulumi config set --secret --path 'app:db.password' <value>`",
+		},
+		{
+			"outside pulumiConfig",
+			"values:\n  list:\n    - fn::secret: hunter2\n",
+			"values.list[0] is a plaintext secret; set it under values.pulumiConfig with " +
+				"`pulumi config set --secret` and reference it from there",
+		},
 		{
 			"interpolated, which the service encrypts as a literal",
-			"values:\n  s:\n    fn::secret: ${a.b}\n", "plaintext secret at values.s",
+			"values:\n  s:\n    fn::secret: ${a.b}\n",
+			"values.s is a plaintext secret; set it under values.pulumiConfig with " +
+				"`pulumi config set --secret` and reference it from there",
 		},
 		{"ciphertext", "values:\n  s:\n    fn::secret:\n      ciphertext: ZXhhbXBsZQ==\n", ""},
 	}
@@ -364,7 +395,7 @@ func TestRejectPlaintextSecrets(t *testing.T) {
 			if tc.wantErr == "" {
 				require.NoError(t, err)
 			} else {
-				require.ErrorContains(t, err, tc.wantErr)
+				require.EqualError(t, err, tc.wantErr)
 			}
 		})
 	}
