@@ -105,7 +105,6 @@ func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	assert.Equal(t, "production", c.gotGetGroup)
 	assert.Equal(t, `Name:                  production
 Org default:           no
-Entity type:           stacks
 Mode:                  audit
 Applied policy packs:  0
 Stacks:                0
