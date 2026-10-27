@@ -67,6 +67,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyprint"
 	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
@@ -1380,7 +1381,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 			rpcError = err
 		}
 
-		message := errorToMessage(rpcError, resource.ToResourcePropertyMap(args), rm.opts.ShowSecrets)
+		message := errorToMessage(rpcError, args, rm.opts.ShowSecrets)
 		rm.diagnostics.Errorf(diag.GetCallFailedError(), tok, message)
 
 		rm.abortChan <- true
@@ -2387,7 +2388,7 @@ func (rm *resmon) resolveProvider(
 // of the possible details types, which can be expanded later.  If the details type is not recognized, we
 // still return the message, but will leave out the details.  This will allow us to be forward compatible
 // when new details types are added.  Secret input values are redacted unless showSecrets is set.
-func errorToMessage(err error, inputs resource.PropertyMap, showSecrets bool) string {
+func errorToMessage(err error, inputs property.Map, showSecrets bool) string {
 	switch e := err.(type) {
 	case *rpcerror.Error:
 		message := e.Message()
@@ -2395,23 +2396,24 @@ func errorToMessage(err error, inputs resource.PropertyMap, showSecrets bool) st
 			message = fmt.Sprintf("%v: %v", message, e.Cause().Message())
 		}
 		if len(e.InputPropertiesErrors()) > 0 {
-			render := resource.PropertyValue.RedactSecrets
-			if showSecrets {
-				render = resource.PropertyValue.String
-			}
-			props := resource.NewProperty(inputs)
-			for _, err := range e.InputPropertiesErrors() {
-				propertyPath, e := resource.ParsePropertyPath(err.PropertyPath)
+			props := property.New(inputs)
+			for _, propertyError := range e.InputPropertiesErrors() {
+				var propertyPath property.Path
+				e := propertyPath.UnmarshalText([]byte(propertyError.PropertyPath))
 				if e == nil {
-					value, ok := propertyPath.Get(props)
-					if ok {
-						message = fmt.Sprintf("%v\n\t\t- property %v with value '%v' has a problem: %v",
-							message, err.PropertyPath, render(value), err.Reason)
-						continue
+					value, err := propertyPath.Get(props)
+					if err == nil {
+						var render strings.Builder
+						err = propertyprint.Value(&render, value, showSecrets)
+						if err == nil {
+							message = fmt.Sprintf("%v\n\t\t- property %v with value %v has a problem: %v",
+								message, propertyError.PropertyPath, render.String(), propertyError.Reason)
+							continue
+						}
 					}
 				}
 				message = fmt.Sprintf("%v\n\t\t- property %v has a problem: %v",
-					message, err.PropertyPath, err.Reason)
+					message, propertyError.PropertyPath, propertyError.Reason)
 			}
 		}
 		return message
@@ -3030,12 +3032,13 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		var constructResult plugin.ConstructResult
 		constructDone := make(chan error)
 		go func() {
+			cprops := resource.FromResourcePropertyMap(props)
 			constructResult, err = provider.Construct(ctx, plugin.ConstructRequest{
 				Info:    info,
 				Type:    t,
 				Name:    name,
 				Parent:  parent,
-				Inputs:  resource.FromResourcePropertyMap(props),
+				Inputs:  cprops,
 				Options: options,
 			})
 			if err != nil {
@@ -3049,7 +3052,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 				if !ok {
 					rpcError = err
 				}
-				message := errorToMessage(rpcError, props, rm.opts.ShowSecrets)
+				message := errorToMessage(rpcError, cprops, rm.opts.ShowSecrets)
 				rm.diagnostics.Errorf(diag.GetResourceInvalidError(constructResult.URN), t, name, message)
 
 				rm.abortChan <- true
