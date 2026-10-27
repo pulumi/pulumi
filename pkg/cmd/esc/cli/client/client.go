@@ -1116,8 +1116,7 @@ func (pc *client) OpenEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok &&
-			diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -1149,8 +1148,7 @@ func (pc *client) OpenEnvironmentDraft(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok &&
-			diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err

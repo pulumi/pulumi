@@ -17,6 +17,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -80,7 +82,9 @@ func newEnvOpenCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 			if len(diags) != 0 {
-				return envcmd.writePropertyEnvironmentDiagnostics(envcmd.esc.stderr, diags)
+				err = envcmd.writePropertyEnvironmentDiagnostics(envcmd.esc.stderr, diags)
+				contract.IgnoreError(err)
+				return errors.New("opening environment: too many errors")
 			}
 
 			return envcmd.renderValue(envcmd.esc.stdout, env, path, format, false, true)
