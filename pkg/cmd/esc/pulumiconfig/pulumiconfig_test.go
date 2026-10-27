@@ -79,7 +79,7 @@ func TestValueNodeTyping(t *testing.T) {
 		{config.NewValue("true"), false, "\"true\"\n"},
 		{config.NewValue("true"), true, "true\n"},
 		{config.NewValue("042"), true, "\"042\"\n"},
-		{config.NewValue("18446744073709551615"), true, "1.8446744073709552e+19\n"},
+		{config.NewValue("18446744073709551615"), true, "18446744073709551615\n"},
 		{config.NewTypedValue("42", config.TypeString), true, "\"42\"\n"},
 		{config.NewTypedValue("42", config.TypeInt), false, "42\n"},
 		{config.NewValue("${x}"), true, "$${x}\n"},

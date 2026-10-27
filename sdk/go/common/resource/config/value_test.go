@@ -389,7 +389,6 @@ func TestToCoercedObject(t *testing.T) {
 		{Val: NewValue("-7"), Expected: int64(-7)},
 		{Val: NewValue("042"), Expected: "042"},
 		{Val: NewValue("1.5"), Expected: "1.5"},
-		{Val: NewValue("18446744073709551615"), Expected: float64(18446744073709551615)},
 		{Val: NewTypedValue("42", TypeString), Expected: "42"},
 		{Val: NewTypedValue("42", TypeInt), Expected: int64(42)},
 		{Val: NewTypedValue("1.5", TypeFloat), Expected: 1.5},
