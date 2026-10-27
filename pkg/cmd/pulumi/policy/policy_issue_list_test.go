@@ -17,7 +17,11 @@ package policy
 import (
 	"bytes"
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,8 +65,8 @@ func stubPolicyIssueListFactory(c policyIssueListClient, org string) policyIssue
 
 func samplePolicyIssueListResponse() apitype.ListPolicyIssuesResponse {
 	return apitype.ListPolicyIssuesResponse{
-		Total: 2,
-		Issues: []apitype.PolicyIssue{
+		RowCount: new(2),
+		PolicyIssues: []apitype.PolicyIssue{
 			{
 				ID:            "issue-1",
 				PolicyName:    "no-public-buckets",
@@ -75,7 +79,7 @@ func samplePolicyIssueListResponse() apitype.ListPolicyIssuesResponse {
 				EntityID:      "prod",
 				EntityProject: "web",
 				Message:       "S3 bucket must not allow public access",
-				ObservedAt:    "2026-05-01T12:00:00Z",
+				ObservedAt:    new(time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)),
 			},
 			{
 				ID:            "issue-2",
@@ -86,7 +90,7 @@ func samplePolicyIssueListResponse() apitype.ListPolicyIssuesResponse {
 				EntityProject: "web",
 				Message: "Resource is missing required tags: this message is intentionally " +
 					"long enough to exercise the truncation path in the table renderer",
-				ObservedAt: "2026-04-30T08:00:00Z",
+				ObservedAt: new(time.Date(2026, 4, 30, 8, 0, 0, 0, time.UTC)),
 			},
 		},
 	}
@@ -168,7 +172,13 @@ func TestPolicyIssueList_JSONOutput(t *testing.T) {
 				"entityId": "prod",
 				"entityProject": "web",
 				"message": "S3 bucket must not allow public access",
-				"observedAt": "2026-05-01T12:00:00Z"
+				"observedAt": "2026-05-01T12:00:00Z",
+				"entityType": "",
+				"resourceProvider": "",
+				"resourceName": "",
+				"status": "",
+				"kind": "",
+				"priority": ""
 			},
 			{
 				"id": "issue-2",
@@ -179,9 +189,45 @@ func TestPolicyIssueList_JSONOutput(t *testing.T) {
 				"entityProject": "web",
 				"message": "Resource is missing required tags: this message is intentionally `+
 		`long enough to exercise the truncation path in the table renderer",
-				"observedAt": "2026-04-30T08:00:00Z"
+				"observedAt": "2026-04-30T08:00:00Z",
+				"entityType": "",
+				"policyPackTag": "",
+				"severity": "",
+				"resourceURN": "",
+				"resourceType": "",
+				"resourceProvider": "",
+				"resourceName": "",
+				"status": "",
+				"kind": "",
+				"priority": ""
 			}
 		],
 		"total": 2
 	}`, buf.String())
+}
+
+func TestPolicyIssueList_NilRowCountStopsPaging(t *testing.T) {
+	t.Parallel()
+
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"policyIssues":[{"id":"issue-1","policyName":"no-public-buckets"}]}`))
+	}))
+	defer server.Close()
+
+	pc := client.NewClient(server.URL, "", false, nil)
+	factory := func(context.Context, string) (policyIssueListClient, string, error) {
+		return pc, "acme", nil
+	}
+
+	buf := &bytes.Buffer{}
+	err := runPolicyIssueList(t.Context(), buf, factory,
+		policyIssueListArgs{all: true, outputFormat: defaultPolicyIssueListOutputFormat()})
+	require.NoError(t, err)
+
+	assert.Equal(t, int32(1), requests.Load())
+	assert.Contains(t, buf.String(), "issue-1")
+	assert.Contains(t, buf.String(), "Showing 1 of 1 policy issue(s)")
 }

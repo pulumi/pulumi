@@ -21,6 +21,7 @@ import (
 	"io"
 	"slices"
 
+	"github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -208,11 +209,17 @@ func runPolicyGroupNew(
 		return fmt.Errorf("invalid --mode %q; must be \"audit\" or \"preventative\"", mode)
 	}
 
+	groupEntityType := apitype.PolicyGroupEntityType(entityType)
 	req := apitype.CreatePolicyGroupRequest{
-		Name:        name,
-		EntityType:  entityType,
-		Mode:        mode,
-		AgentPoolID: args.agentPoolID,
+		Name:       name,
+		EntityType: &groupEntityType, //nolint:staticcheck
+	}
+	if mode != "" {
+		groupMode := apitype.PolicyGroupMode(mode)
+		req.Mode = &groupMode
+	}
+	if args.agentPoolID != "" {
+		req.AgentPoolID = jsonvalue.NotNull(args.agentPoolID)
 	}
 
 	if err := c.CreatePolicyGroup(ctx, org, req); err != nil {

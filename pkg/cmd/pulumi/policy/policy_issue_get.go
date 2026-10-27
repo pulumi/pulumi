@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -202,8 +203,8 @@ func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
 	if issue.ResourceType != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Resource type:", issue.ResourceType)
 	}
-	if issue.ObservedAt != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Observed at:", issue.ObservedAt)
+	if issue.ObservedAt != nil {
+		fmt.Fprintf(w, "%-20s %s\n", "Observed at:", issue.ObservedAt.Format(time.RFC3339Nano))
 	}
 	if issue.Message != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Message:", issue.Message)
@@ -226,7 +227,7 @@ type policyIssueGetJSON struct {
 	EntityProject string                 `json:"entityProject,omitempty"`
 	EntityID      string                 `json:"entityId,omitempty"`
 	Message       string                 `json:"message,omitempty"`
-	ObservedAt    string                 `json:"observedAt,omitempty"`
+	ObservedAt    *time.Time             `json:"observedAt,omitempty"`
 }
 
 func toPolicyIssueGetJSON(issue apitype.PolicyIssue) policyIssueGetJSON {
@@ -237,7 +238,7 @@ func toPolicyIssueGetJSON(issue apitype.PolicyIssue) policyIssueGetJSON {
 		PolicyPackTag: issue.PolicyPackTag,
 		Level:         issue.Level,
 		Severity:      issue.Severity,
-		Status:        issue.Status,
+		Status:        string(issue.Status),
 		ResourceURN:   issue.ResourceURN,
 		ResourceType:  issue.ResourceType,
 		EntityProject: issue.EntityProject,

@@ -179,7 +179,7 @@ func runPolicyIssueList(
 	}
 
 	var allIssues []apitype.PolicyIssue
-	var total int64
+	var rowCount *int
 	startRow := 0
 
 	for {
@@ -195,23 +195,23 @@ func runPolicyIssueList(
 		if err != nil {
 			return fmt.Errorf("listing policy issues: %w", err)
 		}
-		total = resp.Total
-		allIssues = append(allIssues, resp.Issues...)
+		rowCount = resp.RowCount
+		allIssues = append(allIssues, resp.PolicyIssues...)
 
 		// Stop if we've collected enough, or there are no more results.
 		if want > 0 && int64(len(allIssues)) >= want {
 			allIssues = allIssues[:want]
 			break
 		}
-		if int64(len(allIssues)) >= total || len(resp.Issues) == 0 {
+		if rowCount == nil || len(allIssues) >= *rowCount || len(resp.PolicyIssues) == 0 {
 			break
 		}
-		startRow += len(resp.Issues)
+		startRow += len(resp.PolicyIssues)
 	}
 
 	return args.outputFormat.Get()(w, apitype.ListPolicyIssuesResponse{
-		Issues: allIssues,
-		Total:  total,
+		PolicyIssues: allIssues,
+		RowCount:     rowCount,
 	})
 }
 
@@ -242,7 +242,7 @@ func truncateMessage(s string, max int) string {
 func renderPolicyIssueListTable(
 	w io.Writer, resp apitype.ListPolicyIssuesResponse,
 ) error {
-	if len(resp.Issues) == 0 {
+	if len(resp.PolicyIssues) == 0 {
 		fmt.Fprintln(w, "No policy issues found for this organization.")
 		return nil
 	}
@@ -252,7 +252,7 @@ func renderPolicyIssueListTable(
 	t.SetStyle(table.StyleLight)
 	t.AppendHeader(table.Row{"ID", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE"})
 
-	for _, issue := range resp.Issues {
+	for _, issue := range resp.PolicyIssues {
 		pack := issue.PolicyPack
 		if issue.PolicyPackTag != "" {
 			pack = fmt.Sprintf("%s@%s", issue.PolicyPack, issue.PolicyPackTag)
@@ -279,7 +279,7 @@ func renderPolicyIssueListTable(
 	}
 	t.Render()
 
-	fmt.Fprintf(w, "\nShowing %d of %d policy issue(s)\n", len(resp.Issues), resp.Total)
+	fmt.Fprintf(w, "\nShowing %d of %d policy issue(s)\n", len(resp.PolicyIssues), policyIssueTotal(resp))
 	return nil
 }
 
@@ -293,7 +293,7 @@ type policyIssueListEnvelope struct {
 func renderPolicyIssueListJSON(
 	w io.Writer, resp apitype.ListPolicyIssuesResponse,
 ) error {
-	issues := resp.Issues
+	issues := resp.PolicyIssues
 	if issues == nil {
 		issues = []apitype.PolicyIssue{}
 	}
@@ -302,6 +302,14 @@ func renderPolicyIssueListJSON(
 	enc.SetIndent("", "  ")
 	return enc.Encode(policyIssueListEnvelope{
 		Issues: issues,
-		Total:  resp.Total,
+		Total:  policyIssueTotal(resp),
 	})
+}
+
+// policyIssueTotal falls back to the number of returned issues when the server omits rowCount.
+func policyIssueTotal(resp apitype.ListPolicyIssuesResponse) int64 {
+	if resp.RowCount == nil {
+		return int64(len(resp.PolicyIssues))
+	}
+	return int64(*resp.RowCount)
 }

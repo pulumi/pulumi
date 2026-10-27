@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,7 +72,7 @@ func samplePolicyIssue() apitype.PolicyIssue {
 		EntityID:      "prod",
 		EntityProject: "web",
 		Message:       "S3 bucket must not allow public access",
-		ObservedAt:    "2026-05-01T12:00:00Z",
+		ObservedAt:    new(time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)),
 	}
 }
 
@@ -148,4 +149,27 @@ func TestPolicyIssueGet_FactoryError(t *testing.T) {
 		"issue-1", policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
+}
+
+func TestPolicyIssueGet_NilTimestamps(t *testing.T) {
+	t.Parallel()
+
+	issue := samplePolicyIssue()
+	issue.ObservedAt = nil
+	issue.LastModified = nil
+
+	var text bytes.Buffer
+	err := runPolicyIssueGet(t.Context(), &text,
+		stubPolicyIssueGetFactory(&mockPolicyIssueGetClient{resp: issue}, "acme"), "issue-1",
+		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
+	require.NoError(t, err)
+	assert.NotContains(t, text.String(), "Observed at")
+
+	var jsonOut bytes.Buffer
+	args := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
+	err = runPolicyIssueGet(t.Context(), &jsonOut,
+		stubPolicyIssueGetFactory(&mockPolicyIssueGetClient{resp: issue}, "acme"), "issue-1", args)
+	require.NoError(t, err)
+	assert.NotContains(t, jsonOut.String(), "observedAt")
 }

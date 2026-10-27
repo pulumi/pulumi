@@ -180,10 +180,10 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 
 	fmt.Fprintf(w, "%-22s %s\n", "Name:", resp.Name)
 	fmt.Fprintf(w, "%-22s %s\n", "Org default:", isDefault)
-	fmt.Fprintf(w, "%-22s %s\n", "Entity type:", string(resp.EntityType))
+	fmt.Fprintf(w, "%-22s %s\n", "Entity type:", string(resp.EntityType)) //nolint:staticcheck
 	fmt.Fprintf(w, "%-22s %s\n", "Mode:", string(resp.Mode))
-	if resp.AgentPoolID != "" {
-		fmt.Fprintf(w, "%-22s %s\n", "Agent pool:", resp.AgentPoolID)
+	if resp.AgentPoolID != nil {
+		fmt.Fprintf(w, "%-22s %s\n", "Agent pool:", *resp.AgentPoolID)
 	}
 
 	fmt.Fprintf(w, "%-22s %d\n", "Applied policy packs:", len(resp.AppliedPolicyPacks))
@@ -217,12 +217,12 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 type policyGroupGetJSON struct {
 	Name               string                         `json:"name"`
 	IsOrgDefault       bool                           `json:"isOrgDefault"`
-	EntityType         apitype.EntityType             `json:"entityType"`
+	EntityType         apitype.PolicyGroupEntityType  `json:"entityType"`
 	Mode               apitype.PolicyGroupMode        `json:"mode"`
 	Stacks             []apitype.PulumiStackReference `json:"stacks"`
 	AppliedPolicyPacks []apitype.PolicyPackMetadata   `json:"appliedPolicyPacks"`
 	Accounts           []string                       `json:"accounts"`
-	AgentPoolID        string                         `json:"agentPoolId,omitempty"`
+	AgentPoolID        *string                        `json:"agentPoolId,omitempty"`
 }
 
 func toPolicyGroupGetJSON(resp apitype.GetPolicyGroupResponse) policyGroupGetJSON {
@@ -241,7 +241,7 @@ func toPolicyGroupGetJSON(resp apitype.GetPolicyGroupResponse) policyGroupGetJSO
 	return policyGroupGetJSON{
 		Name:               resp.Name,
 		IsOrgDefault:       resp.IsOrgDefault,
-		EntityType:         resp.EntityType,
+		EntityType:         resp.EntityType, //nolint:staticcheck
 		Mode:               resp.Mode,
 		Stacks:             stacks,
 		AppliedPolicyPacks: packs,

@@ -14,7 +14,11 @@
 
 package apitype
 
-import "time"
+import (
+	"time"
+
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+)
 
 // ListDeploymentResponseV2 is the response from the Pulumi Cloud
 // ListStackDeploymentsHandlerV2 endpoint: a paginated list of deployments
@@ -70,14 +74,8 @@ type ListDeploymentSnapshot struct {
 	AgentPool *ListDeploymentSnapshotAgentPool `json:"agentPool,omitempty"`
 }
 
-// UserInfo is the public-facing subset of a Pulumi Cloud user. Email is only
-// populated by admin-only APIs and is otherwise absent.
-type UserInfo struct {
-	Name        string `json:"name"`
-	GitHubLogin string `json:"githubLogin"`
-	AvatarURL   string `json:"avatarUrl"`
-	Email       string `json:"email,omitempty"`
-}
+// UserInfo is the Cloud SDK's UserInfo.
+type UserInfo = cloudapitype.UserInfo
 
 // DeploymentJob is a single job within a deployment, with its status, timing,
 // and step-level progress.

@@ -83,7 +83,7 @@ func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	resp := apitype.GetPolicyGroupResponse{
 		Name:         "production",
 		IsOrgDefault: false,
-		EntityType:   apitype.Stacks,
+		EntityType:   apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:         apitype.PolicyGroupModeAudit,
 	}
 	c := &mockPolicyGroupEditClient{getResp: resp}
@@ -119,7 +119,7 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 
 	c := &mockPolicyGroupEditClient{getResp: apitype.GetPolicyGroupResponse{
 		Name:       "production",
-		EntityType: apitype.Stacks,
+		EntityType: apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:       apitype.PolicyGroupModePreventative,
 	}}
 

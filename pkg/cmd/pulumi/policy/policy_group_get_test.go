@@ -62,7 +62,7 @@ func samplePolicyGroupResponse() apitype.GetPolicyGroupResponse {
 	return apitype.GetPolicyGroupResponse{
 		Name:         "prod-policies",
 		IsOrgDefault: false,
-		EntityType:   apitype.Stacks,
+		EntityType:   apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:         apitype.PolicyGroupModePreventative,
 		Stacks: []apitype.PulumiStackReference{
 			{Name: "prod", RoutingProject: "web"},
@@ -73,7 +73,7 @@ func samplePolicyGroupResponse() apitype.GetPolicyGroupResponse {
 			{Name: "tagging", DisplayName: "Tagging", Version: 1, VersionTag: ""},
 		},
 		Accounts:    []string{},
-		AgentPoolID: "pool-1",
+		AgentPoolID: new("pool-1"),
 	}
 }
 
@@ -111,7 +111,7 @@ func TestPolicyGroupGet_DefaultOutput_Empty(t *testing.T) {
 	resp := apitype.GetPolicyGroupResponse{
 		Name:         "default-policy-group",
 		IsOrgDefault: true,
-		EntityType:   apitype.Stacks,
+		EntityType:   apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:         apitype.PolicyGroupModeAudit,
 	}
 	c := &mockPolicyGroupGetClient{resp: resp}
@@ -152,7 +152,7 @@ func TestPolicyGroupGet_JSONOutput(t *testing.T) {
 		],
 		"appliedPolicyPacks": [
 			{"name": "aws-guardrails", "displayName": "AWS Guardrails", "version": 3, "versionTag": "1.2.0"},
-			{"name": "tagging", "displayName": "Tagging", "version": 1}
+			{"name": "tagging", "displayName": "Tagging", "version": 1, "versionTag": ""}
 		],
 		"accounts": [],
 		"agentPoolId": "pool-1"
@@ -165,7 +165,7 @@ func TestPolicyGroupGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 	resp := apitype.GetPolicyGroupResponse{
 		Name:         "bare",
 		IsOrgDefault: true,
-		EntityType:   apitype.Stacks,
+		EntityType:   apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:         apitype.PolicyGroupModeAudit,
 	}
 
@@ -209,4 +209,46 @@ func TestPolicyGroupGet_FactoryError(t *testing.T) {
 		"prod-policies", policyGroupGetArgs{outputFormat: defaultPolicyGroupGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
+}
+
+func TestPolicyGroupGet_AgentPoolPointer(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		agentPoolID *string
+		wantText    bool
+	}{
+		{name: "absent", agentPoolID: nil, wantText: false},
+		{name: "present", agentPoolID: new("pool-1"), wantText: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			resp := samplePolicyGroupResponse()
+			resp.AgentPoolID = tc.agentPoolID
+
+			var text bytes.Buffer
+			err := runPolicyGroupGet(t.Context(), &text,
+				stubPolicyGroupGetFactory(&mockPolicyGroupGetClient{resp: resp}, "acme"), "prod-policies",
+				policyGroupGetArgs{outputFormat: defaultPolicyGroupGetOutputFormat()})
+			require.NoError(t, err)
+
+			var jsonOut bytes.Buffer
+			args := policyGroupGetArgs{outputFormat: defaultPolicyGroupGetOutputFormat()}
+			require.NoError(t, args.outputFormat.Set("json"))
+			err = runPolicyGroupGet(t.Context(), &jsonOut,
+				stubPolicyGroupGetFactory(&mockPolicyGroupGetClient{resp: resp}, "acme"), "prod-policies", args)
+			require.NoError(t, err)
+
+			if tc.wantText {
+				assert.Contains(t, text.String(), "Agent pool:            pool-1\n")
+				assert.Contains(t, jsonOut.String(), `"agentPoolId": "pool-1"`)
+			} else {
+				assert.NotContains(t, text.String(), "Agent pool:")
+				assert.NotContains(t, jsonOut.String(), "agentPoolId")
+			}
+		})
+	}
 }

@@ -17,6 +17,7 @@ package policy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -35,6 +36,7 @@ type mockPolicyGroupNewClient struct {
 
 	createdOrg  string
 	createdName string
+	createdReq  apitype.CreatePolicyGroupRequest
 	getOrg      string
 	getName     string
 	createCalls int
@@ -47,6 +49,7 @@ func (m *mockPolicyGroupNewClient) CreatePolicyGroup(
 	m.createCalls++
 	m.createdOrg = org
 	m.createdName = req.Name
+	m.createdReq = req
 	return m.createErr
 }
 
@@ -78,7 +81,7 @@ func newPolicyGroupResponseFixture() apitype.GetPolicyGroupResponse {
 	return apitype.GetPolicyGroupResponse{
 		Name:         "prod-policies",
 		IsOrgDefault: false,
-		EntityType:   apitype.Stacks,
+		EntityType:   apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:         apitype.PolicyGroupModePreventative,
 	}
 }
@@ -171,4 +174,37 @@ func TestPolicyGroupNew_FactoryError(t *testing.T) {
 		})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
+}
+
+func TestPolicyGroupNew_NoModeOmitted(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupNewClient{getResp: newPolicyGroupResponseFixture()}
+	err := runPolicyGroupNew(t.Context(), &bytes.Buffer{},
+		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
+		policyGroupNewArgs{entityType: "stacks", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
+	require.NoError(t, err)
+
+	body, err := json.Marshal(c.createdReq)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"name": "prod-policies", "entityType": "stacks"}`, string(body))
+}
+
+func TestPolicyGroupNew_ModeAndAgentPoolSent(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupNewClient{getResp: newPolicyGroupResponseFixture()}
+	err := runPolicyGroupNew(t.Context(), &bytes.Buffer{},
+		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
+		policyGroupNewArgs{
+			entityType: "accounts", mode: "audit", agentPoolID: "pool-1", yes: true,
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+		})
+	require.NoError(t, err)
+
+	body, err := json.Marshal(c.createdReq)
+	require.NoError(t, err)
+	assert.JSONEq(t,
+		`{"name": "prod-policies", "entityType": "accounts", "mode": "audit", "agentPoolId": "pool-1"}`,
+		string(body))
 }

@@ -2376,7 +2376,7 @@ func TestBatchUpdatePolicyGroup(t *testing.T) {
 	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies/batch", path)
 	assert.JSONEq(t, `[
 		{"addStack": {"name": "prod", "routingProject": "web"}},
-		{"removePolicyPack": {"name": "tagging", "versionTag": "1.0.0"}},
+		{"removePolicyPack": {"name": "tagging", "displayName": "", "version": 0, "versionTag": "1.0.0"}},
 		{"addInsightsAccount": {"name": "prod-aws"}}
 	]`, body)
 }
