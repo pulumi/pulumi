@@ -108,7 +108,7 @@ func (m *managedStore) Set(_ context.Context, key config.Key, v config.Value, pa
 	if err != nil {
 		return err
 	}
-	value, err := pulumiconfig.ValueNode(key, v, path)
+	value, err := pulumiconfig.ValueNode(v, len(subPath) > 0)
 	if err != nil {
 		return err
 	}
