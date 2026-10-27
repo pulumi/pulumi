@@ -1055,8 +1055,15 @@ func (rm *resmon) Invoke(
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
 	}
 
+	// SDKs resolve the parent's provider themselves. The engine resolves it for a program that sends only the
+	// parent, as it does for a resource in RegisterResource.
+	provider := req.GetProvider()
+	if provider == "" && parent != "" {
+		provider = rm.parentProvider(parent, tok.Package())
+	}
+
 	opts := &pulumirpc.TransformInvokeOptions{
-		Provider:          rm.resolveProvider(req.GetProvider(), nil, parent, tok.Package()),
+		Provider:          rm.resolveProvider(provider, nil, parent, tok.Package()),
 		Version:           req.GetVersion(),
 		PluginDownloadUrl: req.GetPluginDownloadURL(),
 		PluginChecksums:   req.GetPluginChecksums(),
@@ -2361,6 +2368,23 @@ func transformAliasForNodeJSCompat(alias *pulumirpc.Alias) *pulumirpc.Alias {
 	}
 
 	return alias
+}
+
+// parentProvider returns the explicit provider of a custom parent when that provider serves pkg. It
+// ignores a default provider, because the invoke's own version selects its default provider.
+func (rm *resmon) parentProvider(parent resource.URN, pkg tokens.Package) string {
+	rm.resGoalsLock.Lock()
+	goal, ok := rm.resGoals[parent]
+	rm.resGoalsLock.Unlock()
+	if !ok {
+		return ""
+	}
+	ref, err := sdkproviders.ParseReference(goal.Provider)
+	if err != nil || sdkproviders.IsDefaultProvider(ref.URN()) ||
+		ref.URN().Type().Name() != tokens.TypeName(pkg) {
+		return ""
+	}
+	return goal.Provider
 }
 
 func (rm *resmon) resolveProvider(
