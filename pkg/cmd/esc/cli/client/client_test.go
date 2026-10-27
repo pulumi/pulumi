@@ -1049,6 +1049,59 @@ func TestRotateEnvironment(t *testing.T) {
 	})
 }
 
+func TestEncryptSecrets(t *testing.T) {
+	t.Parallel()
+	const path = "/api/esc/environments/test-org/test-project/test-env/encrypt-secrets"
+
+	t.Run("OK", func(t *testing.T) {
+		t.Parallel()
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Plaintexts []string `json:"plaintexts"`
+			}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			assert.Equal(t, []string{
+				base64.StdEncoding.EncodeToString([]byte("first")),
+				base64.StdEncoding.EncodeToString([]byte{0x00, 0xff, 0x10}),
+			}, body.Plaintexts)
+
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"ciphertexts": []string{"ct-first", "ct-second"},
+			}))
+		})
+
+		ciphertexts, err := client.EncryptSecrets(
+			t.Context(), "test-org", "test-project", "test-env", [][]byte{[]byte("first"), {0x00, 0xff, 0x10}})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"ct-first", "ct-second"}, ciphertexts)
+	})
+
+	t.Run("Count mismatch", func(t *testing.T) {
+		t.Parallel()
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"ciphertexts": []string{"ct"}}))
+		})
+
+		_, err := client.EncryptSecrets(
+			t.Context(), "test-org", "test-project", "test-env", [][]byte{[]byte("a"), []byte("b")})
+		assert.ErrorContains(t, err, "expected 2 ciphertexts, got 1")
+	})
+
+	t.Run("Too large", func(t *testing.T) {
+		t.Parallel()
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusRequestEntityTooLarge)
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ErrorResponse{
+				Code:    http.StatusRequestEntityTooLarge,
+				Message: "request too large",
+			}))
+		})
+
+		_, err := client.EncryptSecrets(t.Context(), "test-org", "test-project", "test-env", [][]byte{[]byte("a")})
+		assert.ErrorContains(t, err, "request too large")
+	})
+}
+
 func TestCheckYAMLEnvironment(t *testing.T) {
 	t.Parallel()
 	t.Run("OK", func(t *testing.T) {
