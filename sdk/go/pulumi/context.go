@@ -859,7 +859,7 @@ func (ctx *Context) invokePackageRaw(
 	if err != nil {
 		return nil, nil, false, false, err
 	}
-	if provider := providers[getPackage(tok)]; provider != nil {
+	if provider := ctx.getProvider(tok, packageRef, nil, providers); provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
 			return nil, nil, false, false, err
@@ -1095,7 +1095,7 @@ func (ctx *Context) CallPackage(
 			if err != nil {
 				return nil, err
 			}
-			provider = providers[getPackage(tok)]
+			provider = ctx.getProvider(tok, packageRef, nil, providers)
 			version = options.Version
 			pluginURL = options.PluginDownloadURL
 		}
