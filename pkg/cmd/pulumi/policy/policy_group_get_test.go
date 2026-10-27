@@ -96,6 +96,7 @@ func TestPolicyGroupGet_DefaultOutput(t *testing.T) {
 
 	assert.Equal(t, `Name:                  prod-policies
 Org default:           no
+Entity type:           stacks
 Mode:                  preventative
 Agent pool:            pool-1
 Applied policy packs:  2
@@ -129,6 +130,7 @@ func TestPolicyGroupGet_DefaultOutput_Empty(t *testing.T) {
 
 	assert.Equal(t, `Name:                  default-policy-group
 Org default:           yes
+Entity type:           stacks
 Mode:                  audit
 Applied policy packs:  0
 Stacks:                0

@@ -180,6 +180,7 @@ func renderPolicyGroupGetText(w io.Writer, resp cloudapitype.PolicyGroup) error 
 
 	fmt.Fprintf(w, "%-22s %s\n", "Name:", resp.Name)
 	fmt.Fprintf(w, "%-22s %s\n", "Org default:", isDefault)
+	fmt.Fprintf(w, "%-22s %s\n", "Entity type:", string(resp.EntityType)) //nolint:staticcheck // still part of the output
 	fmt.Fprintf(w, "%-22s %s\n", "Mode:", string(resp.Mode))
 	if resp.AgentPoolID != nil && *resp.AgentPoolID != "" {
 		fmt.Fprintf(w, "%-22s %s\n", "Agent pool:", *resp.AgentPoolID)
