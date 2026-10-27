@@ -2663,8 +2663,9 @@ func (pkg *pkgContext) genResource(
 			existsPackageRef = "ref"
 			fmt.Fprintf(w, "\tref, err := %s.PkgGetPackageRef(ctx)\n", pkg.internalModuleName)
 			fmt.Fprintf(w, "\tif err != nil {\n")
-			fmt.Fprintf(w, "\t\tvar ret pulumi.BoolOutput\n")
-			fmt.Fprintf(w, "\t\treturn ret\n")
+			fmt.Fprintf(w, "\t\treturn pulumi.Bool(false).ToBoolOutput().ApplyT(func(bool) (bool, error) {\n")
+			fmt.Fprintf(w, "\t\t\treturn false, err\n")
+			fmt.Fprintf(w, "\t\t}).(pulumi.BoolOutput)\n")
 			fmt.Fprintf(w, "\t}\n")
 		}
 

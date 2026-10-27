@@ -69,8 +69,9 @@ func GoodbyeExists(ctx *pulumi.Context,
 	id pulumi.StringInput, state *GoodbyeState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
 	ref, err := internal.PkgGetPackageRef(ctx)
 	if err != nil {
-		var ret pulumi.BoolOutput
-		return ret
+		return pulumi.Bool(false).ToBoolOutput().ApplyT(func(bool) (bool, error) {
+			return false, err
+		}).(pulumi.BoolOutput)
 	}
 	return ctx.ExistsResource("goodbye:index:Goodbye", id, state, ref, opts...)
 }
