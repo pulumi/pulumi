@@ -269,8 +269,13 @@ func Remove(def *yaml.Node, names []string, path resource.PropertyPath) error {
 		if _, ok := syntax.Get(full); !ok {
 			continue
 		}
-		if len(path) > 0 && removeLeavesLoneSecureKey(syntax, full) {
-			return errSecureReprReserved
+		if key, value, ok := loneEntryAfterRemove(syntax, full); ok && len(path) > 0 {
+			if key.Value == "secure" && value.Kind == yaml.ScalarNode && value.ShortTag() == "!!str" {
+				return errSecureReprReserved
+			}
+			if isReservedName(key.Value, true) {
+				return errReservedName
+			}
 		}
 		targets = append(targets, full)
 	}
@@ -282,20 +287,20 @@ func Remove(def *yaml.Node, names []string, path resource.PropertyPath) error {
 	return nil
 }
 
-func removeLeavesLoneSecureKey(syntax encoding.YAMLSyntax, full resource.PropertyPath) bool {
+func loneEntryAfterRemove(syntax encoding.YAMLSyntax, full resource.PropertyPath) (key, value *yaml.Node, ok bool) {
 	removedKey, isKey := full[len(full)-1].(string)
 	if !isKey {
-		return false
+		return nil, nil, false
 	}
 	parent, ok := syntax.Get(full[:len(full)-1])
 	if !ok || parent.Kind != yaml.MappingNode || len(parent.Content) != 4 {
-		return false
+		return nil, nil, false
 	}
 	kept := parent.Content[0:2]
 	if kept[0].Value == removedKey {
 		kept = parent.Content[2:4]
 	}
-	return kept[0].Value == "secure" && kept[1].Kind == yaml.ScalarNode && kept[1].ShortTag() == "!!str"
+	return kept[0], kept[1], true
 }
 
 // ValueNode renders v as a YAML node using the typing rules of "pulumi config set". nested reports whether v is set

@@ -380,6 +380,14 @@ func TestRemove(t *testing.T) {
 			err:   `maps with the single key "secure" are reserved`,
 		},
 		{
+			name:  "map member leaving a lone Fn:: key",
+			in:    "values:\n  pulumiConfig:\n    proj:a:\n      Fn::GetAtt: x\n      c: 1\n",
+			names: []string{"proj:a"},
+			path:  "c",
+			out:   "values:\n  pulumiConfig:\n    proj:a:\n      Fn::GetAtt: x\n      c: 1\n",
+			err:   "keys starting with fn:: are reserved in environments",
+		},
+		{
 			name:  "map member leaving a lone secure bool",
 			in:    "values:\n  pulumiConfig:\n    proj:a:\n      b: 1\n      secure: true\n",
 			names: []string{"proj:a"},
