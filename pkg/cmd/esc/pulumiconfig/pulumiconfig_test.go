@@ -34,38 +34,63 @@ func parse(t *testing.T, text string) *yaml.Node {
 func TestValueNodeObject(t *testing.T) {
 	t.Parallel()
 
-	key := config.MustMakeKey("proj", "a")
-
-	node, err := ValueNode(key, config.NewObjectValue(`{"b":["${x}",1]}`), false)
+	node, err := ValueNode(config.NewObjectValue(`{"b":["${x}",1]}`), false)
 	require.NoError(t, err)
 	out, err := yaml.Marshal(&node)
 	require.NoError(t, err)
 	assert.Equal(t, "b:\n    - $${x}\n    - 1\n", string(out))
 
-	_, err = ValueNode(key, config.NewObjectValue(`{"fn::toJSON":"x"}`), false)
+	_, err = ValueNode(config.NewObjectValue(`{"fn::toJSON":"x"}`), false)
 	require.ErrorContains(t, err, "keys starting with fn:: are reserved in environments")
 
-	_, err = ValueNode(key, config.NewObjectValue(`{"b":{"fn::open":"x"}}`), false)
+	_, err = ValueNode(config.NewObjectValue(`{"b":{"fn::open":"x"}}`), false)
 	require.ErrorContains(t, err, "keys starting with fn:: are reserved in environments")
 
-	_, err = ValueNode(key, config.NewObjectValue(`{"Fn::GetAtt":["a","b"]}`), false)
+	_, err = ValueNode(config.NewObjectValue(`{"Fn::GetAtt":["a","b"]}`), false)
 	require.ErrorIs(t, err, errReservedName)
 
-	_, err = ValueNode(key, config.NewSecureObjectValue(`{"b":"x"}`), false)
+	_, err = ValueNode(config.NewSecureObjectValue(`{"b":"x"}`), false)
 	require.ErrorContains(t, err, "secret object values are not supported")
 
 	for _, object := range []string{`{"secure":"x"}`, `{"b":{"secure":"x"}}`, `{"b":[{"secure":"x"}]}`} {
-		_, err = ValueNode(key, config.NewObjectValue(object), false)
+		_, err = ValueNode(config.NewObjectValue(object), false)
 		require.ErrorIs(t, err, errSecureReprReserved, object)
 	}
-	_, err = ValueNode(config.MustMakeKey("proj", "a.b"), config.NewObjectValue(`{"secure":"x"}`), true)
+	_, err = ValueNode(config.NewObjectValue(`{"secure":"x"}`), true)
 	require.ErrorIs(t, err, errSecureReprReserved)
 
-	node, err = ValueNode(key, config.NewObjectValue(`{"b":{"secure":1},"c":{"secure":"x","d":1}}`), false)
+	node, err = ValueNode(config.NewObjectValue(`{"b":{"secure":1},"c":{"secure":"x","d":1}}`), false)
 	require.NoError(t, err)
 	out, err = yaml.Marshal(&node)
 	require.NoError(t, err)
 	assert.Equal(t, "b:\n    secure: 1\nc:\n    d: 1\n    secure: x\n", string(out))
+}
+
+func TestValueNodeTyping(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		value    config.Value
+		nested   bool
+		expected string
+	}{
+		{config.NewValue("42"), false, "\"42\"\n"},
+		{config.NewValue("42"), true, "42\n"},
+		{config.NewValue("true"), false, "\"true\"\n"},
+		{config.NewValue("true"), true, "true\n"},
+		{config.NewValue("042"), true, "\"042\"\n"},
+		{config.NewValue("18446744073709551615"), true, "1.8446744073709552e+19\n"},
+		{config.NewTypedValue("42", config.TypeString), true, "\"42\"\n"},
+		{config.NewTypedValue("42", config.TypeInt), false, "42\n"},
+		{config.NewValue("${x}"), true, "$${x}\n"},
+	}
+	for _, tt := range tests {
+		node, err := ValueNode(tt.value, tt.nested)
+		require.NoError(t, err)
+		out, err := yaml.Marshal(&node)
+		require.NoError(t, err)
+		assert.Equal(t, tt.expected, string(out), "%v nested=%v", tt.value, tt.nested)
+	}
 }
 
 func TestSecretNode(t *testing.T) {
@@ -76,7 +101,7 @@ func TestSecretNode(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "fn::secret:\n    ciphertext: abc\n", string(out))
 
-	viaValue, err := ValueNode(config.MustMakeKey("proj", "a"), config.NewSecureValue("abc"), false)
+	viaValue, err := ValueNode(config.NewSecureValue("abc"), false)
 	require.NoError(t, err)
 	assert.Equal(t, node, viaValue)
 }

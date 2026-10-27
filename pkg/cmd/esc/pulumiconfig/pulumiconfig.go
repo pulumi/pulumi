@@ -18,7 +18,6 @@ package pulumiconfig
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -60,9 +59,9 @@ func rootMapping(def *yaml.Node) (*yaml.Node, error) {
 	return def, nil
 }
 
-// ValueNode renders v as a YAML node using the typing rules of "pulumi config set": top-level strings stay strings
-// and --path leaves are coerced.
-func ValueNode(key config.Key, v config.Value, path bool) (yaml.Node, error) {
+// ValueNode renders v as a YAML node using the typing rules of "pulumi config set". nested reports whether v is set
+// below the top level of a --path key; only then are untyped strings such as "42" or "true" coerced.
+func ValueNode(v config.Value, nested bool) (yaml.Node, error) {
 	if v.Secure() {
 		if v.Object() {
 			return yaml.Node{}, errors.New("secret object values are not supported for stack-managed environments; " +
@@ -84,36 +83,14 @@ func ValueNode(key config.Key, v config.Value, path bool) (yaml.Node, error) {
 		return yaml.Node{}, errSecureReprReserved
 	}
 
-	// As element 0 of a new array the leaf keeps Map.Set's --path coercion but skips its "secure"-key check, which
-	// needs the entry's siblings; Set makes that check against the real definition.
-	scratchKey := key
-	isNested := false
-	if path {
-		segments, err := resource.ParsePropertyPathStrict(key.Name())
-		if err != nil {
-			return yaml.Node{}, fmt.Errorf("invalid config key path: %w", err)
-		}
-		if len(segments) > 1 {
-			isNested = true
-			scratchKey = config.MustMakeKey(key.Namespace(), resource.PropertyPath{segments[0], 0}.String())
-		}
+	toObject := v.ToObject
+	if nested {
+		toObject = v.ToCoercedObject
 	}
-	scratch := config.Map{}
-	if err := scratch.Set(scratchKey, v, path); err != nil {
-		return yaml.Node{}, err
-	}
-	var stored config.Value
-	for _, value := range scratch {
-		stored = value
-	}
-	obj, err := stored.ToObject()
+	obj, err := toObject()
 	if err != nil {
 		return yaml.Node{}, err
 	}
-	if isNested {
-		obj = obj.([]any)[0]
-	}
-
 	literal, err := literalValue(obj)
 	if err != nil {
 		return yaml.Node{}, err
