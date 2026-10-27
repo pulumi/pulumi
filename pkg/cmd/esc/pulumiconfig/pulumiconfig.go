@@ -59,7 +59,7 @@ func isConfigLeaf(n *yaml.Node) bool {
 }
 
 func isFunctionCall(n *yaml.Node) bool {
-	return n.Kind == yaml.MappingNode && len(n.Content) == 2 && isReservedName(n.Content[0].Value)
+	return n.Kind == yaml.MappingNode && len(n.Content) == 2 && isReservedName(n.Content[0].Value, true)
 }
 
 func resetNode(n *yaml.Node, kind yaml.Kind, tag string) {
@@ -130,11 +130,11 @@ func checkNames(names []string, path resource.PropertyPath) error {
 	if len(names) == 0 {
 		return errors.New("at least one config key name is required")
 	}
-	if slices.ContainsFunc(names, isReservedName) {
+	if slices.ContainsFunc(names, func(name string) bool { return isReservedName(name, true) }) {
 		return errReservedName
 	}
 	for _, seg := range path {
-		if s, ok := seg.(string); ok && isReservedName(s) {
+		if s, ok := seg.(string); ok && isReservedName(s, true) {
 			return errReservedName
 		}
 	}
