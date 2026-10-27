@@ -58,6 +58,10 @@ func isConfigLeaf(n *yaml.Node) bool {
 	return n.Kind == yaml.ScalarNode || isSecret
 }
 
+func isFunctionCall(n *yaml.Node) bool {
+	return n.Kind == yaml.MappingNode && len(n.Content) == 2 && isReservedName(n.Content[0].Value)
+}
+
 func resetNode(n *yaml.Node, kind yaml.Kind, tag string) {
 	*n = yaml.Node{Kind: kind, Tag: tag, HeadComment: n.HeadComment, LineComment: n.LineComment}
 }
@@ -240,6 +244,9 @@ func prepareContainers(syntax encoding.YAMLSyntax, full resource.PropertyPath) e
 				return fmt.Errorf("%v: expected an array or an object", full[:i+2])
 			}
 			resetNode(child, placeholderKind, "")
+		} else if isContainerStep && isFunctionCall(child) {
+			// ESC rejects a function key with siblings.
+			return fmt.Errorf("%v: cannot set a path inside %s", full[:i+1], child.Content[0].Value)
 		}
 		cur = child
 	}

@@ -153,8 +153,12 @@ func TestSet(t *testing.T) {
 			key: "a.b.c", path: true, value: "x", setErr: `["proj:a"].b.c: expected an array or an object`,
 		},
 		{
-			name: "other function calls are not replaced", in: pc + "    proj:a:\n      fn::open: x\n", key: "a.b", path: true,
-			value: "z", out: pc + "    proj:a:\n      fn::open: x\n      b: z\n",
+			name: "other function calls are not extended", in: pc + "    proj:a:\n      fn::open: x\n", key: "a.b", path: true,
+			value: "z", setErr: `["proj:a"]: cannot set a path inside fn::open`,
+		},
+		{
+			name: "nested function calls are not extended", in: pc + "    proj:a:\n      b:\n        fn::toJSON: x\n",
+			key: "a.b.c", path: true, value: "z", setErr: `["proj:a"].b: cannot set a path inside fn::toJSON`,
 		},
 		{
 			name: "secure leaf overwritten alone", in: pc + "    proj:a:\n      secure: true\n", key: "a.secure", path: true,
