@@ -64,6 +64,13 @@ type Host interface {
 	// found, or an error occurs while creating it, a non-nil error is returned. The provider is booted with the
 	// workspace state carried by ctx (stack configuration, runtime options, project name).
 	Provider(ctx *Context, descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
+
+	// ProviderFromPath loads a new copy of the provider for a given package from the binary at path. If a provider
+	// for this package could not be found, or an error occurs while creating it, a non-nil error is returned. The
+	// provider is booted with the workspace state carried by ctx (stack configuration, runtime options, project
+	// name).
+	ProviderFromPath(ctx *Context, path string, e env.Env) (Provider, error)
+
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
 	LanguageRuntime(ctx *Context, runtime string) (LanguageRuntime, error)

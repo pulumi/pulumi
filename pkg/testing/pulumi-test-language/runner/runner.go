@@ -757,13 +757,14 @@ func (eng *languageTestServer) RunLanguageTest(
 		token.LanguagePluginName, pulumirpc.NewLanguageRuntimeClient(conn))
 
 	host := &testHost{
-		engine:          eng,
-		runtime:         languageClient,
-		runtimeName:     token.LanguagePluginName,
-		languageInfo:    token.LanguageInfo,
-		providers:       make(map[string]func() (plugin.Provider, error)),
-		connections:     make(map[plugin.Provider]io.Closer),
-		contextServices: make(map[*plugin.Context][]*plugin.GrpcServer),
+		engine:           eng,
+		runtime:          languageClient,
+		runtimeName:      token.LanguagePluginName,
+		languageInfo:     token.LanguageInfo,
+		providers:        make(map[string]func() (plugin.Provider, error)),
+		connections:      make(map[plugin.Provider]io.Closer),
+		contextServices:  make(map[*plugin.Context][]*plugin.GrpcServer),
+		contextProviders: make(map[*plugin.Context][]plugin.Provider),
 	}
 
 	pctx, err := plugin.NewContextWithRoot(
@@ -800,7 +801,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			targetDirectory := filepath.Join(token.TemporaryDirectory, "providers", pkg)
 			if eng.providersCache[cacheKey] {
 				host.providers[key] = func() (plugin.Provider, error) {
-					pluginProvider, err := plugin.NewProviderFromPath(host, pctx, targetDirectory)
+					pluginProvider, err := host.ProviderFromPath(pctx, targetDirectory, env.Global())
 					if err != nil {
 						return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
 					}
@@ -842,7 +843,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				}
 
 				host.providers[key] = func() (plugin.Provider, error) {
-					pluginProvider, err := plugin.NewProviderFromPath(host, pctx, targetDirectory)
+					pluginProvider, err := host.ProviderFromPath(pctx, targetDirectory, env.Global())
 					if err != nil {
 						return nil, fmt.Errorf("load provider %s from %s: %w", pkg, targetDirectory, err)
 					}
