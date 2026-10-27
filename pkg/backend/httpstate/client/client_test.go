@@ -2671,7 +2671,7 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 	}, nil, nil, nil, nil, true)
 	require.NoError(t, err)
 
-	assert.True(t, request.ManagedEnvironment)
+	assert.True(t, request.CreateManagedEnvironment)
 	assert.Equal(t, new("proj/renamed"), stack.ManagedEnvironment)
 }
 

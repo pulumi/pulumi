@@ -1290,12 +1290,12 @@ func (pc *Client) CreateStack(
 		Tags:        tags,
 	}
 	createStackReq := apitype.CreateStackRequest{
-		StackName:          stackID.Stack.String(),
-		Tags:               tags,
-		Teams:              teams,
-		State:              state,
-		Config:             config,
-		ManagedEnvironment: managedEnvironment,
+		StackName:                stackID.Stack.String(),
+		Tags:                     tags,
+		Teams:                    teams,
+		State:                    state,
+		Config:                   config,
+		CreateManagedEnvironment: managedEnvironment,
 	}
 
 	var createStackResp apitype.CreateStackResponse
