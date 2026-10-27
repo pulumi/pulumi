@@ -18,6 +18,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -26,26 +28,39 @@ type policyDisableArgs struct {
 	version     string
 }
 
-func newPolicyDisableCmd() *cobra.Command {
+func newPolicyDisableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	args := policyDisableArgs{}
+	outputFormat := defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Use:   "disable",
 		Short: "Disable a Policy Pack for a Pulumi organization",
-		Long:  "Disable a Policy Pack for a Pulumi organization",
+		Long: "Disable a Policy Pack for a Pulumi organization\n" +
+			"\n" +
+			"Examples:\n" +
+			"  pulumi policy disable acme/aws-guardrails\n" +
+			"  pulumi policy disable acme/aws-guardrails --policy-group prod --output json",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			var err error
-			policyPack, err := requirePolicyPack(ctx, cliArgs[0], cmdBackend.DefaultLoginManager)
+			policyPack, client, err := requirePolicyPackAndClient(ctx, ws, lm, cliArgs[0])
 			if err != nil {
 				return err
 			}
 
 			// Attempt to disable the Policy Pack.
-			return policyPack.Disable(ctx, args.policyGroup, backend.PolicyPackOperation{
+			err = policyPack.Disable(ctx, args.policyGroup, backend.PolicyPackOperation{
 				VersionTag: &args.version, Scopes: backend.CancellationScopes,
 			})
+			if err != nil {
+				return err
+			}
+
+			resp, err := readBackPolicyGroup(ctx, client, policyPack, args.policyGroup)
+			if err != nil {
+				return err
+			}
+			return outputFormat.Get()(cmd.OutOrStdout(), resp)
 		},
 	}
 
@@ -65,5 +80,6 @@ func newPolicyDisableCmd() *cobra.Command {
 		"The version of the Policy Pack that will be disabled; "+
 			"if not specified, any enabled version of the Policy Pack will be disabled")
 
+	outputflag.VarP(cmd.Flags(), &outputFormat)
 	return cmd
 }
