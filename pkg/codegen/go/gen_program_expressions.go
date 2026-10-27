@@ -485,6 +485,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					// input type directly. Use the SDK's `pulumi.ToStringArray` helper
 					// (and similarly for other scalar array/map types).
 					g.Fgenf(w, "%s(%.v)", conv, from)
+				} else if isFromOutput && g.typedArrayOutputAlreadyInput(fromType, typeName) {
+					// The ApplyT is already a StringArrayOutput (or the other typed array
+					// outputs). That implements StringArrayInput. pulumi.StringArray(...) is
+					// a slice conversion and does not accept the output struct.
+					g.Fgenf(w, "%.v", from)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}
@@ -1760,7 +1765,18 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		}
 		return "map[string]" + valType
 	case *model.ListType:
-		argTypeName := g.argumentTypeName(destType.ElementType, isInput)
+		elemType := destType.ElementType
+		// []*string (and the other optional primitive slices) have no registered
+		// output type, so ApplyT would return AnyOutput. Project the element to
+		// the plain primitive so the closure returns []string and the cast is
+		// StringArrayOutput. Input names stay pulumi.StringArray; optional lists
+		// and objects are not primitives and are left alone (pulumi/pulumi#25387).
+		if !isInput {
+			if _, ok := g.optionalPrimitivePointerGoType(elemType); ok {
+				elemType = pcl.UnwrapOption(model.ResolveOutputs(elemType))
+			}
+		}
+		argTypeName := g.argumentTypeName(elemType, isInput)
 		isResourceTypeName := argTypeName == "pulumi.Resource" || argTypeName == "pulumi.ProviderResource"
 		if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 			if argTypeName == "pulumi.Any" {
@@ -1987,6 +2003,34 @@ func pulumiConverterSuffix(goType string) (string, bool) {
 		return inner + "Ptr", true
 	}
 	return pulumiScalarSuffix(goType)
+}
+
+// optionalPrimitivePointerGoType reports the Go pointer type of an optional
+// primitive ("*string", "*bool", "*int", "*float64"). ok is false otherwise,
+// including optional lists, maps, and objects.
+func (g *generator) optionalPrimitivePointerGoType(t model.Type) (string, bool) {
+	t = model.ResolveOutputs(t)
+	if !optionalPrimitive(t) {
+		return "", false
+	}
+	goType := g.argumentTypeName(pcl.UnwrapOption(t), false /*isInput*/)
+	switch goType {
+	case "string", "bool", "int", "float64":
+		return "*" + goType, true
+	default:
+		return "", false
+	}
+}
+
+// typedArrayOutputAlreadyInput reports whether an output list lowers to a typed
+// array output that already implements the input type named by typeName.
+func (g *generator) typedArrayOutputAlreadyInput(fromType model.Type, typeName string) bool {
+	plain := g.argumentTypeName(model.ResolveOutputs(fromType), false)
+	suffix, ok := pulumiConverterSuffix(plain)
+	if !ok || !strings.HasSuffix(suffix, "Array") {
+		return false
+	}
+	return typeName == "pulumi."+suffix
 }
 
 // plainCollectionConverter returns the `pulumi.To<Suffix>` helper that

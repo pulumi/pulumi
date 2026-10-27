@@ -615,6 +615,80 @@ func TestDeferredOutputTypeParameter(t *testing.T) {
 	assert.Equal(t, "interface{}", deferredOutputTypeParameter(model.DynamicType))
 }
 
+// Reproduction for https://github.com/pulumi/pulumi/issues/25356.
+// Prints generated Go so the splat of an optional string can be inspected.
+func TestSplatOptionalPrimitiveGenerateProgram(t *testing.T) {
+	t.Parallel()
+
+	source := `
+resource "source" "splatopt:index:Container" {
+	inputs = ["a", "b"]
+}
+
+resource "sink" "splatopt:index:Container" {
+	inputs = source.details[*].value
+}
+
+output "values" {
+	value = source.details[*].value
+}
+`
+	parser := syntax.NewParser()
+	err := parser.ParseFile(strings.NewReader(source), "splat_optional.pp")
+	require.NoError(t, err)
+	require.False(t, parser.Diagnostics.HasErrors(), parser.Diagnostics)
+
+	host := utils.NewContextWithProviders(testdataPath, utils.NewSchemaProvider("splatopt", "1.0.0"))
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewPluginLoader(host))
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), diags)
+
+	files, diags, err := GenerateProgram(program)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), diags)
+	assert.Equal(t, `package main
+
+import (
+	"example.com/pulumi-splatopt/sdk/go/splatopt"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+func main() {
+	pulumi.Run(func(ctx *pulumi.Context) error {
+		source, err := splatopt.NewContainer(ctx, "source", &splatopt.ContainerArgs{
+			Inputs: pulumi.StringArray{
+				pulumi.String("a"),
+				pulumi.String("b"),
+			},
+		})
+		if err != nil {
+			return err
+		}
+		_, err = splatopt.NewContainer(ctx, "sink", &splatopt.ContainerArgs{
+			Inputs: source.Details.ApplyT(func(details []splatopt.Detail) ([]string, error) {
+				var splat0 []string
+				for _, val0 := range details {
+					splat0 = append(splat0, *val0.Value)
+				}
+				return splat0, nil
+			}).(pulumi.StringArrayOutput),
+		})
+		if err != nil {
+			return err
+		}
+		ctx.Export("values", source.Details.ApplyT(func(details []splatopt.Detail) ([]string, error) {
+			var splat1 []string
+			for _, val0 := range details {
+				splat1 = append(splat1, *val0.Value)
+			}
+			return splat1, nil
+		}).(pulumi.StringArrayOutput))
+		return nil
+	})
+}
+`, string(files["main.go"]))
+}
+
 func TestDeferredOutputCastTypeParameter(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, "pulumi.AnyOutput", deferredOutputCastTypeParameter(model.DynamicType))
@@ -627,6 +701,18 @@ func TestDeferredOutputCastTypeParameter(t *testing.T) {
 	assert.Equal(t, "pulumi.BoolArrayOutput", deferredOutputCastTypeParameter(model.NewListType(model.BoolType)))
 	assert.Equal(t, "pulumi.Float64ArrayOutput", deferredOutputCastTypeParameter(model.NewListType(model.NumberType)))
 	assert.Equal(t, "pulumi.ArrayOutput", deferredOutputCastTypeParameter(model.NewListType(model.DynamicType)))
+	// Optional primitive elements use the typed array output (pulumi/pulumi#25356).
+	assert.Equal(t, "pulumi.StringArrayOutput", deferredOutputCastTypeParameter(
+		model.NewListType(model.NewOptionalType(model.StringType))))
+	assert.Equal(t, "pulumi.IntArrayOutput", deferredOutputCastTypeParameter(
+		model.NewListType(model.NewOptionalType(model.IntType))))
+	assert.Equal(t, "pulumi.BoolArrayOutput", deferredOutputCastTypeParameter(
+		model.NewListType(model.NewOptionalType(model.BoolType))))
+	assert.Equal(t, "pulumi.Float64ArrayOutput", deferredOutputCastTypeParameter(
+		model.NewListType(model.NewOptionalType(model.NumberType))))
+	// An optional list is not a pointer element. Keep the nested array output (pulumi/pulumi#25387).
+	assert.Equal(t, "pulumi.ArrayOutput", deferredOutputCastTypeParameter(
+		model.NewListType(model.NewOptionalType(model.NewListType(model.NumberType)))))
 	assert.Equal(t, "pulumi.StringMapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.StringType)))
 	assert.Equal(t, "pulumi.IntMapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.IntType)))
 	assert.Equal(t, "pulumi.BoolMapOutput", deferredOutputCastTypeParameter(model.NewMapType(model.BoolType)))
