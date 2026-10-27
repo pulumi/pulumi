@@ -102,8 +102,9 @@ func newPolicyEnableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 
 			// Load the configuration from the user-specified JSON file into config object.
 			var config map[string]*json.RawMessage
+			var environments []string
 			if args.config != "" {
-				config, err = loadPolicyConfigFromFile(args.config)
+				config, environments, err = loadPolicyConfigFromFile(args.config)
 				if err != nil {
 					return err
 				}
@@ -112,9 +113,10 @@ func newPolicyEnableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 			// Attempt to enable the Policy Pack.
 			err = policyPack.Enable(ctx, args.policyGroup,
 				backend.PolicyPackOperation{
-					VersionTag: version,
-					Scopes:     backend.CancellationScopes,
-					Config:     config,
+					VersionTag:   version,
+					Scopes:       backend.CancellationScopes,
+					Config:       config,
+					Environments: environments,
 				})
 			if err != nil {
 				return err
@@ -142,16 +144,17 @@ func newPolicyEnableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 
 	cmd.PersistentFlags().StringVar(
 		&args.config, "config", "",
-		"The file path for the Policy Pack configuration file")
+		"The file path for the Policy Pack configuration file; ESC environments listed in its \"environments\" key "+
+			"are attached to the Policy Pack")
 
 	outputflag.VarP(cmd.Flags(), &outputFormat)
 	return cmd
 }
 
-func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, error) {
-	analyzerPolicyConfigMap, err := resourceanalyzer.LoadPolicyPackConfigFromFile(file)
+func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, []string, error) {
+	analyzerPolicyConfigMap, environments, err := resourceanalyzer.LoadPolicyPackConfigAndEnvironmentsFromFile(file)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Convert type map[string]plugin.AnalyzerPolicyConfig to map[string]*json.RawMessage.
@@ -159,11 +162,11 @@ func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, error) 
 	for k, v := range analyzerPolicyConfigMap {
 		raw, err := marshalAnalyzerPolicyConfig(v)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		config[k] = raw
 	}
-	return config, nil
+	return config, environments, nil
 }
 
 // marshalAnalyzerPolicyConfig converts the type plugin.AnalyzerPolicyConfig to structure the data
