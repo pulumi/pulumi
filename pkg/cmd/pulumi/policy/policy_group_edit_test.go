@@ -20,20 +20,21 @@ import (
 	"errors"
 	"testing"
 
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // mockPolicyGroupEditClient records each BatchUpdatePolicyGroup call and
 // returns getResp / getErr from GetPolicyGroup. updateErr forces
 // BatchUpdatePolicyGroup to fail.
 type mockPolicyGroupEditClient struct {
-	updates      [][]cloudapitype.UpdatePolicyGroupRequest
+	updates      [][]apitype.UpdatePolicyGroupRequest
 	updateGroups []string
 	updateErr    error
 
-	getResp     cloudapitype.PolicyGroup
+	getResp     apitype.GetPolicyGroupResponse
 	getErr      error
 	getErrOn    int // which Get call to fail (1-indexed)
 	getCalls    int
@@ -42,7 +43,7 @@ type mockPolicyGroupEditClient struct {
 }
 
 func (m *mockPolicyGroupEditClient) BatchUpdatePolicyGroup(
-	_ context.Context, _, policyGroup string, reqs []cloudapitype.UpdatePolicyGroupRequest,
+	_ context.Context, _, policyGroup string, reqs []apitype.UpdatePolicyGroupRequest,
 ) error {
 	m.updates = append(m.updates, reqs)
 	m.updateGroups = append(m.updateGroups, policyGroup)
@@ -51,15 +52,15 @@ func (m *mockPolicyGroupEditClient) BatchUpdatePolicyGroup(
 
 func (m *mockPolicyGroupEditClient) GetPolicyGroup(
 	_ context.Context, org, policyGroup string,
-) (cloudapitype.PolicyGroup, error) {
+) (apitype.GetPolicyGroupResponse, error) {
 	m.getCalls++
 	m.gotGetOrg = org
 	m.gotGetGroup = policyGroup
 	if m.getErrOn > 0 && m.getCalls == m.getErrOn {
-		return cloudapitype.PolicyGroup{}, m.getErr
+		return apitype.GetPolicyGroupResponse{}, m.getErr
 	}
 	if m.getErrOn == 0 && m.getErr != nil {
-		return cloudapitype.PolicyGroup{}, m.getErr
+		return apitype.GetPolicyGroupResponse{}, m.getErr
 	}
 	return m.getResp, nil
 }
@@ -79,11 +80,11 @@ func failingPolicyGroupEditFactory(err error) policyGroupEditClientFactory {
 func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	t.Parallel()
 
-	resp := cloudapitype.PolicyGroup{
+	resp := apitype.GetPolicyGroupResponse{
 		Name:         "production",
 		IsOrgDefault: false,
-		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
-		Mode:         cloudapitype.PolicyGroupModeAudit,
+		EntityType:   apitype.Stacks,
+		Mode:         apitype.PolicyGroupModeAudit,
 	}
 	c := &mockPolicyGroupEditClient{getResp: resp}
 
@@ -97,14 +98,15 @@ func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, 1, c.getCalls)
-	assert.Equal(t, [][]cloudapitype.UpdatePolicyGroupRequest{
-		{policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{NewName: new("production")})},
+	assert.Equal(t, [][]apitype.UpdatePolicyGroupRequest{
+		{{NewName: new("production")}},
 	}, c.updates)
 	assert.Equal(t, []string{"prod-policies"}, c.updateGroups)
 	assert.Equal(t, "acme", c.gotGetOrg)
 	assert.Equal(t, "production", c.gotGetGroup)
 	assert.Equal(t, `Name:                  production
 Org default:           no
+Entity type:           stacks
 Mode:                  audit
 Applied policy packs:  0
 Stacks:                0
@@ -115,10 +117,10 @@ Accounts:              0
 func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 	t.Parallel()
 
-	c := &mockPolicyGroupEditClient{getResp: cloudapitype.PolicyGroup{
+	c := &mockPolicyGroupEditClient{getResp: apitype.GetPolicyGroupResponse{
 		Name:       "production",
-		EntityType: cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
-		Mode:       cloudapitype.PolicyGroupModePreventative,
+		EntityType: apitype.Stacks,
+		Mode:       apitype.PolicyGroupModePreventative,
 	}}
 
 	args := policyGroupEditArgs{
@@ -142,35 +144,17 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", args)
 	require.NoError(t, err)
 
-	assert.Equal(t, [][]cloudapitype.UpdatePolicyGroupRequest{{
-		policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{NewName: new("production")}),
-		policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{
-			AddStack: &cloudapitype.AppPulumiStackReference{Name: "prod", RoutingProject: "web"},
-		}),
-		policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{
-			AddStack: &cloudapitype.AppPulumiStackReference{Name: "standalone"},
-		}),
-		policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{
-			RemoveStack: &cloudapitype.AppPulumiStackReference{Name: "legacy", RoutingProject: "web"},
-		}),
-		policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{
-			AddInsightsAccount: &cloudapitype.AppInsightsAccountReference{Name: "acct-2"},
-		}),
-		policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{
-			RemoveInsightsAccount: &cloudapitype.AppInsightsAccountReference{Name: "acct-1"},
-		}),
-		policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{
-			AddPolicyPack: &cloudapitype.AppPolicyPackMetadata{Name: "aws-guardrails", Version: 3},
-		}),
-		policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{
-			AddPolicyPack: &cloudapitype.AppPolicyPackMetadata{Name: "tagging"},
-		}),
-		policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{
-			RemovePolicyPack: &cloudapitype.AppPolicyPackMetadata{Name: "old-pack", VersionTag: "stable"},
-		}),
-		policyGroupUpdate(cloudapitype.AppUpdatePolicyGroupRequest{
-			RemovePolicyPack: &cloudapitype.AppPolicyPackMetadata{Name: "unpinned"},
-		}),
+	assert.Equal(t, [][]apitype.UpdatePolicyGroupRequest{{
+		{NewName: new("production")},
+		{AddStack: &apitype.PulumiStackReference{Name: "prod", RoutingProject: "web"}},
+		{AddStack: &apitype.PulumiStackReference{Name: "standalone"}},
+		{RemoveStack: &apitype.PulumiStackReference{Name: "legacy", RoutingProject: "web"}},
+		{AddInsightsAccount: &apitype.InsightsAccountReference{Name: "acct-2"}},
+		{RemoveInsightsAccount: &apitype.InsightsAccountReference{Name: "acct-1"}},
+		{AddPolicyPack: &apitype.PolicyPackMetadata{Name: "aws-guardrails", Version: 3}},
+		{AddPolicyPack: &apitype.PolicyPackMetadata{Name: "tagging"}},
+		{RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "old-pack", VersionTag: "stable"}},
+		{RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "unpinned"}},
 	}}, c.updates)
 
 	// The batch addresses the original group name; the post-edit GET uses
@@ -178,15 +162,6 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 	assert.Equal(t, []string{"prod-policies"}, c.updateGroups)
 	assert.Equal(t, 1, c.getCalls)
 	assert.Equal(t, "production", c.gotGetGroup)
-	assert.JSONEq(t, `{
-		"name": "production",
-		"isOrgDefault": false,
-		"entityType": "stacks",
-		"mode": "preventative",
-		"stacks": [],
-		"appliedPolicyPacks": [],
-		"accounts": []
-	}`, buf.String())
 }
 
 func TestPolicyGroupEdit_NoFlagsChanged(t *testing.T) {

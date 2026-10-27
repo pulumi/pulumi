@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
@@ -70,7 +69,7 @@ type MockBackend struct {
 	ListStacksF  func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
 	ListPolicyPacksF func(context.Context, string, ContinuationToken) (
-		cloudapitype.AppListPolicyPacksResponse, ContinuationToken, error)
+		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 	ListStackNamesF func(context.Context, ListStackNamesFilter, ContinuationToken) (
 		[]StackReference, ContinuationToken, error)
 	RenameStackF                    func(context.Context, Stack, tokens.QName) (StackReference, error)
@@ -133,13 +132,13 @@ func (be *MockBackend) SetCurrentProject(project *workspace.Project) {
 }
 
 func (be *MockBackend) ListPolicyGroups(context.Context, string, ContinuationToken) (
-	cloudapitype.AppListPolicyGroupsResponse, ContinuationToken, error,
+	apitype.ListPolicyGroupsResponse, ContinuationToken, error,
 ) {
 	panic("not implemented")
 }
 
 func (be *MockBackend) ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
-	cloudapitype.AppListPolicyPacksResponse, ContinuationToken, error,
+	apitype.ListPolicyPacksResponse, ContinuationToken, error,
 ) {
 	if be.ListPolicyPacksF != nil {
 		return be.ListPolicyPacksF(ctx, orgName, inContToken)

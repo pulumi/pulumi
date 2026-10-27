@@ -1,3 +1,0 @@
-component: pkg
-kind: chore
-body: Use `github.com/pulumi/pulumi-cloud-sdk/go/apitype` types in the policy issue and compliance methods of `httpstate/client.Client`

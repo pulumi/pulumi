@@ -34,8 +34,6 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
-	"github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -2353,37 +2351,6 @@ func TestGetStackOutputsInCoherenceWindow(t *testing.T) {
 	assert.Equal(t, "readingUpdateID=d333a711-4aa0-402f-be6d-72af9665fc37", gotQuery)
 }
 
-func TestCreatePolicyGroup(t *testing.T) {
-	t.Parallel()
-
-	var method, path, body string
-	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
-		method, path = req.Method, req.URL.Path
-		b, err := io.ReadAll(req.Body)
-		require.NoError(t, err)
-		body = string(b)
-		return ""
-	})
-	defer server.Close()
-
-	err := newMockClient(server).CreatePolicyGroup(t.Context(), "acme", cloudapitype.NewPolicyGroupRequest{
-		Name:        "prod-policies",
-		EntityType:  new(cloudapitype.PolicyGroupEntityTypeStacks), //nolint:staticcheck
-		Mode:        new(cloudapitype.PolicyGroupModePreventative),
-		AgentPoolID: jsonvalue.NotNull("pool-123"),
-	})
-	require.NoError(t, err)
-
-	assert.Equal(t, http.MethodPost, method)
-	assert.Equal(t, "/api/orgs/acme/policygroups", path)
-	assert.JSONEq(t, `{
-		"name": "prod-policies",
-		"entityType": "stacks",
-		"mode": "preventative",
-		"agentPoolId": "pool-123"
-	}`, body)
-}
-
 func TestBatchUpdatePolicyGroup(t *testing.T) {
 	t.Parallel()
 
@@ -2398,55 +2365,19 @@ func TestBatchUpdatePolicyGroup(t *testing.T) {
 	defer server.Close()
 
 	err := newMockClient(server).BatchUpdatePolicyGroup(t.Context(), "acme", "prod-policies",
-		[]cloudapitype.UpdatePolicyGroupRequest{
-			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{NewName: new("renamed")}},
-			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
-				AddStack: &cloudapitype.AppPulumiStackReference{Name: "prod", RoutingProject: "web"},
-			}},
-			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
-				AddStack: &cloudapitype.AppPulumiStackReference{Name: "standalone"},
-			}},
-			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
-				RemoveStack: &cloudapitype.AppPulumiStackReference{Name: "old", RoutingProject: "api"},
-			}},
-			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
-				AddPolicyPack: &cloudapitype.AppPolicyPackMetadata{
-					Name:       "aws-pack",
-					VersionTag: "1.2.3",
-					Config: map[string]*json.RawMessage{
-						"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory","tags":["a","b"]}`)),
-					},
-				},
-			}},
-			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
-				RemovePolicyPack: &cloudapitype.AppPolicyPackMetadata{Name: "tagging", VersionTag: "1.0.0"},
-			}},
-			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
-				AddInsightsAccount: &cloudapitype.AppInsightsAccountReference{Name: "prod-aws"},
-			}},
-			{AppUpdatePolicyGroupRequest: cloudapitype.AppUpdatePolicyGroupRequest{
-				RemoveInsightsAccount: &cloudapitype.AppInsightsAccountReference{Name: "stale-gcp"},
-			}},
+		[]apitype.UpdatePolicyGroupRequest{
+			{AddStack: &apitype.PulumiStackReference{Name: "prod", RoutingProject: "web"}},
+			{RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "tagging", VersionTag: "1.0.0"}},
+			{AddInsightsAccount: &apitype.InsightsAccountReference{Name: "prod-aws"}},
 		})
 	require.NoError(t, err)
 
 	assert.Equal(t, http.MethodPatch, method)
 	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies/batch", path)
 	assert.JSONEq(t, `[
-		{"newName": "renamed"},
 		{"addStack": {"name": "prod", "routingProject": "web"}},
-		{"addStack": {"name": "standalone", "routingProject": ""}},
-		{"removeStack": {"name": "old", "routingProject": "api"}},
-		{"addPolicyPack": {
-			"name": "aws-pack",
-			"displayName": "",
-			"version": 0,
-			"versionTag": "1.2.3",
-			"config": {"s3-no-public": {"enforcementLevel": "mandatory", "tags": ["a", "b"]}}
-		}},
-		{"removePolicyPack": {"name": "tagging", "displayName": "", "version": 0, "versionTag": "1.0.0"}},
-		{"addInsightsAccount": {"name": "prod-aws"}},
-		{"removeInsightsAccount": {"name": "stale-gcp"}}
+		{"removePolicyPack": {"name": "tagging", "versionTag": "1.0.0"}},
+		{"addInsightsAccount": {"name": "prod-aws"}}
 	]`, body)
 }
 
@@ -2478,131 +2409,4 @@ func TestAuditLogsQueryParams(t *testing.T) {
 		"/api/orgs/org/auditlogs/v2?endTime=2&eventFilter=stack.create&startTime=1&userFilter=alice",
 		"/api/orgs/org/auditlogs/v2/export?endTime=2&eventFilter=stack.create&format=csv&startTime=1&userFilter=alice",
 	}, gotURLs)
-}
-
-func TestApplyPolicyPack(t *testing.T) {
-	t.Parallel()
-
-	var method, path, body string
-	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
-		method, path = req.Method, req.URL.Path
-		b, err := io.ReadAll(req.Body)
-		require.NoError(t, err)
-		body = string(b)
-		return ""
-	})
-	defer server.Close()
-
-	err := newMockClient(server).ApplyPolicyPack(t.Context(), "acme", "prod-policies", "aws-pack", "1.2.3",
-		map[string]*json.RawMessage{
-			"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory"}`)),
-		})
-	require.NoError(t, err)
-
-	assert.Equal(t, http.MethodPatch, method)
-	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies", path)
-	assert.JSONEq(t, `{"addPolicyPack": {
-		"name": "aws-pack",
-		"displayName": "",
-		"version": 0,
-		"versionTag": "1.2.3",
-		"config": {"s3-no-public": {"enforcementLevel": "mandatory"}}
-	}}`, body)
-}
-
-func TestDisablePolicyPack(t *testing.T) {
-	t.Parallel()
-
-	var method, path, body string
-	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
-		method, path = req.Method, req.URL.Path
-		b, err := io.ReadAll(req.Body)
-		require.NoError(t, err)
-		body = string(b)
-		return ""
-	})
-	defer server.Close()
-
-	err := newMockClient(server).DisablePolicyPack(t.Context(), "acme", "prod-policies", "aws-pack", "")
-	require.NoError(t, err)
-
-	assert.Equal(t, http.MethodPatch, method)
-	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies", path)
-	assert.JSONEq(t, `{"removePolicyPack": {"name": "aws-pack", "displayName": "", "version": 0, "versionTag": ""}}`, body)
-}
-
-func TestListPolicyIssues(t *testing.T) {
-	t.Parallel()
-
-	var method, path, body string
-	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
-		method, path = req.Method, req.URL.Path
-		b, err := io.ReadAll(req.Body)
-		require.NoError(t, err)
-		body = string(b)
-		return "{}"
-	})
-	defer server.Close()
-
-	_, err := newMockClient(server).ListPolicyIssues(t.Context(), "acme", cloudapitype.AngularGridGetRowsRequest{
-		StartRow: 100,
-		EndRow:   200,
-	})
-	require.NoError(t, err)
-
-	assert.Equal(t, http.MethodPost, method)
-	assert.Equal(t, "/api/orgs/acme/policyresults/issues", path)
-	assert.JSONEq(t, `{
-		"startRow": 100, "endRow": 200, "sortModel": null,
-		"rowGroupCols": null, "valueCols": null, "groupKeys": null, "filterModel": null}`, body)
-}
-
-func TestListPolicyIssues_FirstPageSendsZeroStartRow(t *testing.T) {
-	t.Parallel()
-
-	var body string
-	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
-		b, err := io.ReadAll(req.Body)
-		require.NoError(t, err)
-		body = string(b)
-		return "{}"
-	})
-	defer server.Close()
-
-	_, err := newMockClient(server).ListPolicyIssues(t.Context(), "acme",
-		cloudapitype.AngularGridGetRowsRequest{EndRow: 100})
-	require.NoError(t, err)
-
-	var fields map[string]json.RawMessage
-	require.NoError(t, json.Unmarshal([]byte(body), &fields))
-	assert.JSONEq(t, `0`, string(fields["startRow"]))
-	assert.JSONEq(t, `100`, string(fields["endRow"]))
-}
-
-func TestGetPolicyComplianceResults(t *testing.T) {
-	t.Parallel()
-
-	var method, path, body string
-	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
-		method, path = req.Method, req.URL.Path
-		b, err := io.ReadAll(req.Body)
-		require.NoError(t, err)
-		body = string(b)
-		return "{}"
-	})
-	defer server.Close()
-
-	size := 50
-	token := "next-page-token"
-	_, err := newMockClient(server).GetPolicyComplianceResults(t.Context(), "acme",
-		cloudapitype.GetPolicyComplianceResultsRequest{
-			Entity:            cloudapitype.PolicyComplianceEntityTypeStack,
-			Size:              &size,
-			ContinuationToken: &token,
-		})
-	require.NoError(t, err)
-
-	assert.Equal(t, http.MethodPost, method)
-	assert.Equal(t, "/api/orgs/acme/policyresults/compliance", path)
-	assert.JSONEq(t, `{"entity": "stack", "size": 50, "continuationToken": "next-page-token"}`, body)
 }

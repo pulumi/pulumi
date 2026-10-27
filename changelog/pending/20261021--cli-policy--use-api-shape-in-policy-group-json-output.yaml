@@ -1,3 +1,0 @@
-component: cli/policy
-kind: improvement
-body: Include match rules and empty fields in `pulumi policy group get`, `new`, and `edit` JSON output

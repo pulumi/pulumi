@@ -20,21 +20,21 @@ import (
 	"errors"
 	"testing"
 
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // mockPolicyGroupNewClient stubs policyGroupNewClient. It records calls and
 // optionally returns fixed responses or errors for each method.
 type mockPolicyGroupNewClient struct {
-	getResp   cloudapitype.PolicyGroup
+	getResp   apitype.GetPolicyGroupResponse
 	createErr error
 	getErr    error
 
 	createdOrg  string
 	createdName string
-	createdReq  cloudapitype.NewPolicyGroupRequest
 	getOrg      string
 	getName     string
 	createCalls int
@@ -42,23 +42,22 @@ type mockPolicyGroupNewClient struct {
 }
 
 func (m *mockPolicyGroupNewClient) CreatePolicyGroup(
-	_ context.Context, org string, req cloudapitype.NewPolicyGroupRequest,
+	_ context.Context, org string, req apitype.CreatePolicyGroupRequest,
 ) error {
 	m.createCalls++
 	m.createdOrg = org
 	m.createdName = req.Name
-	m.createdReq = req
 	return m.createErr
 }
 
 func (m *mockPolicyGroupNewClient) GetPolicyGroup(
 	_ context.Context, org, name string,
-) (cloudapitype.PolicyGroup, error) {
+) (apitype.GetPolicyGroupResponse, error) {
 	m.getCalls++
 	m.getOrg = org
 	m.getName = name
 	if m.getErr != nil {
-		return cloudapitype.PolicyGroup{}, m.getErr
+		return apitype.GetPolicyGroupResponse{}, m.getErr
 	}
 	return m.getResp, nil
 }
@@ -75,12 +74,12 @@ func failingPolicyGroupNewFactory(err error) policyGroupNewClientFactory {
 	}
 }
 
-func newPolicyGroupResponseFixture() cloudapitype.PolicyGroup {
-	return cloudapitype.PolicyGroup{
+func newPolicyGroupResponseFixture() apitype.GetPolicyGroupResponse {
+	return apitype.GetPolicyGroupResponse{
 		Name:         "prod-policies",
 		IsOrgDefault: false,
-		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
-		Mode:         cloudapitype.PolicyGroupModePreventative,
+		EntityType:   apitype.Stacks,
+		Mode:         apitype.PolicyGroupModePreventative,
 	}
 }
 
@@ -91,11 +90,12 @@ func TestPolicyGroupNew_DefaultOutput(t *testing.T) {
 	c := &mockPolicyGroupNewClient{getResp: newPolicyGroupResponseFixture()}
 	err := runPolicyGroupNew(t.Context(), buf,
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
-		policyGroupNewArgs{mode: "preventative", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
+		policyGroupNewArgs{entityType: "stacks", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, `Name:                  prod-policies
 Org default:           no
+Entity type:           stacks
 Mode:                  preventative
 Applied policy packs:  0
 Stacks:                0
@@ -114,7 +114,7 @@ func TestPolicyGroupNew_JSONOutput(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	c := &mockPolicyGroupNewClient{getResp: newPolicyGroupResponseFixture()}
-	args := policyGroupNewArgs{mode: "preventative", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()}
+	args := policyGroupNewArgs{entityType: "stacks", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()}
 	require.NoError(t, args.outputFormat.Set("json"))
 	err := runPolicyGroupNew(t.Context(), buf,
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies", args)
@@ -138,7 +138,7 @@ func TestPolicyGroupNew_CreateError(t *testing.T) {
 	c := &mockPolicyGroupNewClient{createErr: errors.New("already exists")}
 	err := runPolicyGroupNew(t.Context(), buf,
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
-		policyGroupNewArgs{mode: "preventative", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
+		policyGroupNewArgs{entityType: "stacks", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "creating policy group: already exists", err.Error())
 	assert.Equal(t, 1, c.createCalls)
@@ -152,7 +152,7 @@ func TestPolicyGroupNew_GetAfterCreateError(t *testing.T) {
 	c := &mockPolicyGroupNewClient{getErr: errors.New("not found")}
 	err := runPolicyGroupNew(t.Context(), buf,
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
-		policyGroupNewArgs{mode: "preventative", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
+		policyGroupNewArgs{entityType: "stacks", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "reading policy group after create: not found", err.Error())
 	assert.Equal(t, 1, c.createCalls)
@@ -166,59 +166,9 @@ func TestPolicyGroupNew_FactoryError(t *testing.T) {
 	err := runPolicyGroupNew(t.Context(), buf,
 		failingPolicyGroupNewFactory(errors.New("not logged in")),
 		"prod-policies", policyGroupNewArgs{
-			mode: "preventative", yes: true,
+			entityType: "stacks", yes: true,
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
 		})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
-}
-
-func TestPolicyGroupNew_ModeOnly(t *testing.T) {
-	t.Parallel()
-
-	c := &mockPolicyGroupNewClient{getResp: newPolicyGroupResponseFixture()}
-	err := runPolicyGroupNew(t.Context(), &bytes.Buffer{},
-		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
-		policyGroupNewArgs{mode: "audit", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
-	require.NoError(t, err)
-
-	assert.Equal(t, cloudapitype.NewPolicyGroupRequest{
-		Name: "prod-policies",
-		Mode: new(cloudapitype.PolicyGroupModeAudit),
-	}, c.createdReq)
-}
-
-func TestPolicyGroupNew_DeprecatedEntityType(t *testing.T) {
-	t.Parallel()
-
-	c := &mockPolicyGroupNewClient{getResp: newPolicyGroupResponseFixture()}
-	err := runPolicyGroupNew(t.Context(), &bytes.Buffer{},
-		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
-		policyGroupNewArgs{entityType: "accounts", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
-	require.NoError(t, err)
-
-	assert.Equal(t, cloudapitype.NewPolicyGroupRequest{
-		Name:       "prod-policies",
-		EntityType: new(cloudapitype.PolicyGroupEntityTypeAccounts), //nolint:staticcheck
-	}, c.createdReq)
-}
-
-func TestPolicyGroupNew_ModeRequired(t *testing.T) {
-	t.Parallel()
-
-	c := &mockPolicyGroupNewClient{}
-	err := runPolicyGroupNew(t.Context(), &bytes.Buffer{},
-		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
-		policyGroupNewArgs{yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
-	require.Error(t, err)
-	assert.Equal(t, "--mode is required (use --mode preventative or --mode audit)", err.Error())
-	assert.Equal(t, 0, c.createCalls)
-}
-
-func TestPolicyGroupNew_EntityTypeFlagDeprecated(t *testing.T) {
-	t.Parallel()
-
-	flag := newPolicyGroupNewCmdWith(stubPolicyGroupNewFactory(nil, "acme")).Flags().Lookup("entity-type")
-	require.NotNil(t, flag)
-	assert.Equal(t, "use --mode instead", flag.Deprecated)
 }
