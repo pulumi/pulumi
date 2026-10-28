@@ -477,7 +477,7 @@ func (b *cloudBackend) persistEngineEvents(
 func (b *cloudBackend) routeHelperDiagnostics(
 	events chan<- engine.Event, done <-chan bool, opts display.Options,
 ) func() {
-	if b.helper == nil || !opts.IsInteractive || opts.JSONDisplay ||
+	if b.helper == nil || b.helper.Helper == nil || !opts.IsInteractive || opts.JSONDisplay ||
 		opts.SummaryJSON || opts.Type != display.DisplayProgress {
 		return func() {}
 	}
