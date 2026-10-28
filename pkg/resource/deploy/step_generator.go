@@ -114,6 +114,17 @@ type stepGenerator struct {
 	pendingUntargetedSames    []Step
 	pendingUntargetedSameURNs map[resource.URN]bool
 
+	// URNs whose old state a speculative untargeted same step has already copied forward. Such a
+	// step is emitted on behalf of a dependency that has no step of its own; if the program turns
+	// out to register that dependency after all, the registration is neither a duplicate nor
+	// something to write to the snapshot a second time.
+	speculativeSames map[resource.URN]bool
+
+	// untargeted same steps held back because the resource's old-state dependencies have no steps
+	// yet, in registration order. See deferUntargetedSame.
+	deferredSames    []deferredSame
+	deferredSameURNs map[resource.URN]bool
+
 	pendingDeletes map[*pkgresource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*pkgresource.State // URN map of providers that we have seen so far.
 
@@ -308,7 +319,7 @@ func (sg *stepGenerator) generateURN(
 	if err := sg.deployment.rejectStateMigrationPredecessorURN(urn); err != nil {
 		return "", err
 	}
-	if sg.urns[urn] {
+	if sg.urns[urn] && !sg.speculativeSames[urn] {
 		// TODO[pulumi/pulumi-framework#19]: improve this error message!
 		return "", sg.bailDiag(diag.GetDuplicateResourceURNError(urn), urn)
 	}
@@ -460,6 +471,24 @@ func (sg *stepGenerator) GenerateSteps(ctx context.Context, event RegisterResour
 // Called at the end of GenerateSteps and ContinueStepsFromDiff to validate the steps generated are valid.
 // That is they match any constraint plan or targets that are set.
 func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
+	// A step that depends on a held-back same step must not be written before it, so release the
+	// held-back steps into the front of this batch. Pending untargeted dependency sames are about
+	// to be prepended to this batch below, so their dependencies count too.
+	if len(sg.deferredSames) > 0 &&
+		(sg.dependsOnDeferredSame(steps) || sg.dependsOnDeferredSame(sg.pendingUntargetedSames)) {
+		// Releasing a held-back step whose old-state dependencies transitively include a
+		// resource in this batch would write it before its dependency, while the batch's step
+		// depends on it and cannot be written after it -- a cycle no reordering can fix.
+		if err := sg.deferredSameCycle(steps); err != nil {
+			return nil, err
+		}
+		deferred, err := sg.emitDeferredSames()
+		if err != nil {
+			return nil, err
+		}
+		steps = append(deferred, steps...)
+	}
+
 	if len(sg.pendingUntargetedSames) > 0 {
 		pending := sg.pendingUntargetedSames
 		sg.pendingUntargetedSames = nil
@@ -1634,6 +1663,21 @@ func (sg *stepGenerator) continueStepsFromImport(
 	if old != nil {
 		contract.Assertf(old != nil, "must have old resource if hasOld is true")
 
+		// A flush already emitted a speculative same step for this resource before the program got
+		// round to registering it. The snapshot already holds its old state, in the right place.
+		if sg.speculativeSames[urn] {
+			delete(sg.speculativeSames, urn)
+			if !isTargeted {
+				// Emitting a step would write it a second time, so settle the registration here.
+				// The copy is deliberate: the speculative step owns the state it wrote.
+				event.Done(&RegisterResult{State: old.Copy()})
+				return nil, false, nil
+			}
+			// Targeted, so it may need a real step -- but we cannot retract what we wrote. Bail
+			// rather than risk a duplicate in the snapshot.
+			return nil, false, sg.bailDiag(diag.GetDuplicateResourceURNError(urn), urn)
+		}
+
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then we should emit a SameStep for it.
 		if !isTargeted {
@@ -1823,8 +1867,22 @@ func (sg *stepGenerator) continueStepsFromImport(
 				new := old.Copy()
 				new.ID = ""
 				rootStep := NewUntargetedSameStep(sg.deployment, event, old, new, waitFor)
+				if event == nil {
+					// A step emitted for a dependency the program has not (yet) registered, rather
+					// than for a resource registration of its own.
+					sg.speculativeSames[old.URN] = true
+				}
 				steps = append(steps, rootStep)
 				return steps, nil
+			}
+
+			// Emitting the step now would place this resource before dependencies that the program
+			// has yet to register, which is an invalid snapshot ordering. Hold it back instead.
+			if sg.shouldDeferUntargetedSame(old) {
+				sg.deferUntargetedSame(urn, old, event, func() ([]Step, error) {
+					return getDependencySteps(old, nil)
+				})
+				return nil, false, nil
 			}
 
 			steps, err := getDependencySteps(old, event)
@@ -2356,6 +2414,195 @@ func (sg *stepGenerator) queueUntargetedDependencySames(new *pkgresource.State) 
 	for _, dep := range allDeps {
 		queue(dep.URN)
 	}
+}
+
+// deferredSame is an untargeted same step held back by deferUntargetedSame, along with the thunk
+// that emits it (and any speculative dependency steps it still needs) when it is released.
+type deferredSame struct {
+	urn  resource.URN
+	old  *pkgresource.State
+	emit func() ([]Step, error)
+}
+
+// shouldDeferUntargetedSame reports whether the untargeted same step for old must be held back
+// until later in the deployment. A same step copies old's state -- including its old dependency
+// edges -- into the snapshot, so it may only be written once every one of those dependencies has
+// a step of its own. Normally the program registers dependencies first and this is free, but when
+// the program removes a dependency edge that ordering no longer holds.
+func (sg *stepGenerator) shouldDeferUntargetedSame(old *pkgresource.State) bool {
+	_, allDeps := old.GetAllDependencies()
+	for _, dep := range allDeps {
+		if sg.deferredSameURNs[dep.URN] {
+			return true
+		}
+		if sg.hasGeneratedStep(dep.URN) {
+			continue
+		}
+		// Dependencies with no old state are an error, which getDependencySteps reports. Leave
+		// them to it rather than deferring a step that can only fail.
+		if _, has := sg.deployment.Olds()[dep.URN]; has {
+			return true
+		}
+	}
+	return false
+}
+
+// deferUntargetedSame holds back a resource's untargeted same step until it is released (see
+// emitDeferredSames), completing its registration immediately so the program is not blocked on a
+// step that is, by construction, waiting on registrations the program has yet to make.
+func (sg *stepGenerator) deferUntargetedSame(
+	urn resource.URN, old *pkgresource.State, event RegisterResourceEvent, emit func() ([]Step, error),
+) {
+	// Claim the URN now so that dependents neither speculatively copy this resource forward nor
+	// emit their own step ahead of ours -- shouldDeferUntargetedSame defers them behind us.
+	sg.urns[old.URN] = true
+	sg.sames[urn] = true
+	sg.sames[old.URN] = true
+	// Both URNs, so that dependents referring to this resource by its pre-alias URN are deferred
+	// behind it too.
+	sg.deferredSameURNs[urn] = true
+	sg.deferredSameURNs[old.URN] = true
+	sg.deferredSames = append(sg.deferredSames, deferredSame{urn: urn, old: old, emit: emit})
+
+	// The registration result is fully determined for a same step, so we can settle it here. Note
+	// that this is a copy: the held-back step owns its own state and will write to it later.
+	event.Done(&RegisterResult{State: old.Copy()})
+}
+
+// emitDeferredSames emits every same step held back by deferUntargetedSame, dependencies first.
+// Dependencies that registered in the meantime have steps of their own and are waited on; those
+// that never registered have their old state copied forward by a speculative step placed just
+// before their dependent.
+func (sg *stepGenerator) emitDeferredSames() ([]Step, error) {
+	deferred := sg.deferredSames
+	sg.deferredSames = nil
+	clear(sg.deferredSameURNs)
+
+	// A held-back resource may itself depend on another held-back resource (the program removed
+	// the dependency edge, so registration order no longer reflects dependency order), so emit
+	// dependencies before their dependents rather than in raw registration order.
+	byURN := make(map[resource.URN]deferredSame, len(deferred))
+	for _, d := range deferred {
+		byURN[d.urn] = d
+		byURN[d.old.URN] = d
+	}
+	visited := make(map[resource.URN]bool, len(deferred))
+	var order []deferredSame
+	var visit func(d deferredSame)
+	visit = func(d deferredSame) {
+		if visited[d.urn] {
+			return
+		}
+		visited[d.urn] = true
+		_, allDeps := d.old.GetAllDependencies()
+		for _, dep := range allDeps {
+			if depD, ok := byURN[dep.URN]; ok {
+				visit(depD)
+			}
+		}
+		order = append(order, d)
+	}
+	for _, d := range deferred {
+		visit(d)
+	}
+
+	var steps []Step
+	for _, d := range order {
+		emitted, err := d.emit()
+		if err != nil {
+			return nil, err
+		}
+		steps = append(steps, emitted...)
+	}
+	return steps, nil
+}
+
+// FlushDeferredSames emits and validates the held-back same steps. It must be called once the
+// program has finished registering resources and before deletes are generated, at which point
+// every dependency that was going to register has done so.
+func (sg *stepGenerator) FlushDeferredSames() ([]Step, error) {
+	steps, err := sg.emitDeferredSames()
+	if err != nil {
+		return nil, err
+	}
+	return sg.validateSteps(steps)
+}
+
+// ReleaseDeferredSamesFor emits the held-back same steps if urn is one of the resources whose
+// step is being held back. RegisterResourceOutputs needs the resource's step to have executed,
+// so an outputs event forces the release in the same way a dependent's step does.
+func (sg *stepGenerator) ReleaseDeferredSamesFor(urn resource.URN) ([]Step, error) {
+	if !sg.deferredSameURNs[urn] {
+		return nil, nil
+	}
+	steps, err := sg.emitDeferredSames()
+	if err != nil {
+		return nil, err
+	}
+	return sg.validateSteps(steps)
+}
+
+// deferredSameCycle reports whether releasing the held-back same steps ahead of the given batch
+// would create a dependency cycle: a held-back resource whose old-state dependencies transitively
+// include a resource operated on by this batch cannot be written before it, but the batch
+// depends on the held-back resource and cannot be written after it either.
+func (sg *stepGenerator) deferredSameCycle(steps []Step) error {
+	batch := make(map[resource.URN]bool, len(steps))
+	for _, s := range steps {
+		if res := s.Res(); res != nil {
+			batch[res.URN] = true
+		}
+	}
+	olds := sg.deployment.Olds()
+	for _, d := range sg.deferredSames {
+		visited := map[resource.URN]bool{}
+		var walk func(urn resource.URN) bool
+		walk = func(urn resource.URN) bool {
+			if batch[urn] {
+				return true
+			}
+			if visited[urn] {
+				return false
+			}
+			visited[urn] = true
+			old, has := olds[urn]
+			if !has {
+				return false
+			}
+			_, deps := old.GetAllDependencies()
+			for _, dep := range deps {
+				if walk(dep.URN) {
+					return true
+				}
+			}
+			return false
+		}
+		if walk(d.old.URN) {
+			return result.BailErrorf(
+				"resource %s's old state depends on a resource that is being updated to depend on it, "+
+					"forming a dependency cycle that cannot be written to the snapshot", d.urn)
+		}
+	}
+	return nil
+}
+
+// dependsOnDeferredSame reports whether any of the given steps is for a resource that depends on
+// one whose same step is currently held back. Such a step may not be emitted first, or it would
+// precede its own dependency in the snapshot.
+func (sg *stepGenerator) dependsOnDeferredSame(steps []Step) bool {
+	for _, s := range steps {
+		res := s.Res()
+		if res == nil {
+			continue
+		}
+		_, allDeps := res.GetAllDependencies()
+		for _, dep := range allDeps {
+			if sg.deferredSameURNs[dep.URN] {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Returns true if this resource has been operated on by any steps generated so far.
@@ -3796,6 +4043,8 @@ func newStepGenerator(
 		skippedCreates:            make(map[resource.URN]bool),
 		pendingDeletes:            make(map[*pkgresource.State]bool),
 		pendingUntargetedSameURNs: make(map[resource.URN]bool),
+		speculativeSames:          make(map[resource.URN]bool),
+		deferredSameURNs:          make(map[resource.URN]bool),
 		providers:                 make(map[resource.URN]*pkgresource.State),
 		dependentReplaceKeys:      make(map[resource.URN][]resource.PropertyKey),
 		aliased:                   make(map[resource.URN]resource.URN),

@@ -388,6 +388,23 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 			// Exit if we've seen a nil event and the step generator has no more async work to do. See the comment at
 			// the top of the loop for more details.
 			if seenNil && ex.asyncEventsExpected == 0 {
+				// The program has finished registering, so any same steps held back waiting on
+				// registrations that never came can now be emitted. Locking the step executor
+				// waits for the in-flight chains, so these land after everything registered.
+				ex.stepExec.Lock()
+				deferredSames, deferErr := ex.stepGen.FlushDeferredSames()
+				ex.stepExec.Unlock()
+				if deferErr != nil {
+					if !result.IsBail(deferErr) {
+						ex.reportError("", deferErr)
+					}
+					cancel()
+					return false, result.BailError(deferErr)
+				}
+				if len(deferredSames) > 0 {
+					ex.executeStepsWithTokens(deferredSames).Wait(ctx)
+				}
+
 				// Check targets before performDeletes mutates the initial Snapshot.
 				targetErr := ex.checkTargets(ex.deployment.opts.Targets)
 
@@ -724,6 +741,15 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 			e.Done()
 			return nil
 		}
+		// Registering outputs needs the resource's own step to have executed, so release it if it
+		// is being held back.
+		released, releaseErr := ex.stepGen.ReleaseDeferredSamesFor(e.URN())
+		if releaseErr != nil {
+			return releaseErr
+		}
+		if len(released) > 0 {
+			ex.executeStepsWithTokens(released).Wait(ctx)
+		}
 		return ex.stepExec.ExecuteRegisterResourceOutputs(e)
 	}
 
@@ -751,8 +777,17 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 		return nil
 	}
 
-	stepURNs := make([]resource.URN, len(newSteps))
-	for i, step := range newSteps {
+	ex.executeStepsWithTokens(newSteps)
+	return nil
+}
+
+// executeStepsWithTokens submits a chain for execution, first resolving the waitURNs of any
+// untargeted same steps in it against the completion tokens of chains submitted so far, and
+// recording the new chain's token against every step URN it contains so that later chains can
+// wait on it.
+func (ex *deploymentExecutor) executeStepsWithTokens(steps []Step) completionToken {
+	stepURNs := make([]resource.URN, len(steps))
+	for i, step := range steps {
 		stepURNs[i] = step.URN()
 		if same, ok := step.(*SameStep); ok {
 			for _, urn := range same.waitURNs {
@@ -762,11 +797,11 @@ func (ex *deploymentExecutor) handleSingleEvent(ctx context.Context, event Sourc
 			}
 		}
 	}
-	tok := ex.stepExec.ExecuteSerial(newSteps)
+	tok := ex.stepExec.ExecuteSerial(steps)
 	for _, urn := range stepURNs {
 		ex.chainTokens[urn] = tok
 	}
-	return nil
+	return tok
 }
 
 // import imports a list of resources into a stack.
