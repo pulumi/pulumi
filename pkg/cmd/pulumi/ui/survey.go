@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"slices"
 	"strings"
 	"sync"
 
@@ -277,51 +276,25 @@ func PromptUserMultiSkippable(yes bool, msg string, options []string, defaultOpt
 // PromptUserMulti prompts the user for a value with a list of options, allowing to select none or multiple options.
 // defaultOptions is a set of values to be selected by default.
 func PromptUserMulti(msg string, options []string, defaultOptions []string, colorization colors.Colorization) []string {
-	var defaultIndices []int
-	for i, o := range options {
-		if slices.Contains(defaultOptions, o) {
-			defaultIndices = append(defaultIndices, i)
-		}
-	}
-	picked, err := PromptUserMultiIndexErr(msg, options, defaultIndices, colorization)
-	if err != nil {
-		return []string{}
-	}
-	response := make([]string, len(picked))
-	for i, j := range picked {
-		response[i] = options[j]
-	}
-	return response
-}
-
-// PromptUserMultiIndexErr is like PromptUserMulti but identifies the options by index rather than by value, so callers
-// need not map display labels back to what they represent, and returns the survey error (for example the user
-// pressing Ctrl-C) instead of swallowing it.
-func PromptUserMultiIndexErr(
-	msg string,
-	options []string,
-	defaultIndices []int,
-	colorization colors.Colorization,
-	surveyAskOpts ...survey.AskOpt,
-) ([]int, error) {
 	confirmationHint := " (use enter to accept the current selection)"
 
 	prompt := "\b" + colorization.Colorize(colors.SpecPrompt+msg+colors.Reset) + confirmationHint
 
 	disableSurveyColorOnce()
-	var response []surveycore.OptionAnswer
+	surveyIcons := survey.WithIcons(func(icons *survey.IconSet) {
+		icons.Question = survey.Icon{}
+		icons.SelectFocus = survey.Icon{Text: colorization.Colorize(colors.BrightGreen + ">" + colors.Reset)}
+	})
+
+	var response []string
 	if err := survey.AskOne(&survey.MultiSelect{
 		Message: prompt,
 		Options: options,
-		Default: defaultIndices,
-	}, &response, append([]survey.AskOpt{SurveyIcons(colorization)}, surveyAskOpts...)...); err != nil {
-		return nil, err
+		Default: defaultOptions,
+	}, &response, surveyIcons); err != nil {
+		return []string{}
 	}
-	picked := make([]int, len(response))
-	for i, r := range response {
-		picked[i] = r.Index
-	}
-	return picked, nil
+	return response
 }
 
 func ConfirmPrompt(prompt string, name string, opts display.Options) bool {
