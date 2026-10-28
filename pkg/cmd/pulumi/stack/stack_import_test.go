@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -44,6 +45,51 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestMain also runs this test executable as a credential helper subprocess.
+// Tests use os.Executable() with -credential-helper-test and a JSON response or responses keyed by backend URL.
+// It reads the backend URL from stdin and writes its response to stdout. Other invocations run tests normally.
+func TestMain(m *testing.M) {
+	for i, arg := range os.Args {
+		if arg != "-credential-helper-test" {
+			continue
+		}
+		response := os.Args[i+1]
+		var request struct {
+			SelectedBackendURL string `json:"selectedBackendUrl"`
+		}
+		if err := json.NewDecoder(os.Stdin).Decode(&request); err != nil {
+			os.Exit(1)
+		}
+		var responses map[string]json.RawMessage
+		if json.Unmarshal([]byte(response), &responses) == nil {
+			if selected, ok := responses[request.SelectedBackendURL]; ok {
+				response = string(selected)
+			}
+		}
+		_, err := os.Stdout.WriteString(response)
+		if err != nil {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
+
+func stackHelperClient(t *testing.T, backendURL, response string) (*httpstate.ClientSource, *client.Client) {
+	t.Helper()
+	executable, err := os.Executable()
+	require.NoError(t, err)
+	session := credentialhelper.NewSession(io.Discard)
+	require.NoError(t, session.Configure(executable, []string{"--", "-credential-helper-test", response}))
+	resolved, err := session.Resolve(t.Context(), backendURL)
+	require.NoError(t, err)
+	require.NoError(t, session.SelectBackend(resolved, backendURL))
+	source := httpstate.NewClientSource(session, nil)
+	c, err := source.ClientForURL(t.Context(), backendURL, false)
+	require.NoError(t, err)
+	return source, c
+}
 
 //nolint:paralleltest // Isolates process credentials.
 func TestStackImportHelperCredentials(t *testing.T) {
