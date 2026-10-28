@@ -34,7 +34,7 @@ func TestStackNotFoundError(t *testing.T) {
 		"no stack named 'dev' found")
 	assert.EqualError(t,
 		StackNotFoundError{StackName: "dev", OfferCreate: true},
-		"no stack named 'dev' found; use `pulumi stack select dev --create` to create it")
+		"no stack named 'dev' found; use `pulumi stack select 'dev' --create` to create it")
 }
 
 func TestNoStackSelectedError(t *testing.T) {

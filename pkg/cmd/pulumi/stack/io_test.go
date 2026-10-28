@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"testing"
@@ -26,7 +27,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -110,6 +113,40 @@ func TestChooseStackNonInteractiveError(t *testing.T) {
 			require.EqualError(t, err, tt.expected)
 		})
 	}
+}
+
+//nolint:paralleltest // mutates global interactive-mode state
+func TestRequireStackNotFoundError(t *testing.T) {
+	previousDisableInteractive := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = true
+	t.Cleanup(func() { cmdutil.DisableInteractive = previousDisableInteractive })
+
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "test-project"}, "", nil
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{StringV: s}, nil
+		},
+		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool,
+			colors.Colorization, ...cmdBackend.LoginOption,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	}
+
+	_, err := RequireStack(t.Context(), cmdutil.Diag(), ws, lm, "dev", LoadOnly, display.Options{}, "")
+	require.EqualError(t, err, "no stack named 'dev' found; use `pulumi stack select 'dev' --create` to create it")
+	_, ok := errors.AsType[backenderr.StackNotFoundError](err)
+	assert.True(t, ok)
 }
 
 // Tests that CreateStack will send an appropriate initial state when it is asked to create a stack with a non-default

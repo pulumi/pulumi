@@ -168,7 +168,7 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 		})
 	}
 
-	return nil, backenderr.StackNotFoundError{StackName: stackName}
+	return nil, backenderr.StackNotFoundError{StackName: stackName, OfferCreate: true}
 }
 
 func requireCurrentStack(

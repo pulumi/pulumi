@@ -47,7 +47,7 @@ func (e StackNotFoundError) Error() string {
 	}
 	message := fmt.Sprintf("no stack named '%s' found", e.StackName)
 	if e.OfferCreate {
-		message += fmt.Sprintf("; use `pulumi stack select %s --create` to create it", e.StackName)
+		message += fmt.Sprintf("; use `pulumi stack select '%s' --create` to create it", e.StackName)
 	}
 	return message
 }
