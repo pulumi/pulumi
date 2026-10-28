@@ -23,10 +23,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -41,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -52,8 +55,14 @@ const latestRun = "latest"
 // policyEventType is the engine event type code of policy violations.
 const policyEventType = "9"
 
-// changeRequestApplied is the status of a change request whose change was made.
-const changeRequestApplied = "applied"
+// The statuses of a change request: one being written, and one whose change was made.
+const (
+	changeRequestDraft   = "draft"
+	changeRequestApplied = "applied"
+)
+
+// allLevels is the --level value that reads violations of every enforcement level.
+const allLevels = "all"
 
 type policyExceptionNewArgs struct {
 	policyPack   string
@@ -62,6 +71,7 @@ type policyExceptionNewArgs struct {
 	preview      string
 	policies     []string
 	targets      []string
+	levels       []string
 	file         string
 	reason       string
 	dryRun       bool
@@ -80,13 +90,16 @@ type policyExceptionRun struct {
 	ID    string `json:"id"`
 }
 
-// policyExceptionViolation is a policy violation that no exception allows yet.
+// policyExceptionViolation is a policy violation of a run.
 type policyExceptionViolation struct {
 	Stack      string `json:"stack"`
 	PolicyPack string `json:"policyPack"`
 	Policy     string `json:"policy"`
 	Level      string `json:"level"`
+	Severity   string `json:"severity,omitempty"`
 	URN        string `json:"urn"`
+	// Exceptions are the exceptions that exempted the violation in the run.
+	Exceptions []string `json:"exceptions,omitempty"`
 }
 
 // policyExceptionNewResult is what the command outputs. A dry run fills in everything but the ID.
@@ -94,20 +107,20 @@ type policyExceptionNewResult struct {
 	OrganizationName string                     `json:"organizationName"`
 	Runs             []policyExceptionRun       `json:"runs"`
 	Violations       []policyExceptionViolation `json:"violations"`
-	// Covered lists the exceptions that already allow the runs' other violations.
-	Covered []string `json:"covered,omitempty"`
-	// Exception is the exception to create. It's empty when there was nothing to except.
+	// Exception is the exception to create. It's empty when there was nothing to exempt.
 	Exception apitype.CreatePolicyExceptionRequest `json:"exception,omitzero"`
-	// ID is the created exception's ID. It's empty for a dry run, when there was nothing to except, or while the
-	// exception awaits approval.
+	// ID is the created exception's ID. It's empty for a dry run, when there was nothing to exempt, or when the
+	// exception was requested in a change request.
 	ID string `json:"id,omitempty"`
 	// ChangeRequestID is the change request that requested the exception, when the organization requires approval.
 	ChangeRequestID string `json:"changeRequestId,omitempty"`
 	// ChangeRequestStatus is the change request's status after it was submitted; `applied` once the exception exists.
 	ChangeRequestStatus string `json:"changeRequestStatus,omitempty"`
-	// ChangeRequestURL is the console page of the change request.
-	ChangeRequestURL string `json:"changeRequestUrl,omitempty"`
-	DryRun           bool   `json:"dryRun,omitempty"`
+	// Updated is set when Pulumi Cloud returned an existing exception or change request for the same request.
+	Updated bool `json:"updated,omitempty"`
+	// URL is the console page of the exception, or of the change request that requested it.
+	URL    string `json:"url,omitempty"`
+	DryRun bool   `json:"dryRun,omitempty"`
 }
 
 // policyExceptionNewRenderFunc writes the result to stdout, and status messages to stderr.
@@ -133,33 +146,31 @@ func newPolicyExceptionNewCmd() *cobra.Command {
 		Long: "[EXPERIMENTAL] Create a policy exception from a run's violations.\n" +
 			"\n" +
 			"Reads the policy violations of the stack's latest run, update or preview, so you don't have to\n" +
-			"re-run it or copy URNs. In a terminal, you pick the violations to allow and enter a reason.\n" +
-			"--policy and --target select violations without prompting, and --file reads a whole exception\n" +
-			"instead.\n" +
+			"re-run it or copy URNs. In a terminal, you pick the violations to exempt and enter a reason.\n" +
+			"--policy, --target and --level select violations without prompting, and --file reads a whole\n" +
+			"exception instead. Only mandatory violations are read unless --level says otherwise.\n" +
 			"\n" +
 			"The exception belongs to the Policy Pack named as <policy-pack> or <org>/<policy-pack>; the\n" +
 			"organization defaults to the stack's. It gets one entry per resource, listing the resource's\n" +
-			"selected policies.\n" +
-			"Violations that an active exception already allows are skipped, so running the command twice\n" +
-			"creates nothing the second time.\n" +
+			"selected policies. Requesting the same exception again returns the existing one.\n" +
 			"\n" +
 			"When the organization requires approval for policy exceptions, or --draft is passed, the\n" +
 			"command creates a change request for the exception instead and submits it, with the reason as\n" +
 			"its description. The exception is created once the change request is approved.\n" +
 			"\n" +
-			"stdout gets only the created exception's ID, or the result with --output json; status messages\n" +
-			"go to stderr. --dry-run --output json prints the run's violations, with their URNs, and the\n" +
-			"exception the command would create, without creating it.\n" +
+			"The command prints a link to the exception, or to its change request. --output json prints the\n" +
+			"result, with the exception's ID, to stdout. --dry-run --output json prints the run's violations,\n" +
+			"with their URNs, and the exception the command would create, without creating it.\n" +
 			"\n" +
 			"The command doesn't prompt when --yes is passed or the terminal isn't interactive. Then --reason\n" +
 			"is required, unless --file has one, and so is the Policy Pack when the violations are from\n" +
 			"several.",
 		Example: "  # Pick from the violations of the current stack's latest run\n" +
 			"  pulumi policy exception new aws-security\n\n" +
-			"  # Except one policy on every resource that violated it\n" +
+			"  # Exempt one policy on every resource that violated it\n" +
 			"  pulumi policy exception new aws-security --policy required-tags --reason \"Shared buckets (LOG-31)\"\n\n" +
-			"  # Read the violations of update 12 instead of the latest run\n" +
-			"  pulumi policy exception new aws-security --update=12 --dry-run\n\n" +
+			"  # Include advisory violations, from update 12 instead of the latest run\n" +
+			"  pulumi policy exception new aws-security --update=12 --level mandatory --level advisory --dry-run\n\n" +
 			"  # Show the violations and the exception, without creating it\n" +
 			"  pulumi policy exception new aws-security --dry-run --output json | jq '.violations'\n\n" +
 			"  # Create an exception from a file, or from stdin with -\n" +
@@ -194,8 +205,10 @@ func newPolicyExceptionNewCmd() *cobra.Command {
 	flags.StringVar(&args.preview, "preview", "",
 		"Read the violations of a preview, as --preview=<id> (default: the latest)")
 	flags.Lookup("preview").NoOptDefVal = latestRun
-	flags.StringArrayVar(&args.policies, "policy", nil, "Only except violations of this policy; may be repeated")
-	flags.StringArrayVar(&args.targets, "target", nil, "Only except violations on this resource URN; may be repeated")
+	flags.StringArrayVar(&args.policies, "policy", nil, "Only exempt violations of this policy; may be repeated")
+	flags.StringArrayVar(&args.targets, "target", nil, "Only exempt violations on this resource URN; may be repeated")
+	flags.StringArrayVar(&args.levels, "level", []string{string(apitype.Mandatory)},
+		"Only exempt violations of this enforcement level (mandatory, advisory, remediate or all); may be repeated")
 	flags.StringVar(&args.file, "file", "",
 		"Read the exception's reason and match entries from this JSON or YAML file, or from stdin with -")
 	flags.StringVar(&args.reason, "reason", "", "Why it's safe to allow the violations")
@@ -227,6 +240,16 @@ func runPolicyExceptionNew(
 	}
 	if args.update != "" && args.preview != "" {
 		return cmdCmd.ConfigurationError{Message: "--update and --preview can't be used together"}
+	}
+	for i, l := range args.levels {
+		args.levels[i] = strings.ToLower(l)
+		if !slices.Contains([]string{"mandatory", "advisory", "remediate", allLevels}, args.levels[i]) {
+			return cmdCmd.ConfigurationError{Message: fmt.Sprintf(
+				"invalid --level %q: expected mandatory, advisory, remediate or all", l)}
+		}
+	}
+	if slices.Contains(args.levels, allLevels) {
+		args.levels = nil
 	}
 	render := func(result policyExceptionNewResult) error {
 		return args.outputFormat.Get()(stdout, stderr, result)
@@ -266,7 +289,7 @@ func runPolicyExceptionNew(
 		if c, org, err = factory(ctx, cmp.Or(org, stacks[0].Owner)); err != nil {
 			return err
 		}
-		if err := readPolicyExceptionViolations(ctx, c, org, stacks, pack, args, &result); err != nil {
+		if err := readPolicyExceptionViolations(ctx, c, stacks, pack, args, &result); err != nil {
 			return err
 		}
 		if len(result.Violations) == 0 {
@@ -274,7 +297,9 @@ func runPolicyExceptionNew(
 			return render(result)
 		}
 		if interactive {
-			if result.Violations, err = pickPolicyExceptionViolations(result.Violations, len(stacks) > 1, opts); err != nil {
+			result.Violations, err = pickPolicyExceptionViolations(
+				result.Violations, len(stacks) > 1, cmdCmd.WriterWidth(stdout), opts)
+			if err != nil {
 				return err
 			}
 		}
@@ -314,8 +339,8 @@ func runPolicyExceptionNew(
 	}
 
 	if interactive {
-		fmt.Fprintf(stderr, "\nPolicy Pack %s:\n", pack)
-		if err := fprintPolicyExceptionConfig(stderr, "EXC-?", result.Exception.PolicyException); err != nil {
+		fmt.Fprintln(stderr, "\nPolicy Pack exceptions configuration:")
+		if err := ui.FprintJSON(stderr, result.Exception.PolicyException); err != nil {
 			return err
 		}
 		answer, err := ui.PromptUserErr("Create this policy exception?", []string{"yes", "no"}, "yes", opts.Color)
@@ -338,9 +363,10 @@ func createPolicyException(
 	ctx context.Context, c policyExceptionClients, org string, draft bool, result *policyExceptionNewResult,
 ) error {
 	if !draft {
-		created, err := c.CreatePolicyException(ctx, org, result.Exception)
+		created, existed, err := c.CreatePolicyException(ctx, org, result.Exception)
 		if err == nil {
-			result.ID = created.ID
+			result.ID, result.Updated = created.ID, existed
+			result.URL = policyExceptionConsoleURL(c.URL(), org, result.Exception.Match, created.ID)
 			return nil
 		}
 		// An organization without the feature also returns a 409, which the message tells apart.
@@ -356,8 +382,15 @@ func createPolicyException(
 	}
 	id := created.ChangeRequestID
 	result.ChangeRequestID = id
-	if u := client.CloudConsoleURL(c.URL(), org, "approvals"); u != "" {
-		result.ChangeRequestURL = u + "?requestId=" + url.QueryEscape(id)
+	result.URL = policyExceptionConsoleURL(c.URL(), org, result.Exception.Match, id)
+	// The same request from the same author returns their open change request, which may be submitted already.
+	cr, err := c.changeRequests.GetChangeRequest(ctx, org, id)
+	if err != nil {
+		return fmt.Errorf("getting change request %s: %w", id, err)
+	}
+	if cr.Status != changeRequestDraft {
+		result.ChangeRequestStatus, result.Updated = cr.Status, true
+		return nil
 	}
 	// A change request's description is limited to 1000 characters, half of a reason's.
 	reason := []rune(result.Exception.Reason)
@@ -365,27 +398,34 @@ func createPolicyException(
 	if err := c.changeRequests.SubmitChangeRequest(ctx, org, id, &description); err != nil {
 		return fmt.Errorf("submitting change request %s: %w", id, err)
 	}
-	cr, err := c.changeRequests.GetChangeRequest(ctx, org, id)
-	if err != nil {
+	if cr, err = c.changeRequests.GetChangeRequest(ctx, org, id); err != nil {
 		return fmt.Errorf("getting change request %s: %w", id, err)
 	}
 	result.ChangeRequestStatus = cr.Status
-	if cr.Status != changeRequestApplied {
-		return nil
-	}
-
-	// The change request doesn't name the exception it created, so find it among the newest of its Policy Pack.
-	listOpts := client.ListPolicyExceptionsOptions{PolicyPack: result.Exception.PolicyPack}
-	resp, err := c.ListPolicyExceptions(ctx, org, listOpts)
-	if err != nil {
-		return err
-	}
-	if i := slices.IndexFunc(resp.Exceptions, func(e apitype.PolicyExceptionInfo) bool {
-		return e.ChangeRequestID == id
-	}); i >= 0 {
-		result.ID = resp.Exceptions[i].ID
-	}
 	return nil
+}
+
+// policyExceptionConsoleURL links to an exception or the change request that requested it, by its ID: on its stack's
+// page when all its targets are in one stack, otherwise on the organization's exceptions page.
+func policyExceptionConsoleURL(cloudURL, org string, match []apitype.PolicyExceptionMatch, id string) string {
+	var stacks []string
+	for _, m := range match {
+		for _, t := range m.Targets {
+			urn := resource.URN(t)
+			if s := path.Join(urn.Project().String(), urn.Stack().String()); !slices.Contains(stacks, s) {
+				stacks = append(stacks, s)
+			}
+		}
+	}
+	page := []string{"insights", "policy", "exceptions"}
+	if len(stacks) == 1 {
+		page = strings.Split(stacks[0], "/")
+	}
+	u := client.CloudConsoleURL(cloudURL, append([]string{org}, page...)...)
+	if u == "" {
+		return ""
+	}
+	return u + "?exception=" + url.QueryEscape(id)
 }
 
 // parsePolicyPackArg splits `[<org>/]<policy-pack>`. The org is empty when the argument doesn't name one.
@@ -488,18 +528,12 @@ func policyExceptionRunOf(
 	return run, nil
 }
 
-// readPolicyExceptionViolations reads the violations of each stack's run that pass the Policy Pack, --policy and
-// --target filters, and that no exception allowed in the run or allows now. Mandatory violations come first.
+// readPolicyExceptionViolations reads the violations of each stack's run that pass the Policy Pack, --policy, --target
+// and --level filters. Mandatory violations come first.
 func readPolicyExceptionViolations(
-	ctx context.Context, c policyExceptionClient, org string, stacks []client.StackIdentifier,
+	ctx context.Context, c policyExceptionClient, stacks []client.StackIdentifier,
 	pack string, args policyExceptionNewArgs, result *policyExceptionNewResult,
 ) error {
-	addCovered := func(id string) {
-		if !slices.Contains(result.Covered, id) {
-			result.Covered = append(result.Covered, id)
-		}
-	}
-
 	for _, stack := range stacks {
 		run, err := policyExceptionRunOf(ctx, c, stack, args)
 		if err != nil {
@@ -508,21 +542,6 @@ func readPolicyExceptionViolations(
 		result.Runs = append(result.Runs, policyExceptionRun{
 			Stack: stack.String(), Kind: string(run.UpdateKind), ID: run.UpdateID,
 		})
-
-		// The run's events don't know about exceptions created since, so those are checked separately.
-		var active []apitype.PolicyExceptionInfo
-		listOpts := client.ListPolicyExceptionsOptions{Stack: stack.Project + "/" + stack.Stack.String()}
-		for {
-			resp, err := c.ListPolicyExceptions(ctx, org, listOpts)
-			if err != nil {
-				return err
-			}
-			active = append(active, resp.Exceptions...)
-			if resp.ContinuationToken == "" {
-				break
-			}
-			listOpts.ContinuationToken = resp.ContinuationToken
-		}
 
 		eventOpts := client.GetUpdateEngineEventsOptions{EventTypes: []string{policyEventType}}
 		for {
@@ -535,22 +554,8 @@ func readPolicyExceptionViolations(
 				if p == nil || p.ResourceURN == "" ||
 					(pack != "" && p.PolicyPackName != pack) ||
 					(len(args.policies) > 0 && !slices.Contains(args.policies, p.PolicyName)) ||
-					(len(args.targets) > 0 && !slices.Contains(args.targets, p.ResourceURN)) {
-					continue
-				}
-				if len(p.Exceptions) > 0 {
-					for _, e := range p.Exceptions {
-						addCovered(e.ID)
-					}
-					continue
-				}
-				if i := slices.IndexFunc(active, func(e apitype.PolicyExceptionInfo) bool {
-					return e.PolicyPack == p.PolicyPackName && slices.ContainsFunc(e.Match,
-						func(m apitype.PolicyExceptionMatch) bool {
-							return slices.Contains(m.Policies, p.PolicyName) && slices.Contains(m.Targets, p.ResourceURN)
-						})
-				}); i >= 0 {
-					addCovered(active[i].ID)
+					(len(args.targets) > 0 && !slices.Contains(args.targets, p.ResourceURN)) ||
+					(len(args.levels) > 0 && !slices.Contains(args.levels, p.EnforcementLevel)) {
 					continue
 				}
 				v := policyExceptionViolation{
@@ -558,9 +563,15 @@ func readPolicyExceptionViolations(
 					PolicyPack: p.PolicyPackName,
 					Policy:     p.PolicyName,
 					Level:      p.EnforcementLevel,
+					Severity:   p.Severity,
 					URN:        p.ResourceURN,
 				}
-				if !slices.Contains(result.Violations, v) {
+				for _, e := range p.Exceptions {
+					v.Exceptions = append(v.Exceptions, e.ID)
+				}
+				if !slices.ContainsFunc(result.Violations, func(w policyExceptionViolation) bool {
+					return w.Stack == v.Stack && w.PolicyPack == v.PolicyPack && w.Policy == v.Policy && w.URN == v.URN
+				}) {
 					result.Violations = append(result.Violations, v)
 				}
 			}
@@ -572,7 +583,7 @@ func readPolicyExceptionViolations(
 	}
 
 	rank := func(v policyExceptionViolation) int {
-		if v.Level == "mandatory" {
+		if v.Level == string(apitype.Mandatory) {
 			return 0
 		}
 		return 1
@@ -580,7 +591,6 @@ func readPolicyExceptionViolations(
 	slices.SortStableFunc(result.Violations, func(a, b policyExceptionViolation) int {
 		return cmp.Compare(rank(a), rank(b))
 	})
-	slices.Sort(result.Covered)
 	return nil
 }
 
@@ -602,40 +612,54 @@ func groupPolicyExceptionMatch(violations []policyExceptionViolation) []apitype.
 	return match
 }
 
-func policyExceptionViolationLabel(v policyExceptionViolation, withStack bool) string {
-	urn := resource.URN(v.URN)
-	label := fmt.Sprintf("%s/%s  %s %s  (%s)", v.PolicyPack, v.Policy, urn.Type(), urn.Name(), v.Level)
-	if withStack {
-		label = v.Stack + ": " + label
+// policyExceptionViolationTags tags a violation the way the engine's display does: `[mandatory] [severity: high]`,
+// and `[exempted: EXC-1]` when an exception exempted it in the run.
+func policyExceptionViolationTags(v policyExceptionViolation, color colors.Colorization) string {
+	c, tag := colors.SpecWarning, "["+v.Level+"]"
+	if v.Level == string(apitype.Mandatory) {
+		c = colors.SpecError
 	}
-	return label
+	if len(v.Exceptions) > 0 {
+		c, tag = colors.BrightBlack, "[exempted: "+strings.Join(v.Exceptions, ", ")+"] "+tag
+	}
+	if v.Severity != "" {
+		tag += " [severity: " + v.Severity + "]"
+	}
+	return color.Colorize(c + tag + colors.Reset)
 }
 
-// pickPolicyExceptionViolations lets the user select the violations to allow. Mandatory violations start selected.
+// pickPolicyExceptionViolations lets the user select the violations to exempt. Mandatory violations that weren't
+// exempted in the run start selected. Each row is cut to the terminal's width, so it doesn't wrap: survey can't
+// redraw a list that's taller than the terminal.
 func pickPolicyExceptionViolations(
-	violations []policyExceptionViolation, withStack bool, opts display.Options,
+	violations []policyExceptionViolation, withStack bool, width int, opts display.Options,
 ) ([]policyExceptionViolation, error) {
 	labels := make([]string, len(violations))
-	var preselected []string
+	var preselected []int
 	for i, v := range violations {
-		labels[i] = policyExceptionViolationLabel(v, withStack)
-		// Violations differ by their full URN, which the label shortens, so keep labels unique for the prompt.
-		if slices.Contains(labels[:i], labels[i]) {
-			labels[i] += fmt.Sprintf(" [%d]", i+1)
+		urn := resource.URN(v.URN)
+		label := fmt.Sprintf("%s  (%s: %s)", v.Policy, urn.Type().DisplayName(), urn.Name())
+		if withStack {
+			label = v.Stack + ": " + label
 		}
-		if v.Level == "mandatory" {
-			preselected = append(preselected, labels[i])
+		// Room for the tags, survey's "> [x]  " and a gap.
+		room := width - cmdutil.MeasureText(policyExceptionViolationTags(v, colors.Never)) - 10
+		if r := []rune(label); room > 0 && len(r) > room {
+			label = string(r[:room-1]) + "…"
+		}
+		labels[i] = policyExceptionViolationTags(v, opts.Color) + "  " + label
+		if v.Level == string(apitype.Mandatory) && len(v.Exceptions) == 0 {
+			preselected = append(preselected, i)
 		}
 	}
-	picked := ui.PromptUserMulti("Violations to allow", labels, preselected, opts.Color)
-	if len(picked) == 0 {
+	picked, err := ui.PromptUserMultiIndexErr("Violations to exempt", labels, preselected, opts.Color,
+		survey.WithPageSize(cmdCmd.OptimalPageSize(cmdCmd.OptimalPageSizeOpts{Nopts: len(labels)})))
+	if err != nil || len(picked) == 0 {
 		return nil, backenderr.CancelledError{Operation: "creating the policy exception"}
 	}
-	var selected []policyExceptionViolation
-	for i, v := range violations {
-		if slices.Contains(picked, labels[i]) {
-			selected = append(selected, v)
-		}
+	selected := make([]policyExceptionViolation, len(picked))
+	for i, j := range picked {
+		selected[i] = violations[j]
 	}
 	return selected, nil
 }
@@ -673,29 +697,30 @@ func choosePolicyExceptionPack(
 
 func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNewResult) error {
 	if len(r.Violations) == 0 && len(r.Exception.Match) == 0 {
-		if len(r.Covered) > 0 {
-			fmt.Fprintf(stderr, "No violations to except; they're already allowed by %s.\n", strings.Join(r.Covered, ", "))
-		} else {
-			fmt.Fprintln(stderr, "No violations to except.")
-		}
+		fmt.Fprintln(stderr, "No violations to exempt.")
 		return nil
 	}
 	if !r.DryRun {
-		if r.ChangeRequestID != "" {
-			fmt.Fprintf(stderr, "Change request created: %s\n", r.ChangeRequestID)
-			if r.ChangeRequestURL != "" {
-				fmt.Fprintf(stderr, "Change request URL: %s\n", r.ChangeRequestURL)
-			}
-			fmt.Fprintln(stderr, "Change request submitted")
+		link := ""
+		if r.URL != "" {
+			link = ": " + r.URL
+		}
+		switch {
+		case r.ID != "" && r.Updated:
+			fmt.Fprintf(stderr, "Updated policy exception %s%s\n", r.ID, link)
+		case r.ID != "":
+			fmt.Fprintf(stderr, "Created policy exception %s%s\n", r.ID, link)
+		case r.Updated:
+			fmt.Fprintf(stderr, "Updated policy exception request%s\n", link)
+		default:
+			fmt.Fprintf(stderr, "Requested policy exception%s\n", link)
 		}
 		switch {
 		case r.ID != "":
-			fmt.Fprintf(stderr, "Created policy exception %s in organization %s.\n", r.ID, r.OrganizationName)
-			fmt.Fprintln(stdout, r.ID)
 		case r.ChangeRequestStatus == changeRequestApplied:
-			fmt.Fprintf(stderr, "Created the policy exception in organization %s.\n", r.OrganizationName)
+			fmt.Fprintln(stderr, "Policy exception created.")
 		default:
-			fmt.Fprintln(stderr, "The policy exception is created once the change request is approved.")
+			fmt.Fprintln(stderr, "Exception will be applied after the request is approved.")
 		}
 		return nil
 	}
@@ -704,18 +729,26 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 		fmt.Fprintf(stdout, "%s: %s %s\n", run.Stack, run.Kind, run.ID)
 	}
 	if len(r.Violations) > 0 {
-		fmt.Fprintln(stdout, "\nViolations to except:")
-		for _, v := range r.Violations {
-			fmt.Fprintf(stdout, "  %s\n    %s\n", policyExceptionViolationLabel(v, len(r.Runs) > 1), v.URN)
+		fmt.Fprintln(stdout, "\nViolations to exempt:")
+		color := cmdutil.GetGlobalColorization()
+		headers := []string{"LEVEL", "POLICY PACK", "POLICY", "URN"}
+		if len(r.Runs) > 1 {
+			headers = append([]string{"STACK"}, headers...)
 		}
-	}
-	if len(r.Covered) > 0 {
-		fmt.Fprintf(stdout, "\nAlready allowed by %s.\n", strings.Join(r.Covered, ", "))
+		rows := make([]cmdutil.TableRow, len(r.Violations))
+		for i, v := range r.Violations {
+			columns := []string{policyExceptionViolationTags(v, color), v.PolicyPack, v.Policy, v.URN}
+			if len(r.Runs) > 1 {
+				columns = append([]string{v.Stack}, columns...)
+			}
+			rows[i] = cmdutil.TableRow{Columns: columns}
+		}
+		ui.FprintTable(stdout, cmdutil.Table{Headers: headers, Rows: rows}, &cmdutil.TableRenderOptions{Color: color})
 	}
 	if r.Exception.PolicyPack == "" {
 		fmt.Fprintln(stdout, "\nThe violations are from several Policy Packs; name one to see its exception.")
 		return nil
 	}
-	fmt.Fprintf(stdout, "\nPolicy Pack %s:\n", r.Exception.PolicyPack)
-	return fprintPolicyExceptionConfig(stdout, "EXC-?", r.Exception.PolicyException)
+	fmt.Fprintln(stdout, "\nPolicy Pack exceptions configuration:")
+	return ui.FprintJSON(stdout, r.Exception.PolicyException)
 }

@@ -122,9 +122,6 @@ func renderPolicyExceptionGetText(w io.Writer, e apitype.PolicyExceptionInfo) er
 		fmt.Fprintln(w)
 	}
 
-	if e.Status != "active" {
-		return nil
-	}
-	fmt.Fprintln(w)
-	return fprintPolicyExceptionConfig(w, e.ID, e.PolicyException)
+	fmt.Fprintln(w, "\nPolicy Pack exceptions configuration:")
+	return ui.FprintJSON(w, e.PolicyException)
 }

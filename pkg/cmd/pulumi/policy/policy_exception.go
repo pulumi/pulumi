@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"slices"
 
 	"github.com/spf13/cobra"
@@ -29,7 +28,6 @@ import (
 	esc_client "github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -39,7 +37,7 @@ import (
 type policyExceptionClient interface {
 	CreatePolicyException(
 		ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
-	) (apitype.PolicyExceptionInfo, error)
+	) (apitype.PolicyExceptionInfo, bool, error)
 	ListPolicyExceptions(
 		ctx context.Context, orgName string, opts client.ListPolicyExceptionsOptions,
 	) (apitype.ListPolicyExceptionsResponse, error)
@@ -141,12 +139,4 @@ func defaultPolicyExceptionClientFactory(
 	}
 
 	return policyExceptionClients{cloudBackend.Client(), cloudBackend.ESCClient()}, org, nil
-}
-
-// fprintPolicyExceptionConfig prints an exception as a version 2 Policy Pack config file.
-func fprintPolicyExceptionConfig(w io.Writer, id string, e apitype.PolicyException) error {
-	return ui.FprintJSON(w, struct {
-		Version    int                                `json:"version"`
-		Exceptions map[string]apitype.PolicyException `json:"exceptions"`
-	}{2, map[string]apitype.PolicyException{id: e}})
 }

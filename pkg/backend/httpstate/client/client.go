@@ -2024,17 +2024,26 @@ func (pc *Client) ListPolicyExceptions(
 }
 
 // CreatePolicyException creates an active policy exception, wrapping the `CreatePolicyException` Pulumi Cloud REST
-// endpoint (POST /api/orgs/{orgName}/policy/exceptions).
+// endpoint (POST /api/orgs/{orgName}/policy/exceptions). It also returns whether the exception already existed: a
+// repeated request returns the existing exception with 200 OK instead of creating one, which returns 201 Created.
 func (pc *Client) CreatePolicyException(
 	ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
-) (apitype.PolicyExceptionInfo, error) {
+) (apitype.PolicyExceptionInfo, bool, error) {
 	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions", url.PathEscape(orgName))
 
-	var resp apitype.PolicyExceptionInfo
-	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
-		return apitype.PolicyExceptionInfo{}, fmt.Errorf("creating policy exception: %w", err)
+	var httpResp *http.Response
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &httpResp); err != nil {
+		return apitype.PolicyExceptionInfo{}, false, fmt.Errorf("creating policy exception: %w", err)
 	}
-	return resp, nil
+	body, err := readBody(httpResp)
+	if err != nil {
+		return apitype.PolicyExceptionInfo{}, false, fmt.Errorf("reading the created policy exception: %w", err)
+	}
+	var resp apitype.PolicyExceptionInfo
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return apitype.PolicyExceptionInfo{}, false, fmt.Errorf("reading the created policy exception: %w", err)
+	}
+	return resp, httpResp.StatusCode == http.StatusOK, nil
 }
 
 // CreatePolicyExceptionDraft requests a policy exception in a new draft change request, for organizations that require
