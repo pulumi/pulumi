@@ -476,7 +476,7 @@ func TestPolicyExceptionNew_RequiresApproval(t *testing.T) {
 		"url": "http://localhost:3000/acme/web/prod?exception=cr-1"
 	}`, buf.String())
 
-	// A change request that needs no approvals is applied on submission, so the exception exists.
+	// A change request whose approvals are met on submission is applied then, so the exception exists.
 	c = twoBuckets()
 	c.gated, c.crStatus = true, changeRequestApplied
 	stdout, stderr, err = runNew(t, c, "", args)
@@ -536,6 +536,16 @@ func TestPolicyExceptionNew_Draft(t *testing.T) {
 	assert.Empty(t, stdout)
 	assert.Equal(t, "Requested policy exception: http://localhost:3000/acme/web/prod?exception=cr-1\n"+
 		"Exception will be applied after the request is approved.\n", stderr)
+
+	// Without an approval gate, a draft's change request is ready on submission and waits to be applied.
+	c = twoBuckets()
+	c.crStatus = changeRequestReady
+	_, stderr, err = runNew(t, c, "", policyExceptionNewArgs{
+		policyPack: "aws", reason: "x", policies: []string{"s3-no-public-read"}, draft: true,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "Requested policy exception: http://localhost:3000/acme/web/prod?exception=cr-1\n"+
+		"Apply the request to create the exception.\n", stderr)
 
 	c = twoBuckets()
 	c.submitErr = &apitype.ErrorResponse{Code: http.StatusBadRequest, Message: "bad"}

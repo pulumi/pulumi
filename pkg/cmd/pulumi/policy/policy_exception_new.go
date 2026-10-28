@@ -55,9 +55,11 @@ const latestRun = "latest"
 // policyEventType is the engine event type code of policy violations.
 const policyEventType = "9"
 
-// The statuses of a change request: one being written, and one whose change was made.
+// The statuses of a change request: one being written, one that's approved but not applied, and one whose change was
+// made.
 const (
 	changeRequestDraft   = "draft"
+	changeRequestReady   = "ready"
 	changeRequestApplied = "applied"
 )
 
@@ -156,7 +158,7 @@ func newPolicyExceptionNewCmd() *cobra.Command {
 			"\n" +
 			"When the organization requires approval for policy exceptions, or --draft is passed, the\n" +
 			"command creates a change request for the exception instead and submits it, with the reason as\n" +
-			"its description. The exception is created once the change request is approved.\n" +
+			"its description. The exception is created once the change request is approved and applied.\n" +
 			"\n" +
 			"The command prints a link to the exception, or to its change request. --output json prints the\n" +
 			"result, with the exception's ID, to stdout. --dry-run --output json prints the run's violations,\n" +
@@ -357,8 +359,8 @@ func runPolicyExceptionNew(
 
 // createPolicyException creates the result's exception. With --draft, or when the organization requires approval
 // (the create returns a 409 saying so), the exception is requested in a change request instead, which is submitted
-// with the reason as its description. A change request that needs no approvals is applied on submission, creating
-// the exception.
+// with the reason as its description. One whose approvals are met on submission is applied then, creating the
+// exception.
 func createPolicyException(
 	ctx context.Context, c policyExceptionClients, org string, draft bool, result *policyExceptionNewResult,
 ) error {
@@ -719,6 +721,8 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 		case r.ID != "":
 		case r.ChangeRequestStatus == changeRequestApplied:
 			fmt.Fprintln(stderr, "Policy exception created.")
+		case r.ChangeRequestStatus == changeRequestReady:
+			fmt.Fprintln(stderr, "Apply the request to create the exception.")
 		default:
 			fmt.Fprintln(stderr, "Exception will be applied after the request is approved.")
 		}
