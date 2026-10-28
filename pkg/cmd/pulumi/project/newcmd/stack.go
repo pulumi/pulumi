@@ -127,10 +127,7 @@ func createStackWithRetry(ctx context.Context, sink diag.Sink, w io.Writer, ws p
 		if err == nil {
 			return s, formatted, nil
 		}
-		if yes {
-			return nil, "", err
-		}
-		if _, ok := errors.AsType[backenderr.DefaultOrgError](err); ok {
+		if yes || !retryableCreateStackError(err) {
 			return nil, "", err
 		}
 		// Let the user know about the error and loop around to try again.
@@ -139,6 +136,18 @@ func createStackWithRetry(ctx context.Context, sink diag.Sink, w io.Writer, ws p
 			return nil, "", err
 		}
 	}
+}
+
+// A stack name can't fix these, and after some of them the backend stack already exists, so a retry would leave it
+// behind.
+func retryableCreateStackError(err error) bool {
+	if _, ok := errors.AsType[backenderr.DefaultOrgError](err); ok {
+		return false
+	}
+	return !errors.Is(err, cmdStack.ErrSaveStackConfig) &&
+		!errors.Is(err, cmdStack.ErrSelectCreatedStack) &&
+		!errors.Is(err, cmdStack.ErrCreatedWithoutManagedEnvironment) &&
+		!errors.Is(err, backend.ErrManagedEnvironmentNotSupported)
 }
 
 func buildStackName(ctx context.Context, b backend.Backend, stackName string) (string, error) {

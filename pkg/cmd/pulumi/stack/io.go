@@ -377,6 +377,10 @@ var ErrSaveStackConfig = errors.New("saving stack config")
 // create the ESC environment it was asked for, so the stack exists despite the error.
 var ErrCreatedWithoutManagedEnvironment = errors.New("the stack was created without an ESC environment")
 
+// ErrSelectCreatedStack is returned by `CreateStack` when it created the stack but could not select it as the current
+// stack, so the stack exists despite the error.
+var ErrSelectCreatedStack = errors.New("selecting the new stack")
+
 // StackCreatedDespiteError reports whether err is a `CreateStack` error returned after the backend created the stack.
 func StackCreatedDespiteError(err error) bool {
 	return errors.Is(err, ErrSaveStackConfig) || errors.Is(err, ErrCreatedWithoutManagedEnvironment)
@@ -506,7 +510,7 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	if opts.SetCurrent {
 		if err = state.SetCurrentStack(ws, state.BackendURLKey(b), stack.Ref().FullyQualifiedName().String()); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %w", ErrSelectCreatedStack, err)
 		}
 	}
 
