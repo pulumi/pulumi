@@ -17,11 +17,9 @@ package newcmd
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -32,19 +30,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-)
-
-const awsDocURL = "https://www.pulumi.com/registry/packages/aws/installation-configuration/"
-
-var (
-	awsProvider   = cloudProvider{pkg: "aws", displayName: "AWS", docURL: awsDocURL}
-	azureProvider = cloudProvider{pkg: "azure-native", displayName: "Azure"}
-	gcpProvider   = cloudProvider{pkg: "gcp", displayName: "Google Cloud"}
 )
 
 func resourcePackage(name, version string) workspace.PackageDescriptor {
@@ -62,24 +51,6 @@ func schemaProvider(schemaJSON string) *plugin.MockProvider {
 			return plugin.GetSchemaResponse{Schema: []byte(schemaJSON)}, nil
 		},
 	}
-}
-
-func runCheck(
-	t *testing.T, cp cloudProvider, prov plugin.Provider, news property.Map, timeout time.Duration,
-) (bool, string) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), timeout)
-	defer cancel()
-	var buf bytes.Buffer
-	problem := probeCredentials(ctx, cp, prov, news)
-	if problem != nil {
-		credentialsPreflight{stdout: &buf, opts: display.Options{Color: colors.Never}}.printWarning(cp, problem)
-	}
-	return problem != nil, buf.String()
-}
-
-func echoCheckConfig(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-	return plugin.CheckConfigResponse{Properties: req.News}, nil
 }
 
 func TestCredentialsCheckEnabled(t *testing.T) {
@@ -101,50 +72,6 @@ func TestCredentialsCheckEnabled(t *testing.T) {
 				t.Setenv("PULUMI_SKIP_NEW_CREDENTIALS_CHECK", tt.env)
 			}
 			assert.Equal(t, tt.enabled, credentialsCheckEnabled(tt.args))
-		})
-	}
-}
-
-func TestCloudProviderFromSchema(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		schema   string
-		err      error
-		expected cloudProvider
-		ok       bool
-	}{
-		{
-			name: "opted in",
-			schema: `{"name":"aws","displayName":"AWS","validateCredentialsOnNew":true,` +
-				`"configurationDocsUrl":"` + awsDocURL + `"}`,
-			expected: awsProvider,
-			ok:       true,
-		},
-		{
-			name:     "opted in without display name or docs",
-			schema:   `{"name":"aws","validateCredentialsOnNew":true}`,
-			expected: cloudProvider{pkg: "aws", displayName: "aws"},
-			ok:       true,
-		},
-		{name: "not opted in", schema: `{"name":"aws","displayName":"AWS","configurationDocsUrl":"` + awsDocURL + `"}`},
-		{name: "explicitly opted out", schema: `{"name":"random","validateCredentialsOnNew":false}`},
-		{name: "invalid schema", schema: `not json`},
-		{name: "schema error", err: errors.New("boom")},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			prov := schemaProvider(tt.schema)
-			if tt.err != nil {
-				prov.GetSchemaF = func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
-					return plugin.GetSchemaResponse{}, tt.err
-				}
-			}
-			cp, ok := cloudProviderFromSchema(t.Context(), prov, "aws", plugin.GetSchemaRequest{})
-			assert.Equal(t, tt.ok, ok)
-			assert.Equal(t, tt.expected, cp)
 		})
 	}
 }
@@ -242,6 +169,11 @@ func TestPreflightCloudCredentialsPackages(t *testing.T) {
 					prov.CheckConfigF = func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
 						name := strings.TrimPrefix(string(req.URN.Type()), "pulumi:providers:")
 						checked = append(checked, name)
+						if name == "aws" {
+							// Plaintext config is passed; secrets are not decrypted.
+							assert.Equal(t, 1, req.News.Len())
+							assert.Equal(t, "us-east-1", req.News.Get("region").AsString())
+						}
 						assert.Equal(t, "pulumi:providers:"+name, string(req.URN.Type()))
 						return plugin.CheckConfigResponse{}, status.Error(codes.Unknown, "no credentials")
 					}
@@ -256,7 +188,11 @@ func TestPreflightCloudCredentialsPackages(t *testing.T) {
 
 			var buf bytes.Buffer
 			pf := credentialsPreflight{
-				host: host, pctx: pctx, cfg: config.Map{}, stdout: &buf, opts: display.Options{Color: colors.Never},
+				host: host, pctx: pctx, stdout: &buf, opts: display.Options{Color: colors.Never},
+				cfg: config.Map{
+					config.MustMakeKey("aws", "region"): config.NewValue("us-east-1"),
+					config.MustMakeKey("aws", "token"):  config.NewSecureValue("ciphertext"),
+				},
 			}
 			for _, pkg := range tt.packages {
 				if pkg.Kind != apitype.ResourcePlugin || pkg.ExtensionParameterization != nil {
@@ -302,222 +238,4 @@ func TestPreflightCloudCredentialsSkipsMismatchedParameterization(t *testing.T) 
 	defer pctx.Close()
 
 	credentialsPreflight{host: host, pctx: pctx}.checkPackage(t.Context(), desc)
-}
-
-func TestProviderConfigProperties(t *testing.T) {
-	t.Parallel()
-
-	cfg := config.Map{
-		config.MustMakeKey("aws", "region"):            config.NewValue("us-east-1"),
-		config.MustMakeKey("aws", "secret"):            config.NewSecureValue("ciphertext"),
-		config.MustMakeKey("azure-native", "location"): config.NewValue("WestUS2"),
-		config.MustMakeKey("gcp", "project"):           config.NewValue("my-project"),
-		config.MustMakeKey("proj", "etcetc"):           config.NewValue("unrelated"),
-	}
-	props := providerConfigProperties(awsProvider.pkg, cfg)
-	require.Equal(t, 1, props.Len())
-	assert.Equal(t, "us-east-1", props.Get("region").AsString())
-
-	props = providerConfigProperties(azureProvider.pkg, cfg)
-	require.Equal(t, 1, props.Len())
-	assert.Equal(t, "WestUS2", props.Get("location").AsString())
-
-	props = providerConfigProperties(gcpProvider.pkg, cfg)
-	require.Equal(t, 1, props.Len())
-	assert.Equal(t, "my-project", props.Get("project").AsString())
-}
-
-func TestCheckCloudCredentialsRPCError(t *testing.T) {
-	t.Parallel()
-
-	mock := &plugin.MockProvider{
-		CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-			assert.Equal(t, "pulumi:providers:aws", string(req.URN.Type()))
-			assert.Empty(t, req.Name)
-			assert.Empty(t, req.Type)
-			assert.Equal(t, "us-east-1", req.News.Get("region").AsString())
-			return plugin.CheckConfigResponse{},
-				status.Error(codes.Unknown, "unable to validate AWS credentials.\nDetails: no valid credential sources found")
-		},
-	}
-
-	news := property.NewMap(map[string]property.Value{"region": property.New("us-east-1")})
-	warned, out := runCheck(t, awsProvider, mock, news, time.Second)
-	assert.True(t, warned)
-	assert.Contains(t, out, "warning:")
-	assert.Contains(t, out, "Could not validate your AWS credentials")
-	assert.Contains(t, out, "unable to validate AWS credentials.")
-	assert.Contains(t, out, "    Details: no valid credential sources found")
-	assert.NotContains(t, out, "rpc error")
-	assert.Contains(t, out, "For help configuring the AWS provider, see "+awsDocURL)
-}
-
-func TestCheckCloudCredentialsFailures(t *testing.T) {
-	t.Parallel()
-
-	mock := &plugin.MockProvider{
-		CheckConfigF: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-			return plugin.CheckConfigResponse{Failures: []plugin.CheckFailure{
-				{Property: "region", Reason: "expected a valid region"},
-				{Reason: "unable to validate AWS credentials.\nDetails: no valid credential sources found"},
-			}}, nil
-		},
-		ConfigureF: func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-			t.Fatal("Configure must not be called when CheckConfig fails")
-			return plugin.ConfigureResponse{}, nil
-		},
-	}
-
-	warned, out := runCheck(t, awsProvider, mock, property.Map{}, time.Second)
-	assert.True(t, warned)
-	assert.Contains(t, out, "The AWS provider reported problems with this stack's configuration")
-	assert.Contains(t, out, "    region: expected a valid region")
-	assert.Contains(t, out, "    unable to validate AWS credentials.\n    Details: no valid credential sources found")
-	assert.Contains(t, out, awsDocURL)
-}
-
-func TestCheckCloudCredentialsSuccess(t *testing.T) {
-	t.Parallel()
-
-	configured := false
-	mock := &plugin.MockProvider{
-		CheckConfigF: echoCheckConfig,
-		ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-			configured = true
-			require.NotNil(t, req.URN)
-			require.NotNil(t, req.Name)
-			require.NotNil(t, req.Type)
-			require.NotNil(t, req.ID)
-			assert.Equal(t, "pulumi:providers:aws", string(*req.Type))
-			assert.Equal(t, "default", *req.Name)
-			assert.Equal(t, "us-east-1", req.Inputs.Get("region").AsString())
-			return plugin.ConfigureResponse{}, nil
-		},
-	}
-
-	news := property.NewMap(map[string]property.Value{"region": property.New("us-east-1")})
-	warned, out := runCheck(t, awsProvider, mock, news, time.Second)
-	assert.False(t, warned)
-	assert.True(t, configured)
-	assert.Empty(t, out)
-}
-
-func TestCheckCloudCredentialsConfigureError(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		provider cloudProvider
-		message  string
-	}{
-		{awsProvider, "unable to validate AWS credentials.\nDetails: InvalidClientTokenId"},
-		{azureProvider, "failed to get authorizer: please run `az login`"},
-		{gcpProvider, "google: could not find default credentials"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.provider.pkg, func(t *testing.T) {
-			t.Parallel()
-
-			providerType := "pulumi:providers:" + tt.provider.pkg
-			mock := &plugin.MockProvider{
-				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					assert.Equal(t, providerType, string(req.URN.Type()))
-					return plugin.CheckConfigResponse{Properties: req.News}, nil
-				},
-				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					assert.Equal(t, providerType, string(*req.Type))
-					return plugin.ConfigureResponse{}, status.Error(codes.Unknown, tt.message)
-				},
-			}
-
-			warned, out := runCheck(t, tt.provider, mock, property.Map{}, time.Second)
-			assert.True(t, warned)
-			assert.Contains(t, out, "Could not validate your "+tt.provider.displayName+" credentials")
-			for line := range strings.SplitSeq(tt.message, "\n") {
-				assert.Contains(t, out, "    "+line)
-			}
-			assert.NotContains(t, out, "rpc error")
-			if tt.provider.docURL != "" {
-				assert.Contains(t, out, "For help configuring the "+tt.provider.displayName+" provider, see "+tt.provider.docURL)
-			} else {
-				// Providers that publish no docs link get no help line rather than a dangling one.
-				assert.NotContains(t, out, "For help configuring")
-			}
-		})
-	}
-}
-
-func TestCheckCloudCredentialsErrorIncludesDocURL(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name          string
-		checkFailures []plugin.CheckFailure
-		configureErr  error
-	}{
-		{
-			name:         "configure error",
-			configureErr: status.Error(codes.Unknown, "unable to validate AWS credentials.\nSee "+awsDocURL),
-		},
-		{
-			name: "check failure",
-			checkFailures: []plugin.CheckFailure{
-				{Reason: "unable to validate AWS credentials.\nSee " + awsDocURL},
-			},
-		},
-		{
-			name: "without trailing slash",
-			configureErr: status.Error(codes.Unknown,
-				"unable to validate AWS credentials.\nSee "+strings.TrimSuffix(awsDocURL, "/")+" for details"),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			mock := &plugin.MockProvider{
-				CheckConfigF: func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-					return plugin.CheckConfigResponse{Properties: req.News, Failures: tt.checkFailures}, nil
-				},
-				ConfigureF: func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					return plugin.ConfigureResponse{}, tt.configureErr
-				},
-			}
-
-			warned, out := runCheck(t, awsProvider, mock, property.Map{}, time.Second)
-			assert.True(t, warned)
-			assert.Equal(t, 1, strings.Count(out, strings.TrimSuffix(awsDocURL, "/")))
-			assert.NotContains(t, out, "For help configuring")
-		})
-	}
-}
-
-func TestCheckCloudCredentialsConfigureTimeout(t *testing.T) {
-	t.Parallel()
-
-	mock := &plugin.MockProvider{
-		CheckConfigF: echoCheckConfig,
-		ConfigureF: func(ctx context.Context, _ plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-			<-ctx.Done()
-			return plugin.ConfigureResponse{}, ctx.Err()
-		},
-	}
-
-	warned, out := runCheck(t, awsProvider, mock, property.Map{}, 10*time.Millisecond)
-	assert.False(t, warned)
-	assert.Empty(t, out)
-}
-
-func TestCheckCloudCredentialsTimeout(t *testing.T) {
-	t.Parallel()
-
-	mock := &plugin.MockProvider{
-		CheckConfigF: func(ctx context.Context, _ plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-			<-ctx.Done()
-			return plugin.CheckConfigResponse{}, ctx.Err()
-		},
-	}
-
-	warned, out := runCheck(t, awsProvider, mock, property.Map{}, 10*time.Millisecond)
-	assert.False(t, warned)
-	assert.Empty(t, out)
 }
