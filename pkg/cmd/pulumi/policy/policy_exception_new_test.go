@@ -299,12 +299,8 @@ func TestPolicyExceptionConsoleURL(t *testing.T) {
 	const api = "https://api.pulumi.com"
 	assert.Equal(t, "https://app.pulumi.com/acme/web/prod?exception=EXC-7",
 		policyExceptionConsoleURL(api, "acme", []apitype.PolicyExceptionMatch{
-			match([]string{"p"}, logsURN, cdnLogsURN),
-		}, "EXC-7"), "all targets in one stack link to its page")
-	assert.Equal(t, "https://app.pulumi.com/acme/insights/policy/exceptions?exception=cr-1",
-		policyExceptionConsoleURL(api, "acme", []apitype.PolicyExceptionMatch{
 			match([]string{"p"}, logsURN), match([]string{"p"}, "urn:pulumi:dev::web::aws:s3/bucket:Bucket::logs"),
-		}, "cr-1"), "targets in several stacks link to the organization's exceptions")
+		}, "EXC-7"), "the link is to the first target's stack")
 	assert.Empty(t, policyExceptionConsoleURL("https://pulumi.example.com", "acme", nil, "EXC-7"),
 		"a backend without a known console has no link")
 }
