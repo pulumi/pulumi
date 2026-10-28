@@ -21,6 +21,7 @@ import (
 	"io"
 	"slices"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue"
 	"github.com/spf13/cobra"
 
@@ -209,7 +210,7 @@ func runPolicyGroupNew(
 		return fmt.Errorf("invalid --mode %q; must be \"audit\" or \"preventative\"", mode)
 	}
 
-	groupEntityType := apitype.PolicyGroupEntityType(entityType)
+	groupEntityType := cloudapitype.PolicyGroupEntityType(entityType)
 	req := apitype.CreatePolicyGroupRequest{
 		Name:       name,
 		EntityType: &groupEntityType, //nolint:staticcheck

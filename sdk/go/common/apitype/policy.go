@@ -145,14 +145,8 @@ type PolicySeverity = cloudapitype.AppPolicySeverity
 // PolicyGroupMode is the Cloud SDK's PolicyGroupMode.
 type PolicyGroupMode = cloudapitype.PolicyGroupMode
 
-// PolicyGroupEntityType is the Cloud SDK's PolicyGroupEntityType.
-type PolicyGroupEntityType = cloudapitype.PolicyGroupEntityType
-
-// PolicyGroupMemberSource is the Cloud SDK's PolicyGroupMemberSource.
-type PolicyGroupMemberSource = cloudapitype.PolicyGroupMemberSource
-
-// PermissionBooleanExpression is the Cloud SDK's PermissionBooleanExpression.
-type PermissionBooleanExpression = cloudapitype.PermissionBooleanExpression
+// EntityType is the Cloud SDK's AppEntityType.
+type EntityType = cloudapitype.AppEntityType
 
 // GetPolicyGroupResponse is the Cloud SDK's PolicyGroup.
 type GetPolicyGroupResponse = cloudapitype.PolicyGroup
@@ -163,9 +157,6 @@ type CreatePolicyGroupRequest = cloudapitype.NewPolicyGroupRequest
 // UpdatePolicyGroupRequest is the Cloud SDK's AppUpdatePolicyGroupRequest.
 type UpdatePolicyGroupRequest = cloudapitype.AppUpdatePolicyGroupRequest
 
-// PolicyGroupUpdate is the Cloud SDK's UpdatePolicyGroupRequest.
-type PolicyGroupUpdate = cloudapitype.UpdatePolicyGroupRequest
-
 // PulumiStackReference is the Cloud SDK's AppPulumiStackReference.
 type PulumiStackReference = cloudapitype.AppPulumiStackReference
 
@@ -175,44 +166,11 @@ type InsightsAccountReference = cloudapitype.AppInsightsAccountReference
 // PolicyPackMetadata is the Cloud SDK's AppPolicyPackMetadata.
 type PolicyPackMetadata = cloudapitype.AppPolicyPackMetadata
 
-// PolicyGroupStack is the Cloud SDK's PolicyGroupStack.
-type PolicyGroupStack = cloudapitype.PolicyGroupStack
-
-// PolicyGroupAccount is the Cloud SDK's PolicyGroupAccount.
-type PolicyGroupAccount = cloudapitype.PolicyGroupAccount
-
-// ListPolicyGroupStacksResponse is the Cloud SDK's ListPolicyGroupStacksResponse.
-type ListPolicyGroupStacksResponse = cloudapitype.ListPolicyGroupStacksResponse
-
-// ListPolicyGroupAccountsResponse is the Cloud SDK's ListPolicyGroupAccountsResponse.
-type ListPolicyGroupAccountsResponse = cloudapitype.ListPolicyGroupAccountsResponse
-
-// RegistryPolicyPack is the Cloud SDK's RegistryPolicyPack.
-type RegistryPolicyPack = cloudapitype.RegistryPolicyPack
-
-// RegistryPolicyPackAccessLevel is the Cloud SDK's RegistryPolicyPackAccessLevel.
-type RegistryPolicyPackAccessLevel = cloudapitype.RegistryPolicyPackAccessLevel
-
 // PolicyIssue is the Cloud SDK's PolicyIssue.
 type PolicyIssue = cloudapitype.PolicyIssue
 
-// PolicyIssueStatus is the Cloud SDK's PolicyIssueStatus.
-type PolicyIssueStatus = cloudapitype.PolicyIssueStatus
-
-// PolicyIssuePriority is the Cloud SDK's PolicyIssuePriority.
-type PolicyIssuePriority = cloudapitype.PolicyIssuePriority
-
-// PolicyIssueKind is the Cloud SDK's PolicyIssueKind.
-type PolicyIssueKind = cloudapitype.PolicyIssueKind
-
-// IssueEntityType is the Cloud SDK's IssueEntityType.
-type IssueEntityType = cloudapitype.IssueEntityType
-
 // GetPolicyIssueResponse is the Cloud SDK's GetPolicyIssueResponse.
 type GetPolicyIssueResponse = cloudapitype.GetPolicyIssueResponse
-
-// UpdatePolicyIssueRequest is the Cloud SDK's UpdatePolicyIssueRequest.
-type UpdatePolicyIssueRequest = cloudapitype.UpdatePolicyIssueRequest
 
 // ListPolicyIssuesRequest is the Cloud SDK's AngularGridGetRowsRequest.
 type ListPolicyIssuesRequest = cloudapitype.AngularGridGetRowsRequest
@@ -222,15 +180,6 @@ type ListPolicyIssuesResponse = cloudapitype.ListPolicyIssuesResponse
 
 // PolicyIssueSortModel is the Cloud SDK's AngularGridSortModelItem.
 type PolicyIssueSortModel = cloudapitype.AngularGridSortModelItem
-
-// AngularGridAdvancedFilterModel is the Cloud SDK's AngularGridAdvancedFilterModel.
-type AngularGridAdvancedFilterModel = cloudapitype.AngularGridAdvancedFilterModel
-
-// AngularGridFilterModel is the Cloud SDK's AngularGridFilterModel.
-type AngularGridFilterModel = cloudapitype.AngularGridFilterModel
-
-// AngularGridColumn is the Cloud SDK's AngularGridColumn.
-type AngularGridColumn = cloudapitype.AngularGridColumn
 
 const (
 	Object = cloudapitype.AppJSONSchemaTypeObject
@@ -249,54 +198,9 @@ const (
 	PolicyGroupModeAudit        = cloudapitype.PolicyGroupModeAudit
 	PolicyGroupModePreventative = cloudapitype.PolicyGroupModePreventative
 
-	PolicyGroupEntityTypeStacks   = cloudapitype.PolicyGroupEntityTypeStacks
-	PolicyGroupEntityTypeAccounts = cloudapitype.PolicyGroupEntityTypeAccounts
-
-	PolicyGroupMemberSourceExplicit = cloudapitype.PolicyGroupMemberSourceExplicit
-	PolicyGroupMemberSourceRule     = cloudapitype.PolicyGroupMemberSourceRule
-
-	RegistryPolicyPackAccessLevelFull     = cloudapitype.RegistryPolicyPackAccessLevelFull
-	RegistryPolicyPackAccessLevelViewOnly = cloudapitype.RegistryPolicyPackAccessLevelViewOnly
-	RegistryPolicyPackAccessLevelDeny     = cloudapitype.RegistryPolicyPackAccessLevelDeny
-
-	PolicyIssueStatusOpen       = cloudapitype.PolicyIssueStatusOpen
-	PolicyIssueStatusInProgress = cloudapitype.PolicyIssueStatusInProgress
-	PolicyIssueStatusByDesign   = cloudapitype.PolicyIssueStatusByDesign
-	PolicyIssueStatusFixed      = cloudapitype.PolicyIssueStatusFixed
-	PolicyIssueStatusIgnored    = cloudapitype.PolicyIssueStatusIgnored
-
-	PolicyIssuePriorityP0 = cloudapitype.PolicyIssuePriorityP0
-	PolicyIssuePriorityP1 = cloudapitype.PolicyIssuePriorityP1
-	PolicyIssuePriorityP2 = cloudapitype.PolicyIssuePriorityP2
-	PolicyIssuePriorityP3 = cloudapitype.PolicyIssuePriorityP3
-	PolicyIssuePriorityP4 = cloudapitype.PolicyIssuePriorityP4
-
-	PolicyIssueKindAudit        = cloudapitype.PolicyIssueKindAudit
-	PolicyIssueKindPreventative = cloudapitype.PolicyIssueKindPreventative
-
-	IssueEntityTypeStack           = cloudapitype.IssueEntityTypeStack
-	IssueEntityTypeInsightsAccount = cloudapitype.IssueEntityTypeInsightsAccount
+	Stacks   = cloudapitype.AppEntityTypeStacks
+	Accounts = cloudapitype.AppEntityTypeAccounts
 )
-
-// EntityType indicates the type of entity a policy group applies to
-type EntityType string
-
-const (
-	// Stacks indicates the policy group applies to stacks
-	Stacks EntityType = "stacks"
-
-	// Accounts indicates the policy group applies to accounts
-	Accounts EntityType = "accounts"
-)
-
-// IsValid returns true if the EntityType is a valid value.
-func (et EntityType) IsValid() bool {
-	switch et {
-	case Stacks, Accounts:
-		return true
-	}
-	return false
-}
 
 // GetPolicyPackResponse is the response to get a specific Policy Pack's
 // metadata and policies.
@@ -317,19 +221,11 @@ type GetStackPolicyPacksResponse struct {
 	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
 }
 
-// ListPolicyPacksResponse is the response to list an organization's
-// Policy Packs.
-type ListPolicyPacksResponse struct {
-	PolicyPacks []PolicyPackWithVersions `json:"policyPacks"`
-}
+// ListPolicyPacksResponse is the Cloud SDK's AppListPolicyPacksResponse.
+type ListPolicyPacksResponse = cloudapitype.AppListPolicyPacksResponse
 
-// PolicyPackWithVersions details the specifics of a Policy Pack and all its available versions.
-type PolicyPackWithVersions struct {
-	Name        string   `json:"name"`
-	DisplayName string   `json:"displayName"`
-	Versions    []int    `json:"versions"`
-	VersionTags []string `json:"versionTags"`
-}
+// PolicyPackWithVersions is the Cloud SDK's AppPolicyPackWithVersions.
+type PolicyPackWithVersions = cloudapitype.AppPolicyPackWithVersions
 
 // ListPolicyGroupsResponse lists a summary of the organization's Policy Groups.
 type ListPolicyGroupsResponse struct {
