@@ -45,6 +45,7 @@ func NewPolicyCmd() *cobra.Command {
 	cmd.AddCommand(newPolicyValidateCmd())
 	cmd.AddCommand(newPolicyComplianceCmd())
 	cmd.AddCommand(newPolicyIssueCmd())
+	cmd.AddCommand(newPolicyExceptionCmd())
 
 	return cmd
 }

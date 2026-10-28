@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	esc_client "github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -91,6 +92,7 @@ type fakeHTTPBackend struct {
 func (f *fakeHTTPBackend) CloudURL() string                                       { return "" }
 func (f *fakeHTTPBackend) StackConsoleURL(backend.StackReference) (string, error) { return "", nil }
 func (f *fakeHTTPBackend) Client() *client.Client                                 { return f.ClientV }
+func (f *fakeHTTPBackend) ESCClient() esc_client.Client                           { return nil }
 
 func (f *fakeHTTPBackend) GetLatestStackPreview(
 	ctx context.Context, stackRef backend.StackReference,

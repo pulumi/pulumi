@@ -2589,3 +2589,48 @@ func TestGetPolicyPack(t *testing.T) {
 	require.Len(t, resp.Policies, 1)
 	assert.Equal(t, apitype.Mandatory, resp.Policies[0].EnforcementLevel)
 }
+
+func TestPolicyExceptionRequests(t *testing.T) {
+	t.Parallel()
+
+	var gotRequests []string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		gotRequests = append(gotRequests, strings.TrimSpace(req.Method+" "+req.URL.String()+" "+string(body)))
+		return `{"changeRequestId": "cr-1"}`
+	})
+	defer server.Close()
+
+	client := NewClient(server.URL, "token", true, nil)
+	ctx := t.Context()
+
+	_, err := client.ListPolicyExceptions(ctx, "org", ListPolicyExceptionsOptions{})
+	require.NoError(t, err)
+	_, err = client.ListPolicyExceptions(ctx, "org", ListPolicyExceptionsOptions{
+		PolicyPack:        "aws",
+		Policy:            "tags",
+		Stack:             "web/prod",
+		Status:            []string{"active", "removed"},
+		ContinuationToken: "next",
+	})
+	require.NoError(t, err)
+	_, err = client.CreatePolicyException(ctx, "org", apitype.CreatePolicyExceptionRequest{PolicyPack: "aws"})
+	require.NoError(t, err)
+	_, err = client.GetPolicyException(ctx, "org", "EXC-1")
+	require.NoError(t, err)
+	require.NoError(t, client.RemovePolicyException(ctx, "org", "EXC-1"))
+	draft, err := client.CreatePolicyExceptionDraft(ctx, "org", apitype.CreatePolicyExceptionRequest{PolicyPack: "aws"})
+	require.NoError(t, err)
+	assert.Equal(t, "cr-1", draft.ChangeRequestID)
+
+	assert.Equal(t, []string{
+		"GET /api/orgs/org/policy/exceptions",
+		"GET /api/orgs/org/policy/exceptions?continuationToken=next&policy=tags&policyPack=aws" +
+			"&stack=web%2Fprod&status=active&status=removed",
+		`POST /api/orgs/org/policy/exceptions {"reason":"","match":null,"policyPack":"aws"}`,
+		"GET /api/orgs/org/policy/exceptions/EXC-1",
+		"DELETE /api/orgs/org/policy/exceptions/EXC-1",
+		`POST /api/orgs/org/policy/exceptions/drafts {"reason":"","match":null,"policyPack":"aws"}`,
+	}, gotRequests)
+}
