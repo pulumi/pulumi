@@ -151,7 +151,7 @@ require (
 	github.com/git-pkgs/packageurl-go v0.3.1 // indirect
 	github.com/git-pkgs/purl v0.1.10 // indirect
 	github.com/git-pkgs/vers v0.2.4 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
