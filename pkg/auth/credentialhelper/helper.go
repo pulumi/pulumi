@@ -113,10 +113,6 @@ func resolve(path string, args []string) (*workspace.CredentialHelper, error) {
 	if err != nil {
 		return nil, err
 	}
-	p, err = filepath.EvalSymlinks(p)
-	if err != nil {
-		return nil, err
-	}
 	return &workspace.CredentialHelper{Path: p, Args: args}, nil
 }
 
