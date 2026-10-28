@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"slices"
 	"strconv"
 	"strings"
@@ -407,23 +406,14 @@ func createPolicyException(
 	return nil
 }
 
-// policyExceptionConsoleURL links to an exception or the change request that requested it, by its ID: on its stack's
-// page when all its targets are in one stack, otherwise on the organization's exceptions page.
+// policyExceptionConsoleURL links to an exception or the change request that requested it, by its ID, on the page of
+// its first target's stack.
 func policyExceptionConsoleURL(cloudURL, org string, match []apitype.PolicyExceptionMatch, id string) string {
-	var stacks []string
-	for _, m := range match {
-		for _, t := range m.Targets {
-			urn := resource.URN(t)
-			if s := path.Join(urn.Project().String(), urn.Stack().String()); !slices.Contains(stacks, s) {
-				stacks = append(stacks, s)
-			}
-		}
+	if len(match) == 0 || len(match[0].Targets) == 0 {
+		return ""
 	}
-	page := []string{"insights", "policy", "exceptions"}
-	if len(stacks) == 1 {
-		page = strings.Split(stacks[0], "/")
-	}
-	u := client.CloudConsoleURL(cloudURL, append([]string{org}, page...)...)
+	urn := resource.URN(match[0].Targets[0])
+	u := client.CloudConsoleURL(cloudURL, org, urn.Project().String(), urn.Stack().String())
 	if u == "" {
 		return ""
 	}
