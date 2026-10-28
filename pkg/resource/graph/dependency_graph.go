@@ -262,9 +262,11 @@ func (dg *DependencyGraph) Contains(res *pkgresource.State) bool {
 
 // `TransitiveDependenciesOf` calculates the set of resources upon which the given resource depends, directly or
 // indirectly. This includes the resource's provider, parent, any resources in the `Dependencies` list, any resources in
-// the `PropertyDependencies` map, and any resource referenced by the `DeletedWith` or `ReplaceWith` fields.
+// the `PropertyDependencies` map, and any resource referenced by the `DeletedWith` or `ReplaceWith` fields. Only a
+// resource that precedes its dependent in the graph can be a dependency.
 //
-// This function is linear in the number of resources and dependencies in the `DependencyGraph`.
+// This function takes O(N + E*k) time, where N is the number of resources, E is the number of dependency edges, and k
+// is the largest number of copies of one URN.
 func (dg *DependencyGraph) TransitiveDependenciesOf(r *pkgresource.State) mapset.Set[*pkgresource.State] {
 	dependencies := mapset.NewSet[*pkgresource.State]()
 	index, ok := dg.index[r]
@@ -278,14 +280,20 @@ func (dg *DependencyGraph) TransitiveDependenciesOf(r *pkgresource.State) mapset
 	// permitted, so it's important that we know which is which and don't disambiguate by URN alone. To this end we keep
 	// track of two lookup tables -- old resources (identifiable by their Delete flag being set) and new resources.
 	//
-	// Multiple old resources with the same URN cannot be disambiguated, so retain all of them.
+	// We cannot tell multiple old resources with the same URN apart, so we keep all of them that precede the resource
+	// that refers to them.
+	//
+	// We expect at most one new resource for each URN. A malformed snapshot can contain more than one, so we keep all of
+	// them.
 	oldsByURN := map[resource.URN][]*node{}
 	newsByURN := map[resource.URN][]*node{}
 	var rn *node
 	for i, gr := range dg.resources {
-		n := &node{resource: gr}
+		n := &node{resource: gr, index: i}
 		if i == index {
 			rn = n
+			// Resources are topologically sorted, so we know that r doesn't depend on anything past itself.
+			break
 		}
 		if gr.Delete {
 			oldsByURN[gr.URN] = append(oldsByURN[gr.URN], n)
@@ -294,30 +302,34 @@ func (dg *DependencyGraph) TransitiveDependenciesOf(r *pkgresource.State) mapset
 		}
 	}
 
-	// A helper function for looking up a dependency of a resource by URN. As mentioned above, URN alone is not a unique
-	// key as a resource may exist in both old and new forms. We proceed as follows:
+	// Both tables are in index order, so the resources that precede `from` form a prefix.
+	precede := func(nodes []*node, from *node) []*node {
+		end := 0
+		for end < len(nodes) && nodes[end].index < from.index {
+			end++
+		}
+		return nodes[:end]
+	}
+
+	// A helper function for looking up a dependency of a resource by URN. Resources are topologically sorted, so we first
+	// drop every resource with the given URN that does not precede us. As mentioned above, URN alone is not a unique key
+	// as a resource may exist in both old and new forms. For the resources that precede us, we proceed as follows:
 	//
 	// * If there are both old and new resources with the same URN, and we are old, we take the old ones. Since we are old,
 	//   there is no way we could refer to a new state (since that state didn't exist when we were last updated).
-	// * If there are both old and new resources with the same URN, and we are new, we take the new one; it would be
+	// * If there are both old and new resources with the same URN, and we are new, we take the new ones; it would be
 	//   invalid for us to refer to the old state since it is going to be deleted.
-	// * If there are only old or only new resources with the given URN, we take them.
-	lookup := func(from *pkgresource.State, urn resource.URN) []*node {
-		old, hasOld := oldsByURN[urn]
-		new, hasNew := newsByURN[urn]
-		if hasOld && hasNew {
-			if from.Delete {
-				return old
-			}
-
-			return new
-		} else if hasOld {
+	// * If there are only old or only new resources with the given URN, we take all of them.
+	//
+	// Snapshot integrity requires only that some resource with the URN precedes us. We filter before we choose, so we
+	// always keep that resource.
+	lookup := func(from *node, urn resource.URN) []*node {
+		old := precede(oldsByURN[urn], from)
+		new := precede(newsByURN[urn], from)
+		if len(old) > 0 && (from.resource.Delete || len(new) == 0) {
 			return old
-		} else if hasNew {
-			return new
 		}
-
-		return nil
+		return new
 	}
 
 	markAsDependency(rn, lookup)
@@ -336,8 +348,6 @@ func (dg *DependencyGraph) TransitiveDependenciesOf(r *pkgresource.State) mapset
 		}
 	}
 
-	// We don't want to include `r` as its own dependency.
-	dependencies.Remove(rn.resource)
 	return dependencies
 }
 
@@ -366,7 +376,7 @@ func (dg *DependencyGraph) ParentsOf(res *pkgresource.State) []*pkgresource.Stat
 }
 
 // Mark a resource and its transitive dependencies.
-func markAsDependency(r *node, lookup func(*pkgresource.State, resource.URN) []*node) {
+func markAsDependency(r *node, lookup func(*node, resource.URN) []*node) {
 	if r.marked {
 		return
 	}
@@ -376,13 +386,13 @@ func markAsDependency(r *node, lookup func(*pkgresource.State, resource.URN) []*
 		ref, err := providers.ParseReference(provider)
 		contract.AssertNoErrorf(err, "cannot parse provider reference %q", provider)
 
-		for _, p := range lookup(r.resource, ref.URN()) {
+		for _, p := range lookup(r, ref.URN()) {
 			markAsDependency(p, lookup)
 		}
 	}
 
 	for _, dep := range allDeps {
-		for _, d := range lookup(r.resource, dep.URN) {
+		for _, d := range lookup(r, dep.URN) {
 			markAsDependency(d, lookup)
 		}
 	}
@@ -415,4 +425,5 @@ func NewDependencyGraph(resources []*pkgresource.State) *DependencyGraph {
 type node struct {
 	marked   bool
 	resource *pkgresource.State
+	index    int // The index of the resource in the graph.
 }
