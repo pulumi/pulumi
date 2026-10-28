@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -418,8 +419,9 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Prompt for config values (if needed) and save.
+	var savedConfig config.Map
 	if !args.generateOnly {
-		if err = confirmed.saveConfig(ctx, cmdutil.Diag(), ssml, ws, proj, s, template, args, opts); err != nil {
+		if savedConfig, err = confirmed.saveConfig(ctx, cmdutil.Diag(), ssml, ws, proj, s, template, args, opts); err != nil {
 			return err
 		}
 	}
@@ -457,7 +459,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			" "+cmdutil.EmojiOr("✨", ""))
 	fmt.Fprintln(args.stdout)
 
-	preflightCloudCredentials(ctx, args, sink, pluginHost, proj, root, s, packages, opts)
+	preflightCloudCredentials(ctx, args, sink, pluginHost, proj, root, s, packages, savedConfig, opts)
 
 	if confirmed != nil {
 		// Any other stack announced itself as it was created, or already existed.

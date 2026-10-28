@@ -91,12 +91,21 @@ func (c *confirmedNew) saveConfig(
 	ctx context.Context, sink diag.Sink, ssml cmdStack.SecretsManagerLoader, ws pkgWorkspace.Context,
 	proj *workspace.Project, s backend.Stack, template cmdTemplates.ProjectTemplate,
 	args newArgs, opts display.Options,
-) error {
+) (config.Map, error) {
+	var saved config.Map
+	var err error
 	if c.createsStack() {
-		return saveTemplateConfig(ctx, sink, ssml, ws, proj, s, c.config, c.commandLineConfig, "")
+		saved, err = saveTemplateConfig(ctx, sink, ssml, ws, proj, s, c.config, c.commandLineConfig, "")
+	} else {
+		saved, err = handleConfig(ctx, sink, ssml, ws, args.prompt, proj, s,
+			args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts, "")
 	}
-	return HandleConfig(ctx, sink, ssml, ws, args.prompt, proj, s,
-		args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts, "")
+	if err != nil && s.ConfigLocation().ManagedEnvironment != "" {
+		return nil, fmt.Errorf("%w. Stack %[2]s and its ESC environment were created and no config was saved; "+
+			"set each value with `pulumi config set` (`--secret` for secrets), or remove the stack with "+
+			"`pulumi stack rm %[2]s`", err, s.Ref())
+	}
+	return saved, err
 }
 
 func printPreamble(w io.Writer, opts display.Options) {

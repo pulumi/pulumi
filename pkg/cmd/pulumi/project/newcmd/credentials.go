@@ -97,15 +97,20 @@ type credentialsProblem struct {
 // It only ever prints advisory warnings and never fails the command.
 func preflightCloudCredentials(
 	ctx context.Context, args newArgs, sink diag.Sink, host plugin.Host, proj *workspace.Project, root string,
-	s backend.Stack, packages []workspace.PackageDescriptor, opts display.Options,
+	s backend.Stack, packages []workspace.PackageDescriptor, savedConfig config.Map, opts display.Options,
 ) {
 	if !credentialsCheckEnabled(args) || s == nil || len(packages) == 0 {
 		return
 	}
-	ps, err := cmdStack.LoadProjectStack(ctx, sink, proj, s, "")
-	if err != nil {
-		slog.DebugContext(ctx, "skipping credentials check", "err", err)
-		return
+	// A managed stack's config lives in its environment definition, not under `config:`.
+	cfg := savedConfig
+	if s.ConfigLocation().ManagedEnvironment == "" {
+		ps, err := cmdStack.LoadProjectStack(ctx, sink, proj, s, "")
+		if err != nil {
+			slog.DebugContext(ctx, "skipping credentials check", "err", err)
+			return
+		}
+		cfg = ps.Config
 	}
 
 	// The check has its own plugin context so that the providers it launches are released when it is done.
@@ -116,7 +121,7 @@ func preflightCloudCredentials(
 	}
 	defer contract.IgnoreClose(pctx)
 
-	pf := credentialsPreflight{host: host, pctx: pctx, cfg: ps.Config, stdout: args.stdout, opts: opts}
+	pf := credentialsPreflight{host: host, pctx: pctx, cfg: cfg, stdout: args.stdout, opts: opts}
 	for _, pkg := range packages {
 		if pkg.Kind != apitype.ResourcePlugin || pkg.ExtensionParameterization != nil {
 			continue
