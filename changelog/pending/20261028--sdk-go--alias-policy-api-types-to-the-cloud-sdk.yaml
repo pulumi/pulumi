@@ -1,4 +1,4 @@
 component: sdk/go
 kind: improvement
-body: Alias the policy API types in `apitype` to the Pulumi Cloud SDK, which renames `ListPolicyIssuesResponse.Issues`/`Total` to `PolicyIssues`/`RowCount`, changes the `PolicyIssue` timestamps to `*time.Time` and `GetPolicyGroupResponse.AgentPoolID` to `*string`, makes the `CreatePolicyGroupRequest` fields pointers or optional values, and types `GetPolicyGroupResponse.EntityType` and `CreatePolicyGroupRequest.EntityType` as the Cloud SDK's `PolicyGroupEntityType`, so `apitype.Stacks` and `apitype.Accounts` no longer assign to them
+body: Alias the policy API types in `apitype` to the Pulumi Cloud SDK, changing some of their field names and types to match it
 time: 2026-10-28T00:00:00Z
