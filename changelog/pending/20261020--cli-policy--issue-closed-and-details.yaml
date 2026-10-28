@@ -1,0 +1,4 @@
+component: cli/policy
+kind: improvement
+body: Add `--closed` to `pulumi policy issue ls`, and show priority, assignee, policy group and policy remediation details in `pulumi policy issue get`
+time: 2026-10-20T00:00:00Z

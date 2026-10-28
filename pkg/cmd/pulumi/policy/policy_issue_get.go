@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -42,7 +43,7 @@ import (
 type policyIssueGetClient interface {
 	GetPolicyIssue(
 		ctx context.Context, orgName, issueID string,
-	) (apitype.PolicyIssue, error)
+	) (apitype.GetPolicyIssueResponse, error)
 }
 
 // policyIssueGetClientFactory resolves a cloud client and the organization
@@ -87,11 +88,16 @@ func newPolicyIssueGetCmdWith(factory policyIssueGetClientFactory) *cobra.Comman
 			"\n" +
 			"Returns the details of a single policy issue, including the violating\n" +
 			"resource, the Policy Pack and policy that flagged the violation, the\n" +
-			"enforcement level, severity, and the human-readable message produced\n" +
-			"by the policy.\n" +
+			"enforcement level, severity, kind, priority, assignee, policy group,\n" +
+			"and the message produced by the policy. When available, also shows\n" +
+			"the policy description, remediation steps, framework, and URL.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"full response as JSON.",
+		Example: "  # Show a policy issue\n" +
+			"  pulumi policy issue get <issue-id>\n\n" +
+			"  # Show a policy issue as JSON\n" +
+			"  pulumi policy issue get <issue-id> --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runPolicyIssueGet(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
@@ -172,9 +178,10 @@ func runPolicyIssueGet(
 	return args.outputFormat.Get()(w, resp)
 }
 
-type policyIssueGetRenderFunc func(w io.Writer, resp apitype.PolicyIssue) error
+type policyIssueGetRenderFunc func(w io.Writer, resp apitype.GetPolicyIssueResponse) error
 
-func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
+func renderPolicyIssueGetText(w io.Writer, resp apitype.GetPolicyIssueResponse) error {
+	issue := resp.PolicyIssue
 	pack := issue.PolicyPack
 	if issue.PolicyPackTag != "" {
 		pack = fmt.Sprintf("%s@%s", issue.PolicyPack, issue.PolicyPackTag)
@@ -194,6 +201,22 @@ func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
 	if issue.Status != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Status:", issue.Status)
 	}
+	if issue.Priority != "" {
+		fmt.Fprintf(w, "%-20s %s\n", "Priority:", issue.Priority)
+	}
+	if a := issue.AssignedTo; a != nil && a.GitHubLogin != "" {
+		fmt.Fprintf(w, "%-20s %s\n", "Assignee:", a.GitHubLogin)
+	}
+	if issue.PolicyGroupName != nil && *issue.PolicyGroupName != "" {
+		group := *issue.PolicyGroupName
+		if t := issue.PolicyGroupType; t != nil && *t != "" {
+			group = fmt.Sprintf("%s (%s)", group, *t)
+		}
+		fmt.Fprintf(w, "%-20s %s\n", "Policy group:", group)
+	}
+	if issue.Kind != "" {
+		fmt.Fprintf(w, "%-20s %s\n", "Kind:", issue.Kind)
+	}
 	if stack != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Stack:", stack)
 	}
@@ -206,15 +229,49 @@ func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
 	if issue.ObservedAt != nil {
 		fmt.Fprintf(w, "%-20s %s\n", "Observed at:", issue.ObservedAt.Format(time.RFC3339Nano))
 	}
-	if issue.Message != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Message:", issue.Message)
+	printPolicyIssueMultiline(w, "Message:", issue.Message)
+	if policy := resp.Policy; policy != nil {
+		printPolicyIssueMultiline(w, "Description:", policy.Description)
+		printPolicyIssueMultiline(w, "Remediation:", policy.RemediationSteps)
+		if framework := formatPolicyFramework(policy.Framework); framework != "" {
+			fmt.Fprintf(w, "%-20s %s\n", "Framework:", framework)
+		}
+		if policy.URL != "" {
+			fmt.Fprintf(w, "%-20s %s\n", "More info:", policy.URL)
+		}
 	}
 	return nil
 }
 
-func renderPolicyIssueGetJSON(w io.Writer, issue apitype.PolicyIssue) error {
+const policyIssueLabelWidth = 20
+
+func printPolicyIssueMultiline(w io.Writer, label, value string) {
+	value = strings.TrimSpace(strings.ReplaceAll(value, "\r\n", "\n"))
+	if value == "" {
+		return
+	}
+	value = strings.ReplaceAll(value, "\n", "\n"+strings.Repeat(" ", policyIssueLabelWidth+1))
+	fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, label, value)
+}
+
+func formatPolicyFramework(framework *apitype.PolicyComplianceFramework) string {
+	if framework == nil {
+		return ""
+	}
+	text := strings.TrimSpace(framework.Name + " " + framework.Version)
+	switch {
+	case framework.Reference == "":
+		return text
+	case text == "":
+		return framework.Reference
+	default:
+		return text + " — " + framework.Reference
+	}
+}
+
+func renderPolicyIssueGetJSON(w io.Writer, resp apitype.GetPolicyIssueResponse) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(issue)
+	return enc.Encode(resp)
 }
