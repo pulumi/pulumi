@@ -259,6 +259,15 @@ func importedConfigEnv(names ...string) *esc.Environment {
 	return &esc.Environment{Properties: map[string]esc.Value{"pulumiConfig": esc.NewValue(values)}}
 }
 
+func listImportEnv() *esc.Environment {
+	trace := esc.Trace{Def: esc.Range{Environment: "proj/base"}}
+	list := esc.Value{Value: []esc.Value{esc.NewValue("a"), esc.NewValue("b")}, Trace: trace}
+	return &esc.Environment{Properties: map[string]esc.Value{"pulumiConfig": esc.NewValue(map[string]esc.Value{
+		"bar": {Value: list.Value, Trace: trace},
+		"obj": {Value: map[string]esc.Value{"items": list}, Trace: trace},
+	})}}
+}
+
 func TestManagedConfigImportedKeys(t *testing.T) {
 	t.Parallel()
 	gone := apitype.EnvironmentDiagnostics{
@@ -271,23 +280,73 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 		set      []string
 		remove   []string
 		path     bool
+		override bool
+		imported *esc.Environment
 		diags    apitype.EnvironmentDiagnostics
 		checkErr error
 		noCall   bool
 		expected string
 		warning  string
+		info     string
 		err      string
 	}{
 		{
 			name: "set of an imported key errors",
 			set:  []string{"app:bar", "v"},
 			err: "config key app:bar is defined by imported environment proj/base; the CLI does not edit imported " +
-				"environments. Set it in that environment with `pulumi env set`, or remove the import",
+				"environments. Set it in that environment with `pulumi env set`, remove the import, or pass " +
+				"`--override-import` to override it in this stack's environment",
+		},
+		{
+			name:     "override writes an imported key under the import's spelling",
+			set:      []string{"app:bar", "v"},
+			override: true,
+			expected: importingStackFile + "      bar: v\n",
+			info:     "app:bar overrides the value from imported environment proj/base",
+		},
+		{
+			name:     "override writes a path under an imported key",
+			set:      []string{"app:bar.inner", "v"},
+			path:     true,
+			override: true,
+			expected: importingStackFile + "      bar:\n        inner: v\n",
+		},
+		{
+			name:     "override rejects a path into an imported list",
+			set:      []string{"app:bar[0]", "x"},
+			path:     true,
+			override: true,
+			imported: listImportEnv(),
+			err: "config key app:bar reaches into a list that imported environment proj/base defines, and a local " +
+				"list replaces the whole imported list; override the whole list instead of part of it",
+		},
+		{
+			name:     "override rejects a path through an imported object into a list",
+			set:      []string{"app:obj.items[1]", "x"},
+			path:     true,
+			override: true,
+			imported: listImportEnv(),
+			err:      "config key app:obj reaches into a list that imported environment proj/base defines",
+		},
+		{
+			name:     "override writes a new key under an imported object",
+			set:      []string{"app:obj.added", "x"},
+			path:     true,
+			override: true,
+			imported: listImportEnv(),
+			expected: importingStackFile + "      obj:\n        added: x\n",
+		},
+		{
+			name:     "override still fails on the other spelling",
+			set:      []string{"app:foo", "long"},
+			override: true,
+			err:      "pulumiConfig sets foo locally and imported environment proj/base sets app:foo;",
 		},
 		{
 			name:   "remove of an imported key errors",
 			remove: []string{"app:bar"},
-			err:    "config key app:bar is defined by imported environment proj/base;",
+			err: "config key app:bar is defined by imported environment proj/base; the CLI does not edit imported " +
+				"environments. Set it in that environment with `pulumi env set`, or remove the import",
 		},
 		{
 			name: "path set under an imported key errors",
@@ -364,7 +423,11 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 						calls++
 						require.Equal(t, "acme", org)
 						require.Equal(t, "imports:\n    - proj/base\n", string(yaml))
-						return importedConfigEnv("app:local", "app:foo", "bar"), c.diags, c.checkErr
+						imported := c.imported
+						if imported == nil {
+							imported = importedConfigEnv("app:local", "app:foo", "bar")
+						}
+						return imported, c.diags, c.checkErr
 					},
 				}
 			}
@@ -373,8 +436,9 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 			require.NoError(t, err)
 			store, err := managedEnvForWrite(s, "app", ps, configFile)
 			require.NoError(t, err)
-			var warnings bytes.Buffer
-			store.sink = diag.DefaultSink(io.Discard, &warnings, diag.FormatOptions{Color: colors.Never})
+			store.overrideImport = c.override
+			var infos, warnings bytes.Buffer
+			store.sink = diag.DefaultSink(&infos, &warnings, diag.FormatOptions{Color: colors.Never})
 
 			if c.set != nil {
 				err = store.Set(t.Context(), config.MustParseKey(c.set[0]), config.NewValue(c.set[1]), c.path)
@@ -397,6 +461,9 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 				require.Empty(t, warnings.String())
 			} else {
 				require.Contains(t, warnings.String(), c.warning)
+			}
+			if c.info != "" {
+				require.Contains(t, infos.String(), c.info)
 			}
 			written, readErr := os.ReadFile(configFile)
 			require.NoError(t, readErr)

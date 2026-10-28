@@ -44,6 +44,8 @@ type managedStore struct {
 	org         string
 	sink        diag.Sink
 	imported    *importCheck
+
+	overrideImport bool
 }
 
 type importCheck struct {
@@ -115,14 +117,15 @@ func (m *managedStore) Set(ctx context.Context, key config.Key, v config.Value, 
 	if err != nil {
 		return err
 	}
-	if err := m.checkImported(ctx, root, false); err != nil {
+	names, err := m.checkImported(ctx, root, subPath, false)
+	if err != nil {
 		return err
 	}
 	value, err := pulumiconfig.ValueNode(v, len(subPath) > 0)
 	if err != nil {
 		return err
 	}
-	return pulumiconfig.Set(m.definition, m.entryNames(root), subPath, value)
+	return pulumiconfig.Set(m.definition, names, subPath, value)
 }
 
 func (m *managedStore) Remove(ctx context.Context, key config.Key, path bool) error {
@@ -130,7 +133,7 @@ func (m *managedStore) Remove(ctx context.Context, key config.Key, path bool) er
 	if err != nil {
 		return err
 	}
-	if err := m.checkImported(ctx, root, true); err != nil {
+	if _, err := m.checkImported(ctx, root, subPath, true); err != nil {
 		return err
 	}
 	return pulumiconfig.Remove(m.definition, m.entryNames(root), subPath)
@@ -169,12 +172,14 @@ func (m *managedStore) entryNames(root config.Key) []string {
 	return []string{root.String()}
 }
 
-func (m *managedStore) checkImported(ctx context.Context, root config.Key, removing bool) error {
+func (m *managedStore) checkImported(
+	ctx context.Context, root config.Key, subPath resource.PropertyPath, removing bool,
+) ([]string, error) {
 	imported, checkWarning := m.importedConfig(ctx)
 	names := m.entryNames(root)
 	local, isLocal := pulumiconfig.Find(m.definition, names)
 	if removing && isLocal {
-		return nil
+		return names, nil
 	}
 	if checkWarning != nil {
 		outcome := "writing it to the local definition"
@@ -183,7 +188,7 @@ func (m *managedStore) checkImported(ctx context.Context, root config.Key, remov
 		}
 		m.sink.Warningf(diag.Message("", "could not check imported environments for %s: %v; %s"),
 			root, checkWarning, outcome)
-		return nil
+		return names, nil
 	}
 	for _, name := range names {
 		value, ok := imported[name]
@@ -192,13 +197,48 @@ func (m *managedStore) checkImported(ctx context.Context, root config.Key, remov
 		}
 		env := value.Trace.Def.Environment
 		if isLocal {
-			return fmt.Errorf("pulumiConfig sets %s locally and imported environment %s sets %s; these are the same "+
-				"key and the winner is undefined; use one spelling", local, env, name)
+			return nil, fmt.Errorf("pulumiConfig sets %s locally and imported environment %s sets %s; these are the "+
+				"same key and the winner is undefined; use one spelling", local, env, name)
 		}
-		return fmt.Errorf("config key %s is defined by imported environment %s; the CLI does not edit imported "+
-			"environments. Set it in that environment with `pulumi env set`, or remove the import", root, env)
+		if removing {
+			return nil, fmt.Errorf("config key %s is defined by imported environment %s; the CLI does not edit "+
+				"imported environments. Set it in that environment with `pulumi env set`, or remove the import",
+				root, env)
+		}
+		if m.overrideImport {
+			if pathEntersList(value, subPath) {
+				return nil, fmt.Errorf("config key %s reaches into a list that imported environment %s defines, and a "+
+					"local list replaces the whole imported list; override the whole list instead of part of it", root, env)
+			}
+			m.sink.Infof(diag.Message("", "%s overrides the value from imported environment %s"), root, env)
+			// The import's spelling, so the two don't become two spellings of one key with an undefined winner.
+			return []string{name}, nil
+		}
+		return nil, fmt.Errorf("config key %s is defined by imported environment %s; the CLI does not edit "+
+			"imported environments. Set it in that environment with `pulumi env set`, remove the import, or pass "+
+			"`--override-import` to override it in this stack's environment", root, env)
 	}
-	return nil
+	return names, nil
+}
+
+func pathEntersList(v esc.Value, path resource.PropertyPath) bool {
+	for _, segment := range path {
+		switch repr := v.Value.(type) {
+		case []esc.Value:
+			return true
+		case map[string]esc.Value:
+			key, ok := segment.(string)
+			if !ok {
+				return false
+			}
+			if v, ok = repr[key]; !ok {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return false
 }
 
 func (m *managedStore) importedConfig(ctx context.Context) (map[string]esc.Value, error) {
