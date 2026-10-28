@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -539,4 +540,100 @@ func (p *pagingPolicyIssueListClient) ListPolicyIssues(
 		PolicyIssues: []apitype.PolicyIssue{{ID: fmt.Sprintf("issue-%d", p.calls)}},
 		RowCount:     new(2),
 	}, nil
+}
+
+type recordingPolicyIssueListClient struct {
+	reqs []client.ListPolicyIssuesOptions
+	all  []apitype.PolicyIssue
+	err  error
+}
+
+func (r *recordingPolicyIssueListClient) ListPolicyIssues(
+	_ context.Context, _ string, req client.ListPolicyIssuesOptions,
+) (apitype.ListPolicyIssuesResponse, error) {
+	if r.err != nil {
+		return apitype.ListPolicyIssuesResponse{}, r.err
+	}
+	r.reqs = append(r.reqs, req)
+	end := min(req.EndRow, len(r.all))
+	return apitype.ListPolicyIssuesResponse{
+		PolicyIssues: r.all[min(req.StartRow, end):end],
+		RowCount:     new(len(r.all)),
+	}, nil
+}
+
+func TestPolicyIssueList_NoFiltersBodyUnchanged(t *testing.T) {
+	t.Parallel()
+
+	c := &recordingPolicyIssueListClient{all: []apitype.PolicyIssue{{ID: "issue-1"}}}
+	err := runPolicyIssueList(t.Context(), &bytes.Buffer{}, stubPolicyIssueListFactory(c, "acme"),
+		policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()})
+	require.NoError(t, err)
+	require.Len(t, c.reqs, 1)
+	assert.Nil(t, c.reqs[0].FilterModel)
+	assert.Nil(t, c.reqs[0].SortModel)
+}
+
+func TestPolicyIssueList_FiltersOnEveryPage(t *testing.T) {
+	t.Parallel()
+
+	issues := make([]apitype.PolicyIssue, 250)
+	for i := range issues {
+		issues[i] = apitype.PolicyIssue{ID: fmt.Sprintf("issue-%d", i)}
+	}
+	c := &recordingPolicyIssueListClient{all: issues}
+	err := runPolicyIssueList(t.Context(), &bytes.Buffer{}, stubPolicyIssueListFactory(c, "acme"),
+		policyIssueListArgs{
+			all:          true,
+			filters:      policyIssueFilters{severities: []string{"high"}, sort: []string{"observedAt:desc"}},
+			outputFormat: defaultPolicyIssueListOutputFormat(),
+		})
+	require.NoError(t, err)
+	require.Len(t, c.reqs, 3)
+	require.NotNil(t, c.reqs[0].FilterModel)
+	require.NotEmpty(t, c.reqs[0].SortModel)
+	for _, req := range c.reqs {
+		assert.Equal(t, c.reqs[0].FilterModel, req.FilterModel)
+		assert.Equal(t, c.reqs[0].SortModel, req.SortModel)
+	}
+}
+
+func TestPolicyIssueList_InvalidFilterFailsBeforeRequest(t *testing.T) {
+	t.Parallel()
+
+	c := &recordingPolicyIssueListClient{}
+	err := runPolicyIssueList(t.Context(), &bytes.Buffer{}, stubPolicyIssueListFactory(c, "acme"),
+		policyIssueListArgs{
+			filters:      policyIssueFilters{severities: []string{"urgent"}},
+			outputFormat: defaultPolicyIssueListOutputFormat(),
+		})
+	require.ErrorContains(t, err, "urgent")
+	assert.Empty(t, c.reqs)
+}
+
+func TestPolicyIssueList_InvalidFilterFailsBeforeFactory(t *testing.T) {
+	t.Parallel()
+
+	factory := func(context.Context, string) (policyIssueListClient, string, error) {
+		t.Fatal("factory must not be called when a filter is invalid")
+		return nil, "", nil
+	}
+	err := runPolicyIssueList(t.Context(), &bytes.Buffer{}, factory,
+		policyIssueListArgs{
+			filters:      policyIssueFilters{severities: []string{"urgent"}},
+			outputFormat: defaultPolicyIssueListOutputFormat(),
+		})
+	require.ErrorContains(t, err, "critical")
+}
+
+func TestPolicyIssueList_ServerRejectsFilter(t *testing.T) {
+	t.Parallel()
+
+	c := &recordingPolicyIssueListClient{err: errors.New(`[400] Invalid input: unknown field "x"`)}
+	err := runPolicyIssueList(t.Context(), &bytes.Buffer{}, stubPolicyIssueListFactory(c, "acme"),
+		policyIssueListArgs{
+			filters:      policyIssueFilters{packs: []string{"p"}},
+			outputFormat: defaultPolicyIssueListOutputFormat(),
+		})
+	require.ErrorContains(t, err, "unknown field")
 }

@@ -39,6 +39,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -1937,6 +1938,10 @@ type ListPolicyIssuesOptions struct {
 	EndRow int
 	// Closed lists closed issues instead of active ones.
 	Closed bool
+	// FilterModel restricts the results; nil returns every issue.
+	FilterModel *cloudapitype.AngularGridAdvancedFilterModel
+	// SortModel orders the results; empty uses the server's default order.
+	SortModel []apitype.PolicyIssueSortModel
 }
 
 // ListPolicyIssues returns a paginated list of policy issues for the given
@@ -1948,8 +1953,10 @@ func (pc *Client) ListPolicyIssues(
 	ctx context.Context, orgName string, opts ListPolicyIssuesOptions,
 ) (apitype.ListPolicyIssuesResponse, error) {
 	req := apitype.ListPolicyIssuesRequest{
-		StartRow: opts.StartRow,
-		EndRow:   opts.EndRow,
+		StartRow:    opts.StartRow,
+		EndRow:      opts.EndRow,
+		FilterModel: opts.FilterModel,
+		SortModel:   opts.SortModel,
 	}
 	path := fmt.Sprintf("/api/orgs/%s/policyresults/issues", url.PathEscape(orgName))
 	query := struct {
@@ -1961,6 +1968,24 @@ func (pc *Client) ListPolicyIssues(
 		return apitype.ListPolicyIssuesResponse{}, fmt.Errorf("listing policy issues: %w", err)
 	}
 	return resp, nil
+}
+
+// ExportPolicyIssues streams the policy issues matching the request as CSV, wrapping the `ExportPolicyIssues`
+// Pulumi Cloud REST endpoint (POST /api/orgs/{orgName}/policyresults/issues/export). The caller must close the
+// returned stream.
+func (pc *Client) ExportPolicyIssues(
+	ctx context.Context, orgName string, req apitype.ListPolicyIssuesRequest, closed bool,
+) (io.ReadCloser, error) {
+	path := fmt.Sprintf("/api/orgs/%s/policyresults/issues/export", url.PathEscape(orgName))
+	query := struct {
+		Closed bool `url:"closed,omitempty"`
+	}{closed}
+
+	var stream io.ReadCloser
+	if err := pc.restCall(ctx, http.MethodPost, path, query, req, &stream); err != nil {
+		return nil, fmt.Errorf("exporting policy issues: %w", err)
+	}
+	return stream, nil
 }
 
 // GetPolicyComplianceResults returns compliance results for policy issues

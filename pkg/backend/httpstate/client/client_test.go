@@ -2653,6 +2653,31 @@ func TestGetPolicyPack(t *testing.T) {
 	assert.Equal(t, apitype.Mandatory, resp.Policies[0].EnforcementLevel)
 }
 
+func TestListPolicyIssues_FilterAndSortModel(t *testing.T) {
+	t.Parallel()
+
+	var body string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return "{}"
+	})
+	defer server.Close()
+
+	_, err := newMockClient(server).ListPolicyIssues(t.Context(), "acme", ListPolicyIssuesOptions{
+		EndRow:      100,
+		FilterModel: &cloudapitype.AngularGridAdvancedFilterModel{Type: "AND"},
+		SortModel:   []apitype.PolicyIssueSortModel{{ColID: "observedAt", Sort: "desc"}},
+	})
+	require.NoError(t, err)
+
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(body), &fields))
+	assert.JSONEq(t, `[{"colId": "observedAt", "sort": "desc"}]`, string(fields["sortModel"]))
+	assert.Contains(t, string(fields["filterModel"]), `"AND"`)
+}
+
 func TestListPolicyIssues_ClosedQuery(t *testing.T) {
 	t.Parallel()
 
@@ -2721,4 +2746,65 @@ func TestGetPolicyIssue_FullResponse(t *testing.T) {
 	assert.Equal(t, "r", resp.Policy.RemediationSteps)
 	require.NotNil(t, resp.PolicyIssue.AssignedTo)
 	assert.Equal(t, "alice", resp.PolicyIssue.AssignedTo.GitHubLogin)
+}
+
+func TestExportPolicyIssues(t *testing.T) {
+	t.Parallel()
+
+	var method, path, gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("reading request body: %v", err)
+		}
+		method, path, gotBody = r.Method, r.URL.EscapedPath(), string(body)
+		w.Header().Set("Content-Type", "text/csv")
+		_, _ = w.Write([]byte("id,policyName\ni1,p\n"))
+	}))
+	defer server.Close()
+
+	stream, err := newMockClient(server).ExportPolicyIssues(
+		t.Context(), "acme", apitype.ListPolicyIssuesRequest{}, false)
+	require.NoError(t, err)
+	defer stream.Close()
+	data, err := io.ReadAll(stream)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, method)
+	assert.Equal(t, "/api/orgs/acme/policyresults/issues/export", path)
+	var body map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(gotBody), &body))
+	assert.NotContains(t, body, "startRow")
+	assert.NotContains(t, body, "endRow")
+	assert.Equal(t, "id,policyName\ni1,p\n", string(data))
+}
+
+func TestExportPolicyIssues_ClosedQuery(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		closed   bool
+		rawQuery string
+	}{
+		{"active", false, ""},
+		{"closed", true, "closed=true"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var rawQuery string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				rawQuery = r.URL.RawQuery
+				_, _ = w.Write([]byte("id\n"))
+			}))
+			defer server.Close()
+
+			stream, err := newMockClient(server).ExportPolicyIssues(
+				t.Context(), "acme", apitype.ListPolicyIssuesRequest{}, tt.closed)
+			require.NoError(t, err)
+			require.NoError(t, stream.Close())
+			assert.Equal(t, tt.rawQuery, rawQuery)
+		})
+	}
 }

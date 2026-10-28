@@ -17,7 +17,6 @@ package policy
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -60,6 +59,7 @@ type policyIssueListArgs struct {
 	count        int64
 	all          bool
 	closed       bool
+	filters      policyIssueFilters
 	outputFormat outputflag.OutputFlag[policyIssueListRenderFunc]
 }
 
@@ -101,7 +101,11 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 		Example: "  # List active policy issues\n" +
 			"  pulumi policy issue ls\n\n" +
 			"  # List all closed policy issues as JSON\n" +
-			"  pulumi policy issue ls --closed --all --output json",
+			"  pulumi policy issue ls --closed --all --output json\n\n" +
+			"  # List open high and critical severity issues\n" +
+			"  pulumi policy issue ls --severity high --severity critical --status open\n\n" +
+			"  # List issues for a stack, newest first, as JSON\n" +
+			"  pulumi policy issue ls --stack web/prod --sort observedAt:desc --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runPolicyIssueList(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},
@@ -114,6 +118,7 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 		"Maximum number of issues to return (default 100)")
 	cmd.Flags().BoolVar(&args.all, "all", false, "Return all matching issues; mutually exclusive with --count")
 	cmd.Flags().BoolVar(&args.closed, "closed", false, "List closed issues instead of active ones")
+	addPolicyIssueFilterFlags(cmd.Flags(), &args.filters)
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
@@ -126,17 +131,29 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 func defaultPolicyIssueListClientFactory(
 	ctx context.Context, orgFlag string,
 ) (policyIssueListClient, string, error) {
-	ws := pkgWorkspace.Instance
+	c, org, err := resolvePolicyIssueCloudClient(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, orgFlag, "listing policy issues")
+	if err != nil {
+		return nil, "", err
+	}
+	return c, org, nil
+}
+
+// resolvePolicyIssueCloudClient resolves the Pulumi Cloud client and the effective
+// organization. action completes the sentence
+// "<action> requires the Pulumi Cloud backend" when the backend isn't cloud.
+func resolvePolicyIssueCloudClient(
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, orgFlag, action string,
+) (*client.Client, string, error) {
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, nil, opts)
+	be, err := cmdBackend.CurrentBackend(ctx, ws, lm, nil, opts)
 	if err != nil {
 		return nil, "", err
 	}
 	cloudBackend, ok := be.(httpstate.Backend)
 	if !ok {
-		return nil, "", errors.New(
-			"listing policy issues requires the Pulumi Cloud backend; run `pulumi login`")
+		return nil, "", fmt.Errorf("%s requires the Pulumi Cloud backend; run `pulumi login`", action)
 	}
 
 	userName, orgs, _, err := cloudBackend.CurrentUser()
@@ -172,7 +189,16 @@ func runPolicyIssueList(
 	ctx context.Context, w io.Writer,
 	factory policyIssueListClientFactory, args policyIssueListArgs,
 ) error {
+	if err := validatePolicyIssueFilters(args.filters); err != nil {
+		return err
+	}
+
 	c, org, err := factory(ctx, args.org)
+	if err != nil {
+		return err
+	}
+
+	filterModel, sortModel, err := buildPolicyIssueGrid(args.filters)
 	if err != nil {
 		return err
 	}
@@ -196,9 +222,11 @@ func runPolicyIssueList(
 		}
 
 		resp, err := c.ListPolicyIssues(ctx, org, client.ListPolicyIssuesOptions{
-			StartRow: startRow,
-			EndRow:   startRow + pageSize,
-			Closed:   args.closed,
+			StartRow:    startRow,
+			EndRow:      startRow + pageSize,
+			Closed:      args.closed,
+			FilterModel: filterModel,
+			SortModel:   sortModel,
 		})
 		if err != nil {
 			return fmt.Errorf("listing policy issues: %w", err)
