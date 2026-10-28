@@ -223,6 +223,43 @@ func TestBackendSelectionAndCaching(t *testing.T) {
 	assert.True(t, r.SelectedBackend())
 }
 
+func TestHTTPHelperCredentialsRequireBackend(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name, response string
+		valid          bool
+	}{
+		{"token without backend", `{"version":1,"accessToken":"secret"}`, false},
+		{"headers without backend", `{"version":1,"headers":{"X-Session":["secret"]}}`, false},
+		{
+			"token with backend",
+			`{"version":1,"backendUrl":"https://api.example.com","accessToken":"secret"}`,
+			true,
+		},
+		{
+			"headers with backend",
+			`{"version":1,"backendUrl":"https://api.example.com","headers":{"X-Session":["secret"]}}`,
+			true,
+		},
+		{"decline", `{"version":1}`, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			ctx, s, _ := testSession(t, map[string]string{"initial": test.response})
+			r, err := s.Resolve(ctx, "")
+			if test.valid {
+				require.NoError(t, err)
+				require.NoError(t, s.SelectBackend(r, "https://api.example.com"))
+			} else {
+				require.ErrorContains(t, err, "must return backendUrl")
+				assert.NotContains(t, err.Error(), "secret")
+				assert.Nil(t, s.Lookup(""))
+			}
+		})
+	}
+}
+
 func TestHelperCannotOverrideSelectedBackend(t *testing.T) {
 	t.Parallel()
 
@@ -273,8 +310,9 @@ func TestEnvironmentMerge(t *testing.T) {
 	ctx, s, _ := testSession(t, map[string]string{
 		"initial": `{"version":1,"env":{"PULUMI_HELPER_TEST_INHERITED":"replacement","PULUMI_HELPER_TEST_APPLIED":"first"}}`,
 	})
-	_, err := s.Resolve(ctx, "s3://bucket-one")
+	r, err := s.Resolve(ctx, "")
 	require.NoError(t, err)
+	require.NoError(t, s.SelectBackend(r, "s3://bucket-one"))
 	assert.Equal(t, "original", os.Getenv(inherited))
 	assert.Equal(t, "first", os.Getenv(applied))
 	c, _ := helperConfig(t, map[string]string{"initial": `{"version":1,"env":{"PULUMI_HELPER_TEST_APPLIED":"second"}}`})
@@ -523,7 +561,7 @@ func TestConcurrentResolutionAndSelection(t *testing.T) {
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Go(func() {
-			r, err := s.Resolve(ctx, "")
+			r, err := s.Resolve(ctx, "https://api.example.com")
 			if err != nil {
 				t.Errorf("resolving helper: %v", err)
 				return
@@ -757,7 +795,7 @@ func TestHTTPFallbackRejectsDIY(t *testing.T) {
 	t.Parallel()
 
 	ctx, s, _ := testSession(t, map[string]string{"initial": `{"version":1,"accessToken":"token"}`})
-	result, err := s.Resolve(ctx, "")
+	result, err := s.Resolve(ctx, "https://api.example.com")
 	require.NoError(t, err)
 	require.NoError(t, s.SelectBackend(result, "https://api.example.com"))
 	assert.False(t, result.SelectedBackend())

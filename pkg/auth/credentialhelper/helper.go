@@ -262,7 +262,7 @@ func (s *Session) Current() *Result {
 }
 
 // Resolve invokes the helper for backendURL and caches the result.
-// If backendURL is empty, the helper may supply a backend URL.
+// If backendURL is empty, the helper must supply a backend URL when returning HTTP credentials.
 func (s *Session) Resolve(ctx context.Context, backendURL string) (*Result, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -290,8 +290,14 @@ func (s *Session) Resolve(ctx context.Context, backendURL string) (*Result, erro
 			r.selectedBackend = true
 			logging.AddGlobalSecretFilter(httputil.URLSecrets(r.url), "[credential]")
 		}
-		if (resp.AccessToken != "" || len(resp.Headers) > 0) && r.url != "" && !isHTTP(r.url) {
-			return nil, errors.New("credentials helper HTTP credentials require an HTTP backend")
+		if resp.AccessToken != "" || len(resp.Headers) > 0 {
+			if r.url == "" {
+				return nil, errors.New(
+					"credentials helper must return backendUrl with HTTP credentials when no backend is selected")
+			}
+			if !isHTTP(r.url) {
+				return nil, errors.New("credentials helper HTTP credentials require an HTTP backend")
+			}
 		}
 		for k, v := range resp.Env {
 			if old, ok := s.applied[environmentKey(k)]; ok && old != v {
