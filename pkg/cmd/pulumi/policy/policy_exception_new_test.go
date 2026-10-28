@@ -169,9 +169,12 @@ func TestPolicyExceptionNew_DryRun(t *testing.T) {
 	assert.Equal(t, `acme/web/prod: update 12
 
 Violations to exempt:
-LEVEL        POLICY PACK  POLICY         URN
-[mandatory]  aws          required-tags  urn:pulumi:prod::web::aws:s3/bucket:Bucket::logs
-[mandatory]  aws          required-tags  urn:pulumi:prod::web::aws:s3/bucket:Bucket::cdn-logs
+┌─────────────┬─────────────┬───────────────┬──────────────────────────────────────────────────────┐
+│ LEVEL       │ POLICY PACK │ POLICY        │ URN                                                  │
+├─────────────┼─────────────┼───────────────┼──────────────────────────────────────────────────────┤
+│ [mandatory] │ aws         │ required-tags │ urn:pulumi:prod::web::aws:s3/bucket:Bucket::logs     │
+│ [mandatory] │ aws         │ required-tags │ urn:pulumi:prod::web::aws:s3/bucket:Bucket::cdn-logs │
+└─────────────┴─────────────┴───────────────┴──────────────────────────────────────────────────────┘
 
 Policy Pack exceptions configuration:
 {

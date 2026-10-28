@@ -206,9 +206,12 @@ func TestPolicyExceptionList(t *testing.T) {
 	next := query
 	next.ContinuationToken = "next"
 	assert.Equal(t, []client.ListPolicyExceptionsOptions{query, next}, c.gotListOpts)
-	assert.Equal(t, `ID     POLICY PACK   STATUS  POLICIES                          TARGETS  REASON
-EXC-2  aws-security  active  required-tags, s3-no-public-read  2        Logs are public by design
-EXC-1  aws-security  active  required-tags, s3-no-public-read  2        Logs are public by design
+	assert.Equal(t, `┌───────┬──────────────┬────────┬──────────────────────────────────┬─────────┬───────────────────────────┐
+│ ID    │ POLICY PACK  │ STATUS │ POLICIES                         │ TARGETS │ REASON                    │
+├───────┼──────────────┼────────┼──────────────────────────────────┼─────────┼───────────────────────────┤
+│ EXC-2 │ aws-security │ active │ required-tags, s3-no-public-read │       2 │ Logs are public by design │
+│ EXC-1 │ aws-security │ active │ required-tags, s3-no-public-read │       2 │ Logs are public by design │
+└───────┴──────────────┴────────┴──────────────────────────────────┴─────────┴───────────────────────────┘
 `, buf.String())
 
 	c = &mockPolicyExceptionClient{pages: []apitype.ListPolicyExceptionsResponse{{}}}

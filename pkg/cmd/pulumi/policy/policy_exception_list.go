@@ -21,9 +21,9 @@ import (
 	"io"
 	"net/http"
 	"slices"
-	"strconv"
 	"strings"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -32,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // policyExceptionListRenderFunc writes the exceptions to stdout, and status messages to stderr.
@@ -149,7 +148,10 @@ func renderPolicyExceptionListTable(w, stderr io.Writer, exceptions []apitype.Po
 		return nil
 	}
 
-	rows := make([]cmdutil.TableRow, 0, len(exceptions))
+	t := table.NewWriter()
+	t.SetOutputMirror(w)
+	t.SetStyle(table.StyleLight)
+	t.AppendHeader(table.Row{"ID", "POLICY PACK", "STATUS", "POLICIES", "TARGETS", "REASON"})
 	for _, e := range exceptions {
 		var policies []string
 		var targets []string
@@ -159,18 +161,15 @@ func renderPolicyExceptionListTable(w, stderr io.Writer, exceptions []apitype.Po
 		}
 		slices.Sort(policies)
 		slices.Sort(targets)
-		rows = append(rows, cmdutil.TableRow{Columns: []string{
+		t.AppendRow(table.Row{
 			e.ID,
 			e.PolicyPack,
 			e.Status,
 			strings.Join(slices.Compact(policies), ", "),
-			strconv.Itoa(len(slices.Compact(targets))),
+			len(slices.Compact(targets)),
 			truncateMessage(e.Reason, policyIssueMessageMax),
-		}})
+		})
 	}
-	ui.FprintTable(w, cmdutil.Table{
-		Headers: []string{"ID", "POLICY PACK", "STATUS", "POLICIES", "TARGETS", "REASON"},
-		Rows:    rows,
-	}, nil)
+	t.Render()
 	return nil
 }
