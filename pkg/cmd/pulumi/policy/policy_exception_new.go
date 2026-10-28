@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -728,19 +729,22 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 	if len(r.Violations) > 0 {
 		fmt.Fprintln(stdout, "\nViolations to exempt:")
 		color := cmdutil.GetGlobalColorization()
-		headers := []string{"LEVEL", "POLICY PACK", "POLICY", "URN"}
+		t := table.NewWriter()
+		t.SetOutputMirror(stdout)
+		t.SetStyle(table.StyleLight)
+		header := table.Row{"LEVEL", "POLICY PACK", "POLICY", "URN"}
 		if len(r.Runs) > 1 {
-			headers = append([]string{"STACK"}, headers...)
+			header = append(table.Row{"STACK"}, header...)
 		}
-		rows := make([]cmdutil.TableRow, len(r.Violations))
-		for i, v := range r.Violations {
-			columns := []string{policyExceptionViolationTags(v, color), v.PolicyPack, v.Policy, v.URN}
+		t.AppendHeader(header)
+		for _, v := range r.Violations {
+			row := table.Row{policyExceptionViolationTags(v, color), v.PolicyPack, v.Policy, v.URN}
 			if len(r.Runs) > 1 {
-				columns = append([]string{v.Stack}, columns...)
+				row = append(table.Row{v.Stack}, row...)
 			}
-			rows[i] = cmdutil.TableRow{Columns: columns}
+			t.AppendRow(row)
 		}
-		ui.FprintTable(stdout, cmdutil.Table{Headers: headers, Rows: rows}, &cmdutil.TableRenderOptions{Color: color})
+		t.Render()
 	}
 	if r.Exception.PolicyPack == "" {
 		fmt.Fprintln(stdout, "\nThe violations are from several Policy Packs; name one to see its exception.")
