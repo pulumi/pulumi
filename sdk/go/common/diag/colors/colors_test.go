@@ -157,3 +157,22 @@ func TestHyperlink(t *testing.T) {
 	// some terminals.
 	assert.Equal(t, "plain", Always.Hyperlink("", "plain"))
 }
+
+func TestHighlightCode(t *testing.T) {
+	t.Parallel()
+
+	msg := "not logged in; run `pulumi login` first, then `pulumi up`"
+	assert.Equal(t, msg, Never.Colorize(HighlightCode(msg)))
+	assert.Equal(t,
+		"not logged in; run `"+Always.Colorize(SpecPrompt+"pulumi login"+Reset)+"` first, then `"+
+			Always.Colorize(SpecPrompt+"pulumi up"+Reset)+"`",
+		Always.Colorize(HighlightCode(msg)))
+	assert.Equal(t, "an unmatched ` backtick", HighlightCode("an unmatched ` backtick"))
+
+	multiline := "unexpected ` in input\nrun `pulumi up`"
+	assert.Equal(t,
+		"unexpected ` in input\nrun `"+Always.Colorize(SpecPrompt+"pulumi up"+Reset)+"`",
+		Always.Colorize(HighlightCode(multiline)))
+	fence := "```json\n{}\n```"
+	assert.Equal(t, fence, HighlightCode(fence))
+}

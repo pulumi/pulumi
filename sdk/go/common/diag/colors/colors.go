@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/rivo/uniseg"
@@ -250,6 +251,17 @@ func clampString(s string, maxWidth int) string {
 // a "highlighted" version surrounded by those commands and a final reset afterwards.
 func Highlight(s, text, commands string) string {
 	return strings.ReplaceAll(s, text, commands+text+Reset)
+}
+
+var codeSpan = regexp.MustCompile("`[^`\n]+`")
+
+// HighlightCode colors the backtick-quoted spans in s, such as a command to run like `pulumi login`.
+// Spans don't cross lines, so a stray backtick can't pair with one on another line. The backticks
+// are kept so that s reads the same when printed without color.
+func HighlightCode(s string) string {
+	return codeSpan.ReplaceAllStringFunc(s, func(span string) string {
+		return "`" + SpecPrompt + span[1:len(span)-1] + Reset + "`"
+	})
 }
 
 var (

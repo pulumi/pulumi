@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -103,7 +104,7 @@ func DisplayErrorMessage(err error) {
 		logging.V(3).Info(DetailedError(err))
 	}
 
-	Diag().Errorf(diag.Message("", "%s"), msg)
+	Diag().Errorf(diag.Message("", "%s"), colors.HighlightCode(msg))
 }
 
 // Exit exits with a given error.
@@ -113,7 +114,7 @@ func Exit(err error) {
 
 // ExitError issues an error and exits with a standard error exit code.
 func ExitError(msg string) {
-	Diag().Errorf(diag.Message("", "%s"), msg)
+	Diag().Errorf(diag.Message("", "%s"), colors.HighlightCode(msg))
 	os.Exit(ExitCodeError) //nolint:noosexit // ExitError is also forbidden outside of main functions
 }
 
