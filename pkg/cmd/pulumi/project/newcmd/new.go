@@ -267,6 +267,9 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 		if existingStack != nil {
+			if existingStack.ConfigLocation().ManagedEnvironment != "" {
+				return cmdStack.ManagedEnvironmentNotSupportedError("pulumi new --stack")
+			}
 			s = existingStack
 			if args.description == "" {
 				args.description = existingDesc
