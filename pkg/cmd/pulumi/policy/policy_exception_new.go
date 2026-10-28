@@ -27,7 +27,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -626,9 +625,10 @@ func policyExceptionViolationTags(v policyExceptionViolation, color colors.Color
 func pickPolicyExceptionViolations(
 	violations []policyExceptionViolation, withStack bool, width int, opts display.Options,
 ) ([]policyExceptionViolation, error) {
-	labels := make([]string, len(violations))
-	var preselected []int
-	for i, v := range violations {
+	var labels, preselected []string
+	// Identical labels are the same policy and resource, so picking one picks them all.
+	byLabel := map[string][]policyExceptionViolation{}
+	for _, v := range violations {
 		urn := resource.URN(v.URN)
 		label := fmt.Sprintf("%s  (%s: %s)", v.Policy, urn.Type().DisplayName(), urn.Name())
 		if withStack {
@@ -639,19 +639,22 @@ func pickPolicyExceptionViolations(
 		if r := []rune(label); room > 0 && len(r) > room {
 			label = string(r[:room-1]) + "…"
 		}
-		labels[i] = policyExceptionViolationTags(v, opts.Color) + "  " + label
-		if v.Level == string(apitype.Mandatory) && len(v.Exceptions) == 0 {
-			preselected = append(preselected, i)
+		label = policyExceptionViolationTags(v, opts.Color) + "  " + label
+		if _, ok := byLabel[label]; !ok {
+			labels = append(labels, label)
+			if v.Level == string(apitype.Mandatory) && len(v.Exceptions) == 0 {
+				preselected = append(preselected, label)
+			}
 		}
+		byLabel[label] = append(byLabel[label], v)
 	}
-	picked, err := ui.PromptUserMultiIndexErr("Violations to exempt", labels, preselected, opts.Color,
-		survey.WithPageSize(cmdCmd.OptimalPageSize(cmdCmd.OptimalPageSizeOpts{Nopts: len(labels)})))
-	if err != nil || len(picked) == 0 {
+	picked := ui.PromptUserMulti("Violations to exempt", labels, preselected, opts.Color)
+	if len(picked) == 0 {
 		return nil, backenderr.CancelledError{Operation: "creating the policy exception"}
 	}
-	selected := make([]policyExceptionViolation, len(picked))
-	for i, j := range picked {
-		selected[i] = violations[j]
+	var selected []policyExceptionViolation
+	for _, l := range picked {
+		selected = append(selected, byLabel[l]...)
 	}
 	return selected, nil
 }

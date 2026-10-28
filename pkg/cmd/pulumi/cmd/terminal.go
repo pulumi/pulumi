@@ -49,8 +49,7 @@ func OptimalPageSize(opts OptimalPageSizeOpts) int {
 	pageSize := 15
 	if opts.TerminalHeight != 0 {
 		pageSize = opts.TerminalHeight
-	} else if _, height, err := term.GetSize(0); err == nil && height > 0 {
-		// Some terminals, such as a pty without a size, report 0, which would show no options.
+	} else if _, height, err := term.GetSize(0); err == nil {
 		pageSize = height
 	}
 	// Subtract the buffer from the terminal height, not from the option count.
