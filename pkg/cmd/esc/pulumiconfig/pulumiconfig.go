@@ -45,6 +45,7 @@ func isReservedName(k string, onlyKey bool) bool {
 	return strings.HasPrefix(k, functionPrefix)
 }
 
+// escape quotes s as an ESC literal, so a $ is not read as an interpolation.
 func escape(s string) string {
 	return strings.ReplaceAll(s, "$", "$$")
 }
@@ -53,19 +54,23 @@ func isNull(n *yaml.Node) bool {
 	return n.Kind == yaml.ScalarNode && n.ShortTag() == "!!null"
 }
 
+// isConfigLeaf reports whether n is a single config value: a scalar or an fn::secret.
 func isConfigLeaf(n *yaml.Node) bool {
 	isSecret := n.Kind == yaml.MappingNode && len(n.Content) == 2 && n.Content[0].Value == "fn::secret"
 	return n.Kind == yaml.ScalarNode || isSecret
 }
 
+// isFunctionCall reports whether n is an ESC function call such as fn::open.
 func isFunctionCall(n *yaml.Node) bool {
 	return n.Kind == yaml.MappingNode && len(n.Content) == 2 && isReservedName(n.Content[0].Value, true)
 }
 
+// resetNode replaces n with an empty node of the given kind, keeping its head and line comments.
 func resetNode(n *yaml.Node, kind yaml.Kind, tag string) {
 	*n = yaml.Node{Kind: kind, Tag: tag, HeadComment: n.HeadComment, LineComment: n.LineComment}
 }
 
+// rootMapping returns the top-level mapping of an environment definition.
 func rootMapping(def *yaml.Node) (*yaml.Node, error) {
 	if def == nil {
 		return nil, errors.New("environment definition is empty")
@@ -82,6 +87,7 @@ func rootMapping(def *yaml.Node) (*yaml.Node, error) {
 	return def, nil
 }
 
+// childMapping returns the mapping at parent[key]; a missing or null child is created if create is set, else nil.
 func childMapping(parent *yaml.Node, key string, create bool) (*yaml.Node, error) {
 	child, ok := encoding.YAMLSyntax{Node: parent}.Get(resource.PropertyPath{key})
 	if !ok {
@@ -107,6 +113,7 @@ func childMapping(parent *yaml.Node, key string, create bool) (*yaml.Node, error
 	return child, nil
 }
 
+// pulumiConfigNode returns the definition's values.pulumiConfig mapping, creating it when create is set.
 func pulumiConfigNode(def *yaml.Node, create bool) (*yaml.Node, error) {
 	root, err := rootMapping(def)
 	if err != nil {
@@ -119,7 +126,8 @@ func pulumiConfigNode(def *yaml.Node, create bool) (*yaml.Node, error) {
 	return childMapping(values, "pulumiConfig", create)
 }
 
-func matches(pc *yaml.Node, names []string) []string {
+// matchingNames returns the names that are entries in pc.
+func matchingNames(pc *yaml.Node, names []string) []string {
 	var found []string
 	for _, name := range names {
 		if _, ok := (encoding.YAMLSyntax{Node: pc}).Get(resource.PropertyPath{escape(name)}); ok {
@@ -129,6 +137,7 @@ func matches(pc *yaml.Node, names []string) []string {
 	return found
 }
 
+// checkNames rejects an empty names list and an fn:: key, in any case, in the names or the path.
 func checkNames(names []string, path resource.PropertyPath) error {
 	if len(names) == 0 {
 		return errors.New("at least one config key name is required")
@@ -144,6 +153,7 @@ func checkNames(names []string, path resource.PropertyPath) error {
 	return nil
 }
 
+// escapePath escapes each string key in path.
 func escapePath(path resource.PropertyPath) resource.PropertyPath {
 	escaped := make(resource.PropertyPath, len(path))
 	for i, seg := range path {
@@ -161,7 +171,7 @@ func Find(def *yaml.Node, names []string) (name string, ok bool) {
 	if err != nil || pc == nil {
 		return "", false
 	}
-	found := matches(pc, names)
+	found := matchingNames(pc, names)
 	if len(found) == 0 {
 		return "", false
 	}
@@ -180,7 +190,7 @@ func Set(def *yaml.Node, names []string, path resource.PropertyPath, value yaml.
 	}
 
 	entry := names[0]
-	if found := matches(pc, names); len(found) > 1 {
+	if found := matchingNames(pc, names); len(found) > 1 {
 		return fmt.Errorf("pulumiConfig has both %s", strings.Join(found, " and "))
 	} else if len(found) == 1 {
 		entry = found[0]
@@ -225,17 +235,17 @@ const placeholderKind yaml.Kind = 0
 // prepareContainers matches config set --path where YAMLSyntax.Set differs.
 func prepareContainers(syntax encoding.YAMLSyntax, full resource.PropertyPath) error {
 	cur := syntax.Node
-	for i, acc := range full {
-		child, ok := encoding.YAMLSyntax{Node: cur}.Get(resource.PropertyPath{acc})
+	for i, segment := range full {
+		child, ok := encoding.YAMLSyntax{Node: cur}.Get(resource.PropertyPath{segment})
 		if !ok {
-			if index, isIndex := acc.(int); isIndex && cur.Kind == placeholderKind && index > 0 {
+			if index, isIndex := segment.(int); isIndex && cur.Kind == placeholderKind && index > 0 {
 				cur.Kind, cur.Tag = yaml.SequenceNode, "!!seq"
 				for range index {
 					cur.Content = append(cur.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"})
 				}
 			}
 			var err error
-			child, err = encoding.YAMLSyntax{Node: cur}.Set(nil, resource.PropertyPath{acc}, yaml.Node{})
+			child, err = encoding.YAMLSyntax{Node: cur}.Set(nil, resource.PropertyPath{segment}, yaml.Node{})
 			if err != nil {
 				return err
 			}
@@ -267,7 +277,7 @@ func Remove(def *yaml.Node, names []string, path resource.PropertyPath) error {
 	}
 	syntax := encoding.YAMLSyntax{Node: pc}
 	var targets []resource.PropertyPath
-	for _, name := range matches(pc, names) {
+	for _, name := range matchingNames(pc, names) {
 		full := append(resource.PropertyPath{escape(name)}, escapePath(path)...)
 		if _, ok := syntax.Get(full); !ok {
 			continue
@@ -290,6 +300,7 @@ func Remove(def *yaml.Node, names []string, path resource.PropertyPath) error {
 	return nil
 }
 
+// loneEntryAfterRemove returns the key and value that would be left alone in their mapping if full were removed.
 func loneEntryAfterRemove(syntax encoding.YAMLSyntax, full resource.PropertyPath) (key, value *yaml.Node, ok bool) {
 	removedKey, isKey := full[len(full)-1].(string)
 	if !isKey {
@@ -349,6 +360,7 @@ func ValueNode(v config.Value, nested bool) (yaml.Node, error) {
 	return node, nil
 }
 
+// literalValue escapes the strings and keys in v and rejects fn:: keys.
 func literalValue(v any) (any, error) {
 	switch v := v.(type) {
 	case string:
@@ -385,6 +397,7 @@ func scalar(value string) *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: value}
 }
 
+// secretNode renders ciphertext as fn::secret.
 func secretNode(ciphertext string) yaml.Node {
 	return yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{
 		scalar("fn::secret"),
