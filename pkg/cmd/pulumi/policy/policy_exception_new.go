@@ -211,7 +211,7 @@ func newPolicyExceptionNewCmd() *cobra.Command {
 		"Only exempt violations of this enforcement level (mandatory, advisory, remediate or all); may be repeated")
 	flags.StringVar(&args.file, "file", "",
 		"Read the exception's reason and match entries from this JSON or YAML file, or from stdin with -")
-	flags.StringVar(&args.reason, "reason", "", "Why it's safe to allow the violations")
+	flags.StringVar(&args.reason, "reason", "", "Why it's safe to exempt the violations")
 	flags.BoolVar(&args.dryRun, "dry-run", false, "Show the violations and the exception, without creating it")
 	flags.BoolVar(&args.draft, "draft", false,
 		"Request the exception in a change request, even if the organization doesn't require approval")
@@ -326,7 +326,7 @@ func runPolicyExceptionNew(
 		if !interactive {
 			return cmdCmd.ConfigurationError{Message: "--reason is required when not running interactively"}
 		}
-		reason, err := ui.PromptForValue(false, "reason for the exception", "", false, func(v string) error {
+		reason, err := ui.PromptForValue(false, "Reason for the exception", "", false, func(v string) error {
 			if v == "" {
 				return errors.New("a reason is required")
 			}
