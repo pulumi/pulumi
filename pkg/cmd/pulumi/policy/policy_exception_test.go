@@ -311,7 +311,7 @@ Policy Pack exceptions configuration:
     }
   ]
 }
-`, buf.String(), "a removed exception shows what it allowed")
+`, buf.String(), "a removed exception shows what it exempted")
 
 	deletedUser := samplePolicyException("EXC-4")
 	deletedUser.CreatedBy = apitype.UserInfo{}

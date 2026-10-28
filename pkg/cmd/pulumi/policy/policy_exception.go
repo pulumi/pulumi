@@ -83,7 +83,7 @@ func newPolicyExceptionCmd() *cobra.Command {
 		Short: "[EXPERIMENTAL] Manage policy exceptions",
 		Long: "[EXPERIMENTAL] Manage policy exceptions.\n" +
 			"\n" +
-			"A policy exception allows violations of the policies it lists on the resources it lists, so\n" +
+			"A policy exception exempts violations of the policies it lists on the resources it lists, so\n" +
 			"they don't fail an operation. Each exception belongs to one Policy Pack, and is stored in\n" +
 			"Pulumi Cloud.",
 		Hidden: !env.Experimental.Value(),

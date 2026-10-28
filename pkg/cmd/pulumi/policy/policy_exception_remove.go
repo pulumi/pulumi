@@ -55,7 +55,7 @@ func newPolicyExceptionRemoveCmd() *cobra.Command {
 		Short:   "[EXPERIMENTAL] Remove a policy exception",
 		Long: "[EXPERIMENTAL] Remove a policy exception.\n" +
 			"\n" +
-			"Removes an active policy exception, so the violations it allowed fail operations again.\n" +
+			"Removes an active policy exception, so the violations it exempted fail operations again.\n" +
 			"Pulumi Cloud keeps the removed exception for auditing.\n" +
 			"You will be prompted to confirm unless --yes is passed.",
 		Example: "  pulumi policy exception remove EXC-12\n" +
@@ -86,7 +86,7 @@ func runPolicyExceptionRemove(
 	factory policyExceptionClientFactory, exceptionID string, args policyExceptionRemoveArgs,
 ) error {
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
-	prompt := fmt.Sprintf("This will remove policy exception %s, so the violations it allows fail operations again!",
+	prompt := fmt.Sprintf("This will remove policy exception %s, so the violations it exempts fail operations again!",
 		exceptionID)
 	if err := ui.ConfirmDeletion(args.yes, cmdutil.Interactive(), prompt, exceptionID, stderr, opts); err != nil {
 		return err
