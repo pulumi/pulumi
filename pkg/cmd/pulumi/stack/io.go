@@ -386,14 +386,17 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		managedStackFile = path
 	}
 
-	ps, needsSave, sm, err := createSecretsManagerForNewStack(
-		ctx, sink, ws, b, stackRef, opts.SecretsProvider, opts.ConfigFile)
+	ps, err := readStackConfiguration(ctx, sink, ws, b, stackRef, opts.ConfigFile)
 	if err != nil {
 		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
 	}
 	if opts.ManagedEnvironment && (len(ps.Config) > 0 || ps.Environment != nil) {
-		return nil, fmt.Errorf("%s already has config or an environment; move it aside before creating a managed stack",
-			managedStackFile)
+		return nil, fmt.Errorf("%s already has config or an environment; delete its `config` and `environment` "+
+			"sections, or the file, before creating a managed stack", managedStackFile)
+	}
+	needsSave, sm, err := createSecretsManagerForNewStack(ctx, b, ps, opts.SecretsProvider)
+	if err != nil {
+		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
 	}
 
 	// If we have a non-empty secrets manager, we'll send it off to the backend as part of the initial state to be stored

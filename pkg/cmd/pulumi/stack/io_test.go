@@ -209,6 +209,7 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 		stackFile   string
 		contents    string
 		managedEnv  string
+		secrets     string
 		wantCreated bool
 		wantErr     string
 	}{
@@ -219,14 +220,22 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 			stackFile:  "Pulumi.dev.yaml",
 			contents:   "config:\n  proj:a: b\n",
 			managedEnv: "proj/renamed",
-			wantErr:    "already has config or an environment; move it aside before creating a managed stack",
+			wantErr:    "already has config or an environment; delete its `config` and `environment` sections, or the file, before creating a managed stack",
+		},
+		{
+			name:       "existing config is refused before the secrets provider is set up",
+			stackFile:  "Pulumi.dev.yaml",
+			contents:   "config:\n  proj:a: b\n",
+			managedEnv: "proj/renamed",
+			secrets:    "unknown://provider",
+			wantErr:    "already has config or an environment",
 		},
 		{
 			name:       "existing environment",
 			stackFile:  "Pulumi.dev.yaml",
 			contents:   "environment:\n  - other\n",
 			managedEnv: "proj/renamed",
-			wantErr:    "already has config or an environment; move it aside before creating a managed stack",
+			wantErr:    "already has config or an environment; delete its `config` and `environment` sections, or the file, before creating a managed stack",
 		},
 		{
 			name:        "service without managed environments",
@@ -255,7 +264,7 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 
 			_, err := CreateStack(t.Context(), sink, ws, newManagedTestBackend(tt.managedEnv, &createdManaged),
 				&backend.MockStackReference{StringV: "dev", NameV: tokens.MustParseStackName("dev")}, "",
-				CreateStackOptions{ConfigFile: stackFile, ManagedEnvironment: true})
+				CreateStackOptions{ConfigFile: stackFile, ManagedEnvironment: true, SecretsProvider: tt.secrets})
 
 			assert.Equal(t, tt.wantCreated, createdManaged)
 			if tt.wantErr != "" {
