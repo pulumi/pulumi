@@ -55,8 +55,8 @@ func newPolicyExceptionGetCmd() *cobra.Command {
 		Short: "[EXPERIMENTAL] Get the details of a policy exception",
 		Long: "[EXPERIMENTAL] Get the details of a policy exception.\n" +
 			"\n" +
-			"Shows a policy exception. For an active exception, this includes what it allows as a Policy\n" +
-			"Pack config file entry.\n" +
+			"Shows a policy exception, including what it exempts as a Policy Pack exceptions\n" +
+			"configuration entry.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"full response as JSON.",
