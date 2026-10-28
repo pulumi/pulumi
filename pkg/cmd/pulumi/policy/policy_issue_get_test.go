@@ -17,7 +17,9 @@ package policy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -113,19 +115,25 @@ func TestPolicyIssueGet_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
-		"id": "issue-1",
-		"policyName": "no-public-buckets",
-		"policyPack": "aws-guardrails",
-		"policyPackTag": "1.2.0",
-		"level": "mandatory",
-		"severity": "high",
-		"resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
-		"resourceType": "aws:s3/bucket:Bucket",
-		"entityId": "prod",
-		"entityProject": "web",
-		"message": "S3 bucket must not allow public access",
-		"observedAt": "2026-05-01T12:00:00Z"
-	}`, buf.String())
+  "id": "issue-1",
+  "entityType": "",
+  "entityProject": "web",
+  "entityId": "prod",
+  "policyPack": "aws-guardrails",
+  "policyPackTag": "1.2.0",
+  "policyName": "no-public-buckets",
+  "resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
+  "resourceProvider": "",
+  "resourceType": "aws:s3/bucket:Bucket",
+  "resourceName": "",
+  "message": "S3 bucket must not allow public access",
+  "observedAt": "2026-05-01T12:00:00Z",
+  "level": "mandatory",
+  "severity": "high",
+  "status": "",
+  "kind": "",
+  "priority": ""
+}`, buf.String())
 }
 
 func TestPolicyIssueGet_ClientError(t *testing.T) {
@@ -171,5 +179,132 @@ func TestPolicyIssueGet_NilTimestamps(t *testing.T) {
 	err = runPolicyIssueGet(t.Context(), &jsonOut,
 		stubPolicyIssueGetFactory(&mockPolicyIssueGetClient{resp: issue}, "acme"), "issue-1", args)
 	require.NoError(t, err)
-	assert.NotContains(t, jsonOut.String(), "observedAt")
+	assert.Contains(t, jsonOut.String(), `"observedAt": null`)
+	assert.NotContains(t, jsonOut.String(), "lastModified")
+}
+
+func runPolicyIssueGetAgainstServer(t *testing.T, issueJSON string, args policyIssueGetArgs) string {
+	t.Helper()
+	c := newPolicyIssueServerClient(t, func(*http.Request) string {
+		return `{"policyIssue": ` + issueJSON + `}`
+	})
+	buf := &bytes.Buffer{}
+	require.NoError(t, runPolicyIssueGet(t.Context(), buf, stubPolicyIssueGetFactory(c, "acme"), "issue-1", args))
+	return buf.String()
+}
+
+func TestPolicyIssueGet_UnknownEnumValues(t *testing.T) {
+	t.Parallel()
+
+	jsonArgs := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
+	require.NoError(t, jsonArgs.outputFormat.Set("json"))
+	var got map[string]any
+	require.NoError(t, json.Unmarshal([]byte(runPolicyIssueGetAgainstServer(t, unknownEnumIssueJSON, jsonArgs)), &got))
+	assert.Equal(t, "future_status", got["status"])
+	assert.Equal(t, "future", got["severity"])
+
+	text := runPolicyIssueGetAgainstServer(t, unknownEnumIssueJSON,
+		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
+	assert.Contains(t, text, "Severity:            future\n")
+	assert.Contains(t, text, "Status:              future_status\n")
+}
+
+func TestPolicyIssueGet_Timestamps(t *testing.T) {
+	t.Parallel()
+
+	jsonArgs := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
+	require.NoError(t, jsonArgs.outputFormat.Set("json"))
+	out := runPolicyIssueGetAgainstServer(t, fractionalTimestampIssueJSON, jsonArgs)
+	assert.Contains(t, out, `"observedAt": "2026-10-01T12:34:56.789123Z"`)
+	assert.NotContains(t, out, "lastModified")
+
+	text := runPolicyIssueGetAgainstServer(t, fractionalTimestampIssueJSON,
+		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
+	assert.Equal(t, `ID:                  issue-1
+Policy pack:         aws-guardrails@3.1.0
+Policy:              s3-no-public
+Enforcement level:   mandatory
+Severity:            critical
+Status:              open
+Stack:               web/prod
+Resource URN:        urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets
+Resource type:       aws:s3/bucket:Bucket
+Observed at:         2026-10-01T12:34:56.789123Z
+Message:             Bucket must not allow public access & <must> be "private".
+`, text)
+}
+
+func TestPolicyIssueGet_JSON_Full(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	require.NoError(t, renderPolicyIssueGetJSON(&buf, samplePolicyIssueFull()))
+	got := buf.String()
+	assert.JSONEq(t, `{
+  "id": "issue-1",
+  "entityType": "stack",
+  "entityProject": "web",
+  "entityId": "prod",
+  "policyPack": "aws-guardrails",
+  "policyPackTag": "3.1.0",
+  "policyName": "s3-no-public",
+  "resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets",
+  "resourceProvider": "aws",
+  "resourceType": "aws:s3/bucket:Bucket",
+  "resourceName": "assets",
+  "message": "Bucket must not allow public access & <must> be \"private\".",
+  "observedAt": "2026-03-04T05:06:07.123456Z",
+  "lastModified": "2026-03-05T06:07:08.5Z",
+  "level": "mandatory",
+  "severity": "critical",
+  "status": "open",
+  "kind": "audit",
+  "priority": "P1"
+}
+`, got)
+}
+
+func TestPolicyIssueGet_JSON_Minimal(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	require.NoError(t, renderPolicyIssueGetJSON(&buf, samplePolicyIssueMinimal()))
+	got := buf.String()
+	assert.JSONEq(t, `{
+  "id": "issue-2",
+  "entityType": "",
+  "entityProject": "",
+  "entityId": "",
+  "policyPack": "tagging",
+  "policyPackTag": "",
+  "policyName": "require-owner",
+  "resourceURN": "",
+  "resourceProvider": "",
+  "resourceType": "",
+  "resourceName": "",
+  "observedAt": null,
+  "level": "advisory",
+  "severity": "",
+  "status": "",
+  "kind": "",
+  "priority": ""
+}
+`, got)
+}
+
+func TestPolicyIssueGet_Table(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	require.NoError(t, renderPolicyIssueGetText(&buf, samplePolicyIssueFull()))
+	got := buf.String()
+	assert.Equal(t, `ID:                  issue-1
+Policy pack:         aws-guardrails@3.1.0
+Policy:              s3-no-public
+Enforcement level:   mandatory
+Severity:            critical
+Status:              open
+Stack:               web/prod
+Resource URN:        urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets
+Resource type:       aws:s3/bucket:Bucket
+Observed at:         2026-03-04T05:06:07.123456Z
+Message:             Bucket must not allow public access & <must> be "private".
+`, got)
 }

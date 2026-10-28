@@ -212,45 +212,9 @@ func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
 	return nil
 }
 
-// policyIssueGetJSON is the JSON envelope emitted by
-// `pulumi policy issue get --output=json`.
-type policyIssueGetJSON struct {
-	ID            string                 `json:"id"`
-	PolicyName    string                 `json:"policyName"`
-	PolicyPack    string                 `json:"policyPack"`
-	PolicyPackTag string                 `json:"policyPackTag,omitempty"`
-	Level         string                 `json:"level"`
-	Severity      apitype.PolicySeverity `json:"severity,omitempty"`
-	Status        string                 `json:"status,omitempty"`
-	ResourceURN   string                 `json:"resourceURN,omitempty"`
-	ResourceType  string                 `json:"resourceType,omitempty"`
-	EntityProject string                 `json:"entityProject,omitempty"`
-	EntityID      string                 `json:"entityId,omitempty"`
-	Message       string                 `json:"message,omitempty"`
-	ObservedAt    *time.Time             `json:"observedAt,omitempty"`
-}
-
-func toPolicyIssueGetJSON(issue apitype.PolicyIssue) policyIssueGetJSON {
-	return policyIssueGetJSON{
-		ID:            issue.ID,
-		PolicyName:    issue.PolicyName,
-		PolicyPack:    issue.PolicyPack,
-		PolicyPackTag: issue.PolicyPackTag,
-		Level:         issue.Level,
-		Severity:      issue.Severity,
-		Status:        string(issue.Status),
-		ResourceURN:   issue.ResourceURN,
-		ResourceType:  issue.ResourceType,
-		EntityProject: issue.EntityProject,
-		EntityID:      issue.EntityID,
-		Message:       issue.Message,
-		ObservedAt:    issue.ObservedAt,
-	}
-}
-
 func renderPolicyIssueGetJSON(w io.Writer, issue apitype.PolicyIssue) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(toPolicyIssueGetJSON(issue))
+	return enc.Encode(issue)
 }

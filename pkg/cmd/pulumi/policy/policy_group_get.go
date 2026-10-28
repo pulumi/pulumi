@@ -180,7 +180,6 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 
 	fmt.Fprintf(w, "%-22s %s\n", "Name:", resp.Name)
 	fmt.Fprintf(w, "%-22s %s\n", "Org default:", isDefault)
-	fmt.Fprintf(w, "%-22s %s\n", "Entity type:", string(resp.EntityType)) //nolint:staticcheck
 	fmt.Fprintf(w, "%-22s %s\n", "Mode:", string(resp.Mode))
 	if resp.AgentPoolID != nil {
 		fmt.Fprintf(w, "%-22s %s\n", "Agent pool:", *resp.AgentPoolID)
@@ -211,48 +210,20 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 	return nil
 }
 
-// policyGroupGetJSON is the JSON envelope emitted by
-// `pulumi policy group get --output=json`. Nil slices are normalized to empty
-// arrays so scripts can rely on the array keys always existing.
-type policyGroupGetJSON struct {
-	Name               string                         `json:"name"`
-	IsOrgDefault       bool                           `json:"isOrgDefault"`
-	EntityType         apitype.PolicyGroupEntityType  `json:"entityType"`
-	Mode               apitype.PolicyGroupMode        `json:"mode"`
-	Stacks             []apitype.PulumiStackReference `json:"stacks"`
-	AppliedPolicyPacks []apitype.PolicyPackMetadata   `json:"appliedPolicyPacks"`
-	Accounts           []string                       `json:"accounts"`
-	AgentPoolID        *string                        `json:"agentPoolId,omitempty"`
-}
-
-func toPolicyGroupGetJSON(resp apitype.GetPolicyGroupResponse) policyGroupGetJSON {
-	stacks := resp.Stacks
-	if stacks == nil {
-		stacks = []apitype.PulumiStackReference{}
-	}
-	packs := resp.AppliedPolicyPacks
-	if packs == nil {
-		packs = []apitype.PolicyPackMetadata{}
-	}
-	accounts := resp.Accounts
-	if accounts == nil {
-		accounts = []string{}
-	}
-	return policyGroupGetJSON{
-		Name:               resp.Name,
-		IsOrgDefault:       resp.IsOrgDefault,
-		EntityType:         resp.EntityType, //nolint:staticcheck
-		Mode:               resp.Mode,
-		Stacks:             stacks,
-		AppliedPolicyPacks: packs,
-		Accounts:           accounts,
-		AgentPoolID:        resp.AgentPoolID,
-	}
-}
-
+// renderPolicyGroupGetJSON normalizes nil slices to empty arrays so scripts can
+// rely on the array keys always existing.
 func renderPolicyGroupGetJSON(w io.Writer, resp apitype.GetPolicyGroupResponse) error {
+	if resp.Stacks == nil {
+		resp.Stacks = []apitype.PulumiStackReference{}
+	}
+	if resp.AppliedPolicyPacks == nil {
+		resp.AppliedPolicyPacks = []apitype.PolicyPackMetadata{}
+	}
+	if resp.Accounts == nil {
+		resp.Accounts = []string{}
+	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(toPolicyGroupGetJSON(resp))
+	return enc.Encode(resp)
 }

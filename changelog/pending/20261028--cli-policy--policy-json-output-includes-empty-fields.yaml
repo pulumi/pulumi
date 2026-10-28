@@ -1,4 +1,0 @@
-component: cli/policy
-kind: improvement
-body: Include empty fields that were previously omitted in the `--output json` of the `pulumi policy group` and `pulumi policy issue` commands
-time: 2026-10-28T00:00:00Z

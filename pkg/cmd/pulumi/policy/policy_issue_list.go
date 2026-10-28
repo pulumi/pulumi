@@ -283,27 +283,16 @@ func renderPolicyIssueListTable(
 	return nil
 }
 
-// policyIssueListEnvelope is the JSON shape emitted by
-// `pulumi policy issue list --output=json`.
-type policyIssueListEnvelope struct {
-	Issues []apitype.PolicyIssue `json:"issues"`
-	Total  int64                 `json:"total"`
-}
-
 func renderPolicyIssueListJSON(
 	w io.Writer, resp apitype.ListPolicyIssuesResponse,
 ) error {
-	issues := resp.PolicyIssues
-	if issues == nil {
-		issues = []apitype.PolicyIssue{}
+	if resp.PolicyIssues == nil {
+		resp.PolicyIssues = []apitype.PolicyIssue{}
 	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(policyIssueListEnvelope{
-		Issues: issues,
-		Total:  policyIssueTotal(resp),
-	})
+	return enc.Encode(resp)
 }
 
 // policyIssueTotal falls back to the number of returned issues when the server omits rowCount.
