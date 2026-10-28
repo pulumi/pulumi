@@ -157,6 +157,14 @@ func TestSet(t *testing.T) {
 			value: "z", setErr: `["proj:a"]: cannot set a path inside fn::open`,
 		},
 		{
+			name: "pulumiConfig function call is not extended", in: pc + "    fn::fromJSON: '{}'\n", key: "a",
+			value: "z", setErr: "pulumiConfig: cannot set a key inside fn::fromJSON",
+		},
+		{
+			name: "values function call is not extended", in: "values:\n  fn::open: x\n", key: "a",
+			value: "z", setErr: "values: cannot set a key inside fn::open",
+		},
+		{
 			name: "nested function calls are not extended", in: pc + "    proj:a:\n      b:\n        fn::toJSON: x\n",
 			key: "a.b.c", path: true, value: "z", setErr: `["proj:a"].b: cannot set a path inside fn::toJSON`,
 		},

@@ -101,6 +101,9 @@ func childMapping(parent *yaml.Node, key string, create bool) (*yaml.Node, error
 	if child.Kind != yaml.MappingNode {
 		return nil, fmt.Errorf("%s must be a mapping", key)
 	}
+	if create && isFunctionCall(child) {
+		return nil, fmt.Errorf("%s: cannot set a key inside %s", key, child.Content[0].Value)
+	}
 	return child, nil
 }
 
