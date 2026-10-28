@@ -1,4 +1,0 @@
-component: cli/display
-kind: fix
-body: Fix secret maps and arrays leaking into JSON preview and update output
-time: 2026-10-27T12:51:23.971759+01:00

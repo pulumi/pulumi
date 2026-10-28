@@ -1,4 +1,0 @@
-component: cli/install
-kind: fix
-body: Stop the provider plugin that `pulumi install` starts for local SDK generation
-time: 2026-10-26T00:00:00Z
