@@ -46,9 +46,13 @@ type mockPolicyExceptionClient struct {
 	// createErr fails creates, but not drafts; gated returns a 409 for them, as when the org requires approval.
 	createErr error
 	gated     bool
+	// existed makes creates return an existing exception, as for a repeated request.
+	existed   bool
 	submitErr error
-	// crStatus is the status of the change request a draft creates, after it's submitted.
+	// crStatus is the status of the change request a draft creates, after it's submitted. crOpen is its status
+	// before, when the draft returned an open change request; it's a draft otherwise.
 	crStatus string
+	crOpen   string
 
 	gotListOpts  []client.ListPolicyExceptionsOptions
 	gotOrg       string
@@ -61,13 +65,14 @@ type mockPolicyExceptionClient struct {
 
 func (m *mockPolicyExceptionClient) CreatePolicyException(
 	_ context.Context, org string, req apitype.CreatePolicyExceptionRequest,
-) (apitype.PolicyExceptionInfo, error) {
+) (apitype.PolicyExceptionInfo, bool, error) {
 	m.gotOrg = org
 	m.gotCreated = append(m.gotCreated, req)
 	if m.gated {
-		return apitype.PolicyExceptionInfo{}, &apitype.ErrorResponse{Code: http.StatusConflict, Message: "requires approval"}
+		return apitype.PolicyExceptionInfo{}, false,
+			&apitype.ErrorResponse{Code: http.StatusConflict, Message: "requires approval"}
 	}
-	return apitype.PolicyExceptionInfo{ID: "EXC-7"}, cmp.Or(m.createErr, m.err)
+	return apitype.PolicyExceptionInfo{ID: "EXC-7"}, m.existed, cmp.Or(m.createErr, m.err)
 }
 
 func (m *mockPolicyExceptionClient) CreatePolicyExceptionDraft(
@@ -88,7 +93,11 @@ func (m *mockPolicyExceptionClient) GetChangeRequest(
 	_ context.Context, org, id string,
 ) (*esc_client.GetChangeRequestResponse, error) {
 	m.gotOrg = org
-	return &esc_client.GetChangeRequestResponse{ChangeRequest: esc_client.ChangeRequest{ID: id, Status: m.crStatus}}, m.err
+	status := cmp.Or(m.crOpen, changeRequestDraft)
+	if len(m.gotSubmitted) > 0 {
+		status = m.crStatus
+	}
+	return &esc_client.GetChangeRequestResponse{ChangeRequest: esc_client.ChangeRequest{ID: id, Status: status}}, m.err
 }
 
 func (m *mockPolicyExceptionClient) URL() string {
@@ -274,6 +283,7 @@ func TestPolicyExceptionGet(t *testing.T) {
 	removed.RemovedBy = apitype.UserInfo{GitHubLogin: "bob"}
 	removed.RemovedAt = time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC)
 	removed.ChangeRequestID = "cr-1"
+	removed.Match = removed.Match[:1]
 	c := &mockPolicyExceptionClient{exception: removed}
 	var buf bytes.Buffer
 	err := runPolicyExceptionGet(t.Context(), &buf, stubPolicyExceptionFactory(c, "acme"), "EXC-3",
@@ -285,7 +295,23 @@ Status:        removed
 Requested in:  change request cr-1
 Created:       2026-10-01T12:00:00Z by alice
 Removed:       2026-10-02T09:30:00Z by bob
-`, buf.String())
+
+Policy Pack exceptions configuration:
+{
+  "reason": "Logs are public by design",
+  "match": [
+    {
+      "policies": [
+        "s3-no-public-read",
+        "required-tags"
+      ],
+      "targets": [
+        "urn:pulumi:prod::web::aws:s3/bucket:Bucket::logs"
+      ]
+    }
+  ]
+}
+`, buf.String(), "a removed exception shows what it allowed")
 
 	deletedUser := samplePolicyException("EXC-4")
 	deletedUser.CreatedBy = apitype.UserInfo{}
@@ -299,40 +325,36 @@ Policy pack:   aws-security
 Status:        active
 Created:       2026-10-01T12:00:00Z
 
+Policy Pack exceptions configuration:
 {
-  "version": 2,
-  "exceptions": {
-    "EXC-4": {
-      "reason": "Logs are public by design",
-      "match": [
-        {
-          "policies": [
-            "s3-no-public-read",
-            "required-tags"
-          ],
-          "targets": [
-            "urn:pulumi:prod::web::aws:s3/bucket:Bucket::logs"
-          ]
-        },
-        {
-          "policies": [
-            "required-tags"
-          ],
-          "targets": [
-            "urn:pulumi:prod::web::aws:s3/bucket:Bucket::logs-cdn"
-          ]
-        },
-        {
-          "policies": [
-            "s3-no-public-read"
-          ],
-          "targets": [
-            "urn:pulumi:prod::web::aws:s3/bucket:Bucket::logs-cdn"
-          ]
-        }
+  "reason": "Logs are public by design",
+  "match": [
+    {
+      "policies": [
+        "s3-no-public-read",
+        "required-tags"
+      ],
+      "targets": [
+        "urn:pulumi:prod::web::aws:s3/bucket:Bucket::logs"
+      ]
+    },
+    {
+      "policies": [
+        "required-tags"
+      ],
+      "targets": [
+        "urn:pulumi:prod::web::aws:s3/bucket:Bucket::logs-cdn"
+      ]
+    },
+    {
+      "policies": [
+        "s3-no-public-read"
+      ],
+      "targets": [
+        "urn:pulumi:prod::web::aws:s3/bucket:Bucket::logs-cdn"
       ]
     }
-  }
+  ]
 }
 `, buf.String())
 }
