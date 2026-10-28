@@ -510,6 +510,18 @@ func updatePolicyGroupPath(orgName, policyGroup string) string {
 		"/api/orgs/%s/policygroups/%s", orgName, policyGroup)
 }
 
+// listPolicyGroupStacksPath returns the path for an API call to the Pulumi service to list
+// the stacks that are members of a PolicyGroup.
+func listPolicyGroupStacksPath(orgName, policyGroup string) string {
+	return updatePolicyGroupPath(orgName, policyGroup) + "/stacks"
+}
+
+// listPolicyGroupAccountsPath returns the path for an API call to the Pulumi service to list
+// the Insights accounts that are members of a PolicyGroup.
+func listPolicyGroupAccountsPath(orgName, policyGroup string) string {
+	return updatePolicyGroupPath(orgName, policyGroup) + "/accounts"
+}
+
 // deletePolicyPackPath returns the path for an API call to the Pulumi service to delete
 // all versions of a Policy Pack from a Pulumi organization.
 func deletePolicyPackPath(orgName, policyPackName string) string {
@@ -1733,6 +1745,58 @@ func (pc *Client) GetPolicyGroup(
 	err := pc.restCall(ctx, "GET", updatePolicyGroupPath(orgName, policyGroup), nil, nil, &resp)
 	if err != nil {
 		return resp, fmt.Errorf("getting policy group: %w", err)
+	}
+	return resp, nil
+}
+
+// ListPolicyGroupMembersOptions are the optional query parameters accepted by
+// ListPolicyGroupStacks and ListPolicyGroupAccounts. Empty fields are omitted
+// from the request and let the service apply its own defaults.
+type ListPolicyGroupMembersOptions struct {
+	// Source limits the page to members added explicitly or matched by the
+	// group's match rule. Empty means both.
+	Source cloudapitype.PolicyGroupMemberSource
+	// Count is the page size, 1-500. Zero means the service default.
+	Count int
+	// ContinuationToken resumes from a previous page.
+	ContinuationToken *string
+}
+
+func (o ListPolicyGroupMembersOptions) query() any {
+	return struct {
+		Source            string  `url:"source,omitempty"`
+		Count             int     `url:"count,omitempty"`
+		ContinuationToken *string `url:"continuationToken,omitempty"`
+	}{
+		Source:            string(o.Source),
+		Count:             o.Count,
+		ContinuationToken: o.ContinuationToken,
+	}
+}
+
+// ListPolicyGroupStacks returns one page of the stacks that are members of a
+// Policy Group, whether added explicitly or matched by its stack match rule.
+func (pc *Client) ListPolicyGroupStacks(
+	ctx context.Context, orgName, policyGroup string, opts ListPolicyGroupMembersOptions,
+) (cloudapitype.ListPolicyGroupStacksResponse, error) {
+	var resp cloudapitype.ListPolicyGroupStacksResponse
+	path := listPolicyGroupStacksPath(orgName, policyGroup)
+	if err := pc.restCall(ctx, http.MethodGet, path, opts.query(), nil, &resp); err != nil {
+		return resp, fmt.Errorf("listing policy group stacks: %w", err)
+	}
+	return resp, nil
+}
+
+// ListPolicyGroupAccounts returns one page of the Insights accounts that are
+// members of a Policy Group, whether added explicitly or matched by its
+// account match rule.
+func (pc *Client) ListPolicyGroupAccounts(
+	ctx context.Context, orgName, policyGroup string, opts ListPolicyGroupMembersOptions,
+) (cloudapitype.ListPolicyGroupAccountsResponse, error) {
+	var resp cloudapitype.ListPolicyGroupAccountsResponse
+	path := listPolicyGroupAccountsPath(orgName, policyGroup)
+	if err := pc.restCall(ctx, http.MethodGet, path, opts.query(), nil, &resp); err != nil {
+		return resp, fmt.Errorf("listing policy group accounts: %w", err)
 	}
 	return resp, nil
 }
