@@ -64,19 +64,19 @@ func (c *confirmedNew) createStack(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b backend.Backend,
 	root string, args newArgs, opts display.Options,
 ) (backend.Stack, string, error) {
+	createOpts := cmdStack.CreateStackOptions{
+		SetCurrent:         true,
+		SecretsProvider:    args.secretsProvider,
+		UseRemoteConfig:    args.remoteStackConfig,
+		ManagedEnvironment: args.escConfig,
+	}
 	if c.createsStack() {
 		// Quiet: the confirmation already showed the stack name, and the summary repeats it.
+		createOpts.Quiet = true
 		return createStackWithRetry(ctx, sink, args.stdout, ws, b, args.prompt, c.stackName, root, args.yes, opts,
-			cmdStack.CreateStackOptions{
-				SetCurrent:      true,
-				SecretsProvider: args.secretsProvider,
-				UseRemoteConfig: args.remoteStackConfig,
-				Quiet:           true,
-			})
+			createOpts)
 	}
-	s, err := PromptAndCreateStack(ctx, sink, ws, b, args.prompt,
-		args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider,
-		args.remoteStackConfig, "")
+	s, err := promptAndCreateStack(ctx, sink, ws, b, args.prompt, args.stack, root, args.yes, opts, createOpts)
 	if err != nil {
 		return nil, "", err
 	}
@@ -92,20 +92,17 @@ func (c *confirmedNew) saveConfig(
 	proj *workspace.Project, s backend.Stack, template cmdTemplates.ProjectTemplate,
 	args newArgs, opts display.Options,
 ) (config.Map, error) {
-	var saved config.Map
-	var err error
 	if c.createsStack() {
-		saved, err = saveTemplateConfig(ctx, sink, ssml, ws, proj, s, c.config, c.commandLineConfig, "")
-	} else {
-		saved, err = handleConfig(ctx, sink, ssml, ws, args.prompt, proj, s,
-			args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts, "")
+		return saveTemplateConfig(ctx, sink, ssml, ws, proj, s, c.config, c.commandLineConfig, "")
 	}
-	if err != nil && s.ConfigLocation().ManagedEnvironment != "" {
-		return nil, fmt.Errorf("%w. Stack %[2]s and its ESC environment were created and no config was saved; "+
-			"set each value with `pulumi config set` (`--secret` for secrets), or remove the stack with "+
-			"`pulumi stack rm %[2]s`", err, s.Ref())
-	}
-	return saved, err
+	return handleConfig(ctx, sink, ssml, ws, args.prompt, proj, s,
+		args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts, "")
+}
+
+func managedStackWithoutConfigError(err error, ref backend.StackReference) error {
+	return fmt.Errorf("%w. Stack %[2]s and its ESC environment were created and no config was saved; "+
+		"set each value with `pulumi config set` (`--secret` for secrets), or remove the stack with "+
+		"`pulumi stack rm %[2]s`", err, ref)
 }
 
 func printPreamble(w io.Writer, opts display.Options) {

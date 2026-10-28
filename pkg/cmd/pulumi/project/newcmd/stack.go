@@ -66,15 +66,21 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 	b backend.Backend, prompt promptForValueFunc, stack string, root string, setCurrent bool,
 	yes bool, opts display.Options, secretsProvider string, useRemoteConfig bool, configFile string,
 ) (backend.Stack, error) {
-	contract.Requiref(b != nil, "b", "must not be nil")
-	contract.Requiref(root != "", "root", "must not be empty")
-
-	createOpts := cmdStack.CreateStackOptions{
+	return promptAndCreateStack(ctx, sink, ws, b, prompt, stack, root, yes, opts, cmdStack.CreateStackOptions{
 		SetCurrent:      setCurrent,
 		SecretsProvider: secretsProvider,
 		UseRemoteConfig: useRemoteConfig,
 		ConfigFile:      configFile,
-	}
+	})
+}
+
+func promptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
+	b backend.Backend, prompt promptForValueFunc, stack string, root string,
+	yes bool, opts display.Options, createOpts cmdStack.CreateStackOptions,
+) (backend.Stack, error) {
+	contract.Requiref(b != nil, "b", "must not be nil")
+	contract.Requiref(root != "", "root", "must not be empty")
+
 	if stack != "" {
 		return createStack(ctx, sink, ws, b, stack, root, createOpts)
 	}

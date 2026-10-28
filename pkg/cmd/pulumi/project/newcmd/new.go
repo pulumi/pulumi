@@ -96,11 +96,12 @@ type newArgs struct {
 	templateMode         bool
 	runtimeOptions       []string
 	remoteStackConfig    bool
+	escConfig            bool
 	stdout               io.Writer
 	stderr               io.Writer
 }
 
-func runNew(ctx context.Context, args newArgs) error {
+func runNew(ctx context.Context, args newArgs) (err error) {
 	if args.aiPrompt != "" || args.aiLanguage != "" {
 		return errors.New(aiRetiredMessage)
 	}
@@ -179,6 +180,12 @@ func runNew(ctx context.Context, args newArgs) error {
 		// --generate-only is set because we're not going to actually use the --stack argument given.
 		if err := compareStackProjectName(b, args.stack, args.name); err != nil {
 			return err
+		}
+
+		if args.escConfig {
+			if _, ok := b.(backend.ManagedEnvironmentsBackend); !ok {
+				return fmt.Errorf("--esc-config: %w by this backend", backend.ErrManagedEnvironmentNotSupported)
+			}
 		}
 	}
 
@@ -270,6 +277,9 @@ func runNew(ctx context.Context, args newArgs) error {
 			if existingStack.ConfigLocation().ManagedEnvironment != "" {
 				return cmdStack.ManagedEnvironmentNotSupportedError("pulumi new --stack")
 			}
+			if args.escConfig {
+				return fmt.Errorf("--esc-config creates a new stack, and stack %s already exists", args.stack)
+			}
 			s = existingStack
 			if args.description == "" {
 				args.description = existingDesc
@@ -351,9 +361,18 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Create the stack, if needed.
 	var createdStackName string
 	sink := diag.DefaultSink(args.stderr, args.stderr, diag.FormatOptions{Color: opts.Color})
+	var unsavedManagedStack backend.Stack
+	defer func() {
+		if err != nil && unsavedManagedStack != nil {
+			err = managedStackWithoutConfigError(err, unsavedManagedStack.Ref())
+		}
+	}()
 	if !args.generateOnly && s == nil {
 		if s, createdStackName, err = confirmed.createStack(ctx, sink, ws, b, root, args, opts); err != nil {
 			return err
+		}
+		if s.ConfigLocation().ManagedEnvironment != "" {
+			unsavedManagedStack = s
 		}
 	}
 
@@ -428,6 +447,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 	}
+	unsavedManagedStack = nil
 
 	// Ensure the stack is selected.
 	if !args.generateOnly && s != nil {
@@ -668,6 +688,15 @@ func NewNewCmd() *cobra.Command {
 		"Store stack configuration remotely",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
+	cmd.PersistentFlags().BoolVar(
+		&args.escConfig, "esc-config", false,
+		"[EXPERIMENTAL] Create an ESC environment, managed by the stack, that holds the stack's configuration",
+	)
+	if !env.Experimental.Value() {
+		_ = cmd.PersistentFlags().MarkHidden("esc-config")
+	}
+	cmd.MarkFlagsMutuallyExclusive("esc-config", "remote-stack-config")
+	cmd.MarkFlagsMutuallyExclusive("esc-config", "generate-only")
 
 	return cmd
 }
