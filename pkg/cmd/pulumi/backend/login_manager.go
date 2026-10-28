@@ -333,13 +333,18 @@ func (f *lm) openHTTPBackend(
 		return nil, err
 	}
 	if setCurrent && helper != nil && helper.HasHTTP() {
-		account, err := workspace.GetAccount(raw)
+		creds, err := workspace.GetStoredCredentials()
 		if err != nil {
 			return nil, err
 		}
+		account, ok := creds.Accounts[be.CloudURL()]
+		if !ok {
+			// OIDC login may have stored the account with a trailing slash.
+			account = creds.Accounts[be.CloudURL()+"/"]
+		}
 		// Persist the connection setting while preserving stored credentials
 		account.Insecure = insecure
-		if err := workspace.StoreAccount(raw, account, true); err != nil {
+		if err := workspace.StoreAccount(be.CloudURL(), account, true); err != nil {
 			return nil, err
 		}
 	}
