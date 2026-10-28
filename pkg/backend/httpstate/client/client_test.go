@@ -2461,21 +2461,36 @@ func TestBatchUpdatePolicyGroup(t *testing.T) {
 	defer server.Close()
 
 	err := newMockClient(server).BatchUpdatePolicyGroup(t.Context(), "acme", "prod-policies",
-		[]apitype.UpdatePolicyGroupRequest{
-			{NewName: new("renamed")},
-			{AddStack: &apitype.PulumiStackReference{Name: "prod", RoutingProject: "web"}},
-			{AddStack: &apitype.PulumiStackReference{Name: "standalone"}},
-			{RemoveStack: &apitype.PulumiStackReference{Name: "old", RoutingProject: "api"}},
-			{AddPolicyPack: &apitype.PolicyPackMetadata{
-				Name:       "aws-pack",
-				VersionTag: "1.2.3",
-				Config: map[string]*json.RawMessage{
-					"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory","tags":["a","b"]}`)),
+		[]cloudapitype.UpdatePolicyGroupRequest{
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{NewName: new("renamed")}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddStack: &apitype.PulumiStackReference{Name: "prod", RoutingProject: "web"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddStack: &apitype.PulumiStackReference{Name: "standalone"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				RemoveStack: &apitype.PulumiStackReference{Name: "old", RoutingProject: "api"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddPolicyPack: &apitype.PolicyPackMetadata{
+					Name:       "aws-pack",
+					VersionTag: "1.2.3",
+					Config: map[string]*json.RawMessage{
+						"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory","tags":["a","b"]}`)),
+					},
 				},
 			}},
-			{RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "tagging", VersionTag: "1.0.0"}},
-			{AddInsightsAccount: &apitype.InsightsAccountReference{Name: "prod-aws"}},
-			{RemoveInsightsAccount: &apitype.InsightsAccountReference{Name: "stale-gcp"}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "tagging", VersionTag: "1.0.0"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddInsightsAccount: &apitype.InsightsAccountReference{Name: "prod-aws"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				RemoveInsightsAccount: &apitype.InsightsAccountReference{Name: "stale-gcp"},
+			}},
+			{RemoveStackMatchRule: true},
 		})
 	require.NoError(t, err)
 
@@ -2495,7 +2510,8 @@ func TestBatchUpdatePolicyGroup(t *testing.T) {
 		}},
 		{"removePolicyPack": {"name": "tagging", "displayName": "", "version": 0, "versionTag": "1.0.0"}},
 		{"addInsightsAccount": {"name": "prod-aws"}},
-		{"removeInsightsAccount": {"name": "stale-gcp"}}
+		{"removeInsightsAccount": {"name": "stale-gcp"}},
+		{"removeStackMatchRule": true}
 	]`, body)
 }
 
@@ -2651,4 +2667,62 @@ func TestGetPolicyPack(t *testing.T) {
 	assert.Equal(t, 3, resp.Version)
 	require.Len(t, resp.Policies, 1)
 	assert.Equal(t, apitype.Mandatory, resp.Policies[0].EnforcementLevel)
+}
+
+func TestGetStackPolicyGroups(t *testing.T) {
+	t.Parallel()
+
+	var method, path string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		return `{"policyGroups": [{"name": "prod-policies", "isOrgDefault": false, "numStacks": 3,
+			"numAccounts": 0, "entityType": "stacks", "mode": "preventative", "numEnabledPolicyPacks": 2}]}`
+	})
+	defer server.Close()
+
+	resp, err := newMockClient(server).GetStackPolicyGroups(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "web",
+		Stack:   tokens.MustParseStackName("prod"),
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodGet, method)
+	assert.Equal(t, "/api/stacks/acme/web/prod/policygroups", path)
+	assert.Equal(t, apitype.ListPolicyGroupsResponse{PolicyGroups: []apitype.PolicyGroupSummary{{
+		Name:                  "prod-policies",
+		NumStacks:             3,
+		EntityType:            apitype.Stacks,
+		Mode:                  apitype.PolicyGroupModePreventative,
+		NumEnabledPolicyPacks: 2,
+	}}}, resp)
+}
+
+func TestGetStackPolicyPacksForMode(t *testing.T) {
+	t.Parallel()
+
+	var method, url string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		method, url = req.Method, req.URL.String()
+		return `{"requiredPolicies": [{"name": "aws-guardrails", "version": 3, "versionTag": "1.2.0",
+			"displayName": "AWS Guardrails", "packLocation": "https://example.com/pack.tgz"}]}`
+	})
+	defer server.Close()
+
+	resp, err := newMockClient(server).GetStackPolicyPacksForMode(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "web",
+		Stack:   tokens.MustParseStackName("prod"),
+	}, apitype.PolicyGroupModeAudit)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodGet, method)
+	assert.Equal(t, "/api/stacks/acme/web/prod/policypacks?mode=audit", url)
+	assert.Equal(t, apitype.GetStackPolicyPacksResponse{RequiredPolicies: []apitype.RequiredPolicy{{
+		Name:         "aws-guardrails",
+		Version:      3,
+		VersionTag:   "1.2.0",
+		DisplayName:  "AWS Guardrails",
+		PackLocation: "https://example.com/pack.tgz",
+	}}}, resp)
 }

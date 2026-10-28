@@ -131,6 +131,7 @@ func NewStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackUnselectCmd())
 	cmd.AddCommand(newStackGetCmd())
 	cmd.AddCommand(newStackDriftCmd())
+	cmd.AddCommand(newStackPolicyCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newStackScheduleCmd())
 	cmd.AddCommand(newStackWebhookCmd())
 	cmd.AddCommand(newStackMigrateCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
