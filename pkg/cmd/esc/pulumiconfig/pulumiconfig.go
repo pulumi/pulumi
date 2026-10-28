@@ -199,11 +199,12 @@ func Set(def *yaml.Node, names []string, path resource.PropertyPath, value yaml.
 	full := append(resource.PropertyPath{escape(entry)}, escapePath(path)...)
 	syntax := encoding.YAMLSyntax{Node: pc}
 	if len(path) > 0 {
-		if leavesLoneSecureKey(syntax, full, value) {
-			return errSecureReprReserved
-		}
-		if err := prepareContainers(syntax, full); err != nil {
+		parent, err := prepareContainers(syntax, full)
+		if err != nil {
 			return err
+		}
+		if leavesLoneSecureKey(parent, full[len(full)-1], value) {
+			return errSecureReprReserved
 		}
 	}
 	leaf, err := syntax.Set(nil, full, value)
@@ -216,26 +217,21 @@ func Set(def *yaml.Node, names []string, path resource.PropertyPath, value yaml.
 }
 
 // The stack reads pulumiConfig through config.NewPlaintext, which panics on a {secure: <string>} mapping.
-func leavesLoneSecureKey(syntax encoding.YAMLSyntax, full resource.PropertyPath, value yaml.Node) bool {
-	if full[len(full)-1] != "secure" || value.Kind != yaml.ScalarNode || value.ShortTag() != "!!str" {
-		return false
-	}
-	parent, ok := syntax.Get(full[:len(full)-1])
-	isReplacedEntry := ok && len(full) == 2 && isConfigLeaf(parent)
-	if !ok || isNull(parent) || isReplacedEntry {
-		return true
-	}
-	onlySecure := len(parent.Content) == 2 && parent.Content[0].Value == "secure"
-	return parent.Kind == yaml.MappingNode && (len(parent.Content) == 0 || onlySecure)
+func leavesLoneSecureKey(parent *yaml.Node, key any, value yaml.Node) bool {
+	isOnlyKey := len(parent.Content) == 2
+	return key == "secure" && isOnlyKey && value.Kind == yaml.ScalarNode && value.ShortTag() == "!!str"
 }
 
 // YAMLSyntax.Set gives a zero-kind node its container type from the next path segment.
 const placeholderKind yaml.Kind = 0
 
-// prepareContainers matches config set --path where YAMLSyntax.Set differs.
-func prepareContainers(syntax encoding.YAMLSyntax, full resource.PropertyPath) error {
+// prepareContainers matches config set --path where YAMLSyntax.Set differs. It returns the container that holds the
+// final segment, which it adds as a placeholder if missing.
+func prepareContainers(syntax encoding.YAMLSyntax, full resource.PropertyPath) (*yaml.Node, error) {
+	var parent *yaml.Node
 	cur := syntax.Node
 	for i, segment := range full {
+		parent = cur
 		child, ok := encoding.YAMLSyntax{Node: cur}.Get(resource.PropertyPath{segment})
 		if !ok {
 			if index, isIndex := segment.(int); isIndex && cur.Kind == placeholderKind && index > 0 {
@@ -247,23 +243,23 @@ func prepareContainers(syntax encoding.YAMLSyntax, full resource.PropertyPath) e
 			var err error
 			child, err = encoding.YAMLSyntax{Node: cur}.Set(nil, resource.PropertyPath{segment}, yaml.Node{})
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 		isContainerStep := i < len(full)-1
 		isEntry := i == 0
 		if isContainerStep && isConfigLeaf(child) {
 			if !isEntry && !isNull(child) {
-				return fmt.Errorf("%v: expected an array or an object", full[:i+2])
+				return nil, fmt.Errorf("%v: expected an array or an object", full[:i+2])
 			}
 			resetNode(child, placeholderKind, "")
 		} else if isContainerStep && isFunctionCall(child) {
 			// ESC rejects a function key with siblings.
-			return fmt.Errorf("%v: cannot set a path inside %s", full[:i+1], child.Content[0].Value)
+			return nil, fmt.Errorf("%v: cannot set a path inside %s", full[:i+1], child.Content[0].Value)
 		}
 		cur = child
 	}
-	return nil
+	return parent, nil
 }
 
 // Remove deletes the path inside every pulumiConfig entry named by names, or the whole entries when path is empty.

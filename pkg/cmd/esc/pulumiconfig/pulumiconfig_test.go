@@ -189,6 +189,10 @@ func TestSet(t *testing.T) {
 			typ: config.TypeString, setErr: `maps with the single key "secure" are reserved`,
 		},
 		{
+			name: "secure leaf under a scalar", in: nested, key: "a.b.c.secure", path: true, value: "tls",
+			setErr: `["proj:a"].b.c: expected an array or an object`,
+		},
+		{
 			name: "secure leaf that is not a string", in: pc, key: "a.secure", path: true, value: "true",
 			out: pc + "    proj:a:\n      secure: true\n",
 		},
