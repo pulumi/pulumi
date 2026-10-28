@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/rivo/uniseg"
@@ -252,6 +253,17 @@ func Highlight(s, text, commands string) string {
 	return strings.ReplaceAll(s, text, commands+text+Reset)
 }
 
+var commandSpan = regexp.MustCompile("`[^`\n]+`")
+
+// HighlightCommands colors the backtick-quoted spans in s, such as a command to run like `pulumi login`.
+// Spans don't cross lines, so a stray backtick can't pair with one on another line. The backticks
+// are kept so that s reads the same when printed without color.
+func HighlightCommands(s string) string {
+	return commandSpan.ReplaceAllStringFunc(s, func(span string) string {
+		return "`" + SpecCommand + span[1:len(span)-1] + Reset + "`"
+	})
+}
+
 var (
 	Reset     = command("reset")
 	Bold      = command("bold")
@@ -303,6 +315,7 @@ var (
 	SpecHeadline    = BrightMagenta + Bold // for headings in the CLI.
 	SpecSubHeadline = Bold                 // for subheadings in the CLI.
 	SpecPrompt      = Cyan + Bold          // for prompting the user.
+	SpecCommand     = Cyan + Bold          // for commands, flags and other code in messages.
 	SpecAttention   = BrightRed            // for messages that are meant to grab attention.
 
 	// for simple notes.  Just use the standard terminal text color.

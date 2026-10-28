@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Highlight backtick-quoted commands in CLI error messages
+time: 2026-10-28T12:00:00Z
