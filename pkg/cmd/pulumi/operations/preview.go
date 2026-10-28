@@ -393,7 +393,13 @@ func NewPreviewCmd() *cobra.Command {
 					return err
 				}
 
-				meta = metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
+				metaCtx, cancelMeta := context.WithCancel(ctx)
+				meta = metadata.GetLanguageRuntimeMetadata(metaCtx, root, proj)
+				// Embedded callers need the lookup finished before the command returns.
+				defer func() {
+					cancelMeta()
+					_, _ = meta.Result(context.Background())
+				}()
 			}
 
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
