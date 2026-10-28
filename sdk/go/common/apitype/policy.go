@@ -148,6 +148,9 @@ type PolicyGroupMode = cloudapitype.PolicyGroupMode
 // EntityType is the Cloud SDK's AppEntityType.
 type EntityType = cloudapitype.AppEntityType
 
+// PolicyGroupEntityType is the Cloud SDK's PolicyGroupEntityType.
+type PolicyGroupEntityType = cloudapitype.PolicyGroupEntityType
+
 // GetPolicyGroupResponse is the Cloud SDK's PolicyGroup.
 type GetPolicyGroupResponse = cloudapitype.PolicyGroup
 
@@ -200,6 +203,9 @@ const (
 
 	Stacks   = cloudapitype.AppEntityTypeStacks
 	Accounts = cloudapitype.AppEntityTypeAccounts
+
+	PolicyGroupEntityTypeStacks   = cloudapitype.PolicyGroupEntityTypeStacks
+	PolicyGroupEntityTypeAccounts = cloudapitype.PolicyGroupEntityTypeAccounts
 )
 
 // GetPolicyPackResponse is the response to get a specific Policy Pack's

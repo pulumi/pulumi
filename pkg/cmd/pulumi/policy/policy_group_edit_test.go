@@ -20,7 +20,6 @@ import (
 	"errors"
 	"testing"
 
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -84,7 +83,7 @@ func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	resp := apitype.GetPolicyGroupResponse{
 		Name:         "production",
 		IsOrgDefault: false,
-		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		EntityType:   apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:         apitype.PolicyGroupModeAudit,
 	}
 	c := &mockPolicyGroupEditClient{getResp: resp}
@@ -120,7 +119,7 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 
 	c := &mockPolicyGroupEditClient{getResp: apitype.GetPolicyGroupResponse{
 		Name:       "production",
-		EntityType: cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		EntityType: apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:       apitype.PolicyGroupModePreventative,
 	}}
 

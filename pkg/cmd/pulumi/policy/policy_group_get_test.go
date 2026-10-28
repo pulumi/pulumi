@@ -20,7 +20,6 @@ import (
 	"errors"
 	"testing"
 
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -63,7 +62,7 @@ func samplePolicyGroupResponse() apitype.GetPolicyGroupResponse {
 	return apitype.GetPolicyGroupResponse{
 		Name:         "prod-policies",
 		IsOrgDefault: false,
-		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		EntityType:   apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:         apitype.PolicyGroupModePreventative,
 		Stacks: []apitype.PulumiStackReference{
 			{Name: "prod", RoutingProject: "web"},
@@ -112,7 +111,7 @@ func TestPolicyGroupGet_DefaultOutput_Empty(t *testing.T) {
 	resp := apitype.GetPolicyGroupResponse{
 		Name:         "default-policy-group",
 		IsOrgDefault: true,
-		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		EntityType:   apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:         apitype.PolicyGroupModeAudit,
 	}
 	c := &mockPolicyGroupGetClient{resp: resp}
@@ -166,7 +165,7 @@ func TestPolicyGroupGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 	resp := apitype.GetPolicyGroupResponse{
 		Name:         "bare",
 		IsOrgDefault: true,
-		EntityType:   cloudapitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
+		EntityType:   apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:         apitype.PolicyGroupModeAudit,
 	}
 

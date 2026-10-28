@@ -22,7 +22,6 @@ import (
 	"io"
 	"slices"
 
-	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -216,14 +215,14 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 // `pulumi policy group get --output=json`. Nil slices are normalized to empty
 // arrays so scripts can rely on the array keys always existing.
 type policyGroupGetJSON struct {
-	Name               string                             `json:"name"`
-	IsOrgDefault       bool                               `json:"isOrgDefault"`
-	EntityType         cloudapitype.PolicyGroupEntityType `json:"entityType"`
-	Mode               apitype.PolicyGroupMode            `json:"mode"`
-	Stacks             []apitype.PulumiStackReference     `json:"stacks"`
-	AppliedPolicyPacks []apitype.PolicyPackMetadata       `json:"appliedPolicyPacks"`
-	Accounts           []string                           `json:"accounts"`
-	AgentPoolID        *string                            `json:"agentPoolId,omitempty"`
+	Name               string                         `json:"name"`
+	IsOrgDefault       bool                           `json:"isOrgDefault"`
+	EntityType         apitype.PolicyGroupEntityType  `json:"entityType"`
+	Mode               apitype.PolicyGroupMode        `json:"mode"`
+	Stacks             []apitype.PulumiStackReference `json:"stacks"`
+	AppliedPolicyPacks []apitype.PolicyPackMetadata   `json:"appliedPolicyPacks"`
+	Accounts           []string                       `json:"accounts"`
+	AgentPoolID        *string                        `json:"agentPoolId,omitempty"`
 }
 
 func toPolicyGroupGetJSON(resp apitype.GetPolicyGroupResponse) policyGroupGetJSON {
