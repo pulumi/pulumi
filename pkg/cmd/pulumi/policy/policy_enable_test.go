@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -214,9 +215,9 @@ func TestPolicyEnable_JSONMatchesGroupGet(t *testing.T) {
 	require.NoError(t, err)
 
 	var getOut bytes.Buffer
-	getArgs := policyGroupGetArgs{outputFormat: defaultPolicyGroupGetOutputFormat()}
+	getArgs := policyGroupGetArgs{outputFormat: defaultPolicyGroupGetRenderers()}
 	require.NoError(t, getArgs.outputFormat.Set("json"))
-	require.NoError(t, runPolicyGroupGet(t.Context(), &getOut,
+	require.NoError(t, runPolicyGroupGet(t.Context(), &getOut, io.Discard,
 		stubPolicyGroupGetFactory(&mockPolicyGroupGetClient{resp: group}, "acme"), group.Name, getArgs))
 
 	assert.JSONEq(t, getOut.String(), enableOut)

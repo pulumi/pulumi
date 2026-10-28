@@ -1,0 +1,4 @@
+component: cli/policy
+kind: feat
+body: Add `--stacks` and `--accounts` to `pulumi policy group get` to list every member of a group, including those matched by its match rule
+time: 2026-10-23T00:00:00Z
