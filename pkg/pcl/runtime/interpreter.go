@@ -402,7 +402,9 @@ func (i *Interpreter) invoke(
 	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
 ) (*pulumirpc.ResourceInvokeResponse, error) {
 	req.PackageRef = i.getPackageRefFromToken(req.Tok)
-	req.Parent = i.stackURN
+	if req.Parent == "" {
+		req.Parent = i.stackURN
+	}
 	resp, err := i.monitor.Invoke(ctx, req)
 	return resp, err
 }
