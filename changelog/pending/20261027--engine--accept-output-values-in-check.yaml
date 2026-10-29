@@ -1,0 +1,4 @@
+component: engine
+kind: improvement
+body: Negotiate OutputValues on provider `Check` so dependency information on inputs flows through to providers that opt in
+time: 2026-10-27T00:00:00Z

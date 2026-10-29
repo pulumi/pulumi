@@ -879,7 +879,7 @@ func (sg *stepGenerator) generateResourceSteps(
 		Custom:                  goal.Custom,
 		Delete:                  false,
 		ID:                      "",
-		Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
+		Inputs:                  resource.ToResourcePropertyMap(downgradeOutputValues(goal.Properties)),
 		Outputs:                 nil,
 		Parent:                  goal.Parent,
 		Protect:                 protectState,
@@ -1231,7 +1231,7 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 					Custom:                  goal.Custom,
 					Delete:                  false,
 					ID:                      "",
-					Inputs:                  resource.ToResourcePropertyMap(goal.Properties),
+					Inputs:                  resource.ToResourcePropertyMap(downgradeOutputValues(goal.Properties)),
 					Outputs:                 nil,
 					Parent:                  goal.Parent,
 					Protect:                 new.Protect,
@@ -1409,10 +1409,16 @@ func (sg *stepGenerator) continueStepsFromImport(
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
+		// Push the per-property dependency map into the OutputValues so dependency info travels with the
+		// values across the wire for providers that negotiated AcceptsOutputsInCheck.
+		goalDeps := map[resource.PropertyKey]mapset.Set[resource.URN]{}
+		for k, deps := range goal.PropertyDependencies {
+			goalDeps[k] = mapset.NewSet(deps...)
+		}
 		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
-				NewInputs:     goal.Properties,
+				NewInputs:     upgradeOutputValues(goal.Properties, goalDeps),
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
@@ -1421,14 +1427,30 @@ func (sg *stepGenerator) continueStepsFromImport(
 			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
 				URN:           urn,
 				OldInputs:     resource.FromResourcePropertyMap(oldInputs),
-				NewInputs:     resource.FromResourcePropertyMap(inputs),
+				NewInputs:     upgradeOutputValues(resource.FromResourcePropertyMap(inputs), goalDeps),
 				OldOutputs:    resource.FromResourcePropertyMap(oldOutputs),
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
 			})
 		}
-		inputs = resource.ToResourcePropertyMap(resp.Properties)
+		// Rebuild the per-property dependency map from the OutputValues the provider returned. Because the
+		// engine passes dependency information in on the values themselves (see `upgradeOutputValues` in
+		// source_eval.go), the provider's response is the authoritative post-Check view -- if the provider
+		// renames, drops, or adds keys the dependency map should follow. Only reset when the response
+		// actually carries dependency information; otherwise retain the goal's map to stay compatible with
+		// providers (including the in-process deploytest default) that do not round-trip OutputValues.
+		newPropertyDependencies := map[resource.PropertyKey][]resource.URN{}
+		for k, v := range resp.Properties.All {
+			if deps := extendOutputDependencies(nil, v); len(deps) > 0 {
+				newPropertyDependencies[resource.PropertyKey(k)] = deps
+			}
+		}
+		if len(newPropertyDependencies) > 0 {
+			new.PropertyDependencies = newPropertyDependencies
+		}
+		// Downgrade any OutputValues the provider returned so downstream engine code sees plain values.
+		inputs = resource.ToResourcePropertyMap(downgradeOutputValues(resp.Properties))
 
 		if err != nil {
 			return nil, false, err
@@ -3853,4 +3875,33 @@ func unwrapSecretsAndOutputs(value property.Value) property.Value {
 	}
 
 	return value
+}
+
+// downgradeOutputValues recursively strips dependency information from a [property.Map].
+func downgradeOutputValues(m property.Map) property.Map {
+	result := map[string]property.Value{}
+	for k, v := range m.All {
+		result[k] = downgradeOutputPropertyValue(v)
+	}
+	return property.NewMap(result)
+}
+
+func downgradeOutputPropertyValue(v property.Value) property.Value {
+	v = v.WithDependencies(nil)
+	switch {
+	case v.IsMap():
+		v = property.WithGoValue(v, downgradeOutputValues(v.AsMap()))
+	case v.IsArray():
+		arr := v.AsArray().AsSlice()
+		newArr := make([]property.Value, len(arr))
+		for i, elem := range arr {
+			newArr[i] = downgradeOutputPropertyValue(elem)
+		}
+		v = property.WithGoValue(v, property.NewArray(newArr))
+	case v.IsResourceReference():
+		ref := v.AsResourceReference()
+		ref.ID = downgradeOutputPropertyValue(ref.ID)
+		v = property.WithGoValue(v, ref)
+	}
+	return v
 }

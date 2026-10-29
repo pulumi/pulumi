@@ -224,7 +224,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SendsOldOutputsToCheck:      true,
 				AcceptsOutputsInInvoke:      true,
 				AcceptsOutputsInCall:        true,
-				AcceptsOutputsInCheck:       false,
+				AcceptsOutputsInCheck:       true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -294,7 +294,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 				SendsOldOutputsToCheck:      true,
 				AcceptsOutputsInInvoke:      true,
 				AcceptsOutputsInCall:        true,
-				AcceptsOutputsInCheck:       false,
+				AcceptsOutputsInCheck:       true,
 			}
 			return handshake(ctx, bin, prefix, conn, req)
 		}
@@ -478,7 +478,7 @@ func NewProviderFromPath(host Host, ctx *Context, path string, env env.Env) (Pro
 			SendsOldOutputsToCheck:      true,
 			AcceptsOutputsInInvoke:      true,
 			AcceptsOutputsInCall:        true,
-			AcceptsOutputsInCheck:       false,
+			AcceptsOutputsInCheck:       true,
 		}
 		return handshake(ctx, bin, prefix, conn, req)
 	}
@@ -1197,11 +1197,23 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		return CheckResponse{Properties: req.NewInputs}, nil
 	}
 
+	// If the provider does not accept OutputValues on Check we lose the per-value dependency information
+	// on the wire. Collect the union of dependencies from the inputs first so we can re-hydrate the
+	// returned inputs below, preserving a (coarser) dependency relationship for downstream consumers that
+	// still work with OutputValues.
+	var argDeps []resource.URN
+	if !protocol.acceptsOutputsInCheck {
+		argDeps = collectArgDependencies(req.OldInputs)
+		argDeps = append(argDeps, collectArgDependencies(req.NewInputs)...)
+		argDeps = append(argDeps, collectArgDependencies(req.OldOutputs)...)
+	}
+
 	filteredOldInputs, err := FilterProperties(req.OldInputs, FilterOptions{
 		KeepUnknowns:         req.AllowUnknowns,
 		KeepSecrets:          protocol.acceptSecrets,
 		KeepResources:        protocol.acceptResources,
 		RejectNonUTF8Strings: !protocol.acceptsByteString,
+		KeepDependencies:     protocol.acceptsOutputsInCheck,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1218,6 +1230,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		KeepSecrets:          protocol.acceptSecrets,
 		KeepResources:        protocol.acceptResources,
 		RejectNonUTF8Strings: !protocol.acceptsByteString,
+		KeepDependencies:     protocol.acceptsOutputsInCheck,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1244,6 +1257,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		KeepSecrets:          protocol.acceptSecrets,
 		KeepResources:        protocol.acceptResources,
 		RejectNonUTF8Strings: !protocol.acceptsByteString,
+		KeepDependencies:     protocol.acceptsOutputsInCheck,
 	})
 	if err != nil {
 		return CheckResponse{}, err
@@ -1274,10 +1288,11 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 			return CheckResponse{}, err
 		}
 		inputs, err = FilterProperties(raw, FilterOptions{
-			KeepUnknowns:   req.AllowUnknowns,
-			RejectUnknowns: !req.AllowUnknowns,
-			KeepSecrets:    true,
-			KeepResources:  true,
+			KeepUnknowns:     req.AllowUnknowns,
+			RejectUnknowns:   !req.AllowUnknowns,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepDependencies: true,
 		})
 		if err != nil {
 			return CheckResponse{}, err
@@ -1289,6 +1304,19 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	// natively.
 	if !protocol.acceptSecrets {
 		inputs = annotateSecrets(inputs, req.NewInputs)
+	}
+
+	// Re-hydrate OutputValues on the returned inputs with the union of input dependencies when the provider
+	// did not support OutputValues on Check. See `argDeps` above.
+	if !protocol.acceptsOutputsInCheck && len(argDeps) > 0 {
+		result := inputs.AsMap()
+		for k, v := range result {
+			deps := append(v.Dependencies(), argDeps...)
+			if len(deps) > 0 {
+				result[k] = v.WithDependencies(deps)
+			}
+		}
+		inputs = property.NewMap(result)
 	}
 
 	// And now any properties that failed verification.
