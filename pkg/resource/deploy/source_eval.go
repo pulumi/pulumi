@@ -2964,6 +2964,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
+	// Preserve any OutputValues through to the rest of the engine. Providers that negotiate
+	// `AcceptsOutputsInCheck` will receive them intact; otherwise `provider.Check` downgrades on the wire
+	// and re-hydrates the response with the union of input dependencies.
+
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
