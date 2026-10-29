@@ -103,7 +103,7 @@ func (c *confirmedNew) saveConfig(
 func managedStackWithoutConfigError(err error, ref backend.StackReference) error {
 	return fmt.Errorf("%w. Stack %[2]s and its ESC environment were created and no config was saved; "+
 		"set each value with `pulumi config set` (`--secret` for secrets), or remove the stack with "+
-		"`pulumi stack rm %[2]s`", err, ref)
+		"`pulumi stack rm %[2]s`", err, ref.FullyQualifiedName())
 }
 
 func printPreamble(w io.Writer, opts display.Options) {

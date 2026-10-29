@@ -152,8 +152,7 @@ func retryableCreateStackError(err error) bool {
 	}
 	return !errors.Is(err, cmdStack.ErrSaveStackConfig) &&
 		!errors.Is(err, cmdStack.ErrSelectCreatedStack) &&
-		!errors.Is(err, cmdStack.ErrCreatedWithoutManagedEnvironment) &&
-		!errors.Is(err, backend.ErrManagedEnvironmentNotSupported)
+		!errors.Is(err, cmdStack.ErrCreatedWithoutManagedEnvironment)
 }
 
 func buildStackName(ctx context.Context, b backend.Backend, stackName string) (string, error) {

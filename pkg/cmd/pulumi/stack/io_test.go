@@ -289,7 +289,7 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 			name:        "service without managed environments",
 			stackFile:   "Pulumi.dev.yaml",
 			wantCreated: true,
-			wantErr:     "the stack was created without an ESC environment; remove it with `pulumi stack rm dev`",
+			wantErr:     "the stack was created without an ESC environment; remove it with `pulumi stack rm acme/proj/dev`",
 			wantErrIs:   ErrCreatedWithoutManagedEnvironment,
 		},
 	}
@@ -312,7 +312,9 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 			var createdManaged bool
 
 			_, err := CreateStack(t.Context(), sink, ws, newManagedTestBackend(tt.managedEnv, &createdManaged),
-				&backend.MockStackReference{StringV: "dev", NameV: tokens.MustParseStackName("dev")}, "",
+				&backend.MockStackReference{
+					StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "acme/proj/dev",
+				}, "",
 				CreateStackOptions{
 					ConfigFile: stackFile, ManagedEnvironment: true, SecretsProvider: tt.secrets, Quiet: tt.quiet,
 				})
@@ -349,10 +351,36 @@ func TestCreateStackManagedEnvironmentSaveFails(t *testing.T) {
 
 	_, err := CreateStack(t.Context(), diagtest.LogSink(t), &pkgWorkspace.MockContext{},
 		newManagedTestBackend("proj/renamed", &createdManaged),
-		&backend.MockStackReference{StringV: "dev", NameV: tokens.MustParseStackName("dev")}, "",
+		&backend.MockStackReference{
+			StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "acme/proj/dev",
+		}, "",
 		CreateStackOptions{ConfigFile: stackFile, ManagedEnvironment: true})
 	require.ErrorIs(t, err, ErrSaveStackConfig)
+	assert.ErrorContains(t, err, "Stack acme/proj/dev and its ESC environment were created; remove them with "+
+		"`pulumi stack rm acme/proj/dev`")
 
 	_, err = ManagedEnvironmentDefinition(managedLoc, &workspace.ProjectStack{}, "acme", "dev", stackFile)
 	assert.ErrorContains(t, err, ManagedEnvironmentMissingFromFileHint("acme", "proj/renamed", "dev", stackFile))
+}
+
+func TestCreateStackManagedEnvironmentSelectFails(t *testing.T) {
+	t.Parallel()
+
+	stackFile := filepath.Join(t.TempDir(), "Pulumi.dev.yaml")
+	var createdManaged bool
+	b := newManagedTestBackend("proj/renamed", &createdManaged)
+	b.URLF = func() string { return "https://api.example.com" }
+	ws := &pkgWorkspace.MockContext{
+		NewF: func(string) (pkgWorkspace.W, error) { return nil, errors.New("workspace settings are read-only") },
+	}
+
+	_, err := CreateStack(t.Context(), diagtest.LogSink(t), ws, b,
+		&backend.MockStackReference{
+			StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "acme/proj/dev",
+		}, "",
+		CreateStackOptions{ConfigFile: stackFile, ManagedEnvironment: true, SetCurrent: true})
+
+	require.ErrorIs(t, err, ErrSelectCreatedStack)
+	assert.ErrorContains(t, err, "workspace settings are read-only. Stack acme/proj/dev and its ESC environment were "+
+		"created; remove them with `pulumi stack rm acme/proj/dev`")
 }

@@ -486,7 +486,7 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		managedEnv := stack.ConfigLocation().ManagedEnvironment
 		if managedEnv == "" {
 			return nil, fmt.Errorf("%w; remove it with `pulumi stack rm %s`", ErrCreatedWithoutManagedEnvironment,
-				stack.Ref())
+				stack.Ref().FullyQualifiedName())
 		}
 		if !opts.Quiet {
 			sink.Infof(diag.Message("", "Created environment %s for stack configuration"), managedEnv)
@@ -504,17 +504,27 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	if needsSave {
 		err = SaveProjectStack(ctx, stack, ps, opts.ConfigFile)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrSaveStackConfig, err)
+			return nil, managedStackCreatedError(opts, stack, fmt.Errorf("%w: %w", ErrSaveStackConfig, err))
 		}
 	}
 
 	if opts.SetCurrent {
 		if err = state.SetCurrentStack(ws, state.BackendURLKey(b), stack.Ref().FullyQualifiedName().String()); err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrSelectCreatedStack, err)
+			return nil, managedStackCreatedError(opts, stack, fmt.Errorf("%w: %w", ErrSelectCreatedStack, err))
 		}
 	}
 
 	return stack, nil
+}
+
+// The name is fully qualified because `pulumi new --dir` reports it outside the project directory.
+func managedStackCreatedError(opts CreateStackOptions, stack backend.Stack, err error) error {
+	if !opts.ManagedEnvironment {
+		return err
+	}
+	ref := stack.Ref().FullyQualifiedName()
+	return fmt.Errorf("%w. Stack %[2]s and its ESC environment were created; remove them with `pulumi stack rm %[2]s`",
+		err, ref)
 }
 
 func CopyEntireConfigMap(

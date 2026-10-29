@@ -154,11 +154,6 @@ func TestCreateStackWithRetryStopsOnUnfixableFailure(t *testing.T) {
 			wantErr:     cmdStack.ErrSaveStackConfig,
 		},
 		{
-			name:        "managed environments not supported",
-			createStack: fail(backend.ErrManagedEnvironmentNotSupported),
-			wantErr:     backend.ErrManagedEnvironmentNotSupported,
-		},
-		{
 			name: "backend created the stack without a managed environment",
 			createStack: func(ref backend.StackReference) (backend.Stack, error) {
 				return &backend.MockStack{
