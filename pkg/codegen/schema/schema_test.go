@@ -1412,12 +1412,12 @@ func TestBindSpecPrintableNames(t *testing.T) {
 func TestBindSpecReducedPropertyNames(t *testing.T) {
 	t.Parallel()
 
-	bindProperties := func(names ...string) []string {
+	bindProperties := func(names ...string) (*Package, hcl.Diagnostics) {
 		properties := map[string]PropertySpec{}
 		for _, name := range names {
 			properties[name] = PropertySpec{TypeSpec: TypeSpec{Type: "string"}}
 		}
-		_, diags, _ := BindSpec(PackageSpec{
+		pkg, diags, _ := BindSpec(PackageSpec{
 			Name: "test",
 			Types: map[string]ComplexTypeSpec{
 				"test:index:TestType": {
@@ -1425,54 +1425,66 @@ func TestBindSpecReducedPropertyNames(t *testing.T) {
 				},
 			},
 		}, noOpLoader{}, ValidationOptions{AllowDanglingReferences: true})
-		summaries := make([]string, 0, len(diags))
-		for _, d := range diags {
-			summaries = append(summaries, d.Summary)
-		}
-		return summaries
+		return pkg, diags
 	}
 
 	tests := []struct {
 		name  string
 		props []string
-		want  []string
+		want  hcl.Diagnostics
 	}{
 		{
 			name:  "valid",
 			props: []string{"foo", "@bar!", "😃baz", "__qux__", "12quux", "a1", "kebab-case"},
-			want:  []string{},
 		},
 		{
 			name:  "no letters",
 			props: []string{"123", "@!"},
-			want: []string{
-				"#/types/test:index:TestType/properties/123: property name must contain an ASCII letter",
-				"#/types/test:index:TestType/properties/@%21: property name must contain an ASCII letter",
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/types/test:index:TestType/properties/123: property name must contain an ASCII letter",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/types/test:index:TestType/properties/@%21: property name must contain an ASCII letter",
+				},
 			},
 		},
 		{
 			name:  "conflicts",
 			props: []string{"MyFoo", "my-foo", "my_foo", "bar"},
-			want: []string{
-				`#/types/test:index:TestType/properties/my-foo: property name conflicts with "MyFoo": ` +
-					`both reduce to "myfoo"`,
-				`#/types/test:index:TestType/properties/my_foo: property name conflicts with "MyFoo": ` +
-					`both reduce to "myfoo"`,
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/my-foo: property name conflicts with "MyFoo": ` +
+						`both reduce to "myfoo"`,
+				},
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/my_foo: property name conflicts with "MyFoo": ` +
+						`both reduce to "myfoo"`,
+				},
 			},
 		},
 		{
 			name:  "leading digits",
 			props: []string{"1foo", "foo"},
-			want: []string{
-				`#/types/test:index:TestType/properties/foo: property name conflicts with "1foo": ` +
-					`both reduce to "foo"`,
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/foo: property name conflicts with "1foo": ` +
+						`both reduce to "foo"`,
+				},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.want, bindProperties(tt.props...))
+			pkg, diags := bindProperties(tt.props...)
+			assert.Equal(t, tt.want, diags)
+			assert.Equal(t, tt.want.HasErrors(), pkg == nil)
 		})
 	}
 }
