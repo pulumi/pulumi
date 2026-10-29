@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -125,7 +127,11 @@ func newPolicyGroupListCmd() *cobra.Command {
 				inContToken = outContToken
 			}
 
-			return output.Get()(cmd.OutOrStdout(), allPolicyGroups)
+			if err := output.Get()(cmd.OutOrStdout(), allPolicyGroups); err != nil {
+				return err
+			}
+			writePolicyGroupListAgentHint(cmd.ErrOrStderr(), agentdetect.Detect(os.Getenv))
+			return nil
 		},
 	}
 
@@ -138,6 +144,16 @@ func newPolicyGroupListCmd() *cobra.Command {
 
 	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 	return cmd
+}
+
+func writePolicyGroupListAgentHint(w io.Writer, agent string) {
+	if agent == "" {
+		return
+	}
+	fmt.Fprintln(w, "Related commands:")
+	fmt.Fprintln(w, "  pulumi policy group get <name>          # a group's packs, stacks and match rules")
+	fmt.Fprintln(w, "  pulumi stack policy ls --stack <stack>  # the groups and packs that apply to one stack")
+	fmt.Fprintln(w, "  pulumi policy issue ls                  # policy violations")
 }
 
 func formatPolicyGroupsConsole(w io.Writer, policyGroups []apitype.PolicyGroupSummary) error {

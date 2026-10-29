@@ -76,3 +76,20 @@ func TestPolicyGroupList_JSONOutput(t *testing.T) {
 		}
 	]`, buf.String())
 }
+
+func TestWritePolicyGroupListAgentHint(t *testing.T) {
+	t.Parallel()
+
+	var human bytes.Buffer
+	writePolicyGroupListAgentHint(&human, "")
+	assert.Empty(t, human.String())
+
+	var agent bytes.Buffer
+	writePolicyGroupListAgentHint(&agent, "claude")
+	assert.True(t, strings.HasPrefix(agent.String(), "Related commands:\n"))
+	assert.Contains(t, agent.String(), "pulumi policy group get <name>")
+	assert.Contains(t, agent.String(), "pulumi stack policy ls --stack <stack>")
+	assert.Contains(t, agent.String(), "pulumi policy issue ls")
+	assert.NotContains(t, agent.String(), "--stacks")
+	assert.NotContains(t, agent.String(), "--group")
+}
