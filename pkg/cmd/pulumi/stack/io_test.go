@@ -222,7 +222,8 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 			stackFile:  "Pulumi.dev.yaml",
 			contents:   "config:\n  proj:a: b\n",
 			managedEnv: "proj/renamed",
-			wantErr:    "already has config or an environment; delete its `config` and `environment` sections, or the file, before creating a managed stack",
+			wantErr: "already has config or an environment; delete its `config` and `environment` sections, " +
+				"or the file, before creating a managed stack",
 		},
 		{
 			name:       "existing config is refused before the secrets provider is set up",
@@ -237,7 +238,8 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 			stackFile:  "Pulumi.dev.yaml",
 			contents:   "environment:\n  - other\n",
 			managedEnv: "proj/renamed",
-			wantErr:    "already has config or an environment; delete its `config` and `environment` sections, or the file, before creating a managed stack",
+			wantErr: "already has config or an environment; delete its `config` and `environment` sections, " +
+				"or the file, before creating a managed stack",
 		},
 		{
 			name:        "service without managed environments",
