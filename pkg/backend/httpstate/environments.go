@@ -102,3 +102,13 @@ func (b *cloudBackend) EvaluateManagedEnvironment(
 		DraftRevision:   evaluation.DraftRevision,
 	}, convertESCDiags(diags), err
 }
+
+func (b *cloudBackend) EncryptEnvironmentSecrets(
+	ctx context.Context,
+	org string,
+	project string,
+	name string,
+	plaintexts [][]byte,
+) ([]string, error) {
+	return b.escClient.EncryptSecrets(ctx, org, project, name, plaintexts)
+}

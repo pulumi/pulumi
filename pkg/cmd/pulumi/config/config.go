@@ -1009,7 +1009,23 @@ func newConfigSetAllCmd(
 			if err != nil {
 				return err
 			}
-			w := &stackFileWriter{stack: stack, ps: ps, configFile: *configFile, ef: ssml}
+
+			w, err := newConfigWriter(stack, project.Name, ps, *configFile, ssml, false /*overrideImport*/)
+			if err != nil {
+				return err
+			}
+
+			jsonConfig := make(map[string]configValueJSON)
+			if jsonArg != "" {
+				if err := json.Unmarshal([]byte(jsonArg), &jsonConfig); err != nil {
+					return fmt.Errorf("could not parse --json argument: %w", err)
+				}
+			}
+			if stack.ConfigLocation().ManagedEnvironment != "" {
+				if err := rejectSecretObjects(jsonConfig); err != nil {
+					return err
+				}
+			}
 
 			for _, ptArg := range plaintextArgs {
 				key, value, err := parseKeyValuePair(ptArg, path)
@@ -1064,12 +1080,6 @@ func newConfigSetAllCmd(
 			}
 
 			if jsonArg != "" {
-				jsonConfig := make(map[string]configValueJSON)
-				err := json.Unmarshal([]byte(jsonArg), &jsonConfig)
-				if err != nil {
-					return fmt.Errorf("could not parse --json argument: %w", err)
-				}
-
 				for jsonKey, jsonValue := range jsonConfig {
 					// Every key in the JSON must have a value. While `pulumi config --json` may produce empty values for secrets
 					// where --show-secrets is not passed, we don't allow setting those same (missing) values back into

@@ -821,6 +821,17 @@ type fakeManagedEnvironmentsBackend struct {
 		name string,
 		definition []byte,
 	) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error)
+	encryptF func(org string, project string, name string, plaintexts [][]byte) ([]string, error)
+}
+
+func (b *fakeManagedEnvironmentsBackend) EncryptEnvironmentSecrets(
+	_ context.Context,
+	org string,
+	project string,
+	name string,
+	plaintexts [][]byte,
+) ([]string, error) {
+	return b.encryptF(org, project, name, plaintexts)
 }
 
 func (b *fakeManagedEnvironmentsBackend) EvaluateManagedEnvironment(
@@ -878,6 +889,10 @@ func newManagedStack(
 			},
 		},
 		evaluateF: evaluate,
+		encryptF: func(string, string, string, [][]byte) ([]string, error) {
+			t.Error("unexpected EncryptEnvironmentSecrets call")
+			return nil, errors.New("unexpected call")
+		},
 	}
 	stack := &backend.MockStack{
 		RefF: func() backend.StackReference {

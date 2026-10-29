@@ -136,8 +136,50 @@ func (m *managedStore) Save(ctx context.Context) error {
 	return cmdStack.SaveProjectStack(ctx, m.stack, m.ps, m.configFile)
 }
 
+func rejectSecretObjects(jsonConfig map[string]configValueJSON) error {
+	for jsonKey, jsonValue := range jsonConfig {
+		if jsonValue.Secret && jsonValue.ObjectValue != nil {
+			_, err := pulumiconfig.ValueNode(config.NewSecureObjectValue(""), true)
+			return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
+		}
+	}
+	return nil
+}
+
 func (m *managedStore) Encrypter(context.Context) (config.Encrypter, error) {
-	return nil, cmdStack.ManagedEnvironmentNotSupportedError("`pulumi config set --secret`")
+	be, ok := m.stack.Backend().(backend.ManagedEnvironmentsBackend)
+	if !ok {
+		return nil, fmt.Errorf("backend %v does not support ESC-managed environments", m.stack.Backend().Name())
+	}
+	project, name := m.stack.ConfigLocation().ManagedEnvironmentRef()
+	return &managedEnvEncrypter{backend: be, org: m.org, project: project, name: name}, nil
+}
+
+type managedEnvEncrypter struct {
+	backend backend.ManagedEnvironmentsBackend
+	org     string
+	project string
+	name    string
+}
+
+func (e *managedEnvEncrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
+	ciphertexts, err := e.BatchEncrypt(ctx, []string{plaintext})
+	if err != nil {
+		return "", err
+	}
+	return ciphertexts[0], nil
+}
+
+func (e *managedEnvEncrypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	plaintexts := make([][]byte, len(secrets))
+	for i, secret := range secrets {
+		plaintexts[i] = []byte(secret)
+	}
+	ciphertexts, err := e.backend.EncryptEnvironmentSecrets(ctx, e.org, e.project, e.name, plaintexts)
+	if err != nil {
+		return nil, fmt.Errorf("encrypting the value for environment %s/%s/%s: %w", e.org, e.project, e.name, err)
+	}
+	return ciphertexts, nil
 }
 
 func (m *managedStore) entryPath(key config.Key, path bool) (config.Key, resource.PropertyPath, error) {

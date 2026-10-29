@@ -18,12 +18,15 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -51,7 +54,18 @@ environment:
       foo: short
 `
 
-func managedTestStack(t *testing.T, loc backend.StackConfigLocation) *backend.MockStack {
+// managedTestStack returns stack app/dev managing environment proj/renamed, so an encrypt request naming the stack's
+// project or name fails the test.
+func managedTestStack(t *testing.T, loc backend.StackConfigLocation) (*backend.MockStack, *[]string) {
+	var plaintexts []string
+	be := &fakeManagedEnvironmentsBackend{
+		encryptF: func(org string, project string, name string, batch [][]byte) ([]string, error) {
+			assert.Equal(t, "acme/proj/renamed", org+"/"+project+"/"+name)
+			require.Len(t, batch, 1)
+			plaintexts = append(plaintexts, string(batch[0]))
+			return []string{fmt.Sprintf("ct%d", len(plaintexts))}, nil
+		},
+	}
 	return &backend.MockStack{
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
@@ -62,7 +76,8 @@ func managedTestStack(t *testing.T, loc backend.StackConfigLocation) *backend.Mo
 			t.Error("the stack secrets manager must not be loaded")
 			return nil, nil
 		},
-	}
+		BackendF: func() backend.Backend { return be },
+	}, &plaintexts
 }
 
 func TestManagedConfigWrites(t *testing.T) {
@@ -151,7 +166,16 @@ environment:
 			name:   "secret",
 			set:    []string{"app:token", "hunter2"},
 			secret: true,
-			err:    "`pulumi config set --secret` is not supported on stacks with an ESC-managed environment yet",
+			expected: `# top comment
+environment:
+  values:
+    pulumiConfig:
+      app:keep: kept # keep comment
+      foo: short
+      app:token:
+        fn::secret:
+          ciphertext: ct1
+`,
 		},
 		{
 			name: "empty definition",
@@ -217,7 +241,7 @@ environment:
 			}
 			configFile := filepath.Join(t.TempDir(), "Pulumi.dev.yaml")
 			require.NoError(t, os.WriteFile(configFile, []byte(c.file), 0o600))
-			s := managedTestStack(t, loc)
+			s, _ := managedTestStack(t, loc)
 
 			project := &workspace.Project{Name: "app"}
 			var err error
@@ -460,7 +484,7 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 			require.NoError(t, os.WriteFile(configFile, []byte(c.file), 0o600))
 
 			calls := 0
-			s := managedTestStack(t, backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"})
+			s, _ := managedTestStack(t, backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"})
 			s.BackendF = func() backend.Backend {
 				return &backend.MockEnvironmentsBackend{
 					CheckYAMLEnvironmentF: func(
@@ -736,4 +760,119 @@ func TestManagedConfigEnvCommands(t *testing.T) {
 		require.Equal(t, "environment:\n  imports:\n    - proj/other\n"+
 			"  values:\n    pulumiConfig:\n      app:foo: bar # kept\n", saved)
 	})
+}
+
+func TestManagedConfigSetAll(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name       string
+		plaintext  []string
+		secret     []string
+		json       string
+		plaintexts []string
+		added      string
+		err        string
+	}{
+		{
+			name:       "secret flags",
+			secret:     []string{"app:a=one", "app:b=two"},
+			plaintexts: []string{"one", "two"},
+			added: "      app:a:\n        fn::secret:\n          ciphertext: ct1\n" +
+				"      app:b:\n        fn::secret:\n          ciphertext: ct2\n",
+		},
+		{
+			name:       "json secret",
+			json:       `{"app:a": {"value": "one", "secret": true}}`,
+			plaintexts: []string{"one"},
+			added:      "      app:a:\n        fn::secret:\n          ciphertext: ct1\n",
+		},
+		{
+			name: "json secret object",
+			json: `{"app:obj": {"value": "{\"k\":\"v\"}", "objectValue": {"k": "v"}, "secret": true}}`,
+			err: `could not set --json config for "app:obj": secret object values are not supported for ` +
+				"stack-managed environments; set each leaf with --path --secret",
+		},
+		{
+			name: "json secret object with other secrets",
+			json: `{"app:a": {"value": "one", "secret": true}, ` +
+				`"app:obj": {"value": "{\"k\":\"v\"}", "objectValue": {"k": "v"}, "secret": true}}`,
+			err: `could not set --json config for "app:obj": secret object values are not supported for ` +
+				"stack-managed environments; set each leaf with --path --secret",
+		},
+		{
+			name:      "plaintext flag",
+			plaintext: []string{"app:p=one"},
+			added:     "      app:p: one\n",
+		},
+		{
+			name:  "json plaintext scalar",
+			json:  `{"app:s": {"value": "x"}}`,
+			added: "      app:s: x\n",
+		},
+		{
+			name:  "json plaintext object",
+			json:  `{"app:o": {"value": "{\"k\":\"v\"}", "objectValue": {"k": "v"}}}`,
+			added: "      app:o:\n        k: v\n",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			configFile := filepath.Join(t.TempDir(), "Pulumi.dev.yaml")
+			require.NoError(t, os.WriteFile(configFile, []byte(managedStackFile), 0o600))
+			s, plaintexts := managedTestStack(t, backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"})
+			ws := &pkgWorkspace.MockContext{
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
+					return &workspace.Project{Name: "app"}, "", nil
+				},
+			}
+			lm := &cmdBackend.MockLoginManager{
+				LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool,
+					colors.Colorization, ...cmdBackend.LoginOption,
+				) (backend.Backend, error) {
+					return &backend.MockBackend{
+						GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) { return s, nil },
+					}, nil
+				},
+			}
+			stackName := "dev"
+			cmd := newConfigSetAllCmd(ws, &stackName, lm, &failingEncrypterFactory{t: t}, &configFile)
+			cmd.SetContext(t.Context())
+			for _, arg := range c.plaintext {
+				require.NoError(t, cmd.PersistentFlags().Set("plaintext", arg))
+			}
+			for _, arg := range c.secret {
+				require.NoError(t, cmd.PersistentFlags().Set("secret", arg))
+			}
+			if c.json != "" {
+				require.NoError(t, cmd.PersistentFlags().Set("json", c.json))
+			}
+
+			err := cmd.RunE(cmd, nil)
+			written, readErr := os.ReadFile(configFile)
+			require.NoError(t, readErr)
+			if c.err != "" {
+				require.EqualError(t, err, c.err)
+				require.Equal(t, managedStackFile, string(written))
+				require.Empty(t, *plaintexts)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, c.plaintexts, *plaintexts)
+			expected := strings.Replace(managedStackFile, "foo: short\n", "foo: short\n"+c.added, 1)
+			require.Equal(t, expected, string(written))
+		})
+	}
+}
+
+type failingEncrypterFactory struct {
+	t *testing.T
+}
+
+func (f *failingEncrypterFactory) GetEncrypter(
+	context.Context, backend.Stack, *workspace.ProjectStack,
+) (config.Encrypter, cmdStack.SecretsManagerState, error) {
+	f.t.Error("the stack secrets manager must not be loaded")
+	return nil, cmdStack.SecretsManagerUnchanged, errors.New("unexpected call")
 }

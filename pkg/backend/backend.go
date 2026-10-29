@@ -336,6 +336,16 @@ type ManagedEnvironmentsBackend interface {
 		name string,
 		definition []byte,
 	) (*ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error)
+
+	// EncryptEnvironmentSecrets encrypts each plaintext with environment org/project/name's key and returns the
+	// ciphertexts in input order, usable only as fn::secret ciphertexts in that environment's definition.
+	EncryptEnvironmentSecrets(
+		ctx context.Context,
+		org string,
+		project string,
+		name string,
+		plaintexts [][]byte,
+	) ([]string, error)
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the
