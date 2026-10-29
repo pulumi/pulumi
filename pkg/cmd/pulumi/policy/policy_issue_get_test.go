@@ -170,9 +170,11 @@ func TestPolicyIssueGet_NilTimestamps(t *testing.T) {
 	issue.ObservedAt = nil
 	issue.LastModified = nil
 
+	client := &mockPolicyIssueGetClient{resp: apitype.GetPolicyIssueResponse{PolicyIssue: issue}}
+	factory := stubPolicyIssueGetFactory(client, "acme")
+
 	var text bytes.Buffer
-	err := runPolicyIssueGet(t.Context(), &text,
-		stubPolicyIssueGetFactory(&mockPolicyIssueGetClient{resp: apitype.GetPolicyIssueResponse{PolicyIssue: issue}}, "acme"), "issue-1",
+	err := runPolicyIssueGet(t.Context(), &text, factory, "issue-1",
 		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
 	require.NoError(t, err)
 	assert.NotContains(t, text.String(), "Observed at")
@@ -180,8 +182,7 @@ func TestPolicyIssueGet_NilTimestamps(t *testing.T) {
 	var jsonOut bytes.Buffer
 	args := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
 	require.NoError(t, args.outputFormat.Set("json"))
-	err = runPolicyIssueGet(t.Context(), &jsonOut,
-		stubPolicyIssueGetFactory(&mockPolicyIssueGetClient{resp: apitype.GetPolicyIssueResponse{PolicyIssue: issue}}, "acme"), "issue-1", args)
+	err = runPolicyIssueGet(t.Context(), &jsonOut, factory, "issue-1", args)
 	require.NoError(t, err)
 	assert.Contains(t, jsonOut.String(), `"observedAt": null`)
 	assert.NotContains(t, jsonOut.String(), "lastModified")
@@ -245,7 +246,8 @@ Message:             Bucket must not allow public access & <must> be "private".
 func TestPolicyIssueGet_JSON_Full(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	require.NoError(t, renderPolicyIssueGetJSON(&buf, apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssueFull()}))
+	resp := apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssueFull()}
+	require.NoError(t, renderPolicyIssueGetJSON(&buf, resp))
 	got := buf.String()
 	assert.JSONEq(t, `{
   "policyIssue": {
@@ -276,7 +278,8 @@ func TestPolicyIssueGet_JSON_Full(t *testing.T) {
 func TestPolicyIssueGet_JSON_Minimal(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	require.NoError(t, renderPolicyIssueGetJSON(&buf, apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssueMinimal()}))
+	resp := apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssueMinimal()}
+	require.NoError(t, renderPolicyIssueGetJSON(&buf, resp))
 	got := buf.String()
 	assert.JSONEq(t, `{
   "policyIssue": {
@@ -305,7 +308,8 @@ func TestPolicyIssueGet_JSON_Minimal(t *testing.T) {
 func TestPolicyIssueGet_Table(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	require.NoError(t, renderPolicyIssueGetText(&buf, apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssueFull()}))
+	resp := apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssueFull()}
+	require.NoError(t, renderPolicyIssueGetText(&buf, resp))
 	got := buf.String()
 	assert.Equal(t, `ID:                  issue-1
 Policy pack:         aws-guardrails@3.1.0
