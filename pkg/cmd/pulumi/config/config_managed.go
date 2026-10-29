@@ -83,28 +83,6 @@ func newManagedStore(
 	}, nil
 }
 
-func removeConfigKeys(
-	ctx context.Context,
-	s backend.Stack,
-	project *workspace.Project,
-	ps *workspace.ProjectStack,
-	configFile string,
-	keys []config.Key,
-	path bool,
-) error {
-	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-	w, err := newConfigWriter(s, project.Name, ps, configFile, &ssml, false /*overrideImport*/)
-	if err != nil {
-		return err
-	}
-	for _, key := range keys {
-		if err := w.Remove(ctx, key, path); err != nil {
-			return err
-		}
-	}
-	return w.Save(ctx)
-}
-
 func (m *managedStore) Set(ctx context.Context, key config.Key, v config.Value, path bool) error {
 	root, subPath, err := m.entryPath(key, path)
 	if err != nil {

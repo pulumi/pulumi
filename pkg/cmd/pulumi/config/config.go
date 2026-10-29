@@ -569,6 +569,28 @@ func newConfigRemoveAllCmd(
 	return rmAllCmd
 }
 
+func removeConfigKeys(
+	ctx context.Context,
+	s backend.Stack,
+	project *workspace.Project,
+	ps *workspace.ProjectStack,
+	configFile string,
+	keys []config.Key,
+	path bool,
+) error {
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+	w, err := newConfigWriter(s, project.Name, ps, configFile, &ssml, false /*overrideImport*/)
+	if err != nil {
+		return err
+	}
+	for _, key := range keys {
+		if err := w.Remove(ctx, key, path); err != nil {
+			return err
+		}
+	}
+	return w.Save(ctx)
+}
+
 func newConfigRefreshCmd(
 	ws pkgWorkspace.Context, stk *string, lm cmdBackend.LoginManager, configFile *string,
 ) *cobra.Command {
