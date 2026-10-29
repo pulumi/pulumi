@@ -61,6 +61,9 @@ func GetStackConfiguration(
 	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile, envOverrides)
 }
 
+var errDestroyManagedOutsideProject = errors.New(
+	"`pulumi destroy` outside the project directory is not supported on stacks with an ESC-managed environment yet")
+
 // GetStackConfigurationOrLatest attempts to load a current stack configuration
 // using getStackConfiguration. If that fails due to not being run within a
 // valid project, the latest configuration from the backend is returned. This is
@@ -81,9 +84,7 @@ func GetStackConfigurationOrLatest(
 		func(err error) (config.Map, error) {
 			if errors.Is(err, workspace.ErrProjectNotFound) {
 				if stack.ConfigLocation().ManagedEnvironment != "" {
-					_, _, err := managedEnvironmentDefinition(stack, &workspace.ProjectStack{})
-					contract.Assertf(err != nil, "an empty stack file has no managed environment definition")
-					return nil, err
+					return nil, errDestroyManagedOutsideProject
 				}
 				// This error indicates that we're not being run in a project directory.
 				// We should fallback on the backend.

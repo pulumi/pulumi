@@ -1048,5 +1048,5 @@ func TestGetStackConfigurationOrLatestManaged(t *testing.T) {
 
 	s, _ := newManagedStack(t, nil)
 	_, _, err := GetStackConfigurationOrLatest(t.Context(), nil, stack.SecretsManagerLoader{}, s, nil, "", nil)
-	assert.ErrorContains(t, err, stack.ManagedEnvironmentMissingFromFileHint("acme", "p/old", "new", ""))
+	assert.ErrorIs(t, err, errDestroyManagedOutsideProject)
 }
