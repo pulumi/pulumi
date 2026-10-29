@@ -17,8 +17,10 @@ package operations
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -132,4 +134,24 @@ func TestGetRefreshOption(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRejectOnManagedStack(t *testing.T) {
+	t.Parallel()
+
+	managed := &backend.MockStack{ConfigLocationF: func() backend.StackConfigLocation {
+		return backend.StackConfigLocation{ManagedEnvironment: "p/env"}
+	}}
+	unmanaged := &backend.MockStack{}
+
+	assert.EqualError(t, rejectConfigFlagsOnManagedStack(managed, []string{"a=b"}, ""),
+		"--config is not supported on stacks with an ESC-managed environment yet")
+	assert.EqualError(t, rejectConfigFlagsOnManagedStack(managed, nil, "Pulumi.other.yaml"),
+		"--config-file is not supported on stacks with an ESC-managed environment yet")
+	require.NoError(t, rejectConfigFlagsOnManagedStack(managed, nil, ""))
+	require.NoError(t, rejectConfigFlagsOnManagedStack(unmanaged, []string{"a=b"}, "Pulumi.other.yaml"))
+
+	assert.EqualError(t, rejectTemplateUpOnManagedStack(managed),
+		"pulumi up <template> is not supported on stacks with an ESC-managed environment yet")
+	require.NoError(t, rejectTemplateUpOnManagedStack(unmanaged))
 }
