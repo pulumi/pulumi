@@ -264,15 +264,12 @@ func errEntersImportedList(root config.Key, env string) error {
 		"replaces the whole imported list; override the whole list instead of part of it", root, env)
 }
 
-func (m *managedStore) importedConfig(ctx context.Context) (map[string]esc.Value, error) {
-	if m.imported == nil {
-		values, checkWarning := m.evaluateImports(ctx)
-		m.imported = &importCheck{values: values, checkWarning: checkWarning}
+func (m *managedStore) importedConfig(ctx context.Context) (values map[string]esc.Value, checkWarning error) {
+	if m.imported != nil {
+		return m.imported.values, m.imported.checkWarning
 	}
-	return m.imported.values, m.imported.checkWarning
-}
+	defer func() { m.imported = &importCheck{values: values, checkWarning: checkWarning} }()
 
-func (m *managedStore) evaluateImports(ctx context.Context) (values map[string]esc.Value, checkWarning error) {
 	// Imports only: diagnostics from a broken local values block would otherwise hide every imported key.
 	imports, ok := pulumiconfig.ImportsDefinition(m.definition)
 	if !ok {
