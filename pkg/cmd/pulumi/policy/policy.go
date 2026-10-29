@@ -35,6 +35,7 @@ func NewPolicyCmd() *cobra.Command {
 		backendSecrets.DefaultProvider, nil))
 	cmd.AddCommand(newPolicyDisableCmd())
 	cmd.AddCommand(newPolicyEnableCmd())
+	cmd.AddCommand(newPolicyGetCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyGroupCmd())
 	cmd.AddCommand(newPolicyInstallCmd())
 	cmd.AddCommand(newPolicyListCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
