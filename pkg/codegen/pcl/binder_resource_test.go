@@ -39,10 +39,13 @@ func TestBindResourceOptions(t *testing.T) {
 			Token: "foo:index:Foo",
 			InputProperties: []*schema.Property{
 				{Name: "property", Type: schema.StringType},
+				{Name: "inputOnly", Type: &schema.OptionalType{ElementType: schema.StringType}},
+				{Name: "shared", Type: &schema.OptionalType{ElementType: schema.StringType}},
 			},
 			Properties: []*schema.Property{
 				{Name: "property", Type: schema.StringType},
 				{Name: "outputOnly", Type: schema.StringType},
+				{Name: "shared", Type: &schema.MapType{ElementType: schema.StringType}},
 			},
 		},
 		Resources: []*schema.Resource{
@@ -50,10 +53,13 @@ func TestBindResourceOptions(t *testing.T) {
 				Token: "foo:index:Foo",
 				InputProperties: []*schema.Property{
 					{Name: "property", Type: schema.StringType},
+					{Name: "inputOnly", Type: &schema.OptionalType{ElementType: schema.StringType}},
+					{Name: "shared", Type: &schema.OptionalType{ElementType: schema.StringType}},
 				},
 				Properties: []*schema.Property{
 					{Name: "property", Type: schema.StringType},
 					{Name: "outputOnly", Type: schema.StringType},
+					{Name: "shared", Type: &schema.MapType{ElementType: schema.StringType}},
 				},
 			},
 		},
@@ -101,8 +107,13 @@ func TestBindResourceOptions(t *testing.T) {
 		},
 		{
 			name: "HideDiffs",
-			src:  `hideDiffs = [property, outputOnly]`,
-			want: cty.TupleVal([]cty.Value{cty.StringVal("property"), cty.StringVal("outputOnly")}),
+			src:  `hideDiffs = [property, inputOnly, outputOnly, shared.key]`,
+			want: cty.TupleVal([]cty.Value{
+				cty.StringVal("property"),
+				cty.StringVal("inputOnly"),
+				cty.StringVal("outputOnly"),
+				cty.StringVal("shared.key"),
+			}),
 		},
 		{
 			name: "DeletedWith",
