@@ -2135,14 +2135,6 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Metadata:    metadata,
 	}
 
-	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
-	// is in use, which does not provide  a version tag.
-	var versionMsg string
-	if analyzerInfo.Version != "" {
-		versionMsg = " - version " + analyzerInfo.Version
-	}
-	fmt.Printf("Publishing %q%s to %q\n", analyzerInfo.Name, versionMsg, orgName)
-
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
 	if err != nil {
@@ -2177,7 +2169,6 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	version := analyzerInfo.Version
 	if version == "" {
 		version = strconv.Itoa(resp.Version)
-		fmt.Printf("Published as version %s\n", version)
 	}
 	err = pc.restCall(ctx, "POST",
 		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, version), nil, nil, nil)

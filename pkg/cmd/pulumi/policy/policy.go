@@ -33,16 +33,16 @@ func NewPolicyCmd() *cobra.Command {
 	cmd.AddCommand(newPolicyAnalyzeCmd(
 		pkgWorkspace.Instance, cmdBackend.DefaultLoginManager,
 		backendSecrets.DefaultProvider, nil))
-	cmd.AddCommand(newPolicyDisableCmd())
-	cmd.AddCommand(newPolicyEnableCmd())
+	cmd.AddCommand(newPolicyDisableCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
+	cmd.AddCommand(newPolicyEnableCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyGetCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyGroupCmd())
 	cmd.AddCommand(newPolicyInstallCmd())
 	cmd.AddCommand(newPolicyListCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyNewCmd())
-	cmd.AddCommand(newPolicyPublishCmd())
-	cmd.AddCommand(newPolicyRemoveCmd())
-	cmd.AddCommand(newPolicyValidateCmd())
+	cmd.AddCommand(newPolicyPublishCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
+	cmd.AddCommand(newPolicyRemoveCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
+	cmd.AddCommand(newPolicyValidateCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyComplianceCmd())
 	cmd.AddCommand(newPolicyIssueCmd())
 
