@@ -1,0 +1,4 @@
+component: pcl
+kind: fix
+body: Report a diagnostic instead of panicking when a block that requires labels has none
+time: 2026-10-29T00:00:00Z
