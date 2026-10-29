@@ -318,8 +318,8 @@ type ManagedEnvironmentEvaluation struct {
 	BaseRevision int
 	// ChangeRequestID is set when the definition differs from BaseRevision.
 	ChangeRequestID string
-	// DraftRevision is the change request revision that was opened. It is meaningful only when
-	// ChangeRequestID is set.
+	// DraftRevision is the change request revision that was evaluated. The update applies exactly this revision and
+	// fails if the change request was edited since. Set only with ChangeRequestID.
 	DraftRevision int
 }
 
