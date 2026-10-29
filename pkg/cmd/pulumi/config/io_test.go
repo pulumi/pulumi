@@ -946,6 +946,28 @@ func TestOpenStackEnvManaged(t *testing.T) {
 	assert.Equal(t, esc.NewValue(map[string]esc.Value{"otherproj:key": esc.NewValue("env")}), cfg.Environment)
 }
 
+func TestGetStackConfigurationManagedEnvironmentImports(t *testing.T) {
+	t.Parallel()
+
+	stack, _ := newManagedStack(t, func(
+		string, string, string, []byte,
+	) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+		return &backend.ManagedEnvironmentEvaluation{Environment: &esc.Environment{}, BaseRevision: 7}, nil, nil
+	})
+
+	workspaceStack := loadTestProjectStack(t, `environment:
+  imports:
+    - proj/a
+  values:
+    pulumiConfig:
+      otherproj:key: env
+`)
+	project := workspace.Project{Name: "otherproj"}
+	cfg, err := getStackConfigurationFromProjectStack(t.Context(), stack, &project, nil, workspaceStack, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"proj/a"}, cfg.EnvironmentImports)
+}
+
 func TestOpenStackEnvManagedErrors(t *testing.T) {
 	t.Parallel()
 

@@ -1867,6 +1867,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
 	}
 
+	reqOpts := client.UpdateRequestOptions{Environment: op.StackConfiguration.ManagedEnvironment}
+
 	var update client.UpdateIdentifier
 	var version int
 	var token string
@@ -1879,7 +1881,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		logging.V(7).Infof("Using combined begin-update endpoint for %s", stackRef)
 		resp, err := b.client.BeginUpdate(
 			ctx, action, stackID, op.Proj, op.StackConfiguration.Config,
-			metadata, op.Opts.Engine, tags, dryRun, op.CoherenceWindow)
+			metadata, op.Opts.Engine, tags, dryRun, op.CoherenceWindow, reqOpts)
 		if err != nil {
 			if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 				conflict := backenderr.ConflictingUpdateError{Err: err}
@@ -1911,7 +1913,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		var updateDetails client.CreateUpdateDetails
 		update, updateDetails, err = b.client.CreateUpdate(
 			ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun,
-			op.CoherenceWindow)
+			op.CoherenceWindow, reqOpts)
 		if err != nil {
 			return client.UpdateIdentifier{}, updateMetadata{}, err
 		}

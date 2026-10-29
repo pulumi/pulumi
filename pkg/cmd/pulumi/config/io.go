@@ -180,12 +180,19 @@ func getStackConfigurationFromProjectStack(
 		}
 	}
 
+	imports := workspaceStack.Environment.Imports()
+	if managedEnv != nil && len(imports) > 0 && imports[len(imports)-1] == "yaml" {
+		// Environment.Imports names the inline values "yaml"; on a managed stack they are the managed environment,
+		// and the console would link "yaml" to a default/yaml environment that does not exist.
+		imports = imports[:len(imports)-1]
+	}
+
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
 	// the correct decrypter for the diy backend would involve prompting for a passphrase)
 	if !needsCrypter(workspaceStack.Config, pulumiEnv) {
 		return backend.StackConfiguration{
-			EnvironmentImports: workspaceStack.Environment.Imports(),
+			EnvironmentImports: imports,
 			Environment:        pulumiEnv,
 			Config:             workspaceStack.Config,
 			Decrypter:          config.NewPanicCrypter(),
@@ -196,7 +203,7 @@ func getStackConfigurationFromProjectStack(
 	crypter := sm.Decrypter()
 
 	return backend.StackConfiguration{
-		EnvironmentImports: workspaceStack.Environment.Imports(),
+		EnvironmentImports: imports,
 		Environment:        pulumiEnv,
 		Config:             workspaceStack.Config,
 		Decrypter:          crypter,

@@ -1513,13 +1513,19 @@ type CreateUpdateDetails struct {
 	IsNeoIntegrationEnabled bool
 }
 
+// UpdateRequestOptions carries optional fields of the update program request.
+type UpdateRequestOptions struct {
+	// Environment is the managed ESC environment content the update was evaluated against; nil is omitted.
+	Environment *apitype.UpdateProgramEnvironment
+}
+
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
 // requires that the Pulumi program is uploaded, the provided getContents callback will be invoked to fetch the
 // contents of the Pulumi program.
 func (pc *Client) CreateUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
 	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
-	dryRun bool, coherenceWindow string,
+	dryRun bool, coherenceWindow string, reqOpts UpdateRequestOptions,
 ) (UpdateIdentifier, CreateUpdateDetails, error) {
 	// First create the update program request.
 	wireConfig := make(map[string]apitype.ConfigValue)
@@ -1556,6 +1562,7 @@ func (pc *Client) CreateUpdate(
 		},
 		Metadata:        m,
 		CoherenceWindow: coherenceWindow,
+		Environment:     reqOpts.Environment,
 	}
 
 	// Create the initial update object.
@@ -1633,7 +1640,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 func (pc *Client) BeginUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
 	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
-	tags map[apitype.StackTagName]string, dryRun bool, coherenceWindow string,
+	tags map[apitype.StackTagName]string, dryRun bool, coherenceWindow string, reqOpts UpdateRequestOptions,
 ) (*apitype.BeginUpdateResponse, error) {
 	if err := validation.ValidateStackTags(tags); err != nil {
 		return nil, fmt.Errorf("validating stack properties: %w", err)
@@ -1670,6 +1677,7 @@ func (pc *Client) BeginUpdate(
 		},
 		Metadata:        m,
 		CoherenceWindow: coherenceWindow,
+		Environment:     reqOpts.Environment,
 	}
 
 	req := apitype.BeginUpdateRequest{
