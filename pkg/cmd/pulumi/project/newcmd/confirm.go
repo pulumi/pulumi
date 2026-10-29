@@ -71,7 +71,8 @@ func (c *confirmedNew) createStack(
 		ManagedEnvironment: args.escConfig,
 	}
 	if c.createsStack() {
-		// Quiet: the confirmation already showed the stack name, and the summary repeats it.
+		// Quiet: the confirmation already showed the stack name, and the summary repeats it and names any
+		// managed environment.
 		createOpts.Quiet = true
 		return createStackWithRetry(ctx, sink, args.stdout, ws, b, args.prompt, c.stackName, root, args.yes, opts,
 			createOpts)

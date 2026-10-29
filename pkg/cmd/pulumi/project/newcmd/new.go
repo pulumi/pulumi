@@ -489,6 +489,9 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		rows := []field{{"Project name", args.name}}
 		if createdStackName != "" {
 			rows = append(rows, field{"Stack name", createdStackName})
+			if managedEnv := s.ConfigLocation().ManagedEnvironment; managedEnv != "" {
+				rows = append(rows, field{"ESC environment", managedEnv})
+			}
 		}
 		printFields(args.stdout, opts.Color, "    ", rows)
 		fmt.Fprintln(args.stdout)

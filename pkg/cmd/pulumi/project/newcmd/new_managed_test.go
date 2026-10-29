@@ -196,6 +196,7 @@ func TestGuidedNewEscConfigWritesTemplateConfigToEnvironment(t *testing.T) {
 	assert.Equal(t, []string{"my-org/dev"}, *created)
 	assertOnlyPulumiConfig(t, tempdir, managedTemplatePulumiConfig)
 	assert.Equal(t, [][]string{{"key-secret"}, {"token-secret"}}, b.encrypted)
+	assert.Regexp(t, `ESC environment:\s+proj/dev`, out.String())
 }
 
 //nolint:paralleltest // changes directory for process, mocks login manager
