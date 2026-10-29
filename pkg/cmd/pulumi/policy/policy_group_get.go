@@ -526,7 +526,6 @@ func formatPackConfigSummary(config map[string]*json.RawMessage) string {
 	return summary
 }
 
-// packConfigNames returns the config keys with "all" first and the rest sorted.
 func packConfigNames(config map[string]*json.RawMessage) []string {
 	names := make([]string, 0, len(config))
 	for name := range config {
