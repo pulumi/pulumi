@@ -1,4 +1,0 @@
-component: pcl
-kind: feat
-body: Add a `resourceExists` builtin that checks whether a resource with a given ID exists without adopting it into the stack
-time: 2026-10-22T14:32:18.722323+02:00

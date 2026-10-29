@@ -58,7 +58,7 @@ func TestStartupFailure(t *testing.T) {
 	require.Contains(t, file, "pulumi-language-test")
 
 	pluginPathRel := filepath.Join("testdata", "test-plugin")
-	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, pluginPathRel)
+	_, err = ctx.Host.ProviderFromPath(ctx, pluginPathRel, env.Global())
 	require.ErrorContains(t, err, "could not read plugin ["+pluginPathRel+"]: not implemented")
 }
 
@@ -83,7 +83,7 @@ func TestNonZeroExitcode(t *testing.T) {
 
 	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "1")
 	pluginPathRel := filepath.Join("testdata", "test-plugin-exit")
-	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, pluginPathRel)
+	_, err = ctx.Host.ProviderFromPath(ctx, pluginPathRel, env.Global())
 	require.ErrorContains(t, err, "could not read plugin ["+pluginPathRel+"]: exit status 1")
 
 	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
@@ -115,7 +115,7 @@ func TestNonZeroExitcode(t *testing.T) {
 	t.Log(string(stdout))
 	require.NoError(t, err)
 
-	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, filepath.Join(tmp, bin))
+	_, err = ctx.Host.ProviderFromPath(ctx, filepath.Join(tmp, bin), env.Global())
 	// the prefix of the error message is unstable because it's in a temp dir but we can check the start and end
 	// separately.
 	require.ErrorContains(t, err, "could not read plugin [")
@@ -144,7 +144,7 @@ func TestZeroExitcode(t *testing.T) {
 
 	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "0")
 	pluginPathRel := filepath.Join("testdata", "test-plugin-exit")
-	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, pluginPathRel)
+	_, err = ctx.Host.ProviderFromPath(ctx, pluginPathRel, env.Global())
 	require.ErrorContains(t, err, "could not read plugin ["+pluginPathRel+"]: EOF")
 
 	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
@@ -176,7 +176,7 @@ func TestZeroExitcode(t *testing.T) {
 	t.Log(string(stdout))
 	require.NoError(t, err)
 
-	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, filepath.Join(tmp, bin))
+	_, err = ctx.Host.ProviderFromPath(ctx, filepath.Join(tmp, bin), env.Global())
 	// the prefix of the error message is unstable because it's in a temp dir but we can check the start and end
 	// separately.
 	require.ErrorContains(t, err, "could not read plugin [")
@@ -199,7 +199,7 @@ func TestPulumiVersionRangeYaml(t *testing.T) {
 	version.Version = "3.1.2"
 	t.Cleanup(func() { version.Version = oldVersion })
 
-	_, err = plugin.NewProviderFromPath(ctx.Host, ctx, filepath.Join("testdata", "test-plugin-cli-version"))
+	_, err = ctx.Host.ProviderFromPath(ctx, filepath.Join("testdata", "test-plugin-cli-version"), env.Global())
 	require.ErrorContains(t, err,
 		"test-plugin-cli-version: Pulumi CLI version 3.1.2 does not satisfy the version range \">=100.0.0\"")
 }

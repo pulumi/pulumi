@@ -734,7 +734,11 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 		if s.resource == nil {
 			return s.root, nil
 		}
-		obj, ok := model.ResolveOutputs(s.resource.GetInputType()).(*model.ObjectType)
+		propertyType := s.resource.GetInputType()
+		if attr.Name == "hideDiffs" {
+			propertyType = s.resource.GetOutputType()
+		}
+		obj, ok := model.ResolveOutputs(propertyType).(*model.ObjectType)
 		if !ok {
 			return nil, nil
 		}

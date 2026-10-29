@@ -1077,6 +1077,7 @@ func (c *testPulumiClient) OpenEnvironmentDraft(
 	projectName string,
 	envName string,
 	changeRequestID string,
+	revision *int,
 	duration time.Duration,
 ) (string, []client.EnvironmentDiagnostic, error) {
 	envName = envName + "_DRAFT"
@@ -1100,6 +1101,24 @@ func (c *testPulumiClient) CheckYAMLEnvironment(
 	opts ...client.CheckYAMLOption,
 ) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
 	return c.checkEnvironment(ctx, orgName, "<yaml>", yaml, opts)
+}
+
+func (c *testPulumiClient) EncryptSecrets(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	plaintexts [][]byte,
+) ([]string, error) {
+	ciphertexts := make([]string, len(plaintexts))
+	for i, plaintext := range plaintexts {
+		ciphertext, err := eval.EncryptSecret(ctx, rot128{}, plaintext)
+		if err != nil {
+			return nil, err
+		}
+		ciphertexts[i] = base64.StdEncoding.EncodeToString(ciphertext)
+	}
+	return ciphertexts, nil
 }
 
 func (c *testPulumiClient) OpenYAMLEnvironment(

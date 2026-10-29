@@ -20,10 +20,10 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,9 +39,8 @@ func TestWhoAmICmd_default(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
-		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
-			...cmdBackend.LoginOption,
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -69,9 +68,8 @@ func TestWhoAmICmd_verbose(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
-		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
-			...cmdBackend.LoginOption,
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -104,9 +102,8 @@ func TestWhoAmICmd_json(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
-		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
-			...cmdBackend.LoginOption,
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -142,9 +139,8 @@ func TestWhoAmICmd_verbose_teamToken(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
-		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
-			...cmdBackend.LoginOption,
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -181,9 +177,8 @@ func TestWhoAmICmd_json_teamToken(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
-		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
-			...cmdBackend.LoginOption,
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -219,9 +214,8 @@ func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
-		LoginF: func(
-			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool, colors.Colorization,
-			...cmdBackend.LoginOption,
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
 		) (backend.Backend, error) {
 			return be, nil
 		},
@@ -240,4 +234,23 @@ func TestWhoAmICmd_verbose_unknownToken(t *testing.T) {
 	assert.Contains(t, stdout, "Backend URL: https://pulumi.example.com")
 	assert.Contains(t, stdout, "Token type: unknown")
 	assert.Contains(t, stdout, "Token name: bad-token")
+}
+
+func TestWhoAmICmd_notLoggedIn(t *testing.T) {
+	t.Parallel()
+
+	ws := &pkgWorkspace.MockContext{}
+	lm := &cmdBackend.MockLoginManager{
+		CurrentF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool,
+		) (backend.Backend, error) {
+			return nil, nil
+		},
+	}
+
+	cmd := NewWhoAmICmd(ws, lm)
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	err := cmd.Execute()
+	assert.ErrorIs(t, err, backenderr.LoginRequiredError{})
 }

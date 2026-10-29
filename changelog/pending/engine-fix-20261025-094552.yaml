@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Preserve snapshot integrity when a protected resource has multiple pending-delete copies of its parent
+time: 2026-10-25T09:45:52.314553+09:00

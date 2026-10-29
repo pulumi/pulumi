@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // observeRegistration returns a promise for urn without affecting source liveness. Tests use this
@@ -42,7 +43,7 @@ func TestRegistrationObserver_ResolveBeforeObserve(t *testing.T) {
 	b := NewRegistrationObserver()
 
 	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
-	outputs := resource.PropertyMap{"k": resource.NewProperty("v")}
+	outputs := property.NewMap(map[string]property.Value{"k": property.New("v")})
 
 	b.Resolve(urn, "", outputs)
 
@@ -56,7 +57,7 @@ func TestRegistrationObserver_ObserveBeforeResolve(t *testing.T) {
 	b := NewRegistrationObserver()
 
 	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
-	outputs := resource.PropertyMap{"k": resource.NewProperty("v")}
+	outputs := property.NewMap(map[string]property.Value{"k": property.New("v")})
 
 	p := observeRegistration(b, urn)
 
@@ -77,7 +78,7 @@ func TestRegistrationObserver_ResolvePropagatesID(t *testing.T) {
 
 	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
 	id := resource.ID("res-id-42")
-	outputs := resource.PropertyMap{"k": resource.NewProperty("v")}
+	outputs := property.NewMap(map[string]property.Value{"k": property.New("v")})
 
 	b.Resolve(urn, id, outputs)
 
@@ -102,8 +103,8 @@ func TestRegistrationObserver_FirstResolveWins(t *testing.T) {
 	b := NewRegistrationObserver()
 
 	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
-	first := resource.PropertyMap{"k": resource.NewProperty("first")}
-	second := resource.PropertyMap{"k": resource.NewProperty("second")}
+	first := property.NewMap(map[string]property.Value{"k": property.New("first")})
+	second := property.NewMap(map[string]property.Value{"k": property.New("second")})
 
 	b.Resolve(urn, "", first)
 	b.Resolve(urn, "", second)
@@ -137,11 +138,11 @@ func TestRegistrationObserver_ConcurrentObserversAndResolves(t *testing.T) {
 	const gettersPerURN = 10
 
 	all := make([]resource.URN, urns)
-	want := make(map[resource.URN]resource.PropertyMap, urns)
+	want := make(map[resource.URN]property.Map, urns)
 	for i := range urns {
 		urn := resource.URN("urn:pulumi:s::p::pkg:typ::" + string(rune('a'+i%26)) + string(rune('0'+i/26)))
 		all[i] = urn
-		want[urn] = resource.PropertyMap{"i": resource.NewProperty(float64(i))}
+		want[urn] = property.NewMap(map[string]property.Value{"i": property.New(float64(i))})
 	}
 
 	var wg sync.WaitGroup
@@ -179,7 +180,7 @@ func TestRegistrationObserver_RunnableSourceProtectsWaiter(t *testing.T) {
 	_, _, ok := p.TryResult()
 	require.False(t, ok, "a runnable producer should keep the reference pending")
 
-	outputs := resource.PropertyMap{"k": resource.NewProperty("v")}
+	outputs := property.NewMap(map[string]property.Value{"k": property.New("v")})
 	b.Resolve(urn, "", outputs)
 	got, err := p.Result(t.Context())
 	require.NoError(t, err)
@@ -199,7 +200,7 @@ func TestRegistrationObserver_WaitResolvedURNKeepsSourceRunnable(t *testing.T) {
 
 	resolvedURN := resource.URN("urn:pulumi:s::p::pkg:typ::resolved")
 	pendingURN := resource.URN("urn:pulumi:s::p::pkg:typ::pending")
-	b.Resolve(resolvedURN, "", resource.PropertyMap{})
+	b.Resolve(resolvedURN, "", property.Map{})
 	_, err := consumer.Wait(resolvedURN).Result(t.Context())
 	require.NoError(t, err)
 
@@ -208,7 +209,7 @@ func TestRegistrationObserver_WaitResolvedURNKeepsSourceRunnable(t *testing.T) {
 	_, _, ok := pending.TryResult()
 	require.False(t, ok, "waiting on a pending URN should leave the source blocked")
 
-	b.Resolve(pendingURN, "", resource.PropertyMap{})
+	b.Resolve(pendingURN, "", property.Map{})
 	_, err = pending.Result(t.Context())
 	require.NoError(t, err)
 	consumer.Done()
@@ -228,16 +229,16 @@ func TestRegistrationObserver_ProducerCanResolveAnyURN(t *testing.T) {
 	ranged := resource.URN("urn:pulumi:s::p::pkg:typ::child-0")
 	parentedP := consumer.Wait(parented)
 
-	b.Resolve(parented, "", resource.PropertyMap{"kind": resource.NewProperty("parented")})
+	b.Resolve(parented, "", property.NewMap(map[string]property.Value{"kind": property.New("parented")}))
 	parentedResult, err := parentedP.Result(t.Context())
 	require.NoError(t, err)
-	require.Equal(t, "parented", parentedResult.Outputs["kind"].StringValue())
+	require.Equal(t, "parented", parentedResult.Outputs.Get("kind").AsString())
 
 	rangedP := consumer.Wait(ranged)
-	b.Resolve(ranged, "", resource.PropertyMap{"kind": resource.NewProperty("ranged")})
+	b.Resolve(ranged, "", property.NewMap(map[string]property.Value{"kind": property.New("ranged")}))
 	rangedResult, err := rangedP.Result(t.Context())
 	require.NoError(t, err)
-	require.Equal(t, "ranged", rangedResult.Outputs["kind"].StringValue())
+	require.Equal(t, "ranged", rangedResult.Outputs.Get("kind").AsString())
 
 	consumer.Done()
 	producer.Done()
@@ -257,7 +258,7 @@ func TestRegistrationObserver_ResolvedWaiterBecomesRunnableProducer(t *testing.T
 	middleP := middle.Wait(middleDependency)
 	consumerP := consumer.Wait(consumerDependency)
 
-	b.Resolve(middleDependency, "", resource.PropertyMap{})
+	b.Resolve(middleDependency, "", property.Map{})
 	// The producer may finish before the middle source's goroutine observes its resolved promise.
 	// Resolve must make middle runnable atomically so this does not falsely reject consumerP.
 	producer.Done()
@@ -267,7 +268,7 @@ func TestRegistrationObserver_ResolvedWaiterBecomesRunnableProducer(t *testing.T
 	_, _, ok := consumerP.TryResult()
 	require.False(t, ok, "the newly runnable middle source should keep its consumer pending")
 
-	b.Resolve(consumerDependency, "", resource.PropertyMap{})
+	b.Resolve(consumerDependency, "", property.Map{})
 	_, err = consumerP.Result(t.Context())
 	require.NoError(t, err)
 
@@ -332,7 +333,7 @@ func TestRegistrationObserver_ResolveDoesNotBlock(t *testing.T) {
 	b := NewRegistrationObserver()
 
 	urn := resource.URN("urn:pulumi:s::p::pkg:typ::a")
-	outputs := resource.PropertyMap{"k": resource.NewProperty("v")}
+	outputs := property.NewMap(map[string]property.Value{"k": property.New("v")})
 
 	done := make(chan struct{})
 	go func() {

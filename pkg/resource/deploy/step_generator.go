@@ -343,7 +343,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		Custom:                  true,
 		Delete:                  false,
 		ID:                      event.ID(),
-		Inputs:                  event.Properties(),
+		Inputs:                  resource.ToResourcePropertyMap(event.Properties()),
 		Outputs:                 make(resource.PropertyMap),
 		Parent:                  parent,
 		Protect:                 false,

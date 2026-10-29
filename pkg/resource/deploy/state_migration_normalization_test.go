@@ -100,9 +100,9 @@ func TestDeploymentNormalizesStateMigrationSourceEvents(t *testing.T) {
 			parent:       predecessorURN,
 			provider:     predecessorProvider.String(),
 			dependencies: []resource.URN{predecessorURN},
-			props: resource.PropertyMap{
-				"reference": resource.MakeCustomResourceReference(predecessorURN, "physical-id", "1.2.3"),
-			},
+			props: property.NewMap(map[string]property.Value{
+				"reference": property.New(property.NewResourceReference(predecessorURN, property.New("physical-id"), "1.2.3")),
+			}),
 		}
 
 		normalized, err := d.normalizeStateMigrationSourceEvent(event)
@@ -121,9 +121,9 @@ func TestDeploymentNormalizesStateMigrationSourceEvents(t *testing.T) {
 		assert.Equal(t, successorProviderURN, provider.URN())
 		assert.Equal(t, resource.ID("provider-b-id"), provider.ID())
 
-		ref := read.Properties()["reference"].ResourceReferenceValue()
+		ref := read.Properties().Get("reference").AsResourceReference()
 		assert.Equal(t, successorURN, ref.URN)
-		assert.Equal(t, "physical-id", ref.ID.StringValue())
+		assert.Equal(t, "physical-id", ref.ID.AsString())
 		assert.Empty(t, ref.PackageVersion)
 	})
 
