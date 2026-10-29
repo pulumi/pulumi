@@ -254,7 +254,7 @@ func printManagedEnvironmentNotices(
 	managedEnv *apitype.UpdateProgramEnvironment,
 ) {
 	if managedEnv.ChangeRequestID != "" {
-		fmt.Fprintf(w, "environment %s will be updated from revision %d\n",
+		fmt.Fprintf(w, "environment %s differs from revision %d; an update publishes the change, a preview does not\n",
 			stack.ConfigLocation().ManagedEnvironment, managedEnv.BaseRevision)
 	}
 }

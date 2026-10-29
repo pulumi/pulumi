@@ -1036,7 +1036,9 @@ func TestPrintManagedEnvironmentNotices(t *testing.T) {
 
 	var out bytes.Buffer
 	printManagedEnvironmentNotices(&out, s, &apitype.UpdateProgramEnvironment{BaseRevision: 7, ChangeRequestID: "cr-1"})
-	assert.Equal(t, "environment p/old will be updated from revision 7\n", out.String())
+	assert.Equal(t,
+		"environment p/old differs from revision 7; an update publishes the change, a preview does not\n",
+		out.String())
 
 	out.Reset()
 	printManagedEnvironmentNotices(&out, s, &apitype.UpdateProgramEnvironment{BaseRevision: 7})
