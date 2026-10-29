@@ -187,3 +187,13 @@ func firstLine(s string) string {
 	}
 	return s
 }
+
+func TestRenderDescribeMarkdownCLICommand(t *testing.T) {
+	t.Parallel()
+
+	op := &Operation{Method: "GET", Path: "/x", OperationID: "ListThings", CLICommand: "pulumi thing ls"}
+	assert.Contains(t, RenderDescribeMarkdown(op), "> **Prefer the CLI** — use `pulumi thing ls`.")
+
+	op.CLICommand = ""
+	assert.NotContains(t, RenderDescribeMarkdown(op), "Prefer the CLI")
+}

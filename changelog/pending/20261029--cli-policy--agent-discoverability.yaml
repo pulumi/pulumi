@@ -1,0 +1,3 @@
+component: cli/policy
+kind: improvement
+body: Describe policy groups, issues and compliance in `pulumi policy` help, and point agents to them after `pulumi policy ls`

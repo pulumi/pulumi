@@ -25,7 +25,13 @@ import (
 func NewPolicyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "policy",
-		Short: "Manage resource policies",
+		Short: "Manage policy packs, policy groups, policy issues and compliance",
+		Long: "Manage policy packs, policy groups, policy issues and compliance.\n" +
+			"\n" +
+			"Policy packs contain the policies that check your resources. Policy groups decide which\n" +
+			"packs run on which stacks and cloud accounts. Policy issues are the violations those packs\n" +
+			"find, and compliance summarizes them per stack or account. See `pulumi policy group --help`,\n" +
+			"`pulumi policy issue --help` and `pulumi policy compliance --help`.",
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)

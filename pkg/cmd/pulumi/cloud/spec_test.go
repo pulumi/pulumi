@@ -97,6 +97,35 @@ func TestInternalOpsFiltered(t *testing.T) {
 	assert.False(t, hasInternal, "internal op should be dropped at parse time")
 }
 
+func TestRoutePropertyCliCommand(t *testing.T) {
+	t.Parallel()
+
+	spec := `{
+		"openapi": "3.0.0",
+		"info": {"title": "t", "version": "0.0.0"},
+		"components": {"schemas": {}},
+		"paths": {
+			"/things": {
+				"get": {
+					"operationId": "ListThings",
+					"x-pulumi-route-property": {"CliCommand": "pulumi thing ls"},
+					"responses": {"200": {"description": "ok"}}
+				}
+			},
+			"/other": {
+				"get": {
+					"operationId": "GetOther",
+					"responses": {"200": {"description": "ok"}}
+				}
+			}
+		}
+	}`
+	idx, err := parseIndex([]byte(spec))
+	require.NoError(t, err)
+	assert.Equal(t, "pulumi thing ls", idx.ByKey["GET /things"].CLICommand)
+	assert.Equal(t, "", idx.ByKey["GET /other"].CLICommand)
+}
+
 // TestSuccessContentTypesCaptured asserts the parser records every content
 // type the spec declares on the primary 2xx response — the dispatcher uses
 // this list to drive --output-based content negotiation, so dropping

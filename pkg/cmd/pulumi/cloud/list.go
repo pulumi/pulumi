@@ -135,9 +135,14 @@ func runLs(
 	view = filterByText(view, filter)
 
 	if mode == outputJSON {
-		return emitLsJSON(w, view)
+		if err := emitLsJSON(w, view); err != nil {
+			return err
+		}
+	} else if err := emitLsTable(w, view); err != nil {
+		return err
 	}
-	return emitLsTable(w, view)
+	writeCLICommandNote(warnW, view.Operations)
+	return nil
 }
 
 // filterListedOps returns a shallow Index view whose Operations slice has
@@ -180,7 +185,7 @@ func filterByText(idx *Index, filter string) *Index {
 }
 
 func matchesFilter(op *Operation, filter string) bool {
-	for _, field := range []string{op.OperationID, op.Path, op.Tag, op.Summary, op.Description} {
+	for _, field := range []string{op.OperationID, op.Path, op.Tag, op.Summary, op.Description, op.CLICommand} {
 		if strings.Contains(strings.ToLower(field), filter) {
 			return true
 		}
@@ -198,6 +203,7 @@ func emitLsJSON(w io.Writer, idx *Index) error {
 			Summary:     op.Summary,
 			Description: op.Description,
 			Tag:         op.Tag,
+			CLICommand:  op.CLICommand,
 			Preview:     op.IsPreview,
 			Deprecated:  op.IsDeprecated,
 		})
@@ -279,4 +285,28 @@ func writerWidth(w io.Writer, fallback int) int {
 		return fallback
 	}
 	return cols
+}
+
+const maxCLICommandNoteRows = 10
+
+// writeCLICommandNote tells the reader which listed operations have a dedicated CLI command. It goes to
+// stderr so JSON on stdout stays machine-readable.
+func writeCLICommandNote(w io.Writer, ops []*Operation) {
+	var withCommand []*Operation
+	for _, op := range ops {
+		if op.CLICommand != "" {
+			withCommand = append(withCommand, op)
+		}
+	}
+	if len(withCommand) == 0 {
+		return
+	}
+	fmt.Fprintln(w, "These operations have a dedicated CLI command; prefer it over `pulumi api`:")
+	for i, op := range withCommand {
+		if i == maxCLICommandNoteRows {
+			fmt.Fprintf(w, "  ...and %d more (see `pulumi api describe <op>`)\n", len(withCommand)-maxCLICommandNoteRows)
+			break
+		}
+		fmt.Fprintf(w, "  %s  %s\n", op.OperationID, op.CLICommand)
+	}
 }

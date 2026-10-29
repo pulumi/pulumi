@@ -51,3 +51,13 @@ func genUniqueName(t *testing.T) string {
 
 	return "test-" + hex.EncodeToString(bs[:])
 }
+
+func TestPolicyCmdDescribesSubcommands(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewPolicyCmd()
+	require.Equal(t, "Manage policy packs, policy groups, policy issues and compliance", cmd.Short)
+	for _, s := range []string{"pulumi policy group", "pulumi policy issue", "pulumi policy compliance"} {
+		require.Contains(t, cmd.Long, s)
+	}
+}
