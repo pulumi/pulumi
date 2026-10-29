@@ -1,0 +1,18 @@
+<{%reset%}>Configuration:<{%reset%}>
+<{%reset%}>  pulumi:pulumi:Stack: (same)
+<{%reset%}>    [urn=urn:pulumi:dev::policyproject::pulumi:pulumi:Stack::policyproject-dev]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ aws:s3/bucket:Bucket: (create)
+<{%fg 2%}>        [urn=urn:pulumi:dev::policyproject::aws:s3/bucket:Bucket::logs-bucket]
+<{%reset%}><{%fg 2%}>        acl: <{%reset%}><{%fg 2%}>"public-read"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}>    <{%fg 5%}>aws-guard@v1.0.0 <{%reset%}><{%fg 3%}>[advisory]  bucket-versioning<{%reset%}>  (aws:s3:Bucket: logs-bucket)Buckets should enable versioning
+    <{%fg 5%}>aws-guard@v1.0.0 <{%reset%}><{%fg 8%}>[exempted: EXC-42, EXC-50] [mandatory]  no-public-read<{%reset%}>  (aws:s3:Bucket: logs-bucket)Buckets must not be publicly readable
+    <{%fg 5%}>aws-guard@v1.0.0 <{%reset%}><{%fg 8%}>[exempted: EXC-7] [mandatory]  vpc-flow-logs<{%reset%}>  (pulumi:pulumi:Stack: policyproject-dev)A stack with a VPC must also have VPC flow logs
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Policy Packs run:<{%reset%}>
+    <{%underline%}><{%fg 12%}>Name<{%reset%}>       <{%underline%}><{%fg 12%}>Version<{%reset%}>
+    aws-guard  1.0.0
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -21,6 +21,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -51,7 +52,7 @@ type testHost struct {
 	languageInfo string
 	providers    map[string]func() (plugin.Provider, error)
 
-	// servicesMu guards loader and contextServices, which are written from Loader/Mapper as the
+	// servicesMu guards loader, contextServices and contextProviders, which are written as the
 	// engine boots contexts concurrently.
 	servicesMu sync.Mutex
 
@@ -62,6 +63,10 @@ type testHost struct {
 	// contextServices holds the loader/mapper gRPC servers this host hosts for each context; they
 	// are shut down in that context's ReleaseContext.
 	contextServices map[*plugin.Context][]*plugin.GrpcServer
+
+	// contextProviders holds the providers this host booted from a path for each context; they are
+	// closed in that context's ReleaseContext.
+	contextProviders map[*plugin.Context][]plugin.Provider
 
 	connectionsMutex sync.Mutex
 	connections      map[plugin.Provider]io.Closer
@@ -181,6 +186,18 @@ func (h *testHost) Provider(
 	return grpcProvider, nil
 }
 
+func (h *testHost) ProviderFromPath(ctx *plugin.Context, path string, e env.Env) (plugin.Provider, error) {
+	provider, err := plugin.NewProviderFromPath(h, ctx, path, e)
+	if err != nil {
+		return nil, err
+	}
+	lifetime := ctx.LifetimeContext()
+	h.servicesMu.Lock()
+	h.contextProviders[lifetime] = append(h.contextProviders[lifetime], provider)
+	h.servicesMu.Unlock()
+	return provider, nil
+}
+
 // LanguageRuntime returns the language runtime initialized by the test host.
 // ProgramInfo is only used here for compatibility reasons and will be removed from this function.
 func (h *testHost) LanguageRuntime(ctx *plugin.Context, runtime string) (plugin.LanguageRuntime, error) {
@@ -225,21 +242,38 @@ func (h *testHost) ResolvePlugin(
 	}, nil
 }
 
-// ReleaseContext shuts down the loader and mapper gRPC servers this host hosts for the context.
-// The test host's providers are not scoped to a context and are torn down when it closes.
+// ReleaseContext closes the providers this host booted from a path for the context, then shuts down
+// the loader and mapper gRPC servers it hosts for the context. The servers go last because the
+// providers may use them while they shut down. Other providers are torn down when the host closes.
 func (h *testHost) ReleaseContext(ctx *plugin.Context) error {
 	h.servicesMu.Lock()
+	providers := h.contextProviders[ctx]
+	delete(h.contextProviders, ctx)
 	servers := h.contextServices[ctx]
 	delete(h.contextServices, ctx)
 	h.servicesMu.Unlock()
 
 	var errs []error
+	for _, provider := range providers {
+		if err := closeProvider(provider); err != nil {
+			errs = append(errs, err)
+		}
+	}
 	for _, srv := range servers {
 		if err := srv.Close(); err != nil {
 			errs = append(errs, err)
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// closeProvider sends Cancel before Close, so that the plugin can acknowledge a graceful shutdown and
+// Close does not report its exit as a crash.
+func closeProvider(provider plugin.Provider) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	contract.IgnoreError(provider.SignalCancellation(ctx))
+	return provider.Close()
 }
 
 // Loader serves the conformance runner's provider-backed schema loader, bound to ctx. The loader

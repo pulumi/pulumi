@@ -13,12 +13,6 @@
             }
         },
         {
-            "path": ["env"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["neo"],
             "propagate": true,
             "exclude": true,
@@ -36,7 +30,6 @@
         {
             "path": ["up"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -140,19 +133,7 @@
             }
         },
         {
-            "path": ["ai"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["api"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["cloud"],
             "propagate": true,
             "exclude": true,
             "flags": {}
@@ -231,7 +212,7 @@
         },
         {
             "path": ["logs"],
-            "propagate": true,
+            "propagate": false,
             "exclude": true,
             "flags": {}
         },
@@ -246,19 +227,7 @@
             "flags": {}
         },
         {
-            "path": ["org", "audit-log"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["org", "member"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "usage"],
             "propagate": true,
             "exclude": true,
             "flags": {}
@@ -318,12 +287,6 @@
             "flags": {}
         },
         {
-            "path": ["state"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["template"],
             "propagate": true,
             "exclude": true,
@@ -331,12 +294,6 @@
         },
         {
             "path": ["view-trace"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["watch"],
             "propagate": true,
             "exclude": true,
             "flags": {}

@@ -16,6 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,21 +32,21 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 1, "expected 1 outputs")
+					require.Equal(l, 1, outputs.Len(), "expected 1 outputs")
 					// TODO(https://github.com/pulumi/pulumi/issues/19015): Ideally we'd allow for nulls in the output
 					// map and in nested maps, but to do that we need to work out how to handle optional fields in
 					// resource properties as well. Is it ok to start sending nulls for optional fields in the resource
 					// properties?
 
 					// These lines are commented out to show what _should_ be here, but isn't because of the issue above.
-					// AssertPropertyMapMember(l, outputs, "null", resource.NewNullProperty())
-					AssertPropertyMapMember(l, outputs, "array", resource.NewProperty([]resource.PropertyValue{
-						resource.NewNullProperty(),
+					// AssertPropertyMapMember(l, outputs, "null", property.New(property.Null))
+					AssertPropertyMapMember(l, outputs, "array", property.New([]property.Value{
+						property.New(property.Null),
 					}))
-					//AssertPropertyMapMember(l, outputs, "map", resource.NewProperty(resource.PropertyMap{
-					//	"key": resource.NewNullProperty(),
+					//AssertPropertyMapMember(l, outputs, "map", property.New(map[string]property.Value{
+					//	"key": property.New(property.Null),
 					//}))
 				},
 			},

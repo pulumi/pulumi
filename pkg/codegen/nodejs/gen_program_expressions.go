@@ -180,7 +180,7 @@ func (g *generator) GenBinaryOpExpression(w io.Writer, expr *model.BinaryOpExpre
 }
 
 func (g *generator) GenConditionalExpression(w io.Writer, expr *model.ConditionalExpression) {
-	g.Fgenf(w, "%.4v ? %.4v : %.4v", expr.Condition, expr.TrueResult, expr.FalseResult)
+	g.Fgenf(w, "%.4o ? %.4v : %.4v", expr.Condition, expr.TrueResult, expr.FalseResult)
 }
 
 func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
@@ -705,6 +705,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
 	case "unsecret":
 		g.Fgenf(w, "pulumi.unsecret(%v)", expr.Args[0])
+	case "resourceExists":
+		if len(expr.Args) > 2 {
+			g.Fgenf(w, "pulumi.runtime.existsResource(%v, %v, %v, {})", expr.Args[0], expr.Args[1], expr.Args[2])
+		} else {
+			g.Fgenf(w, "pulumi.runtime.existsResource(%v, %v, {}, {})", expr.Args[0], expr.Args[1])
+		}
 	case "split":
 		g.Fgenf(w, "%.20v.split(%v)", expr.Args[1], expr.Args[0])
 	case "toBase64":

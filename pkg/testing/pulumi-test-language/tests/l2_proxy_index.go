@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,14 +37,14 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 5, "expected 5 outputs")
-					AssertPropertyMapMember(l, outputs, "bool", resource.NewProperty(true))
-					AssertPropertyMapMember(l, outputs, "array", resource.NewProperty(true))
-					AssertPropertyMapMember(l, outputs, "map", resource.NewProperty("100"))
-					AssertPropertyMapMember(l, outputs, "nested", resource.NewProperty("french hens"))
-					AssertPropertyMapMember(l, outputs, "listIndex", resource.NewProperty("Partridge"))
+					require.Equal(l, 5, outputs.Len(), "expected 5 outputs")
+					AssertPropertyMapMember(l, outputs, "bool", property.New(true))
+					AssertPropertyMapMember(l, outputs, "array", property.New(true))
+					AssertPropertyMapMember(l, outputs, "map", property.New("100"))
+					AssertPropertyMapMember(l, outputs, "nested", property.New("french hens"))
+					AssertPropertyMapMember(l, outputs, "listIndex", property.New("Partridge"))
 				},
 			},
 		},

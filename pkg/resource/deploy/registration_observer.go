@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // URNRegistration carries the information a consumer needs to reason about a resource that has been
@@ -28,7 +29,7 @@ import (
 // have provider IDs (e.g. components).
 type URNRegistration struct {
 	ID      resource.ID
-	Outputs resource.PropertyMap
+	Outputs property.Map
 }
 
 // RegistrationObserver provides per-URN promises that fulfill when a resource has been registered.
@@ -145,7 +146,7 @@ func (o *RegistrationObserver) entry(urn resource.URN) *promise.CompletionSource
 // Resolve fulfills the promise for the given URN with the supplied id and outputs. id may be empty
 // for resources that don't have provider IDs (e.g. components). Repeated Resolve calls for the
 // same URN are no-ops.
-func (o *RegistrationObserver) Resolve(urn resource.URN, id resource.ID, outputs resource.PropertyMap) {
+func (o *RegistrationObserver) Resolve(urn resource.URN, id resource.ID, outputs property.Map) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.makeWaitersRunnable(urn)

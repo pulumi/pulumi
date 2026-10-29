@@ -124,3 +124,15 @@ func liveState(typ, name string, outs resource.PropertyMap) *pkgresource.State {
 		Delete: false, Type: tokens.Type(typ), URN: testURN(typ, name), Outputs: outs,
 	}
 }
+
+func TestManagedEnvironmentRef(t *testing.T) {
+	t.Parallel()
+
+	project, name := StackConfigLocation{ManagedEnvironment: "proj/renamed"}.ManagedEnvironmentRef()
+	assert.Equal(t, "proj", project)
+	assert.Equal(t, "renamed", name)
+
+	project, name = StackConfigLocation{}.ManagedEnvironmentRef()
+	assert.Empty(t, project)
+	assert.Empty(t, name)
+}

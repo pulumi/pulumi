@@ -196,6 +196,60 @@ type Client interface {
 		description *string,
 	) error
 
+	// ListChangeRequests returns a page of change requests in org orgName and the continuation token
+	// for the next page. The continuation token is empty when there are no more pages.
+	ListChangeRequests(
+		ctx context.Context,
+		orgName string,
+		continuationToken string,
+	) ([]ChangeRequest, string, error)
+
+	// GetChangeRequest returns the change request with the specified ID and its gate evaluation.
+	GetChangeRequest(ctx context.Context, orgName, changeRequestID string) (*GetChangeRequestResponse, error)
+
+	// ApproveChangeRequest approves the given revision of a change request.
+	ApproveChangeRequest(ctx context.Context, orgName, changeRequestID string, revisionNumber int, comment string) error
+
+	// UnapproveChangeRequest removes the caller's approval from a change request.
+	UnapproveChangeRequest(ctx context.Context, orgName, changeRequestID string) error
+
+	// ApplyChangeRequest applies an approved change request.
+	ApplyChangeRequest(ctx context.Context, orgName, changeRequestID string) (*ChangeRequestApplyResult, error)
+
+	// CloseChangeRequest closes a change request without applying it.
+	CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error
+
+	// AddChangeRequestComment adds a comment to a change request.
+	AddChangeRequestComment(ctx context.Context, orgName, changeRequestID, comment string) error
+
+	// ListChangeRequestEvents returns a page of a change request's events and the continuation token
+	// for the next page. The continuation token is empty when there are no more pages.
+	ListChangeRequestEvents(
+		ctx context.Context,
+		orgName string,
+		changeRequestID string,
+		continuationToken string,
+	) ([]ChangeRequestEvent, string, error)
+
+	// GetEnvironmentDraftStatus returns the draft's base revision and the environment's current revision.
+	GetEnvironmentDraftStatus(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		changeRequestID string,
+	) (*EnvironmentDraftStatus, error)
+
+	// RebaseEnvironmentDraft replays a draft onto the environment's current revision. If the rebase
+	// conflicts, the draft is unchanged and the conflicts are returned.
+	RebaseEnvironmentDraft(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		changeRequestID string,
+	) (*EnvironmentDraftRebaseResponse, error)
+
 	// DeleteEnvironment deletes the environment envName in org orgName.
 	DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error
 
@@ -217,6 +271,8 @@ type Client interface {
 	// environment. The opened environment will be available for the indicated duration, after which it
 	// will expire.
 	//
+	// If revision is non-nil, the draft is opened at that change request revision rather than the latest.
+	//
 	// If the environment draft contains errors, the open will fail with diagnostics.
 	OpenEnvironmentDraft(
 		ctx context.Context,
@@ -224,6 +280,7 @@ type Client interface {
 		projectName string,
 		envName string,
 		changeRequestID string,
+		revision *int,
 		duration time.Duration,
 	) (string, []EnvironmentDiagnostic, error)
 
@@ -247,6 +304,17 @@ type Client interface {
 		yaml []byte,
 		opts ...CheckYAMLOption,
 	) (*esc.Environment, []EnvironmentDiagnostic, error)
+
+	// EncryptSecrets encrypts each plaintext with the key of the environment projectName/envName and returns
+	// the ciphertexts in the same order. The ciphertexts are valid as the value of fn::secret.ciphertext
+	// in that environment only.
+	EncryptSecrets(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		plaintexts [][]byte,
+	) ([]string, error)
 
 	// OpenYAMLEnvironment evaluates the given environment YAML within the context of org orgName and
 	// returns the ID of the opened environment. The opened environment will be available for the indicated
@@ -900,6 +968,124 @@ func (pc *client) SubmitChangeRequest(
 	return err
 }
 
+func (pc *client) ListChangeRequests(
+	ctx context.Context,
+	orgName string,
+	continuationToken string,
+) ([]ChangeRequest, string, error) {
+	queryObj := struct {
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{ContinuationToken: continuationToken}
+
+	var resp ListChangeRequestsResponse
+	path := fmt.Sprintf("/api/change-requests/%v", orgName)
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
+		return nil, "", err
+	}
+	return resp.ChangeRequests, resp.ContinuationToken, nil
+}
+
+func (pc *client) GetChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+) (*GetChangeRequestResponse, error) {
+	var resp GetChangeRequestResponse
+	path := fmt.Sprintf("/api/change-requests/%v/%v", orgName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (pc *client) ApproveChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	revisionNumber int,
+	comment string,
+) error {
+	req := ApproveChangeRequestRequest{RevisionNumber: revisionNumber, Comment: comment}
+	path := fmt.Sprintf("/api/change-requests/%v/%v/approve", orgName, changeRequestID)
+	return pc.restCall(ctx, http.MethodPost, path, nil, &req, nil)
+}
+
+func (pc *client) UnapproveChangeRequest(ctx context.Context, orgName, changeRequestID string) error {
+	path := fmt.Sprintf("/api/change-requests/%v/%v/approve", orgName, changeRequestID)
+	return pc.restCall(ctx, http.MethodDelete, path, nil, &ChangeRequestComment{}, nil)
+}
+
+func (pc *client) ApplyChangeRequest(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+) (*ChangeRequestApplyResult, error) {
+	var resp ChangeRequestApplyResult
+	path := fmt.Sprintf("/api/change-requests/%v/%v/apply", orgName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (pc *client) CloseChangeRequest(ctx context.Context, orgName, changeRequestID, comment string) error {
+	path := fmt.Sprintf("/api/change-requests/%v/%v/close", orgName, changeRequestID)
+	return pc.restCall(ctx, http.MethodPost, path, nil, &ChangeRequestComment{Comment: comment}, nil)
+}
+
+func (pc *client) AddChangeRequestComment(ctx context.Context, orgName, changeRequestID, comment string) error {
+	path := fmt.Sprintf("/api/change-requests/%v/%v/comments", orgName, changeRequestID)
+	return pc.restCall(ctx, http.MethodPost, path, nil, &ChangeRequestComment{Comment: comment}, nil)
+}
+
+func (pc *client) ListChangeRequestEvents(
+	ctx context.Context,
+	orgName string,
+	changeRequestID string,
+	continuationToken string,
+) ([]ChangeRequestEvent, string, error) {
+	queryObj := struct {
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{ContinuationToken: continuationToken}
+
+	var resp ListChangeRequestEventsResponse
+	path := fmt.Sprintf("/api/change-requests/%v/%v/events", orgName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
+		return nil, "", err
+	}
+	return resp.Events, resp.ContinuationToken, nil
+}
+
+func (pc *client) GetEnvironmentDraftStatus(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) (*EnvironmentDraftStatus, error) {
+	var resp EnvironmentDraftStatus
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/status", orgName, projectName, envName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+func (pc *client) RebaseEnvironmentDraft(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) (*EnvironmentDraftRebaseResponse, error) {
+	var resp EnvironmentDraftRebaseResponse
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/rebase", orgName, projectName, envName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
 func (pc *client) DeleteEnvironment(ctx context.Context, orgName, projectName, envName string) error {
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v", orgName, projectName, envName)
 	return pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil)
@@ -933,8 +1119,7 @@ func (pc *client) OpenEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok &&
-			diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -948,14 +1133,17 @@ func (pc *client) OpenEnvironmentDraft(
 	projectName string,
 	envName string,
 	changeRequestID string,
+	revision *int,
 	duration time.Duration,
 ) (string, []EnvironmentDiagnostic, error) {
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/open", orgName, projectName, envName, changeRequestID)
 
 	queryObj := struct {
 		Duration string `url:"duration"`
+		Revision *int   `url:"revision,omitempty"`
 	}{
 		Duration: duration.String(),
+		Revision: revision,
 	}
 
 	var resp struct {
@@ -966,8 +1154,7 @@ func (pc *client) OpenEnvironmentDraft(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok &&
-			diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -1003,6 +1190,37 @@ func (pc *client) RotateEnvironment(
 		return nil, nil, err
 	}
 	return &resp, nil, nil
+}
+
+func (pc *client) EncryptSecrets(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	plaintexts [][]byte,
+) ([]string, error) {
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/encrypt-secrets", orgName, projectName, envName)
+
+	reqObj := struct {
+		Plaintexts []string `json:"plaintexts"`
+	}{
+		Plaintexts: make([]string, len(plaintexts)),
+	}
+	for i, plaintext := range plaintexts {
+		reqObj.Plaintexts[i] = base64.StdEncoding.EncodeToString(plaintext)
+	}
+
+	var resp struct {
+		Ciphertexts []string `json:"ciphertexts"`
+	}
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, reqObj, &resp); err != nil {
+		return nil, err
+	}
+	if len(resp.Ciphertexts) != len(plaintexts) {
+		return nil, fmt.Errorf(
+			"encrypting secrets: expected %d ciphertexts, got %d", len(plaintexts), len(resp.Ciphertexts))
+	}
+	return resp.Ciphertexts, nil
 }
 
 func (pc *client) CheckYAMLEnvironment(
