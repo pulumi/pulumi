@@ -1,4 +1,4 @@
 component: pkg
 kind: feat
 body: 'Added Proper Error with next steps when a unknown/taken template name is given to pulumi new '
-time: 2026-10-18T19:00:14.751095057+05:30
+time: 2026-10-29T05:45:00.669668059+05:30

@@ -184,7 +184,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Ensure the project doesn't already exist.
 	if args.name != "" {
 		// There is no --org flag at the moment. The backend determines the orgName value if it is "".
-		if err := validateProjectName(ctx, b, "" /* orgName */, args.name, args.generateOnly, opts); err != nil {
+		if err := validateProjectName(ctx, b, "" /* orgName */, args.name, args.generateOnly, args.force, opts); err != nil {
 			return err
 		}
 	}
@@ -671,7 +671,7 @@ func NewNewCmd() *cobra.Command {
 }
 
 func validateProjectName(ctx context.Context, b backend.Backend,
-	orgName string, projectName string, generateOnly bool, opts display.Options,
+	orgName string, projectName string, generateOnly bool, force bool, opts display.Options,
 ) error {
 	handleExistingProjectName := func(projectName string) error {
 		prompt := "\b\n" + opts.Color.Colorize(colors.SpecPrompt+
@@ -689,9 +689,14 @@ func validateProjectName(ctx context.Context, b backend.Backend,
 	}
 	if !opts.IsInteractive {
 		handleExistingProjectName = func(projectName string) error {
-			return fmt.Errorf("a project with this name already exists: %s\n\n"+
-				"choose a different name with --name, or run 'pulumi stack init' inside the existing project to add a stack.\n"+
-				"The --force flag only overwrites existing files; it does not resolve project-name conflicts", projectName)
+			message := fmt.Sprintf("a project with this name already exists: %s\n\n"+
+				"choose a different name with --name, or "+
+				"run 'pulumi stack init' inside the existing project to add a stack.",
+				projectName)
+			if force {
+				message += "\nThe --force flag only overwrites existing files; it does not resolve project-name conflicts"
+			}
+			return errors.New(message)
 		}
 	}
 	return validateProjectNameInternal(
