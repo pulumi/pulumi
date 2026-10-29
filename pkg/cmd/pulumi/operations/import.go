@@ -679,21 +679,6 @@ func parseImportFile(
 	return imports, names, errs
 }
 
-func getCurrentDeploymentForStack(
-	ctx context.Context,
-	s backend.Stack,
-) (*deploy.Snapshot, error) {
-	deployment, err := backend.ExportStackDeployment(ctx, s)
-	if err != nil {
-		return nil, err
-	}
-	snap, err := resourcestack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
-	if err != nil {
-		return nil, resourcestack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
-	}
-	return snap, err
-}
-
 type programGeneratorFunc func(
 	p *pcl.Program,
 	loader schema.ReferenceLoader,
@@ -1215,7 +1200,7 @@ func NewImportCmd() *cobra.Command {
 				SkipPluginPreInstall: skipPluginPreInstall,
 			}
 
-			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
+			_, finalSnap, err := backend.ImportStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -1226,14 +1211,9 @@ func NewImportCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			}, imports)
 
-			if generateCode && proj.Runtime.Name() != "" {
-				deployment, err := getCurrentDeploymentForStack(ctx, s)
-				if err != nil {
-					return err
-				}
-
+			if generateCode && proj.Runtime.Name() != "" && finalSnap != nil {
 				validImports, err := generateImportedDefinitions(
-					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+					pCtx, output, s.Ref().Name(), proj.Name, finalSnap, programGenerator, nameTable, imports,
 					protectResources)
 				if err != nil {
 					if _, ok := err.(*importer.DiagnosticsError); ok {

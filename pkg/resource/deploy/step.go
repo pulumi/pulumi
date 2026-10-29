@@ -2311,10 +2311,14 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {
-		// Historically, we would never set ImportID for resources imported via `pulumi import`. This
-		// continues that behavior. When adding support for https://github.com/pulumi/pulumi/issues/8836,
-		// we'll likly need to make this toggleable.
-		s.new.ImportID = ""
+		// Historically, we would never set ImportID for resources imported via `pulumi import`. To support
+		// https://github.com/pulumi/pulumi/issues/8836 we toggle this on in preview. The only observable effect of this
+		// is that the ImportID will be present on the state returned from the preview and passed to codegen.
+		if s.deployment.opts.DryRun {
+			s.new.ImportID = s.old.ImportID
+		} else {
+			s.new.ImportID = ""
+		}
 
 		// Get the import object and see if it had properties set
 		var inputProperties []string

@@ -1,0 +1,4 @@
+component: cli
+kind: improvement
+body: Make `pulumi import --preview-only` emit the generated resource code
+time: 2026-10-29T00:00:00Z

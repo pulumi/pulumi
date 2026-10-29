@@ -1660,7 +1660,7 @@ func (b *cloudBackend) Explain(
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, error) {
+) (sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	op.Imports = imports
 
 	if op.Opts.PreviewOnly {
@@ -1671,12 +1671,12 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, snap, err := b.apply(
 			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
-		return changes, err
+		return changes, snap, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, b, nil)
+	return backend.PreviewThenPromptThenExecuteImport(ctx, stack, op, b.apply, b)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1690,7 +1690,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, _, err := b.apply(
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
@@ -1708,7 +1708,7 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, _, err := b.apply(
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
@@ -2009,13 +2009,13 @@ func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	resetKeepRunning := nosleep.KeepRunning()
 	defer resetKeepRunning()
 
 	err := backend.CurrentProjectContradictsWorkspace(b.currentProject, stack.Ref())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
@@ -2036,7 +2036,7 @@ func (b *cloudBackend) apply(
 	// Create an update object to persist results.
 	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	// BeginUpdate cached the pre-update deployment/tags for the engine's initial reads; it is
 	// stale once this update mutates state, so drop it when apply returns. Otherwise a later
@@ -2147,7 +2147,7 @@ func (b *cloudBackend) runEngineAction(
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
 	updateStartedEvent engine.Event,
 	callerEventsOpt chan<- engine.Event, dryRun bool, journalVersion int64,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
 
 	// Send synchronously before anything can fail, so the caller always gets it and the send
@@ -2158,7 +2158,7 @@ func (b *cloudBackend) runEngineAction(
 
 	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	var outputsRecorder *stackOutputsRecorder
@@ -2220,30 +2220,47 @@ func (b *cloudBackend) runEngineAction(
 			journalManager, err := engine.NewJournalSnapshotManagerWithVersion(
 				snapshotJournaler, u.Target.Snapshot, op.SecretsManager, journalVersion)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
+			// Attach a sidecar legacy SnapshotManager with a DiscardPersister so we can return the
+			// final in-memory snapshot to callers (e.g. `pulumi import` for codegen). All real
+			// persistence happens via the journaler; the sidecar only tracks state in memory.
+			snapshotManager = backend.NewSnapshotManager(
+				backend.DiscardPersister{}, op.SecretsManager, u.Target.Snapshot, nil)
 			combinedManager = &engine.CombinedManager{
-				Managers: []engine.SnapshotManager{journalManager},
+				Managers:          []engine.SnapshotManager{journalManager, snapshotManager},
+				CollectErrorsOnly: []bool{false, true},
 			}
 		} else {
 			persister := b.newSnapshotPersister(ctx, update, tokenSource)
 			snapshotJournaler, err = backend.NewSnapshotJournaler(
 				ctx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			// The shadow journal is local-only (it validates snapshots against the legacy snapshot manager),
 			// so it always supports the latest journal version.
 			journalManager, err := engine.NewJournalSnapshotManagerWithVersion(
 				snapshotJournaler, u.Target.Snapshot, op.SecretsManager, apitype.LatestJournalVersion)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot, engineEvents)
 			combinedManager = &engine.CombinedManager{
 				Managers:          []engine.SnapshotManager{snapshotManager, journalManager},
 				CollectErrorsOnly: []bool{false, true},
 			}
+		}
+	} else {
+		// For preview and dry-run (preview-only) operations we still want the engine to build an
+		// in-memory snapshot so callers (e.g. `pulumi import --preview-only`) can consume it. Wire
+		// up a plain SnapshotManager with a discarding persister: resources are mutated in memory
+		// as the engine executes steps, but nothing is persisted to the service or the shadow
+		// journal.
+		snapshotManager = backend.NewSnapshotManager(
+			backend.DiscardPersister{}, op.SecretsManager, u.Target.Snapshot, engineEvents)
+		combinedManager = &engine.CombinedManager{
+			Managers: []engine.SnapshotManager{snapshotManager},
 		}
 	}
 
@@ -2259,7 +2276,7 @@ func (b *cloudBackend) runEngineAction(
 			StateMigrations: cloudPersistenceSupportsStateMigrations(journalVersion, journalingDisabled),
 		},
 		FinalizeUpdateFunc: func() {
-			if snapshotManager == nil || journalPersister == nil {
+			if snapshotManager == nil || snapshotJournaler == nil {
 				return
 			}
 			err := errors.Join(validationErrs...)
@@ -2326,6 +2343,12 @@ func (b *cloudBackend) runEngineAction(
 	<-displayDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
+	// Capture the final in-memory snapshot before closing the manager; Snap() is safe to call now
+	// that the engine has returned.
+	var snap *deploy.Snapshot
+	if snapshotManager != nil {
+		snap = snapshotManager.Snap()
+	}
 	if combinedManager != nil && !snapshotManagerClosed {
 		err = combinedManager.Close()
 		// If the snapshot manager failed to close, we should return that error.
@@ -2335,7 +2358,7 @@ func (b *cloudBackend) runEngineAction(
 		// checks, or a failure to write that means the snapshot is incomplete).
 		// Reporting now should make debugging and reporting easier.
 		if err != nil {
-			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
+			return plan, changes, snap, fmt.Errorf("writing snapshot: %w", err)
 		}
 	}
 
@@ -2363,7 +2386,7 @@ func (b *cloudBackend) runEngineAction(
 		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
 	}
 
-	return plan, changes, updateErr
+	return plan, changes, snap, updateErr
 }
 
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {

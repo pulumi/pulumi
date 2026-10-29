@@ -497,6 +497,58 @@ func TestLanguageImportSmoke(t *testing.T) {
 	}
 }
 
+// Check that `pulumi import --preview-only` does not perform the import but still prints the
+// generated resource declaration code.
+func TestImportPreviewOnlyGeneratesCode(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// make sure we can download needed plugins
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	projectDir := filepath.Join(e.RootPath, "project")
+	err := os.Mkdir(projectDir, 0o700)
+	require.NoError(t, err)
+
+	e.CWD = projectDir
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", Languages["nodejs"], "--yes")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
+
+	stdout, _ := e.RunCommand("pulumi", "import", "--preview-only",
+		"random:index/randomId:RandomId", "identifier", "p-9hUg")
+
+	// Preview-only should still emit the generated code and the helper message.
+	assert.Contains(t, stdout, "Please copy the following code into your Pulumi application")
+	assert.Contains(t, stdout, `import * as random from "@pulumi/random";`)
+	// The generated declaration should bind the resource to the logical name we passed on the
+	// command line ("identifier") and use the RandomId constructor.
+	generatedRE := regexp.MustCompile(
+		`const\s+identifier\s*=\s*new\s+random\.RandomId\(\s*"identifier"`)
+	assert.Regexp(t, generatedRE, stdout,
+		"expected generated code to declare `const identifier = new random.RandomId(\"identifier\", ...)`")
+	// The import ID we passed on the command line must appear as an `import:` resource option in
+	// the generated code: in dry-run the engine preserves the resource's ImportID on the state
+	// so codegen can emit it.
+	assert.Regexp(t, regexp.MustCompile(`import:\s*"p-9hUg"`), stdout,
+		"expected generated code to include the import ID in resource options")
+
+	// Nothing should have been imported into the stack.
+	exportStdout, _ := e.RunCommand("pulumi", "stack", "export")
+	var deployment struct {
+		Deployment apitype.DeploymentV3 `json:"deployment"`
+	}
+	err = json.Unmarshal([]byte(exportStdout), &deployment)
+	require.NoError(t, err)
+	for _, r := range deployment.Deployment.Resources {
+		assert.NotEqual(t, "random:index/randomId:RandomId", string(r.Type),
+			"preview-only must not create resources in the stack")
+	}
+}
+
 // Test that PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION disables plugin acquisition in convert.
 func TestConvertDisableAutomaticPluginAcquisition(t *testing.T) {
 	t.Parallel()

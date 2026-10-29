@@ -1626,6 +1626,13 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (any, error) {
 		acts.Opts.ShowSecrets,
 	)
 
+	// If a SnapshotManager is wired up (e.g. by the backend for preview/dry-run), mutate it so
+	// the in-memory snapshot reflects what would have happened. Nothing is persisted — the
+	// backend installs a discarding persister for dry-run — but callers like `pulumi import
+	// --preview-only` need the resulting snapshot to drive codegen.
+	if acts.Context.SnapshotManager != nil {
+		return acts.Context.SnapshotManager.BeginMutation(step)
+	}
 	return nil, nil
 }
 
@@ -1682,6 +1689,11 @@ func (acts *previewActions) OnResourceStepPost(ctx any,
 		)
 	}
 
+	// Commit the step to the in-memory snapshot if a SnapshotManager is wired up. See
+	// OnResourceStepPre for the rationale.
+	if mutation, ok := ctx.(SnapshotMutation); ok && mutation != nil {
+		return mutation.End(step, err == nil)
+	}
 	return nil
 }
 
