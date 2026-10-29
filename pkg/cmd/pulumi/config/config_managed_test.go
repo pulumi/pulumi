@@ -411,6 +411,24 @@ func TestManagedConfigEnvCommands(t *testing.T) {
 		require.Empty(t, saved)
 	})
 
+	t.Run("ls lists only imports", func(t *testing.T) {
+		t.Parallel()
+		for stackYAML, expected := range map[string][]string{
+			"environment:\n  values:\n    pulumiConfig: {}\n":                                               {},
+			"environment:\n  imports:\n    - proj/base\n  values:\n    pulumiConfig:\n      app:foo: bar\n": {"proj/base"},
+		} {
+			var saved string
+			var listed []string
+			err := managedConfigEnvCmd(t, stackYAML, &saved).listStackEnvironments(t.Context(),
+				func(_ io.Writer, imports []string) error {
+					listed = imports
+					return nil
+				})
+			require.NoError(t, err)
+			require.ElementsMatch(t, expected, listed)
+		}
+	})
+
 	t.Run("add to the stack init placeholder", func(t *testing.T) {
 		t.Parallel()
 		var saved string
