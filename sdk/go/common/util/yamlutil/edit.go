@@ -97,10 +97,11 @@ func editNodes(original, newNode *yaml.Node) (yaml.Node, error) {
 	return yaml.Node{}, errors.New("unknown node type")
 }
 
-// yaml.v3 writes every empty collection as {} or [], so that flow style is not a choice worth keeping.
+// yaml.v3 writes every empty mapping as {}, so that flow style is not a choice worth keeping. This matches the rule in
+// esc/syntax/encoding.YAMLSyntax.Set, which `pulumi env set` uses.
 func restyled(original *yaml.Node, newNode *yaml.Node) bool {
-	return original.Style&yaml.FlowStyle != 0 && newNode.Style&yaml.FlowStyle == 0 &&
-		len(original.Content) == 0 && len(newNode.Content) != 0
+	return original.Kind == yaml.MappingNode && original.Style == yaml.FlowStyle &&
+		newNode.Style&yaml.FlowStyle == 0 && len(original.Content) == 0 && len(newNode.Content) != 0
 }
 
 func handleMappingNode(original, newNode *yaml.Node) ([]*yaml.Node, error) {
@@ -146,12 +147,6 @@ func handleMappingNode(original, newNode *yaml.Node) ([]*yaml.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		// yaml.v3 drops the line comment of a block collection, but writes one on its key.
-		if restyled(original.Content[origIdx+1], &value) && key.LineComment == "" {
-			key.LineComment = value.LineComment
-			value.LineComment = ""
-		}
-
 		content = append(content, &key)
 		content = append(content, &value)
 	}

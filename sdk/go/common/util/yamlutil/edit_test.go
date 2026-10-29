@@ -121,7 +121,15 @@ func TestEditEmptyFlowCollectionGainsContent(t *testing.T) {
 	assertYamlEdit(t, "list: [] # c\nlistFoo: [{bar: x}]\n", Foo{
 		List:    []string{"a"},
 		ListFoo: []*Foo{{Bar: "x"}, {Bar: "z"}},
-	}, "list: # c\n  - a\nlistFoo: [{bar: x}, {bar: z}]\n")
+	}, "list: [a] # c\nlistFoo: [{bar: x}, {bar: z}]\n")
+
+	assertYamlEdit(t, "- [] # c\n- x\n", []any{[]any{"a"}, "x"}, "- [a] # c\n- x\n")
+
+	assertYamlEdit(t, "values: {config: {} # c\n}\n", map[string]any{
+		"values": map[string]any{"config": map[string]any{"a": "b"}},
+	}, "values: {config: {a: b} # c\n}\n")
+
+	assertYamlEdit(t, "x: !!map {}\n", map[string]any{"x": map[string]any{"a": "b"}}, "x: !!map {a: b}\n")
 
 	assertYamlEdit(t, "values: {pulumiConfig: {}}\n", map[string]any{
 		"values": map[string]any{"pulumiConfig": map[string]any{"foo": "bar"}},
