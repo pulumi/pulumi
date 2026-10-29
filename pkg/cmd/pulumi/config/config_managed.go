@@ -203,8 +203,8 @@ func (m *managedStore) checkImported(
 			continue
 		}
 		if isLocal {
-			return nil, fmt.Errorf("pulumiConfig sets %s locally and imported environment %s sets %s; these are the "+
-				"same key and the winner is undefined; use one spelling", local, env, name)
+			return nil, fmt.Errorf("pulumiConfig sets %s locally and imported environment %s sets %s; use one spelling",
+				local, env, name)
 		}
 		if removing {
 			return nil, fmt.Errorf("config key %s is defined by imported environment %s; the CLI does not edit "+

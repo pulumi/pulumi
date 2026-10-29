@@ -387,8 +387,7 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 		{
 			name: "other spelling in an import fails set",
 			set:  []string{"app:foo", "long"},
-			err: "pulumiConfig sets foo locally and imported environment proj/base sets app:foo; these are the same " +
-				"key and the winner is undefined; use one spelling",
+			err:  "pulumiConfig sets foo locally and imported environment proj/base sets app:foo; use one spelling",
 		},
 		{
 			name:     "removing a local override and the other spelling checks once",
