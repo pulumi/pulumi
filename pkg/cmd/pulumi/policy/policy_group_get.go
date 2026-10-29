@@ -15,6 +15,7 @@
 package policy
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -67,6 +68,7 @@ type policyGroupGetArgs struct {
 	org          string
 	stacks       bool
 	accounts     bool
+	showConfig   bool
 	source       string
 	count        int
 	all          bool
@@ -85,22 +87,25 @@ func defaultPolicyGroupGetOutputFormat() outputflag.OutputFlag[policyGroupGetRen
 // policyGroupGetRender holds one renderer per thing `policy group get` can
 // print, so a single --output flag selects the format for all of them.
 type policyGroupGetRender struct {
-	group    policyGroupGetRenderFunc
-	stacks   func(w io.Writer, resp cloudapitype.ListPolicyGroupStacksResponse) error
-	accounts func(w io.Writer, resp cloudapitype.ListPolicyGroupAccountsResponse) error
+	group           policyGroupGetRenderFunc
+	groupWithConfig policyGroupGetRenderFunc
+	stacks          func(w io.Writer, resp cloudapitype.ListPolicyGroupStacksResponse) error
+	accounts        func(w io.Writer, resp cloudapitype.ListPolicyGroupAccountsResponse) error
 }
 
 func defaultPolicyGroupGetRenderers() outputflag.OutputFlag[policyGroupGetRender] {
 	return outputflag.OutputFlag[policyGroupGetRender]{
 		RenderForTerminal: policyGroupGetRender{
-			group:    renderPolicyGroupGetText,
-			stacks:   renderPolicyGroupStacksTable,
-			accounts: renderPolicyGroupAccountsTable,
+			group:           renderPolicyGroupGetText,
+			groupWithConfig: renderPolicyGroupGetTextWithConfig,
+			stacks:          renderPolicyGroupStacksTable,
+			accounts:        renderPolicyGroupAccountsTable,
 		},
 		RenderJSON: policyGroupGetRender{
-			group:    renderPolicyGroupGetJSON,
-			stacks:   renderPolicyGroupStacksJSON,
-			accounts: renderPolicyGroupAccountsJSON,
+			group:           renderPolicyGroupGetJSON,
+			groupWithConfig: renderPolicyGroupGetJSON,
+			stacks:          renderPolicyGroupStacksJSON,
+			accounts:        renderPolicyGroupAccountsJSON,
 		},
 	}
 }
@@ -140,10 +145,15 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 			"to one of the two. The first 100 members are shown by default; use\n" +
 			"--count or --all to fetch more.\n" +
 			"\n" +
+			"Each applied Policy Pack shows how many of its policies the group configures;\n" +
+			"pass --show-config to list them.\n" +
+			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"full response as JSON.",
 		Example: "  # Show a Policy Group\n" +
 			"  pulumi policy group get prod-policies\n\n" +
+			"  # Show a Policy Group with each pack's policy configuration\n" +
+			"  pulumi policy group get prod-policies --show-config\n\n" +
 			"  # Show a Policy Group in another organization as JSON\n" +
 			"  pulumi policy group get prod-policies --org acme --output json\n\n" +
 			"  # List every stack in a Policy Group, including those matched by its match rule\n" +
@@ -167,6 +177,8 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 		"List every stack in the group, added individually or matched by its match rule")
 	cmd.Flags().BoolVar(&args.accounts, "accounts", false,
 		"List every Insights account in the group, added individually or matched by its match rule")
+	cmd.Flags().BoolVar(&args.showConfig, "show-config", false,
+		"List each policy pack's configured policies under the pack")
 	cmd.Flags().StringVar(&args.source, "source", "",
 		"With --stacks or --accounts, list only members that were added individually (explicit) "+
 			"or matched by the match rule (rule)")
@@ -176,6 +188,8 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 		"With --stacks or --accounts, return every member; mutually exclusive with --count")
 	cmd.MarkFlagsMutuallyExclusive("stacks", "accounts")
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
+	cmd.MarkFlagsMutuallyExclusive("show-config", "stacks")
+	cmd.MarkFlagsMutuallyExclusive("show-config", "accounts")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
@@ -288,6 +302,9 @@ func runPolicyGroupGet(
 		return fmt.Errorf("getting policy group: %w", err)
 	}
 
+	if args.showConfig {
+		return render.groupWithConfig(w, resp)
+	}
 	return render.group(w, resp)
 }
 
@@ -430,6 +447,14 @@ func encodePolicyGroupGetJSON(w io.Writer, v any) error {
 type policyGroupGetRenderFunc func(w io.Writer, resp apitype.GetPolicyGroupResponse) error
 
 func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) error {
+	return writePolicyGroupText(w, resp, false)
+}
+
+func renderPolicyGroupGetTextWithConfig(w io.Writer, resp apitype.GetPolicyGroupResponse) error {
+	return writePolicyGroupText(w, resp, true)
+}
+
+func writePolicyGroupText(w io.Writer, resp apitype.GetPolicyGroupResponse, showConfig bool) error {
 	isDefault := "no"
 	if resp.IsOrgDefault {
 		isDefault = "yes"
@@ -448,7 +473,12 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 		if version == "" {
 			version = fmt.Sprintf("v%d", pack.Version)
 		}
-		fmt.Fprintf(w, "  - %s (%s)\n", pack.Name, version)
+		fmt.Fprintf(w, "  - %s (%s)%s\n", pack.Name, version, formatPackConfigSummary(pack.Config))
+		if showConfig {
+			for _, name := range packConfigNames(pack.Config) {
+				fmt.Fprintf(w, "      %s: %s\n", name, formatPackConfigValue(pack.Config[name]))
+			}
+		}
 	}
 
 	if resp.StackMatchRule != nil {
@@ -471,6 +501,86 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 		fmt.Fprintf(w, "  - %s\n", a)
 	}
 	return nil
+}
+
+const packConfigAllKey = "all"
+
+func formatPackConfigSummary(config map[string]*json.RawMessage) string {
+	policies := 0
+	for name := range config {
+		if name != packConfigAllKey {
+			policies++
+		}
+	}
+	var summary string
+	switch policies {
+	case 0:
+	case 1:
+		summary = ", 1 configured policy"
+	default:
+		summary = fmt.Sprintf(", %d configured policies", policies)
+	}
+	if _, ok := config[packConfigAllKey]; ok {
+		summary += ", settings for all policies"
+	}
+	return summary
+}
+
+// packConfigNames returns the config keys with "all" first and the rest sorted.
+func packConfigNames(config map[string]*json.RawMessage) []string {
+	names := make([]string, 0, len(config))
+	for name := range config {
+		if name != packConfigAllKey {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	if _, ok := config[packConfigAllKey]; ok {
+		names = append([]string{packConfigAllKey}, names...)
+	}
+	return names
+}
+
+func formatPackConfigValue(value *json.RawMessage) string {
+	if value == nil {
+		return "null"
+	}
+	var s string
+	if err := json.Unmarshal(*value, &s); err == nil {
+		return s
+	}
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(*value, &obj); err != nil || len(obj) == 0 {
+		return compactJSON(*value)
+	}
+	var parts []string
+	if level, ok := obj["enforcementLevel"]; ok {
+		var levelStr string
+		if err := json.Unmarshal(level, &levelStr); err == nil {
+			parts = append(parts, levelStr)
+		} else {
+			parts = append(parts, "enforcementLevel="+compactJSON(level))
+		}
+	}
+	keys := make([]string, 0, len(obj))
+	for k := range obj {
+		if k != "enforcementLevel" {
+			keys = append(keys, k)
+		}
+	}
+	slices.Sort(keys)
+	for _, k := range keys {
+		parts = append(parts, k+"="+compactJSON(obj[k]))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func compactJSON(raw json.RawMessage) string {
+	var buf bytes.Buffer
+	if err := json.Compact(&buf, raw); err != nil {
+		return string(raw)
+	}
+	return buf.String()
 }
 
 // renderPolicyGroupGetJSON normalizes nil slices to empty arrays so scripts can
