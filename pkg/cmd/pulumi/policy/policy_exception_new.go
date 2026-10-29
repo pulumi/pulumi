@@ -633,28 +633,14 @@ func policyExceptionViolationTags(v policyExceptionViolation, color colors.Color
 func pickPolicyExceptionViolations(
 	violations []policyExceptionViolation, withStack bool, width int, opts display.Options,
 ) ([]policyExceptionViolation, error) {
-	var labels, preselected []string
-	// Identical labels are the same policy and resource, so picking one picks them all.
-	byLabel := map[string][]policyExceptionViolation{}
-	for _, v := range violations {
-		urn := resource.URN(v.URN)
-		label := fmt.Sprintf("%s  (%s: %s)", v.Policy, urn.Type().DisplayName(), urn.Name())
-		if withStack {
-			label = v.Stack + ": " + label
+	labels := policyExceptionPickerLabels(violations, withStack, width, opts.Color)
+	var preselected []string
+	byLabel := map[string]policyExceptionViolation{}
+	for i, v := range violations {
+		byLabel[labels[i]] = v
+		if v.Level == string(apitype.Mandatory) && len(v.Exceptions) == 0 {
+			preselected = append(preselected, labels[i])
 		}
-		// Rows that wrap break survey's redraw. Leave room for the tags, survey's "> [x]  " and a gap.
-		room := width - cmdutil.MeasureText(policyExceptionViolationTags(v, colors.Never)) - 10
-		if r := []rune(label); room > 0 && len(r) > room {
-			label = string(r[:room-1]) + "…"
-		}
-		label = policyExceptionViolationTags(v, opts.Color) + "  " + label
-		if _, ok := byLabel[label]; !ok {
-			labels = append(labels, label)
-			if v.Level == string(apitype.Mandatory) && len(v.Exceptions) == 0 {
-				preselected = append(preselected, label)
-			}
-		}
-		byLabel[label] = append(byLabel[label], v)
 	}
 	picked := ui.PromptUserMulti("Violations to exempt", labels, preselected, opts.Color)
 	if len(picked) == 0 {
@@ -662,9 +648,43 @@ func pickPolicyExceptionViolations(
 	}
 	var selected []policyExceptionViolation
 	for _, l := range picked {
-		selected = append(selected, byLabel[l]...)
+		selected = append(selected, byLabel[l])
 	}
 	return selected, nil
+}
+
+// policyExceptionPickerLabels makes a picker row for each violation: its tags, policy and resource, cut to the
+// terminal's width. Rows that would be the same are numbered, since the picker tells them apart by their text.
+func policyExceptionPickerLabels(
+	violations []policyExceptionViolation, withStack bool, width int, color colors.Colorization,
+) []string {
+	labels := make([]string, len(violations))
+	seen := map[string]bool{}
+	for i, v := range violations {
+		urn := resource.URN(v.URN)
+		text := fmt.Sprintf("%s  (%s: %s)", v.Policy, urn.Type().DisplayName(), urn.Name())
+		if withStack {
+			text = v.Stack + ": " + text
+		}
+		// Rows that wrap break survey's redraw. Leave room for the tags, survey's "> [x]  " and a gap.
+		room := width - cmdutil.MeasureText(policyExceptionViolationTags(v, colors.Never)) - 10
+		for n := 1; ; n++ {
+			suffix := ""
+			if n > 1 {
+				suffix = fmt.Sprintf(" (%d)", n)
+			}
+			label := text
+			if r, fit := []rune(text), room-len(suffix); room > 0 && len(r) > fit {
+				label = string(r[:max(fit-1, 0)]) + "…"
+			}
+			label = policyExceptionViolationTags(v, color) + "  " + label + suffix
+			if !seen[label] {
+				seen[label], labels[i] = true, label
+				break
+			}
+		}
+	}
+	return labels
 }
 
 // choosePolicyExceptionPack returns the named Policy Pack, the violations' only one, or one the user picks.
