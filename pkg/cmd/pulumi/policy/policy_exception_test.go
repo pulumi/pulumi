@@ -55,6 +55,7 @@ type mockPolicyExceptionClient struct {
 	crOpen   string
 
 	gotListOpts  []client.ListPolicyExceptionsOptions
+	gotOrgFlag   string
 	gotOrg       string
 	gotRemoved   []string
 	gotCreated   []apitype.CreatePolicyExceptionRequest
@@ -152,7 +153,8 @@ func (m *mockPolicyExceptionClient) RemovePolicyException(_ context.Context, org
 }
 
 func stubPolicyExceptionFactory(c *mockPolicyExceptionClient, org string) policyExceptionClientFactory {
-	return func(context.Context, string) (policyExceptionClients, string, error) {
+	return func(_ context.Context, orgFlag string) (policyExceptionClients, string, error) {
+		c.gotOrgFlag = orgFlag
 		return policyExceptionClients{c, c}, org, nil
 	}
 }
@@ -197,6 +199,7 @@ func TestPolicyExceptionList(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "acme", c.gotOrg)
+	assert.Empty(t, c.gotOrgFlag, "the organization defaults to the backend's")
 	query := client.ListPolicyExceptionsOptions{
 		PolicyPack: "aws-security",
 		Policy:     "required-tags",
@@ -291,8 +294,9 @@ func TestPolicyExceptionGet(t *testing.T) {
 	c := &mockPolicyExceptionClient{exception: removed}
 	var buf bytes.Buffer
 	err := runPolicyExceptionGet(t.Context(), &buf, stubPolicyExceptionFactory(c, "acme"), "EXC-3",
-		policyExceptionGetArgs{outputFormat: defaultPolicyExceptionGetOutputFormat()})
+		policyExceptionGetArgs{org: "other-org", outputFormat: defaultPolicyExceptionGetOutputFormat()})
 	require.NoError(t, err)
+	assert.Equal(t, "other-org", c.gotOrgFlag)
 	assert.Equal(t, `ID:            EXC-3
 Policy pack:   aws-security
 Status:        removed
@@ -426,7 +430,9 @@ func TestPolicyExceptionRemove(t *testing.T) {
 	assert.Equal(t, "Removed policy exception EXC-3 from organization acme.\n", stderr.String())
 	assert.Equal(t, []string{"EXC-3"}, c.gotRemoved)
 
-	jsonArgs := policyExceptionRemoveArgs{yes: true, outputFormat: defaultPolicyExceptionRemoveOutputFormat()}
+	jsonArgs := policyExceptionRemoveArgs{
+		org: "other-org", yes: true, outputFormat: defaultPolicyExceptionRemoveOutputFormat(),
+	}
 	require.NoError(t, jsonArgs.outputFormat.Set("json"))
 	stderr.Reset()
 	err = runPolicyExceptionRemove(t.Context(), &stdout, &stderr, stubPolicyExceptionFactory(c, "acme"), "EXC-4",
@@ -435,6 +441,7 @@ func TestPolicyExceptionRemove(t *testing.T) {
 	assert.JSONEq(t, `{"organizationName": "acme", "id": "EXC-4"}`, stdout.String())
 	assert.Empty(t, stderr.String())
 	assert.Equal(t, []string{"EXC-3", "EXC-4"}, c.gotRemoved)
+	assert.Equal(t, "other-org", c.gotOrgFlag)
 
 	c = &mockPolicyExceptionClient{err: &apitype.ErrorResponse{Code: http.StatusNotFound}}
 	err = runPolicyExceptionRemove(t.Context(), &stdout, &stderr, stubPolicyExceptionFactory(c, "acme"), "EXC-9", args)
