@@ -2023,9 +2023,8 @@ func (pc *Client) ListPolicyExceptions(
 	return resp, nil
 }
 
-// CreatePolicyException creates an active policy exception, wrapping the `CreatePolicyException` Pulumi Cloud REST
-// endpoint (POST /api/orgs/{orgName}/policy/exceptions). It also returns whether the exception already existed: a
-// repeated request returns the existing exception with 200 OK instead of creating one, which returns 201 Created.
+// CreatePolicyException creates a policy exception (POST /api/orgs/{orgName}/policy/exceptions), and returns whether
+// it already existed.
 func (pc *Client) CreatePolicyException(
 	ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
 ) (apitype.PolicyExceptionInfo, bool, error) {
@@ -2046,9 +2045,8 @@ func (pc *Client) CreatePolicyException(
 	return resp, httpResp.StatusCode == http.StatusOK, nil
 }
 
-// CreatePolicyExceptionDraft requests a policy exception in a new draft change request, for organizations that require
-// approval to create exceptions, wrapping the `CreatePolicyExceptionDraft` Pulumi Cloud REST endpoint
-// (POST /api/orgs/{orgName}/policy/exceptions/drafts). The change request still has to be submitted.
+// CreatePolicyExceptionDraft requests a policy exception in a draft change request
+// (POST /api/orgs/{orgName}/policy/exceptions/drafts).
 func (pc *Client) CreatePolicyExceptionDraft(
 	ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
 ) (apitype.PolicyExceptionDraft, error) {
@@ -2075,9 +2073,8 @@ func (pc *Client) GetPolicyException(
 	return resp, nil
 }
 
-// RemovePolicyException removes an active policy exception, wrapping the `RemovePolicyException` Pulumi Cloud REST
-// endpoint (DELETE /api/orgs/{orgName}/policy/exceptions/{exceptionId}). Pulumi Cloud keeps the removed exception, and
-// returns a 409 when it was already removed.
+// RemovePolicyException removes an active policy exception
+// (DELETE /api/orgs/{orgName}/policy/exceptions/{exceptionId}).
 func (pc *Client) RemovePolicyException(ctx context.Context, orgName, exceptionID string) error {
 	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions/%s", url.PathEscape(orgName), url.PathEscape(exceptionID))
 	if err := pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil); err != nil {

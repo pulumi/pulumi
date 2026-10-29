@@ -122,6 +122,9 @@ type policyExceptionNewResult struct {
 	// URL is the console page of the exception, or of the change request that requested it.
 	URL    string `json:"url,omitempty"`
 	DryRun bool   `json:"dryRun,omitempty"`
+
+	// pack is the Policy Pack that was asked for, to say so when it had no violations.
+	pack string
 }
 
 // policyExceptionNewRenderFunc writes the result to stdout, and status messages to stderr.
@@ -148,7 +151,7 @@ func newPolicyExceptionNewCmd() *cobra.Command {
 			"\n" +
 			"Reads the policy violations of the stack's latest run, update or preview, so you don't have to\n" +
 			"re-run it or copy URNs. In a terminal, you pick the violations to exempt and enter a reason.\n" +
-			"--policy, --target and --level select violations without prompting, and --file reads a whole\n" +
+			"--policy, --target and --level narrow the violations to pick from, and --file reads a whole\n" +
 			"exception instead. Only mandatory violations are read unless --level says otherwise.\n" +
 			"\n" +
 			"The exception belongs to the Policy Pack named as <policy-pack> or <org>/<policy-pack>; the\n" +
@@ -168,8 +171,8 @@ func newPolicyExceptionNewCmd() *cobra.Command {
 			"several.",
 		Example: "  # Pick from the violations of the current stack's latest run\n" +
 			"  pulumi policy exception new aws-security\n\n" +
-			"  # Exempt one policy on every resource that violated it\n" +
-			"  pulumi policy exception new aws-security --policy required-tags --reason \"Shared buckets (LOG-31)\"\n\n" +
+			"  # Exempt one policy on every resource that violated it, without prompting\n" +
+			"  pulumi policy exception new aws-security --policy required-tags --reason \"Shared buckets (LOG-31)\" --yes\n\n" +
 			"  # Include advisory violations, from update 12 instead of the latest run\n" +
 			"  pulumi policy exception new aws-security --update=12 --level mandatory --level advisory --dry-run\n\n" +
 			"  # Show the violations and the exception, without creating it\n" +
@@ -294,7 +297,7 @@ func runPolicyExceptionNew(
 			return err
 		}
 		if len(result.Violations) == 0 {
-			result.OrganizationName = org
+			result.OrganizationName, result.pack = org, pack
 			return render(result)
 		}
 		if interactive {
@@ -356,10 +359,8 @@ func runPolicyExceptionNew(
 	return render(result)
 }
 
-// createPolicyException creates the result's exception. With --draft, or when the organization requires approval
-// (the create returns a 409 saying so), the exception is requested in a change request instead, which is submitted
-// with the reason as its description. One whose approvals are met on submission is applied then, creating the
-// exception.
+// createPolicyException creates the result's exception, or requests it in a change request with --draft or when the
+// organization requires approval.
 func createPolicyException(
 	ctx context.Context, c policyExceptionClients, org string, draft bool, result *policyExceptionNewResult,
 ) error {
@@ -450,6 +451,10 @@ func readPolicyExceptionFile(stdin io.Reader, file string) (apitype.PolicyExcept
 	var doc struct {
 		apitype.PolicyException `yaml:",inline"`
 		Exceptions              map[string]apitype.PolicyException `yaml:"exceptions"`
+		// Exception is where `--dry-run --output json` puts it.
+		Exception struct {
+			apitype.PolicyException `yaml:",inline"`
+		} `yaml:"exception"`
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
 		return apitype.PolicyException{}, cmdCmd.ConfigurationError{Message: fmt.Sprintf("invalid exception: %v", err)}
@@ -458,6 +463,9 @@ func readPolicyExceptionFile(stdin io.Reader, file string) (apitype.PolicyExcept
 		return apitype.PolicyException{}, cmdCmd.ConfigurationError{Message: "the file has more than one exception"}
 	}
 	e := doc.PolicyException
+	if len(doc.Exception.Match) > 0 {
+		e = doc.Exception.PolicyException
+	}
 	for _, v := range doc.Exceptions {
 		e = v
 	}
@@ -620,9 +628,8 @@ func policyExceptionViolationTags(v policyExceptionViolation, color colors.Color
 	return color.Colorize(c + tag + colors.Reset)
 }
 
-// pickPolicyExceptionViolations lets the user select the violations to exempt. Mandatory violations that weren't
-// exempted in the run start selected. Each row is cut to the terminal's width, so it doesn't wrap: survey can't
-// redraw a list that's taller than the terminal.
+// pickPolicyExceptionViolations lets the user select the violations to exempt, with the unexempted mandatory ones
+// selected.
 func pickPolicyExceptionViolations(
 	violations []policyExceptionViolation, withStack bool, width int, opts display.Options,
 ) ([]policyExceptionViolation, error) {
@@ -635,7 +642,7 @@ func pickPolicyExceptionViolations(
 		if withStack {
 			label = v.Stack + ": " + label
 		}
-		// Room for the tags, survey's "> [x]  " and a gap.
+		// Rows that wrap break survey's redraw. Leave room for the tags, survey's "> [x]  " and a gap.
 		room := width - cmdutil.MeasureText(policyExceptionViolationTags(v, colors.Never)) - 10
 		if r := []rune(label); room > 0 && len(r) > room {
 			label = string(r[:room-1]) + "…"
@@ -660,8 +667,7 @@ func pickPolicyExceptionViolations(
 	return selected, nil
 }
 
-// choosePolicyExceptionPack returns the exception's Policy Pack: the named one, the violations' only one, or one the
-// user picks. When the violations are from several and it can't prompt, a dry run gets "" and anything else fails.
+// choosePolicyExceptionPack returns the named Policy Pack, the violations' only one, or one the user picks.
 func choosePolicyExceptionPack(
 	pack string, violations []policyExceptionViolation, interactive, dryRun bool, opts display.Options,
 ) (string, error) {
@@ -693,7 +699,11 @@ func choosePolicyExceptionPack(
 
 func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNewResult) error {
 	if len(r.Violations) == 0 && len(r.Exception.Match) == 0 {
-		fmt.Fprintln(stderr, "No violations to exempt.")
+		if r.pack != "" {
+			fmt.Fprintf(stderr, "No violations of Policy Pack %q to exempt.\n", r.pack)
+		} else {
+			fmt.Fprintln(stderr, "No violations to exempt.")
+		}
 		return nil
 	}
 	if !r.DryRun {

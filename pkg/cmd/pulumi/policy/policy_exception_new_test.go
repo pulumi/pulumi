@@ -273,6 +273,11 @@ func TestPolicyExceptionNew_NoViolations(t *testing.T) {
 	stdout, stderr, err := runNew(t, twoBuckets(), "", policyExceptionNewArgs{policyPack: "gcp", reason: "x"})
 	require.NoError(t, err)
 	assert.Empty(t, stdout)
+	assert.Equal(t, "No violations of Policy Pack \"gcp\" to exempt.\n", stderr)
+
+	_, stderr, err = runNew(t, &mockPolicyExceptionClient{updates: []apitype.UpdateInfo{{Version: 1}}}, "",
+		policyExceptionNewArgs{reason: "x"})
+	require.NoError(t, err)
 	assert.Equal(t, "No violations to exempt.\n", stderr)
 }
 
@@ -324,9 +329,12 @@ func TestPolicyExceptionNew_SeveralPacks(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "gcp", c.gotCreated[0].PolicyPack, "the only Policy Pack is inferred")
 
+	assert.Equal(t, "acme", c.gotOrgFlag, "the organization defaults to the stack's")
+
 	_, _, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "other-org/aws", reason: "x"})
 	require.NoError(t, err)
 	assert.Equal(t, "aws", c.gotCreated[1].PolicyPack)
+	assert.Equal(t, "other-org", c.gotOrgFlag)
 }
 
 func TestPolicyExceptionNew_File(t *testing.T) {
@@ -337,6 +345,8 @@ func TestPolicyExceptionNew_File(t *testing.T) {
 		"yaml": "reason: LOG-31\nmatch:\n  - policies: [required-tags]\n    targets: [" + logsURN + "]\n",
 		"v2 config": "version: 2\nexceptions:\n  EXC-?:\n    reason: LOG-31\n    match:\n" +
 			"      - policies: [required-tags]\n        targets: [" + logsURN + "]\n",
+		"dry run output": `{"runs": [], "exception": {"policyPack": "aws", "reason": "LOG-31", ` +
+			`"match": [{"policies": ["required-tags"], "targets": ["` + logsURN + `"]}]}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
