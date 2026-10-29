@@ -480,9 +480,8 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 
 			ps, err := cmdStack.LoadProjectStack(t.Context(), cmdutil.Diag(), &workspace.Project{Name: "app"}, s, configFile)
 			require.NoError(t, err)
-			store, err := managedEnvForWrite(s, "app", ps, configFile)
+			store, err := newManagedStore(s, "app", ps, configFile, c.override)
 			require.NoError(t, err)
-			store.overrideImport = c.override
 			var infos, warnings bytes.Buffer
 			store.sink = diag.DefaultSink(&infos, &warnings, diag.FormatOptions{Color: colors.Never})
 

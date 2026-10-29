@@ -54,16 +54,14 @@ type importCheck struct {
 	checkWarning error
 }
 
-func managedEnvForWrite(
+func newManagedStore(
 	s backend.Stack,
 	projectName tokens.PackageName,
 	ps *workspace.ProjectStack,
 	configFile string,
+	overrideImport bool,
 ) (*managedStore, error) {
 	loc := s.ConfigLocation()
-	if loc.ManagedEnvironment == "" {
-		return nil, nil
-	}
 	orgNamer, ok := s.(interface{ OrgName() string })
 	if !ok {
 		return nil, fmt.Errorf("cannot determine organization for stack %v", s.Ref())
@@ -74,13 +72,14 @@ func managedEnvForWrite(
 		return nil, err
 	}
 	return &managedStore{
-		stack:       s,
-		ps:          ps,
-		definition:  definition,
-		projectName: projectName,
-		configFile:  configFile,
-		org:         org,
-		sink:        cmdutil.Diag(),
+		stack:          s,
+		ps:             ps,
+		definition:     definition,
+		projectName:    projectName,
+		configFile:     configFile,
+		org:            org,
+		sink:           cmdutil.Diag(),
+		overrideImport: overrideImport,
 	}, nil
 }
 
@@ -93,24 +92,17 @@ func removeConfigKeys(
 	keys []config.Key,
 	path bool,
 ) error {
-	managed, err := managedEnvForWrite(s, project.Name, ps, configFile)
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+	w, err := newConfigWriter(s, project.Name, ps, configFile, &ssml, false /*overrideImport*/)
 	if err != nil {
 		return err
 	}
 	for _, key := range keys {
-		if managed != nil {
-			err = managed.Remove(ctx, key, path)
-		} else {
-			err = ps.Config.Remove(key, path)
-		}
-		if err != nil {
+		if err := w.Remove(ctx, key, path); err != nil {
 			return err
 		}
 	}
-	if managed != nil {
-		return managed.Save(ctx)
-	}
-	return cmdStack.SaveProjectStack(ctx, s, ps, configFile)
+	return w.Save(ctx)
 }
 
 func (m *managedStore) Set(ctx context.Context, key config.Key, v config.Value, path bool) error {
@@ -142,6 +134,10 @@ func (m *managedStore) Remove(ctx context.Context, key config.Key, path bool) er
 
 func (m *managedStore) Save(ctx context.Context) error {
 	return cmdStack.SaveProjectStack(ctx, m.stack, m.ps, m.configFile)
+}
+
+func (m *managedStore) Encrypter(context.Context) (config.Encrypter, error) {
+	return nil, cmdStack.ManagedEnvironmentNotSupportedError("`pulumi config set --secret`")
 }
 
 func (m *managedStore) entryPath(key config.Key, path bool) (config.Key, resource.PropertyPath, error) {

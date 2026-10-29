@@ -878,29 +878,20 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
-	managed, err := managedEnvForWrite(s, project.Name, ps, configFile)
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+	w, err := newConfigWriter(s, project.Name, ps, configFile, &ssml, c.OverrideImport)
 	if err != nil {
 		return err
 	}
-	if managed != nil && c.Secret {
-		return cmdStack.ManagedEnvironmentNotSupportedError("`pulumi config set --secret`")
-	}
-	if managed != nil {
-		managed.overrideImport = c.OverrideImport
-	}
-
-	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 	// Encrypt the config value if needed.
 	var v config.Value
 	if c.Secret {
-		// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
-		// config data.
-		c, _, cerr := ssml.GetEncrypter(ctx, s, ps)
+		encrypter, cerr := w.Encrypter(ctx)
 		if cerr != nil {
 			return cerr
 		}
-		enc, eerr := c.EncryptValue(ctx, value)
+		enc, eerr := encrypter.EncryptValue(ctx, value)
 		if eerr != nil {
 			return eerr
 		}
@@ -944,19 +935,11 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
-	if managed != nil {
-		if err := managed.Set(ctx, key, v, c.Path); err != nil {
-			return fmt.Errorf("could not set config: %w", err)
-		}
-		return managed.Save(ctx)
-	}
-
-	err = ps.Config.Set(key, v, c.Path)
-	if err != nil {
+	if err := w.Set(ctx, key, v, c.Path); err != nil {
 		return fmt.Errorf("could not set config: %w", err)
 	}
 
-	return cmdStack.SaveProjectStack(ctx, s, ps, configFile)
+	return w.Save(ctx)
 }
 
 func newConfigSetAllCmd(
@@ -1026,6 +1009,7 @@ func newConfigSetAllCmd(
 			if err != nil {
 				return err
 			}
+			w := &stackFileWriter{stack: stack, ps: ps, configFile: *configFile, ef: ssml}
 
 			for _, ptArg := range plaintextArgs {
 				key, value, err := parseKeyValuePair(ptArg, path)
@@ -1034,7 +1018,7 @@ func newConfigSetAllCmd(
 				}
 				v := config.NewValue(value)
 
-				err = ps.Config.Set(key, v, path)
+				err = w.Set(ctx, key, v, path)
 				if err != nil {
 					return err
 				}
@@ -1047,8 +1031,7 @@ func newConfigSetAllCmd(
 			encrypt := func(plaintext string) (string, error) {
 				var err error
 				if c == nil {
-					// We're always going to save, so can ignore the bool for if GetEncrypter changed the config data.
-					c, _, err = ssml.GetEncrypter(ctx, stack, ps)
+					c, err = w.Encrypter(ctx)
 					if err != nil {
 						return "", err
 					}
@@ -1074,7 +1057,7 @@ func newConfigSetAllCmd(
 				}
 				v := config.NewSecureValue(enc)
 
-				err = ps.Config.Set(key, v, path)
+				err = w.Set(ctx, key, v, path)
 				if err != nil {
 					return err
 				}
@@ -1127,14 +1110,14 @@ func newConfigSetAllCmd(
 						value = config.NewValue(*jsonValue.Value)
 					}
 
-					err = ps.Config.Set(key, value, path)
+					err = w.Set(ctx, key, value, path)
 					if err != nil {
 						return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
 					}
 				}
 			}
 
-			return cmdStack.SaveProjectStack(ctx, stack, ps, *configFile)
+			return w.Save(ctx)
 		},
 	}
 
