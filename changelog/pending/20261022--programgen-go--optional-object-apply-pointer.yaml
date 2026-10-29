@@ -1,4 +1,0 @@
-component: programgen/go
-kind: fix
-body: Type `ApplyT` parameters over optional objects and enums as pointers
-time: 2026-10-22T00:00:00Z
