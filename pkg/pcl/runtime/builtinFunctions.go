@@ -44,13 +44,17 @@ import (
 )
 
 var invokeOptionsType = cty.ObjectWithOptionalAttrs(map[string]cty.Type{
-	"version":   cty.String,
-	"dependsOn": cty.List(cty.DynamicPseudoType),
-	"provider":  cty.DynamicPseudoType,
+	"version":           cty.String,
+	"dependsOn":         cty.List(cty.DynamicPseudoType),
+	"provider":          cty.DynamicPseudoType,
+	"parent":            cty.DynamicPseudoType,
+	"pluginDownloadUrl": cty.String,
 }, []string{
 	"version",
 	"dependsOn",
 	"provider",
+	"parent",
+	"pluginDownloadUrl",
 })
 
 func tryExpressions(
@@ -422,6 +426,25 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 						return cty.NilVal, errors.New("invoke options provider must be a resource object with known id property")
 					}
 					request.Provider = fmt.Sprintf("%s::%s", urnAttr.AsString(), idAttr.AsString())
+				}
+
+				parent := options.GetAttr("parent")
+				if !parent.IsNull() && parent.IsKnown() {
+					if !parent.Type().IsObjectType() || !parent.Type().HasAttribute("urn") {
+						return cty.NilVal, errors.New("invoke options parent must be a resource object")
+					}
+					urnAttr := parent.GetAttr("urn")
+					if urnAttr.IsNull() || !urnAttr.IsKnown() || urnAttr.Type() != cty.String {
+						return cty.NilVal, errors.New("invoke options parent must be a resource object with known urn property")
+					}
+					request.Parent = urnAttr.AsString()
+				}
+
+				if version := options.GetAttr("version"); !version.IsNull() && version.IsKnown() {
+					request.Version = version.AsString()
+				}
+				if url := options.GetAttr("pluginDownloadUrl"); !url.IsNull() && url.IsKnown() {
+					request.PluginDownloadURL = url.AsString()
 				}
 			}
 

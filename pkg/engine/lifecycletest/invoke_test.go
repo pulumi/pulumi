@@ -77,8 +77,8 @@ func TestPreviewInvoke(t *testing.T) {
 }
 
 // TestInvokeParentResolvesComponentProviders verifies that an invoke sent with a parent URN is
-// served by the provider that parent's `providers` option names for the invoke's package, exactly
-// as a resource registered under that parent would be.
+// served by the explicit provider that the parent has for the invoke's package, exactly as a resource
+// registered under that parent would be.
 func TestInvokeParentResolvesComponentProviders(t *testing.T) {
 	t.Parallel()
 
@@ -129,6 +129,12 @@ func TestInvokeParentResolvesComponentProviders(t *testing.T) {
 			Parent: comp.URN,
 		})
 		require.NoError(t, err)
+		explicitCustom, err := monitor.RegisterResource("pkgA:m:typA", "explicitCustom", true,
+			deploytest.ResourceOptions{Provider: otherRef})
+		require.NoError(t, err)
+		defaultCustom, err := monitor.RegisterResource("pkgA:m:typA", "defaultCustom", true,
+			deploytest.ResourceOptions{})
+		require.NoError(t, err)
 
 		servedBy := func(provider string, options ...deploytest.InvokeOptions) string {
 			resp, _, err := monitor.Invoke("pkgA:index:echo", nil, provider, "", "", options...)
@@ -143,8 +149,12 @@ func TestInvokeParentResolvesComponentProviders(t *testing.T) {
 			"the providers option is inherited through nested components")
 		assert.Equal(t, "other", servedBy(otherRef, deploytest.InvokeOptions{Parent: comp.URN}),
 			"an explicit provider wins over the parent's providers option")
-		assert.Equal(t, "default", servedBy("", deploytest.InvokeOptions{Parent: custom.URN}),
-			"a custom parent carries no providers option")
+		assert.Equal(t, "explicit", servedBy("", deploytest.InvokeOptions{Parent: custom.URN}),
+			"a custom parent passes on the provider that it inherited")
+		assert.Equal(t, "other", servedBy("", deploytest.InvokeOptions{Parent: explicitCustom.URN}),
+			"a custom parent passes on its explicit provider")
+		assert.Equal(t, "default", servedBy("", deploytest.InvokeOptions{Parent: defaultCustom.URN}),
+			"a custom parent does not pass on its default provider")
 		assert.Equal(t, "default", servedBy(""),
 			"an unparented invoke is served by the default provider")
 		return nil
