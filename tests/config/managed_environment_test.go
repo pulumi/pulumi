@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -40,14 +42,44 @@ const (
 	managedEnvKeyPrefix   = "pulumi.esc.managedEnvironment"
 	managedEnvProject     = "managed-env-it"
 	managedEnvProjectYAML = "name: " + managedEnvProject + "\nruntime: yaml\nresources: {}\n"
+
+	managedEnvTemplateYAML = `name: ${PROJECT}
+runtime: yaml
+template:
+  config:
+    plain:
+      default: one
+    token:
+      default: hunter2
+      secret: true
+resources: {}
+`
 )
+
+func createdManagedEnvironment(t *testing.T, command string, stdout string, stderr string) string {
+	t.Helper()
+	created := regexp.MustCompile(`Created environment (\S+) for stack configuration`).FindStringSubmatch(stdout + stderr)
+	require.Len(t, created, 2, "%s did not report a managed environment:\n%s%s", command, stdout, stderr)
+	return created[1]
+}
+
+func latestUpdateEnvironment(t *testing.T, e *ptesting.Environment) map[string]string {
+	t.Helper()
+	out, _ := e.RunCommand("pulumi", "stack", "history", "--json")
+	var history []struct {
+		Environment map[string]string `json:"environment"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(out), &history))
+	require.NotEmpty(t, history)
+	return history[0].Environment
+}
 
 // TestManagedEnvironment needs a Pulumi Cloud organization that has stack-managed ESC environments enabled, on a
 // service that includes the managed-environment draft and publish changes. It is skipped unless
 // PULUMI_TEST_MANAGED_ENV_ORG names that organization. PULUMI_API selects the service (default
 // https://api.pulumi.com). The organization also needs the Approvals feature: the draft read and edit routes the
 // edited-draft steps call keep that gate. It also relies on a CLI that includes the stack-managed environment
-// evaluate, send and config-editing changes.
+// evaluate, send and config-editing changes, and `pulumi new --esc-config`.
 //
 //nolint:paralleltest // the steps run in order against one stack
 func TestManagedEnvironment(t *testing.T) {
@@ -69,9 +101,7 @@ func TestManagedEnvironment(t *testing.T) {
 
 	stackName := ptesting.RandomStackName()
 	stdout, stderr := e.RunCommand("pulumi", "stack", "init", org+"/"+stackName, "--esc-config")
-	created := regexp.MustCompile(`Created environment (\S+) for stack configuration`).FindStringSubmatch(stdout + stderr)
-	require.Len(t, created, 2, "stack init did not report a managed environment:\n%s%s", stdout, stderr)
-	managedEnv := created[1]
+	managedEnv := createdManagedEnvironment(t, "stack init", stdout, stderr)
 	envProject, envName, _ := strings.Cut(managedEnv, "/")
 	defer e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
 
@@ -102,16 +132,6 @@ func TestManagedEnvironment(t *testing.T) {
 		}
 		status, response, _ := send(method, path, payload, "")
 		return status, response
-	}
-
-	latestUpdateEnvironment := func() map[string]string {
-		out, _ := e.RunCommand("pulumi", "stack", "history", "--json")
-		var history []struct {
-			Environment map[string]string `json:"environment"`
-		}
-		require.NoError(t, json.Unmarshal([]byte(out), &history))
-		require.NotEmpty(t, history)
-		return history[0].Environment
 	}
 
 	baseRevision := func(env map[string]string) int {
@@ -174,7 +194,7 @@ func TestManagedEnvironment(t *testing.T) {
 	var changedBase int
 	t.Run("ChangedAndApplied", func(t *testing.T) {
 		e.RunCommand("pulumi", "up", "--yes", "--skip-preview")
-		env := latestUpdateEnvironment()
+		env := latestUpdateEnvironment(t, e)
 		changedBase = baseRevision(env)
 		assert.Equal(t, managedEnv, env[managedEnvKeyPrefix])
 		assert.NotEmpty(t, env[managedEnvKeyPrefix+".changeRequestID"])
@@ -184,7 +204,7 @@ func TestManagedEnvironment(t *testing.T) {
 	var publishedRevision int
 	t.Run("Unchanged", func(t *testing.T) {
 		e.RunCommand("pulumi", "up", "--yes", "--skip-preview")
-		env := latestUpdateEnvironment()
+		env := latestUpdateEnvironment(t, e)
 		publishedRevision = baseRevision(env)
 		assert.Greater(t, publishedRevision, changedBase)
 		assert.NotContains(t, env, managedEnvKeyPrefix+".changeRequestID")
@@ -224,5 +244,65 @@ func TestManagedEnvironment(t *testing.T) {
 		require.Equal(t, http.StatusOK, status, values)
 		assert.Contains(t, values, "pinned-one")
 		assert.NotContains(t, values, "pinned-two")
+	})
+
+	t.Run("NewFromTemplate", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer e.DeleteIfNotFailed()
+		e.SetBackend(apiURL)
+		e.SetEnvVars("PULUMI_EXPERIMENTAL=true")
+
+		templateDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(templateDir, "Pulumi.yaml"), []byte(managedEnvTemplateYAML), 0o600))
+
+		// A unique project, since non-interactive `pulumi new` refuses a project name that already exists.
+		stackName := ptesting.RandomStackName()
+		projectName := managedEnvProject + "-new-" + stackName
+		stackRef := org + "/" + projectName + "/" + stackName
+		// Registered before `pulumi new`, which can fail after it has created the stack and its environment.
+		defer func() {
+			_, rmErr, err := e.GetCommandResults("pulumi", "stack", "rm", "--yes", "--force", "--stack", stackRef)
+			if err != nil {
+				t.Errorf("removing stack %s: %v\n%s", stackRef, err, rmErr)
+			}
+		}()
+		stdout, stderr := e.RunCommand("pulumi", "new", templateDir, "--name", projectName,
+			"--stack", org+"/"+stackName, "--esc-config", "--yes", "--force")
+		managedEnv := createdManagedEnvironment(t, "pulumi new", stdout, stderr)
+
+		raw, err := os.ReadFile(filepath.Join(e.RootPath, "Pulumi."+stackName+".yaml"))
+		require.NoError(t, err)
+		assert.NotContains(t, string(raw), "hunter2")
+		var stackFile struct {
+			Config      map[string]any `yaml:"config"`
+			Environment struct {
+				Values struct {
+					PulumiConfig map[string]any `yaml:"pulumiConfig"`
+				} `yaml:"values"`
+			} `yaml:"environment"`
+		}
+		require.NoError(t, yaml.Unmarshal(raw, &stackFile))
+		assert.Empty(t, stackFile.Config)
+		pulumiConfig := stackFile.Environment.Values.PulumiConfig
+		assert.Equal(t, "one", pulumiConfig[projectName+":plain"])
+		token, ok := pulumiConfig[projectName+":token"].(map[any]any)
+		require.True(t, ok, "token is not an fn::secret: %v", pulumiConfig)
+		secret, ok := token["fn::secret"].(map[any]any)
+		require.True(t, ok, "token is not an fn::secret: %v", pulumiConfig)
+		assert.NotEmpty(t, secret["ciphertext"])
+
+		e.RunCommand("pulumi", "up", "--yes", "--skip-preview")
+		env := latestUpdateEnvironment(t, e)
+		assert.Equal(t, managedEnv, env[managedEnvKeyPrefix])
+		assert.NotEmpty(t, env[managedEnvKeyPrefix+".changeRequestID"])
+
+		// ESC can only decrypt the token if `pulumi new` encrypted it with the environment's key.
+		out, _ := e.RunCommand("pulumi", "env", "open", org+"/"+managedEnv)
+		var opened struct {
+			PulumiConfig map[string]any `json:"pulumiConfig"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(out), &opened))
+		assert.Equal(t, "one", opened.PulumiConfig[projectName+":plain"])
+		assert.Equal(t, "hunter2", opened.PulumiConfig[projectName+":token"])
 	})
 }
