@@ -467,7 +467,9 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 			return nil, fmt.Errorf("stack %[1]s was created without an ESC environment; "+
 				"remove it with `pulumi stack rm %[1]s`", stack.Ref())
 		}
-		sink.Infof(diag.Message("", "Created environment %s for stack configuration"), managedEnv)
+		if !opts.Quiet {
+			sink.Infof(diag.Message("", "Created environment %s for stack configuration"), managedEnv)
+		}
 		ps.Environment = newManagedEnvironmentPlaceholder()
 		needsSave = true
 	}

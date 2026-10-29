@@ -210,10 +210,12 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 		contents    string
 		managedEnv  string
 		secrets     string
+		quiet       bool
 		wantCreated bool
 		wantErr     string
 	}{
 		{name: "created", stackFile: "Pulumi.dev.yaml", managedEnv: "proj/renamed", wantCreated: true},
+		{name: "quiet", stackFile: "Pulumi.dev.yaml", managedEnv: "proj/renamed", quiet: true, wantCreated: true},
 		{name: "JSON stack file", stackFile: "Pulumi.dev.json", managedEnv: "proj/renamed", wantErr: managedRequiresYAML},
 		{
 			name:       "existing config",
@@ -264,7 +266,9 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 
 			_, err := CreateStack(t.Context(), sink, ws, newManagedTestBackend(tt.managedEnv, &createdManaged),
 				&backend.MockStackReference{StringV: "dev", NameV: tokens.MustParseStackName("dev")}, "",
-				CreateStackOptions{ConfigFile: stackFile, ManagedEnvironment: true, SecretsProvider: tt.secrets})
+				CreateStackOptions{
+					ConfigFile: stackFile, ManagedEnvironment: true, SecretsProvider: tt.secrets, Quiet: tt.quiet,
+				})
 
 			assert.Equal(t, tt.wantCreated, createdManaged)
 			if tt.wantErr != "" {
@@ -275,7 +279,11 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			assert.Contains(t, out.String(), "Created environment proj/renamed for stack configuration")
+			if tt.quiet {
+				assert.Empty(t, out.String())
+			} else {
+				assert.Contains(t, out.String(), "Created environment proj/renamed for stack configuration")
+			}
 		})
 	}
 }
