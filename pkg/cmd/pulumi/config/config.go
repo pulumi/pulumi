@@ -1004,6 +1004,9 @@ func newConfigSetAllCmd(
 			if err != nil {
 				return err
 			}
+			if err := rejectConfigFileOnManagedStack(stack, *configFile); err != nil {
+				return err
+			}
 
 			ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, stack, *configFile)
 			if err != nil {

@@ -593,6 +593,13 @@ func TestManagedConfigWritesRejectConfigFile(t *testing.T) {
 		{name: "set", command: newConfigSetCmd, args: []string{"app:new", "v"}},
 		{name: "rm", command: newConfigRemoveCmd, args: []string{"app:keep"}},
 		{name: "rm-all", command: newConfigRemoveAllCmd, args: []string{"app:keep"}},
+		{
+			name: "set-all",
+			command: func(ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, file *string) *cobra.Command {
+				return newConfigSetAllCmd(ws, stack, lm, &failingEncrypterFactory{t: t}, file)
+			},
+			args: []string{"--plaintext", "app:new=v"},
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -762,8 +769,8 @@ func TestManagedConfigEnvCommands(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // t.Chdir: set-all reads the default stack file
 func TestManagedConfigSetAll(t *testing.T) {
-	t.Parallel()
 	cases := []struct {
 		name       string
 		plaintext  []string
@@ -818,9 +825,12 @@ func TestManagedConfigSetAll(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			t.Parallel()
-			configFile := filepath.Join(t.TempDir(), "Pulumi.dev.yaml")
-			require.NoError(t, os.WriteFile(configFile, []byte(managedStackFile), 0o600))
+			dir := t.TempDir()
+			t.Chdir(dir)
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte("name: app\nruntime: yaml\n"), 0o600))
+			stackFile := filepath.Join(dir, "Pulumi.dev.yaml")
+			require.NoError(t, os.WriteFile(stackFile, []byte(managedStackFile), 0o600))
+			configFile := ""
 			s, plaintexts := managedTestStack(t, backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"})
 			ws := &pkgWorkspace.MockContext{
 				ReadProjectF: func(string) (*workspace.Project, string, error) {
@@ -850,7 +860,7 @@ func TestManagedConfigSetAll(t *testing.T) {
 			}
 
 			err := cmd.RunE(cmd, nil)
-			written, readErr := os.ReadFile(configFile)
+			written, readErr := os.ReadFile(stackFile)
 			require.NoError(t, readErr)
 			if c.err != "" {
 				require.EqualError(t, err, c.err)
