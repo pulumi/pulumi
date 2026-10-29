@@ -547,13 +547,10 @@ func TestDeletedWithProtectedDependentBlocksReplace(t *testing.T) {
 }
 
 // A targeted update delete-before-replaces resA. resB is deleted with resA, is no longer in the program, and is not
-// targeted. resC is not targeted and depends on resB. The engine deletes resB as part of the replacement and keeps it
-// in the state as pending replacement, while resC is written as a same step ahead of it.
+// targeted. Untargeted resC depends on resB and resD depends on resC. Their old states must remain after resB
+// while it is pending replacement, even when the program registers new outputs for resC.
 func TestTargetedDeleteBeforeReplaceWithDroppedDeletedWithDependency(t *testing.T) {
 	t.Parallel()
-
-	// TODO[https://github.com/pulumi/pulumi/issues/24989]: Fix the underlying issue and re-enable this test.
-	t.Skip("Skipping: targeted delete-before-replace orders a dependent before its dropped deleted-with dependency")
 
 	p := &lt.TestPlan{
 		Project: "test-project",
@@ -605,6 +602,16 @@ func TestTargetedDeleteBeforeReplaceWithDroppedDeletedWithDependency(t *testing.
 		}
 		s.Resources = append(s.Resources, resC)
 
+		resD := &pkgresource.State{
+			Type:         "pkgA:m:typA",
+			URN:          "urn:pulumi:test-stack::test-project::pkgA:m:typA::resD",
+			Custom:       true,
+			ID:           "id-resD",
+			Provider:     provRef.String(),
+			Dependencies: []resource.URN{resC.URN},
+		}
+		s.Resources = append(s.Resources, resD)
+
 		return s
 	}()
 	require.NoError(t, snap.VerifyIntegrity())
@@ -638,7 +645,15 @@ func TestTargetedDeleteBeforeReplaceWithDroppedDeletedWithDependency(t *testing.
 		if err != nil {
 			return err
 		}
-		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true)
+		resC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true)
+		if err != nil {
+			return err
+		}
+		err = monitor.RegisterResourceOutputs(resC.URN, resource.PropertyMap{"newOutput": resource.NewProperty("value")})
+		if err != nil {
+			return err
+		}
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true)
 		return err
 	})
 
@@ -652,7 +667,13 @@ func TestTargetedDeleteBeforeReplaceWithDroppedDeletedWithDependency(t *testing.
 		},
 	}
 
-	_, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	updated, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 	_, isSIE := snapshot.AsSnapshotIntegrityError(err)
 	require.False(t, isSIE, "unexpected snapshot integrity error: %v", err)
+	require.ErrorContains(t, err, "step generator errored")
+	require.NotNil(t, updated)
+	require.Len(t, updated.Resources, 5)
+	require.Equal(t, resource.ID("new-id-resA"), updated.Resources[1].ID)
+	require.True(t, updated.Resources[2].PendingReplacement)
+	require.Equal(t, snap.Resources[3:], updated.Resources[3:])
 }

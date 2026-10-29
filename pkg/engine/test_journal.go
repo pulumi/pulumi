@@ -118,7 +118,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 			switch e.Step.Op() {
 			case deploy.OpSame:
 				step, ok := e.Step.(*deploy.SameStep)
-				if !ok || !step.IsSkippedCreate() {
+				if !ok || step.ShouldPersist() {
 					resources = append(resources, e.Step.New())
 					dones[e.Step.Old()] = true
 				}
