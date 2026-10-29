@@ -1,4 +1,0 @@
-component: programgen/nodejs
-kind: feat
-body: Support `resourceExists` in generated Node.js programs
-time: 2026-10-22T15:01:38.174639+02:00

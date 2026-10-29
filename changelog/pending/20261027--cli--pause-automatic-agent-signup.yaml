@@ -1,4 +1,0 @@
-component: cli
-kind: improvement
-body: Stop automatically creating Pulumi Cloud accounts for AI agents unless `PULUMI_ENABLE_AUTOMATIC_AGENT_SIGNUP` is set
-time: 2026-10-27T00:00:00Z

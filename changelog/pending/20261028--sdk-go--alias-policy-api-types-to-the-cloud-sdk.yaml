@@ -1,4 +1,0 @@
-component: sdk/go
-kind: improvement
-body: Alias the policy API types in `apitype` to the Pulumi Cloud SDK, changing some of their field names and types to match it
-time: 2026-10-28T00:00:00Z
