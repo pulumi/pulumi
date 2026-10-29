@@ -192,10 +192,16 @@ func (m *managedStore) checkImported(
 	}
 	for _, name := range names {
 		value, ok := imported[name]
-		if !ok || name == local {
+		if !ok {
 			continue
 		}
 		env := value.Trace.Def.Environment
+		if name == local {
+			if m.entersImportedList(name, value, subPath) {
+				return nil, errEntersImportedList(root, env)
+			}
+			continue
+		}
 		if isLocal {
 			return nil, fmt.Errorf("pulumiConfig sets %s locally and imported environment %s sets %s; these are the "+
 				"same key and the winner is undefined; use one spelling", local, env, name)
@@ -206,9 +212,8 @@ func (m *managedStore) checkImported(
 				root, env)
 		}
 		if m.overrideImport {
-			if pathEntersList(value, subPath) {
-				return nil, fmt.Errorf("config key %s reaches into a list that imported environment %s defines, and a "+
-					"local list replaces the whole imported list; override the whole list instead of part of it", root, env)
+			if m.entersImportedList(name, value, subPath) {
+				return nil, errEntersImportedList(root, env)
 			}
 			m.sink.Infof(diag.Message("", "%s overrides the value from imported environment %s"), root, env)
 			// The import's spelling, so the two don't become two spellings of one key with an undefined winner.
@@ -221,24 +226,42 @@ func (m *managedStore) checkImported(
 	return names, nil
 }
 
-func pathEntersList(v esc.Value, path resource.PropertyPath) bool {
-	for _, segment := range path {
+// entersImportedList reports whether a path write into entry name would replace part of a list that the import
+// defines. ESC merges objects key by key but a local list replaces the imported one whole, so the write is safe only
+// where the local definition already has a list in its place.
+func (m *managedStore) entersImportedList(name string, imported esc.Value, path resource.PropertyPath) bool {
+	prefix, ok := importedListPrefix(imported, path)
+	if !ok {
+		return false
+	}
+	local, ok := pulumiconfig.Get(m.definition, name, prefix)
+	return !ok || local.Kind != yaml.SequenceNode
+}
+
+// importedListPrefix returns the part of path that names a list in v, when path goes on into that list.
+func importedListPrefix(v esc.Value, path resource.PropertyPath) (resource.PropertyPath, bool) {
+	for i, segment := range path {
 		switch repr := v.Value.(type) {
 		case []esc.Value:
-			return true
+			return path[:i], true
 		case map[string]esc.Value:
 			key, ok := segment.(string)
 			if !ok {
-				return false
+				return nil, false
 			}
 			if v, ok = repr[key]; !ok {
-				return false
+				return nil, false
 			}
 		default:
-			return false
+			return nil, false
 		}
 	}
-	return false
+	return nil, false
+}
+
+func errEntersImportedList(root config.Key, env string) error {
+	return fmt.Errorf("config key %s reaches into a list that imported environment %s defines, and a local list "+
+		"replaces the whole imported list; override the whole list instead of part of it", root, env)
 }
 
 func (m *managedStore) importedConfig(ctx context.Context) (map[string]esc.Value, error) {
