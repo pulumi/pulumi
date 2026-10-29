@@ -1010,7 +1010,6 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 
 	root := t.TempDir()
 
-	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{
 		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{
@@ -1064,7 +1063,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		inputFile := writeHCLFile(t, "inputs.pcl", `project = project()`)
 
 		var stdout bytes.Buffer
-		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
+		cmd := NewDoCmd(&cmdBackend.MockLoginManager{}, mws, loader, testHost, panicLoadConverterPlugin, nil)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
 		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
@@ -1082,7 +1081,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		inputFile := writeHCLFile(t, "inputs.pcl", `organization = organization()`)
 
 		var stdout bytes.Buffer
-		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
+		cmd := NewDoCmd(&cmdBackend.MockLoginManager{}, mws, loader, testHost, panicLoadConverterPlugin, nil)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
 		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
