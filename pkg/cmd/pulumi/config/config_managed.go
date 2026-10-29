@@ -227,15 +227,15 @@ func (m *managedStore) checkImported(
 }
 
 // entersImportedList reports whether a path write into entry name would replace part of a list that the import
-// defines. ESC merges objects key by key but a local list replaces the imported one whole, so the write is safe only
-// where the local definition already has a list in its place.
+// defines. ESC merges objects key by key but any other local value replaces the imported one whole, so the write is
+// safe only where the local definition already has a value in the list's place.
 func (m *managedStore) entersImportedList(name string, imported esc.Value, path resource.PropertyPath) bool {
 	prefix, ok := importedListPrefix(imported, path)
 	if !ok {
 		return false
 	}
-	local, ok := pulumiconfig.Get(m.definition, name, prefix)
-	return !ok || local.Kind != yaml.SequenceNode
+	_, ok = pulumiconfig.Get(m.definition, name, prefix)
+	return !ok
 }
 
 // importedListPrefix returns the part of path that names a list in v, when path goes on into that list.

@@ -354,6 +354,14 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 			expected: importingDefinition + "\n      obj:\n        items: [z]\n",
 		},
 		{
+			name:     "path into a local object that replaces an imported list is edited",
+			file:     importingDefinition + "\n      obj:\n        items: {enabled: true}\n",
+			set:      []string{"app:obj.items.enabled", "false"},
+			path:     true,
+			imported: listImportEnv(),
+			expected: importingDefinition + "\n      obj:\n        items: {enabled: false}\n",
+		},
+		{
 			name:     "override writes a new key under an imported object",
 			set:      []string{"app:obj.added", "x"},
 			path:     true,
