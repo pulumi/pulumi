@@ -690,7 +690,8 @@ func NewNewCmd() *cobra.Command {
 	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
 	cmd.PersistentFlags().BoolVar(
 		&args.escConfig, "esc-config", false,
-		"[EXPERIMENTAL] Create an ESC environment, managed by the stack, that holds the stack's configuration",
+		"[EXPERIMENTAL] Create an ESC environment, managed by the stack, that holds the stack's configuration. "+
+			"ESC encrypts secret config values; --secrets-provider applies only to secrets in the stack's state",
 	)
 	if !env.Experimental.Value() {
 		_ = cmd.PersistentFlags().MarkHidden("esc-config")
