@@ -710,7 +710,8 @@ func TestCreateEnvironmentDraft(t *testing.T) {
 
 func TestListChangeRequests(t *testing.T) {
 	t.Parallel()
-	client := newTestClient(t, http.MethodGet, "/api/change-requests/test-org", func(w http.ResponseWriter, r *http.Request) {
+	path := "/api/change-requests/test-org"
+	client := newTestClient(t, http.MethodGet, path, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "environment", r.URL.Query().Get("entityType"))
 		assert.Equal(t, "token", r.URL.Query().Get("continuationToken"))
 		err := json.NewEncoder(w).Encode(ListChangeRequestsResponse{
