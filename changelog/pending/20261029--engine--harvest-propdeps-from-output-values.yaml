@@ -1,0 +1,4 @@
+component: engine
+kind: improvement
+body: Add a `uses_output_values` flag on `RegisterResourceRequest` so SDKs can carry per-leaf dependency information inline as OutputValues instead of filling in a flat `propertyDependencies` map
+time: 2026-10-29T00:00:00Z

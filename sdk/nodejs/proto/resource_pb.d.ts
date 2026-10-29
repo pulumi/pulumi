@@ -427,6 +427,8 @@ export class RegisterResourceRequest extends jspb.Message {
     getStateMigrationsList(): Array<pulumi_callback_pb.Callback>;
     setStateMigrationsList(value: Array<pulumi_callback_pb.Callback>): RegisterResourceRequest;
     addStateMigrations(value?: pulumi_callback_pb.Callback, index?: number): pulumi_callback_pb.Callback;
+    getUsesOutputValues(): boolean;
+    setUsesOutputValues(value: boolean): RegisterResourceRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceRequest.AsObject;
@@ -487,6 +489,7 @@ export namespace RegisterResourceRequest {
         snippetid: string,
         acceptsByteString: boolean,
         stateMigrationsList: Array<pulumi_callback_pb.Callback.AsObject>,
+        usesOutputValues: boolean,
     }
 
 
@@ -1679,6 +1682,7 @@ export enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS = 16,
     RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES = 17,
     RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES = 18,
+    RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES = 19,
 }
 
 export enum Result {
