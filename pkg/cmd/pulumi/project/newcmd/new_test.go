@@ -262,10 +262,9 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	}
 
 	err := runNew(t.Context(), args)
-	assert.ErrorContains(t, err, "project with this name already exists")
-	assert.ErrorContains(t, err, "choose a different name with --name")
-	assert.ErrorContains(t, err, "pulumi stack init")
-	assert.ErrorContains(t, err, "--force flag only overwrites existing files")
+	assert.EqualError(t, err,
+		"a project with this name already exists: "+projectName+"\n\n"+
+			"choose a different name with --name, or run 'pulumi stack init' inside the existing project to add a stack.")
 }
 
 //nolint:paralleltest // changes directory for process, mocks login manager
@@ -491,8 +490,9 @@ func TestInvalidTemplateName(t *testing.T) {
 		}
 
 		err := runNew(t.Context(), args)
-		assert.ErrorContains(t, err, "not found")
-		assert.ErrorContains(t, err, "pulumi new --list-templates")
+		assert.EqualError(t, err,
+			"template '"+template+"' not found\n\n"+
+				"Run 'pulumi new --list-templates' to see available templates")
 	})
 
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
@@ -513,8 +513,9 @@ func TestInvalidTemplateName(t *testing.T) {
 		}
 
 		err := runNew(t.Context(), args)
-		assert.ErrorContains(t, err, "not found")
-		assert.ErrorContains(t, err, "pulumi new --list-templates")
+		assert.EqualError(t, err,
+			"template '"+template+"' not found\n\n"+
+				"Run 'pulumi new --list-templates' to see available templates")
 	})
 }
 
@@ -740,7 +741,8 @@ func TestProjectExists(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := validateProjectName(ctx, b, tt.give.orgName, tt.give.projectName, false /* generateOnly */, display.Options{})
+			err := validateProjectName(ctx, b, tt.give.orgName, tt.give.projectName,
+				false /* generateOnly */, false /* force */, display.Options{})
 			if tt.hasErr {
 				assert.Error(t, err)
 			} else {

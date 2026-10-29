@@ -134,7 +134,7 @@ func resolveProjectDefaults(
 		),
 	}
 	if args.name == "" {
-		d.nameErr = validateProjectName(ctx, b, orgName, d.name, args.generateOnly, opts.WithIsInteractive(false))
+		d.nameErr = validateProjectName(ctx, b, orgName, d.name, args.generateOnly, args.force, opts.WithIsInteractive(false))
 	}
 	return d
 }
@@ -187,7 +187,7 @@ func promptProjectName(
 	args newArgs, opts display.Options,
 ) (string, error) {
 	validate := func(s string) error {
-		return validateProjectName(ctx, b, orgName, s, args.generateOnly, opts)
+		return validateProjectName(ctx, b, orgName, s, args.generateOnly, args.force, opts)
 	}
 	return args.prompt(args.yes, "Project name", defaultName, false, validate, opts)
 }

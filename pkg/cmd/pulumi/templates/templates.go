@@ -43,13 +43,10 @@ type fetch struct {
 	m         sync.Mutex
 	templates []Template
 	errs      []error
-
 	// errsOnEmpty are reported only if the [Source] as a whole found nothing.
 	errsOnEmpty []error
-
 	suggestions []string
-
-	vcsOrgs []string
+	vcsOrgs     []string
 }
 
 func (f *fetch) addTemplate(t Template) {

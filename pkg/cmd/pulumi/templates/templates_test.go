@@ -674,8 +674,8 @@ func TestRegistryTemplateNotFoundSuggestsCloseMatch(t *testing.T) {
 		env.NewEnv(env.MapStore{"PULUMI_DISABLE_REGISTRY_RESOLVE": "false"}))
 
 	_, err := source.Templates()
-	assert.ErrorContains(t, err, "template 'aws-typscript' not found")
-	assert.ErrorContains(t, err, "aws-typescript")
+	assert.EqualError(t, err, "template 'aws-typscript' not found\n\n"+
+		"Did you mean this?\n\taws-typescript\n")
 }
 
 func TestVcsTemplateSourceOrgsAreReadOffTheListing(t *testing.T) {
