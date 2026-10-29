@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,32 +40,32 @@ func init() {
 				sink3 := RequireSingleNamedResource(l, snapshot.Resources, "sink3")
 				sink4 := RequireSingleNamedResource(l, snapshot.Resources, "sink4")
 
-				expect := resource.PropertyMap{
-					"intEnum":    resource.NewProperty(1.0),
-					"stringEnum": resource.NewProperty("two"),
-				}
+				expect := property.NewMap(map[string]property.Value{
+					"intEnum":    property.New(1.0),
+					"stringEnum": property.New("two"),
+				})
 
-				assert.Equal(l, expect, sink1.Outputs)
-				assert.Equal(l, expect, sink2.Outputs)
-				assert.Equal(l, expect, sink3.Outputs)
+				assert.Equal(l, expect, resource.FromResourcePropertyMap(sink1.Outputs))
+				assert.Equal(l, expect, resource.FromResourcePropertyMap(sink2.Outputs))
+				assert.Equal(l, expect, resource.FromResourcePropertyMap(sink3.Outputs))
 
-				assert.Equal(l, resource.PropertyMap{
-					"numberEnum": resource.NewProperty(0.1),
-					"wordyEnum":  resource.NewProperty("It's got apostrophes"),
-					"arrayOfEnum": resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty("one"),
-						resource.NewProperty("two"),
+				assert.Equal(l, property.NewMap(map[string]property.Value{
+					"numberEnum": property.New(0.1),
+					"wordyEnum":  property.New("It's got apostrophes"),
+					"arrayOfEnum": property.New([]property.Value{
+						property.New("one"),
+						property.New("two"),
 					}),
-					"mapOfEnum": resource.NewProperty(resource.PropertyMap{
-						"small": resource.NewProperty(1.0),
-						"large": resource.NewProperty(2.0),
+					"mapOfEnum": property.New(map[string]property.Value{
+						"small": property.New(1.0),
+						"large": property.New(2.0),
 					}),
-					"holder": resource.NewProperty(resource.PropertyMap{
-						"size":  resource.NewProperty(2.0),
-						"color": resource.NewProperty("one"),
+					"holder": property.New(map[string]property.Value{
+						"size":  property.New(2.0),
+						"color": property.New("one"),
 					}),
-					"unionEnum": resource.NewProperty("A Value With Spaces."),
-				}, sink4.Outputs)
+					"unionEnum": property.New("A Value With Spaces."),
+				}), resource.FromResourcePropertyMap(sink4.Outputs))
 			},
 		}},
 	}

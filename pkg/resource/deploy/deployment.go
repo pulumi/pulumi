@@ -32,6 +32,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -124,6 +125,8 @@ type Options struct {
 	ShowSecrets bool
 	// Analyzers is the list of policy analyzers to run during this deployment.
 	Analyzers []plugin.Analyzer
+	// PolicyExceptions are the policy exceptions to apply to each analyzer's violations.
+	PolicyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions
 	// StateMigrationSerializer converts resource states to and from the checkpoint representation used by state
 	// migration callbacks. The engine injects it because the serialization logic lives in pkg/resource/stack, which
 	// already imports this package and therefore cannot be imported here.
@@ -265,7 +268,7 @@ type StateMigrationEvents interface {
 
 // PolicyEvents is an interface that can be used to hook policy events.
 type PolicyEvents interface {
-	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
+	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic, []apitype.PolicyEventException)
 	OnPolicyRemediation(resource.URN, plugin.Remediation, property.Map, property.Map)
 	OnPolicyAnalyzeSummary(plugin.PolicySummary)
 	OnPolicyRemediateSummary(plugin.PolicySummary)
@@ -360,6 +363,8 @@ type Deployment struct {
 	source Source
 	// the policy analyzers to run during this deployment.
 	analyzers []plugin.Analyzer
+	// the policy exceptions to apply to each analyzer's violations.
+	policyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions
 	// the dependency graph of the old snapshot.
 	depGraph *graph.DependencyGraph
 	// the provider registry for this deployment.
@@ -681,6 +686,7 @@ func NewDeployment(
 		oldViews:                        oldViews,
 		source:                          source,
 		analyzers:                       opts.Analyzers,
+		policyExceptions:                opts.PolicyExceptions,
 		depGraph:                        depGraph,
 		providers:                       reg,
 		goals:                           newGoals,

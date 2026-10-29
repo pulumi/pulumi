@@ -2106,7 +2106,7 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 			resource.MakeSecret(resource.NewProperty(resource.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"})),
 		}),
 	}
-	replacementTrigger := property.New(property.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"})
+	replacementTrigger := property.New(property.NewResourceReference(siblingURN, property.Value{}, ""))
 
 	snap := &deploy.Snapshot{
 		SecretsManager: srcSM,

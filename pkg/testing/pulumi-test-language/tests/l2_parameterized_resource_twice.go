@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,21 +36,22 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 					require.Equal(l,
-						resource.NewProperty("HelloWorld"),
-						stack.Outputs["parameterValue1"],
+						property.New("HelloWorld"),
+						outputs.Get("parameterValue1"),
 						"first parameter value should be correct")
 					require.Equal(l,
-						resource.NewProperty("HelloWorldComponent"),
-						stack.Outputs["parameterValueFromComponent1"],
+						property.New("HelloWorldComponent"),
+						outputs.Get("parameterValueFromComponent1"),
 						"first parameter value from component should be correct")
 					require.Equal(l,
-						resource.NewProperty("GoodbyeWorld"),
-						stack.Outputs["parameterValue2"],
+						property.New("GoodbyeWorld"),
+						outputs.Get("parameterValue2"),
 						"second parameter value should be correct")
 					require.Equal(l,
-						resource.NewProperty("GoodbyeWorldComponent"),
-						stack.Outputs["parameterValueFromComponent2"],
+						property.New("GoodbyeWorldComponent"),
+						outputs.Get("parameterValueFromComponent2"),
 						"second parameter value from component should be correct")
 				},
 			},

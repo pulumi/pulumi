@@ -433,6 +433,13 @@ func SchemaFromSchemaSource(
 	if pluginSpec.PluginDownloadURL != "" {
 		spec.PluginDownloadURL = pluginSpec.PluginDownloadURL
 	}
+	// Mirror the plugin-version fallback in [schema.pluginLoader.LoadPackageReferenceV2]: if the schema the
+	// provider returned doesn't carry a version, use the resolved plugin version so downstream binding (and
+	// in particular SupportPack validation) has something to work with. Parameterized schemas have their own
+	// version decoupled from the plugin's, so we leave those alone.
+	if spec.Version == "" && spec.Parameterization == nil && parameterizationName == "" {
+		spec.Version = packageSpec.Version
+	}
 	setSpecNamespace(&spec, pluginSpec)
 	return &spec, packageSpec, nil
 }

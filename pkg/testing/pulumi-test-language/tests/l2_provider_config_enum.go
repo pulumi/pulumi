@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,11 +47,12 @@ func init() {
 					// The downstream resource sources its inputs from the provider's
 					// outputs. If enums are dropped from provider outputs then `theEnum`
 					// will be missing here.
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"theString": "hello",
-						"theEnum":   "two",
+					want := property.NewMap(map[string]property.Value{
+						"theString": property.New("hello"),
+						"theEnum":   property.New("two"),
 					})
-					assert.Equal(l, want, downstream.Inputs, "expected inputs sourced from provider outputs")
+					assert.Equal(l, want, resource.FromResourcePropertyMap(downstream.Inputs),
+						"expected inputs sourced from provider outputs")
 					assert.Equal(l, downstream.Inputs, downstream.Outputs, "expected inputs and outputs to match")
 				},
 			},
