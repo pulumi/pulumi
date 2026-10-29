@@ -301,6 +301,29 @@ func TestPolicyExceptionViolationTags(t *testing.T) {
 		policyExceptionViolationTags(policyExceptionViolation{Level: "mandatory"}, colors.Always))
 }
 
+func TestPolicyExceptionPickerLabels(t *testing.T) {
+	t.Parallel()
+
+	const parent = "urn:pulumi:prod::web::my:app:Site$aws:s3/bucket:Bucket::logs"
+	const long = "urn:pulumi:prod::web::aws:s3/bucket:Bucket::access-logs-for-the-public-website-"
+	violations := []policyExceptionViolation{
+		{Stack: "acme/web/prod", Policy: "required-tags", Level: "mandatory", URN: logsURN},
+		{Stack: "acme/web/prod", Policy: "required-tags", Level: "mandatory", URN: parent},
+		{Stack: "acme/web/prod", Policy: "required-tags", Level: "mandatory", URN: long + "eu"},
+		{Stack: "acme/web/prod", Policy: "required-tags", Level: "mandatory", URN: long + "us"},
+	}
+
+	assert.Equal(t, []string{
+		"[mandatory]  required-tags  (aws:s3:Bucket: logs)",
+		"[mandatory]  required-tags  (aws:s3:Bucket: logs) (2)",
+		"[mandatory]  required-tags  (aws:s3:Bucket: access-logs-for-the-public-…",
+		"[mandatory]  required-tags  (aws:s3:Bucket: access-logs-for-the-pub… (2)",
+	}, policyExceptionPickerLabels(violations, false, 80, colors.Never))
+
+	assert.Equal(t, "[mandatory]  acme/web/prod: required-tags  (aws:s3:Bucket: logs)",
+		policyExceptionPickerLabels(violations[:1], true, 0, colors.Never)[0], "no width doesn't cut")
+}
+
 func TestPolicyExceptionConsoleURL(t *testing.T) {
 	t.Parallel()
 
