@@ -16,16 +16,17 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
 func init() {
 	LanguageTests["l1-stack-reference"] = LanguageTest{
-		StackReferences: map[string]resource.PropertyMap{
-			"organization/other/dev": {
-				"plain":  resource.NewProperty("plain"),
-				"secret": resource.MakeSecret(resource.NewProperty("secret")),
-			},
+		StackReferences: map[string]property.Map{
+			"organization/other/dev": property.NewMap(map[string]property.Value{
+				"plain":  property.New("plain"),
+				"secret": property.New("secret").WithSecret(true),
+			}),
 		},
 		Runs: []TestRun{
 			{
@@ -41,12 +42,12 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:pulumi")
 					RequireSingleResource(l, snap.Resources, "pulumi:pulumi:StackReference")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 3, "expected 3 outputs")
-					AssertPropertyMapMember(l, outputs, "plain", resource.NewProperty("plain"))
-					AssertPropertyMapMember(l, outputs, "secret", resource.MakeSecret(resource.NewProperty("secret")))
-					AssertPropertyMapMember(l, outputs, "secret_unsecret", resource.NewProperty("secret"))
+					require.Equal(l, 3, outputs.Len(), "expected 3 outputs")
+					AssertPropertyMapMember(l, outputs, "plain", property.New("plain"))
+					AssertPropertyMapMember(l, outputs, "secret", property.New("secret").WithSecret(true))
+					AssertPropertyMapMember(l, outputs, "secret_unsecret", property.New("secret"))
 				},
 			},
 		},

@@ -189,10 +189,10 @@ func (noopEvent) StateMigrations() []StateMigrationFunction { return nil }
 
 type noopOutputsEvent resource.URN
 
-func (noopOutputsEvent) event()                        {}
-func (e noopOutputsEvent) URN() resource.URN           { return resource.URN(e) }
-func (noopOutputsEvent) Outputs() resource.PropertyMap { return resource.PropertyMap{} }
-func (noopOutputsEvent) Done()                         {}
+func (noopOutputsEvent) event()                {}
+func (e noopOutputsEvent) URN() resource.URN   { return resource.URN(e) }
+func (noopOutputsEvent) Outputs() property.Map { return property.Map{} }
+func (noopOutputsEvent) Done()                 {}
 
 type importer struct {
 	deployment *Deployment

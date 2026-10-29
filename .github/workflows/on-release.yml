@@ -51,14 +51,14 @@ jobs:
     steps:
       - name: Authenticate with Pulumi Cloud
         id: pulumi-auth
-        uses: pulumi/auth-actions@02d44afe1135b29046b54235b145ce7951ca1fd9 # main
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
         with:
           organization: pulumi
           requested-token-type: urn:pulumi:token-type:access_token:organization
           export-environment-variables: false
       - name: Fetch secrets from ESC
         id: esc-secrets
-        uses: pulumi/esc-action@ce885ce2ea6bf59194b7b0a3e94a4d3f7bacece0 # v4
+        uses: pulumi/esc-action@eec71a90d9989af7ff14bd700b83fc72fae36119 # v4
         with:
           pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Trigger pulumi-dotnet automation API update

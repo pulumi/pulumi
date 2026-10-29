@@ -6,7 +6,7 @@
     },
     "dependencies": {
         "@pulumi/nodecompat": "^1.0.0",
-        "@pulumi/pulumi": "^3.142.0"
+        "@pulumi/pulumi": "^3.269.0"
     },
     "devDependencies": {
         "@types/node": "^20",

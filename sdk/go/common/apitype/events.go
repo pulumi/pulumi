@@ -98,6 +98,17 @@ type PolicyEvent struct {
 	// Severity is one of "low", "medium", "high", or "critical".
 	// An empty string is omitted and represents an unspecified severity.
 	Severity string `json:"severity,omitempty"`
+	// Exceptions lists the policy exceptions that matched this violation, lowest ID first. An excepted violation
+	// doesn't fail the operation, whatever its EnforcementLevel.
+	Exceptions []PolicyEventException `json:"exceptions,omitempty"`
+}
+
+// PolicyEventException identifies the policy exception that matched a policy violation.
+type PolicyEventException struct {
+	// ID is the exception's key in the policy pack's exceptions map (for example, "EXC-42").
+	ID string `json:"id"`
+	// Reason is the exception's justification.
+	Reason string `json:"reason"`
 }
 
 // PolicyRemediationEvent is emitted whenever there is Policy transformation.
@@ -300,6 +311,10 @@ type ResOpFailedEvent struct {
 	Metadata StepEventMetadata `json:"metadata"`
 	Status   int               `json:"status"`
 	Steps    int               `json:"steps"`
+	// Awaited is true if the failure was caused by the provider returning AwaitError — i.e. the
+	// operation could not be awaited to completion. Consumers can use this to distinguish an
+	// await failure from a genuine resource failure.
+	Awaited bool `json:"awaited,omitempty"`
 }
 
 // PolicyLoadEvent is emitted when a policy starts loading
