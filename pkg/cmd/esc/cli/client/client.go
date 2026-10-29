@@ -974,8 +974,9 @@ func (pc *client) ListChangeRequests(
 	continuationToken string,
 ) ([]ChangeRequest, string, error) {
 	queryObj := struct {
+		EntityType        string `url:"entityType"`
 		ContinuationToken string `url:"continuationToken,omitempty"`
-	}{ContinuationToken: continuationToken}
+	}{EntityType: "environment", ContinuationToken: continuationToken}
 
 	var resp ListChangeRequestsResponse
 	path := fmt.Sprintf("/api/change-requests/%v", orgName)
