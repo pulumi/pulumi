@@ -2505,7 +2505,7 @@ func TestEnvChangeRequestRejectsNonEnvironment(t *testing.T) {
 	require.NoError(t, err)
 
 	id := "00000000-0000-0000-0000-000000000000"
-	testcase.exec.client.changeRequests[id].Entity.EntityType = "stack"
+	testcase.exec.client.changeRequests[id].Entity.EntityType = "policy_exceptions"
 
 	for _, cmd := range []string{"get", "diff", "rebase"} {
 		stderr, err := run("esc env change-request " + cmd + " " + id + "\n")
