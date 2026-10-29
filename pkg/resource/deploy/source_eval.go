@@ -106,6 +106,8 @@ type EvalSourceOptions struct {
 	DisableInvokeOutputValues bool
 	// true to not advertise CALL_OUTPUT_VALUES on the monitor. Legacy SDKs / test knob for the fallback path.
 	DisableCallOutputValues bool
+	// true to not advertise REGISTER_RESOURCE_OUTPUT_VALUES on the monitor. Legacy SDKs / test knob for the fallback path.
+	DisableRegisterResourceOutputValues bool
 	// true if this deployment can safely execute and persist state migrations.
 	SupportsStateMigrations bool
 	// true if the engine should display secrets in diagnostic messages.
@@ -920,6 +922,8 @@ func (rm *resmon) supportsFeatureID(id string) bool {
 		return !rm.opts.DisableResourceReferences
 	case "outputValues":
 		return !rm.opts.DisableOutputValues
+	case "registerResourceOutputValues":
+		return !rm.opts.DisableRegisterResourceOutputValues
 	case "aliasSpecs":
 		return true
 	case "replacementTrigger":
@@ -999,6 +1003,10 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	}
 	if !rm.opts.DisableCallOutputValues {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES)
+	}
+	if !rm.opts.DisableRegisterResourceOutputValues {
+		features = append(features,
+			pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES)
 	}
 	return features
 }
@@ -2550,11 +2558,21 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		dependencies.Add(urn)
 	}
 
+	usesOutputValues := req.GetUsesOutputValues()
+	if usesOutputValues && len(req.GetPropertyDependencies()) != 0 {
+		return nil, rpcerror.New(codes.InvalidArgument,
+			"uses_output_values is set but propertyDependencies is non-empty; "+
+				"carry per-leaf dependency information inline on inputs as OutputValues instead")
+	}
+
 	propertyDependencies := make(map[resource.PropertyKey]mapset.Set[resource.URN])
-	if len(req.GetPropertyDependencies()) == 0 && !remote {
+	if len(req.GetPropertyDependencies()) == 0 && !remote && !usesOutputValues {
 		// If this request did not specify property dependencies, treat each property as depending on every resource
 		// in the request's dependency list. We don't need to do this when remote is true, because all clients that
 		// support remote already support passing property dependencies, so there's no need to backfill here.
+		// uses_output_values takes a different path: SDKs that set that flag are expected to carry per-leaf
+		// dependency information inline on inputs as OutputValues, so a plain leaf means "no dependency"
+		// and must not inherit the top-level set.
 		// Clone so that downstream code merging a property's Output-value dependencies into its set does not
 		// leak those dependencies into every other property via a shared underlying set instance.
 		for k := range props.All {
@@ -2575,8 +2593,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	// If we're running any transforms we need to update all the property values to Outputs to track dependencies.
-	if len(req.Transforms) > 0 {
+	// If we're running any transforms we need to update all the property values to Outputs to track
+	// dependencies. Skip when uses_output_values is set — the SDK has already placed per-leaf dependency
+	// information on inputs as OutputValues, which carries richer attribution than the flat
+	// propertyDependencies map upgradeOutputValues would stamp onto top-level values.
+	if len(req.Transforms) > 0 && !usesOutputValues {
 		props = upgradeOutputValues(props, propertyDependencies)
 	}
 

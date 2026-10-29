@@ -109,6 +109,11 @@ enum ResourceMonitorFeature {
     // dependencies into the call's wait-set), and will honour `accept_output_values` on the request to return
     // OutputValues in `CallResponse.return`.
     RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES = 18;
+    // The monitor accepts OutputValues nested in `RegisterResourceRequest.object` and will harvest their
+    // dependencies into the resource's `propertyDependencies`. Clients that set `uses_output_values` on
+    // `RegisterResourceRequest` can omit `propertyDependencies` and let the engine derive it from the
+    // OutputValue tree.
+    RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES = 19;
 }
 
 // DeploymentInfo returns monitor execution state currently sent to programs
@@ -301,6 +306,14 @@ message RegisterResourceRequest {
 
     // A list of state migrations to apply to the prior state of this resource and its descendants before diffing.
     repeated Callback state_migrations = 43;
+
+    // When true the `object` field uses OutputValues to carry per-leaf dependency information. The engine
+    // harvests dependencies from the OutputValue tree. `propertyDependencies` must be empty in this case —
+    // the engine rejects requests that set this flag together with a non-empty propertyDependencies map.
+    // Leaves of `object` that are plain values (not OutputValues) are treated as having no dependencies;
+    // they do not inherit the top-level `dependencies` list. Clients should only set this when the monitor
+    // advertises `RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES`.
+    bool uses_output_values = 44;
 }
 
 enum Result {
