@@ -37,6 +37,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -116,6 +117,9 @@ func NewAPICmd() *cobra.Command {
 		Use:   "api",
 		Short: "Call any Pulumi Cloud API endpoint",
 		Long: "[EXPERIMENTAL] Call any Pulumi Cloud API endpoint.\n" +
+			"Prefer a dedicated command when one exists (for example `pulumi policy issue ls`\n" +
+			"or `pulumi stack tag set`); `pulumi api list` and `pulumi api describe` show it\n" +
+			"(as `cliCommand` in JSON output). Use `pulumi api` for endpoints without one.\n" +
 			"\n" +
 			"The positional argument may be: a path (with optional {template} variables,\n" +
 			"e.g. `/api/orgs/{orgName}/members`), an operation ID as shown in `list` (e.g.\n" +
@@ -251,6 +255,7 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 	if err != nil {
 		return err
 	}
+	writeCLICommandHint(cmd.ErrOrStderr(), agentdetect.Detect(os.Getenv), mr.Op)
 
 	fields, err := parseFields(api.fields, api.rawFields, os.Stdin)
 	if err != nil {
@@ -998,4 +1003,12 @@ func emitDryRun(
 	}
 
 	return WriteJSON(w, env, cmdutil.Interactive())
+}
+
+func writeCLICommandHint(w io.Writer, agent string, op *Operation) {
+	if agent == "" || op.CLICommand == "" {
+		return
+	}
+	fmt.Fprintf(w, "%s has a dedicated command; run `%s` instead of `pulumi api`.\n",
+		op.OperationID, op.CLICommand)
 }

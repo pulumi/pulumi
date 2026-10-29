@@ -106,6 +106,9 @@ type Operation struct {
 	// SupersededBy is the operationId of the replacement route when
 	// x-pulumi-route-property.SupersededBy is set on a deprecated op.
 	SupersededBy string
+	// CLICommand is the dedicated CLI command for this operation
+	// (x-pulumi-route-property.CliCommand), if any.
+	CLICommand string
 
 	// hydrate fills the rendered schema fields (Body/Response SchemaText,
 	// SchemaMarkdown, SchemaJSON and the per-response copies in
@@ -435,7 +438,7 @@ func isInternalOp(op *v3high.Operation) bool {
 }
 
 // applyRouteProperty reads the Pulumi-specific x-pulumi-route-property
-// extension and folds its Visibility/Deprecated/SupersededBy fields into
+// extension and folds its Visibility/Deprecated/SupersededBy/CliCommand fields into
 // the Operation. The spec also has a native `deprecated: true` bool which
 // we honor as an override so pre-extension ops still surface correctly.
 func applyRouteProperty(out *Operation, op *v3high.Operation) {
@@ -445,6 +448,7 @@ func applyRouteProperty(out *Operation, op *v3high.Operation) {
 				Visibility   string `yaml:"Visibility"   json:"Visibility"`
 				Deprecated   bool   `yaml:"Deprecated"   json:"Deprecated"`
 				SupersededBy string `yaml:"SupersededBy" json:"SupersededBy"`
+				CliCommand   string `yaml:"CliCommand"   json:"CliCommand"`
 			}
 			if err := node.Decode(&rp); err == nil {
 				if strings.EqualFold(rp.Visibility, "Preview") {
@@ -454,6 +458,7 @@ func applyRouteProperty(out *Operation, op *v3high.Operation) {
 					out.IsDeprecated = true
 				}
 				out.SupersededBy = rp.SupersededBy
+				out.CLICommand = rp.CliCommand
 			}
 		}
 	}

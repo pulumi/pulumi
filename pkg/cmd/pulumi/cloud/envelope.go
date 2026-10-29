@@ -204,6 +204,7 @@ type lsOperation struct {
 	Summary     string `json:"summary"`
 	Description string `json:"description"`
 	Tag         string `json:"tag,omitempty"`
+	CLICommand  string `json:"cliCommand,omitempty"`
 	Preview     bool   `json:"preview,omitempty"`
 	Deprecated  bool   `json:"deprecated,omitempty"`
 }
@@ -231,6 +232,7 @@ type describedOp struct {
 	Preview         bool        `json:"preview,omitempty"`
 	Deprecated      bool        `json:"deprecated,omitempty"`
 	SupersededBy    string      `json:"supersededBy,omitempty"`
+	CLICommand      string      `json:"cliCommand,omitempty"`
 	Parameters      []ParamSpec `json:"parameters,omitempty"`
 	RequestBody     *bodyJSON   `json:"requestBody,omitempty"`
 	SuccessResponse *bodyJSON   `json:"successResponse,omitempty"`
