@@ -388,7 +388,7 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 
 	ps, err := readStackConfiguration(ctx, sink, ws, b, stackRef, opts.ConfigFile)
 	if err != nil {
-		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
+		return nil, fmt.Errorf("could not read stack configuration for new stack: %w", err)
 	}
 	if opts.ManagedEnvironment && (len(ps.Config) > 0 || ps.Environment != nil) {
 		return nil, fmt.Errorf("%s already has config or an environment; delete its `config` and `environment` "+
