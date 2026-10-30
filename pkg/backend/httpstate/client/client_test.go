@@ -2652,3 +2652,73 @@ func TestGetPolicyPack(t *testing.T) {
 	require.Len(t, resp.Policies, 1)
 	assert.Equal(t, apitype.Mandatory, resp.Policies[0].EnforcementLevel)
 }
+
+func TestListPolicyIssues_ClosedQuery(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		closed   bool
+		rawQuery string
+	}{
+		{"active", false, ""},
+		{"closed", true, "closed=true"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var rawQuery string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				rawQuery = r.URL.RawQuery
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte("{}"))
+			}))
+			defer server.Close()
+
+			c := newMockClient(server)
+			_, err := c.ListPolicyIssues(t.Context(), "acme", ListPolicyIssuesOptions{EndRow: 100, Closed: tt.closed})
+			require.NoError(t, err)
+			assert.Equal(t, tt.rawQuery, rawQuery)
+		})
+	}
+}
+
+func getPolicyIssueFromServer(t *testing.T, body string) apitype.GetPolicyIssueResponse {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/orgs/acme/policyresults/issues/i1", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(server.Close)
+
+	resp, err := newMockClient(server).GetPolicyIssue(t.Context(), "acme", "i1")
+	require.NoError(t, err)
+	return resp
+}
+
+func TestGetPolicyIssue_FullResponse(t *testing.T) {
+	t.Parallel()
+
+	resp := getPolicyIssueFromServer(t, `{
+		"policyIssue": {
+			"id": "i1",
+			"kind": "audit",
+			"priority": "p1",
+			"assignedTo": {"githubLogin": "alice", "name": "Alice"},
+			"policyGroupName": "prod",
+			"policyGroupType": "audit"
+		},
+		"policy": {
+			"name": "s3-no-public",
+			"description": "d",
+			"remediationSteps": "r",
+			"framework": {"name": "CIS", "version": "1.4", "reference": "2.1.5"}
+		}
+	}`)
+
+	require.NotNil(t, resp.Policy)
+	assert.Equal(t, "r", resp.Policy.RemediationSteps)
+	require.NotNil(t, resp.PolicyIssue.AssignedTo)
+	assert.Equal(t, "alice", resp.PolicyIssue.AssignedTo.GitHubLogin)
+}

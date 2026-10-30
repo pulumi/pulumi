@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -102,15 +103,18 @@ func TestPolicyIssueList_DefaultOutput(t *testing.T) {
 	t.Parallel()
 
 	buf := &bytes.Buffer{}
-	c := &mockPolicyIssueListClient{resp: samplePolicyIssueListResponse()}
+	var captured capturedPolicyIssueListCall
+	c := &mockPolicyIssueListClient{resp: samplePolicyIssueListResponse(), captured: &captured}
 	err := runPolicyIssueList(t.Context(), buf,
 		stubPolicyIssueListFactory(c, "acme"),
 		policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()})
 	require.NoError(t, err)
+	assert.False(t, captured.opts.Closed)
 
 	out := buf.String()
 	// Table headers.
 	assert.Contains(t, out, "ID")
+	assert.Contains(t, out, "STATUS")
 	assert.Contains(t, out, "POLICY PACK")
 	assert.Contains(t, out, "POLICY")
 	assert.Contains(t, out, "ENFORCEMENT")
@@ -345,7 +349,7 @@ func TestPolicyIssueList_Timestamps(t *testing.T) {
 	require.NoError(t, renderPolicyIssueListTable(&want, apitype.ListPolicyIssuesResponse{
 		PolicyIssues: []apitype.PolicyIssue{samplePolicyIssueFull(), samplePolicyIssueMinimal()},
 		RowCount:     new(250),
-	}))
+	}, false))
 	assert.Equal(t, want.String(), table)
 }
 
@@ -389,7 +393,7 @@ func TestPolicyIssueList_JSON_Full(t *testing.T) {
 		RowCount:     new(250),
 	}
 	var buf bytes.Buffer
-	require.NoError(t, renderPolicyIssueListJSON(&buf, resp))
+	require.NoError(t, renderPolicyIssueListJSON(&buf, resp, false))
 	got := buf.String()
 	assert.JSONEq(t, `{
   "policyIssues": [
@@ -443,7 +447,7 @@ func TestPolicyIssueList_JSON_Full(t *testing.T) {
 func TestPolicyIssueList_JSON_Minimal(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	require.NoError(t, renderPolicyIssueListJSON(&buf, apitype.ListPolicyIssuesResponse{}))
+	require.NoError(t, renderPolicyIssueListJSON(&buf, apitype.ListPolicyIssuesResponse{}, false))
 	got := buf.String()
 	assert.JSONEq(t, `{
   "policyIssues": [],
@@ -459,7 +463,7 @@ func TestPolicyIssueList_Table(t *testing.T) {
 		RowCount:     new(250),
 	}
 	var buf bytes.Buffer
-	require.NoError(t, renderPolicyIssueListTable(&buf, resp))
+	require.NoError(t, renderPolicyIssueListTable(&buf, resp, false))
 	got := buf.String()
 	for _, want := range []string{
 		"ID", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE",
@@ -470,4 +474,75 @@ func TestPolicyIssueList_Table(t *testing.T) {
 	} {
 		assert.Contains(t, got, want)
 	}
+}
+
+func TestPolicyIssueList_TableShowsClosedStatuses(t *testing.T) {
+	t.Parallel()
+
+	statuses := []cloudapitype.PolicyIssueStatus{
+		cloudapitype.PolicyIssueStatusFixed,
+		cloudapitype.PolicyIssueStatusIgnored,
+		cloudapitype.PolicyIssueStatusByDesign,
+	}
+	issues := make([]apitype.PolicyIssue, 0, len(statuses))
+	for i, status := range statuses {
+		issues = append(issues, apitype.PolicyIssue{ID: fmt.Sprintf("issue-%d", i), Status: status})
+	}
+	var buf bytes.Buffer
+	require.NoError(t, renderPolicyIssueListTable(&buf, apitype.ListPolicyIssuesResponse{
+		PolicyIssues: issues,
+		RowCount:     new(len(issues)),
+	}, true))
+	got := buf.String()
+	for _, want := range []string{"fixed", "ignored", "by_design"} {
+		assert.Contains(t, got, want)
+	}
+}
+
+func TestPolicyIssueList_ClosedFlagPassedToClient(t *testing.T) {
+	t.Parallel()
+
+	for _, closed := range []bool{false, true} {
+		t.Run(fmt.Sprintf("closed=%t", closed), func(t *testing.T) {
+			t.Parallel()
+
+			var closedByPage []bool
+			c := &pagingPolicyIssueListClient{
+				onCall: func(closed bool) { closedByPage = append(closedByPage, closed) },
+			}
+			err := runPolicyIssueList(t.Context(), &bytes.Buffer{},
+				stubPolicyIssueListFactory(c, "acme"),
+				policyIssueListArgs{closed: closed, all: true, outputFormat: defaultPolicyIssueListOutputFormat()})
+			require.NoError(t, err)
+			assert.Equal(t, []bool{closed, closed}, closedByPage)
+		})
+	}
+}
+
+func TestPolicyIssueList_ClosedEmptyMessage(t *testing.T) {
+	t.Parallel()
+
+	buf := &bytes.Buffer{}
+	c := &mockPolicyIssueListClient{resp: apitype.ListPolicyIssuesResponse{}}
+	err := runPolicyIssueList(t.Context(), buf,
+		stubPolicyIssueListFactory(c, "acme"),
+		policyIssueListArgs{closed: true, outputFormat: defaultPolicyIssueListOutputFormat()})
+	require.NoError(t, err)
+	assert.Equal(t, "No closed policy issues found for this organization.\n", buf.String())
+}
+
+type pagingPolicyIssueListClient struct {
+	onCall func(closed bool)
+	calls  int
+}
+
+func (p *pagingPolicyIssueListClient) ListPolicyIssues(
+	_ context.Context, _ string, opts client.ListPolicyIssuesOptions,
+) (apitype.ListPolicyIssuesResponse, error) {
+	p.onCall(opts.Closed)
+	p.calls++
+	return apitype.ListPolicyIssuesResponse{
+		PolicyIssues: []apitype.PolicyIssue{{ID: fmt.Sprintf("issue-%d", p.calls)}},
+		RowCount:     new(2),
+	}, nil
 }

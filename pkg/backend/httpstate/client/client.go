@@ -1935,6 +1935,8 @@ type ListPolicyIssuesOptions struct {
 	StartRow int
 	// EndRow is the exclusive upper bound (startRow + pageSize).
 	EndRow int
+	// Closed lists closed issues instead of active ones.
+	Closed bool
 }
 
 // ListPolicyIssues returns a paginated list of policy issues for the given
@@ -1950,9 +1952,12 @@ func (pc *Client) ListPolicyIssues(
 		EndRow:   opts.EndRow,
 	}
 	path := fmt.Sprintf("/api/orgs/%s/policyresults/issues", url.PathEscape(orgName))
+	query := struct {
+		Closed bool `url:"closed,omitempty"`
+	}{opts.Closed}
 
 	var resp apitype.ListPolicyIssuesResponse
-	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
+	if err := pc.restCall(ctx, http.MethodPost, path, query, req, &resp); err != nil {
 		return apitype.ListPolicyIssuesResponse{}, fmt.Errorf("listing policy issues: %w", err)
 	}
 	return resp, nil
@@ -1972,21 +1977,21 @@ func (pc *Client) GetPolicyComplianceResults(
 	return resp, nil
 }
 
-// GetPolicyIssue returns the details of a single policy issue in the given
-// organization, wrapping the `GetPolicyIssue` Pulumi Cloud REST endpoint
+// GetPolicyIssue returns a single policy issue in the given organization along
+// with its policy details, wrapping the `GetPolicyIssue` Pulumi Cloud REST endpoint
 // (GET /api/orgs/{orgName}/policyresults/issues/{issueId}).
 func (pc *Client) GetPolicyIssue(
 	ctx context.Context, orgName, issueID string,
-) (apitype.PolicyIssue, error) {
+) (apitype.GetPolicyIssueResponse, error) {
 	path := fmt.Sprintf(
 		"/api/orgs/%s/policyresults/issues/%s",
 		url.PathEscape(orgName), url.PathEscape(issueID))
 
 	var resp apitype.GetPolicyIssueResponse
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
-		return apitype.PolicyIssue{}, fmt.Errorf("getting policy issue: %w", err)
+		return apitype.GetPolicyIssueResponse{}, fmt.Errorf("getting policy issue: %w", err)
 	}
-	return resp.PolicyIssue, nil
+	return resp, nil
 }
 
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
