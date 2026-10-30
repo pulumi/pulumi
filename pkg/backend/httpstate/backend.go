@@ -1087,7 +1087,7 @@ func (b *cloudBackend) GetStackPolicyPacks(
 		return nil, err
 	}
 
-	resp, err := b.client.GetStackPolicyPacks(ctx, stackID)
+	resp, err := b.client.GetStackPolicyPacks(ctx, stackID, "")
 	if err != nil {
 		return nil, err
 	}

@@ -19,6 +19,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
 	"testing"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
@@ -295,8 +297,7 @@ func TestPolicyGroupEdit_SetsAndRemovesMatchRules(t *testing.T) {
 		})
 	require.NoError(t, err)
 
-	// One GET checks the mode before the account rule is written; one renders the result.
-	assert.Equal(t, 2, c.getCalls)
+	assert.Equal(t, 1, c.getCalls)
 	require.Len(t, c.updates, 1)
 	body, err := json.Marshal(c.updates[0])
 	require.NoError(t, err)
@@ -320,12 +321,11 @@ func TestPolicyGroupEdit_StackRuleAndRemoveAccountRule(t *testing.T) {
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
 			stackRule:    "env!=dev",
-			accountRule:  " ",
+			accountRule:  "",
 			changed:      map[string]bool{"stack-rule": true, "account-rule": true},
 		})
 	require.NoError(t, err)
 
-	// Removing an account rule does not check the mode before the write.
 	assert.Equal(t, 1, c.getCalls)
 	require.Len(t, c.updates, 1)
 	body, err := json.Marshal(c.updates[0])
@@ -336,30 +336,30 @@ func TestPolicyGroupEdit_StackRuleAndRemoveAccountRule(t *testing.T) {
 	]`, string(body))
 }
 
-func TestPolicyGroupEdit_AccountRuleOnPreventativeGroup(t *testing.T) {
+func TestPolicyGroupEdit_ServiceRejectsUpdate(t *testing.T) {
 	t.Parallel()
 
-	c := &mockPolicyGroupEditClient{getResp: apitype.GetPolicyGroupResponse{
-		Name: "prod-policies",
-		Mode: apitype.PolicyGroupModePreventative,
-	}}
+	c := &mockPolicyGroupEditClient{updateErr: fmt.Errorf("updating policy group: %w", &apitype.ErrorResponse{
+		Code:    http.StatusBadRequest,
+		Message: "invalid account match rule: account match rules cannot be set on a preventative policy group",
+	})}
 	err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
 			accountRule:  "env=prod",
 			changed:      map[string]bool{"account-rule": true},
 		})
-	require.Error(t, err)
 	assert.Equal(t, cmdCmd.ConfigurationError{
-		Message: `--account-rule requires an audit policy group; "prod-policies" is preventative`,
+		Message: "updating policy group: [400] invalid account match rule: " +
+			"account match rules cannot be set on a preventative policy group",
 	}, err)
-	assert.Empty(t, c.updates)
+	assert.Zero(t, c.getCalls)
 }
 
-func TestPolicyGroupEdit_AccountRuleModeCheckError(t *testing.T) {
+func TestPolicyGroupEdit_ServiceErrorIsNotAConfigurationError(t *testing.T) {
 	t.Parallel()
 
-	c := &mockPolicyGroupEditClient{getErr: errors.New("not found"), getErrOn: 1}
+	c := &mockPolicyGroupEditClient{updateErr: &apitype.ErrorResponse{Code: http.StatusNotFound, Message: "not found"}}
 	err := runPolicyGroupEdit(t.Context(), &bytes.Buffer{},
 		stubPolicyGroupEditFactory(c, "acme"), "missing", policyGroupEditArgs{
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
@@ -367,8 +367,8 @@ func TestPolicyGroupEdit_AccountRuleModeCheckError(t *testing.T) {
 			changed:      map[string]bool{"account-rule": true},
 		})
 	require.Error(t, err)
-	assert.Equal(t, "reading policy group: not found", err.Error())
-	assert.Empty(t, c.updates)
+	assert.NotErrorAs(t, err, &cmdCmd.ConfigurationError{})
+	assert.Equal(t, "[404] not found", err.Error())
 }
 
 func TestPolicyGroupEdit_InvalidRule(t *testing.T) {

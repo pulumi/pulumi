@@ -17,14 +17,12 @@ package stack
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -39,7 +37,7 @@ type stackPolicyListClient interface {
 	GetStackPolicyGroups(
 		ctx context.Context, stackID client.StackIdentifier,
 	) (apitype.ListPolicyGroupsResponse, error)
-	GetStackPolicyPacksForMode(
+	GetStackPolicyPacks(
 		ctx context.Context, stackID client.StackIdentifier, mode apitype.PolicyGroupMode,
 	) (apitype.GetStackPolicyPacksResponse, error)
 }
@@ -86,7 +84,7 @@ func newStackPolicyListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) 
 			"  pulumi stack policy ls --stack acme/web/prod --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
-			c, stackID, err := stackPolicyListClientForStack(ctx, ws, lm, args.stack)
+			c, stackID, err := RequireCloudStack(ctx, cmdutil.Diag(), ws, lm, args.stack)
 			if err != nil {
 				return err
 			}
@@ -110,43 +108,27 @@ func defaultStackPolicyListOutput() outputflag.OutputFlag[stackPolicyListRender]
 	}
 }
 
-func stackPolicyListClientForStack(
-	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackFlag string,
-) (stackPolicyListClient, client.StackIdentifier, error) {
-	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
-
-	s, err := RequireStack(ctx, cmdutil.Diag(), ws, lm, stackFlag, LoadOnly, opts, "")
-	if err != nil {
-		return nil, client.StackIdentifier{}, fmt.Errorf("resolving stack: %w", err)
-	}
-
-	cloudStack, ok := s.(httpstate.Stack)
-	if !ok {
-		return nil, client.StackIdentifier{},
-			errors.New("stack policy commands require the Pulumi Cloud backend; run `pulumi login`")
-	}
-
-	ref := cloudStack.Ref()
-	project := ""
-	if p, ok := ref.Project(); ok {
-		project = string(p)
-	}
-	stackID := client.StackIdentifier{
-		Owner:   cloudStack.OrgName(),
-		Project: project,
-		Stack:   ref.Name(),
-	}
-
-	be := cloudStack.Backend().(httpstate.Backend)
-	return be.Client(), stackID, nil
-}
-
 func runStackPolicyList(
 	ctx context.Context, w io.Writer,
 	c stackPolicyListClient, stackID client.StackIdentifier, args stackPolicyListArgs,
 ) error {
-	groups, err := c.GetStackPolicyGroups(ctx, stackID)
-	if err != nil {
+	var groups apitype.ListPolicyGroupsResponse
+	packs := make([]apitype.GetStackPolicyPacksResponse, len(stackPolicyModes))
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		var err error
+		groups, err = c.GetStackPolicyGroups(gctx, stackID)
+		return err
+	})
+	for i, mode := range stackPolicyModes {
+		g.Go(func() error {
+			var err error
+			packs[i], err = c.GetStackPolicyPacks(gctx, stackID, mode)
+			return err
+		})
+	}
+	if err := g.Wait(); err != nil {
 		return err
 	}
 
@@ -159,15 +141,11 @@ func runStackPolicyList(
 		result.PolicyGroups = []apitype.PolicyGroupSummary{}
 	}
 
-	for _, mode := range stackPolicyModes {
-		packs, err := c.GetStackPolicyPacksForMode(ctx, stackID, mode)
-		if err != nil {
-			return err
+	for i, mode := range stackPolicyModes {
+		if packs[i].RequiredPolicies == nil {
+			packs[i].RequiredPolicies = []apitype.RequiredPolicy{}
 		}
-		if packs.RequiredPolicies == nil {
-			packs.RequiredPolicies = []apitype.RequiredPolicy{}
-		}
-		result.PolicyPacks[mode] = packs.RequiredPolicies
+		result.PolicyPacks[mode] = packs[i].RequiredPolicies
 	}
 
 	return args.output.Get()(w, result)

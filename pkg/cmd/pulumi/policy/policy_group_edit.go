@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"slices"
 	"strconv"
 	"strings"
@@ -259,18 +260,12 @@ func runPolicyGroupEdit(
 		return err
 	}
 
-	if accountRule != nil {
-		group, err := c.GetPolicyGroup(ctx, org, name)
-		if err != nil {
-			return fmt.Errorf("reading policy group: %w", err)
-		}
-		if group.Mode != apitype.PolicyGroupModeAudit {
-			return cmdCmd.ConfigurationError{Message: fmt.Sprintf(
-				"--account-rule requires an audit policy group; %q is %s", name, group.Mode)}
-		}
-	}
-
 	if err := c.BatchUpdatePolicyGroup(ctx, org, name, updates); err != nil {
+		// The service validates the whole batch, including that an account rule
+		// targets an audit group, before applying any of it.
+		if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusBadRequest {
+			return cmdCmd.ConfigurationError{Message: err.Error()}
+		}
 		return err
 	}
 
