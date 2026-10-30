@@ -37,11 +37,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkghost "github.com/pulumi/pulumi/pkg/v3/host"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -91,7 +93,9 @@ func newAuthCheckCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra
 			opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 			sink := cmdutil.Diag()
 
-			cfg, err := loadCheckConfig(ctx, sink, ws, lm, stackName, opts)
+			// This must happen before the provider launches, because opening the stack's ESC
+			// environment sets the environment variables that the provider inherits.
+			target, err := loadCheckTarget(ctx, sink, ws, lm, stackName, opts)
 			if err != nil {
 				return err
 			}
@@ -121,7 +125,7 @@ func newAuthCheckCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra
 			}
 			defer contract.IgnoreClose(prov)
 
-			return checkCredentials(ctx, cmd.OutOrStdout(), prov, cfg)
+			return checkCredentials(ctx, cmd.OutOrStdout(), prov, target)
 		},
 	}
 
@@ -137,29 +141,21 @@ func newAuthCheckCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra
 	return cmd
 }
 
-// checkConfig is the configuration a credentials check passes to the provider.
-type checkConfig struct {
-	// stack is the name of the stack the configuration came from, or empty when there is none.
-	stack     string
-	cfg       config.Map
-	decrypter config.Decrypter
-}
-
-// loadCheckConfig returns the configuration of the named stack, or of the current stack if
-// stackName is empty. Without a project, or without a selected stack, it returns an empty
-// configuration so that only ambient credentials are checked.
-func loadCheckConfig(
+// loadCheckTarget returns a target holding the configuration of the named stack, or of the current
+// stack if stackName is empty. Without a project, or without a selected stack, it returns nil so
+// that only ambient credentials are checked.
+func loadCheckTarget(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
 	stackName string, opts display.Options,
-) (checkConfig, error) {
+) (*deploy.Target, error) {
 	proj, _, err := ws.ReadProject("")
 	if errors.Is(err, workspace.ErrProjectNotFound) {
 		if stackName != "" {
-			return checkConfig{}, errors.New("--stack can only be used inside a Pulumi project")
+			return nil, errors.New("--stack can only be used inside a Pulumi project")
 		}
-		return checkConfig{}, nil
+		return nil, nil
 	} else if err != nil {
-		return checkConfig{}, err
+		return nil, err
 	}
 
 	var s backend.Stack
@@ -169,15 +165,28 @@ func loadCheckConfig(
 		s, err = currentStack(ctx, ws, lm, proj)
 	}
 	if err != nil || s == nil {
-		return checkConfig{}, err
+		return nil, err
 	}
 
-	sc, _, err := cmdConfig.GetStackConfiguration(
+	sc, sm, err := cmdConfig.GetStackConfiguration(
 		ctx, sink, cmdStack.NewStackSecretsManagerLoaderFromEnv(), s, proj, "", nil)
 	if err != nil {
-		return checkConfig{}, fmt.Errorf("loading configuration for stack %s: %w", s.Ref(), err)
+		return nil, fmt.Errorf("loading configuration for stack %s: %w", s.Ref(), err)
 	}
-	return checkConfig{stack: s.Ref().String(), cfg: sc.Config, decrypter: sc.Decrypter}, nil
+	return stackTarget(ctx, s.Ref().Name(), proj, sc, sm)
+}
+
+// stackTarget merges ESC and project configuration into the stack's configuration, as `pulumi up`
+// does. Unlike `pulumi up` it doesn't validate the result: only the provider's values matter here.
+func stackTarget(
+	ctx context.Context, name tokens.StackName, proj *workspace.Project, sc backend.StackConfiguration, sm secrets.Manager,
+) (*deploy.Target, error) {
+	if err := pkgWorkspace.ApplyProjectConfig(
+		ctx, name.String(), proj, sc.Environment, sc.Config, sm.Encrypter(), sm.Decrypter(),
+	); err != nil {
+		return nil, fmt.Errorf("applying configuration for stack %s: %w", name, err)
+	}
+	return &deploy.Target{Name: name, Config: sc.Config, Decrypter: sc.Decrypter}, nil
 }
 
 // currentStack returns the currently selected stack, or nil if none is selected. Unlike other
@@ -194,26 +203,18 @@ func currentStack(
 
 // checkCredentials runs the credentials check against prov and reports the outcome. It returns an
 // error if the provider does not support the check or rejects the configuration or credentials.
-func checkCredentials(ctx context.Context, stdout io.Writer, prov plugin.Provider, cfg checkConfig) error {
-	cp, err := credentialcheck.FromSchema(ctx, prov, plugin.GetSchemaRequest{})
-	if err != nil {
-		return fmt.Errorf("getting schema: %w", err)
-	}
-	if !cp.Supported {
-		return fmt.Errorf("the %s provider does not support credential checks", cp.Pkg)
-	}
-
-	if cfg.stack != "" {
-		fmt.Fprintf(stdout, "Using configuration from stack %s\n", cfg.stack)
+func checkCredentials(ctx context.Context, stdout io.Writer, prov plugin.Provider, target *deploy.Target) error {
+	if target != nil {
+		fmt.Fprintf(stdout, "Using configuration from stack %s\n", target.Name)
 	} else {
 		fmt.Fprintln(stdout, "No stack selected; using credentials from the environment")
 	}
 
-	news := credentialcheck.ConfigProperties(cp.Pkg, cfg.cfg, cfg.decrypter)
-	if err := credentialcheck.Probe(ctx, cp, prov, news); err != nil {
+	info, err := credentialcheck.Check(ctx, prov, plugin.GetSchemaRequest{}, target)
+	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(stdout, "%sYour %s credentials are valid\n", cmdutil.EmojiOr("✅ ", ""), cp.DisplayName)
+	fmt.Fprintf(stdout, "%sYour %s credentials are valid\n", cmdutil.EmojiOr("✅ ", ""), info.DisplayName)
 	return nil
 }

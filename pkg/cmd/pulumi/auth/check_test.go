@@ -28,11 +28,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -53,77 +57,118 @@ func credentialsProvider(schema string) *plugin.MockProvider {
 	}
 }
 
-func runCheckCredentials(t *testing.T, prov plugin.Provider, cfg checkConfig) (string, error) {
+func runCheckCredentials(t *testing.T, prov plugin.Provider, target *deploy.Target) (string, error) {
 	t.Helper()
 	var stdout bytes.Buffer
-	err := checkCredentials(t.Context(), &stdout, prov, cfg)
+	err := checkCredentials(t.Context(), &stdout, prov, target)
 	return stdout.String(), err
 }
 
 func TestCheckCredentialsSuccess(t *testing.T) {
 	t.Parallel()
 
-	stdout, err := runCheckCredentials(t, credentialsProvider(awsSchema), checkConfig{})
+	stdout, err := runCheckCredentials(t, credentialsProvider(awsSchema), nil)
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "No stack selected; using credentials from the environment")
 	assert.Contains(t, stdout, "Your AWS credentials are valid")
 }
 
-func TestCheckCredentialsUsesStackConfig(t *testing.T) {
+func TestCheckCredentialsUsesStack(t *testing.T) {
 	t.Parallel()
 
 	prov := credentialsProvider(awsSchema)
 	prov.ConfigureF = func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-		assert.Equal(t, "pulumi:providers:aws", string(*req.Type))
 		assert.Equal(t, "my-profile", req.Inputs.Get("profile").AsString())
-		assert.Equal(t, "ciphertext", req.Inputs.Get("secretKey").AsString())
-		assert.Equal(t, 2, req.Inputs.Len())
 		return plugin.ConfigureResponse{}, nil
 	}
-	cfg := checkConfig{
-		stack: "dev",
-		cfg: config.Map{
-			config.MustMakeKey("aws", "profile"):    config.NewValue("my-profile"),
-			config.MustMakeKey("aws", "secretKey"):  config.NewSecureValue("ciphertext"),
-			config.MustMakeKey("proj", "unrelated"): config.NewValue("value"),
-		},
-		decrypter: config.NopDecrypter,
-	}
 
-	stdout, err := runCheckCredentials(t, prov, cfg)
+	stdout, err := runCheckCredentials(t, prov, &deploy.Target{
+		Name:      tokens.MustParseStackName("dev"),
+		Config:    config.Map{config.MustMakeKey("aws", "profile"): config.NewValue("my-profile")},
+		Decrypter: config.NopDecrypter,
+	})
 	require.NoError(t, err)
 	assert.Contains(t, stdout, "Using configuration from stack dev")
 	assert.Contains(t, stdout, "Your AWS credentials are valid")
 }
 
-func TestCheckCredentialsConfigureError(t *testing.T) {
+func TestStackTargetMergesEnvironmentAndProjectConfig(t *testing.T) {
+	t.Parallel()
+
+	sm := b64.NewBase64SecretsManager()
+	proj := &workspace.Project{
+		Name: "proj",
+		Config: map[string]workspace.ProjectConfigType{
+			"aws:region": {Value: "us-west-2"},
+			"aws:token":  {Value: "from-project"},
+		},
+	}
+	sc := backend.StackConfiguration{
+		Environment: esc.NewValue(map[string]esc.Value{
+			"aws:profile":   esc.NewValue("from-esc"),
+			"aws:secretKey": {Value: "from-esc-secret", Secret: true},
+			"aws:token":     esc.NewValue("from-esc"),
+		}),
+		Config:    config.Map{config.MustMakeKey("aws", "token"): config.NewValue("from-stack")},
+		Decrypter: sm.Decrypter(),
+	}
+
+	target, err := stackTarget(t.Context(), tokens.MustParseStackName("dev"), proj, sc, sm)
+	require.NoError(t, err)
+
+	prov := credentialsProvider(awsSchema)
+	configured := false
+	prov.ConfigureF = func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+		configured = true
+		assert.Equal(t, "us-west-2", req.Inputs.Get("region").AsString())
+		assert.Equal(t, "from-esc", req.Inputs.Get("profile").AsString())
+		assert.Equal(t, "from-esc-secret", req.Inputs.Get("secretKey").AsString())
+		assert.True(t, req.Inputs.Get("secretKey").Secret())
+		assert.Equal(t, "from-stack", req.Inputs.Get("token").AsString())
+		return plugin.ConfigureResponse{}, nil
+	}
+	_, err = runCheckCredentials(t, prov, target)
+	require.NoError(t, err)
+	assert.True(t, configured)
+}
+
+func TestStackTargetDoesNotRequireProjectConfig(t *testing.T) {
+	t.Parallel()
+
+	proj := &workspace.Project{
+		Name:   "proj",
+		Config: map[string]workspace.ProjectConfigType{"required": {}},
+	}
+	sm := b64.NewBase64SecretsManager()
+	sc := backend.StackConfiguration{Config: config.Map{}, Decrypter: sm.Decrypter()}
+
+	_, err := stackTarget(t.Context(), tokens.MustParseStackName("dev"), proj, sc, sm)
+	require.NoError(t, err)
+}
+
+func TestCheckCredentialsSecretCannotBeDecrypted(t *testing.T) {
+	t.Parallel()
+
+	stdout, err := runCheckCredentials(t, credentialsProvider(awsSchema), &deploy.Target{
+		Name:      tokens.MustParseStackName("dev"),
+		Config:    config.Map{config.MustMakeKey("aws", "secretKey"): config.NewSecureValue("ciphertext")},
+		Decrypter: config.NewErrorCrypter("bad passphrase"),
+	})
+	require.ErrorContains(t, err, "bad passphrase")
+	assert.NotContains(t, stdout, "credentials are valid")
+}
+
+func TestCheckCredentialsRejected(t *testing.T) {
 	t.Parallel()
 
 	prov := credentialsProvider(awsSchema)
 	prov.ConfigureF = func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-		return plugin.ConfigureResponse{}, status.Error(codes.Unknown,
-			"unable to validate AWS credentials.\nDetails: no valid credential sources found")
+		return plugin.ConfigureResponse{}, status.Error(codes.Unknown, "no valid credential sources found")
 	}
 
-	stdout, err := runCheckCredentials(t, prov, checkConfig{})
+	stdout, err := runCheckCredentials(t, prov, nil)
 	require.ErrorContains(t, err, "Could not validate your AWS credentials:")
-	assert.ErrorContains(t, err, "\n    Details: no valid credential sources found")
-	assert.ErrorContains(t, err, "\nFor help configuring the AWS provider, see ")
 	assert.NotContains(t, stdout, "credentials are valid")
-}
-
-func TestCheckCredentialsCheckConfigFailures(t *testing.T) {
-	t.Parallel()
-
-	prov := credentialsProvider(awsSchema)
-	prov.CheckConfigF = func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-		return plugin.CheckConfigResponse{Failures: []plugin.CheckFailure{
-			{Property: "region", Reason: "expected a valid region"},
-		}}, nil
-	}
-
-	_, err := runCheckCredentials(t, prov, checkConfig{})
-	require.ErrorContains(t, err, "\n    region: expected a valid region")
 }
 
 func TestCheckCredentialsNotSupported(t *testing.T) {
@@ -135,8 +180,9 @@ func TestCheckCredentialsNotSupported(t *testing.T) {
 		return plugin.CheckConfigResponse{}, nil
 	}
 
-	_, err := runCheckCredentials(t, prov, checkConfig{})
+	stdout, err := runCheckCredentials(t, prov, nil)
 	require.ErrorContains(t, err, "the random provider does not support credential checks")
+	assert.NotContains(t, stdout, "credentials are valid")
 }
 
 func TestCheckCredentialsCancelled(t *testing.T) {
@@ -150,12 +196,12 @@ func TestCheckCredentialsCancelled(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	err := checkCredentials(ctx, &stdout, prov, checkConfig{})
+	err := checkCredentials(ctx, &stdout, prov, nil)
 	require.ErrorIs(t, err, context.Canceled)
 	assert.NotContains(t, stdout.String(), "credentials are valid")
 }
 
-func TestLoadCheckConfigWithoutProject(t *testing.T) {
+func TestLoadCheckTargetWithoutProject(t *testing.T) {
 	t.Parallel()
 
 	ws := &pkgWorkspace.MockContext{
@@ -166,15 +212,15 @@ func TestLoadCheckConfigWithoutProject(t *testing.T) {
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	opts := display.Options{Color: colors.Never}
 
-	cfg, err := loadCheckConfig(t.Context(), sink, ws, &cmdBackend.MockLoginManager{}, "", opts)
+	target, err := loadCheckTarget(t.Context(), sink, ws, &cmdBackend.MockLoginManager{}, "", opts)
 	require.NoError(t, err)
-	assert.Equal(t, checkConfig{}, cfg)
+	assert.Nil(t, target)
 
-	_, err = loadCheckConfig(t.Context(), sink, ws, &cmdBackend.MockLoginManager{}, "dev", opts)
+	_, err = loadCheckTarget(t.Context(), sink, ws, &cmdBackend.MockLoginManager{}, "dev", opts)
 	require.ErrorContains(t, err, "--stack can only be used inside a Pulumi project")
 }
 
-func TestLoadCheckConfigNotLoggedIn(t *testing.T) {
+func TestLoadCheckTargetNotLoggedIn(t *testing.T) {
 	t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")
 
 	ws := &pkgWorkspace.MockContext{
@@ -198,7 +244,7 @@ func TestLoadCheckConfigNotLoggedIn(t *testing.T) {
 	}
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 
-	cfg, err := loadCheckConfig(t.Context(), sink, ws, lm, "", display.Options{Color: colors.Never})
+	target, err := loadCheckTarget(t.Context(), sink, ws, lm, "", display.Options{Color: colors.Never})
 	require.NoError(t, err)
-	assert.Equal(t, checkConfig{}, cfg)
+	assert.Nil(t, target)
 }
