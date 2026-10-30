@@ -16,6 +16,7 @@ package policy
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -50,15 +51,13 @@ func TestPolicyGroupList_DefaultOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	require.NoError(t, formatPolicyGroupsConsole(&buf, samplePolicyGroupSummaries()))
-	out := buf.String()
-
-	assert.Contains(t, out, "NAME")
-	assert.Contains(t, out, "DEFAULT")
-	assert.Contains(t, out, "ENABLED POLICY PACKS")
-	assert.Contains(t, out, "STACKS")
-	assert.Contains(t, out, "default-policy-group")
-	assert.Contains(t, out, "42")
-	assert.Contains(t, out, "audit-accounts")
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	require.Len(t, lines, 3)
+	assert.Equal(t,
+		[]string{"NAME", "DEFAULT", "ENABLED", "POLICY", "PACKS", "STACKS", "ACCOUNTS", "MODE"},
+		strings.Fields(lines[0]))
+	assert.Equal(t, []string{"default-policy-group", "Y", "5", "42", "3", "preventative"}, strings.Fields(lines[1]))
+	assert.Equal(t, []string{"audit-accounts", "N", "2", "0", "7", "audit"}, strings.Fields(lines[2]))
 }
 
 func TestPolicyGroupList_JSONOutput(t *testing.T) {
@@ -67,7 +66,30 @@ func TestPolicyGroupList_JSONOutput(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, formatPolicyGroupsJSON(&buf, samplePolicyGroupSummaries()))
 	assert.JSONEq(t, `[
-		{"name": "default-policy-group", "default": true, "numPolicyPacks": 5, "numStacks": 42},
-		{"name": "audit-accounts", "default": false, "numPolicyPacks": 2, "numStacks": 0}
+		{
+			"name": "default-policy-group", "default": true, "numPolicyPacks": 5, "numStacks": 42,
+			"numAccounts": 3, "mode": "preventative"
+		},
+		{
+			"name": "audit-accounts", "default": false, "numPolicyPacks": 2, "numStacks": 0,
+			"numAccounts": 7, "mode": "audit"
+		}
 	]`, buf.String())
+}
+
+func TestWritePolicyGroupListAgentHint(t *testing.T) {
+	t.Parallel()
+
+	var human bytes.Buffer
+	writePolicyGroupListAgentHint(&human, "")
+	assert.Empty(t, human.String())
+
+	var agent bytes.Buffer
+	writePolicyGroupListAgentHint(&agent, "claude")
+	assert.True(t, strings.HasPrefix(agent.String(), "Related commands:\n"))
+	assert.Contains(t, agent.String(), "pulumi policy group get <name>")
+	assert.Contains(t, agent.String(), "pulumi stack policy ls --stack <stack>")
+	assert.Contains(t, agent.String(), "pulumi policy issue ls")
+	assert.NotContains(t, agent.String(), "--stacks")
+	assert.NotContains(t, agent.String(), "--group")
 }

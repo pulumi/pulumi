@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -62,7 +64,15 @@ func newPolicyGroupListCmd() *cobra.Command {
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "List all Policy Groups for a Pulumi organization",
-		Long:    "List all Policy Groups for a Pulumi organization",
+		Long: "List all Policy Groups for a Pulumi organization.\n" +
+			"\n" +
+			"Shows each group's enforcement mode (audit or preventative), whether it is\n" +
+			"an organization default, and how many Policy Packs, stacks and Insights\n" +
+			"accounts it has. Defaults to the current organization.",
+		Example: "  # List the Policy Groups in the current organization\n" +
+			"  pulumi policy group ls\n\n" +
+			"  # List the Policy Groups in another organization as JSON\n" +
+			"  pulumi policy group ls acme --output json",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 
@@ -117,7 +127,11 @@ func newPolicyGroupListCmd() *cobra.Command {
 				inContToken = outContToken
 			}
 
-			return output.Get()(cmd.OutOrStdout(), allPolicyGroups)
+			if err := output.Get()(cmd.OutOrStdout(), allPolicyGroups); err != nil {
+				return err
+			}
+			writePolicyGroupListAgentHint(cmd.ErrOrStderr(), agentdetect.Detect(os.Getenv))
+			return nil
 		},
 	}
 
@@ -132,9 +146,19 @@ func newPolicyGroupListCmd() *cobra.Command {
 	return cmd
 }
 
+func writePolicyGroupListAgentHint(w io.Writer, agent string) {
+	if agent == "" {
+		return
+	}
+	fmt.Fprintln(w, "Related commands:")
+	fmt.Fprintln(w, "  pulumi policy group get <name>          # a group's packs, stacks and match rules")
+	fmt.Fprintln(w, "  pulumi stack policy ls --stack <stack>  # the groups and packs that apply to one stack")
+	fmt.Fprintln(w, "  pulumi policy issue ls                  # policy violations")
+}
+
 func formatPolicyGroupsConsole(w io.Writer, policyGroups []apitype.PolicyGroupSummary) error {
 	// Header string and formatting options to align columns.
-	headers := []string{"NAME", "DEFAULT", "ENABLED POLICY PACKS", "STACKS"}
+	headers := []string{"NAME", "DEFAULT", "ENABLED POLICY PACKS", "STACKS", "ACCOUNTS", "MODE"}
 
 	rows := slice.Prealloc[cmdutil.TableRow](len(policyGroups))
 
@@ -156,8 +180,10 @@ func formatPolicyGroupsConsole(w io.Writer, policyGroups []apitype.PolicyGroupSu
 		// Number of stacks column
 		numStacks := strconv.Itoa(group.NumStacks)
 
-		// Render the columns.
-		columns := []string{name, defaultGroup, numPolicyPacks, numStacks}
+		columns := []string{
+			name, defaultGroup, numPolicyPacks, numStacks,
+			strconv.Itoa(group.NumAccounts), string(group.Mode),
+		}
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
 	ui.FprintTable(w, cmdutil.Table{
@@ -175,6 +201,8 @@ type policyGroupsJSON struct {
 	Default        bool   `json:"default"`
 	NumPolicyPacks int    `json:"numPolicyPacks"`
 	NumStacks      int    `json:"numStacks"`
+	NumAccounts    int    `json:"numAccounts"`
+	Mode           string `json:"mode"`
 }
 
 func formatPolicyGroupsJSON(w io.Writer, policyGroups []apitype.PolicyGroupSummary) error {
@@ -185,6 +213,8 @@ func formatPolicyGroupsJSON(w io.Writer, policyGroups []apitype.PolicyGroupSumma
 			Default:        group.IsOrgDefault,
 			NumPolicyPacks: group.NumEnabledPolicyPacks,
 			NumStacks:      group.NumStacks,
+			NumAccounts:    group.NumAccounts,
+			Mode:           string(group.Mode),
 		}
 	}
 	return ui.FprintJSON(w, output)

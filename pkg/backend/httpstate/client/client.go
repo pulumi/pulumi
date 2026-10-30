@@ -39,6 +39,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -1737,10 +1738,11 @@ func (pc *Client) GetPolicyGroup(
 }
 
 // BatchUpdatePolicyGroup applies the given updates to a Policy Group in one
-// request. Each update carries one mutation: a rename, or the addition or
-// removal of one stack, Policy Pack, or Insights account.
+// request. Each update carries one mutation: a rename, the addition or
+// removal of one stack, Policy Pack, or Insights account, or setting or
+// removing the stack or account match rule.
 func (pc *Client) BatchUpdatePolicyGroup(
-	ctx context.Context, orgName, policyGroup string, reqs []apitype.UpdatePolicyGroupRequest,
+	ctx context.Context, orgName, policyGroup string, reqs []cloudapitype.UpdatePolicyGroupRequest,
 ) error {
 	if err := pc.restCall(
 		ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup)+"/batch", nil, reqs, nil,
@@ -2335,13 +2337,28 @@ func (pc *Client) RemovePolicyPackByVersion(ctx context.Context, orgName string,
 	return nil
 }
 
-// GetStackPolicyPacks gets the required policy packs currently applicable to the stack.
+// GetStackPolicyPacks gets the required policy packs currently applicable to the stack. A
+// non-empty mode limits them to the packs enabled by the stack's policy groups of that mode.
 func (pc *Client) GetStackPolicyPacks(ctx context.Context,
-	stackID StackIdentifier,
+	stackID StackIdentifier, mode apitype.PolicyGroupMode,
 ) (apitype.GetStackPolicyPacksResponse, error) {
+	query := struct {
+		Mode apitype.PolicyGroupMode `url:"mode,omitempty"`
+	}{Mode: mode}
 	var resp apitype.GetStackPolicyPacksResponse
-	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "policypacks"), nil, nil, &resp); err != nil {
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "policypacks"), query, nil, &resp); err != nil {
 		return apitype.GetStackPolicyPacksResponse{}, err
+	}
+	return resp, nil
+}
+
+// GetStackPolicyGroups lists the policy groups the stack belongs to.
+func (pc *Client) GetStackPolicyGroups(ctx context.Context,
+	stackID StackIdentifier,
+) (apitype.ListPolicyGroupsResponse, error) {
+	var resp apitype.ListPolicyGroupsResponse
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "policygroups"), nil, nil, &resp); err != nil {
+		return apitype.ListPolicyGroupsResponse{}, fmt.Errorf("getting stack policy groups: %w", err)
 	}
 	return resp, nil
 }
