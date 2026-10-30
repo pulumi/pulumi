@@ -42,6 +42,8 @@ import (
 
 type envGetCommand struct {
 	env *envCommand
+
+	approval openApprovalOptions
 }
 
 func newEnvGetCmd(env *envCommand) *cobra.Command {
@@ -148,6 +150,7 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show static secrets in plaintext rather than ciphertext")
+	addRequestApprovalFlags(cmd, &get.approval)
 
 	return cmd
 }
@@ -200,7 +203,9 @@ func (get *envGetCommand) showValue(
 	format string,
 	showSecrets bool,
 ) error {
-	return get.writeValue(ctx, get.env.esc.stdout, ref, path, format, showSecrets)
+	return get.env.withOpenApproval(ctx, ref, get.approval, func() error {
+		return get.writeValue(ctx, get.env.esc.stdout, ref, path, format, showSecrets)
+	})
 }
 
 func diff(oldName, old, newName, new string) string {
@@ -254,21 +259,27 @@ func (get *envGetCommand) getEnvironment(
 	path resource.PropertyPath,
 	showSecrets bool,
 ) (*envGetTemplateData, error) {
-	def, _, _, err := get.env.esc.client.GetEnvironment(
-		ctx,
-		ref.orgName,
-		ref.projectName,
-		ref.envName,
-		ref.version,
-		showSecrets,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("getting environment definition: %w", err)
-	}
-	if len(path) == 0 {
-		return get.getEntireEnvironment(ctx, ref.orgName, def, showSecrets)
-	}
-	return get.getEnvironmentMember(ctx, ref.orgName, ref.envName, def, path, showSecrets)
+	var data *envGetTemplateData
+	err := get.env.withOpenApproval(ctx, ref, get.approval, func() error {
+		def, _, _, err := get.env.esc.client.GetEnvironment(
+			ctx,
+			ref.orgName,
+			ref.projectName,
+			ref.envName,
+			ref.version,
+			showSecrets,
+		)
+		if err != nil {
+			return fmt.Errorf("getting environment definition: %w", err)
+		}
+		if len(path) == 0 {
+			data, err = get.getEntireEnvironment(ctx, ref.orgName, def, showSecrets)
+			return err
+		}
+		data, err = get.getEnvironmentMember(ctx, ref.orgName, ref.envName, def, path, showSecrets)
+		return err
+	})
+	return data, err
 }
 
 func (get *envGetCommand) getEntireEnvironment(
