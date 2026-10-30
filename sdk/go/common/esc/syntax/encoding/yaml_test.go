@@ -223,3 +223,41 @@ func TestYAMLDeleteAllValuesThenAdd(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, expectedFinal, string(newYAML))
 }
+
+func TestYAMLRoundTripDocumentComments(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name, source, expected string
+	}{
+		{
+			name:     "leading",
+			source:   "# leading comment\n\nvalues:\n  x: 1\n",
+			expected: "# leading comment\n\nvalues:\n  x: 1\n",
+		},
+		{
+			name:     "trailing",
+			source:   "values:\n  x: 1\n\n# trailing comment\n",
+			expected: "values:\n  x: 1\n\n# trailing comment\n",
+		},
+		{
+			name:     "trailing indented",
+			source:   "values:\n  x: 1\n\n  # trailing comment\n",
+			expected: "values:\n  x: 1\n\n# trailing comment\n",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			node, diags := DecodeYAMLBytes("test.yaml", []byte(c.source), nil)
+			require.Empty(t, diags)
+
+			var b bytes.Buffer
+			enc := yaml.NewEncoder(&b)
+			enc.SetIndent(2)
+			require.Empty(t, EncodeYAML(enc, node))
+			assert.Equal(t, c.expected, b.String())
+		})
+	}
+}

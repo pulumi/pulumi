@@ -44,6 +44,9 @@ type YAMLSyntax struct {
 	rng   *hcl.Range
 	path  string
 	value any
+
+	// document is the YAML document node that contains this node, if this node is the root of a document.
+	document *yaml.Node
 }
 
 // Range returns the textual range of the YAML node, if any.
@@ -396,7 +399,7 @@ func unmarshalYAMLNode(
 				elements[i] = e
 			}
 		}
-		return syntax.ArraySyntax(YAMLSyntax{n, rng, path, nil}, elements...), diags
+		return syntax.ArraySyntax(YAMLSyntax{n, rng, path, nil, nil}, elements...), diags
 	case yaml.MappingNode:
 		var entries []syntax.ObjectPropertyDef
 		if len(n.Content) != 0 {
@@ -422,10 +425,10 @@ func unmarshalYAMLNode(
 				value, vdiags := unmarshalYAML(filename, pos, valueNode, tags)
 				diags.Extend(vdiags...)
 
-				entries[i] = syntax.ObjectPropertySyntax(YAMLSyntax{keyNode, rng, pos.pathString(), nil}, key, value)
+				entries[i] = syntax.ObjectPropertySyntax(YAMLSyntax{keyNode, rng, pos.pathString(), nil, nil}, key, value)
 			}
 		}
-		return syntax.ObjectSyntax(YAMLSyntax{n, rng, path, nil}, entries...), diags
+		return syntax.ObjectSyntax(YAMLSyntax{n, rng, path, nil, nil}, entries...), diags
 	case yaml.ScalarNode:
 		var v any
 		if err := n.Decode(&v); err != nil {
@@ -433,26 +436,26 @@ func unmarshalYAMLNode(
 			return nil, diags
 		}
 		if v == nil {
-			return syntax.NullSyntax(YAMLSyntax{n, rng, path, nil}), nil
+			return syntax.NullSyntax(YAMLSyntax{n, rng, path, nil, nil}), nil
 		}
 
 		switch v := v.(type) {
 		case bool:
-			return syntax.BooleanSyntax(YAMLSyntax{n, rng, path, v}, v), nil
+			return syntax.BooleanSyntax(YAMLSyntax{n, rng, path, v, nil}, v), nil
 		case float64:
 			nv := syntax.AsNumber(v)
-			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv}, nv), nil
+			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv, nil}, nv), nil
 		case int:
 			nv := syntax.AsNumber(v)
-			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv}, nv), nil
+			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv, nil}, nv), nil
 		case int64:
 			nv := syntax.AsNumber(v)
-			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv}, nv), nil
+			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv, nil}, nv), nil
 		case uint64:
 			nv := syntax.AsNumber(v)
-			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv}, nv), nil
+			return syntax.NumberSyntax(YAMLSyntax{n, rng, path, nv, nil}, nv), nil
 		default:
-			return syntax.StringSyntax(YAMLSyntax{n, rng, path, v}, n.Value), nil
+			return syntax.StringSyntax(YAMLSyntax{n, rng, path, v, nil}, n.Value), nil
 		}
 	case yaml.AliasNode:
 		return nil, syntax.Diagnostics{syntax.Error(rng, "alias nodes are not supported", path)}
@@ -600,51 +603,78 @@ func MarshalYAML(n syntax.Node) (*yaml.Node, syntax.Diagnostics) {
 	return &yamlNode, diags
 }
 
-type yamlValue struct {
-	filename  string
-	positions positionIndex
-	node      syntax.Node
-	tags      TagDecoder
-	diags     syntax.Diagnostics
-}
-
-func (v *yamlValue) UnmarshalYAML(n *yaml.Node) error {
-	v.node, v.diags = unmarshalYAML(v.filename, v.positions, n, v.tags)
-	return nil
+// unmarshalYAMLDocument unmarshals the root of a YAML document.
+func unmarshalYAMLDocument(
+	filename string,
+	positions positionIndex,
+	doc *yaml.Node,
+	tags TagDecoder,
+) (syntax.Node, syntax.Diagnostics) {
+	if doc.Kind != yaml.DocumentNode || len(doc.Content) != 1 {
+		return unmarshalYAML(filename, positions, doc, tags)
+	}
+	node, diags := unmarshalYAML(filename, positions, doc.Content[0], tags)
+	obj, ok := node.(*syntax.ObjectNode)
+	if !ok {
+		return node, diags
+	}
+	s, ok := obj.Syntax().(YAMLSyntax)
+	if !ok {
+		return node, diags
+	}
+	s.document = doc
+	entries := make([]syntax.ObjectPropertyDef, obj.Len())
+	for i := range entries {
+		entries[i] = obj.Index(i)
+	}
+	return syntax.ObjectSyntax(s, entries...), diags
 }
 
 // DecodeYAMLBytes decodes a YAML value from the given decoder into a syntax node. See UnmarshalYAML for mode details
-// on the
-// decoding process.
+// on the decoding process.
 func DecodeYAMLBytes(filename string, bytes []byte, tags TagDecoder) (syntax.Node, syntax.Diagnostics) {
 	// If this is an empty file, return an empty object node.
 	if len(bytes) == 0 {
 		return &syntax.ObjectNode{}, nil
 	}
-	v := yamlValue{filename: filename, positions: newPositionIndex(bytes), tags: tags}
-	if err := yaml.Unmarshal(bytes, &v); err != nil {
+	var doc yaml.Node
+	if err := yaml.Unmarshal(bytes, &doc); err != nil {
 		return nil, syntax.Diagnostics{syntax.Error(nil, err.Error(), "")}
 	}
-	return v.node, v.diags
+	// No YAML document, e.g. only comments or whitespace.
+	if doc.Kind == 0 {
+		return nil, nil
+	}
+	return unmarshalYAMLDocument(filename, newPositionIndex(bytes), &doc, tags)
 }
 
 // DecodeYAML decodes a YAML value from the given decoder into a syntax node. See UnmarshalYAML for mode details on the
 // decoding process.
 func DecodeYAML(filename string, d *yaml.Decoder, tags TagDecoder) (syntax.Node, syntax.Diagnostics) {
-	v := yamlValue{filename: filename, tags: tags}
-	if err := d.Decode(&v); err != nil {
+	var doc yaml.Node
+	if err := d.Decode(&doc); err != nil {
 		if errors.Is(err, io.EOF) {
-			return &syntax.ObjectNode{}, v.diags
+			return &syntax.ObjectNode{}, nil
 		}
 		return nil, syntax.Diagnostics{syntax.Error(nil, err.Error(), "")}
 	}
-	return v.node, v.diags
+	return unmarshalYAMLDocument(filename, positionIndex{}, &doc, tags)
 }
 
 // EncodeYAML encodes a syntax node into YAML text using the given encoder. See MarshalYAML for mode details on the
 // encoding process.
 func EncodeYAML(e *yaml.Encoder, n syntax.Node) syntax.Diagnostics {
 	yamlNode, diags := MarshalYAML(n)
+	// Re-wrap the root in its original document
+	if s, ok := n.Syntax().(YAMLSyntax); ok && s.document != nil {
+		yamlNode = &yaml.Node{
+			Kind:        yaml.DocumentNode,
+			HeadComment: s.document.HeadComment,
+			LineComment: s.document.LineComment,
+			FootComment: s.document.FootComment,
+			Content:     []*yaml.Node{yamlNode},
+		}
+	}
 	if err := e.Encode(yamlNode); err != nil {
 		diags.Extend(syntax.Error(nil, err.Error(), ""))
 	}
