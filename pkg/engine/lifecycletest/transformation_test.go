@@ -654,13 +654,13 @@ func TestRemoteTransformsDependencies(t *testing.T) {
 	assert.Equal(t, resource.PropertyMap{
 		"foo": resource.NewProperty(1.0),
 	}, res.Inputs)
-	// Check the dependencies are as expected
+	// Check the dependencies are as expected. The transform rewired foo from resB to resA, so the per-property
+	// dependency reflects that. Dependencies (the user's explicit depends_on list) is empty — source_eval does
+	// not fold value-flow deps into it.
 	assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 		"foo": {resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA")},
 	}, res.PropertyDependencies)
-	assert.Equal(t, []resource.URN{
-		"urn:pulumi:test::test::pkgA:m:typA::resA",
-	}, res.Dependencies)
+	assert.Empty(t, res.Dependencies)
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/15843. Ensure that if a component resource has a

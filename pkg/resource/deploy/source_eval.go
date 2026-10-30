@@ -2822,9 +2822,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			deps := mapset.NewSet[resource.URN]()
 			addOutputDependencies(deps, output)
 			propertyDependencies[pk] = deps
-
-			// Also add these to the overall dependencies
-			dependencies = dependencies.Union(deps)
 		}
 	} else {
 		// If we ran transforms we would have merged all the dependencies togther already, but if we didn't we want to
