@@ -100,6 +100,9 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(stack, nil, configFile); err != nil {
+				return err
+			}
 
 			ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, stack, configFile)
 			if err != nil {
@@ -158,9 +161,9 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newConfigGetCmd(ws, &stack, &configFile))
-	cmd.AddCommand(newConfigRemoveCmd(ws, &stack, &configFile))
-	cmd.AddCommand(newConfigRemoveAllCmd(ws, &stack, &configFile))
-	cmd.AddCommand(newConfigSetCmd(ws, &stack, &configFile))
+	cmd.AddCommand(newConfigRemoveCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
+	cmd.AddCommand(newConfigRemoveAllCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
+	cmd.AddCommand(newConfigSetCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	cmd.AddCommand(newConfigSetAllCmd(ws, &stack, cmdBackend.DefaultLoginManager, &ssml, &configFile))
 	cmd.AddCommand(newConfigRefreshCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
@@ -343,6 +346,9 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 			if err != nil {
 				return err
 			}
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(s, nil, *configFile); err != nil {
+				return err
+			}
 
 			key, err := ParseConfigKey(ws, args[0], path)
 			if err != nil {
@@ -376,7 +382,9 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 	return getCmd
 }
 
-func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
+func newConfigRemoveCmd(
+	ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, configFile *string,
+) *cobra.Command {
 	var path bool
 
 	rmCmd := &cobra.Command{
@@ -409,13 +417,16 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				*stack,
 				cmdStack.OfferNew|cmdStack.SetCurrent,
 				opts,
 				*configFile,
 			)
 			if err != nil {
+				return err
+			}
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(stack, nil, *configFile); err != nil {
 				return err
 			}
 
@@ -438,12 +449,7 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 				return err
 			}
 
-			err = ps.Config.Remove(key, path)
-			if err != nil {
-				return err
-			}
-
-			return cmdStack.SaveProjectStack(ctx, stack, ps, *configFile)
+			return removeConfigKeys(ctx, stack, project, ps, *configFile, []config.Key{key}, path)
 		},
 	}
 	constrictor.AttachArguments(rmCmd, &constrictor.Arguments{
@@ -461,7 +467,9 @@ func newConfigRemoveCmd(ws pkgWorkspace.Context, stack *string, configFile *stri
 	return rmCmd
 }
 
-func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
+func newConfigRemoveAllCmd(
+	ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, configFile *string,
+) *cobra.Command {
 	var path bool
 
 	rmAllCmd := &cobra.Command{
@@ -494,13 +502,16 @@ func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *s
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				*stack,
 				cmdStack.OfferNew,
 				opts,
 				*configFile,
 			)
 			if err != nil {
+				return err
+			}
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(stack, nil, *configFile); err != nil {
 				return err
 			}
 
@@ -518,19 +529,16 @@ func newConfigRemoveAllCmd(ws pkgWorkspace.Context, stack *string, configFile *s
 				return err
 			}
 
+			keys := make([]config.Key, 0, len(args))
 			for _, arg := range args {
 				key, err := ParseConfigKey(ws, arg, path)
 				if err != nil {
 					return fmt.Errorf("invalid configuration key: %w", err)
 				}
-
-				err = ps.Config.Remove(key, path)
-				if err != nil {
-					return err
-				}
+				keys = append(keys, key)
 			}
 
-			return cmdStack.SaveProjectStack(ctx, stack, ps, *configFile)
+			return removeConfigKeys(ctx, stack, project, ps, *configFile, keys, path)
 		},
 	}
 	constrictor.AttachArguments(rmAllCmd, &constrictor.Arguments{
@@ -706,7 +714,9 @@ type configSetCmd struct {
 	Type      string
 }
 
-func newConfigSetCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
+func newConfigSetCmd(
+	ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, configFile *string,
+) *cobra.Command {
 	configSetCmd := &configSetCmd{LoadProjectStack: cmdStack.LoadProjectStack}
 
 	setCmd := &cobra.Command{
@@ -747,13 +757,16 @@ func newConfigSetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				*stack,
 				cmdStack.OfferNew|cmdStack.SetCurrent,
 				opts,
 				*configFile,
 			)
 			if err != nil {
+				return err
+			}
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(s, nil, *configFile); err != nil {
 				return err
 			}
 
@@ -842,6 +855,14 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
+	managed, err := managedEnvForWrite(s, project.Name, ps, configFile)
+	if err != nil {
+		return err
+	}
+	if managed != nil && c.Secret {
+		return cmdStack.ManagedEnvironmentNotSupportedError("`pulumi config set --secret`")
+	}
+
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 	// Encrypt the config value if needed.
@@ -895,6 +916,13 @@ func (c *configSetCmd) Run(
 				err, *configLocation.EscEnv, key.String(), exampleValue)
 		}
 		return err
+	}
+
+	if managed != nil {
+		if err := managed.Set(ctx, key, v, c.Path); err != nil {
+			return fmt.Errorf("could not set config: %w", err)
+		}
+		return managed.Save(ctx)
 	}
 
 	err = ps.Config.Set(key, v, c.Path)

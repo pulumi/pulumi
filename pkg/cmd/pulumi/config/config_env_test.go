@@ -19,6 +19,7 @@ import (
 	"errors"
 	"io"
 	"strings"
+	"testing"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -38,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/stretchr/testify/require"
 )
 
 func newConfigEnvCmdForTest(
@@ -266,4 +268,44 @@ func newConfigEnvCmdForInitTest(
 // assertions can compare plain text.
 func cleanStdout(stdout string) string {
 	return strings.ReplaceAll(ansi.Strip(stdout), "\r", "")
+}
+
+func TestConfigEnvEditRejectsConfigFileOnManagedStack(t *testing.T) {
+	t.Parallel()
+
+	newManagedCmd := func(saved *string) *configEnvCmd {
+		cmd := newConfigEnvCmdForTest(nil, io.Discard, "name: app\nruntime: yaml",
+			"environment:\n  imports:\n    - proj/base\n", &esc.Environment{}, nil, saved)
+		requireStack := cmd.requireStack
+		cmd.requireStack = func(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
+			name string, lopt cmdStack.LoadOption, opts display.Options, configFile string,
+		) (backend.Stack, error) {
+			s, err := requireStack(ctx, sink, ws, lm, name, lopt, opts, configFile)
+			require.NoError(t, err)
+			s.(*backend.MockStack).ConfigLocationF = func() backend.StackConfigLocation {
+				return backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"}
+			}
+			return s, nil
+		}
+		configFile := "Pulumi.alt.yaml"
+		cmd.configFile = &configFile
+		return cmd
+	}
+	const expected = "--config-file is not supported on stacks with an ESC-managed environment yet"
+
+	t.Run("add", func(t *testing.T) {
+		t.Parallel()
+		var saved string
+		add := &configEnvAddCmd{parent: newManagedCmd(&saved), yes: true}
+		require.EqualError(t, add.run(t.Context(), []string{"proj/other"}), expected)
+		require.Empty(t, saved)
+	})
+
+	t.Run("rm", func(t *testing.T) {
+		t.Parallel()
+		var saved string
+		rm := &configEnvRmCmd{parent: newManagedCmd(&saved), yes: true}
+		require.EqualError(t, rm.run(t.Context(), []string{"proj/base"}), expected)
+		require.Empty(t, saved)
+	})
 }

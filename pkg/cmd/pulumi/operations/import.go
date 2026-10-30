@@ -1104,7 +1104,7 @@ func NewImportCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := rejectConfigFlagsOnManagedStack(s, nil, configFile); err != nil {
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(s, nil, configFile); err != nil {
 				return err
 			}
 

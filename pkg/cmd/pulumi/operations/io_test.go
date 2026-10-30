@@ -144,13 +144,6 @@ func TestRejectOnManagedStack(t *testing.T) {
 	}}
 	unmanaged := &backend.MockStack{}
 
-	assert.EqualError(t, rejectConfigFlagsOnManagedStack(managed, []string{"a=b"}, ""),
-		"--config is not supported on stacks with an ESC-managed environment yet")
-	assert.EqualError(t, rejectConfigFlagsOnManagedStack(managed, nil, "Pulumi.other.yaml"),
-		"--config-file is not supported on stacks with an ESC-managed environment yet")
-	require.NoError(t, rejectConfigFlagsOnManagedStack(managed, nil, ""))
-	require.NoError(t, rejectConfigFlagsOnManagedStack(unmanaged, []string{"a=b"}, "Pulumi.other.yaml"))
-
 	assert.EqualError(t, rejectTemplateUpOnManagedStack(managed),
 		"pulumi up <template> is not supported on stacks with an ESC-managed environment yet")
 	require.NoError(t, rejectTemplateUpOnManagedStack(unmanaged))

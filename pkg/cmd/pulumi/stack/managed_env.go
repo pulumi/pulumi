@@ -73,6 +73,21 @@ func ManagedEnvironmentMissingFromFileHint(
 		org, managedEnv, stackConfigFilePath(stack, configFile))
 }
 
+// RejectConfigFlagsOnManagedStack returns an error when --config or --config-file is set on a stack with an
+// ESC-managed environment, whose config lives in the environment instead.
+func RejectConfigFlagsOnManagedStack(s backend.Stack, configArray []string, configFile string) error {
+	if s.ConfigLocation().ManagedEnvironment == "" {
+		return nil
+	}
+	if len(configArray) != 0 {
+		return ManagedEnvironmentNotSupportedError("--config")
+	}
+	if configFile != "" {
+		return ManagedEnvironmentNotSupportedError("--config-file")
+	}
+	return nil
+}
+
 // ManagedEnvironmentNotSupportedError is the error for a command or flag that does not work on a stack with an
 // ESC-managed environment.
 func ManagedEnvironmentNotSupportedError(what string) error {
