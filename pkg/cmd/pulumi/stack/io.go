@@ -379,6 +379,9 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 ) (backend.Stack, error) {
 	var managedStackFile string
 	if opts.ManagedEnvironment {
+		if _, err := backend.AsManagedEnvironmentsBackend(b); err != nil {
+			return nil, err
+		}
 		path, err := managedStackFilePath(stackRef.Name().Q(), opts.ConfigFile)
 		if err != nil {
 			return nil, err

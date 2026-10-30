@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -173,32 +174,59 @@ func TestCreateStackQuiet(t *testing.T) {
 	}
 }
 
-func newManagedTestBackend(managedEnv string, createdManaged *bool) *backend.MockBackend {
-	return &backend.MockBackend{
-		NameF:              func() string { return "mock" },
-		ValidateStackNameF: func(string) error { return nil },
-		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
-			return nil, nil
+func newManagedTestBackend(managedEnv string, createdManaged *bool) *backend.MockManagedEnvironmentsBackend {
+	return &backend.MockManagedEnvironmentsBackend{MockEnvironmentsBackend: backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF:              func() string { return "mock" },
+			ValidateStackNameF: func(string) error { return nil },
+			GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+				return nil, nil
+			},
+			CreateStackF: func(
+				_ context.Context,
+				ref backend.StackReference,
+				_ string,
+				_ *apitype.UntypedDeployment,
+				opts *backend.CreateStackOptions,
+			) (backend.Stack, error) {
+				*createdManaged = opts.ManagedEnvironment
+				return &backend.MockStack{
+					RefF: func() backend.StackReference { return ref },
+					ConfigLocationF: func() backend.StackConfigLocation {
+						return backend.StackConfigLocation{ManagedEnvironment: managedEnv}
+					},
+				}, nil
+			},
+			DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+				return nil, nil
+			},
 		},
-		CreateStackF: func(
-			_ context.Context,
-			ref backend.StackReference,
-			_ string,
-			_ *apitype.UntypedDeployment,
-			opts *backend.CreateStackOptions,
-		) (backend.Stack, error) {
-			*createdManaged = opts.ManagedEnvironment
-			return &backend.MockStack{
-				RefF: func() backend.StackReference { return ref },
-				ConfigLocationF: func() backend.StackConfigLocation {
-					return backend.StackConfigLocation{ManagedEnvironment: managedEnv}
-				},
-			}, nil
-		},
+	}}
+}
+
+func TestCreateStackManagedEnvironmentUnsupportedBackend(t *testing.T) {
+	t.Parallel()
+
+	stackFile := filepath.Join(t.TempDir(), "Pulumi.dev.yaml")
+	b := &backend.MockBackend{
+		NameF: func() string { return "diy" },
 		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+			t.Error("the secrets manager must not be set up")
 			return nil, nil
 		},
 	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			t.Error("the stack file must not be read")
+			return nil, "", errors.New("unexpected call")
+		},
+	}
+
+	_, err := CreateStack(t.Context(), diagtest.LogSink(t), ws, b,
+		&backend.MockStackReference{StringV: "dev", NameV: tokens.MustParseStackName("dev")}, "",
+		CreateStackOptions{ConfigFile: stackFile, ManagedEnvironment: true})
+	require.ErrorIs(t, err, backend.ErrManagedEnvironmentNotSupported)
+	assert.NoFileExists(t, stackFile)
 }
 
 func TestCreateStackManagedEnvironment(t *testing.T) {
