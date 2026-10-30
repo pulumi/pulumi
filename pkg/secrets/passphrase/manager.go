@@ -28,6 +28,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -396,7 +397,11 @@ func readPassphrase(prompt string, useEnv bool) (phrase string, interactive bool
 				"PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
 		}
 	}
-	phrase, err = cmdutil.ReadConsoleNoEcho(prompt)
+	// This can run mid-update (e.g. decrypting a StackReference), when the live display also reads from the terminal.
+	err = display.WhileSuspended(func() error {
+		phrase, err = cmdutil.ReadConsoleNoEcho(prompt)
+		return err
+	})
 	return phrase, true, err
 }
 
