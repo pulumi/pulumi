@@ -36,37 +36,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// managedNewBackend is a ManagedEnvironmentsBackend over guidedNewTestBackend that records the plaintexts it encrypts.
+// managedNewBackend is guidedNewTestBackend with managed environments, recording the plaintexts it encrypts.
 type managedNewBackend struct {
-	*backend.MockBackend
-	t          *testing.T
-	encryptErr error
+	backend.MockManagedEnvironmentsBackend
 	// The plaintexts of each EncryptEnvironmentSecrets call.
 	encrypted [][]string
-}
-
-func (b *managedNewBackend) EncryptEnvironmentSecrets(
-	_ context.Context, org, project, name string, plaintexts [][]byte,
-) ([]string, error) {
-	assert.Equal(b.t, "my-org/proj/dev", org+"/"+project+"/"+name)
-	call := make([]string, len(plaintexts))
-	ciphertexts := make([]string, len(plaintexts))
-	for i, p := range plaintexts {
-		call[i] = string(p)
-		ciphertexts[i] = fmt.Sprintf("ct%d", len(b.encrypted)+1)
-	}
-	b.encrypted = append(b.encrypted, call)
-	if b.encryptErr != nil {
-		return nil, b.encryptErr
-	}
-	return ciphertexts, nil
-}
-
-func (b *managedNewBackend) EvaluateManagedEnvironment(
-	context.Context, string, string, string, []byte,
-) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
-	b.t.Error("pulumi new must not evaluate the managed environment")
-	return nil, nil, errors.New("unexpected EvaluateManagedEnvironment call")
 }
 
 // managedNewTestBackend's stacks manage environment proj/dev when created with ManagedEnvironment.
@@ -74,12 +48,12 @@ func managedNewTestBackend(t *testing.T) (*managedNewBackend, *[]string) {
 	t.Helper()
 
 	base, created := guidedNewTestBackend(t)
-	b := &managedNewBackend{MockBackend: base, t: t}
-	createStack := base.CreateStackF
-	base.CreateStackF = func(ctx context.Context, ref backend.StackReference, root string,
+	b := &managedNewBackend{}
+	b.MockBackend = *base
+	b.CreateStackF = func(ctx context.Context, ref backend.StackReference, root string,
 		initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
 	) (backend.Stack, error) {
-		s, err := createStack(ctx, ref, root, initialState, opts)
+		s, err := base.CreateStackF(ctx, ref, root, initialState, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -96,6 +70,25 @@ func managedNewTestBackend(t *testing.T) (*managedNewBackend, *[]string) {
 			return nil, errors.New("unexpected stack secrets manager")
 		}
 		return ms, nil
+	}
+	b.EncryptEnvironmentSecretsF = func(
+		_ context.Context, org, project, name string, plaintexts [][]byte,
+	) ([]string, error) {
+		assert.Equal(t, "my-org/proj/dev", org+"/"+project+"/"+name)
+		call := make([]string, len(plaintexts))
+		ciphertexts := make([]string, len(plaintexts))
+		for i, p := range plaintexts {
+			call[i] = string(p)
+			ciphertexts[i] = fmt.Sprintf("ct%d", len(b.encrypted)+1)
+		}
+		b.encrypted = append(b.encrypted, call)
+		return ciphertexts, nil
+	}
+	b.EvaluateManagedEnvironmentF = func(
+		context.Context, string, string, string, []byte,
+	) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+		t.Error("pulumi new must not evaluate the managed environment")
+		return nil, nil, errors.New("unexpected EvaluateManagedEnvironment call")
 	}
 	return b, created
 }
@@ -244,7 +237,9 @@ func TestNewEscConfigEncryptFailureKeepsPlaceholder(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 	b, _ := managedNewTestBackend(t)
-	b.encryptErr = errors.New("service unavailable")
+	b.EncryptEnvironmentSecretsF = func(context.Context, string, string, string, [][]byte) ([]string, error) {
+		return nil, errors.New("service unavailable")
+	}
 	mockCurrentBackend(t, b)
 
 	err := runNew(t.Context(),
