@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -33,9 +34,9 @@ import (
 const awsDocURL = "https://www.pulumi.com/registry/packages/aws/installation-configuration/"
 
 var (
-	awsProvider   = Provider{Pkg: "aws", DisplayName: "AWS", DocURL: awsDocURL}
-	azureProvider = Provider{Pkg: "azure-native", DisplayName: "Azure"}
-	gcpProvider   = Provider{Pkg: "gcp", DisplayName: "Google Cloud"}
+	awsProvider   = Info{Pkg: "aws", DisplayName: "AWS", DocURL: awsDocURL}
+	azureProvider = Info{Pkg: "azure-native", DisplayName: "Azure"}
+	gcpProvider   = Info{Pkg: "gcp", DisplayName: "Google Cloud"}
 )
 
 func schemaProvider(schemaJSON string) *plugin.MockProvider {
@@ -46,49 +47,51 @@ func schemaProvider(schemaJSON string) *plugin.MockProvider {
 	}
 }
 
-func runCheck(t *testing.T, cp Provider, prov plugin.Provider, news property.Map) (bool, string) {
+// probeProblem runs probe, which must report a Problem, and returns the Problem's message.
+func probeProblem(t *testing.T, info Info, prov plugin.Provider, news property.Map) string {
 	t.Helper()
-	err := Probe(t.Context(), cp, prov, news)
-	if err == nil {
-		return false, ""
-	}
-	return true, err.Error()
+	var problem *Problem
+	require.ErrorAs(t, probe(t.Context(), info, prov, news), &problem)
+	return problem.Error()
 }
 
 func echoCheckConfig(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
 	return plugin.CheckConfigResponse{Properties: req.News}, nil
 }
 
-func TestFromSchema(t *testing.T) {
+func TestCheckSchema(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		schema   string
-		err      error
-		expected Provider
-		wantErr  bool
+		name        string
+		schema      string
+		err         error
+		expected    Info
+		unsupported bool
+		wantErr     bool
 	}{
 		{
 			name: "opted in",
 			schema: `{"name":"aws","displayName":"AWS","validateCredentialsOnNew":true,` +
 				`"configurationDocsUrl":"` + awsDocURL + `"}`,
-			expected: Provider{Pkg: "aws", DisplayName: "AWS", DocURL: awsDocURL, Supported: true},
+			expected: Info{Pkg: "aws", DisplayName: "AWS", DocURL: awsDocURL},
 		},
 		{
 			name:     "opted in without display name or docs",
 			schema:   `{"name":"aws","validateCredentialsOnNew":true}`,
-			expected: Provider{Pkg: "aws", DisplayName: "aws", Supported: true},
+			expected: Info{Pkg: "aws", DisplayName: "aws"},
 		},
 		{
-			name:     "not opted in",
-			schema:   `{"name":"aws","displayName":"AWS","configurationDocsUrl":"` + awsDocURL + `"}`,
-			expected: Provider{Pkg: "aws", DisplayName: "AWS", DocURL: awsDocURL},
+			name:        "not opted in",
+			schema:      `{"name":"aws","displayName":"AWS","configurationDocsUrl":"` + awsDocURL + `"}`,
+			expected:    Info{Pkg: "aws", DisplayName: "AWS", DocURL: awsDocURL},
+			unsupported: true,
 		},
 		{
-			name:     "explicitly opted out",
-			schema:   `{"name":"random","validateCredentialsOnNew":false}`,
-			expected: Provider{Pkg: "random", DisplayName: "random"},
+			name:        "explicitly opted out",
+			schema:      `{"name":"random","validateCredentialsOnNew":false}`,
+			expected:    Info{Pkg: "random", DisplayName: "random"},
+			unsupported: true,
 		},
 		{name: "invalid schema", schema: `not json`, wantErr: true},
 		{name: "schema error", err: errors.New("boom"), wantErr: true},
@@ -97,50 +100,74 @@ func TestFromSchema(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			prov := schemaProvider(tt.schema)
+			prov.CheckConfigF = echoCheckConfig
+			prov.ConfigureF = func(context.Context, plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+				return plugin.ConfigureResponse{}, nil
+			}
 			if tt.err != nil {
 				prov.GetSchemaF = func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					return plugin.GetSchemaResponse{}, tt.err
 				}
 			}
-			cp, err := FromSchema(t.Context(), prov, plugin.GetSchemaRequest{})
-			if tt.wantErr {
+			info, err := Check(t.Context(), prov, plugin.GetSchemaRequest{}, nil)
+			switch {
+			case tt.unsupported:
+				require.ErrorIs(t, err, ErrUnsupported)
+			case tt.wantErr:
 				require.Error(t, err)
-			} else {
+				assert.NotErrorIs(t, err, ErrUnsupported)
+			default:
 				require.NoError(t, err)
 			}
-			assert.Equal(t, tt.expected, cp)
+			assert.Equal(t, tt.expected, info)
 		})
 	}
 }
 
-func TestConfigProperties(t *testing.T) {
+func TestCheckPassesOnlyTheProvidersConfig(t *testing.T) {
 	t.Parallel()
 
-	cfg := config.Map{
-		config.MustMakeKey("aws", "region"):            config.NewValue("us-east-1"),
-		config.MustMakeKey("aws", "secret"):            config.NewSecureValue("ciphertext"),
-		config.MustMakeKey("azure-native", "location"): config.NewValue("WestUS2"),
-		config.MustMakeKey("gcp", "project"):           config.NewValue("my-project"),
-		config.MustMakeKey("proj", "etcetc"):           config.NewValue("unrelated"),
+	prov := schemaProvider(`{"name":"aws","validateCredentialsOnNew":true}`)
+	prov.CheckConfigF = func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+		return plugin.CheckConfigResponse{Properties: req.News}, nil
 	}
-	// Values that cannot be decrypted are skipped.
-	noSecrets := config.NewErrorCrypter("no secrets")
-	props := ConfigProperties(awsProvider.Pkg, cfg, noSecrets)
-	require.Equal(t, 1, props.Len())
-	assert.Equal(t, "us-east-1", props.Get("region").AsString())
+	prov.ConfigureF = func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+		assert.Equal(t, 2, req.Inputs.Len())
+		assert.Equal(t, "us-east-1", req.Inputs.Get("region").AsString())
+		assert.False(t, req.Inputs.Get("region").Secret())
+		// Secrets reach the provider marked as secret, the same as during a deployment.
+		assert.Equal(t, "ciphertext", req.Inputs.Get("secretKey").AsString())
+		assert.True(t, req.Inputs.Get("secretKey").Secret())
+		return plugin.ConfigureResponse{}, nil
+	}
 
-	props = ConfigProperties(azureProvider.Pkg, cfg, noSecrets)
-	require.Equal(t, 1, props.Len())
-	assert.Equal(t, "WestUS2", props.Get("location").AsString())
+	_, err := Check(t.Context(), prov, plugin.GetSchemaRequest{}, &deploy.Target{
+		Config: config.Map{
+			config.MustMakeKey("aws", "region"):    config.NewValue("us-east-1"),
+			config.MustMakeKey("aws", "secretKey"): config.NewSecureValue("ciphertext"),
+			config.MustMakeKey("gcp", "project"):   config.NewValue("unrelated"),
+		},
+		Decrypter: config.NopDecrypter,
+	})
+	require.NoError(t, err)
+}
 
-	props = ConfigProperties(gcpProvider.Pkg, cfg, noSecrets)
-	require.Equal(t, 1, props.Len())
-	assert.Equal(t, "my-project", props.Get("project").AsString())
+func TestCheckFailsWhenASecretCannotBeDecrypted(t *testing.T) {
+	t.Parallel()
 
-	props = ConfigProperties(awsProvider.Pkg, cfg, config.NopDecrypter)
-	require.Equal(t, 2, props.Len())
-	assert.Equal(t, "us-east-1", props.Get("region").AsString())
-	assert.Equal(t, "ciphertext", props.Get("secret").AsString())
+	prov := schemaProvider(`{"name":"aws","validateCredentialsOnNew":true}`)
+	prov.CheckConfigF = func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+		t.Fatal("the provider must not be checked without the stack's secrets")
+		return plugin.CheckConfigResponse{}, nil
+	}
+
+	_, err := Check(t.Context(), prov, plugin.GetSchemaRequest{}, &deploy.Target{
+		Config:    config.Map{config.MustMakeKey("aws", "secretKey"): config.NewSecureValue("ciphertext")},
+		Decrypter: config.NewErrorCrypter("bad passphrase"),
+	})
+	require.ErrorContains(t, err, "bad passphrase")
+	var problem *Problem
+	assert.NotErrorAs(t, err, &problem, "a decryption failure says nothing about the credentials")
 }
 
 func TestProbeRPCError(t *testing.T) {
@@ -158,8 +185,7 @@ func TestProbeRPCError(t *testing.T) {
 	}
 
 	news := property.NewMap(map[string]property.Value{"region": property.New("us-east-1")})
-	warned, out := runCheck(t, awsProvider, mock, news)
-	assert.True(t, warned)
+	out := probeProblem(t, awsProvider, mock, news)
 	assert.Contains(t, out, "Could not validate your AWS credentials")
 	assert.Contains(t, out, "unable to validate AWS credentials.")
 	assert.Contains(t, out, "    Details: no valid credential sources found")
@@ -183,8 +209,7 @@ func TestProbeFailures(t *testing.T) {
 		},
 	}
 
-	warned, out := runCheck(t, awsProvider, mock, property.Map{})
-	assert.True(t, warned)
+	out := probeProblem(t, awsProvider, mock, property.Map{})
 	assert.Contains(t, out, "The AWS provider reported problems with its configuration")
 	assert.Contains(t, out, "    region: expected a valid region")
 	assert.Contains(t, out, "    unable to validate AWS credentials.\n    Details: no valid credential sources found")
@@ -211,17 +236,15 @@ func TestProbeSuccess(t *testing.T) {
 	}
 
 	news := property.NewMap(map[string]property.Value{"region": property.New("us-east-1")})
-	warned, out := runCheck(t, awsProvider, mock, news)
-	assert.False(t, warned)
+	require.NoError(t, probe(t.Context(), awsProvider, mock, news))
 	assert.True(t, configured)
-	assert.Empty(t, out)
 }
 
 func TestProbeConfigureError(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		provider Provider
+		provider Info
 		message  string
 	}{
 		{awsProvider, "unable to validate AWS credentials.\nDetails: InvalidClientTokenId"},
@@ -244,8 +267,7 @@ func TestProbeConfigureError(t *testing.T) {
 				},
 			}
 
-			warned, out := runCheck(t, tt.provider, mock, property.Map{})
-			assert.True(t, warned)
+			out := probeProblem(t, tt.provider, mock, property.Map{})
 			assert.Contains(t, out, "Could not validate your "+tt.provider.DisplayName+" credentials")
 			for line := range strings.SplitSeq(tt.message, "\n") {
 				assert.Contains(t, out, "    "+line)
@@ -298,8 +320,7 @@ func TestProbeErrorIncludesDocURL(t *testing.T) {
 				},
 			}
 
-			warned, out := runCheck(t, awsProvider, mock, property.Map{})
-			assert.True(t, warned)
+			out := probeProblem(t, awsProvider, mock, property.Map{})
 			assert.Equal(t, 1, strings.Count(out, strings.TrimSuffix(awsDocURL, "/")))
 			assert.NotContains(t, out, "For help configuring")
 		})
@@ -319,8 +340,10 @@ func TestProbeConfigureTimeout(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 	defer cancel()
-	err := Probe(ctx, awsProvider, mock, property.Map{})
-	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	err := probe(ctx, awsProvider, mock, property.Map{})
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	var problem *Problem
+	assert.NotErrorAs(t, err, &problem, "a cancelled check says nothing about the credentials")
 }
 
 func TestProbeTimeout(t *testing.T) {
@@ -335,6 +358,8 @@ func TestProbeTimeout(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 	defer cancel()
-	err := Probe(ctx, awsProvider, mock, property.Map{})
-	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	err := probe(ctx, awsProvider, mock, property.Map{})
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	var problem *Problem
+	assert.NotErrorAs(t, err, &problem, "a cancelled check says nothing about the credentials")
 }
