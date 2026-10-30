@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -68,10 +69,9 @@ func ManagedEnvironmentMissingFromFileHint(
 	return fmt.Sprintf("Restore it with `pulumi env get %s/%s --definition` and put the output under "+
 		"`environment:` in %s. "+
 		"For a stack that has never been updated, this is enough:\n\n"+
-		"  environment:\n"+
-		"    values:\n"+
-		"      pulumiConfig: {}",
-		org, managedEnv, stackConfigFilePath(stack, configFile))
+		"  environment:\n%s",
+		org, managedEnv, stackConfigFilePath(stack, configFile),
+		"    "+strings.ReplaceAll(managedEnvironmentPlaceholder, "\n", "\n    "))
 }
 
 // RejectConfigFlagsOnManagedStack returns an error when --config or --config-file is set on a stack with an
@@ -132,10 +132,12 @@ func managedStackFilePath(stackName tokens.QName, configFile string) (string, er
 	return path, nil
 }
 
+const managedEnvironmentPlaceholder = "values:\n  pulumiConfig: {}"
+
 func newManagedEnvironmentPlaceholder() *workspace.Environment {
 	var env workspace.Environment
 	// values stays block style: yamlutil restyles only an empty flow collection that gains content.
-	err := yaml.Unmarshal([]byte("values:\n  pulumiConfig: {}\n"), &env)
+	err := yaml.Unmarshal([]byte(managedEnvironmentPlaceholder), &env)
 	contract.AssertNoErrorf(err, "parsing the managed environment placeholder")
 	return &env
 }
