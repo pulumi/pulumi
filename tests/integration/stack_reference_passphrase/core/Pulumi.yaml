@@ -1,0 +1,9 @@
+name: stackref-passphrase-core
+runtime: yaml
+resources:
+  root:
+    type: pulumi:pulumi:StackReference
+    properties:
+      name: organization/stackref-passphrase-root/root
+outputs:
+  rootPassword: ${root.outputs["dbPassword"]}

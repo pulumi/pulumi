@@ -1,0 +1,5 @@
+name: stackref-passphrase-root
+runtime: yaml
+outputs:
+  dbPassword:
+    fn::secret: hunter2
