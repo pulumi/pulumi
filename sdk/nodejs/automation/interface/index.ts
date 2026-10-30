@@ -1508,6 +1508,10 @@ export class API {
             __flags.push("--stack", "" + options.stack);
         }
 
+        if (options.overrideImport) {
+            __flags.push("--override-import");
+        }
+
         if (options.path) {
             __flags.push("--path");
         }
@@ -1613,6 +1617,10 @@ export class API {
 
         if (options.stack != null) {
             __flags.push("--stack", "" + options.stack);
+        }
+
+        if (options.overrideImport) {
+            __flags.push("--override-import");
         }
 
         if (options.path) {
@@ -7234,6 +7242,10 @@ export class API {
             __flags.push("--dir", "" + options.dir);
         }
 
+        if (options.escConfig) {
+            __flags.push("--esc-config");
+        }
+
         if (options.force) {
             __flags.push("--force");
         }
@@ -10316,6 +10328,8 @@ export interface PulumiConfigSetOptions extends BaseOptions {
     showSecrets?: boolean;
     /** The name of the stack to operate on. Defaults to the current stack */
     stack?: string;
+    /** On a stack with an ESC-managed environment, set a key that an imported environment defines in the stack's own environment, overriding the imported value */
+    overrideImport?: boolean;
     /** The key contains a path to a property in a map or list to set */
     path?: boolean;
     /** Save the value as plaintext (unencrypted) */
@@ -10362,6 +10376,8 @@ export interface PulumiConfigSetAllOptions extends BaseOptions {
     showSecrets?: boolean;
     /** The name of the stack to operate on. Defaults to the current stack */
     stack?: string;
+    /** On a stack with an ESC-managed environment, set keys that an imported environment defines in the stack's own environment, overriding the imported values */
+    overrideImport?: boolean;
     /** Parse the keys as paths in a map or list rather than raw strings */
     path?: boolean;
     /** Marks a value as plaintext (unencrypted) */
@@ -12704,6 +12720,8 @@ export interface PulumiNewOptions extends BaseOptions {
     description?: string;
     /** The location to place the generated project; if not specified, the current directory is used */
     dir?: string;
+    /** [EXPERIMENTAL] Create an ESC environment, managed by the stack, that holds the stack's configuration. ESC encrypts secret config values; --secrets-provider applies only to secrets in the stack's state */
+    escConfig?: boolean;
     /** Forces content to be generated even if it would change existing files */
     force?: boolean;
     /** Generate the project only; do not create a stack, save config, or install dependencies */

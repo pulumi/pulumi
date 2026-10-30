@@ -1829,6 +1829,10 @@ func (a *API) ConfigSet(
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
 	}
 
+	if o.OverrideImport {
+		final = append(final, "--override-import")
+	}
+
 	if o.Path {
 		final = append(final, "--path")
 	}
@@ -1962,6 +1966,10 @@ func (a *API) ConfigSetAll(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.OverrideImport {
+		final = append(final, "--override-import")
 	}
 
 	if o.Path {
@@ -8139,6 +8147,10 @@ func (a *API) New(
 
 	if o.DisableIntegrityChecking {
 		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.EscConfig {
+		final = append(final, "--esc-config")
 	}
 
 	if o.Force {
