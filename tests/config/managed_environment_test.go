@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
@@ -105,33 +106,22 @@ func TestManagedEnvironment(t *testing.T) {
 	envProject, envName, _ := strings.Cut(managedEnv, "/")
 	defer e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
 
-	client := &http.Client{Timeout: time.Minute}
-	send := func(method string, path string, body []byte, ifMatch string) (int, string, http.Header) {
-		req, err := http.NewRequestWithContext(t.Context(), method, apiURL+path, bytes.NewReader(body))
+	escClient := client.New("pulumi-integration-tests", apiURL, token, false)
+	httpClient := &http.Client{Timeout: time.Minute}
+	post := func(path string, body any) (int, string) {
+		payload, err := json.Marshal(body)
 		require.NoError(t, err)
-		if ifMatch != "" {
-			req.Header.Set("If-Match", ifMatch)
-		}
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, apiURL+path, bytes.NewReader(payload))
+		require.NoError(t, err)
 		req.Header.Set("Authorization", "token "+token)
 		req.Header.Set("Accept", "application/vnd.pulumi+8")
 		req.Header.Set("Content-Type", "application/json")
-		resp, err := client.Do(req)
+		resp, err := httpClient.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
-		payload, err := io.ReadAll(resp.Body)
+		response, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		return resp.StatusCode, string(payload), resp.Header
-	}
-
-	call := func(method string, path string, body any) (int, string) {
-		var payload []byte
-		if body != nil {
-			var err error
-			payload, err = json.Marshal(body)
-			require.NoError(t, err)
-		}
-		status, response, _ := send(method, path, payload, "")
-		return status, response
+		return resp.StatusCode, string(response)
 	}
 
 	baseRevision := func(env map[string]string) int {
@@ -146,31 +136,27 @@ func TestManagedEnvironment(t *testing.T) {
 
 	// `pulumi env edit --draft` submits the draft it creates, which the service refuses on a managed environment,
 	// so drafts are created and edited through the API.
-	draftsPath := fmt.Sprintf("/api/esc/environments/%s/%s/%s/drafts", org, envProject, envName)
-
 	createDraft := func(value string) string {
-		status, body, _ := send(http.MethodPost, draftsPath, definition(value), "")
-		require.Equal(t, http.StatusOK, status, body)
-		var created struct {
-			ChangeRequestID string `json:"changeRequestId"`
-		}
-		require.NoError(t, json.Unmarshal([]byte(body), &created))
-		require.NotEmpty(t, created.ChangeRequestID, body)
-		return created.ChangeRequestID
+		id, diags, err := escClient.CreateEnvironmentDraft(t.Context(), org, envProject, envName, definition(value), "")
+		require.NoError(t, err)
+		require.Empty(t, diags)
+		require.NotEmpty(t, id)
+		return id
 	}
 
 	editDraft := func(id string, value string) {
-		status, body, header := send(http.MethodGet, draftsPath+"/"+id, nil, "")
-		require.Equal(t, http.StatusOK, status, body)
-		etag := header.Get("ETag")
+		_, etag, err := escClient.GetEnvironmentDraft(t.Context(), org, envProject, envName, id)
+		require.NoError(t, err)
 		require.NotEmpty(t, etag, "draft read returned no ETag")
-		status, body, _ = send(http.MethodPatch, draftsPath+"/"+id, definition(value), etag)
-		require.Equal(t, http.StatusOK, status, body)
+		diags, err := escClient.UpdateEnvironmentDraft(t.Context(), org, envProject, envName, id, definition(value), etag)
+		require.NoError(t, err)
+		require.Empty(t, diags)
 	}
 
+	// Raw HTTP so the update request wire format is checked independently of the httpstate client.
 	startRawUpdate := func(environment apitype.UpdateProgramEnvironment) (int, string) {
 		stackPath := fmt.Sprintf("/api/stacks/%s/%s/%s", org, managedEnvProject, stackName)
-		status, body := call(http.MethodPost, stackPath+"/update", apitype.UpdateProgramRequest{
+		status, body := post(stackPath+"/update", apitype.UpdateProgramRequest{
 			Name:        managedEnvProject,
 			Runtime:     "yaml",
 			Config:      map[string]apitype.ConfigValue{},
@@ -179,7 +165,7 @@ func TestManagedEnvironment(t *testing.T) {
 		require.Equal(t, http.StatusOK, status, body)
 		var created apitype.UpdateProgramResponse
 		require.NoError(t, json.Unmarshal([]byte(body), &created))
-		return call(http.MethodPost, stackPath+"/update/"+created.UpdateID, apitype.StartUpdateRequest{})
+		return post(stackPath+"/update/"+created.UpdateID, apitype.StartUpdateRequest{})
 	}
 
 	e.RunCommand("pulumi", "config", "set", "plain", "one")
@@ -233,17 +219,16 @@ func TestManagedEnvironment(t *testing.T) {
 	t.Run("OpenByRevisionIgnoresLaterEdit", func(t *testing.T) {
 		id := createDraft("pinned-one")
 		editDraft(id, "pinned-two")
-		status, body := call(http.MethodPost, draftsPath+"/"+id+"/open?duration=5m&revision=0", nil)
-		require.Equal(t, http.StatusOK, status, body)
-		var opened struct {
-			ID string `json:"id"`
-		}
-		require.NoError(t, json.Unmarshal([]byte(body), &opened))
-		status, values := call(http.MethodGet,
-			fmt.Sprintf("/api/esc/environments/%s/%s/%s/open/%s", org, envProject, envName, opened.ID), nil)
-		require.Equal(t, http.StatusOK, status, values)
-		assert.Contains(t, values, "pinned-one")
-		assert.NotContains(t, values, "pinned-two")
+		revision := 0
+		openID, diags, err := escClient.OpenEnvironmentDraft(
+			t.Context(), org, envProject, envName, id, &revision, 5*time.Minute)
+		require.NoError(t, err)
+		require.Empty(t, diags)
+		opened, err := escClient.GetOpenEnvironment(t.Context(), org, envProject, envName, openID)
+		require.NoError(t, err)
+		pulumiConfig, ok := opened.Properties["pulumiConfig"].ToJSON(false).(map[string]any)
+		require.True(t, ok, "pulumiConfig is not an object: %v", opened.Properties)
+		assert.Equal(t, "pinned-one", pulumiConfig["plain"])
 	})
 
 	t.Run("NewFromTemplate", func(t *testing.T) {
