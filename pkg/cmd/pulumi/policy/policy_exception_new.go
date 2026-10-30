@@ -166,9 +166,9 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 			"result, with the exception's ID, to stdout. --dry-run --output json prints the run's violations,\n" +
 			"with their URNs, and the exception the command would create, without creating it.\n" +
 			"\n" +
-			"The command doesn't prompt when --yes is passed or the terminal isn't interactive. Then --reason\n" +
-			"is required, unless --file has one, and so is the Policy Pack when the violations are from\n" +
-			"several.",
+			"The command doesn't prompt when --yes is passed or the terminal isn't interactive. Then it\n" +
+			"skips violations that an exception exempts already, --reason is required unless --file has\n" +
+			"one, and so is the Policy Pack when the violations are from several.",
 		Example: "  # Pick from the violations of the current stack's latest run\n" +
 			"  pulumi policy exception new aws-security\n\n" +
 			"  # Exempt one policy on every resource that violated it, without prompting\n" +
@@ -187,6 +187,9 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			if len(posArgs) > 0 {
 				args.policyPack = posArgs[0]
+			}
+			if args.file != "" && cmd.Flags().Changed("level") {
+				return cmdCmd.ConfigurationError{Message: "--file can't be used with --level"}
 			}
 			args.yes = args.yes || env.SkipConfirmations.Value()
 			return runPolicyExceptionNew(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), cmd.InOrStdin(),
@@ -214,7 +217,7 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 	flags.StringArrayVar(&args.levels, "level", []string{string(apitype.Mandatory)},
 		"Only exempt violations of this enforcement level (mandatory, advisory, remediate or all); may be repeated")
 	flags.StringVar(&args.file, "file", "",
-		"Read the exception's reason and match entries from this JSON or YAML file, or from stdin with -")
+		"Read the exception from this JSON or YAML file, or from stdin with -; its policyPack is the default")
 	flags.StringVar(&args.reason, "reason", "", "Why it's safe to exempt the violations")
 	flags.BoolVar(&args.dryRun, "dry-run", false, "Show the violations and the exception, without creating it")
 	flags.BoolVar(&args.draft, "draft", false,
@@ -263,17 +266,23 @@ func runPolicyExceptionNew(
 	result := policyExceptionNewResult{Runs: []policyExceptionRun{}, Violations: []policyExceptionViolation{}}
 	var c policyExceptionClients
 	if args.file != "" {
-		if pack == "" {
-			return cmdCmd.ConfigurationError{Message: "a Policy Pack is required with --file"}
-		}
 		if len(args.stacks) > 0 || args.update != "" || args.preview != "" ||
 			len(args.policies) > 0 || len(args.targets) > 0 {
 			return cmdCmd.ConfigurationError{
 				Message: "--file can't be used with --stack, --update, --preview, --policy or --target",
 			}
 		}
-		if result.Exception.PolicyException, err = readPolicyExceptionFile(stdin, args.file); err != nil {
+		var filePack string
+		if result.Exception.PolicyException, filePack, err = readPolicyExceptionFile(stdin, args.file); err != nil {
 			return err
+		}
+		if pack != "" && filePack != "" && pack != filePack {
+			return cmdCmd.ConfigurationError{
+				Message: fmt.Sprintf("the file's exception is for Policy Pack %q, not %q", filePack, pack),
+			}
+		}
+		if pack = cmp.Or(pack, filePack); pack == "" {
+			return cmdCmd.ConfigurationError{Message: "a Policy Pack is required with --file"}
 		}
 		if c, org, err = factory(ctx, org); err != nil {
 			return err
@@ -293,6 +302,13 @@ func runPolicyExceptionNew(
 		}
 		if c, org, err = factory(ctx, cmp.Or(org, stacks[0].Owner)); err != nil {
 			return err
+		}
+		for _, stack := range stacks {
+			if stack.Owner != org {
+				return cmdCmd.ConfigurationError{
+					Message: fmt.Sprintf("stack %s isn't in organization %s, where the exception is created", stack, org),
+				}
+			}
 		}
 		if err := readPolicyExceptionViolations(ctx, c, stacks, pack, args, &result); err != nil {
 			return err
@@ -315,7 +331,18 @@ func runPolicyExceptionNew(
 			result.Violations = slices.DeleteFunc(result.Violations, func(v policyExceptionViolation) bool {
 				return v.PolicyPack != pack
 			})
-			result.Exception.Match = groupPolicyExceptionMatch(result.Violations)
+			exempt := result.Violations
+			if !interactive {
+				// Without the picker, take what it would select: violations that an exception doesn't exempt already.
+				exempt = slices.DeleteFunc(slices.Clone(exempt), func(v policyExceptionViolation) bool {
+					return len(v.Exceptions) > 0
+				})
+			}
+			result.Exception.Match = groupPolicyExceptionMatch(exempt)
+		}
+		if pack != "" && len(result.Exception.Match) == 0 && !args.dryRun {
+			result.OrganizationName = org
+			return render(result)
 		}
 	}
 	result.OrganizationName = org
@@ -437,7 +464,7 @@ func parsePolicyPackArg(s string) (string, string, error) {
 }
 
 // readPolicyExceptionFile reads `{reason, match}`, or a version 2 config file with one exception, as JSON or YAML.
-func readPolicyExceptionFile(stdin io.Reader, file string) (apitype.PolicyException, error) {
+func readPolicyExceptionFile(stdin io.Reader, file string) (apitype.PolicyException, string, error) {
 	var data []byte
 	var err error
 	if file == "-" {
@@ -446,48 +473,50 @@ func readPolicyExceptionFile(stdin io.Reader, file string) (apitype.PolicyExcept
 		data, err = os.ReadFile(file)
 	}
 	if err != nil {
-		return apitype.PolicyException{}, fmt.Errorf("reading the exception: %w", err)
+		return apitype.PolicyException{}, "", fmt.Errorf("reading the exception: %w", err)
 	}
 
 	var doc struct {
 		apitype.PolicyException `yaml:",inline"`
+		PolicyPack              string                             `yaml:"policyPack"`
 		Exceptions              map[string]apitype.PolicyException `yaml:"exceptions"`
 		// Exception is where `--dry-run --output json` puts it.
 		Exception struct {
 			apitype.PolicyException `yaml:",inline"`
+			PolicyPack              string `yaml:"policyPack"`
 		} `yaml:"exception"`
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return apitype.PolicyException{}, cmdCmd.ConfigurationError{Message: fmt.Sprintf("invalid exception: %v", err)}
+		return apitype.PolicyException{}, "", cmdCmd.ConfigurationError{Message: fmt.Sprintf("invalid exception: %v", err)}
 	}
 	if len(doc.Exceptions) > 1 {
-		return apitype.PolicyException{}, cmdCmd.ConfigurationError{Message: "the file has more than one exception"}
+		return apitype.PolicyException{}, "", cmdCmd.ConfigurationError{Message: "the file has more than one exception"}
 	}
-	e := doc.PolicyException
+	e, pack := doc.PolicyException, doc.PolicyPack
 	if len(doc.Exception.Match) > 0 {
-		e = doc.Exception.PolicyException
+		e, pack = doc.Exception.PolicyException, doc.Exception.PolicyPack
 	}
 	for _, v := range doc.Exceptions {
 		e = v
 	}
 	if len(e.Match) == 0 {
-		return apitype.PolicyException{}, cmdCmd.ConfigurationError{Message: "the exception has no match entries"}
+		return apitype.PolicyException{}, "", cmdCmd.ConfigurationError{Message: "the exception has no match entries"}
 	}
 	for i, m := range e.Match {
 		if len(m.Policies) == 0 || len(m.Targets) == 0 || slices.Contains(m.Policies, "") {
-			return apitype.PolicyException{}, cmdCmd.ConfigurationError{
+			return apitype.PolicyException{}, "", cmdCmd.ConfigurationError{
 				Message: fmt.Sprintf("match entry %d needs at least one policy and one target", i+1),
 			}
 		}
 		for _, t := range m.Targets {
 			if _, err := resource.ParseURN(t); err != nil {
-				return apitype.PolicyException{}, cmdCmd.ConfigurationError{
+				return apitype.PolicyException{}, "", cmdCmd.ConfigurationError{
 					Message: fmt.Sprintf("match entry %d: invalid target %q: %v", i+1, t, err),
 				}
 			}
 		}
 	}
-	return e, nil
+	return e, pack, nil
 }
 
 // policyExceptionRunOf picks the run whose violations to read: the one --update or --preview names, or the stack's
@@ -535,6 +564,7 @@ func readPolicyExceptionViolations(
 	ctx context.Context, c policyExceptionClient, stacks []client.StackIdentifier,
 	pack string, args policyExceptionNewArgs, result *policyExceptionNewResult,
 ) error {
+	seen := map[[4]string]bool{}
 	for _, stack := range stacks {
 		run, err := policyExceptionRunOf(ctx, c, stack, args)
 		if err != nil {
@@ -570,9 +600,8 @@ func readPolicyExceptionViolations(
 				for _, e := range p.Exceptions {
 					v.Exceptions = append(v.Exceptions, e.ID)
 				}
-				if !slices.ContainsFunc(result.Violations, func(w policyExceptionViolation) bool {
-					return w.Stack == v.Stack && w.PolicyPack == v.PolicyPack && w.Policy == v.Policy && w.URN == v.URN
-				}) {
+				if key := [4]string{v.Stack, v.PolicyPack, v.Policy, v.URN}; !seen[key] {
+					seen[key] = true
 					result.Violations = append(result.Violations, v)
 				}
 			}
@@ -719,7 +748,7 @@ func choosePolicyExceptionPack(
 }
 
 func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNewResult) error {
-	if len(r.Violations) == 0 && len(r.Exception.Match) == 0 {
+	if len(r.Exception.Match) == 0 && (len(r.Violations) == 0 || !r.DryRun) {
 		if r.pack != "" {
 			fmt.Fprintf(stderr, "No violations of Policy Pack %q to exempt.\n", r.pack)
 		} else {
@@ -779,6 +808,10 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 	}
 	if r.Exception.PolicyPack == "" {
 		fmt.Fprintln(stdout, "\nThe violations are from several Policy Packs; name one to see its exception.")
+		return nil
+	}
+	if len(r.Exception.Match) == 0 {
+		fmt.Fprintln(stdout, "\nThe violations are exempted already.")
 		return nil
 	}
 	fmt.Fprintln(stdout, "\nPolicy Pack exceptions configuration:")

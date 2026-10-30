@@ -229,7 +229,7 @@ Policy Pack exceptions configuration:
 			"policyPack": "aws",
 			"reason": "",
 			"match": [
-				{"policies": ["required-tags", "s3-no-public-read", "unencrypted"], "targets": ["`+logsURN+`"]},
+				{"policies": ["required-tags", "unencrypted"], "targets": ["`+logsURN+`"]},
 				{"policies": ["required-tags", "s3-no-public-read"], "targets": ["`+cdnLogsURN+`"]}
 			]
 		},
@@ -354,10 +354,9 @@ func TestPolicyExceptionNew_SeveralPacks(t *testing.T) {
 
 	assert.Equal(t, "acme", c.gotOrgFlag, "the organization defaults to the stack's")
 
-	_, _, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "other-org/aws", reason: "x"})
+	_, _, err = runNew(t, c, "", policyExceptionNewArgs{policyPack: "acme/aws", reason: "x"})
 	require.NoError(t, err)
 	assert.Equal(t, "aws", c.gotCreated[1].PolicyPack)
-	assert.Equal(t, "other-org", c.gotOrgFlag)
 }
 
 func TestPolicyExceptionNew_File(t *testing.T) {
@@ -387,6 +386,12 @@ func TestPolicyExceptionNew_File(t *testing.T) {
 			assert.Empty(t, c.gotReads, "a file doesn't read the run")
 		})
 	}
+
+	c := &mockPolicyExceptionClient{}
+	_, _, err := runNew(t, c, `{"exception": {"policyPack": "gcp", "reason": "x", `+
+		`"match": [{"policies": ["p"], "targets": ["`+logsURN+`"]}]}}`, policyExceptionNewArgs{file: "-"})
+	require.NoError(t, err)
+	assert.Equal(t, "gcp", c.gotCreated[0].PolicyPack, "the file's Policy Pack is the default")
 }
 
 func TestPolicyExceptionNew_Errors(t *testing.T) {
@@ -432,6 +437,15 @@ func TestPolicyExceptionNew_Errors(t *testing.T) {
 			args:  policyExceptionNewArgs{policyPack: "aws", file: "-"},
 			want:  `match entry 1: invalid target "logs": invalid URN "logs"`,
 		},
+		"file for another pack": {
+			stdin: `{"policyPack": "gcp", "reason": "x", "match": [{"policies": ["p"], "targets": ["` + logsURN + `"]}]}`,
+			args:  policyExceptionNewArgs{policyPack: "aws", file: "-"},
+			want:  `the file's exception is for Policy Pack "gcp", not "aws"`,
+		},
+		"stack in another org": {
+			args: policyExceptionNewArgs{policyPack: "other-org/aws", reason: "x"},
+			want: "stack acme/web/prod isn't in organization other-org, where the exception is created",
+		},
 		"two exceptions": {
 			stdin: "version: 2\nexceptions:\n  a: {}\n  b: {}\n",
 			args:  policyExceptionNewArgs{policyPack: "aws", file: "-"},
@@ -457,6 +471,33 @@ func TestPolicyExceptionNew_Errors(t *testing.T) {
 	assert.EqualError(t, err, "[403] policy exceptions are disabled for this organization")
 	assert.Empty(t, c.gotDrafts, "only a 409 falls back to a draft")
 	assert.Empty(t, c.gotSubmitted)
+}
+
+func TestPolicyExceptionNew_FileLevel(t *testing.T) {
+	t.Parallel()
+
+	cmd := newPolicyExceptionNewCmd(nil, nil)
+	cmd.SetArgs([]string{"aws", "--file", "-", "--level", "advisory"})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	err := cmd.ExecuteContext(t.Context())
+	assert.Equal(t, cmdCmd.ConfigurationError{Message: "--file can't be used with --level"}, err)
+}
+
+func TestPolicyExceptionNew_AlreadyExempted(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyExceptionClient{
+		updates: []apitype.UpdateInfo{{Version: 12}},
+		events: map[string][]apitype.EngineEvent{"update/12": {
+			policyViolation("aws", "s3-no-public-read", "mandatory", logsURN, "EXC-1"),
+		}},
+	}
+	stdout, stderr, err := runNew(t, c, "", policyExceptionNewArgs{policyPack: "aws", reason: "x", yes: true})
+	require.NoError(t, err)
+	assert.Empty(t, stdout)
+	assert.Equal(t, "No violations to exempt.\n", stderr)
+	assert.Empty(t, c.gotCreated, "without the picker, exempted violations aren't exempted again")
 }
 
 func TestPolicyExceptionNew_RequiresApproval(t *testing.T) {

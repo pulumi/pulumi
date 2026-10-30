@@ -162,7 +162,7 @@ func (m *mockPolicyExceptionClient) RemovePolicyException(_ context.Context, org
 func stubPolicyExceptionFactory(c *mockPolicyExceptionClient, org string) policyExceptionClientFactory {
 	return func(_ context.Context, orgFlag string) (policyExceptionClients, string, error) {
 		c.gotOrgFlag = orgFlag
-		return policyExceptionClients{c, c}, org, nil
+		return policyExceptionClients{c, c}, cmp.Or(orgFlag, org), nil
 	}
 }
 
@@ -445,7 +445,7 @@ func TestPolicyExceptionRemove(t *testing.T) {
 	err = runPolicyExceptionRemove(t.Context(), &stdout, &stderr, stubPolicyExceptionFactory(c, "acme"), "EXC-4",
 		jsonArgs)
 	require.NoError(t, err)
-	assert.JSONEq(t, `{"organizationName": "acme", "id": "EXC-4"}`, stdout.String())
+	assert.JSONEq(t, `{"organizationName": "other-org", "id": "EXC-4"}`, stdout.String())
 	assert.Empty(t, stderr.String())
 	assert.Equal(t, []string{"EXC-3", "EXC-4"}, c.gotRemoved)
 	assert.Equal(t, "other-org", c.gotOrgFlag)
