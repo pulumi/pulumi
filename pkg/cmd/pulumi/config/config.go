@@ -167,13 +167,15 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	cmd.AddCommand(newConfigSetAllCmd(ws, &stack, cmdBackend.DefaultLoginManager, &ssml, &configFile))
 	cmd.AddCommand(newConfigRefreshCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
-	cmd.AddCommand(newConfigCopyCmd(ws, &stack, &configFile))
+	cmd.AddCommand(newConfigCopyCmd(ws, &stack, cmdBackend.DefaultLoginManager, &configFile))
 	cmd.AddCommand(newConfigEnvCmd(ws, &stack, &configFile))
 
 	return cmd
 }
 
-func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string) *cobra.Command {
+func newConfigCopyCmd(
+	ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, configFile *string,
+) *cobra.Command {
 	var path bool
 	var destinationStackName string
 
@@ -204,12 +206,17 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				*stack,
 				cmdStack.SetCurrent,
 				opts,
 				*configFile,
 			)
+			if err != nil {
+				return err
+			}
+			err = cmdStack.RejectManagedStack(
+				currentStack, fmt.Sprintf("`pulumi config copy` from stack %s", currentStack.Ref()))
 			if err != nil {
 				return err
 			}
@@ -226,12 +233,17 @@ func newConfigCopyCmd(ws pkgWorkspace.Context, stack *string, configFile *string
 				ctx,
 				cmdutil.Diag(),
 				ws,
-				cmdBackend.DefaultLoginManager,
+				lm,
 				destinationStackName,
 				cmdStack.LoadOnly,
 				opts,
 				*configFile,
 			)
+			if err != nil {
+				return err
+			}
+			err = cmdStack.RejectManagedStack(
+				destinationStack, fmt.Sprintf("`pulumi config copy` to stack %s", destinationStack.Ref()))
 			if err != nil {
 				return err
 			}
@@ -592,6 +604,9 @@ func newConfigRefreshCmd(
 				*configFile,
 			)
 			if err != nil {
+				return err
+			}
+			if err := cmdStack.RejectManagedStack(s, "`pulumi config refresh`"); err != nil {
 				return err
 			}
 

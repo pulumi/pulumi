@@ -165,12 +165,11 @@ func (cmd *configEnvCmd) loadEnvPreamble(ctx context.Context,
 }
 
 func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, render stackEnvironmentsRenderFunc) error {
-	projectStack, _, _, err := cmd.loadEnvPreamble(ctx)
+	projectStack, _, stack, err := cmd.loadEnvPreamble(ctx)
 	if err != nil {
 		return err
 	}
-	imports := projectStack.Environment.Imports()
-
+	imports := stackEnvironmentImports(projectStack, (*stack).ConfigLocation().ManagedEnvironment != "")
 	return render(cmd.stdout, imports)
 }
 

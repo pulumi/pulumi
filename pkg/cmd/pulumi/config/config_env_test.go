@@ -276,17 +276,7 @@ func TestConfigEnvEditRejectsConfigFileOnManagedStack(t *testing.T) {
 	newManagedCmd := func(saved *string) *configEnvCmd {
 		cmd := newConfigEnvCmdForTest(nil, io.Discard, "name: app\nruntime: yaml",
 			"environment:\n  imports:\n    - proj/base\n", &esc.Environment{}, nil, saved)
-		requireStack := cmd.requireStack
-		cmd.requireStack = func(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
-			name string, lopt cmdStack.LoadOption, opts display.Options, configFile string,
-		) (backend.Stack, error) {
-			s, err := requireStack(ctx, sink, ws, lm, name, lopt, opts, configFile)
-			require.NoError(t, err)
-			s.(*backend.MockStack).ConfigLocationF = func() backend.StackConfigLocation {
-				return backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"}
-			}
-			return s, nil
-		}
+		withManagedEnvironment(t, cmd)
 		configFile := "Pulumi.alt.yaml"
 		cmd.configFile = &configFile
 		return cmd

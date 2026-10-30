@@ -203,6 +203,31 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 		return projectErr
 	}
 
+	var copyStack backend.Stack
+	if cmd.stackToCopy != "" {
+		if projectErr != nil {
+			return projectErr
+		}
+
+		// Resolved before CreateStack, so a stack that cannot be copied leaves no new stack behind.
+		copyStack, err = RequireStack(
+			ctx,
+			cmdutil.Diag(),
+			ws,
+			cmdBackend.DefaultLoginManager,
+			cmd.stackToCopy,
+			LoadOnly,
+			opts,
+			"",
+		)
+		if err != nil {
+			return err
+		}
+		if err := RejectManagedStack(copyStack, "`pulumi stack init --copy-config-from`"); err != nil {
+			return err
+		}
+	}
+
 	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, CreateStackOptions{
 		Teams:           sanitizeTeams(cmd.teams),
 		SetCurrent:      !cmd.noSelect,
@@ -217,25 +242,7 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	if cmd.stackToCopy != "" {
-		if projectErr != nil {
-			return projectErr
-		}
-
-		// load the old stack and its project
-		copyStack, err := RequireStack(
-			ctx,
-			cmdutil.Diag(),
-			ws,
-			cmdBackend.DefaultLoginManager,
-			cmd.stackToCopy,
-			LoadOnly,
-			opts,
-			"",
-		)
-		if err != nil {
-			return err
-		}
+	if copyStack != nil {
 		copyProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, copyStack, "")
 		if err != nil {
 			return err

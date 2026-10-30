@@ -298,6 +298,9 @@ func (cmd *stackMigrateCmd) Run(
 		sourceStack = s
 		srcRef = ref
 	}
+	if err := RejectManagedStack(sourceStack, "`pulumi stack migrate`"); err != nil {
+		return err
+	}
 
 	// Resolve target ref + check it doesn't exist before source-side work to fail fast.
 	targetStackName := cmd.targetStack

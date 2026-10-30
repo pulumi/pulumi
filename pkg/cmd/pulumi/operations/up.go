@@ -391,7 +391,7 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 			if s != nil {
-				if err = rejectTemplateUpOnManagedStack(s); err != nil {
+				if err = cmdStack.RejectManagedStack(s, "`pulumi up <template>`"); err != nil {
 					return err
 				}
 			}
