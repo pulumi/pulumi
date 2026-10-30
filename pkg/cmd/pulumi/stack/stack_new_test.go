@@ -17,7 +17,9 @@ package stack
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -29,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
@@ -77,6 +80,49 @@ func TestStackNew_teamsUnsupportedByBackend(t *testing.T) {
 
 	err := cmd.Run(t.Context(), nil /* args */)
 	assert.ErrorContains(t, err, "stack dev uses the mock backend: mock does not support --teams")
+}
+
+//nolint:paralleltest // uses t.Chdir
+func TestStackNewESCConfig(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte("name: proj\nruntime: yaml\n"), 0o600))
+	t.Chdir(dir)
+	var createdManaged bool
+	cmd := &stackNewCmd{
+		stackName: "dev",
+		noSelect:  true,
+		escConfig: true,
+		stdout:    io.Discard,
+		currentBackend: func(
+			context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+		) (backend.Backend, error) {
+			return newManagedTestBackend("proj/renamed", &createdManaged), nil
+		},
+	}
+
+	require.NoError(t, cmd.Run(t.Context(), nil /* args */))
+
+	assert.True(t, createdManaged)
+	stackFile := filepath.Join(dir, "Pulumi.dev.yaml")
+	contents, err := os.ReadFile(stackFile)
+	require.NoError(t, err)
+	assert.Equal(t, "environment:\n  values:\n    pulumiConfig: {}\n", string(contents))
+	ps, err := workspace.LoadProjectStack(diagtest.LogSink(t), &workspace.Project{Name: "proj"}, stackFile)
+	require.NoError(t, err)
+	_, err = ps.Environment.DefinitionNode()
+	require.NoError(t, err)
+}
+
+func TestStackNewESCConfigExclusiveFlags(t *testing.T) {
+	t.Parallel()
+
+	for _, other := range []string{"--remote-config", "--copy-config-from=prod"} {
+		cmd := newStackNewCmd()
+		cmd.SetArgs([]string{"--esc-config", other, "dev"})
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(io.Discard)
+		assert.ErrorContains(t, cmd.Execute(), "none of the others can be")
+	}
 }
 
 //nolint:paralleltest // mutates global state

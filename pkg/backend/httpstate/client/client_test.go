@@ -2652,3 +2652,41 @@ func TestGetPolicyPack(t *testing.T) {
 	require.Len(t, resp.Policies, 1)
 	assert.Equal(t, apitype.Mandatory, resp.Policies[0].EnforcementLevel)
 }
+
+func TestCreateStackManagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	var request apitype.CreateStackRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "/api/stacks/acme/proj", req.URL.Path)
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&request))
+		return `{"managedEnvironment": "proj/renamed"}`
+	})
+	t.Cleanup(server.Close)
+
+	stack, _, err := newMockClient(server).CreateStack(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "proj",
+		Stack:   tokens.MustParseStackName("dev"),
+	}, nil, nil, nil, nil, true)
+	require.NoError(t, err)
+
+	assert.True(t, request.CreateManagedEnvironment)
+	assert.Equal(t, new("proj/renamed"), stack.ManagedEnvironment)
+}
+
+func TestCreateStackUnmanagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServerRequestProcessor(200, func(*http.Request) string { return `{}` })
+	t.Cleanup(server.Close)
+
+	stack, _, err := newMockClient(server).CreateStack(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "proj",
+		Stack:   tokens.MustParseStackName("dev"),
+	}, nil, nil, nil, nil, false)
+	require.NoError(t, err)
+
+	assert.Nil(t, stack.ManagedEnvironment)
+}

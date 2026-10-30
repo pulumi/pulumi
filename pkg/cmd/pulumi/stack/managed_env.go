@@ -18,12 +18,14 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -67,10 +69,9 @@ func ManagedEnvironmentMissingFromFileHint(
 	return fmt.Sprintf("Restore it with `pulumi env get %s/%s --definition` and put the output under "+
 		"`environment:` in %s. "+
 		"For a stack that has never been updated, this is enough:\n\n"+
-		"  environment:\n"+
-		"    values:\n"+
-		"      pulumiConfig: {}",
-		org, managedEnv, stackConfigFilePath(stack, configFile))
+		"  environment:\n%s",
+		org, managedEnv, stackConfigFilePath(stack, configFile),
+		"    "+strings.ReplaceAll(managedEnvironmentPlaceholder, "\n", "\n    "))
 }
 
 // RejectConfigFlagsOnManagedStack returns an error when --config or --config-file is set on a stack with an
@@ -102,14 +103,43 @@ func ManagedEnvironmentNotSupportedError(what string) error {
 	return fmt.Errorf("%s is not supported on stacks with an ESC-managed environment yet", what)
 }
 
-func stackConfigFilePath(stack string, configFile string) string {
+func resolveStackFilePath(stack tokens.QName, configFile string) (string, error) {
 	if configFile != "" {
-		return configFile
+		return configFile, nil
 	}
-	if _, path, err := workspace.DetectProjectStackPath(tokens.QName(stack)); err == nil {
+	_, path, err := workspace.DetectProjectStackPath(stack)
+	if err != nil {
+		return "", fmt.Errorf("could not detect project stack path: %w", err)
+	}
+	return path, nil
+}
+
+func stackConfigFilePath(stack string, configFile string) string {
+	if path, err := resolveStackFilePath(tokens.QName(stack), configFile); err == nil {
 		return path
 	}
 	return fmt.Sprintf("Pulumi.%s.yaml", stack)
+}
+
+func managedStackFilePath(stackName tokens.QName, configFile string) (string, error) {
+	path, err := resolveStackFilePath(stackName, configFile)
+	if err != nil {
+		return "", err
+	}
+	if ext := filepath.Ext(path); ext != encoding.YAMLExt && ext != ".yml" {
+		return "", errManagedEnvironmentRequiresYAML
+	}
+	return path, nil
+}
+
+const managedEnvironmentPlaceholder = "values:\n  pulumiConfig: {}"
+
+func newManagedEnvironmentPlaceholder() *workspace.Environment {
+	var env workspace.Environment
+	// values stays block style: yamlutil restyles only an empty flow mapping that gains content.
+	err := yaml.Unmarshal([]byte(managedEnvironmentPlaceholder), &env)
+	contract.AssertNoErrorf(err, "parsing the managed environment placeholder")
+	return &env
 }
 
 // A JSON stack file whose environment is a list or absent doesn't yield ErrJSONManagedDefinition.

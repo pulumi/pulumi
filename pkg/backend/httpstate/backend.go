@@ -1391,7 +1391,8 @@ func (b *cloudBackend) CreateStack(
 
 	b.downgradeUntypedDeploymentVersionIfNeeded(ctx, initialState)
 
-	apistack, details, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
+	apistack, details, err := b.client.CreateStack(
+		ctx, stackID, tags, opts.Teams, initialState, opts.Config, opts.ManagedEnvironment)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
