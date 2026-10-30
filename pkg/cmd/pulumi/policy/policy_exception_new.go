@@ -139,7 +139,7 @@ func defaultPolicyExceptionNewOutputFormat() outputflag.OutputFlag[policyExcepti
 	}
 }
 
-func newPolicyExceptionNewCmd() *cobra.Command {
+func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var args policyExceptionNewArgs
 	args.outputFormat = defaultPolicyExceptionNewOutputFormat()
 
@@ -190,7 +190,7 @@ func newPolicyExceptionNewCmd() *cobra.Command {
 			}
 			args.yes = args.yes || env.SkipConfirmations.Value()
 			return runPolicyExceptionNew(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), cmd.InOrStdin(),
-				defaultPolicyExceptionClientFactory, resolvePolicyExceptionStack, cmdutil.Interactive(), args)
+				newPolicyExceptionClientFactory(ws, lm), newPolicyExceptionStackResolver(ws, lm), cmdutil.Interactive(), args)
 		},
 	}
 
@@ -225,10 +225,11 @@ func newPolicyExceptionNewCmd() *cobra.Command {
 	return cmd
 }
 
-func resolvePolicyExceptionStack(ctx context.Context, name string) (client.StackIdentifier, error) {
-	_, id, err := cmdStack.RequireCloudStack(
-		ctx, cmdutil.Diag(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, name)
-	return id, err
+func newPolicyExceptionStackResolver(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) policyExceptionStackResolver {
+	return func(ctx context.Context, name string) (client.StackIdentifier, error) {
+		_, id, err := cmdStack.RequireCloudStack(ctx, cmdutil.Diag(), ws, lm, name)
+		return id, err
+	}
 }
 
 func runPolicyExceptionNew(

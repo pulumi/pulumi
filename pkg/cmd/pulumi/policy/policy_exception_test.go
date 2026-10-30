@@ -27,11 +27,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	esc_client "github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // mockPolicyExceptionClient serves pages of exceptions in order and one exception, a stack's runs and their events
@@ -459,4 +466,54 @@ func TestPolicyExceptionRemove(t *testing.T) {
 	c = &mockPolicyExceptionClient{err: &apitype.ErrorResponse{Code: http.StatusInternalServerError, Message: "boom"}}
 	err = runPolicyExceptionRemove(t.Context(), &stdout, &stderr, stubPolicyExceptionFactory(c, "acme"), "EXC-3", args)
 	assert.EqualError(t, err, "[500] boom")
+}
+
+func TestPolicyExceptionClientFactory(t *testing.T) {
+	t.Parallel()
+
+	factory := func(be backend.Backend) policyExceptionClientFactory {
+		return newPolicyExceptionClientFactory(&pkgWorkspace.MockContext{}, &cmdBackend.MockLoginManager{
+			LoginF: func(
+				context.Context, pkgWorkspace.Context, diag.Sink,
+				string, *workspace.Project, bool, bool, colors.Colorization, ...cmdBackend.LoginOption,
+			) (backend.Backend, error) {
+				return be, nil
+			},
+		})
+	}
+	cloud := func(defaultOrg string) backend.Backend {
+		return &httpstate.MockHTTPBackend{
+			MockBackend: backend.MockBackend{
+				GetDefaultOrgF: func(context.Context) (string, error) { return defaultOrg, nil },
+				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+					return "alice", []string{"acme", "other-org"}, nil, nil
+				},
+			},
+			FClient:    func() *client.Client { return client.NewClient("https://api.pulumi.com", "", false, nil) },
+			FESCClient: func() esc_client.Client { return nil },
+		}
+	}
+
+	for _, tc := range []struct {
+		be         backend.Backend
+		orgFlag    string
+		want, fail string
+	}{
+		{be: cloud("acme"), want: "acme"},
+		{be: cloud("acme"), orgFlag: "other-org", want: "other-org"},
+		{be: cloud(""), want: "alice"},
+		{be: cloud("acme"), orgFlag: "stranger", fail: "user alice is not a member of organization stranger"},
+		{
+			be:   &backend.MockBackend{},
+			fail: "policy exceptions require the Pulumi Cloud backend; run `pulumi login`",
+		},
+	} {
+		_, org, err := factory(tc.be)(t.Context(), tc.orgFlag)
+		if tc.fail != "" {
+			assert.EqualError(t, err, tc.fail)
+			continue
+		}
+		require.NoError(t, err)
+		assert.Equal(t, tc.want, org)
+	}
 }
