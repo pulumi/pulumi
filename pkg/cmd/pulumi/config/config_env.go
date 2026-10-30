@@ -169,12 +169,7 @@ func (cmd *configEnvCmd) listStackEnvironments(ctx context.Context, render stack
 	if err != nil {
 		return err
 	}
-	imports := projectStack.Environment.Imports()
-	if (*stack).ConfigLocation().ManagedEnvironment != "" && len(imports) > 0 && imports[len(imports)-1] == "yaml" {
-		// Environment.Imports names the inline values "yaml"; on a managed stack they are the managed environment.
-		imports = imports[:len(imports)-1]
-	}
-
+	imports := stackEnvironmentImports(projectStack, (*stack).ConfigLocation().ManagedEnvironment != "")
 	return render(cmd.stdout, imports)
 }
 

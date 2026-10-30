@@ -180,12 +180,7 @@ func getStackConfigurationFromProjectStack(
 		}
 	}
 
-	imports := workspaceStack.Environment.Imports()
-	if managedEnv != nil && len(imports) > 0 && imports[len(imports)-1] == "yaml" {
-		// Environment.Imports names the inline values "yaml"; on a managed stack they are the managed environment,
-		// and the console would link "yaml" to a default/yaml environment that does not exist.
-		imports = imports[:len(imports)-1]
-	}
+	imports := stackEnvironmentImports(workspaceStack, managedEnv != nil)
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
@@ -529,4 +524,14 @@ func PrettyKeyForProject(k config.Key, projectName tokens.PackageName) string {
 	}
 
 	return fmt.Sprintf("%s:%s", k.Namespace(), k.Name())
+}
+
+// Environment.Imports names the inline values "yaml". On a managed stack they are the managed environment itself, and
+// the console would link "yaml" to a default/yaml environment that does not exist.
+func stackEnvironmentImports(ps *workspace.ProjectStack, managed bool) []string {
+	imports := ps.Environment.Imports()
+	if managed && len(imports) > 0 && imports[len(imports)-1] == "yaml" {
+		return imports[:len(imports)-1]
+	}
+	return imports
 }
