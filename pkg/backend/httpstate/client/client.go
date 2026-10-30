@@ -2237,7 +2237,7 @@ func validatePolicyPackVersion(s string) error {
 	return nil
 }
 
-// ApplyPolicyPack enables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,
+// ApplyPolicyPack enables a `PolicyPack` to the Pulumi organization. If policyGroup is empty,
 // it will enable the PolicyPack on the default PolicyGroup. The service replaces the pack's
 // configuration and ESC environments in the group with policyPackConfig and environments.
 func (pc *Client) ApplyPolicyPack(ctx context.Context, orgName, policyGroup,

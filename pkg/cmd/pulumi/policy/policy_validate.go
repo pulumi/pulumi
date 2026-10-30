@@ -15,7 +15,6 @@
 package policy
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 
@@ -74,9 +73,9 @@ func newPolicyValidateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *
 			version := &cliArgs[1]
 
 			// Load the configuration from the user-specified JSON file into config object.
-			var config map[string]*json.RawMessage
+			var file policyConfigFile
 			if argConfig != "" {
-				config, _, err = loadPolicyConfigFromFile(argConfig)
+				file, err = loadPolicyConfigFromFile(argConfig)
 				if err != nil {
 					return err
 				}
@@ -86,7 +85,7 @@ func newPolicyValidateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *
 				backend.PolicyPackOperation{
 					VersionTag: version,
 					Scopes:     backend.CancellationScopes,
-					Config:     config,
+					Config:     file.config,
 				})
 			if err != nil {
 				return err

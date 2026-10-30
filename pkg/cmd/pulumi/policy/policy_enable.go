@@ -83,6 +83,9 @@ func newPolicyEnableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 		Long: "Enable a Policy Pack for a Pulumi organization. " +
 			"Can specify latest to enable the latest version of the Policy Pack or a specific version number.\n" +
 			"\n" +
+			"Enabling replaces the Policy Pack's configuration and ESC environments in the Policy Group with those " +
+			"in the --config file. Without --config, both are cleared.\n" +
+			"\n" +
 			"Examples:\n" +
 			"  pulumi policy enable acme/aws-guardrails latest\n" +
 			"  pulumi policy enable acme/aws-guardrails 3 --policy-group prod --output json",
@@ -101,12 +104,15 @@ func newPolicyEnableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 			}
 
 			// Load the configuration from the user-specified JSON file into config object.
-			var config map[string]*json.RawMessage
-			var environments []string
+			var file policyConfigFile
 			if args.config != "" {
-				config, environments, err = loadPolicyConfigFromFile(args.config)
+				file, err = loadPolicyConfigFromFile(args.config)
 				if err != nil {
 					return err
+				}
+				if file.exceptions.Len() > 0 {
+					fmt.Fprintf(cmd.ErrOrStderr(),
+						"warning: ignoring the exceptions in %s; pulumi policy enable does not apply them\n", args.config)
 				}
 			}
 
@@ -115,8 +121,8 @@ func newPolicyEnableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 				backend.PolicyPackOperation{
 					VersionTag:   version,
 					Scopes:       backend.CancellationScopes,
-					Config:       config,
-					Environments: environments,
+					Config:       file.config,
+					Environments: file.environments,
 				})
 			if err != nil {
 				return err
@@ -151,22 +157,29 @@ func newPolicyEnableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 	return cmd
 }
 
-func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, []string, error) {
-	analyzerPolicyConfigMap, environments, err := resourceanalyzer.LoadPolicyPackConfigAndEnvironmentsFromFile(file)
+// policyConfigFile is a policy pack config file, with its policy config in the form the service expects.
+type policyConfigFile struct {
+	config       map[string]*json.RawMessage
+	environments []string
+	exceptions   resourceanalyzer.PolicyExceptions
+}
+
+func loadPolicyConfigFromFile(path string) (policyConfigFile, error) {
+	file, err := resourceanalyzer.LoadPolicyPackConfigFile(path)
 	if err != nil {
-		return nil, nil, err
+		return policyConfigFile{}, err
 	}
 
 	// Convert type map[string]plugin.AnalyzerPolicyConfig to map[string]*json.RawMessage.
 	config := make(map[string]*json.RawMessage)
-	for k, v := range analyzerPolicyConfigMap {
+	for k, v := range file.Config {
 		raw, err := marshalAnalyzerPolicyConfig(v)
 		if err != nil {
-			return nil, nil, err
+			return policyConfigFile{}, err
 		}
 		config[k] = raw
 	}
-	return config, environments, nil
+	return policyConfigFile{config: config, environments: file.Environments, exceptions: file.Exceptions}, nil
 }
 
 // marshalAnalyzerPolicyConfig converts the type plugin.AnalyzerPolicyConfig to structure the data

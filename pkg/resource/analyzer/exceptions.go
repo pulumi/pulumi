@@ -53,8 +53,8 @@ func (m policyExceptionMatcher) matches(policy string, urn resource.URN) bool {
 	return slices.Contains(m.policies, policy) && slices.Contains(m.urns, urn)
 }
 
-// len returns the number of exceptions in the set.
-func (s PolicyExceptions) len() int {
+// Len returns the number of exceptions in the set.
+func (s PolicyExceptions) Len() int {
 	return len(s.exceptions)
 }
 

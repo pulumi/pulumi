@@ -63,7 +63,7 @@ func TestParsePolicyExceptionsEmpty(t *testing.T) {
 	for _, js := range []string{``, `null`, `{}`} {
 		set, err := parsePolicyExceptionsBlock(json.RawMessage(js))
 		require.NoError(t, err, js)
-		assert.Equal(t, 0, set.len(), js)
+		assert.Equal(t, 0, set.Len(), js)
 	}
 }
 
@@ -151,7 +151,7 @@ func TestParsePolicyExceptionsSkipsInvalid(t *testing.T) {
 	require.Len(t, errs, 2)
 	assert.ErrorContains(t, errs[0], `policy exception "EXC-10": match[0]: target "bad" is not a valid URN`)
 	assert.EqualError(t, errs[1], `policy exception "no-reason": "reason" is required`)
-	assert.Equal(t, 2, set.len())
+	assert.Equal(t, 2, set.Len())
 	assert.Equal(t, []string{"EXC-2"}, matchIDs(set, "p", accessLogsURN))
 	assert.Equal(t, []string{"EXC-9"}, matchIDs(set, "p", cfLogsURN))
 }
@@ -175,7 +175,7 @@ func TestPolicyExceptionsMatch(t *testing.T) {
 		},
 		"flow-logs": {"reason": "Only in prod", "match": [`+entry("vpc-flow-logs", webStackURN)+`]}
 	}`)
-	require.Equal(t, 2, set.len())
+	require.Equal(t, 2, set.Len())
 
 	tests := []struct {
 		name   string
