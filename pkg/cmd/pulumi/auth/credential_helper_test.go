@@ -224,8 +224,8 @@ func TestLoginHelperHTTPAuthentication(t *testing.T) {
 			creds, err := workspace.GetStoredCredentials()
 			require.NoError(t, err)
 			assert.Equal(t, server.URL, creds.Current)
-			assert.Empty(t, creds.Accounts[server.URL].AccessToken)
-			assert.Empty(t, creds.Accounts[server.URL].RefreshToken)
+			require.Contains(t, creds.Accounts, server.URL)
+			assert.Equal(t, workspace.Account{}, creds.Accounts[server.URL])
 			require.NotNil(t, creds.CredentialHelper)
 			storedAccount := workspace.Account{
 				AccessToken: "stored-token", Username: "stored-user", Organizations: []string{"stored-org"},
@@ -305,9 +305,8 @@ func TestLoginHelperTLSSetting(t *testing.T) {
 			creds, err := workspace.GetStoredCredentials()
 			require.NoError(t, err)
 			assert.Equal(t, server.URL, creds.Current)
-			assert.Equal(t, expected.Insecure, creds.Accounts[server.URL].Insecure)
-			assert.Equal(t, expected.AccessToken, creds.Accounts[server.URL].AccessToken)
-			assert.Equal(t, expected.RefreshToken, creds.Accounts[server.URL].RefreshToken)
+			require.Contains(t, creds.Accounts, server.URL)
+			assert.Equal(t, expected, creds.Accounts[server.URL])
 			be, err := cmdBackend.NonInteractiveCurrentBackend(t.Context(), pkgWorkspace.Instance,
 				cmdBackend.NewLoginManager(diagtest.LogSink(t), nil), nil)
 			require.NoError(t, err)
