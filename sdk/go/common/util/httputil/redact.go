@@ -34,28 +34,71 @@ var sensitiveQueryKeys = mapset.NewSet(
 	"access_token",
 )
 
+// URLSecrets returns the secrets embedded in raw: a userinfo password and the
+// values of any sensitive query parameter. Each is returned both decoded and as
+// written, because callers register the result with
+// logging.AddGlobalSecretFilter and then log the URL verbatim, where a secret
+// needing percent-escaping only ever appears escaped.
 func URLSecrets(raw string) []string {
 	u, err := url.Parse(raw)
 	if err != nil {
 		return nil
 	}
 	var secrets []string
-	if u.User != nil {
-		if pw, ok := u.User.Password(); ok && pw != "" {
-			secrets = append(secrets, pw)
+	add := func(decoded, escaped string) {
+		if decoded != "" {
+			secrets = append(secrets, decoded)
+		}
+		if escaped != "" && escaped != decoded {
+			secrets = append(secrets, escaped)
 		}
 	}
-	for k, vs := range u.Query() {
-		if !sensitiveQueryKeys.Contains(strings.ToLower(k)) {
+	if u.User != nil {
+		if pw, ok := u.User.Password(); ok {
+			_, escaped, _ := strings.Cut(rawUserinfo(raw), ":")
+			add(pw, escaped)
+		}
+	}
+	// Walk the undecoded query rather than u.Query(), which has already
+	// unescaped every value.
+	for pair := range strings.SplitSeq(u.RawQuery, "&") {
+		name, escaped, ok := strings.Cut(pair, "=")
+		if !ok {
 			continue
 		}
-		for _, v := range vs {
-			if v != "" {
-				secrets = append(secrets, v)
-			}
+		key, err := url.QueryUnescape(name)
+		if err != nil {
+			key = name
 		}
+		if !sensitiveQueryKeys.Contains(strings.ToLower(key)) {
+			continue
+		}
+		decoded, err := url.QueryUnescape(escaped)
+		if err != nil {
+			decoded = ""
+		}
+		add(decoded, escaped)
 	}
 	return secrets
+}
+
+// rawUserinfo returns the userinfo of raw exactly as written, or "" when raw
+// carries none. url.Parse splits the authority at its last "@" and the
+// userinfo at its first ":", so this follows the same rules.
+func rawUserinfo(raw string) string {
+	_, rest, ok := strings.Cut(raw, "//")
+	if !ok {
+		return ""
+	}
+	authority := rest
+	if i := strings.IndexAny(authority, "/?#"); i >= 0 {
+		authority = authority[:i]
+	}
+	i := strings.LastIndex(authority, "@")
+	if i < 0 {
+		return ""
+	}
+	return authority[:i]
 }
 
 func RedactURL(raw string) string {
