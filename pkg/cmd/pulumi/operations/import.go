@@ -1210,6 +1210,9 @@ func NewImportCmd() *cobra.Command {
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			}, imports)
+			if err != nil {
+				return err
+			}
 
 			if generateCode && proj.Runtime.Name() != "" && finalSnap != nil {
 				validImports, err := generateImportedDefinitions(
