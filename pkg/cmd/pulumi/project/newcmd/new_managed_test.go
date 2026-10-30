@@ -330,7 +330,7 @@ func TestNewExistingStackWithManagedEnvOrEscConfigFailsBeforeCopy(t *testing.T) 
 		{
 			name:      "unmanaged with --esc-config",
 			escConfig: true,
-			err:       "--esc-config creates a new stack, and stack my-org/proj/dev already exists",
+			err:       "--esc-config creates a new stack: stack 'my-org/proj/dev' already exists",
 		},
 	}
 	for _, tt := range tests {
