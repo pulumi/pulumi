@@ -103,24 +103,28 @@ func ManagedEnvironmentNotSupportedError(what string) error {
 	return fmt.Errorf("%s is not supported on stacks with an ESC-managed environment yet", what)
 }
 
-func stackConfigFilePath(stack string, configFile string) string {
+func resolveStackFilePath(stack tokens.QName, configFile string) (string, error) {
 	if configFile != "" {
-		return configFile
+		return configFile, nil
 	}
-	if _, path, err := workspace.DetectProjectStackPath(tokens.QName(stack)); err == nil {
+	_, path, err := workspace.DetectProjectStackPath(stack)
+	if err != nil {
+		return "", fmt.Errorf("could not detect project stack path: %w", err)
+	}
+	return path, nil
+}
+
+func stackConfigFilePath(stack string, configFile string) string {
+	if path, err := resolveStackFilePath(tokens.QName(stack), configFile); err == nil {
 		return path
 	}
 	return fmt.Sprintf("Pulumi.%s.yaml", stack)
 }
 
 func managedStackFilePath(stackName tokens.QName, configFile string) (string, error) {
-	path := configFile
-	if path == "" {
-		_, detected, err := workspace.DetectProjectStackPath(stackName)
-		if err != nil {
-			return "", fmt.Errorf("could not detect project stack path: %w", err)
-		}
-		path = detected
+	path, err := resolveStackFilePath(stackName, configFile)
+	if err != nil {
+		return "", err
 	}
 	if ext := filepath.Ext(path); ext != encoding.YAMLExt && ext != ".yml" {
 		return "", errManagedEnvironmentRequiresYAML
