@@ -17,6 +17,7 @@ package policy
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -110,4 +111,18 @@ func TestPolicyList_JSONOutput(t *testing.T) {
 		{"name": "aws-guardrails", "versions": ["1.0.0", "2.0.0", "3.1.0"]},
 		{"name": "tagging", "versions": ["7.0.0"]}
 	]`, buf.String())
+}
+
+func TestWritePolicyListAgentHint(t *testing.T) {
+	t.Parallel()
+
+	var none bytes.Buffer
+	writePolicyListAgentHint(&none, "")
+	assert.Empty(t, none.String())
+
+	var hinted bytes.Buffer
+	writePolicyListAgentHint(&hinted, "claude")
+	assert.True(t, strings.HasPrefix(hinted.String(), "Related commands:\n"))
+	assert.Contains(t, hinted.String(), "pulumi policy group ls")
+	assert.Contains(t, hinted.String(), "pulumi policy issue ls")
 }

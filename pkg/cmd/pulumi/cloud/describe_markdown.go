@@ -59,6 +59,9 @@ func RenderDescribeMarkdown(op *Operation) string {
 			b.WriteString("> **Deprecated** — will be removed in a future version.\n\n")
 		}
 	}
+	if op.CLICommand != "" {
+		fmt.Fprintf(&b, "> **Prefer the CLI** — use `%s`.\n\n", op.CLICommand)
+	}
 
 	if desc := strings.TrimSpace(op.Description); desc != "" && desc != strings.TrimSpace(op.Summary) {
 		b.WriteString("## Description\n\n")

@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -95,7 +97,11 @@ func newPolicyListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobr
 				inContToken = outContToken
 			}
 
-			return output.Get()(cmd.OutOrStdout(), allPolicyPacks)
+			if err := output.Get()(cmd.OutOrStdout(), allPolicyPacks); err != nil {
+				return err
+			}
+			writePolicyListAgentHint(cmd.ErrOrStderr(), agentdetect.Detect(os.Getenv))
+			return nil
 		},
 	}
 
@@ -108,6 +114,15 @@ func newPolicyListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobr
 
 	outputflag.VarWithJSONAlias(cmd, cmd.PersistentFlags(), &output)
 	return cmd
+}
+
+func writePolicyListAgentHint(w io.Writer, agent string) {
+	if agent == "" {
+		return
+	}
+	fmt.Fprintln(w, "Related commands:")
+	fmt.Fprintln(w, "  pulumi policy group ls  # the policy groups that enable these packs")
+	fmt.Fprintln(w, "  pulumi policy issue ls  # the violations these packs found")
 }
 
 func formatPolicyPacksConsole(w io.Writer, policyPacks []apitype.PolicyPackWithVersions) error {

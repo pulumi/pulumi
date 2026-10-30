@@ -1,0 +1,3 @@
+component: cli
+kind: improvement
+body: Show the dedicated CLI command for an operation in `pulumi api list` and `pulumi api describe`, and tell agents to run it instead of `pulumi api`

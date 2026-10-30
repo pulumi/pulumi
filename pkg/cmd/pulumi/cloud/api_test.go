@@ -841,3 +841,22 @@ func TestHandleResponse(t *testing.T) {
 		assert.Equal(t, cmdutil.ExitAuthenticationError, apiErr.ExitCode)
 	})
 }
+
+func TestWriteCLICommandHint(t *testing.T) {
+	t.Parallel()
+	op := &Operation{OperationID: "ListThings", CLICommand: "pulumi thing ls"}
+
+	var buf bytes.Buffer
+	writeCLICommandHint(&buf, "", op)
+	writeCLICommandHint(&buf, "claude-code", &Operation{OperationID: "ListThings"})
+	assert.Empty(t, buf.String())
+
+	writeCLICommandHint(&buf, "claude-code", op)
+	assert.Equal(t, "ListThings has a dedicated command; run `pulumi thing ls` instead of `pulumi api`.\n",
+		buf.String())
+}
+
+func TestAPICmdLongPrefersDedicatedCommands(t *testing.T) {
+	t.Parallel()
+	assert.Contains(t, NewAPICmd().Long, "Prefer a dedicated command")
+}

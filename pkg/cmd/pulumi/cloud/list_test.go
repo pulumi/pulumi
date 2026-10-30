@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -198,4 +199,64 @@ func TestEmitLsJSON_EnvelopeShape(t *testing.T) {
 	require.NotEmpty(t, env.Operations)
 	assert.NotEmpty(t, env.Operations[0].Method)
 	assert.NotEmpty(t, env.Operations[0].Path)
+}
+
+func TestLsJSONIncludesCLICommand(t *testing.T) {
+	t.Parallel()
+	idx := &Index{Operations: []*Operation{
+		{Method: "GET", Path: "/a", OperationID: "ListThings", CLICommand: "pulumi thing ls"},
+		{Method: "GET", Path: "/b", OperationID: "ListOthers"},
+	}}
+	var buf bytes.Buffer
+	require.NoError(t, emitLsJSON(&buf, idx))
+	var got struct {
+		Operations []map[string]any `json:"operations"`
+	}
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &got))
+	assert.Equal(t, "pulumi thing ls", got.Operations[0]["cliCommand"])
+	assert.NotContains(t, got.Operations[1], "cliCommand")
+}
+
+func TestMatchesFilterCLICommand(t *testing.T) {
+	t.Parallel()
+	assert.True(t, matchesFilter(&Operation{CLICommand: "pulumi policy issue ls"}, "policy issue"))
+	assert.False(t, matchesFilter(&Operation{OperationID: "X"}, "policy issue"))
+}
+
+func TestWriteCLICommandNote(t *testing.T) {
+	t.Parallel()
+
+	t.Run("none", func(t *testing.T) {
+		t.Parallel()
+		var buf bytes.Buffer
+		writeCLICommandNote(&buf, []*Operation{{OperationID: "A"}})
+		assert.Empty(t, buf.String())
+	})
+
+	t.Run("two", func(t *testing.T) {
+		t.Parallel()
+		var buf bytes.Buffer
+		writeCLICommandNote(&buf, []*Operation{
+			{OperationID: "A", CLICommand: "pulumi a ls"},
+			{OperationID: "B"},
+			{OperationID: "C", CLICommand: "pulumi c ls"},
+		})
+		assert.Equal(t, "These operations have a dedicated CLI command; prefer it over `pulumi api`:\n"+
+			"  A  pulumi a ls\n"+
+			"  C  pulumi c ls\n", buf.String())
+	})
+
+	t.Run("capped", func(t *testing.T) {
+		t.Parallel()
+		var ops []*Operation
+		for i := range 12 {
+			ops = append(ops, &Operation{OperationID: fmt.Sprintf("Op%d", i), CLICommand: "pulumi x"})
+		}
+		var buf bytes.Buffer
+		writeCLICommandNote(&buf, ops)
+		lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
+		require.Len(t, lines, 12)
+		assert.Equal(t, "  Op9  pulumi x", lines[10])
+		assert.Equal(t, "  ...and 2 more (see `pulumi api describe <op>`)", lines[11])
+	})
 }

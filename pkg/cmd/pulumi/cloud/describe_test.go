@@ -15,11 +15,13 @@
 package cloud
 
 import (
+	"bytes"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRenderDescribeTextShowsPreviewStatus(t *testing.T) {
@@ -153,4 +155,33 @@ func TestRenderDescribeMarkdown_Golden(t *testing.T) {
 			assertGolden(t, path, got)
 		})
 	}
+}
+
+func TestRenderDescribeTextShowsCLICommand(t *testing.T) {
+	t.Parallel()
+
+	op := &Operation{
+		Method:      "GET",
+		Path:        "/x",
+		OperationID: "ListThings",
+		CLICommand:  "pulumi thing ls",
+	}
+	assert.Contains(t, RenderDescribeText(op), "Prefer: `pulumi thing ls` (dedicated CLI command)")
+
+	op.CLICommand = ""
+	assert.NotContains(t, RenderDescribeText(op), "Prefer:")
+}
+
+func TestEmitDescribeJSONCLICommand(t *testing.T) {
+	t.Parallel()
+
+	op := &Operation{Method: "GET", Path: "/x", OperationID: "ListThings", CLICommand: "pulumi thing ls"}
+	var buf bytes.Buffer
+	require.NoError(t, emitDescribeJSON(&buf, op))
+	assert.Contains(t, buf.String(), `"cliCommand":"pulumi thing ls"`)
+
+	op.CLICommand = ""
+	buf.Reset()
+	require.NoError(t, emitDescribeJSON(&buf, op))
+	assert.NotContains(t, buf.String(), "cliCommand")
 }

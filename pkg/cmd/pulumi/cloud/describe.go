@@ -156,6 +156,7 @@ func emitDescribeJSON(w io.Writer, op *Operation) error {
 		Preview:      op.IsPreview,
 		Deprecated:   op.IsDeprecated,
 		SupersededBy: op.SupersededBy,
+		CLICommand:   op.CLICommand,
 		Parameters:   op.Params,
 	}
 	if op.HasBody {
@@ -209,6 +210,9 @@ func RenderDescribeText(op *Operation) string {
 		} else {
 			fmt.Fprintf(&b, "Status: DEPRECATED — will be removed in a future version\n")
 		}
+	}
+	if op.CLICommand != "" {
+		fmt.Fprintf(&b, "Prefer: `%s` (dedicated CLI command)\n", op.CLICommand)
 	}
 	if op.OperationID != "" {
 		fmt.Fprintf(&b, "Operation: %s\n", op.OperationID)
