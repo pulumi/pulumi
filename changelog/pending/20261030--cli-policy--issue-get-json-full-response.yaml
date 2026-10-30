@@ -1,0 +1,4 @@
+component: cli/policy
+kind: improvement
+body: Return the full response from `pulumi policy issue get --output json`, with the issue under `policyIssue`
+time: 2026-10-30T00:00:00Z
