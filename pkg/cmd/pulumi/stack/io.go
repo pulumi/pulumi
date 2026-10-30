@@ -383,7 +383,9 @@ var ErrSelectCreatedStack = errors.New("selecting the new stack")
 
 // StackCreatedDespiteError reports whether err is a `CreateStack` error returned after the backend created the stack.
 func StackCreatedDespiteError(err error) bool {
-	return errors.Is(err, ErrSaveStackConfig) || errors.Is(err, ErrCreatedWithoutManagedEnvironment)
+	return errors.Is(err, ErrSaveStackConfig) ||
+		errors.Is(err, ErrSelectCreatedStack) ||
+		errors.Is(err, ErrCreatedWithoutManagedEnvironment)
 }
 
 // CreateStack creates a stack with the given name, and optionally selects it as the current.
