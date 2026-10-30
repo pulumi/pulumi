@@ -1,0 +1,55 @@
+run: |
+  esc env get
+  esc env get foo
+  esc env get --value json
+process:
+  fs:
+    .esc.yaml: |
+      environment:
+        imports:
+          - default/base
+          - default/staging
+environments:
+  test-user/default/base:
+    values:
+      foo: bar
+  test-user/default/staging:
+    values:
+      baz: qux
+
+---
+> esc env get
+# Value
+```json
+{
+  "baz": "qux",
+  "foo": "bar"
+}
+```
+# Definition
+```yaml
+imports:
+  - default/base
+  - default/staging
+
+```
+
+> esc env get foo
+# Value
+```json
+"bar"
+```
+
+# Defined at
+- default/base:2:10
+
+> esc env get --value json
+{
+  "baz": "qux",
+  "foo": "bar"
+}
+
+---
+> esc env get
+> esc env get foo
+> esc env get --value json

@@ -31,12 +31,17 @@ func newEnvVersionCmd(env *envCommand) *cobra.Command {
 	var utc bool
 
 	cmd := &cobra.Command{
-		Use:   "version [<org-name>/][<project-name>/]<environment-name>@<version>",
-		Args:  cobra.ExactArgs(1),
+		Use:   "version [[<org-name>/][<project-name>/]<environment-name>]@<version>",
+		Args:  cobra.MaximumNArgs(1),
 		Short: "Manage versions",
 		Long: "Manage versions\n" +
 			"\n" +
 			"This command describes the referenced environment version.\n" +
+			"\n" +
+			"If no environment is given, the default environment for the working directory is\n" +
+			"used. Because this command requires a named environment, a default that is an\n" +
+			"anonymous list of imports is rejected. Run `env default` to see the default\n" +
+			"environment in effect.\n" +
 			"\n" +
 			"Subcommands exist for viewing revision history and managing" +
 			"tagged versions.",

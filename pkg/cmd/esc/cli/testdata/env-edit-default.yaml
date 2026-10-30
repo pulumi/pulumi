@@ -1,0 +1,26 @@
+run: |
+  esc env edit -f new.yaml
+  esc env get --value json
+process:
+  fs:
+    .esc.yaml: |
+      environment: test-user/default/test
+    new.yaml: |
+      values:
+        foo: updated
+environments:
+  test-user/default/test:
+    values:
+      foo: bar
+
+---
+> esc env edit -f new.yaml
+Environment updated. (revision 3)
+> esc env get --value json
+{
+  "foo": "updated"
+}
+
+---
+> esc env edit -f new.yaml
+> esc env get --value json
