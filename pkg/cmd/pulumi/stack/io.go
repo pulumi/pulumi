@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"time"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
@@ -385,8 +384,9 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	// for the stack.
 	var initialState *apitype.UntypedDeployment
 	if sm != nil {
+		// Leave Time unset. This checkpoint only persists the secrets provider, so it is
+		// not an update. A manifest time is what `pulumi stack` reports as "last updated".
 		m := deploy.Manifest{
-			Time:    time.Now(),
 			Version: version.Version,
 			Plugins: nil,
 		}
