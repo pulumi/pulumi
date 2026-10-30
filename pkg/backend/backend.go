@@ -336,6 +336,26 @@ type ManagedEnvironmentsBackend interface {
 		name string,
 		definition []byte,
 	) (*ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error)
+
+	// EncryptEnvironmentSecrets encrypts each plaintext with environment org/project/name's key and returns the
+	// ciphertexts in input order, usable only as fn::secret ciphertexts in that environment's definition.
+	EncryptEnvironmentSecrets(
+		ctx context.Context,
+		org string,
+		project string,
+		name string,
+		plaintexts [][]byte,
+	) ([]string, error)
+}
+
+// AsManagedEnvironmentsBackend returns b as a ManagedEnvironmentsBackend, or an error wrapping
+// ErrManagedEnvironmentNotSupported if b cannot manage ESC environments.
+func AsManagedEnvironmentsBackend(b Backend) (ManagedEnvironmentsBackend, error) {
+	managed, ok := b.(ManagedEnvironmentsBackend)
+	if !ok {
+		return nil, fmt.Errorf("%w by backend %v", ErrManagedEnvironmentNotSupported, b.Name())
+	}
+	return managed, nil
 }
 
 // SpecificDeploymentExporter is an interface defining an additional capability of a Backend, specifically the
@@ -491,6 +511,8 @@ var (
 	// which do not support the teams feature.
 	ErrTeamsNotSupported  = errors.New("teams are not supported")
 	ErrConfigNotSupported = errors.New("remote config is not supported")
+	// ErrManagedEnvironmentNotSupported is returned for backends that cannot manage an ESC environment for a stack.
+	ErrManagedEnvironmentNotSupported = errors.New("ESC-managed environments are not supported")
 )
 
 // CreateStackOptions provides options for stack creation.

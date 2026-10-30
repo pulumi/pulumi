@@ -47,6 +47,17 @@ type managedStore struct {
 	imported    *importCheck
 
 	overrideImport bool
+	setTargets     map[setKey]setTarget
+}
+
+type setKey struct {
+	key  config.Key
+	path bool
+}
+
+type setTarget struct {
+	names   []string
+	subPath resource.PropertyPath
 }
 
 type importCheck struct {
@@ -54,16 +65,14 @@ type importCheck struct {
 	checkWarning error
 }
 
-func managedEnvForWrite(
+func newManagedStore(
 	s backend.Stack,
 	projectName tokens.PackageName,
 	ps *workspace.ProjectStack,
 	configFile string,
+	overrideImport bool,
 ) (*managedStore, error) {
 	loc := s.ConfigLocation()
-	if loc.ManagedEnvironment == "" {
-		return nil, nil
-	}
 	orgNamer, ok := s.(interface{ OrgName() string })
 	if !ok {
 		return nil, fmt.Errorf("cannot determine organization for stack %v", s.Ref())
@@ -74,59 +83,53 @@ func managedEnvForWrite(
 		return nil, err
 	}
 	return &managedStore{
-		stack:       s,
-		ps:          ps,
-		definition:  definition,
-		projectName: projectName,
-		configFile:  configFile,
-		org:         org,
-		sink:        cmdutil.Diag(),
+		stack:          s,
+		ps:             ps,
+		definition:     definition,
+		projectName:    projectName,
+		configFile:     configFile,
+		org:            org,
+		sink:           cmdutil.Diag(),
+		overrideImport: overrideImport,
 	}, nil
 }
 
-func removeConfigKeys(
-	ctx context.Context,
-	s backend.Stack,
-	project *workspace.Project,
-	ps *workspace.ProjectStack,
-	configFile string,
-	keys []config.Key,
-	path bool,
-) error {
-	managed, err := managedEnvForWrite(s, project.Name, ps, configFile)
+func (m *managedStore) Set(ctx context.Context, key config.Key, v config.Value, path bool) error {
+	target, err := m.setTarget(ctx, key, path)
 	if err != nil {
 		return err
 	}
-	for _, key := range keys {
-		if managed != nil {
-			err = managed.Remove(ctx, key, path)
-		} else {
-			err = ps.Config.Remove(key, path)
-		}
-		if err != nil {
-			return err
-		}
+	value, err := pulumiconfig.ValueNode(v, len(target.subPath) > 0)
+	if err != nil {
+		return err
 	}
-	if managed != nil {
-		return managed.Save(ctx)
-	}
-	return cmdStack.SaveProjectStack(ctx, s, ps, configFile)
+	return pulumiconfig.Set(m.definition, target.names, target.subPath, value)
 }
 
-func (m *managedStore) Set(ctx context.Context, key config.Key, v config.Value, path bool) error {
+func (m *managedStore) CheckSet(ctx context.Context, key config.Key, path bool) error {
+	_, err := m.setTarget(ctx, key, path)
+	return err
+}
+
+// setTarget checks each key once, so CheckSet followed by Set prints the import warning or override note once.
+func (m *managedStore) setTarget(ctx context.Context, key config.Key, path bool) (setTarget, error) {
+	if target, ok := m.setTargets[setKey{key, path}]; ok {
+		return target, nil
+	}
 	root, subPath, err := m.entryPath(key, path)
 	if err != nil {
-		return err
+		return setTarget{}, err
 	}
 	names, err := m.checkImported(ctx, key, root, subPath, false)
 	if err != nil {
-		return err
+		return setTarget{}, err
 	}
-	value, err := pulumiconfig.ValueNode(v, len(subPath) > 0)
-	if err != nil {
-		return err
+	target := setTarget{names: names, subPath: subPath}
+	if m.setTargets == nil {
+		m.setTargets = map[setKey]setTarget{}
 	}
-	return pulumiconfig.Set(m.definition, names, subPath, value)
+	m.setTargets[setKey{key, path}] = target
+	return target, nil
 }
 
 func (m *managedStore) Remove(ctx context.Context, key config.Key, path bool) error {
@@ -142,6 +145,51 @@ func (m *managedStore) Remove(ctx context.Context, key config.Key, path bool) er
 
 func (m *managedStore) Save(ctx context.Context) error {
 	return cmdStack.SaveProjectStack(ctx, m.stack, m.ps, m.configFile)
+}
+
+func rejectSecretObjects(jsonConfig map[string]configValueJSON) error {
+	for jsonKey, jsonValue := range jsonConfig {
+		if jsonValue.Secret && jsonValue.ObjectValue != nil {
+			return jsonConfigSetError(jsonKey, pulumiconfig.ErrSecretObject)
+		}
+	}
+	return nil
+}
+
+func (m *managedStore) Encrypter(context.Context) (config.Encrypter, error) {
+	be, err := backend.AsManagedEnvironmentsBackend(m.stack.Backend())
+	if err != nil {
+		return nil, err
+	}
+	project, name := m.stack.ConfigLocation().ManagedEnvironmentRef()
+	return &managedEnvEncrypter{backend: be, org: m.org, project: project, name: name}, nil
+}
+
+type managedEnvEncrypter struct {
+	backend backend.ManagedEnvironmentsBackend
+	org     string
+	project string
+	name    string
+}
+
+func (e *managedEnvEncrypter) EncryptValue(ctx context.Context, plaintext string) (string, error) {
+	ciphertexts, err := e.BatchEncrypt(ctx, []string{plaintext})
+	if err != nil {
+		return "", err
+	}
+	return ciphertexts[0], nil
+}
+
+func (e *managedEnvEncrypter) BatchEncrypt(ctx context.Context, secrets []string) ([]string, error) {
+	plaintexts := make([][]byte, len(secrets))
+	for i, secret := range secrets {
+		plaintexts[i] = []byte(secret)
+	}
+	ciphertexts, err := e.backend.EncryptEnvironmentSecrets(ctx, e.org, e.project, e.name, plaintexts)
+	if err != nil {
+		return nil, fmt.Errorf("encrypting the value for environment %s/%s/%s: %w", e.org, e.project, e.name, err)
+	}
+	return ciphertexts, nil
 }
 
 func (m *managedStore) entryPath(key config.Key, path bool) (config.Key, resource.PropertyPath, error) {

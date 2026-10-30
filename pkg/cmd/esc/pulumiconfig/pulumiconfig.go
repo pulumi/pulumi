@@ -34,6 +34,10 @@ const functionPrefix = "fn::"
 var (
 	errReservedName       = errors.New("keys starting with fn:: are reserved in environments")
 	errSecureReprReserved = errors.New(`maps with the single key "secure" are reserved`)
+
+	// ErrSecretObject is returned by ValueNode for a secure object value, which an environment cannot store.
+	ErrSecretObject = errors.New("secret object values are not supported for stack-managed environments; " +
+		"set each leaf with --path --secret")
 )
 
 // isReservedName matches ESC, which rejects an fn:: key in any object, and a Fn:: key in any case when it is the
@@ -328,8 +332,7 @@ func loneEntryAfterRemove(syntax encoding.YAMLSyntax, full resource.PropertyPath
 func ValueNode(v config.Value, nested bool) (yaml.Node, error) {
 	if v.Secure() {
 		if v.Object() {
-			return yaml.Node{}, errors.New("secret object values are not supported for stack-managed environments; " +
-				"set each leaf with --path --secret")
+			return yaml.Node{}, ErrSecretObject
 		}
 		ciphertext, err := v.Value(config.NopDecrypter)
 		if err != nil {

@@ -569,6 +569,28 @@ func newConfigRemoveAllCmd(
 	return rmAllCmd
 }
 
+func removeConfigKeys(
+	ctx context.Context,
+	s backend.Stack,
+	project *workspace.Project,
+	ps *workspace.ProjectStack,
+	configFile string,
+	keys []config.Key,
+	path bool,
+) error {
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+	w, err := newConfigWriter(s, project.Name, ps, configFile, &ssml, false /*overrideImport*/)
+	if err != nil {
+		return err
+	}
+	for _, key := range keys {
+		if err := w.Remove(ctx, key, path); err != nil {
+			return err
+		}
+	}
+	return w.Save(ctx)
+}
+
 func newConfigRefreshCmd(
 	ws pkgWorkspace.Context, stk *string, lm cmdBackend.LoginManager, configFile *string,
 ) *cobra.Command {
@@ -878,29 +900,23 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
-	managed, err := managedEnvForWrite(s, project.Name, ps, configFile)
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+	w, err := newConfigWriter(s, project.Name, ps, configFile, &ssml, c.OverrideImport)
 	if err != nil {
 		return err
 	}
-	if managed != nil && c.Secret {
-		return cmdStack.ManagedEnvironmentNotSupportedError("`pulumi config set --secret`")
-	}
-	if managed != nil {
-		managed.overrideImport = c.OverrideImport
-	}
-
-	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 
 	// Encrypt the config value if needed.
 	var v config.Value
 	if c.Secret {
-		// We're always going to save, so can ignore the bool for if getStackEncrypter changed the
-		// config data.
-		c, _, cerr := ssml.GetEncrypter(ctx, s, ps)
+		if err := w.CheckSet(ctx, key, c.Path); err != nil {
+			return fmt.Errorf("could not set config: %w", err)
+		}
+		encrypter, cerr := w.Encrypter(ctx)
 		if cerr != nil {
 			return cerr
 		}
-		enc, eerr := c.EncryptValue(ctx, value)
+		enc, eerr := encrypter.EncryptValue(ctx, value)
 		if eerr != nil {
 			return eerr
 		}
@@ -944,19 +960,11 @@ func (c *configSetCmd) Run(
 		return err
 	}
 
-	if managed != nil {
-		if err := managed.Set(ctx, key, v, c.Path); err != nil {
-			return fmt.Errorf("could not set config: %w", err)
-		}
-		return managed.Save(ctx)
-	}
-
-	err = ps.Config.Set(key, v, c.Path)
-	if err != nil {
+	if err := w.Set(ctx, key, v, c.Path); err != nil {
 		return fmt.Errorf("could not set config: %w", err)
 	}
 
-	return cmdStack.SaveProjectStack(ctx, s, ps, configFile)
+	return w.Save(ctx)
 }
 
 func newConfigSetAllCmd(
@@ -966,6 +974,7 @@ func newConfigSetAllCmd(
 	var secretArgs []string
 	var path bool
 	var jsonArg string
+	var overrideImport bool
 
 	setCmd := &cobra.Command{
 		Use:   "set-all",
@@ -1021,10 +1030,30 @@ func newConfigSetAllCmd(
 			if err != nil {
 				return err
 			}
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(stack, nil, *configFile); err != nil {
+				return err
+			}
 
 			ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, stack, *configFile)
 			if err != nil {
 				return err
+			}
+
+			w, err := newConfigWriter(stack, project.Name, ps, *configFile, ssml, overrideImport)
+			if err != nil {
+				return err
+			}
+
+			jsonConfig := make(map[string]configValueJSON)
+			if jsonArg != "" {
+				if err := json.Unmarshal([]byte(jsonArg), &jsonConfig); err != nil {
+					return fmt.Errorf("could not parse --json argument: %w", err)
+				}
+			}
+			if stack.ConfigLocation().ManagedEnvironment != "" {
+				if err := rejectSecretObjects(jsonConfig); err != nil {
+					return err
+				}
 			}
 
 			for _, ptArg := range plaintextArgs {
@@ -1034,7 +1063,7 @@ func newConfigSetAllCmd(
 				}
 				v := config.NewValue(value)
 
-				err = ps.Config.Set(key, v, path)
+				err = w.Set(ctx, key, v, path)
 				if err != nil {
 					return err
 				}
@@ -1047,8 +1076,7 @@ func newConfigSetAllCmd(
 			encrypt := func(plaintext string) (string, error) {
 				var err error
 				if c == nil {
-					// We're always going to save, so can ignore the bool for if GetEncrypter changed the config data.
-					c, _, err = ssml.GetEncrypter(ctx, stack, ps)
+					c, err = w.Encrypter(ctx)
 					if err != nil {
 						return "", err
 					}
@@ -1067,6 +1095,9 @@ func newConfigSetAllCmd(
 				if err != nil {
 					return err
 				}
+				if err := w.CheckSet(ctx, key, path); err != nil {
+					return err
+				}
 
 				enc, err := encrypt(value)
 				if err != nil {
@@ -1074,19 +1105,13 @@ func newConfigSetAllCmd(
 				}
 				v := config.NewSecureValue(enc)
 
-				err = ps.Config.Set(key, v, path)
+				err = w.Set(ctx, key, v, path)
 				if err != nil {
 					return err
 				}
 			}
 
 			if jsonArg != "" {
-				jsonConfig := make(map[string]configValueJSON)
-				err := json.Unmarshal([]byte(jsonArg), &jsonConfig)
-				if err != nil {
-					return fmt.Errorf("could not parse --json argument: %w", err)
-				}
-
 				for jsonKey, jsonValue := range jsonConfig {
 					// Every key in the JSON must have a value. While `pulumi config --json` may produce empty values for secrets
 					// where --show-secrets is not passed, we don't allow setting those same (missing) values back into
@@ -1101,11 +1126,15 @@ func newConfigSetAllCmd(
 					}
 
 					var value config.Value
-					var path bool
+					path := jsonValue.ObjectValue != nil
+					if jsonValue.Secret {
+						if err := w.CheckSet(ctx, key, path); err != nil {
+							return jsonConfigSetError(jsonKey, err)
+						}
+					}
 					if jsonValue.ObjectValue != nil {
 						// If we have an ObjectValue, Value will be the stringified version of the object. We'll thus operate on
 						// ObjectValue directly.
-						path = true
 						if jsonValue.Secret {
 							enc, err := encrypt(*jsonValue.Value)
 							if err != nil {
@@ -1127,14 +1156,14 @@ func newConfigSetAllCmd(
 						value = config.NewValue(*jsonValue.Value)
 					}
 
-					err = ps.Config.Set(key, value, path)
+					err = w.Set(ctx, key, value, path)
 					if err != nil {
-						return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
+						return jsonConfigSetError(jsonKey, err)
 					}
 				}
 			}
 
-			return cmdStack.SaveProjectStack(ctx, stack, ps, *configFile)
+			return w.Save(ctx)
 		},
 	}
 
@@ -1156,6 +1185,12 @@ func newConfigSetAllCmd(
 		&jsonArg, "json", "",
 		"Read values from a JSON string in the format produced by 'pulumi config --json'",
 	)
+	setCmd.PersistentFlags().BoolVar(
+		&overrideImport, "override-import", false,
+		"On a stack with an ESC-managed environment, set keys that an imported environment defines in the stack's "+
+			"own environment, overriding the imported values",
+	)
+	_ = setCmd.PersistentFlags().MarkHidden("override-import")
 
 	return setCmd
 }
@@ -1168,6 +1203,10 @@ type configValueJSON struct {
 	Value       *string `json:"value,omitempty"`
 	ObjectValue any     `json:"objectValue,omitempty"`
 	Secret      bool    `json:"secret"`
+}
+
+func jsonConfigSetError(jsonKey string, err error) error {
+	return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
 }
 
 // Unlike config.NopDecrypter, config.Map.Decrypt does not short-circuit on this, so secrets nested in object values

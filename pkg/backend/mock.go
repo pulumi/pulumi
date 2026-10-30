@@ -538,6 +538,54 @@ func (be *MockEnvironmentsBackend) OpenYAMLEnvironment(
 	panic("not implemented")
 }
 
+var _ = ManagedEnvironmentsBackend((*MockManagedEnvironmentsBackend)(nil))
+
+type MockManagedEnvironmentsBackend struct {
+	MockEnvironmentsBackend
+
+	EvaluateManagedEnvironmentF func(
+		ctx context.Context,
+		org string,
+		project string,
+		name string,
+		definition []byte,
+	) (*ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error)
+
+	EncryptEnvironmentSecretsF func(
+		ctx context.Context,
+		org string,
+		project string,
+		name string,
+		plaintexts [][]byte,
+	) ([]string, error)
+}
+
+func (be *MockManagedEnvironmentsBackend) EvaluateManagedEnvironment(
+	ctx context.Context,
+	org string,
+	project string,
+	name string,
+	definition []byte,
+) (*ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+	if be.EvaluateManagedEnvironmentF != nil {
+		return be.EvaluateManagedEnvironmentF(ctx, org, project, name, definition)
+	}
+	panic("not implemented")
+}
+
+func (be *MockManagedEnvironmentsBackend) EncryptEnvironmentSecrets(
+	ctx context.Context,
+	org string,
+	project string,
+	name string,
+	plaintexts [][]byte,
+) ([]string, error) {
+	if be.EncryptEnvironmentSecretsF != nil {
+		return be.EncryptEnvironmentSecretsF(ctx, org, project, name, plaintexts)
+	}
+	panic("not implemented")
+}
+
 //
 // Mock stack.
 //

@@ -18,12 +18,15 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -51,7 +54,20 @@ environment:
       foo: short
 `
 
-func managedTestStack(t *testing.T, loc backend.StackConfigLocation) *backend.MockStack {
+// managedTestStack returns stack app/dev managing environment proj/renamed, so an encrypt request naming the stack's
+// project or name fails the test.
+func managedTestStack(t *testing.T, loc backend.StackConfigLocation) (*backend.MockStack, *[]string) {
+	var plaintexts []string
+	be := &backend.MockManagedEnvironmentsBackend{
+		EncryptEnvironmentSecretsF: func(
+			_ context.Context, org string, project string, name string, batch [][]byte,
+		) ([]string, error) {
+			assert.Equal(t, "acme/proj/renamed", org+"/"+project+"/"+name)
+			require.Len(t, batch, 1)
+			plaintexts = append(plaintexts, string(batch[0]))
+			return []string{fmt.Sprintf("ct%d", len(plaintexts))}, nil
+		},
+	}
 	return &backend.MockStack{
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
@@ -62,7 +78,8 @@ func managedTestStack(t *testing.T, loc backend.StackConfigLocation) *backend.Mo
 			t.Error("the stack secrets manager must not be loaded")
 			return nil, nil
 		},
-	}
+		BackendF: func() backend.Backend { return be },
+	}, &plaintexts
 }
 
 func TestManagedConfigWrites(t *testing.T) {
@@ -151,7 +168,16 @@ environment:
 			name:   "secret",
 			set:    []string{"app:token", "hunter2"},
 			secret: true,
-			err:    "`pulumi config set --secret` is not supported on stacks with an ESC-managed environment yet",
+			expected: `# top comment
+environment:
+  values:
+    pulumiConfig:
+      app:keep: kept # keep comment
+      foo: short
+      app:token:
+        fn::secret:
+          ciphertext: ct1
+`,
 		},
 		{
 			name: "empty definition",
@@ -217,7 +243,7 @@ environment:
 			}
 			configFile := filepath.Join(t.TempDir(), "Pulumi.dev.yaml")
 			require.NoError(t, os.WriteFile(configFile, []byte(c.file), 0o600))
-			s := managedTestStack(t, loc)
+			s, _ := managedTestStack(t, loc)
 
 			project := &workspace.Project{Name: "app"}
 			var err error
@@ -281,15 +307,31 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 		remove   []string
 		path     bool
 		override bool
-		imported *esc.Environment
-		diags    apitype.EnvironmentDiagnostics
-		checkErr error
-		noCall   bool
-		expected string
-		warning  string
-		info     string
-		err      string
+		// checkFirst calls CheckSet before Set, as set --secret does before it encrypts.
+		checkFirst bool
+		imported   *esc.Environment
+		diags      apitype.EnvironmentDiagnostics
+		checkErr   error
+		noCall     bool
+		expected   string
+		warning    string
+		info       string
+		err        string
 	}{
+		{
+			name:       "CheckSet refuses an imported key",
+			set:        []string{"app:bar", "v"},
+			checkFirst: true,
+			err:        "config key app:bar is defined by imported environment proj/base",
+		},
+		{
+			name:       "CheckSet then Set prints the override note once",
+			set:        []string{"app:bar", "v"},
+			override:   true,
+			checkFirst: true,
+			expected:   importingStackFile + "      bar: v\n",
+			info:       "app:bar overrides the value from imported environment proj/base",
+		},
 		{
 			name: "set of an imported key errors",
 			set:  []string{"app:bar", "v"},
@@ -460,7 +502,7 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 			require.NoError(t, os.WriteFile(configFile, []byte(c.file), 0o600))
 
 			calls := 0
-			s := managedTestStack(t, backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"})
+			s, _ := managedTestStack(t, backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"})
 			s.BackendF = func() backend.Backend {
 				return &backend.MockEnvironmentsBackend{
 					CheckYAMLEnvironmentF: func(
@@ -480,14 +522,19 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 
 			ps, err := cmdStack.LoadProjectStack(t.Context(), cmdutil.Diag(), &workspace.Project{Name: "app"}, s, configFile)
 			require.NoError(t, err)
-			store, err := managedEnvForWrite(s, "app", ps, configFile)
+			store, err := newManagedStore(s, "app", ps, configFile, c.override)
 			require.NoError(t, err)
-			store.overrideImport = c.override
 			var infos, warnings bytes.Buffer
 			store.sink = diag.DefaultSink(&infos, &warnings, diag.FormatOptions{Color: colors.Never})
 
 			if c.set != nil {
-				err = store.Set(t.Context(), config.MustParseKey(c.set[0]), config.NewValue(c.set[1]), c.path)
+				key := config.MustParseKey(c.set[0])
+				if c.checkFirst {
+					err = store.CheckSet(t.Context(), key, c.path)
+				}
+				if err == nil {
+					err = store.Set(t.Context(), key, config.NewValue(c.set[1]), c.path)
+				}
 			}
 			for _, k := range c.remove {
 				if err == nil {
@@ -509,7 +556,7 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 				require.Contains(t, warnings.String(), c.warning)
 			}
 			if c.info != "" {
-				require.Contains(t, infos.String(), c.info)
+				require.Equal(t, 1, strings.Count(infos.String(), c.info), infos.String())
 			}
 			written, readErr := os.ReadFile(configFile)
 			require.NoError(t, readErr)
@@ -570,6 +617,13 @@ func TestManagedConfigWritesRejectConfigFile(t *testing.T) {
 		{name: "set", command: newConfigSetCmd, args: []string{"app:new", "v"}},
 		{name: "rm", command: newConfigRemoveCmd, args: []string{"app:keep"}},
 		{name: "rm-all", command: newConfigRemoveAllCmd, args: []string{"app:keep"}},
+		{
+			name: "set-all",
+			command: func(ws pkgWorkspace.Context, stack *string, lm cmdBackend.LoginManager, file *string) *cobra.Command {
+				return newConfigSetAllCmd(ws, stack, lm, &failingEncrypterFactory{t: t}, file)
+			},
+			args: []string{"--plaintext", "app:new=v"},
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -737,4 +791,157 @@ func TestManagedConfigEnvCommands(t *testing.T) {
 		require.Equal(t, "environment:\n  imports:\n    - proj/other\n"+
 			"  values:\n    pulumiConfig:\n      app:foo: bar # kept\n", saved)
 	})
+}
+
+//nolint:paralleltest // t.Chdir: set-all reads the default stack file
+func TestManagedConfigSetAll(t *testing.T) {
+	cases := []struct {
+		name       string
+		file       string
+		imported   *esc.Environment
+		override   bool
+		plaintext  []string
+		secret     []string
+		json       string
+		plaintexts []string
+		added      string
+		err        string
+	}{
+		{
+			name:     "imported key is refused before its secret is encrypted",
+			file:     importingStackFile,
+			imported: importedConfigEnv("bar"),
+			secret:   []string{"app:bar=one"},
+			err: "config key app:bar is defined by imported environment proj/base; the CLI does not edit imported " +
+				"environments. Set it in that environment with `pulumi env set proj/base pulumiConfig.bar <value>`, " +
+				"remove the import, or pass `--override-import` to override it in this stack's environment",
+		},
+		{
+			name:       "override-import writes an imported key under the import's spelling",
+			file:       importingStackFile,
+			imported:   importedConfigEnv("bar"),
+			override:   true,
+			secret:     []string{"app:bar=one"},
+			plaintexts: []string{"one"},
+			added:      "      bar:\n        fn::secret:\n          ciphertext: ct1\n",
+		},
+		{
+			name:       "secret flags",
+			secret:     []string{"app:a=one", "app:b=two"},
+			plaintexts: []string{"one", "two"},
+			added: "      app:a:\n        fn::secret:\n          ciphertext: ct1\n" +
+				"      app:b:\n        fn::secret:\n          ciphertext: ct2\n",
+		},
+		{
+			name:       "json secret",
+			json:       `{"app:a": {"value": "one", "secret": true}}`,
+			plaintexts: []string{"one"},
+			added:      "      app:a:\n        fn::secret:\n          ciphertext: ct1\n",
+		},
+		{
+			name: "json secret object",
+			json: `{"app:obj": {"value": "{\"k\":\"v\"}", "objectValue": {"k": "v"}, "secret": true}}`,
+			err: `could not set --json config for "app:obj": secret object values are not supported for ` +
+				"stack-managed environments; set each leaf with --path --secret",
+		},
+		{
+			name: "json secret object with other secrets",
+			json: `{"app:a": {"value": "one", "secret": true}, ` +
+				`"app:obj": {"value": "{\"k\":\"v\"}", "objectValue": {"k": "v"}, "secret": true}}`,
+			err: `could not set --json config for "app:obj": secret object values are not supported for ` +
+				"stack-managed environments; set each leaf with --path --secret",
+		},
+		{
+			name:      "plaintext flag",
+			plaintext: []string{"app:p=one"},
+			added:     "      app:p: one\n",
+		},
+		{
+			name:  "json plaintext scalar",
+			json:  `{"app:s": {"value": "x"}}`,
+			added: "      app:s: x\n",
+		},
+		{
+			name:  "json plaintext object",
+			json:  `{"app:o": {"value": "{\"k\":\"v\"}", "objectValue": {"k": "v"}}}`,
+			added: "      app:o:\n        k: v\n",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Chdir(dir)
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte("name: app\nruntime: yaml\n"), 0o600))
+			if c.file == "" {
+				c.file = managedStackFile
+			}
+			stackFile := filepath.Join(dir, "Pulumi.dev.yaml")
+			require.NoError(t, os.WriteFile(stackFile, []byte(c.file), 0o600))
+			configFile := ""
+			s, plaintexts := managedTestStack(t, backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"})
+			if c.imported != nil {
+				be := s.BackendF().(*backend.MockManagedEnvironmentsBackend)
+				be.CheckYAMLEnvironmentF = func(
+					context.Context, string, []byte,
+				) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+					return c.imported, nil, nil
+				}
+			}
+			ws := &pkgWorkspace.MockContext{
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
+					return &workspace.Project{Name: "app"}, "", nil
+				},
+			}
+			lm := &cmdBackend.MockLoginManager{
+				LoginF: func(context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool,
+					colors.Colorization, ...cmdBackend.LoginOption,
+				) (backend.Backend, error) {
+					return &backend.MockBackend{
+						GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) { return s, nil },
+					}, nil
+				},
+			}
+			stackName := "dev"
+			cmd := newConfigSetAllCmd(ws, &stackName, lm, &failingEncrypterFactory{t: t}, &configFile)
+			cmd.SetContext(t.Context())
+			for _, arg := range c.plaintext {
+				require.NoError(t, cmd.PersistentFlags().Set("plaintext", arg))
+			}
+			for _, arg := range c.secret {
+				require.NoError(t, cmd.PersistentFlags().Set("secret", arg))
+			}
+			if c.json != "" {
+				require.NoError(t, cmd.PersistentFlags().Set("json", c.json))
+			}
+			if c.override {
+				require.NoError(t, cmd.PersistentFlags().Set("override-import", "true"))
+			}
+
+			err := cmd.RunE(cmd, nil)
+			written, readErr := os.ReadFile(stackFile)
+			require.NoError(t, readErr)
+			if c.err != "" {
+				require.EqualError(t, err, c.err)
+				require.Equal(t, c.file, string(written))
+				require.Empty(t, *plaintexts)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, c.plaintexts, *plaintexts)
+			expected := strings.Replace(c.file, "foo: short\n", "foo: short\n"+c.added, 1)
+			require.Equal(t, expected, string(written))
+		})
+	}
+}
+
+type failingEncrypterFactory struct {
+	t *testing.T
+}
+
+func (f *failingEncrypterFactory) GetEncrypter(
+	context.Context, backend.Stack, *workspace.ProjectStack,
+) (config.Encrypter, cmdStack.SecretsManagerState, error) {
+	f.t.Error("the stack secrets manager must not be loaded")
+	return nil, cmdStack.SecretsManagerUnchanged, errors.New("unexpected call")
 }

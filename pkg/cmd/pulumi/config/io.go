@@ -293,9 +293,9 @@ func openStackEnvWithManaged(
 	}
 	project, name := loc.ManagedEnvironmentRef()
 
-	managed, ok := stack.Backend().(backend.ManagedEnvironmentsBackend)
-	if !ok {
-		return nil, nil, nil, fmt.Errorf("backend %v does not support ESC-managed environments", stack.Backend().Name())
+	managed, err := backend.AsManagedEnvironmentsBackend(stack.Backend())
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	evaluation, diags, err := managed.EvaluateManagedEnvironment(ctx, org, project, name, definition)
 	if err != nil || len(diags) != 0 {
