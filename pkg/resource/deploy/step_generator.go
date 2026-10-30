@@ -58,6 +58,11 @@ const (
 	refreshMode
 )
 
+type extensionStepKey struct {
+	provider sdkproviders.Reference
+	ref      apitype.ExtensionRef
+}
+
 // stepGenerator is responsible for turning resource events into steps that can be fed to the deployment executor.
 // It does this by consulting the deployment and calculating the appropriate step action based on the requested goal
 // state and the existing state of the world.
@@ -116,6 +121,9 @@ type stepGenerator struct {
 
 	pendingDeletes map[*pkgresource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*pkgresource.State // URN map of providers that we have seen so far.
+
+	// the extension parameterize steps emitted so far, each resolved once its step has applied.
+	extensionSteps map[extensionStepKey]*promise.Promise[struct{}]
 
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
@@ -795,19 +803,20 @@ func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResour
 		if err != nil {
 			return nil, false, fmt.Errorf("could not parse provider reference %s for extension: %w", providerName, err)
 		}
-		provider, ok := sg.deployment.providers.GetProvider(providerRef)
-		if !ok {
+		if _, ok := sg.deployment.providers.GetProvider(providerRef); !ok {
 			return nil, false, fmt.Errorf("provider %s not registered", providerRef)
 		}
-		existing, created := sg.deployment.LookupOrRegisterExtension(providerRef, event.ExtensionRef())
-		// The first caller for a (provider, ref) pair gets the CompletionSource and emits the
-		// parameterize step; later callers get the in-flight promise and emit nothing.
-		parameterized := existing
+		// The first resource for a (provider, ref) pair emits the parameterize step, which also records the
+		// extension blob in the snapshot. Later resources wait for that step and emit nothing.
+		key := extensionStepKey{providerRef, event.ExtensionRef()}
+		parameterized, has := sg.extensionSteps[key]
 		var steps []Step
-		if created != nil {
+		if !has {
+			created := &promise.CompletionSource[struct{}]{}
 			parameterized = created.Promise()
+			sg.extensionSteps[key] = parameterized
 			steps = []Step{NewExtensionParameterizeStep(
-				sg.deployment, provider, event.ExtensionRef(), *event.Extension(), created,
+				sg.deployment, providerRef, event.ExtensionRef(), *event.Extension(), created,
 			)}
 		}
 		// Continue the resource registration once the extension is parameterized.
@@ -3785,6 +3794,7 @@ func newStepGenerator(
 		mode:                      mode,
 		refresh:                   refresh,
 		urns:                      make(map[resource.URN]bool),
+		extensionSteps:            make(map[extensionStepKey]*promise.Promise[struct{}]),
 		reads:                     make(map[resource.URN]bool),
 		creates:                   make(map[resource.URN]bool),
 		sames:                     make(map[resource.URN]bool),

@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -620,6 +621,7 @@ func (i *importer) importProviderURN(imp Import) (resource.URN, error) {
 // step is recorded in the snapshot's Extensions map, and dedupes so a provider is only parameterized
 // once per distinct extension even when multiple resources share it.
 func (i *importer) parameterizeExtensions(ctx context.Context, urnToReference map[resource.URN]string) error {
+	seen := map[extensionStepKey]bool{}
 	for _, imp := range i.deployment.imports {
 		if imp.Extension == nil {
 			continue
@@ -637,17 +639,20 @@ func (i *importer) parameterizeExtensions(ctx context.Context, urnToReference ma
 		if err != nil {
 			return fmt.Errorf("invalid provider reference %v: %w", providerRefStr, err)
 		}
-		provider, ok := i.deployment.providers.GetProvider(providerRef)
-		if !ok {
+		if _, ok := i.deployment.providers.GetProvider(providerRef); !ok {
 			return fmt.Errorf("provider %v not found for extension parameterization", providerRef)
 		}
 
 		extRef := apitype.ExtensionRef(hashExtension(*imp.Extension))
-		if _, created := i.deployment.LookupOrRegisterExtension(providerRef, extRef); created != nil {
-			if !i.executeSerial(ctx,
-				NewExtensionParameterizeStep(i.deployment, provider, extRef, *imp.Extension, created)) {
-				return i.executor.Errored()
-			}
+		key := extensionStepKey{providerRef, extRef}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		step := NewExtensionParameterizeStep(
+			i.deployment, providerRef, extRef, *imp.Extension, &promise.CompletionSource[struct{}]{})
+		if !i.executeSerial(ctx, step) {
+			return i.executor.Errored()
 		}
 	}
 	return nil
