@@ -1,0 +1,4 @@
+component: cli/env
+kind: improvement
+body: Support environment open requests in `pulumi env change-request` commands
+time: 2026-10-30T00:00:00Z

@@ -22,6 +22,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -49,7 +50,8 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 			"When an environment is protected by approval rules, changes to it go through a change request\n" +
 			"that must be approved before it is applied. Change requests are created by commands that accept\n" +
 			"--draft, such as `env edit` and `env set`. Use `env open --draft=<id>`\n" +
-			"to open the draft version of an environment.\n" +
+			"to open the draft version of an environment. Requests to open an environment are created by\n" +
+			"`env open-request`.\n" +
 			"\n" +
 			"Subcommands exist for listing, viewing, diffing, approving, applying, closing, commenting on,\n" +
 			"rebasing, and showing the events of change requests.",
@@ -108,9 +110,19 @@ func (cr *changeRequestCommand) confirm(
 	}
 
 	ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
-	fmt.Fprintf(w, "Change request %v will update environment %v.\n\n", c.ID, ref.String())
-	if err := cr.printDraftDiff(ctx, w, ref, c.ID, ""); err != nil {
-		return false, err
+	if c.Action == "open" {
+		o, err := cr.env.esc.client.GetEnvironmentOpenRequest(ctx, orgName, ref.projectName, ref.envName, c.ID)
+		if err != nil {
+			return false, fmt.Errorf("getting open request: %w", err)
+		}
+		fmt.Fprintf(w, "Change request %v will allow %v to open environment %v.\n\n",
+			c.ID, c.CreatedBy.GithubLogin, ref.String())
+		printOpenRequest(w, o)
+	} else {
+		fmt.Fprintf(w, "Change request %v will update environment %v.\n\n", c.ID, ref.String())
+		if err := cr.printDraftDiff(ctx, w, ref, c.ID, ""); err != nil {
+			return false, err
+		}
 	}
 	fmt.Fprintln(w)
 
@@ -137,6 +149,11 @@ func (cr *changeRequestCommand) confirm(
 		return false, errors.New("confirmation declined")
 	}
 	return true, nil
+}
+
+func printOpenRequest(w io.Writer, o *client.EnvironmentOpenRequest) {
+	fmt.Fprintf(w, "Access duration: %v\n", time.Duration(o.AccessDurationSeconds)*time.Second)
+	fmt.Fprintf(w, "Grant expiration: %v\n", time.Duration(o.GrantExpirationSeconds)*time.Second)
 }
 
 // printDraftDiff prints the difference between the given version of an environment and a change request's draft.
@@ -257,6 +274,7 @@ func newEnvChangeRequestLsCmd(cr *changeRequestCommand) *cobra.Command {
 			if ref == nil {
 				header = append(header, "Environment")
 			}
+			header = append(header, "Action")
 			if status != "open" {
 				header = append(header, "Status")
 			}
@@ -267,6 +285,7 @@ func newEnvChangeRequestLsCmd(cr *changeRequestCommand) *cobra.Command {
 				if ref == nil {
 					row = append(row, c.Entity.Project+"/"+c.Entity.Name)
 				}
+				row = append(row, c.Action)
 				if status != "open" {
 					row = append(row, c.Status)
 				}
@@ -328,27 +347,38 @@ func newEnvChangeRequestGetCmd(cr *changeRequestCommand) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("getting change request: %w", err)
 			}
-			if c.Entity.EntityType != "environment" || c.Action != "update" {
-				return fmt.Errorf("change request %v is not an environment draft", c.ID)
+			if c.Entity.EntityType != "environment" {
+				return fmt.Errorf("change request %v is not an environment change request", c.ID)
 			}
 			ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
 
-			draftStatus, err := cr.env.esc.client.GetEnvironmentDraftStatus(
-				ctx, orgName, ref.projectName, ref.envName, c.ID)
-			if err != nil {
-				return fmt.Errorf("getting draft status: %w", err)
+			var draftStatus *client.EnvironmentDraftStatus
+			var openRequest *client.EnvironmentOpenRequest
+			if c.Action == "open" {
+				openRequest, err = cr.env.esc.client.GetEnvironmentOpenRequest(
+					ctx, orgName, ref.projectName, ref.envName, c.ID)
+				if err != nil {
+					return fmt.Errorf("getting open request: %w", err)
+				}
+			} else {
+				draftStatus, err = cr.env.esc.client.GetEnvironmentDraftStatus(
+					ctx, orgName, ref.projectName, ref.envName, c.ID)
+				if err != nil {
+					return fmt.Errorf("getting draft status: %w", err)
+				}
 			}
 			url := cr.env.esc.changeRequestURL(ref, c.ID)
 
 			if format == outputJSON {
 				return writeJSON(cr.env.esc.stdout, struct {
 					*client.GetChangeRequestResponse
-					DraftStatus *client.EnvironmentDraftStatus `json:"draftStatus"`
+					DraftStatus *client.EnvironmentDraftStatus `json:"draftStatus,omitempty"`
+					OpenRequest *client.EnvironmentOpenRequest `json:"openRequest,omitempty"`
 					URL         string                         `json:"url,omitempty"`
-				}{c, draftStatus, url})
+				}{c, draftStatus, openRequest, url})
 			}
 
-			printChangeRequest(cr.env.esc.stdout, ref, c, draftStatus, cr.env.esc.colors.Hyperlink(url, url))
+			printChangeRequest(cr.env.esc.stdout, ref, c, draftStatus, openRequest, cr.env.esc.colors.Hyperlink(url, url))
 			return nil
 		},
 	}
@@ -363,6 +393,7 @@ func printChangeRequest(
 	ref environmentRef,
 	c *client.GetChangeRequestResponse,
 	draftStatus *client.EnvironmentDraftStatus,
+	openRequest *client.EnvironmentOpenRequest,
 	url string,
 ) {
 	fmt.Fprintf(w, "ID: %v\n", c.ID)
@@ -372,8 +403,13 @@ func printChangeRequest(
 	fmt.Fprintf(w, "Author: %v <%v>\n", c.CreatedBy.Name, c.CreatedBy.GithubLogin)
 	fmt.Fprintf(w, "Created: %v\n", humanize.Time(c.CreatedAt))
 	fmt.Fprintf(w, "Revision: %v\n", c.LatestRevisionNumber)
-	fmt.Fprintf(w, "Base environment revision: %v\n", draftStatus.BaseRevision)
-	fmt.Fprintf(w, "Current environment revision: %v\n", draftStatus.EnvironmentRevision)
+	if draftStatus != nil {
+		fmt.Fprintf(w, "Base environment revision: %v\n", draftStatus.BaseRevision)
+		fmt.Fprintf(w, "Current environment revision: %v\n", draftStatus.EnvironmentRevision)
+	}
+	if openRequest != nil {
+		printOpenRequest(w, openRequest)
+	}
 	if c.Description != "" {
 		fmt.Fprintf(w, "Description:\n  %v\n", strings.ReplaceAll(c.Description, "\n", "\n  "))
 	}
@@ -547,6 +583,11 @@ func newEnvChangeRequestApplyCmd(cr *changeRequestCommand) *cobra.Command {
 			if result.Message != "" {
 				fmt.Fprintln(cr.env.esc.stderr, result.Message)
 			}
+			if c.Action == "open" {
+				ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
+				fmt.Fprintf(cr.env.esc.stderr, "Run `%v env open %v` to open the environment.\n",
+					cr.env.esc.command, ref.String())
+			}
 			return nil
 		},
 	}
@@ -664,7 +705,7 @@ func newEnvChangeRequestDiffCmd(cr *changeRequestCommand) *cobra.Command {
 				return fmt.Errorf("getting change request: %w", err)
 			}
 			if c.Entity.EntityType != "environment" || c.Action != "update" {
-				return fmt.Errorf("change request %v is not an environment draft", c.ID)
+				return errors.New("diff is only supported for environment drafts")
 			}
 			ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
 
@@ -821,11 +862,11 @@ func newEnvChangeRequestRebaseCmd(cr *changeRequestCommand) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("getting change request: %w", err)
 			}
+			if c.Entity.EntityType != "environment" || c.Action != "update" {
+				return errors.New("rebase is only supported for environment drafts")
+			}
 			if c.Status == "applied" || c.Status == "closed" {
 				return fmt.Errorf("change request %v is %v", c.ID, c.Status)
-			}
-			if c.Entity.EntityType != "environment" || c.Action != "update" {
-				return fmt.Errorf("change request %v is not an environment draft", c.ID)
 			}
 			ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
 

@@ -550,6 +550,15 @@ type Client interface {
 		accessDurationSeconds int,
 	) (*CreateEnvironmentOpenRequestResponse, error)
 
+	// GetEnvironmentOpenRequest returns the access requested by an open request.
+	GetEnvironmentOpenRequest(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		changeRequestID string,
+	) (*EnvironmentOpenRequest, error)
+
 	// GetEnvironmentSettings returns settings for the given environment.
 	GetEnvironmentSettings(
 		ctx context.Context,
@@ -1832,6 +1841,22 @@ func (pc *client) CreateEnvironmentOpenRequest(
 		return nil, err
 	}
 
+	return &resp, nil
+}
+
+// GetEnvironmentOpenRequest returns the access requested by an open request.
+func (pc *client) GetEnvironmentOpenRequest(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) (*EnvironmentOpenRequest, error) {
+	var resp EnvironmentOpenRequest
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/open/request/%v", orgName, projectName, envName, changeRequestID)
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
 	return &resp, nil
 }
 
