@@ -558,7 +558,66 @@ func (b *binder) bindAndCollectBaseResourceBlock(
 		}
 	}
 
+	inputs, expandDiags := expandQuotedProperties(inputs)
+	diagnostics = append(diagnostics, expandDiags...)
+
 	return block, inputs, options, logicalName, diagnostics
+}
+
+// expandQuotedProperties replaces the QuotedPropertiesKey attribute in attrs with one attribute for each of its
+// items, named by the item's key. A name set both directly and under QuotedPropertiesKey is an error.
+func expandQuotedProperties(attrs []*model.Attribute) ([]*model.Attribute, hcl.Diagnostics) {
+	var diagnostics hcl.Diagnostics
+	expanded := slice.Prealloc[*model.Attribute](len(attrs))
+	seen := map[string]bool{}
+	add := func(attr *model.Attribute) {
+		if seen[attr.Name] {
+			diagnostics = append(diagnostics, duplicateAttribute(attr.Name, attr.Syntax.NameRange))
+			return
+		}
+		seen[attr.Name] = true
+		expanded = append(expanded, attr)
+	}
+
+	var quoted []*model.Attribute
+	for _, attr := range attrs {
+		if attr.Name == QuotedPropertiesKey {
+			quoted = append(quoted, attr)
+			continue
+		}
+		add(attr)
+	}
+
+	for _, attr := range quoted {
+		object, ok := attr.Value.(*model.ObjectConsExpression)
+		if !ok {
+			diagnostics = append(diagnostics, errorf(attr.Value.SyntaxNode().Range(),
+				"attribute '%v' must be an object literal", QuotedPropertiesKey))
+			continue
+		}
+		for _, item := range object.Items {
+			keyRange := item.Key.SyntaxNode().Range()
+			name := LiteralValueString(item.Key)
+			if name == "" {
+				diagnostics = append(diagnostics, errorf(keyRange,
+					"the keys of attribute '%v' must be non-empty string literals", QuotedPropertiesKey))
+				continue
+			}
+			value, _ := item.Value.SyntaxNode().(hclsyntax.Expression)
+			add(&model.Attribute{
+				Syntax: &hclsyntax.Attribute{
+					Name:      name,
+					Expr:      value,
+					SrcRange:  hcl.RangeBetween(keyRange, item.Value.SyntaxNode().Range()),
+					NameRange: keyRange,
+				},
+				Name:  name,
+				Value: item.Value,
+			})
+		}
+	}
+
+	return expanded, diagnostics
 }
 
 // propertyValueHint names the values a property admits when its schema restricts them to a
@@ -753,6 +812,7 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 				})
 			}
 		}
+		scope.Define(QuotedPropertiesKey, &quotedResourceProperties{properties: obj})
 		return scope, nil
 	default:
 		return s.root, nil
