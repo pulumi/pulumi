@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/pulumiconfig"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -313,17 +313,13 @@ func (m *managedStore) importedConfig(ctx context.Context) (values map[string]es
 		return nil, errBackendNoEnvironments(m.stack.Backend())
 	}
 	env, diags, err := envs.CheckYAMLEnvironment(ctx, m.org, imports)
-	summaries := make([]string, 0, len(diags))
-	for _, d := range diags {
-		summaries = append(summaries, d.Summary)
-	}
 	if errResp, ok := errors.AsType[*client.EnvironmentErrorResponse](err); ok {
 		for _, d := range errResp.Diagnostics {
-			summaries = append(summaries, d.Summary)
+			diags = append(diags, apitype.EnvironmentDiagnostic{Range: d.Range, Summary: d.Summary, Detail: d.Detail})
 		}
 	}
-	if len(summaries) != 0 {
-		return nil, errors.New(strings.Join(summaries, "; "))
+	if len(diags) != 0 {
+		return nil, errors.New(oneLineESCDiagnostics(diags))
 	}
 	if err != nil {
 		return nil, err

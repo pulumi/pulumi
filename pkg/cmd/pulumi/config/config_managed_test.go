@@ -421,11 +421,14 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 			name: "diagnostics in a check error warn on one line",
 			set:  []string{"app:new", "v"},
 			checkErr: &client.EnvironmentErrorResponse{Diagnostics: []client.EnvironmentDiagnostic{
-				{Summary: "environment 'acme/proj/gone' not found"},
+				{
+					Range:   &esc.Range{Environment: "proj/renamed", Begin: esc.Pos{Line: 2, Column: 7}},
+					Summary: "environment 'acme/proj/gone' not found",
+				},
 			}},
 			expected: importingStackFile + "      app:new: v\n",
-			warning: "could not check imported environments for app:new: environment 'acme/proj/gone' not found; " +
-				"writing it to the local definition\n",
+			warning: "could not check imported environments for app:new: " +
+				"proj/renamed:2:7: environment 'acme/proj/gone' not found; writing it to the local definition\n",
 		},
 		{
 			name:     "diagnostics warn and write even an imported key",

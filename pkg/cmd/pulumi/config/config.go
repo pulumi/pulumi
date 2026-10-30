@@ -1600,6 +1600,12 @@ func environmentDiagnosticsError(diags []apitype.EnvironmentDiagnostic) error {
 	return fmt.Errorf("opening environment:\n%s", strings.TrimSuffix(b.String(), "\n"))
 }
 
+func oneLineESCDiagnostics(diags []apitype.EnvironmentDiagnostic) string {
+	var b strings.Builder
+	printESCDiagnostics(&b, diags)
+	return strings.ReplaceAll(strings.TrimSuffix(b.String(), "\n"), "\n", "; ")
+}
+
 func printESCDiagnostics(out io.Writer, diags []apitype.EnvironmentDiagnostic) {
 	for _, d := range diags {
 		if d.Range != nil {
