@@ -1026,7 +1026,7 @@ func newConfigSetAllCmd(
 			if err != nil {
 				return err
 			}
-			if err := rejectConfigFileOnManagedStack(stack, *configFile); err != nil {
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(stack, nil, *configFile); err != nil {
 				return err
 			}
 
