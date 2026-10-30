@@ -19,74 +19,67 @@ package credentialcheck
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-// Provider describes a provider package's credentials check metadata, as declared by its schema.
-type Provider struct {
+// ErrUnsupported is returned by [Check] for a provider that did not opt into credential checks.
+var ErrUnsupported = errors.New("does not support credential checks")
+
+// Info describes a provider package, as declared by its schema.
+type Info struct {
 	// Pkg is the provider package name, which is also the stack config namespace.
 	Pkg string
 	// DisplayName is how the provider is referred to in messages.
 	DisplayName string
 	// DocURL points at the provider's installation & configuration docs; may be empty.
 	DocURL string
-	// Supported reports whether the provider opted into the check through its schema.
-	Supported bool
 }
 
-// FromSchema fetches the provider's schema and returns the credentials check metadata it declares.
-func FromSchema(ctx context.Context, prov plugin.Provider, request plugin.GetSchemaRequest) (Provider, error) {
+// Check validates the credentials of prov using target's configuration for the provider. A nil
+// target supplies no configuration, leaving the provider with only ambient credentials.
+//
+// It returns a [*Problem] if the provider rejects the configuration or credentials, and wraps
+// [ErrUnsupported] if the provider did not opt in. Any other error means the check could not run,
+// including ctx's error if ctx is done. The returned Info is set once the schema has been read.
+func Check(
+	ctx context.Context, prov plugin.Provider, request plugin.GetSchemaRequest, target *deploy.Target,
+) (Info, error) {
 	resp, err := prov.GetSchema(ctx, request)
 	if err != nil {
-		return Provider{}, err
+		return Info{}, fmt.Errorf("getting schema: %w", err)
 	}
-	var info schema.PackageInfoSpec
-	if err := json.Unmarshal(resp.Schema, &info); err != nil {
-		return Provider{}, fmt.Errorf("unmarshal schema: %w", err)
+	var spec schema.PackageInfoSpec
+	if err := json.Unmarshal(resp.Schema, &spec); err != nil {
+		return Info{}, fmt.Errorf("unmarshal schema: %w", err)
 	}
-	cp := Provider{
-		Pkg:         info.Name,
-		DisplayName: info.DisplayName,
-		DocURL:      info.ConfigurationDocsURL,
-		Supported:   info.ValidateCredentialsOnNew,
+	info := Info{Pkg: spec.Name, DisplayName: spec.DisplayName, DocURL: spec.ConfigurationDocsURL}
+	if info.DisplayName == "" {
+		info.DisplayName = info.Pkg
 	}
-	if cp.DisplayName == "" {
-		cp.DisplayName = cp.Pkg
+	if !spec.ValidateCredentialsOnNew {
+		return info, fmt.Errorf("the %s provider %w", info.Pkg, ErrUnsupported)
 	}
-	return cp, nil
+	news, err := target.GetPackageConfig(tokens.Package(info.Pkg))
+	if err != nil {
+		return info, fmt.Errorf("reading %s configuration: %w", info.Pkg, err)
+	}
+	return info, probe(ctx, info, prov, news)
 }
 
-// ConfigProperties extracts the values in the provider's config namespace for use as CheckConfig
-// inputs. Values that dec cannot decrypt are skipped.
-func ConfigProperties(pkg string, cfg config.Map, dec config.Decrypter) property.Map {
-	m := map[string]property.Value{}
-	for k, v := range cfg {
-		if k.Namespace() != pkg {
-			continue
-		}
-		plain, err := v.Value(dec)
-		if err != nil {
-			continue
-		}
-		m[k.Name()] = property.New(plain)
-	}
-	return property.NewMap(m)
-}
-
-// Probe calls the cloud provider's CheckConfig and then Configure, which is where providers
-// validate credentials and initialise their clients. It returns an error describing what the
-// provider rejected, or ctx's error if ctx is done.
-func Probe(ctx context.Context, cp Provider, prov plugin.Provider, news property.Map) error {
-	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+cp.Pkg), "default")
+// probe calls the cloud provider's CheckConfig and then Configure, which is where providers
+// validate credentials and initialise their clients.
+func probe(ctx context.Context, info Info, prov plugin.Provider, news property.Map) error {
+	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+info.Pkg), "default")
 
 	resp, err := prov.CheckConfig(ctx, plugin.CheckConfigRequest{URN: urn, News: news})
 	if err == nil && len(resp.Failures) == 0 {
@@ -96,18 +89,18 @@ func Probe(ctx context.Context, cp Provider, prov plugin.Provider, news property
 		return ctx.Err()
 	}
 	if err != nil {
-		return &problem{
-			provider: cp,
-			headline: fmt.Sprintf("Could not validate your %s credentials:", cp.DisplayName),
+		return &Problem{
+			info:     info,
+			headline: fmt.Sprintf("Could not validate your %s credentials:", info.DisplayName),
 			details:  strings.Split(strings.TrimSpace(errorMessage(err)), "\n"),
 		}
 	}
 	if len(resp.Failures) == 0 {
 		return nil
 	}
-	p := &problem{
-		provider: cp,
-		headline: fmt.Sprintf("The %s provider reported problems with its configuration:", cp.DisplayName),
+	p := &Problem{
+		info:     info,
+		headline: fmt.Sprintf("The %s provider reported problems with its configuration:", info.DisplayName),
 	}
 	for _, f := range resp.Failures {
 		reason := strings.ReplaceAll(strings.TrimSpace(f.Reason), "\n", "\n    ")
@@ -119,15 +112,15 @@ func Probe(ctx context.Context, cp Provider, prov plugin.Provider, news property
 	return p
 }
 
-// problem is the error Probe reports when a provider rejects the configuration or cannot validate
+// Problem is the error [Check] reports when a provider rejects the configuration or cannot validate
 // the user's credentials.
-type problem struct {
-	provider Provider
+type Problem struct {
+	info     Info
 	headline string
 	details  []string
 }
 
-func (p *problem) Error() string {
+func (p *Problem) Error() string {
 	var b strings.Builder
 	b.WriteString(p.headline)
 	for _, line := range p.details {
@@ -135,8 +128,8 @@ func (p *problem) Error() string {
 	}
 	// Providers often link their configuration docs in the error itself; don't repeat the link.
 	details := strings.Join(p.details, "\n")
-	if docURL := p.provider.DocURL; docURL != "" && !strings.Contains(details, strings.TrimSuffix(docURL, "/")) {
-		fmt.Fprintf(&b, "\nFor help configuring the %s provider, see %s", p.provider.DisplayName, docURL)
+	if docURL := p.info.DocURL; docURL != "" && !strings.Contains(details, strings.TrimSuffix(docURL, "/")) {
+		fmt.Fprintf(&b, "\nFor help configuring the %s provider, see %s", p.info.DisplayName, docURL)
 	}
 	return b.String()
 }

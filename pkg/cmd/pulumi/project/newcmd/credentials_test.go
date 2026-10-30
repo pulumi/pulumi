@@ -239,3 +239,97 @@ func TestPreflightCloudCredentialsSkipsMismatchedParameterization(t *testing.T) 
 
 	credentialsPreflight{host: host, pctx: pctx}.checkPackage(t.Context(), desc)
 }
+
+func TestPreflightCloudCredentialsWarning(t *testing.T) {
+	t.Parallel()
+
+	const message = "run `aws sso login` to refresh your session"
+	tests := []struct {
+		name   string
+		color  colors.Colorization
+		expect func(t *testing.T, out string)
+	}{
+		{
+			name:  "commands in the provider's message and ours are highlighted",
+			color: colors.Always,
+			expect: func(t *testing.T, out string) {
+				for _, command := range []string{"aws sso login", "pulumi up"} {
+					assert.Contains(t, out, "`"+colors.Always.Colorize(colors.SpecCommand+command+colors.Reset)+"`")
+				}
+			},
+		},
+		{
+			name:  "text is unchanged without color",
+			color: colors.Never,
+			expect: func(t *testing.T, out string) {
+				assert.Contains(t, out, "warning: Could not validate your aws credentials:\n    "+message+"\n")
+				assert.Contains(t, out, "`pulumi up` may fail until this is resolved.\n\n")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			prov := schemaProvider(`{"name":"aws","validateCredentialsOnNew":true}`)
+			prov.CheckConfigF = func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+				return plugin.CheckConfigResponse{}, status.Error(codes.Unknown, message)
+			}
+			var buf bytes.Buffer
+			preflightOne(t.Context(), t, prov, &buf, tt.color)
+			tt.expect(t, buf.String())
+		})
+	}
+}
+
+// A check that could not run says nothing about the credentials, so it must not warn.
+func TestPreflightCloudCredentialsStaysSilent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		schema string
+		cancel bool
+	}{
+		{name: "provider did not opt in", schema: `{"name":"random"}`},
+		{name: "invalid schema", schema: `not json`},
+		{name: "cancelled", schema: `{"name":"aws","validateCredentialsOnNew":true}`, cancel: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			prov := schemaProvider(tt.schema)
+			prov.CheckConfigF = func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+				if tt.cancel {
+					cancel()
+				}
+				return plugin.CheckConfigResponse{}, status.Error(codes.Canceled, "cancelled")
+			}
+			var buf bytes.Buffer
+			preflightOne(ctx, t, prov, &buf, colors.Never)
+			assert.Empty(t, buf.String())
+		})
+	}
+}
+
+// preflightOne runs the check for a single package backed by prov.
+func preflightOne(
+	ctx context.Context, t *testing.T, prov plugin.Provider, stdout io.Writer, color colors.Colorization,
+) {
+	t.Helper()
+	host := &plugin.MockHost{
+		ProviderF: func(*plugin.Context, workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
+			return prov, nil
+		},
+	}
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	pctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	require.NoError(t, err)
+	defer pctx.Close()
+
+	pf := credentialsPreflight{host: host, pctx: pctx, stdout: stdout, opts: display.Options{Color: color}}
+	pf.checkPackage(ctx, resourcePackage("aws", "7.0.0"))
+}

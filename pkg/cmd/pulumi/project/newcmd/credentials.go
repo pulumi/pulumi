@@ -16,6 +16,7 @@ package newcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/credentialcheck"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -114,30 +116,28 @@ func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.
 		request.SubpackageVersion = &resp.Version
 	}
 
-	cp, err := credentialcheck.FromSchema(ctx, prov, request)
-	if err != nil {
+	target := &deploy.Target{Config: plaintextConfig(pf.cfg), Decrypter: config.NopDecrypter}
+	_, err = credentialcheck.Check(ctx, prov, request, target)
+	if problem, ok := errors.AsType[*credentialcheck.Problem](err); ok {
+		pf.printWarning(problem)
+	} else if err != nil {
 		slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name, "err", err)
-		return
-	}
-	if !cp.Supported {
-		return
-	}
-	news := credentialcheck.ConfigProperties(cp.Pkg, pf.cfg, skipSecrets)
-	if err := credentialcheck.Probe(ctx, cp, prov, news); err != nil {
-		// A cancelled check stays silent.
-		if ctx.Err() != nil {
-			slog.DebugContext(ctx, "credentials check cancelled", "provider", cp.Pkg)
-			return
-		}
-		pf.printWarning(err)
 	}
 }
 
-// skipSecrets fails every decryption, so that the check only passes plaintext config to providers.
-var skipSecrets = config.NewErrorCrypter("the `pulumi new` credentials check does not decrypt secrets")
+// plaintextConfig returns cfg without its secure values, which this check does not decrypt.
+func plaintextConfig(cfg config.Map) config.Map {
+	plain := config.Map{}
+	for k, v := range cfg {
+		if !v.Secure() {
+			plain[k] = v
+		}
+	}
+	return plain
+}
 
 // printWarning renders a credentials problem as an advisory warning.
-func (pf credentialsPreflight) printWarning(problem error) {
+func (pf credentialsPreflight) printWarning(problem *credentialcheck.Problem) {
 	warning := colors.SpecWarning + "warning:" + colors.Reset + " " + problem.Error() + "\n" +
 		"`pulumi up` may fail until this is resolved."
 	fmt.Fprintln(pf.stdout, pf.opts.Color.Colorize(colors.HighlightCommands(warning)))
