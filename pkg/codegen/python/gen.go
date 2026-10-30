@@ -1752,8 +1752,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 				fmt.Fprintf(w, "        __props__[%q] = %s\n", prop.Name, InitParamName(prop.Name))
 			}
 		}
-		fmt.Fprintf(w, "        __inst__ = %s.__new__(%s)\n", name, name)
-		fmt.Fprintf(w, "        return pulumi.runtime.exists_resource(__inst__, '%s', id, __props__, opts or pulumi.ResourceOptions()", tok)
+		fmt.Fprintf(w, "        return pulumi.runtime.exists_resource(None, '%s', id, __props__, opts or pulumi.ResourceOptions()", tok)
 		pkg, err = res.PackageReference.Definition()
 		if err != nil {
 			return "", err
