@@ -178,6 +178,16 @@ func Find(def *yaml.Node, names []string) (name string, ok bool) {
 	return found[0], true
 }
 
+// Get returns the node at path inside the pulumiConfig entry name. name and path are literal; Get escapes them.
+func Get(def *yaml.Node, name string, path resource.PropertyPath) (*yaml.Node, bool) {
+	pc, err := pulumiConfigNode(def, false)
+	if err != nil || pc == nil {
+		return nil, false
+	}
+	full := append(resource.PropertyPath{escape(name)}, escapePath(path)...)
+	return encoding.YAMLSyntax{Node: pc}.Get(full)
+}
+
 // Set writes value at path inside the pulumiConfig entry named by whichever of names exists, or by names[0] if
 // none does. An empty path replaces the whole entry. names and path are literal; Set escapes them.
 func Set(def *yaml.Node, names []string, path resource.PropertyPath, value yaml.Node) error {

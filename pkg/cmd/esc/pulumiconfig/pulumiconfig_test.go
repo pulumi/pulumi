@@ -479,6 +479,26 @@ func TestFind(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestGet(t *testing.T) {
+	t.Parallel()
+
+	doc := parse(t, "values:\n  pulumiConfig:\n    proj:$$a:\n      $$b: [x, y]\n")
+
+	node, ok := Get(doc, "proj:$a", mustPath(t, `["$b"][1]`))
+	require.True(t, ok)
+	assert.Equal(t, "y", node.Value)
+
+	node, ok = Get(doc, "proj:$a", nil)
+	require.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+
+	_, ok = Get(doc, "proj:$a", mustPath(t, `["$b"][2]`))
+	assert.False(t, ok)
+
+	_, ok = Get(parse(t, "imports: [x]\n"), "a", nil)
+	assert.False(t, ok)
+}
+
 func TestImportsDefinition(t *testing.T) {
 	t.Parallel()
 

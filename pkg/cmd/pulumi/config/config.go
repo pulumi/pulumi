@@ -727,6 +727,8 @@ type configSetCmd struct {
 	Path      bool
 	Raw       bool
 	Type      string
+
+	OverrideImport bool
 }
 
 func newConfigSetCmd(
@@ -819,6 +821,12 @@ func newConfigSetCmd(
 		&configSetCmd.Raw, "raw", false,
 		"When setting the value through stdin, do not trim trailing newlines from the value",
 	)
+	setCmd.PersistentFlags().BoolVar(
+		&configSetCmd.OverrideImport, "override-import", false,
+		"On a stack with an ESC-managed environment, set a key that an imported environment defines in the stack's "+
+			"own environment, overriding the imported value",
+	)
+	_ = setCmd.PersistentFlags().MarkHidden("override-import")
 	setCmd.DisableFlagsInUseLine = true
 
 	return setCmd
@@ -876,6 +884,9 @@ func (c *configSetCmd) Run(
 	}
 	if managed != nil && c.Secret {
 		return cmdStack.ManagedEnvironmentNotSupportedError("`pulumi config set --secret`")
+	}
+	if managed != nil {
+		managed.overrideImport = c.OverrideImport
 	}
 
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
@@ -1587,6 +1598,12 @@ func environmentDiagnosticsError(diags []apitype.EnvironmentDiagnostic) error {
 	var b strings.Builder
 	printESCDiagnostics(&b, diags)
 	return fmt.Errorf("opening environment:\n%s", strings.TrimSuffix(b.String(), "\n"))
+}
+
+func oneLineESCDiagnostics(diags []apitype.EnvironmentDiagnostic) string {
+	var b strings.Builder
+	printESCDiagnostics(&b, diags)
+	return strings.ReplaceAll(strings.TrimSuffix(b.String(), "\n"), "\n", "; ")
 }
 
 func printESCDiagnostics(out io.Writer, diags []apitype.EnvironmentDiagnostic) {
