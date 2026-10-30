@@ -146,3 +146,17 @@ func TestEditEmptyFlowCollectionGainsContent(t *testing.T) {
 
 	assertYamlEdit(t, "- {} # c\n- x\n", []any{map[string]any{"a": "b"}, "x"}, "- {a: b} # c\n- x\n")
 }
+
+func TestEditCollectionEmptiedUnderCommentedKey(t *testing.T) {
+	t.Parallel()
+
+	assertYamlEdit(t, "config: # keep me\n  a: b\nother: 1\n", map[string]any{
+		"config": map[string]any{},
+		"other":  1,
+	}, "config: {} # keep me\nother: 1\n")
+
+	assertYamlEdit(t, "list: # c\n  - a\nother: 1\n", map[string]any{
+		"list":  []any{},
+		"other": 1,
+	}, "list: [] # c\nother: 1\n")
+}
