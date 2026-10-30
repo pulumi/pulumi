@@ -1147,7 +1147,7 @@ func newConfigSetAllCmd(
 
 					err = w.Set(ctx, key, value, path)
 					if err != nil {
-						return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
+						return jsonConfigSetError(jsonKey, err)
 					}
 				}
 			}
@@ -1186,6 +1186,10 @@ type configValueJSON struct {
 	Value       *string `json:"value,omitempty"`
 	ObjectValue any     `json:"objectValue,omitempty"`
 	Secret      bool    `json:"secret"`
+}
+
+func jsonConfigSetError(jsonKey string, err error) error {
+	return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
 }
 
 // Unlike config.NopDecrypter, config.Map.Decrypt does not short-circuit on this, so secrets nested in object values

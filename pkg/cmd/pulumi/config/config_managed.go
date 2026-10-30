@@ -117,8 +117,7 @@ func (m *managedStore) Save(ctx context.Context) error {
 func rejectSecretObjects(jsonConfig map[string]configValueJSON) error {
 	for jsonKey, jsonValue := range jsonConfig {
 		if jsonValue.Secret && jsonValue.ObjectValue != nil {
-			_, err := pulumiconfig.ValueNode(config.NewSecureObjectValue(""), true)
-			return fmt.Errorf("could not set --json config for %q: %w", jsonKey, err)
+			return jsonConfigSetError(jsonKey, pulumiconfig.ErrSecretObject)
 		}
 	}
 	return nil

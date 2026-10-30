@@ -282,7 +282,7 @@ func TestValueNodeObject(t *testing.T) {
 	assert.Equal(t, "Fn::GetAtt:\n    - a\n    - b\nc: 1\n", string(out))
 
 	_, err = ValueNode(config.NewSecureObjectValue(`{"b":"x"}`), false)
-	require.ErrorContains(t, err, "secret object values are not supported")
+	require.ErrorIs(t, err, ErrSecretObject)
 
 	for _, object := range []string{`{"secure":"x"}`, `{"b":{"secure":"x"}}`, `{"b":[{"secure":"x"}]}`} {
 		_, err = ValueNode(config.NewObjectValue(object), false)
