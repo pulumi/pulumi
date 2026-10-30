@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -96,7 +97,7 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 			if verbose && output.String() == "default" {
 				source := "none"
 				if cloud, ok := b.(interface{ CloudURL() string }); ok {
-					if os.Getenv("PULUMI_ACCESS_TOKEN") != "" {
+					if env.AccessToken.Value() != "" {
 						source = "PULUMI_ACCESS_TOKEN"
 					} else {
 						account, fromAgent, err := workspace.GetAccountWithAgentFallback(cloud.CloudURL())
