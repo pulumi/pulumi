@@ -133,12 +133,6 @@
             }
         },
         {
-            "path": ["api"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["console"],
             "propagate": true,
             "exclude": true,
