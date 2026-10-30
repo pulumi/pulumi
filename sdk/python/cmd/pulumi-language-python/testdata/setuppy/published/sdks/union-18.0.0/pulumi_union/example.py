@@ -159,6 +159,12 @@ class Example(pulumi.CustomResource):
         __props__.__dict__["typed_enum_property"] = None
         return Example(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'union:index:Example', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="mapMapUnionProperty")
     def map_map_union_property(self) -> pulumi.Output[Optional[Mapping[str, Mapping[str, Union[_builtins.str, Sequence[_builtins.str]]]]]]:

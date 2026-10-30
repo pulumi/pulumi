@@ -106,6 +106,12 @@ class Sink(pulumi.CustomResource):
         __props__.__dict__["string_enum"] = None
         return Sink(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'extenumref:index:Sink', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="stringEnum")
     def string_enum(self) -> pulumi.Output[Optional['pulumi_enum.StringEnum']]:

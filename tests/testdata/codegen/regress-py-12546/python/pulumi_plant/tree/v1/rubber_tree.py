@@ -235,6 +235,14 @@ class RubberTree(pulumi.CustomResource):
         __props__.__dict__["type"] = None
         return RubberTree(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None,
+            farm: pulumi.Input[Optional[Union['Farm', _builtins.str]]] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        __props__["farm"] = farm
+        return pulumi.runtime.exists_resource(None, 'plant:tree/v1:RubberTree', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def container(self) -> pulumi.Output[Optional['_root_outputs.Container']]:

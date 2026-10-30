@@ -107,6 +107,12 @@ class Example(pulumi.CustomResource):
         __props__.__dict__["union_of"] = None
         return Example(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'discriminated-union-many:index:Example', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="unionOf")
     def union_of(self) -> pulumi.Output[Optional[Union['outputs.Variant1', 'outputs.Variant2', 'outputs.Variant3', 'outputs.Variant4', 'outputs.Variant5', 'outputs.Variant6', 'outputs.Variant7', 'outputs.Variant8', 'outputs.Variant9', 'outputs.Variant10']]]:
