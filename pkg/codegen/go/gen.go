@@ -2647,6 +2647,33 @@ func (pkg *pkgContext) genResource(
 		fmt.Fprintf(w, "}\n\n")
 	}
 
+	// Emit a factory function that checks whether an existing instance of this resource exists.
+	if !r.IsProvider && !r.IsComponent {
+		fmt.Fprintf(w, "// %[1]sExists checks whether an existing %[1]s resource with the given ID exists.\n", name)
+		fmt.Fprintf(w, "func %sExists(ctx *pulumi.Context,\n", name)
+		fmt.Fprintf(w, "\tid pulumi.StringInput, state *%sState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {\n", name)
+
+		// If this is a parameterized resource we need the package ref.
+		def, err := pkg.pkg.Definition()
+		if err != nil {
+			return err
+		}
+		existsPackageRef := `""`
+		if def.Parameterization != nil {
+			existsPackageRef = "ref"
+			fmt.Fprintf(w, "\tref, err := %s.PkgGetPackageRef(ctx)\n", pkg.internalModuleName)
+			fmt.Fprintf(w, "\tif err != nil {\n")
+			fmt.Fprintf(w, "\t\treturn pulumi.Bool(false).ToBoolOutput().ApplyT(func(bool) (bool, error) {\n")
+			fmt.Fprintf(w, "\t\t\treturn false, err\n")
+			fmt.Fprintf(w, "\t\t}).(pulumi.BoolOutput)\n")
+			fmt.Fprintf(w, "\t}\n")
+		}
+
+		fmt.Fprintf(w, "\treturn ctx.ExistsResource(\"%s\", id, state, %s, opts...)\n",
+			r.Token, existsPackageRef)
+		fmt.Fprintf(w, "}\n\n")
+	}
+
 	// Emit the args types.
 	fmt.Fprintf(w, "type %sArgs struct {\n", cgstrings.Camel(name))
 	for _, p := range r.InputProperties {
@@ -4203,6 +4230,42 @@ func ExtractImportBasePath(extPkg schema.PackageReference) string {
 	return fmt.Sprintf("%s/go/%s", modpath, name)
 }
 
+// ModuleAndImportPath returns the Go module path and the root import path of the SDK that
+// GeneratePackage writes for pkg. The module path is the path of the module that holds the SDK. The
+// import path addresses the directory of the root package inside that module.
+//
+// ExtractModulePath and ExtractImportBasePath build both paths from the package reference alone, so
+// they disagree with the generated SDK when the schema sets modulePath or importBasePath. Use this
+// function when the paths must match an SDK that GeneratePackage wrote.
+//
+// The caller must import the Go language info of pkg first, with ImportLanguages. GeneratePackage
+// writes a go.mod file only for a package that supports packing, so pkg.SupportPack must be true.
+func ModuleAndImportPath(pkg *schema.Package) (string, string, error) {
+	if !pkg.SupportPack {
+		return "", "", fmt.Errorf(
+			"package %q does not support packing, so GeneratePackage writes no Go module for it", pkg.Name)
+	}
+
+	goInfo, _ := pkg.Language["go"].(GoPackageInfo)
+
+	modulePath := ExtractModulePath(pkg.Reference())
+	if goInfo.ModulePath != "" {
+		modulePath = goInfo.ModulePath
+	} else if goInfo.ImportBasePath != "" {
+		// The go.mod file sits one directory above the root package, so the module path is the
+		// import base path without its last element.
+		modulePath = path.Dir(goInfo.ImportBasePath)
+	}
+
+	if pkg.ExtensionParameterization != nil {
+		modulePath = pkg.Name
+	}
+
+	root, err := packageRoot(pkg.Reference())
+	contract.AssertNoErrorf(err, "We generated the ref from a pkg, so we know its a valid ref")
+	return modulePath, path.Join(modulePath, root), nil
+}
+
 func (pkg *pkgContext) getImports(member any, importsAndAliases map[string]string) {
 	seen := map[schema.Type]struct{}{}
 	switch member := member.(type) {
@@ -5494,19 +5557,9 @@ func GeneratePackage(tool string,
 
 	// create a go.mod file with references to local dependencies
 	if pkg.SupportPack {
-		modulePath := ExtractModulePath(pkg.Reference())
-		if langInfo, found := pkg.Language["go"]; found {
-			goInfo, ok := langInfo.(GoPackageInfo)
-			if ok && goInfo.ModulePath != "" {
-				modulePath = goInfo.ModulePath
-			} else if ok && goInfo.ImportBasePath != "" {
-				// if support pack is enabled we can infer the module path from the
-				// import base path, which is one up from the import base (ie without the package name).
-				modulePath = path.Dir(goInfo.ImportBasePath)
-			}
-		}
-		if pkg.ExtensionParameterization != nil {
-			modulePath = pkg.Name
+		modulePath, _, err := ModuleAndImportPath(pkg)
+		if err != nil {
+			return nil, err
 		}
 
 		var gomod modfile.File
@@ -5515,7 +5568,7 @@ func GeneratePackage(tool string,
 		err = gomod.AddGoStmt("1.25")
 		contract.AssertNoErrorf(err, "could not add Go statement to go.mod")
 		pulumiPackagePath := "github.com/pulumi/pulumi/sdk/v3"
-		pulumiVersion := "v3.256.0"
+		pulumiVersion := "v3.269.0"
 		err = gomod.AddRequire(pulumiPackagePath, pulumiVersion)
 		contract.AssertNoErrorf(err, "could not add require statement to go.mod")
 		if replacementPath, hasReplacement := localDependencies["pulumi"]; hasReplacement {

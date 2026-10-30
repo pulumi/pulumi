@@ -1119,6 +1119,9 @@ func NewImportCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := rejectConfigFlagsOnManagedStack(s, nil, configFile); err != nil {
+				return err
+			}
 
 			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj, configFile, nil)
 			if err != nil {

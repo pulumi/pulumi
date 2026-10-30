@@ -20,11 +20,15 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/stackenv"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 )
 
-var _ = backend.EnvironmentsBackend((*cloudBackend)(nil))
+var (
+	_ = backend.EnvironmentsBackend((*cloudBackend)(nil))
+	_ = backend.ManagedEnvironmentsBackend((*cloudBackend)(nil))
+)
 
 func convertESCDiags(diags []client.EnvironmentDiagnostic) apitype.EnvironmentDiagnostics {
 	if len(diags) == 0 {
@@ -78,4 +82,23 @@ func (b *cloudBackend) OpenYAMLEnvironment(
 	}
 	env, err := b.escClient.GetAnonymousOpenEnvironment(ctx, org, id)
 	return env, nil, err
+}
+
+func (b *cloudBackend) EvaluateManagedEnvironment(
+	ctx context.Context,
+	org string,
+	project string,
+	name string,
+	definition []byte,
+) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+	evaluation, diags, err := stackenv.Evaluate(ctx, b.escClient, org, project, name, definition, 2*time.Hour)
+	if evaluation == nil {
+		return nil, convertESCDiags(diags), err
+	}
+	return &backend.ManagedEnvironmentEvaluation{
+		Environment:     evaluation.Environment,
+		BaseRevision:    evaluation.BaseRevision,
+		ChangeRequestID: evaluation.ChangeRequestID,
+		DraftRevision:   evaluation.DraftRevision,
+	}, convertESCDiags(diags), err
 }

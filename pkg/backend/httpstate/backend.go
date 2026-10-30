@@ -659,7 +659,8 @@ func (m defaultLoginManager) Current(
 
 // currentOrSignupAgentAccount returns valid credentials from the shared agent
 // cache, reports active claim state when cached credentials cannot
-// authenticate, or creates a new agent account when no usable state remains.
+// authenticate, or, when automatic agent signup is enabled, creates a new
+// agent account when no usable state remains.
 func (m defaultLoginManager) currentOrSignupAgentAccount(
 	ctx context.Context,
 	cloudURL string,
@@ -726,15 +727,20 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 				"shared agent credentials for %q are no longer valid; claim the account to regain access: %w",
 				cloudURL, ErrUnauthorized)
 		}
-		logging.V(7).Infof("Shared agent credentials for %q are not valid; creating a new agent account", cloudURL)
+		logging.V(7).Infof("Shared agent credentials for %q are not valid", cloudURL)
 	} else {
-		logging.V(7).Infof("No shared agent credentials found for %q; creating a new agent account", cloudURL)
+		logging.V(7).Infof("No shared agent credentials found for %q", cloudURL)
 	}
 
 	// An undecryptable credentials file must surface its actionable error,
 	// not be papered over with a fresh ephemeral agent identity.
 	if workspace.IsUndecryptableCredentials(defaultCredsErr) {
 		return nil, defaultCredsErr
+	}
+
+	if !env.EnableAutomaticAgentSignup.Value() {
+		logging.V(7).Infof("Automatic agent signup is disabled; not creating an agent account for %q", cloudURL)
+		return nil, nil
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
@@ -809,6 +815,11 @@ func (m defaultLoginManager) Login(
 	// Agents have no terminal to prompt in, but the browser flow needs no console input.
 	if !cmdutil.Interactive() && skipAgentSignup(ctx) && accountLink != "" && agentdetect.Detect(os.Getenv) != "" {
 		return loginWithBrowser(ctx, cloudURL, insecure, command, welcome, setCurrent, opts)
+	}
+
+	// Point agents at `pulumi login`, which they can ask the user to run, rather than at an access token.
+	if !cmdutil.Interactive() && agentdetect.Detect(os.Getenv) != "" {
+		return nil, backenderr.LoginRequiredError{}
 	}
 
 	if !cmdutil.Interactive() {
@@ -969,12 +980,9 @@ func (b *cloudBackend) Name() string {
 	return b.url
 }
 
+// URL returns the root of the Pulumi Cloud console, which opens the user's default organization.
 func (b *cloudBackend) URL() string {
-	user, _, _, err := b.CurrentUser()
-	if err != nil {
-		return client.CloudConsoleURL(b.url)
-	}
-	return client.CloudConsoleURL(b.url, user)
+	return client.CloudConsoleURL(b.url)
 }
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
@@ -1859,6 +1867,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
 	}
 
+	reqOpts := client.UpdateRequestOptions{Environment: op.StackConfiguration.ManagedEnvironment}
+
 	var update client.UpdateIdentifier
 	var version int
 	var token string
@@ -1871,7 +1881,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		logging.V(7).Infof("Using combined begin-update endpoint for %s", stackRef)
 		resp, err := b.client.BeginUpdate(
 			ctx, action, stackID, op.Proj, op.StackConfiguration.Config,
-			metadata, op.Opts.Engine, tags, dryRun, op.CoherenceWindow)
+			metadata, op.Opts.Engine, tags, dryRun, op.CoherenceWindow, reqOpts)
 		if err != nil {
 			if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 				conflict := backenderr.ConflictingUpdateError{Err: err}
@@ -1903,7 +1913,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		var updateDetails client.CreateUpdateDetails
 		update, updateDetails, err = b.client.CreateUpdate(
 			ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun,
-			op.CoherenceWindow)
+			op.CoherenceWindow, reqOpts)
 		if err != nil {
 			return client.UpdateIdentifier{}, updateMetadata{}, err
 		}

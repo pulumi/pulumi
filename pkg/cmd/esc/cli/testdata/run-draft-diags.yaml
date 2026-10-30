@@ -1,0 +1,18 @@
+run: esc env run --draft=EXAMPLE default/test echo hello
+error: exit status 1
+process:
+  commands:
+    echo: |
+      echo $*
+environments:
+  test-user/default/test_DRAFT:
+    values:
+      foo: ${bar}
+
+---
+> esc env run --draft=EXAMPLE default/test echo hello
+
+---
+> esc env run --draft=EXAMPLE default/test echo hello
+test_DRAFT:2:12: unknown property "bar"
+Error: opening environment: too many errors

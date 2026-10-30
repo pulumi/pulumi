@@ -1,0 +1,4 @@
+component: sdk/go
+kind: improvement
+body: Add `config.Value.ToCoercedObject`, which returns a value with the typing `Map.Set` applies below the top level of a `--path` key
+time: 2026-10-27T00:00:00Z

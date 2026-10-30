@@ -1116,6 +1116,18 @@ type configValueJSON struct {
 	Secret      bool    `json:"secret"`
 }
 
+// Unlike config.NopDecrypter, config.Map.Decrypt does not short-circuit on this, so secrets nested in object values
+// are unwrapped.
+type recursiveNopDecrypter struct{}
+
+func (recursiveNopDecrypter) DecryptValue(_ context.Context, ciphertext string) (string, error) {
+	return ciphertext, nil
+}
+
+func (d recursiveNopDecrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([]string, error) {
+	return config.DefaultBatchDecrypt(ctx, d, ciphertexts)
+}
+
 func listConfig(
 	ctx context.Context,
 	ssml cmdStack.SecretsManagerLoader,
@@ -1128,6 +1140,8 @@ func listConfig(
 	openEnvironment bool,
 	configFile string,
 ) error {
+	managed := stack.ConfigLocation().ManagedEnvironment != ""
+
 	var env *esc.Environment
 	var diags []apitype.EnvironmentDiagnostic
 	var err error
@@ -1139,11 +1153,19 @@ func listConfig(
 	if err != nil {
 		return err
 	}
+	if managed && env == nil && len(diags) != 0 {
+		return environmentDiagnosticsError(diags)
+	}
 
 	var pulumiEnv esc.Value
 	var secretsManager secrets.Manager
 	var envCrypter config.Encrypter
-	if env != nil {
+	if managed {
+		if env != nil {
+			pulumiEnv = env.Properties["pulumiConfig"]
+		}
+		envCrypter = config.NopEncrypter
+	} else if env != nil {
 		pulumiEnv = env.Properties["pulumiConfig"]
 
 		var state cmdStack.SecretsManagerState
@@ -1178,7 +1200,9 @@ func listConfig(
 
 	// By default, we will use a blinding decrypter to show "[secret]". If requested, display secrets in plaintext.
 	decrypter := config.NewBlindingDecrypter()
-	if cfg.HasSecureValue() && showSecrets {
+	if managed && showSecrets {
+		decrypter = recursiveNopDecrypter{}
+	} else if cfg.HasSecureValue() && showSecrets {
 		if secretsManager == nil {
 			var state cmdStack.SecretsManagerState
 			if secretsManager, state, err = ssml.GetSecretsManager(ctx, stack, ps); err != nil {
@@ -1317,6 +1341,8 @@ func getConfig(
 		return err
 	}
 
+	managed := stack.ConfigLocation().ManagedEnvironment != ""
+
 	var env *esc.Environment
 	var diags []apitype.EnvironmentDiagnostic
 	if openEnvironment {
@@ -1327,11 +1353,19 @@ func getConfig(
 	if err != nil {
 		return err
 	}
+	if managed && env == nil && len(diags) != 0 {
+		return environmentDiagnosticsError(diags)
+	}
 
 	var pulumiEnv esc.Value
 	var secretsManager secrets.Manager
 	var envCrypter config.Encrypter
-	if env != nil {
+	if managed {
+		if env != nil {
+			pulumiEnv = env.Properties["pulumiConfig"]
+		}
+		envCrypter = config.NopEncrypter
+	} else if env != nil {
 		pulumiEnv = env.Properties["pulumiConfig"]
 
 		var state cmdStack.SecretsManagerState
@@ -1368,7 +1402,9 @@ func getConfig(
 	}
 	if ok {
 		var d config.Decrypter
-		if v.Secure() {
+		if managed {
+			d = recursiveNopDecrypter{}
+		} else if v.Secure() {
 			if secretsManager == nil {
 				var state cmdStack.SecretsManagerState
 				if secretsManager, state, err = ssml.GetSecretsManager(ctx, stack, ps); err != nil {
@@ -1464,8 +1500,14 @@ func checkStackEnv(
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
 ) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
-	yaml := workspaceStack.EnvironmentBytes()
-	if len(yaml) == 0 {
+	definition := workspaceStack.EnvironmentBytes()
+	if stack.ConfigLocation().ManagedEnvironment != "" {
+		var err error
+		if _, definition, err = managedEnvironmentDefinition(stack, workspaceStack); err != nil {
+			return nil, nil, err
+		}
+	}
+	if len(definition) == 0 {
 		return nil, nil, nil
 	}
 
@@ -1479,7 +1521,7 @@ func checkStackEnv(
 	}
 	orgName := orgNamer.OrgName()
 
-	return envs.CheckYAMLEnvironment(ctx, orgName, yaml)
+	return envs.CheckYAMLEnvironment(ctx, orgName, definition)
 }
 
 func warnOnNoEnvironmentEffects(out io.Writer, env *esc.Environment) {
@@ -1494,6 +1536,14 @@ func warnOnNoEnvironmentEffects(out io.Writer, env *esc.Environment) {
 		fmt.Fprintln(out, color.Colorize(colors.SpecWarning+"Without at least one of these properties, the environment will not affect the stack's behavior."+colors.Reset))
 		fmt.Fprintln(out)
 	}
+}
+
+// environmentDiagnosticsError returns the diagnostics in the error instead of printing them, which keeps --json
+// output parseable.
+func environmentDiagnosticsError(diags []apitype.EnvironmentDiagnostic) error {
+	var b strings.Builder
+	printESCDiagnostics(&b, diags)
+	return fmt.Errorf("opening environment:\n%s", strings.TrimSuffix(b.String(), "\n"))
 }
 
 func printESCDiagnostics(out io.Writer, diags []apitype.EnvironmentDiagnostic) {

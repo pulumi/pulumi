@@ -107,10 +107,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogsshare"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optnew"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorg"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgauditlog"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgauditlogexport"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgauditloglist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorggetdefault"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearch"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearchai"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsetdefault"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgusage"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgusageget"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateedit"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateget"
@@ -8298,6 +8303,285 @@ func (a *API) Org(
 	}, final)
 }
 
+// OrgAuditLog corresponds to `pulumi org audit-log`.
+func (a *API) OrgAuditLog(
+	ctx context.Context,
+	opts ...optorgauditlog.Option,
+) (base.CommandResult, error) {
+	o := optorgauditlog.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "audit-log"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgAuditLogExport corresponds to `pulumi org audit-log export`.
+//
+// [EXPERIMENTAL] Export audit log events for an organization.
+//
+// Streams an export of audit log events for the organization in the
+// requested format. Results may be filtered by event type and by the
+// user that triggered the event. Use --start-time to bound the upper
+// end of the time range.
+//
+// Default output writes the raw response body (CSV or CEF) verbatim;
+// pass --output=json to wrap the body in a JSON envelope with the
+// response format and base64-encoded data.
+func (a *API) OrgAuditLogExport(
+	ctx context.Context,
+	opts ...optorgauditlogexport.Option,
+) (base.CommandResult, error) {
+	o := optorgauditlogexport.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "audit-log", "export"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Count != 0 {
+		final = append(final, "--count", fmt.Sprint(o.Count))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.EndTime != "" {
+		final = append(final, "--end-time", fmt.Sprint(o.EndTime))
+	}
+
+	if o.EventType != "" {
+		final = append(final, "--event-type", fmt.Sprint(o.EventType))
+	}
+
+	if o.Format != "" {
+		final = append(final, "--format", fmt.Sprint(o.Format))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.StartTime != "" {
+		final = append(final, "--start-time", fmt.Sprint(o.StartTime))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.User != "" {
+		final = append(final, "--user", fmt.Sprint(o.User))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgAuditLogList corresponds to `pulumi org audit-log list`.
+//
+// [EXPERIMENTAL] List audit log events for an organization.
+//
+// Returns audit log events for the organization. Results may be filtered
+// by event type and by the user that triggered the event. Use
+// --start-time to bound the upper end of the time range.
+//
+// Default output is a human-readable table; pass --output=json for the
+// full response as a JSON envelope.
+func (a *API) OrgAuditLogList(
+	ctx context.Context,
+	opts ...optorgauditloglist.Option,
+) (base.CommandResult, error) {
+	o := optorgauditloglist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "audit-log", "list"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Count != 0 {
+		final = append(final, "--count", fmt.Sprint(o.Count))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.EndTime != "" {
+		final = append(final, "--end-time", fmt.Sprint(o.EndTime))
+	}
+
+	if o.EventType != "" {
+		final = append(final, "--event-type", fmt.Sprint(o.EventType))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.StartTime != "" {
+		final = append(final, "--start-time", fmt.Sprint(o.StartTime))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.User != "" {
+		final = append(final, "--user", fmt.Sprint(o.User))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
 // OrgGetDefault corresponds to `pulumi org get-default`.
 //
 // Get the default org for the current backend.
@@ -8611,6 +8895,165 @@ func (a *API) OrgSetDefault(
 	if len(args) > 0 {
 		final = append(final, "--")
 		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgUsage corresponds to `pulumi org usage`.
+func (a *API) OrgUsage(
+	ctx context.Context,
+	opts ...optorgusage.Option,
+) (base.CommandResult, error) {
+	o := optorgusage.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "usage"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgUsageGet corresponds to `pulumi org usage get`.
+//
+// [EXPERIMENTAL] Fetch the resources-under-management summary for an organization.
+//
+// Returns the Resources Under Management (RUM) and Resource Hours Under
+// Management (RHUM) totals for the organization, bucketed by the requested
+// granularity. Default output is a human-readable table; pass --output=json
+// for the full response as a JSON envelope.
+//
+// Wraps the `GetUsageSummaryResourceHours` Pulumi Cloud REST endpoint.
+func (a *API) OrgUsageGet(
+	ctx context.Context,
+	opts ...optorgusageget.Option,
+) (base.CommandResult, error) {
+	o := optorgusageget.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "usage", "get"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Granularity != "" {
+		final = append(final, "--granularity", fmt.Sprint(o.Granularity))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.LookbackDays != 0 {
+		final = append(final, "--lookback-days", fmt.Sprint(o.LookbackDays))
+	}
+
+	if o.LookbackStart != 0 {
+		final = append(final, "--lookback-start", fmt.Sprint(o.LookbackStart))
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
 	}
 
 	return a.run(ctx, base.BaseOptions{
