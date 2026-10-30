@@ -100,6 +100,9 @@ func NewConfigCmd(ws pkgWorkspace.Context) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(stack, nil, configFile); err != nil {
+				return err
+			}
 
 			ps, err := cmdStack.LoadProjectStack(ctx, cmdutil.Diag(), project, stack, configFile)
 			if err != nil {
@@ -341,6 +344,9 @@ func newConfigGetCmd(ws pkgWorkspace.Context, stack *string, configFile *string)
 				*configFile,
 			)
 			if err != nil {
+				return err
+			}
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(s, nil, *configFile); err != nil {
 				return err
 			}
 

@@ -61,8 +61,8 @@ func GetStackConfiguration(
 	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile, envOverrides)
 }
 
-var errDestroyManagedOutsideProject = errors.New(
-	"`pulumi destroy` outside the project directory is not supported on stacks with an ESC-managed environment yet")
+var errDestroyManagedOutsideProject = cmdStack.ManagedEnvironmentNotSupportedError(
+	"`pulumi destroy` outside the project directory")
 
 // GetStackConfigurationOrLatest attempts to load a current stack configuration
 // using getStackConfiguration. If that fails due to not being run within a
