@@ -24,9 +24,11 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
@@ -46,7 +48,7 @@ func defaultPolicyExceptionGetOutputFormat() outputflag.OutputFlag[policyExcepti
 	}
 }
 
-func newPolicyExceptionGetCmd() *cobra.Command {
+func newPolicyExceptionGetCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var args policyExceptionGetArgs
 	args.outputFormat = defaultPolicyExceptionGetOutputFormat()
 
@@ -64,7 +66,7 @@ func newPolicyExceptionGetCmd() *cobra.Command {
 			"  pulumi policy exception get EXC-12 --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runPolicyExceptionGet(
-				cmd.Context(), cmd.OutOrStdout(), defaultPolicyExceptionClientFactory, posArgs[0], args)
+				cmd.Context(), cmd.OutOrStdout(), newPolicyExceptionClientFactory(ws, lm), posArgs[0], args)
 		},
 	}
 

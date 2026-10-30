@@ -77,7 +77,7 @@ type policyExceptionClientFactory func(
 	ctx context.Context, orgFlag string,
 ) (policyExceptionClients, string, error)
 
-func newPolicyExceptionCmd() *cobra.Command {
+func newPolicyExceptionCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "exception",
 		Short: "[EXPERIMENTAL] Manage policy exceptions",
@@ -94,49 +94,48 @@ func newPolicyExceptionCmd() *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.AddCommand(newPolicyExceptionNewCmd())
-	cmd.AddCommand(newPolicyExceptionListCmd())
-	cmd.AddCommand(newPolicyExceptionGetCmd())
-	cmd.AddCommand(newPolicyExceptionRemoveCmd())
+	cmd.AddCommand(newPolicyExceptionNewCmd(ws, lm))
+	cmd.AddCommand(newPolicyExceptionListCmd(ws, lm))
+	cmd.AddCommand(newPolicyExceptionGetCmd(ws, lm))
+	cmd.AddCommand(newPolicyExceptionRemoveCmd(ws, lm))
 	return cmd
 }
 
-func defaultPolicyExceptionClientFactory(
-	ctx context.Context, orgFlag string,
-) (policyExceptionClients, string, error) {
-	ws := pkgWorkspace.Instance
-	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+func newPolicyExceptionClientFactory(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) policyExceptionClientFactory {
+	return func(ctx context.Context, orgFlag string) (policyExceptionClients, string, error) {
+		opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, nil, opts)
-	if err != nil {
-		return policyExceptionClients{}, "", err
-	}
-	cloudBackend, ok := be.(httpstate.Backend)
-	if !ok {
-		return policyExceptionClients{}, "",
-			errors.New("policy exceptions require the Pulumi Cloud backend; run `pulumi login`")
-	}
-
-	userName, orgs, _, err := cloudBackend.CurrentUser()
-	if err != nil {
-		return policyExceptionClients{}, "", err
-	}
-
-	org := orgFlag
-	if org == "" {
-		defaultOrg, err := cloudBackend.GetDefaultOrg(ctx)
+		be, err := cmdBackend.CurrentBackend(ctx, ws, lm, nil, opts)
 		if err != nil {
 			return policyExceptionClients{}, "", err
 		}
-		org = defaultOrg
-	}
-	if org == "" {
-		org = userName
-	}
+		cloudBackend, ok := be.(httpstate.Backend)
+		if !ok {
+			return policyExceptionClients{}, "",
+				errors.New("policy exceptions require the Pulumi Cloud backend; run `pulumi login`")
+		}
 
-	if !slices.Contains(orgs, org) && org != userName {
-		return policyExceptionClients{}, "", fmt.Errorf("user %s is not a member of organization %s", userName, org)
-	}
+		userName, orgs, _, err := cloudBackend.CurrentUser()
+		if err != nil {
+			return policyExceptionClients{}, "", err
+		}
 
-	return policyExceptionClients{cloudBackend.Client(), cloudBackend.ESCClient()}, org, nil
+		org := orgFlag
+		if org == "" {
+			defaultOrg, err := cloudBackend.GetDefaultOrg(ctx)
+			if err != nil {
+				return policyExceptionClients{}, "", err
+			}
+			org = defaultOrg
+		}
+		if org == "" {
+			org = userName
+		}
+
+		if !slices.Contains(orgs, org) && org != userName {
+			return policyExceptionClients{}, "", fmt.Errorf("user %s is not a member of organization %s", userName, org)
+		}
+
+		return policyExceptionClients{cloudBackend.Client(), cloudBackend.ESCClient()}, org, nil
+	}
 }

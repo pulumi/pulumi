@@ -27,10 +27,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
@@ -58,7 +60,7 @@ func defaultPolicyExceptionListOutputFormat() outputflag.OutputFlag[policyExcept
 	}
 }
 
-func newPolicyExceptionListCmd() *cobra.Command {
+func newPolicyExceptionListCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var args policyExceptionListArgs
 	args.outputFormat = defaultPolicyExceptionListOutputFormat()
 
@@ -81,7 +83,7 @@ func newPolicyExceptionListCmd() *cobra.Command {
 				args.policyPack = posArgs[0]
 			}
 			return runPolicyExceptionList(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
-				defaultPolicyExceptionClientFactory, args)
+				newPolicyExceptionClientFactory(ws, lm), args)
 		},
 	}
 
