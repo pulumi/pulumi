@@ -274,8 +274,8 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 			return err
 		}
 		if existingStack != nil {
-			if existingStack.ConfigLocation().ManagedEnvironment != "" {
-				return cmdStack.ManagedEnvironmentNotSupportedError("pulumi new --stack")
+			if err := cmdStack.RejectManagedStack(existingStack, "`pulumi new --stack`"); err != nil {
+				return err
 			}
 			if args.escConfig {
 				return fmt.Errorf("--esc-config creates a new stack: %w",

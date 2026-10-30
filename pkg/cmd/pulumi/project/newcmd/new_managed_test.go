@@ -314,13 +314,13 @@ func TestNewExistingStackWithManagedEnvOrEscConfigFailsBeforeCopy(t *testing.T) 
 		{
 			name:       "managed",
 			managedEnv: "proj/dev",
-			err:        "pulumi new --stack is not supported on stacks with an ESC-managed environment yet",
+			err:        "`pulumi new --stack` is not supported on stacks with an ESC-managed environment yet",
 		},
 		{
 			name:       "managed with --esc-config",
 			managedEnv: "proj/dev",
 			escConfig:  true,
-			err:        "pulumi new --stack is not supported on stacks with an ESC-managed environment yet",
+			err:        "`pulumi new --stack` is not supported on stacks with an ESC-managed environment yet",
 		},
 		{
 			name:      "unmanaged with --esc-config",
