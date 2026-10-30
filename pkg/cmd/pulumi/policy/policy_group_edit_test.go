@@ -83,7 +83,7 @@ func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	resp := apitype.GetPolicyGroupResponse{
 		Name:         "production",
 		IsOrgDefault: false,
-		EntityType:   apitype.Stacks,
+		EntityType:   apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:         apitype.PolicyGroupModeAudit,
 	}
 	c := &mockPolicyGroupEditClient{getResp: resp}
@@ -106,7 +106,6 @@ func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	assert.Equal(t, "production", c.gotGetGroup)
 	assert.Equal(t, `Name:                  production
 Org default:           no
-Entity type:           stacks
 Mode:                  audit
 Applied policy packs:  0
 Stacks:                0
@@ -119,7 +118,7 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 
 	c := &mockPolicyGroupEditClient{getResp: apitype.GetPolicyGroupResponse{
 		Name:       "production",
-		EntityType: apitype.Stacks,
+		EntityType: apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:       apitype.PolicyGroupModePreventative,
 	}}
 
@@ -162,6 +161,15 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 	assert.Equal(t, []string{"prod-policies"}, c.updateGroups)
 	assert.Equal(t, 1, c.getCalls)
 	assert.Equal(t, "production", c.gotGetGroup)
+	assert.JSONEq(t, `{
+		"name": "production",
+		"isOrgDefault": false,
+		"entityType": "stacks",
+		"mode": "preventative",
+		"stacks": [],
+		"appliedPolicyPacks": [],
+		"accounts": []
+	}`, buf.String())
 }
 
 func TestPolicyGroupEdit_NoFlagsChanged(t *testing.T) {

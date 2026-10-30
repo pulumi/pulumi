@@ -1536,10 +1536,10 @@ func (ctx *Context) readPackageResource(
 }
 
 // ExistsResource checks whether a resource with the given type and ID exists, using the specified package
-// reference, which may be empty. It returns a BoolOutput that resolves to true if the resource exists, false
-// otherwise.
+// reference, which may be empty. The ID is the provider ID used to look the resource up, as for an import. It
+// returns a BoolOutput that resolves to true if the resource exists, false otherwise.
 func (ctx *Context) ExistsResource(
-	t string, id IDInput, props Input, packageRef string, opts ...ResourceOption,
+	t string, id StringInput, props Input, packageRef string, opts ...ResourceOption,
 ) BoolOutput {
 	output := ctx.newOutput(reflect.TypeFor[BoolOutput]())
 
@@ -1582,7 +1582,7 @@ func (ctx *Context) ExistsResource(
 		}
 
 		// Await the ID.
-		idToCheck, known, _, err := id.ToIDOutput().awaitID(context.TODO())
+		idToCheck, known, _, _, err := internal.AwaitOutput(context.TODO(), id.ToStringOutput())
 		if err != nil {
 			internal.RejectOutput(output, err)
 			return
@@ -1616,7 +1616,7 @@ func (ctx *Context) ExistsResource(
 		logging.V(9).Infof("ExistsResource(%s): RPC call being made", t)
 		resp, err := ctx.state.monitor.ExistsResource(ctx.ctx, &pulumirpc.ExistsResourceRequest{
 			Type:              t,
-			Id:                string(idToCheck),
+			Id:                idToCheck.(string),
 			Parent:            parentURN,
 			Properties:        rpcProps,
 			Provider:          providerRef,

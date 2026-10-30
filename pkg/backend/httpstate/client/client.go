@@ -1513,13 +1513,19 @@ type CreateUpdateDetails struct {
 	IsNeoIntegrationEnabled bool
 }
 
+// UpdateRequestOptions carries optional fields of the update program request.
+type UpdateRequestOptions struct {
+	// Environment is the managed ESC environment content the update was evaluated against; nil is omitted.
+	Environment *apitype.UpdateProgramEnvironment
+}
+
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
 // requires that the Pulumi program is uploaded, the provided getContents callback will be invoked to fetch the
 // contents of the Pulumi program.
 func (pc *Client) CreateUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
 	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
-	dryRun bool, coherenceWindow string,
+	dryRun bool, coherenceWindow string, reqOpts UpdateRequestOptions,
 ) (UpdateIdentifier, CreateUpdateDetails, error) {
 	// First create the update program request.
 	wireConfig := make(map[string]apitype.ConfigValue)
@@ -1556,6 +1562,7 @@ func (pc *Client) CreateUpdate(
 		},
 		Metadata:        m,
 		CoherenceWindow: coherenceWindow,
+		Environment:     reqOpts.Environment,
 	}
 
 	// Create the initial update object.
@@ -1633,7 +1640,7 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 func (pc *Client) BeginUpdate(
 	ctx context.Context, kind apitype.UpdateKind, stack StackIdentifier, proj *workspace.Project,
 	cfg config.Map, m apitype.UpdateMetadata, opts engine.UpdateOptions,
-	tags map[apitype.StackTagName]string, dryRun bool, coherenceWindow string,
+	tags map[apitype.StackTagName]string, dryRun bool, coherenceWindow string, reqOpts UpdateRequestOptions,
 ) (*apitype.BeginUpdateResponse, error) {
 	if err := validation.ValidateStackTags(tags); err != nil {
 		return nil, fmt.Errorf("validating stack properties: %w", err)
@@ -1670,6 +1677,7 @@ func (pc *Client) BeginUpdate(
 		},
 		Metadata:        m,
 		CoherenceWindow: coherenceWindow,
+		Environment:     reqOpts.Environment,
 	}
 
 	req := apitype.BeginUpdateRequest{
@@ -2135,14 +2143,6 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Metadata:    metadata,
 	}
 
-	// Print a publishing message. We have to handle the case where an older version of pulumi/policy
-	// is in use, which does not provide  a version tag.
-	var versionMsg string
-	if analyzerInfo.Version != "" {
-		versionMsg = " - version " + analyzerInfo.Version
-	}
-	fmt.Printf("Publishing %q%s to %q\n", analyzerInfo.Name, versionMsg, orgName)
-
 	var resp apitype.CreatePolicyPackResponse
 	err := pc.restCall(ctx, "POST", publishPolicyPackPath(orgName), nil, req, &resp)
 	if err != nil {
@@ -2177,7 +2177,6 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	version := analyzerInfo.Version
 	if version == "" {
 		version = strconv.Itoa(resp.Version)
-		fmt.Printf("Published as version %s\n", version)
 	}
 	err = pc.restCall(ctx, "POST",
 		publishPolicyPackPublishComplete(orgName, analyzerInfo.Name, version), nil, nil, nil)
@@ -2274,6 +2273,19 @@ func (pc *Client) GetPolicyPackSchema(ctx context.Context, orgName,
 		return nil, fmt.Errorf("Retrieving policy pack config schema failed: %w", err)
 	}
 	return &resp, nil
+}
+
+// GetPolicyPack returns the details of a single version of a Policy Pack in the given organization.
+func (pc *Client) GetPolicyPack(
+	ctx context.Context, orgName, policyPackName, versionTag string,
+) (apitype.GetPolicyPackResponse, error) {
+	path := fmt.Sprintf("/api/orgs/%s/policypacks/%s/versions/%s",
+		url.PathEscape(orgName), url.PathEscape(policyPackName), url.PathEscape(versionTag))
+	var resp apitype.GetPolicyPackResponse
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return apitype.GetPolicyPackResponse{}, fmt.Errorf("getting policy pack: %w", err)
+	}
+	return resp, nil
 }
 
 // DisablePolicyPack disables a `PolicyPack` to the Pulumi organization. If policyGroup is not empty,

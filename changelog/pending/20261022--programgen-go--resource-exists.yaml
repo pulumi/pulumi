@@ -1,0 +1,4 @@
+component: programgen/go
+kind: feat
+body: Support `resourceExists` in generated Go programs
+time: 2026-10-22T14:44:10.776448+02:00

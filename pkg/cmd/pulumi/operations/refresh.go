@@ -233,6 +233,9 @@ func NewRefreshCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := rejectConfigFlagsOnManagedStack(s, configArray, configFile); err != nil {
+				return err
+			}
 
 			if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path, configFile); err != nil {
 				return err

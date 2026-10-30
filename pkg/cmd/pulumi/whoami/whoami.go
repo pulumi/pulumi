@@ -22,13 +22,13 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -68,10 +68,6 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 			ctx := cmd.Context()
 			stdout := cmd.OutOrStdout()
 
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
-
 			cwd, err := os.Getwd()
 			if err != nil {
 				return fmt.Errorf("getting current working directory: %w", err)
@@ -83,9 +79,13 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 				return err
 			}
 
-			b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
+			b, err := cmdBackend.NonInteractiveCurrentBackend(
+				httpstate.ContextWithoutAgentSignup(ctx), ws, lm, project)
 			if err != nil {
 				return err
+			}
+			if b == nil {
+				return backenderr.LoginRequiredError{}
 			}
 
 			name, orgs, tokenInfo, err := b.CurrentUser()

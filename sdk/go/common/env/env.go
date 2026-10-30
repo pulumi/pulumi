@@ -79,6 +79,9 @@ var SkipNewCredentialsCheck = env.Bool("SKIP_NEW_CREDENTIALS_CHECK",
 	"Skips the best-effort cloud credentials check that `pulumi new` runs after "+
 		"creating a project for providers that opt in through their schema.")
 
+var EnableAutomaticAgentSignup = env.Bool("ENABLE_AUTOMATIC_AGENT_SIGNUP",
+	"Automatically create a temporary Pulumi Cloud account when an AI agent runs the CLI without credentials.")
+
 var SkipConfirmations = env.Bool("SKIP_CONFIRMATIONS",
 	`Whether or not confirmation prompts should be skipped. This should be used by pass any requirement
 that a --yes parameter has been set for non-interactive scenarios.

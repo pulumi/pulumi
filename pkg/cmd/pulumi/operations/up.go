@@ -171,6 +171,9 @@ func NewUpCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		if err := rejectConfigFlagsOnManagedStack(s, configArray, configFile); err != nil {
+			return err
+		}
 
 		// Save any config values passed via flags.
 		if err := parseAndSaveConfigArray(ctx, cmdutil.Diag(), ws, s, configArray, path, configFile); err != nil {
@@ -386,6 +389,11 @@ func NewUpCmd() *cobra.Command {
 		if stackName != "" {
 			if s, name, description, err = newcmd.GetStack(ctx, b, stackName, opts.Display); err != nil {
 				return err
+			}
+			if s != nil {
+				if err = rejectTemplateUpOnManagedStack(s); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -604,7 +612,7 @@ func NewUpCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.\n" +
 			"\n" +
 			"Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary\n" +
-			" project is created, deployed, and then deleted, leaving only the stack state.",
+			"project is created, deployed, and then deleted, leaving only the stack state.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance

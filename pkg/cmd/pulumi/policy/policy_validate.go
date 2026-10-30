@@ -17,24 +17,55 @@ package policy
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/spf13/cobra"
 )
 
-func newPolicyValidateCmd() *cobra.Command {
+type policyValidateResult struct {
+	OrganizationName string `json:"organizationName"`
+	Name             string `json:"name"`
+	VersionTag       string `json:"versionTag"`
+	Valid            bool   `json:"valid"`
+}
+
+type policyValidateRenderFunc func(w io.Writer, result policyValidateResult) error
+
+func renderPolicyValidateText(w io.Writer, result policyValidateResult) error {
+	fmt.Fprintf(w, "Policy pack %s/%s version %s configuration is valid.\n",
+		result.OrganizationName, result.Name, result.VersionTag)
+	return nil
+}
+
+func renderPolicyValidateJSON(w io.Writer, result policyValidateResult) error {
+	return ui.FprintJSON(w, result)
+}
+
+func newPolicyValidateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var argConfig string
+	outputFormat := outputflag.OutputFlag[policyValidateRenderFunc]{
+		RenderForTerminal: renderPolicyValidateText,
+		RenderJSON:        renderPolicyValidateJSON,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "validate-config",
 		Short: "Validate a Policy Pack configuration",
-		Long:  "Validate a Policy Pack configuration against the configuration schema of the specified version.",
+		Long: "Validate a Policy Pack configuration against the configuration schema of the specified version.\n" +
+			"\n" +
+			"Examples:\n" +
+			"  pulumi policy validate-config acme/aws-guardrails 3 --config config.json\n" +
+			"  pulumi policy validate-config acme/aws-guardrails 3 --config config.json --output json",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			policyPack, err := requirePolicyPack(ctx, cliArgs[0], cmdBackend.DefaultLoginManager)
+			policyPack, err := requirePolicyPack(ctx, ws, lm, cliArgs[0])
 			if err != nil {
 				return err
 			}
@@ -60,8 +91,12 @@ func newPolicyValidateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintln(cmd.OutOrStdout(), "Policy Pack configuration is valid.")
-			return nil
+			return outputFormat.Get()(cmd.OutOrStdout(), policyValidateResult{
+				OrganizationName: policyPack.Ref().OrgName(),
+				Name:             string(policyPack.Ref().Name()),
+				VersionTag:       *version,
+				Valid:            true,
+			})
 		},
 	}
 
@@ -77,5 +112,6 @@ func newPolicyValidateCmd() *cobra.Command {
 		"The file path for the Policy Pack configuration file")
 	cmd.MarkFlagRequired("config") //nolint:errcheck
 
+	outputflag.VarP(cmd.Flags(), &outputFormat)
 	return cmd
 }

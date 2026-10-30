@@ -1,5 +1,57 @@
 # Changelog
 
+## 3.273.0 (2026-10-28)
+
+### Features
+
+- [auto] Add `up` to the generated automation APIs for NodeJS, Python and Go [#25055](https://github.com/pulumi/pulumi/pull/25055)
+- [auto] Add `logs` commands to the generated automation APIs for NodeJS, Python and Go [#25065](https://github.com/pulumi/pulumi/pull/25065)
+- [pcl] Add a `resourceExists` builtin that checks whether a resource with a given ID exists without adopting it into the stack [#25321](https://github.com/pulumi/pulumi/pull/25321)
+- [sdkgen/nodejs] Generate static `exists` methods that check whether a resource with a given ID exists without adopting it into the stack [#25329](https://github.com/pulumi/pulumi/pull/25329)
+- [programgen/nodejs] Support `resourceExists` in generated Node.js programs [#25329](https://github.com/pulumi/pulumi/pull/25329)
+
+### Bug Fixes
+
+- [backend/service] Link to the Pulumi Cloud console root instead of a page named after the user in `pulumi login`, `pulumi whoami --verbose`, and `pulumi about`, so the link no longer opens a Not Found page for users without an organization of that name [#25305](https://github.com/pulumi/pulumi/pull/25305)
+- [cli/package] Print the Go import path of the generated SDK when the schema sets a Go module path or import base path [#25391](https://github.com/pulumi/pulumi/pull/25391)
+- [programgen/go] Type `ApplyT` parameters over optional objects and enums as pointers [#25337](https://github.com/pulumi/pulumi/pull/25337)
+- [pcl] Allow `length` of a conditional expression whose branches are `null` and a list [#25327](https://github.com/pulumi/pulumi/pull/25327)
+- [programgen/nodejs,python] Parenthesize nested conditional expressions in generated TypeScript and Python programs [#25331](https://github.com/pulumi/pulumi/pull/25331)
+- [cli] Make `pulumi login` in agent mode log in through the browser even when shared agent credentials are valid, instead of reusing the ephemeral agent account [#25349](https://github.com/pulumi/pulumi/pull/25349)
+- [engine] Pass only inputs, not state, to the provider's `Read` when checking whether a resource exists [#25321](https://github.com/pulumi/pulumi/pull/25321)
+- [programgen/go] Fix Go program generation for a tuple of optional strings [#25381](https://github.com/pulumi/pulumi/pull/25381)
+- [cli/install] Stop the provider plugin that `pulumi install` starts for local SDK generation [#25392](https://github.com/pulumi/pulumi/pull/25392)
+- [cli] Fix `pulumi package add` failing with "version must be provided when package supports packing" when a provider's schema omits its version [#25393](https://github.com/pulumi/pulumi/pull/25393)
+- [cli/env] Show formatted diagnostics when `pulumi env open` or `pulumi env run` cannot evaluate an environment [#25397](https://github.com/pulumi/pulumi/pull/25397)
+- [cli] Stop `pulumi whoami` from creating an agent account when not logged in [#25394](https://github.com/pulumi/pulumi/pull/25394)
+- [pcl] Fix `hideDiffs` to resolve resource output properties instead of input properties [#25399](https://github.com/pulumi/pulumi/pull/25399)
+- [cli/display] Fix secret maps and arrays leaking into JSON preview and update output [#25400](https://github.com/pulumi/pulumi/pull/25400)
+
+### Improvements
+
+- [cli/policy] Include match rules and empty fields in `pulumi policy group get`, `new`, and `edit` JSON output [#25416](https://github.com/pulumi/pulumi/pull/25416)
+- [cli/policy] Deprecate `--entity-type` on `pulumi policy group new` in favor of `--mode` and stop showing entity type in `policy group` console output [#25416](https://github.com/pulumi/pulumi/pull/25416)
+- [cli/policy] Use the API shape in `pulumi policy issue ls`, `pulumi policy issue get` and `pulumi policy compliance ls` JSON output [#25416](https://github.com/pulumi/pulumi/pull/25416)
+- [cli] Remove the deprecated `pulumi watch` command [#25323](https://github.com/pulumi/pulumi/pull/25323)
+- [cli] Remove the deprecated bare `pulumi logs` command [#25322](https://github.com/pulumi/pulumi/pull/25322)
+- [cli] Stop automatically creating Pulumi Cloud accounts for AI agents unless `PULUMI_ENABLE_AUTOMATIC_AGENT_SIGNUP` is set [#25402](https://github.com/pulumi/pulumi/pull/25402)
+- [sdk/go] Alias the policy API types in `apitype` to the Pulumi Cloud SDK, changing some of their field names and types to match it [#25416](https://github.com/pulumi/pulumi/pull/25416)
+
+### Miscellaneous
+
+- [sdk/dotnet] Upgrade dotnet to v3.115.0 [#25178](https://github.com/pulumi/pulumi/pull/25178)
+- [yaml] Upgrade yaml to v1.38.12 [#25178](https://github.com/pulumi/pulumi/pull/25178)
+- [hcl] Upgrade hcl to v0.18.6 [#25178](https://github.com/pulumi/pulumi/pull/25178)
+- [java] Upgrade java to v1.37.7 [#25178](https://github.com/pulumi/pulumi/pull/25178)
+- [sdk/dotnet] Upgrade dotnet to v3.116.0 [#25363](https://github.com/pulumi/pulumi/pull/25363)
+- [yaml] Upgrade yaml to v1.38.13 [#25363](https://github.com/pulumi/pulumi/pull/25363)
+- [hcl] Upgrade hcl to v0.18.8 [#25363](https://github.com/pulumi/pulumi/pull/25363)
+- [sdk] Add managed ESC environment fields to apitypes [#25372](https://github.com/pulumi/pulumi/pull/25372)
+- [sdk/go] Add `workspace.Environment.DefinitionNode` for stack-managed ESC environments [#25374](https://github.com/pulumi/pulumi/pull/25374)
+- [sdk/dotnet] Upgrade dotnet to v3.116.2 [#25426](https://github.com/pulumi/pulumi/pull/25426)
+- [yaml] Upgrade yaml to v1.38.15 [#25426](https://github.com/pulumi/pulumi/pull/25426)
+- [hcl] Upgrade hcl to v0.19.0 [#25426](https://github.com/pulumi/pulumi/pull/25426)
+- [java] Upgrade java to v1.38.0 [#25426](https://github.com/pulumi/pulumi/pull/25426)
 ## 3.272.0 (2026-10-22)
 
 ### Features

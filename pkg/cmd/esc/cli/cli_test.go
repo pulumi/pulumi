@@ -1077,6 +1077,7 @@ func (c *testPulumiClient) OpenEnvironmentDraft(
 	projectName string,
 	envName string,
 	changeRequestID string,
+	revision *int,
 	duration time.Duration,
 ) (string, []client.EnvironmentDiagnostic, error) {
 	envName = envName + "_DRAFT"
@@ -1100,6 +1101,24 @@ func (c *testPulumiClient) CheckYAMLEnvironment(
 	opts ...client.CheckYAMLOption,
 ) (*esc.Environment, []client.EnvironmentDiagnostic, error) {
 	return c.checkEnvironment(ctx, orgName, "<yaml>", yaml, opts)
+}
+
+func (c *testPulumiClient) EncryptSecrets(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	plaintexts [][]byte,
+) ([]string, error) {
+	ciphertexts := make([]string, len(plaintexts))
+	for i, plaintext := range plaintexts {
+		ciphertext, err := eval.EncryptSecret(ctx, rot128{}, plaintext)
+		if err != nil {
+			return nil, err
+		}
+		ciphertexts[i] = base64.StdEncoding.EncodeToString(ciphertext)
+	}
+	return ciphertexts, nil
 }
 
 func (c *testPulumiClient) OpenYAMLEnvironment(
@@ -2461,4 +2480,36 @@ func TestEnvDraftReasonSubmits(t *testing.T) {
 	require.NotNil(t, subs[0].description)
 	assert.Equal(t, "Rotate foo", *subs[0].description)
 	assert.Nil(t, subs[1].description)
+}
+
+func TestEnvChangeRequestRejectsNonEnvironment(t *testing.T) {
+	t.Setenv("PULUMI_API", "")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	_, testcase, err := loadTestcase(filepath.Join("testdata", "env-change-request.yaml"))
+	require.NoError(t, err)
+
+	run := func(script string) (string, error) {
+		var stdout, stderr bytes.Buffer
+		err := testcase.exec.runScript(script, &exec.Cmd{
+			Path:   "<script>",
+			Args:   []string{"<script>"},
+			Stdin:  bytes.NewReader(nil),
+			Stdout: &stdout,
+			Stderr: &stderr,
+		})
+		return stderr.String(), err
+	}
+
+	_, err = run("esc env init default/test\nesc env set default/test foo bar --draft\n")
+	require.NoError(t, err)
+
+	id := "00000000-0000-0000-0000-000000000000"
+	testcase.exec.client.changeRequests[id].Entity.EntityType = "policy_exceptions"
+
+	for _, cmd := range []string{"get", "diff", "rebase"} {
+		stderr, err := run("esc env change-request " + cmd + " " + id + "\n")
+		assert.Error(t, err, cmd)
+		assert.Contains(t, stderr, "is not an environment draft", cmd)
+	}
 }

@@ -271,6 +271,8 @@ type Client interface {
 	// environment. The opened environment will be available for the indicated duration, after which it
 	// will expire.
 	//
+	// If revision is non-nil, the draft is opened at that change request revision rather than the latest.
+	//
 	// If the environment draft contains errors, the open will fail with diagnostics.
 	OpenEnvironmentDraft(
 		ctx context.Context,
@@ -278,6 +280,7 @@ type Client interface {
 		projectName string,
 		envName string,
 		changeRequestID string,
+		revision *int,
 		duration time.Duration,
 	) (string, []EnvironmentDiagnostic, error)
 
@@ -301,6 +304,17 @@ type Client interface {
 		yaml []byte,
 		opts ...CheckYAMLOption,
 	) (*esc.Environment, []EnvironmentDiagnostic, error)
+
+	// EncryptSecrets encrypts each plaintext with the key of the environment projectName/envName and returns
+	// the ciphertexts in the same order. The ciphertexts are valid as the value of fn::secret.ciphertext
+	// in that environment only.
+	EncryptSecrets(
+		ctx context.Context,
+		orgName string,
+		projectName string,
+		envName string,
+		plaintexts [][]byte,
+	) ([]string, error)
 
 	// OpenYAMLEnvironment evaluates the given environment YAML within the context of org orgName and
 	// returns the ID of the opened environment. The opened environment will be available for the indicated
@@ -960,8 +974,9 @@ func (pc *client) ListChangeRequests(
 	continuationToken string,
 ) ([]ChangeRequest, string, error) {
 	queryObj := struct {
+		EntityType        string `url:"entityType"`
 		ContinuationToken string `url:"continuationToken,omitempty"`
-	}{ContinuationToken: continuationToken}
+	}{EntityType: "environment", ContinuationToken: continuationToken}
 
 	var resp ListChangeRequestsResponse
 	path := fmt.Sprintf("/api/change-requests/%v", orgName)
@@ -1105,8 +1120,7 @@ func (pc *client) OpenEnvironment(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok &&
-			diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -1120,14 +1134,17 @@ func (pc *client) OpenEnvironmentDraft(
 	projectName string,
 	envName string,
 	changeRequestID string,
+	revision *int,
 	duration time.Duration,
 ) (string, []EnvironmentDiagnostic, error) {
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/drafts/%v/open", orgName, projectName, envName, changeRequestID)
 
 	queryObj := struct {
 		Duration string `url:"duration"`
+		Revision *int   `url:"revision,omitempty"`
 	}{
 		Duration: duration.String(),
+		Revision: revision,
 	}
 
 	var resp struct {
@@ -1138,8 +1155,7 @@ func (pc *client) OpenEnvironmentDraft(
 		ErrorResponse: &errResp,
 	})
 	if err != nil {
-		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok &&
-			diags.Code == http.StatusBadRequest && len(diags.Diagnostics) != 0 {
+		if diags, ok := errors.AsType[*EnvironmentErrorResponse](err); ok && len(diags.Diagnostics) != 0 {
 			return "", diags.Diagnostics, nil
 		}
 		return "", nil, err
@@ -1175,6 +1191,37 @@ func (pc *client) RotateEnvironment(
 		return nil, nil, err
 	}
 	return &resp, nil, nil
+}
+
+func (pc *client) EncryptSecrets(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	plaintexts [][]byte,
+) ([]string, error) {
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/encrypt-secrets", orgName, projectName, envName)
+
+	reqObj := struct {
+		Plaintexts []string `json:"plaintexts"`
+	}{
+		Plaintexts: make([]string, len(plaintexts)),
+	}
+	for i, plaintext := range plaintexts {
+		reqObj.Plaintexts[i] = base64.StdEncoding.EncodeToString(plaintext)
+	}
+
+	var resp struct {
+		Ciphertexts []string `json:"ciphertexts"`
+	}
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, reqObj, &resp); err != nil {
+		return nil, err
+	}
+	if len(resp.Ciphertexts) != len(plaintexts) {
+		return nil, fmt.Errorf(
+			"encrypting secrets: expected %d ciphertexts, got %d", len(plaintexts), len(resp.Ciphertexts))
+	}
+	return resp.Ciphertexts, nil
 }
 
 func (pc *client) CheckYAMLEnvironment(

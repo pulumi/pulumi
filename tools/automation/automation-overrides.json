@@ -30,7 +30,6 @@
         {
             "path": ["up"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -213,7 +212,7 @@
         },
         {
             "path": ["logs"],
-            "propagate": true,
+            "propagate": false,
             "exclude": true,
             "flags": {}
         },
@@ -228,12 +227,6 @@
             "flags": {}
         },
         {
-            "path": ["org", "audit-log"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["org", "member"],
             "propagate": true,
             "exclude": true,
@@ -241,12 +234,6 @@
         },
         {
             "path": ["org", "role"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "usage"],
             "propagate": true,
             "exclude": true,
             "flags": {}
@@ -289,12 +276,6 @@
         },
         {
             "path": ["replay-events"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["schema"],
             "propagate": true,
             "exclude": true,
             "flags": {}
