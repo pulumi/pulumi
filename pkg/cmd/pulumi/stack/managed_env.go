@@ -136,7 +136,7 @@ const managedEnvironmentPlaceholder = "values:\n  pulumiConfig: {}"
 
 func newManagedEnvironmentPlaceholder() *workspace.Environment {
 	var env workspace.Environment
-	// values stays block style: yamlutil restyles only an empty flow collection that gains content.
+	// values stays block style: yamlutil restyles only an empty flow mapping that gains content.
 	err := yaml.Unmarshal([]byte(managedEnvironmentPlaceholder), &env)
 	contract.AssertNoErrorf(err, "parsing the managed environment placeholder")
 	return &env
