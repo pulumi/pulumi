@@ -2977,15 +2977,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	// At this point we're going to forward these properties to the rest of the engine and potentially to providers. As
-	// we add features to the code above (most notably transforms) we could end up with more instances of `OutputValue`
-	// than the rest of the system historically expects. To minimize the disruption we downgrade `OutputValue`s with no
-	// dependencies down to `Computed` and `Secret` or their plain values. We only do this for non-remote resources.
-	// Remote resources already deal with `OutputValue`s and even though it would be more consistent to downgrade them
-	// here it would be a break change.
-	if !remote {
-		props = downgradeOutputValues(props)
-	}
+	// Preserve any OutputValues through to the rest of the engine. Providers that negotiate
+	// `AcceptsOutputsInCheck` will receive them intact; otherwise `provider.Check` downgrades on the wire
+	// and re-hydrates the response with the union of input dependencies.
 
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
@@ -3596,35 +3590,6 @@ func decorateResourceSpans(span opentracing.Span, method string, req, resp any, 
 	case "/pulumirpc.ResourceMonitor/RegisterResource":
 		span.SetTag("pulumi-decorator", req.(*pulumirpc.RegisterResourceRequest).Type)
 	}
-}
-
-// downgradeOutputValues recursively strips dependency information from a [property.Map].
-func downgradeOutputValues(m property.Map) property.Map {
-	result := map[string]property.Value{}
-	for k, v := range m.All {
-		result[k] = downgradeOutputPropertyValue(v)
-	}
-	return property.NewMap(result)
-}
-
-func downgradeOutputPropertyValue(v property.Value) property.Value {
-	v = v.WithDependencies(nil)
-	switch {
-	case v.IsMap():
-		v = property.WithGoValue(v, downgradeOutputValues(v.AsMap()))
-	case v.IsArray():
-		arr := v.AsArray().AsSlice()
-		newArr := make([]property.Value, len(arr))
-		for i, elem := range arr {
-			newArr[i] = downgradeOutputPropertyValue(elem)
-		}
-		v = property.WithGoValue(v, property.NewArray(newArr))
-	case v.IsResourceReference():
-		ref := v.AsResourceReference()
-		ref.ID = downgradeOutputPropertyValue(ref.ID)
-		v = property.WithGoValue(v, ref)
-	}
-	return v
 }
 
 // upgradeOutputValues ensures each value in m carries at least the dependencies recorded
