@@ -380,6 +380,11 @@ func managedConfigEnvCmd(t *testing.T, stackYAML string, saved *string) *configE
 			return &esc.Environment{}, nil, nil
 		},
 		saved)
+	withManagedEnvironment(t, cmd)
+	return cmd
+}
+
+func withManagedEnvironment(t *testing.T, cmd *configEnvCmd) {
 	requireStack := cmd.requireStack
 	cmd.requireStack = func(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
 		name string, lopt cmdStack.LoadOption, opts display.Options, configFile string,
@@ -391,7 +396,6 @@ func managedConfigEnvCmd(t *testing.T, stackYAML string, saved *string) *configE
 		}
 		return s, nil
 	}
-	return cmd
 }
 
 func TestManagedConfigEnvCommands(t *testing.T) {
