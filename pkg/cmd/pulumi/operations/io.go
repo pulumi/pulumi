@@ -36,19 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func rejectConfigFlagsOnManagedStack(s backend.Stack, configArray []string, configFile string) error {
-	if s.ConfigLocation().ManagedEnvironment == "" {
-		return nil
-	}
-	if len(configArray) != 0 {
-		return cmdStack.ManagedEnvironmentNotSupportedError("--config")
-	}
-	if configFile != "" {
-		return cmdStack.ManagedEnvironmentNotSupportedError("--config-file")
-	}
-	return nil
-}
-
 func rejectTemplateUpOnManagedStack(s backend.Stack) error {
 	if s.ConfigLocation().ManagedEnvironment != "" {
 		return cmdStack.ManagedEnvironmentNotSupportedError("pulumi up <template>")

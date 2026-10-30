@@ -234,18 +234,6 @@ environment:
 	}
 }
 
-func TestRejectConfigFileOnManagedStack(t *testing.T) {
-	t.Parallel()
-
-	managed := managedTestStack(t, backend.StackConfigLocation{ManagedEnvironment: "proj/dev"})
-	unmanaged := managedTestStack(t, backend.StackConfigLocation{})
-
-	require.EqualError(t, rejectConfigFileOnManagedStack(managed, "Pulumi.other.yaml"),
-		"--config-file is not supported on stacks with an ESC-managed environment yet")
-	require.NoError(t, rejectConfigFileOnManagedStack(managed, ""))
-	require.NoError(t, rejectConfigFileOnManagedStack(unmanaged, "Pulumi.other.yaml"))
-}
-
 func managedStacksLoginManager(managed string) (cmdBackend.LoginManager, pkgWorkspace.Context) {
 	be := &backend.MockBackend{
 		ParseStackReferenceF: func(name string) (backend.StackReference, error) {

@@ -188,7 +188,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	if err != nil {
 		return err
 	}
-	if err := rejectConfigFileOnManagedStack(*stack, *cmd.configFile); err != nil {
+	if err := cmdStack.RejectConfigFlagsOnManagedStack(*stack, nil, *cmd.configFile); err != nil {
 		return err
 	}
 

@@ -420,7 +420,7 @@ func newConfigRemoveCmd(
 			if err != nil {
 				return err
 			}
-			if err := rejectConfigFileOnManagedStack(stack, *configFile); err != nil {
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(stack, nil, *configFile); err != nil {
 				return err
 			}
 
@@ -505,7 +505,7 @@ func newConfigRemoveAllCmd(
 			if err != nil {
 				return err
 			}
-			if err := rejectConfigFileOnManagedStack(stack, *configFile); err != nil {
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(stack, nil, *configFile); err != nil {
 				return err
 			}
 
@@ -760,7 +760,7 @@ func newConfigSetCmd(
 			if err != nil {
 				return err
 			}
-			if err := rejectConfigFileOnManagedStack(s, *configFile); err != nil {
+			if err := cmdStack.RejectConfigFlagsOnManagedStack(s, nil, *configFile); err != nil {
 				return err
 			}
 
