@@ -1611,6 +1611,7 @@ class API:
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
+        override_import: bool = False,
         path: bool = False,
         plaintext: bool = False,
         raw: bool = False,
@@ -1639,6 +1640,7 @@ class API:
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values when listing config instead of displaying blinded values
         :param stack: The name of the stack to operate on. Defaults to the current stack
+        :param override_import: On a stack with an ESC-managed environment, set a key that an imported environment defines in the stack's own environment, overriding the imported value
         :param path: The key contains a path to a property in a map or list to set
         :param plaintext: Save the value as plaintext (unencrypted)
         :param raw: When setting the value through stdin, do not trim trailing newlines from the value
@@ -1684,6 +1686,8 @@ class API:
             __flags.append("--show-secrets")
         if stack is not None:
             __flags.extend(["--stack", str(stack)])
+        if override_import:
+            __flags.append("--override-import")
         if path:
             __flags.append("--path")
         if plaintext:
@@ -1729,6 +1733,7 @@ class API:
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
+        override_import: bool = False,
         path: bool = False,
         plaintext: Optional[list[str]] = None,
         secret: Optional[list[str]] = None,
@@ -1755,6 +1760,7 @@ class API:
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values when listing config instead of displaying blinded values
         :param stack: The name of the stack to operate on. Defaults to the current stack
+        :param override_import: On a stack with an ESC-managed environment, set keys that an imported environment defines in the stack's own environment, overriding the imported values
         :param path: Parse the keys as paths in a map or list rather than raw strings
         :param plaintext: Marks a value as plaintext (unencrypted)
         :param secret: Marks a value as secret to be encrypted
@@ -1798,6 +1804,8 @@ class API:
             __flags.append("--show-secrets")
         if stack is not None:
             __flags.extend(["--stack", str(stack)])
+        if override_import:
+            __flags.append("--override-import")
         if path:
             __flags.append("--path")
         for __item in plaintext or []:
@@ -8113,6 +8121,7 @@ class API:
         config_path: bool = False,
         description: Optional[str] = None,
         dir: Optional[str] = None,
+        esc_config: bool = False,
         force: bool = False,
         generate_only: bool = False,
         language: Optional[str] = None,
@@ -8147,6 +8156,7 @@ class API:
         :param config_path: Config keys contain a path to a property in a map or list to set
         :param description: The project description; if not specified, a prompt will request it
         :param dir: The location to place the generated project; if not specified, the current directory is used
+        :param esc_config: [EXPERIMENTAL] Create an ESC environment, managed by the stack, that holds the stack's configuration. ESC encrypts secret config values; --secrets-provider applies only to secrets in the stack's state
         :param force: Forces content to be generated even if it would change existing files
         :param generate_only: Generate the project only; do not create a stack, save config, or install dependencies
         :param language: Retired: use 'pulumi neo -p "prompt"' instead.
@@ -8198,6 +8208,8 @@ class API:
             __flags.extend(["--description", str(description)])
         if dir is not None:
             __flags.extend(["--dir", str(dir)])
+        if esc_config:
+            __flags.append("--esc-config")
         if force:
             __flags.append("--force")
         if generate_only:

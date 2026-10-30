@@ -50,6 +50,8 @@ type Options struct {
 	Open bool
 	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
+	// On a stack with an ESC-managed environment, set keys that an imported environment defines in the stack's own environment, overriding the imported values
+	OverrideImport bool
 	// Parse the keys as paths in a map or list rather than raw strings
 	Path bool
 	// Marks a value as plaintext (unencrypted)
@@ -154,6 +156,13 @@ func Open(v bool) Option {
 func OtelTraces(v string) Option {
 	return func(o *Options) {
 		o.OtelTraces = v
+	}
+}
+
+// OverrideImport returns an Option that sets OverrideImport.
+func OverrideImport(v bool) Option {
+	return func(o *Options) {
+		o.OverrideImport = v
 	}
 }
 
