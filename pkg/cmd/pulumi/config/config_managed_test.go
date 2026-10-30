@@ -294,8 +294,8 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 			name: "set of an imported key errors",
 			set:  []string{"app:bar", "v"},
 			err: "config key app:bar is defined by imported environment proj/base; the CLI does not edit imported " +
-				"environments. Set it in that environment with `pulumi env set`, remove the import, or pass " +
-				"`--override-import` to override it in this stack's environment",
+				"environments. Set it in that environment with `pulumi env set proj/base pulumiConfig.bar <value>`, " +
+				"remove the import, or pass `--override-import` to override it in this stack's environment",
 		},
 		{
 			name:     "override writes an imported key under the import's spelling",
@@ -342,7 +342,9 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 			remove:   []string{"app:obj.items"},
 			path:     true,
 			imported: listImportEnv(),
-			err:      "config key app:obj.items is defined by imported environment proj/base",
+			err: "config key app:obj.items is defined by imported environment proj/base; the CLI does not edit " +
+				"imported environments. Remove it from that environment with " +
+				"`pulumi env rm proj/base pulumiConfig.obj.items`, or remove the import",
 		},
 		{
 			name:     "override rejects a path into an imported list under a local object",
@@ -387,13 +389,14 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 			name:   "remove of an imported key errors",
 			remove: []string{"app:bar"},
 			err: "config key app:bar is defined by imported environment proj/base; the CLI does not edit imported " +
-				"environments. Set it in that environment with `pulumi env set`, or remove the import",
+				"environments. Remove it from that environment with `pulumi env rm proj/base pulumiConfig.bar`, or " +
+				"remove the import",
 		},
 		{
 			name: "path set under an imported key errors",
 			set:  []string{"app:bar.inner", "v"},
 			path: true,
-			err:  "config key app:bar is defined by imported environment proj/base;",
+			err:  "Set it in that environment with `pulumi env set proj/base pulumiConfig.bar.inner <value>`",
 		},
 		{
 			name:     "local override is edited",

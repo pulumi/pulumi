@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -182,7 +183,7 @@ func (m *managedStore) checkImported(
 		// The local entry may be an object that ESC merges with the import, so the path can name only an imported value.
 		if value, ok := imported[local]; ok && len(subPath) > 0 && hasPath(value, subPath) {
 			if _, ok := pulumiconfig.Get(m.definition, local, subPath); !ok {
-				return nil, errRemoveImported(key, value.Trace.Def.Environment)
+				return nil, errImportedKey(key, value.Trace.Def.Environment, local, subPath, true)
 			}
 		}
 		return names, nil
@@ -213,7 +214,7 @@ func (m *managedStore) checkImported(
 				local, env, name)
 		}
 		if removing {
-			return nil, errRemoveImported(root, env)
+			return nil, errImportedKey(root, env, name, subPath, true)
 		}
 		if m.overrideImport {
 			if m.entersImportedList(name, value, subPath) {
@@ -223,9 +224,7 @@ func (m *managedStore) checkImported(
 			// The import's spelling, so the two don't become two spellings of one key with an undefined winner.
 			return []string{name}, nil
 		}
-		return nil, fmt.Errorf("config key %s is defined by imported environment %s; the CLI does not edit "+
-			"imported environments. Set it in that environment with `pulumi env set`, remove the import, or pass "+
-			"`--override-import` to override it in this stack's environment", root, env)
+		return nil, errImportedKey(root, env, name, subPath, false)
 	}
 	return names, nil
 }
@@ -263,9 +262,22 @@ func importedListPrefix(v esc.Value, path resource.PropertyPath) (resource.Prope
 	return nil, false
 }
 
-func errRemoveImported(key config.Key, env string) error {
-	return fmt.Errorf("config key %s is defined by imported environment %s; the CLI does not edit "+
-		"imported environments. Set it in that environment with `pulumi env set`, or remove the import", key, env)
+func errImportedKey(key config.Key, env, entry string, subPath resource.PropertyPath, removing bool) error {
+	envPath := "pulumiConfig." + entry
+	if len(subPath) > 0 {
+		rendered := subPath.String()
+		if !strings.HasPrefix(rendered, "[") {
+			rendered = "." + rendered
+		}
+		envPath += rendered
+	}
+	fix := fmt.Sprintf("Set it in that environment with `pulumi env set %s %s <value>`, remove the import, or pass "+
+		"`--override-import` to override it in this stack's environment", env, envPath)
+	if removing {
+		fix = fmt.Sprintf("Remove it from that environment with `pulumi env rm %s %s`, or remove the import", env, envPath)
+	}
+	return fmt.Errorf("config key %s is defined by imported environment %s; the CLI does not edit imported "+
+		"environments. %s", key, env, fix)
 }
 
 func hasPath(v esc.Value, path resource.PropertyPath) bool {
