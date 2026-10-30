@@ -1210,19 +1210,17 @@ func NewImportCmd() *cobra.Command {
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			}, imports)
-			if err != nil {
-				return err
-			}
+			// err is checked below after handling context.Canceled and writing the import file.
 
 			if generateCode && proj.Runtime.Name() != "" && finalSnap != nil {
-				validImports, err := generateImportedDefinitions(
+				validImports, err2 := generateImportedDefinitions(
 					pCtx, output, s.Ref().Name(), proj.Name, finalSnap, programGenerator, nameTable, imports,
 					protectResources)
-				if err != nil {
-					if _, ok := err.(*importer.DiagnosticsError); ok {
-						err = fmt.Errorf("internal error: %w", err)
+				if err2 != nil {
+					if _, ok := err2.(*importer.DiagnosticsError); ok {
+						err2 = fmt.Errorf("internal error: %w", err2)
 					}
-					return err
+					return err2
 				}
 
 				if validImports {
