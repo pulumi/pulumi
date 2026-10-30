@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -326,6 +327,26 @@ func TestGetPackage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetRequiredPackagesWithoutGo(t *testing.T) {
+	// FindExecutable also searches the working directory and $GOPATH/bin, so point both away from any go binary.
+	t.Setenv("PATH", t.TempDir())
+	t.Setenv("GOPATH", t.TempDir())
+
+	progDir := t.TempDir()
+	host := newLanguageHost("0.0.0.0:0", progDir, "", "")
+	_, err := host.GetRequiredPackages(t.Context(), &pulumirpc.GetRequiredPackagesRequest{
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    progDir,
+			ProgramDirectory: progDir,
+			EntryPoint:       ".",
+		},
+	})
+	var notFound *executable.ToolchainNotFoundError
+	require.ErrorAs(t, err, &notFound)
+	assert.Equal(t, "the go runtime requires Go, but 'go' was not found on your PATH. "+
+		"See https://www.pulumi.com/docs/iac/languages-sdks/go/ for installation instructions", err.Error())
 }
 
 func TestPluginsAndDependencies_moduleMode(t *testing.T) {

@@ -113,6 +113,9 @@ type Toolchain interface {
 	LinkPackages(ctx context.Context, packages map[string]string) error
 }
 
+// MinimumPythonVersion is the oldest Python the SDK supports, matching requires-python in sdk/python/pyproject.toml.
+var MinimumPythonVersion = semver.MustParse("3.10.0")
+
 func Name(tc toolchain) string {
 	switch tc {
 	case Auto:
