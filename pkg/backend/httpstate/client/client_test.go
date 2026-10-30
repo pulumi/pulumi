@@ -26,6 +26,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -2807,4 +2808,61 @@ func TestExportPolicyIssues_ClosedQuery(t *testing.T) {
 			assert.Equal(t, tt.rawQuery, rawQuery)
 		})
 	}
+}
+
+func updatePolicyIssueAgainstServer(
+	t *testing.T, issueID string, req cloudapitype.UpdatePolicyIssueRequest, respBody string,
+) (cloudapitype.GetPolicyIssueResponse, string) {
+	t.Helper()
+	var gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPatch, r.Method)
+		assert.Equal(t, "/api/orgs/acme/policyresults/issues/"+url.PathEscape(issueID), r.URL.EscapedPath())
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("reading request body: %v", err)
+			return
+		}
+		gotBody = string(b)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(respBody))
+	}))
+	t.Cleanup(server.Close)
+
+	resp, err := newMockClient(server).UpdatePolicyIssue(t.Context(), "acme", issueID, req)
+	require.NoError(t, err)
+	return resp, gotBody
+}
+
+func TestUpdatePolicyIssue(t *testing.T) {
+	t.Parallel()
+
+	status := cloudapitype.PolicyIssueStatusInProgress
+	resp, _ := updatePolicyIssueAgainstServer(t, "i/1",
+		cloudapitype.UpdatePolicyIssueRequest{Status: &status},
+		`{"policyIssue":{"id":"i/1","status":"in_progress","kind":"audit"}}`)
+
+	assert.Equal(t, cloudapitype.PolicyIssueStatusInProgress, resp.PolicyIssue.Status)
+	assert.Equal(t, cloudapitype.PolicyIssueKindAudit, resp.PolicyIssue.Kind)
+}
+
+func TestUpdatePolicyIssue_OnlySetFieldsSent(t *testing.T) {
+	t.Parallel()
+
+	p1 := cloudapitype.PolicyIssuePriorityP1
+	_, body := updatePolicyIssueAgainstServer(t, "i1",
+		cloudapitype.UpdatePolicyIssueRequest{Priority: &p1},
+		`{"policyIssue":{"id":"i1"}}`)
+
+	assert.JSONEq(t, `{"priority":"p1"}`, body)
+}
+
+func TestUpdatePolicyIssue_UnassignSendsEmptyString(t *testing.T) {
+	t.Parallel()
+
+	_, body := updatePolicyIssueAgainstServer(t, "i1",
+		cloudapitype.UpdatePolicyIssueRequest{AssignedTo: new("")},
+		`{"policyIssue":{"id":"i1"}}`)
+
+	assert.JSONEq(t, `{"assignedTo":""}`, body)
 }
