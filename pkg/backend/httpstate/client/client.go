@@ -261,7 +261,7 @@ func NewClient(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
 		diag:     d,
 		insecure: insecure,
 		restClient: &defaultRESTClient{
-			client: newDefaultHTTPClient(httpClient, apiURL),
+			client: newDefaultHTTPClient(httpClient, apiURL, d),
 		},
 	}
 }
@@ -275,18 +275,29 @@ func (pc *Client) Insecure() bool {
 // Useful for testing.
 func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 	pc.restClient = &defaultRESTClient{
-		client: newDefaultHTTPClient(httpClient, pc.apiURL),
+		client: newDefaultHTTPClient(httpClient, pc.apiURL, pc.diag),
+	}
+	return pc
+}
+
+// forThirdPartyHost marks a client built around a URL that is not the Pulumi Cloud API, so its
+// requests get neither the trace context nor the service's retry signals.
+func (pc *Client) forThirdPartyHost() *Client {
+	if rc, ok := pc.restClient.(*defaultRESTClient); ok {
+		if hc, ok := rc.client.(*defaultHTTPClient); ok {
+			hc.apiHost = ""
+		}
 	}
 	return pc
 }
 
 // newDefaultHTTPClient returns a defaultHTTPClient that sends the trace context to the host of apiURL.
-func newDefaultHTTPClient(client *http.Client, apiURL string) *defaultHTTPClient {
+func newDefaultHTTPClient(client *http.Client, apiURL string, d diag.Sink) *defaultHTTPClient {
 	var apiHost string
 	if u, err := url.Parse(apiURL); err == nil {
 		apiHost = u.Host
 	}
-	return &defaultHTTPClient{client: client, apiHost: apiHost}
+	return &defaultHTTPClient{client: client, apiHost: apiHost, warner: &retryWaitWarner{diag: d}}
 }
 
 // WithRefresh wires an OAuth refresh token + a credentials-writeback callback into this client.
@@ -3414,7 +3425,7 @@ func (pc *Client) DownloadTemplate(ctx context.Context, downloadURL string) (io.
 	} else {
 		// Set pc to the new client. This only sets the local variable. It is very
 		// different from *pc = *NewClient().
-		pc = NewClient(downloadURL, "", pc.insecure, pc.diag)
+		pc = NewClient(downloadURL, "", pc.insecure, pc.diag).forThirdPartyHost()
 		downloadURL = ""
 	}
 
