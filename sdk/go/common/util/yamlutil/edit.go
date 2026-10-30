@@ -60,7 +60,7 @@ func editNodes(original, newNode *yaml.Node) (yaml.Node, error) {
 	ret := *original
 	ret.Tag = newNode.Tag
 	ret.Value = newNode.Value
-	if restyled(original, newNode) {
+	if restyled(original, newNode) && original.LineComment == "" {
 		ret.Style = newNode.Style
 	}
 
@@ -98,7 +98,8 @@ func editNodes(original, newNode *yaml.Node) (yaml.Node, error) {
 }
 
 // yaml.v3 writes every empty mapping as {}, so that flow style is not a choice worth keeping. This matches the rule in
-// esc/syntax/encoding.YAMLSyntax.Set, which `pulumi env set` uses.
+// esc/syntax/encoding.YAMLSyntax.Set, which `pulumi env set` uses. yaml.v3 writes a block mapping's line comment after
+// its last entry, so a commented `{}` restyles only as a mapping value, where the comment can move to its key.
 func restyled(original *yaml.Node, newNode *yaml.Node) bool {
 	return original.Kind == yaml.MappingNode && original.Style == yaml.FlowStyle &&
 		newNode.Style&yaml.FlowStyle == 0 && len(original.Content) == 0 && len(newNode.Content) != 0
@@ -143,7 +144,15 @@ func handleMappingNode(original, newNode *yaml.Node) ([]*yaml.Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		value, err := editNodes(original.Content[origIdx+1], newNode.Content[newIdx+1])
+		origValue, newValue := original.Content[origIdx+1], newNode.Content[newIdx+1]
+		if origValue.LineComment != "" && key.LineComment == "" && original.Style&yaml.FlowStyle == 0 &&
+			restyled(origValue, newValue) {
+			key.LineComment = origValue.LineComment
+			uncommented := *origValue
+			uncommented.LineComment = ""
+			origValue = &uncommented
+		}
+		value, err := editNodes(origValue, newValue)
 		if err != nil {
 			return nil, err
 		}
