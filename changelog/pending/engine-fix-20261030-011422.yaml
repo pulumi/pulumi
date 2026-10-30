@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Preserve snapshot integrity when a targeted delete-before-replace deletes a dropped untargeted dependent
+time: 2026-10-30T01:14:22.619259+09:00
