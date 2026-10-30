@@ -813,37 +813,6 @@ func TestParseConfigKey(t *testing.T) {
 	}
 }
 
-type fakeManagedEnvironmentsBackend struct {
-	backend.MockEnvironmentsBackend
-	evaluateF func(
-		org string,
-		project string,
-		name string,
-		definition []byte,
-	) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error)
-	encryptF func(org string, project string, name string, plaintexts [][]byte) ([]string, error)
-}
-
-func (b *fakeManagedEnvironmentsBackend) EncryptEnvironmentSecrets(
-	_ context.Context,
-	org string,
-	project string,
-	name string,
-	plaintexts [][]byte,
-) ([]string, error) {
-	return b.encryptF(org, project, name, plaintexts)
-}
-
-func (b *fakeManagedEnvironmentsBackend) EvaluateManagedEnvironment(
-	_ context.Context,
-	org string,
-	project string,
-	name string,
-	definition []byte,
-) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
-	return b.evaluateF(org, project, name, definition)
-}
-
 // newManagedStack returns stack acme/otherproj/new managing environment p/old, so a test fails if the stack's project
 // or name leaks into an ESC call. Every ESC call and GetLatestConfiguration fails the test unless the test passes
 // evaluate or replaces the backend's function.
@@ -855,7 +824,7 @@ func newManagedStack(
 		name string,
 		definition []byte,
 	) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error),
-) (*backend.MockStack, *fakeManagedEnvironmentsBackend) {
+) (*backend.MockStack, *backend.MockManagedEnvironmentsBackend) {
 	t.Helper()
 
 	if evaluate == nil {
@@ -866,7 +835,7 @@ func newManagedStack(
 			return nil, nil, errors.New("unexpected call")
 		}
 	}
-	be := &fakeManagedEnvironmentsBackend{
+	be := &backend.MockManagedEnvironmentsBackend{
 		MockEnvironmentsBackend: backend.MockEnvironmentsBackend{
 			MockBackend: backend.MockBackend{
 				NameF: func() string { return "test" },
@@ -888,8 +857,12 @@ func newManagedStack(
 				return nil, nil, errors.New("unexpected call")
 			},
 		},
-		evaluateF: evaluate,
-		encryptF: func(string, string, string, [][]byte) ([]string, error) {
+		EvaluateManagedEnvironmentF: func(
+			_ context.Context, org string, project string, name string, definition []byte,
+		) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+			return evaluate(org, project, name, definition)
+		},
+		EncryptEnvironmentSecretsF: func(context.Context, string, string, string, [][]byte) ([]string, error) {
 			t.Error("unexpected EncryptEnvironmentSecrets call")
 			return nil, errors.New("unexpected call")
 		},

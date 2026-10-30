@@ -58,8 +58,10 @@ environment:
 // project or name fails the test.
 func managedTestStack(t *testing.T, loc backend.StackConfigLocation) (*backend.MockStack, *[]string) {
 	var plaintexts []string
-	be := &fakeManagedEnvironmentsBackend{
-		encryptF: func(org string, project string, name string, batch [][]byte) ([]string, error) {
+	be := &backend.MockManagedEnvironmentsBackend{
+		EncryptEnvironmentSecretsF: func(
+			_ context.Context, org string, project string, name string, batch [][]byte,
+		) ([]string, error) {
 			assert.Equal(t, "acme/proj/renamed", org+"/"+project+"/"+name)
 			require.Len(t, batch, 1)
 			plaintexts = append(plaintexts, string(batch[0]))
