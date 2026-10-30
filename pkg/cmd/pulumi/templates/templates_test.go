@@ -1132,3 +1132,43 @@ func TestVCSBackedTemplateRejectsVersion(t *testing.T) {
 	assert.Contains(t, err.Error(), "VCS-backed")
 	assert.Contains(t, err.Error(), "does not support specific versions")
 }
+
+func TestTemplateDisplayStripsControlCharacters(t *testing.T) {
+	t.Parallel()
+
+	// Template names, descriptions, and publishers are fetched from remote sources and
+	// written to the terminal when browsing templates. Control characters must not survive
+	// into the display strings, or a template author could inject escape sequences that
+	// rewrite or hide other entries in the listing.
+	desc := "good\x1b[1A\x1b[2Kdescription"
+	reg := registryTemplate{t: apitype.TemplateMetadata{
+		Name:        "name\x1b[2K",
+		Source:      "private",
+		Publisher:   "pub\x1b]0;title\a",
+		Description: &desc,
+	}}
+	assert.Equal(t, "name[2K", reg.Name())
+	assert.Equal(t, "name[2K [pub]0;title]", reg.DisplayName())
+	assert.Equal(t, "good[1A[2Kdescription", reg.Description())
+	assert.Equal(t, "pub]0;title", reg.Publisher())
+
+	org := orgTemplate{t: &apitype.PulumiTemplateRemote{
+		ProjectTemplate: apitype.ProjectTemplate{Description: "line1\nline2\x1b[31m"},
+		Name:            "org\u009bname",
+	}}
+	assert.Equal(t, "orgname", org.Name())
+	assert.Equal(t, "orgname", org.DisplayName())
+	assert.Equal(t, "line1 line2[31m", org.Description())
+
+	proj := projectTemplate{t: ProjectTemplate{
+		Name:        "proj\x1bname",
+		Description: "desc\twith\rreturn\x7f",
+	}}
+	assert.Equal(t, "projname", proj.Name())
+	assert.Equal(t, "projname", proj.DisplayName())
+	assert.Equal(t, "desc with return", proj.Description())
+
+	// Clean metadata passes through unchanged.
+	clean := registryTemplate{t: apitype.TemplateMetadata{Name: "aws-typescript", Source: "private"}}
+	assert.Equal(t, "aws-typescript", clean.DisplayName())
+}
