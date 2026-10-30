@@ -136,6 +136,12 @@ environment:
 			err:  "has values under `config:`",
 		},
 		{
+			name:     "set into the stack init placeholder writes block style",
+			file:     "environment:\n  values:\n    pulumiConfig: {}\n",
+			set:      []string{"app:foo", "bar"},
+			expected: "environment:\n  values:\n    pulumiConfig:\n      app:foo: bar\n",
+		},
+		{
 			name:   "secret",
 			set:    []string{"app:token", "hunter2"},
 			secret: true,
