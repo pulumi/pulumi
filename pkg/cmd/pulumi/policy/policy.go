@@ -45,6 +45,7 @@ func NewPolicyCmd() *cobra.Command {
 	cmd.AddCommand(newPolicyValidateCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyComplianceCmd())
 	cmd.AddCommand(newPolicyIssueCmd())
+	cmd.AddCommand(newPolicyExceptionCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 
 	return cmd
 }

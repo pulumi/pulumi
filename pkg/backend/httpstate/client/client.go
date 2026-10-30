@@ -1989,6 +1989,108 @@ func (pc *Client) GetPolicyIssue(
 	return resp.PolicyIssue, nil
 }
 
+// ListPolicyExceptionsOptions filters ListPolicyExceptions. Empty fields don't filter.
+type ListPolicyExceptionsOptions struct {
+	// PolicyPack is the name of a policy pack.
+	PolicyPack string
+	// Policy is the name of a policy within a policy pack.
+	Policy string
+	// Stack is a stack, as `<project>/<stack>`.
+	Stack string
+	// Status lists the statuses to return. The service returns only active exceptions when it's empty.
+	Status []string
+	// ContinuationToken pages through results; pass the ContinuationToken returned by a previous response to fetch
+	// the next page.
+	ContinuationToken string
+}
+
+// ListPolicyExceptions returns a single page of policy exceptions for the given organization, wrapping the
+// `ListPolicyExceptions` Pulumi Cloud REST endpoint (GET /api/orgs/{orgName}/policy/exceptions).
+func (pc *Client) ListPolicyExceptions(
+	ctx context.Context, orgName string, opts ListPolicyExceptionsOptions,
+) (apitype.ListPolicyExceptionsResponse, error) {
+	queryObj := struct {
+		PolicyPack        string   `url:"policyPack,omitempty"`
+		Policy            string   `url:"policy,omitempty"`
+		Stack             string   `url:"stack,omitempty"`
+		Status            []string `url:"status,omitempty"`
+		ContinuationToken string   `url:"continuationToken,omitempty"`
+	}{
+		PolicyPack:        opts.PolicyPack,
+		Policy:            opts.Policy,
+		Stack:             opts.Stack,
+		Status:            opts.Status,
+		ContinuationToken: opts.ContinuationToken,
+	}
+
+	var resp apitype.ListPolicyExceptionsResponse
+	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions", url.PathEscape(orgName))
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
+		return resp, fmt.Errorf("listing policy exceptions: %w", err)
+	}
+	return resp, nil
+}
+
+// CreatePolicyException creates a policy exception (POST /api/orgs/{orgName}/policy/exceptions), and returns whether
+// it already existed.
+func (pc *Client) CreatePolicyException(
+	ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
+) (apitype.PolicyExceptionInfo, bool, error) {
+	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions", url.PathEscape(orgName))
+
+	var httpResp *http.Response
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &httpResp); err != nil {
+		return apitype.PolicyExceptionInfo{}, false, fmt.Errorf("creating policy exception: %w", err)
+	}
+	body, err := readBody(httpResp)
+	if err != nil {
+		return apitype.PolicyExceptionInfo{}, false, fmt.Errorf("reading the created policy exception: %w", err)
+	}
+	var resp apitype.PolicyExceptionInfo
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return apitype.PolicyExceptionInfo{}, false, fmt.Errorf("reading the created policy exception: %w", err)
+	}
+	return resp, httpResp.StatusCode == http.StatusOK, nil
+}
+
+// CreatePolicyExceptionDraft requests a policy exception in a draft change request
+// (POST /api/orgs/{orgName}/policy/exceptions/drafts).
+func (pc *Client) CreatePolicyExceptionDraft(
+	ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
+) (apitype.PolicyExceptionDraft, error) {
+	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions/drafts", url.PathEscape(orgName))
+
+	var resp apitype.PolicyExceptionDraft
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
+		return apitype.PolicyExceptionDraft{}, fmt.Errorf("creating policy exception draft: %w", err)
+	}
+	return resp, nil
+}
+
+// GetPolicyException returns a policy exception, wrapping the `GetPolicyException` Pulumi Cloud REST endpoint
+// (GET /api/orgs/{orgName}/policy/exceptions/{exceptionId}).
+func (pc *Client) GetPolicyException(
+	ctx context.Context, orgName, exceptionID string,
+) (apitype.PolicyExceptionInfo, error) {
+	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions/%s", url.PathEscape(orgName), url.PathEscape(exceptionID))
+
+	var resp apitype.PolicyExceptionInfo
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return apitype.PolicyExceptionInfo{}, fmt.Errorf("getting policy exception: %w", err)
+	}
+	return resp, nil
+}
+
+// RemovePolicyException removes an active policy exception
+// (DELETE /api/orgs/{orgName}/policy/exceptions/{exceptionId}).
+func (pc *Client) RemovePolicyException(ctx context.Context, orgName, exceptionID string) error {
+	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions/%s", url.PathEscape(orgName), url.PathEscape(exceptionID))
+	if err := pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil); err != nil {
+		return fmt.Errorf("removing policy exception: %w", err)
+	}
+	return nil
+}
+
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
 func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContToken *string) (
 	apitype.ListPolicyPacksResponse, *string, error,

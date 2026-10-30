@@ -192,6 +192,8 @@ type Backend interface {
 
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 	Client() *client.Client
+	// ESCClient returns a client for the Pulumi ESC API, which also has the change request routes that approvals use.
+	ESCClient() esc_client.Client
 
 	RunDeployment(ctx context.Context, stackRef backend.StackReference, req apitype.CreateDeploymentRequest,
 		opts display.Options, deploymentInitiator string, streamDeploymentLogs bool) error
@@ -2633,6 +2635,10 @@ func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 // Client returns a client object that may be used to interact with this backend.
 func (b *cloudBackend) Client() *client.Client {
 	return b.client
+}
+
+func (b *cloudBackend) ESCClient() esc_client.Client {
+	return b.escClient
 }
 
 type DisplayEventType string
