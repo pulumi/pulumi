@@ -102,8 +102,7 @@ class Workload(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = Workload.__new__(Workload)
-        return pulumi.runtime.exists_resource(__inst__, 'example::Workload', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'example::Workload', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

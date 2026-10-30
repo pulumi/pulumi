@@ -101,8 +101,7 @@ class Base(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = Base.__new__(Base)
-        return pulumi.runtime.exists_resource(__inst__, 'extbase:index:Base', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'extbase:index:Base', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter(name="baseValue")

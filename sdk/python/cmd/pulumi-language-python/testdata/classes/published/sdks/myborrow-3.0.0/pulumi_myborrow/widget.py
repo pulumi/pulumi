@@ -98,8 +98,7 @@ class Widget(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = Widget.__new__(Widget)
-        return pulumi.runtime.exists_resource(__inst__, 'myborrow:index:Widget', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'myborrow:index:Widget', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

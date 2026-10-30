@@ -97,8 +97,7 @@ class HelloWorld(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = HelloWorld.__new__(HelloWorld)
-        return pulumi.runtime.exists_resource(__inst__, 'subpackage:index:HelloWorld', id, __props__, opts or pulumi.ResourceOptions(), package_ref=_utilities.get_package())
+        return pulumi.runtime.exists_resource(None, 'subpackage:index:HelloWorld', id, __props__, opts or pulumi.ResourceOptions(), package_ref=_utilities.get_package())
 
     @_builtins.property
     @pulumi.getter(name="parameterValue")

@@ -112,8 +112,7 @@ class Receiver(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = Receiver.__new__(Receiver)
-        return pulumi.runtime.exists_resource(__inst__, 'nestedobject:index:Receiver', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'nestedobject:index:Receiver', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

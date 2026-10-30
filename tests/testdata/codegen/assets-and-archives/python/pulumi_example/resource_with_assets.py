@@ -150,8 +150,7 @@ class ResourceWithAssets(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = ResourceWithAssets.__new__(ResourceWithAssets)
-        return pulumi.runtime.exists_resource(__inst__, 'example:index:ResourceWithAssets', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'example:index:ResourceWithAssets', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

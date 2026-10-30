@@ -179,8 +179,7 @@ class Foo(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = Foo.__new__(Foo)
-        return pulumi.runtime.exists_resource(__inst__, 'example:index:Foo', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'example:index:Foo', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter(name="defaultKubeClientSettings")

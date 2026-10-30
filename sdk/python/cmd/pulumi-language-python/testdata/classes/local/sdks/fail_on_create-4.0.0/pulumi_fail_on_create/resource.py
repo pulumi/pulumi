@@ -110,8 +110,7 @@ class Resource(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = Resource.__new__(Resource)
-        return pulumi.runtime.exists_resource(__inst__, 'fail_on_create:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'fail_on_create:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

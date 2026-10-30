@@ -226,8 +226,7 @@ class ConfigMap(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = ConfigMap.__new__(ConfigMap)
-        return pulumi.runtime.exists_resource(__inst__, 'kubernetes:core/v1:ConfigMap', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'kubernetes:core/v1:ConfigMap', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter(name="apiVersion")

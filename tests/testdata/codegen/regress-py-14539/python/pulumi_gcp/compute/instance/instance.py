@@ -157,8 +157,7 @@ class Instance(pulumi.CustomResource):
             boot_disk: pulumi.Input[Optional[Union['_compute.instancebootdisk.InstanceBootDiskArgs', '_compute.instancebootdisk.InstanceBootDiskArgsDict', '_compute.instancebootdisk.outputs.InstanceBootDisk']]] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
         __props__["bootDisk"] = boot_disk
-        __inst__ = Instance.__new__(Instance)
-        return pulumi.runtime.exists_resource(__inst__, 'gcp:compute/instance:Instance', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'gcp:compute/instance:Instance', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter(name="bootDisk")

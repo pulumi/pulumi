@@ -130,6 +130,5 @@ class Component(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = Component.__new__(Component)
-        return pulumi.runtime.exists_resource(__inst__, 'example:mod:Component', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'example:mod:Component', id, __props__, opts or pulumi.ResourceOptions())
 

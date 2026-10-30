@@ -123,8 +123,7 @@ class Resource(pulumi.CustomResource):
             lookup: pulumi.Input[Optional[_builtins.str]] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
         __props__["lookup"] = lookup
-        __inst__ = Resource.__new__(Resource)
-        return pulumi.runtime.exists_resource(__inst__, 'read-id-rewrite:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'read-id-rewrite:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

@@ -133,8 +133,7 @@ class ResourceA(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = ResourceA.__new__(ResourceA)
-        return pulumi.runtime.exists_resource(__inst__, 'replaceonchanges:index:ResourceA', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'replaceonchanges:index:ResourceA', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter(name="replaceProp")

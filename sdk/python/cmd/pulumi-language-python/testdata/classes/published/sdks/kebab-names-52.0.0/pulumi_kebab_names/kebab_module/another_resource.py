@@ -110,8 +110,7 @@ class AnotherResource(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = AnotherResource.__new__(AnotherResource)
-        return pulumi.runtime.exists_resource(__inst__, 'kebab-names:kebab-module:another-resource', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'kebab-names:kebab-module:another-resource', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter(name="the-input")

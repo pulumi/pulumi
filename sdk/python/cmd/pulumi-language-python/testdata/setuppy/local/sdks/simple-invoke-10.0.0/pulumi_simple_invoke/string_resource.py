@@ -115,8 +115,7 @@ class StringResource(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = StringResource.__new__(StringResource)
-        return pulumi.runtime.exists_resource(__inst__, 'simple-invoke:index:StringResource', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'simple-invoke:index:StringResource', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter

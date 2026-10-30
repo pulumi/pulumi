@@ -187,8 +187,7 @@ class ConfigMapList(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = ConfigMapList.__new__(ConfigMapList)
-        return pulumi.runtime.exists_resource(__inst__, 'kubernetes:core/v1:ConfigMapList', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'kubernetes:core/v1:ConfigMapList', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter(name="apiVersion")

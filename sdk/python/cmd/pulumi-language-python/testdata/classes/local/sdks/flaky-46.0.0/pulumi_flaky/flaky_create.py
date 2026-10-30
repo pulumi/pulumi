@@ -94,6 +94,5 @@ class FlakyCreate(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = FlakyCreate.__new__(FlakyCreate)
-        return pulumi.runtime.exists_resource(__inst__, 'flaky:index:FlakyCreate', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'flaky:index:FlakyCreate', id, __props__, opts or pulumi.ResourceOptions())
 

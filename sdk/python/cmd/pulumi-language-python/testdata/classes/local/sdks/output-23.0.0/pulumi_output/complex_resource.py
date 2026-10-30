@@ -117,8 +117,7 @@ class ComplexResource(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = ComplexResource.__new__(ComplexResource)
-        return pulumi.runtime.exists_resource(__inst__, 'output:index:ComplexResource', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'output:index:ComplexResource', id, __props__, opts or pulumi.ResourceOptions())
 
     @_builtins.property
     @pulumi.getter(name="outputArray")

@@ -153,6 +153,5 @@ class Node(pulumi.CustomResource):
     def exists(id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
         __props__: dict = {}
-        __inst__ = Node.__new__(Node)
-        return pulumi.runtime.exists_resource(__inst__, 'selfref:index:Node', id, __props__, opts or pulumi.ResourceOptions())
+        return pulumi.runtime.exists_resource(None, 'selfref:index:Node', id, __props__, opts or pulumi.ResourceOptions())
 
