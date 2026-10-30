@@ -66,15 +66,21 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 	b backend.Backend, prompt promptForValueFunc, stack string, root string, setCurrent bool,
 	yes bool, opts display.Options, secretsProvider string, useRemoteConfig bool, configFile string,
 ) (backend.Stack, error) {
-	contract.Requiref(b != nil, "b", "must not be nil")
-	contract.Requiref(root != "", "root", "must not be empty")
-
-	createOpts := cmdStack.CreateStackOptions{
+	return promptAndCreateStack(ctx, sink, ws, b, prompt, stack, root, yes, opts, cmdStack.CreateStackOptions{
 		SetCurrent:      setCurrent,
 		SecretsProvider: secretsProvider,
 		UseRemoteConfig: useRemoteConfig,
 		ConfigFile:      configFile,
-	}
+	})
+}
+
+func promptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
+	b backend.Backend, prompt promptForValueFunc, stack string, root string,
+	yes bool, opts display.Options, createOpts cmdStack.CreateStackOptions,
+) (backend.Stack, error) {
+	contract.Requiref(b != nil, "b", "must not be nil")
+	contract.Requiref(root != "", "root", "must not be empty")
+
 	if stack != "" {
 		return createStack(ctx, sink, ws, b, stack, root, createOpts)
 	}
@@ -127,10 +133,7 @@ func createStackWithRetry(ctx context.Context, sink diag.Sink, w io.Writer, ws p
 		if err == nil {
 			return s, formatted, nil
 		}
-		if yes {
-			return nil, "", err
-		}
-		if _, ok := errors.AsType[backenderr.DefaultOrgError](err); ok {
+		if yes || !retryableCreateStackError(err) {
 			return nil, "", err
 		}
 		// Let the user know about the error and loop around to try again.
@@ -139,6 +142,15 @@ func createStackWithRetry(ctx context.Context, sink diag.Sink, w io.Writer, ws p
 			return nil, "", err
 		}
 	}
+}
+
+// A stack name can't fix these, and after some of them the backend stack already exists, so a retry would leave it
+// behind.
+func retryableCreateStackError(err error) bool {
+	if _, ok := errors.AsType[backenderr.DefaultOrgError](err); ok {
+		return false
+	}
+	return !cmdStack.StackCreatedDespiteError(err)
 }
 
 func buildStackName(ctx context.Context, b backend.Backend, stackName string) (string, error) {

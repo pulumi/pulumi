@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -95,11 +96,12 @@ type newArgs struct {
 	templateMode         bool
 	runtimeOptions       []string
 	remoteStackConfig    bool
+	escConfig            bool
 	stdout               io.Writer
 	stderr               io.Writer
 }
 
-func runNew(ctx context.Context, args newArgs) error {
+func runNew(ctx context.Context, args newArgs) (err error) {
 	if args.aiPrompt != "" || args.aiLanguage != "" {
 		return errors.New(aiRetiredMessage)
 	}
@@ -178,6 +180,12 @@ func runNew(ctx context.Context, args newArgs) error {
 		// --generate-only is set because we're not going to actually use the --stack argument given.
 		if err := compareStackProjectName(b, args.stack, args.name); err != nil {
 			return err
+		}
+
+		if args.escConfig {
+			if _, err := backend.AsManagedEnvironmentsBackend(b); err != nil {
+				return fmt.Errorf("--esc-config: %w", err)
+			}
 		}
 	}
 
@@ -266,6 +274,13 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 		if existingStack != nil {
+			if err := cmdStack.RejectManagedStack(existingStack, "`pulumi new --stack`"); err != nil {
+				return err
+			}
+			if args.escConfig {
+				return fmt.Errorf("--esc-config creates a new stack: %w",
+					&backenderr.StackAlreadyExistsError{StackName: args.stack})
+			}
 			s = existingStack
 			if args.description == "" {
 				args.description = existingDesc
@@ -347,9 +362,19 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Create the stack, if needed.
 	var createdStackName string
 	sink := diag.DefaultSink(args.stderr, args.stderr, diag.FormatOptions{Color: opts.Color})
+	var unsavedManagedStack backend.Stack
+	defer func() {
+		if err != nil && unsavedManagedStack != nil {
+			err = cmdStack.ManagedStackCreatedError(err, unsavedManagedStack.Ref(),
+				"no config was saved, so "+cmdStack.SetEachConfigValueHint)
+		}
+	}()
 	if !args.generateOnly && s == nil {
 		if s, createdStackName, err = confirmed.createStack(ctx, sink, ws, b, root, args, opts); err != nil {
 			return err
+		}
+		if s.ConfigLocation().ManagedEnvironment != "" {
+			unsavedManagedStack = s
 		}
 	}
 
@@ -418,11 +443,13 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 
 	// Prompt for config values (if needed) and save.
+	var savedConfig config.Map
 	if !args.generateOnly {
-		if err = confirmed.saveConfig(ctx, cmdutil.Diag(), ssml, ws, proj, s, template, args, opts); err != nil {
+		if savedConfig, err = confirmed.saveConfig(ctx, cmdutil.Diag(), ssml, ws, proj, s, template, args, opts); err != nil {
 			return err
 		}
 	}
+	unsavedManagedStack = nil
 
 	// Ensure the stack is selected.
 	if !args.generateOnly && s != nil {
@@ -457,13 +484,16 @@ func runNew(ctx context.Context, args newArgs) error {
 			" "+cmdutil.EmojiOr("✨", ""))
 	fmt.Fprintln(args.stdout)
 
-	preflightCloudCredentials(ctx, args, sink, pluginHost, proj, root, s, packages, opts)
+	preflightCloudCredentials(ctx, args, sink, pluginHost, proj, root, s, packages, savedConfig, opts)
 
 	if confirmed != nil {
 		// Any other stack announced itself as it was created, or already existed.
 		rows := []field{{"Project name", args.name}}
 		if createdStackName != "" {
 			rows = append(rows, field{"Stack name", createdStackName})
+			if managedEnv := s.ConfigLocation().ManagedEnvironment; managedEnv != "" {
+				rows = append(rows, field{"ESC environment", managedEnv})
+			}
 		}
 		printFields(args.stdout, opts.Color, "    ", rows)
 		fmt.Fprintln(args.stdout)
@@ -663,6 +693,7 @@ func NewNewCmd() *cobra.Command {
 		"Store stack configuration remotely",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
+	cmdStack.AddESCConfigFlag(cmd, &args.escConfig, "remote-stack-config", "generate-only")
 
 	return cmd
 }

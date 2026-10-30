@@ -55,6 +55,21 @@ func newConfigWriter(
 	return managed, nil
 }
 
+// NewConfigWriter returns the writer for config values of stack s: its stack file, or the definition of the ESC
+// environment that s manages. It refuses configFile for a stack with a managed environment.
+func NewConfigWriter(
+	s backend.Stack,
+	project *workspace.Project,
+	ps *workspace.ProjectStack,
+	configFile string,
+	ef encrypterFactory,
+) (ConfigWriter, error) {
+	if err := cmdStack.RejectConfigFlagsOnManagedStack(s, nil, configFile); err != nil {
+		return nil, err
+	}
+	return newConfigWriter(s, project.Name, ps, configFile, ef, false /*overrideImport*/)
+}
+
 type stackFileWriter struct {
 	stack      backend.Stack
 	ps         *workspace.ProjectStack

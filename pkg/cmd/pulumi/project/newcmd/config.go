@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 
@@ -56,17 +57,38 @@ func HandleConfig(
 	opts display.Options,
 	configFile string,
 ) error {
+	_, err := handleConfig(ctx, sink, ssml, ws, prompt, project, s, templateNameOrURL, template, configArray, yes, path,
+		opts, configFile)
+	return err
+}
+
+func handleConfig(
+	ctx context.Context,
+	sink diag.Sink,
+	ssml cmdStack.SecretsManagerLoader,
+	ws pkgWorkspace.Context,
+	prompt promptForValueFunc,
+	project *workspace.Project,
+	s backend.Stack,
+	templateNameOrURL string,
+	template cmdTemplates.ProjectTemplate,
+	configArray []string,
+	yes bool,
+	path bool,
+	opts display.Options,
+	configFile string,
+) (config.Map, error) {
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
 	latest, err := backend.GetLatestConfiguration(ctx, s)
 	if err != nil && err != backenderr.ErrNoPreviousDeployment {
-		return err
+		return nil, err
 	}
 	stackConfig := latest.Config
 
 	// Get the existing snapshot.
 	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Handle config.
@@ -83,7 +105,7 @@ func HandleConfig(
 		// Get config values passed on the command line.
 		commandLineConfig, parseErr := ParseConfig(configArray, path)
 		if parseErr != nil {
-			return parseErr
+			return nil, parseErr
 		}
 
 		// Prompt for config as needed.
@@ -102,14 +124,14 @@ func HandleConfig(
 			configFile,
 		)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	// Save the config.
 	if len(c) > 0 {
 		if err = SaveConfig(ctx, sink, ws, s, c, configFile); err != nil {
-			return fmt.Errorf("saving config: %w", err)
+			return nil, fmt.Errorf("saving config: %w", err)
 		}
 
 		// Helper used by multiple commands; output goes to process stdout.
@@ -117,7 +139,7 @@ func HandleConfig(
 		fmt.Println()               //nolint:forbidigo
 	}
 
-	return nil
+	return c, nil
 }
 
 // isPreconfiguredEmptyStack returns true if the url matches the value of `pulumi:template` in stackConfig,
@@ -355,6 +377,18 @@ func stackCrypters(
 		return nil, nil, fmt.Errorf("loading stack config: %w", err)
 	}
 
+	if s.ConfigLocation().ManagedEnvironment != "" {
+		w, err := cmdConfig.NewConfigWriter(s, project, ps, configFile, &ssml)
+		if err != nil {
+			return nil, nil, err
+		}
+		encrypter, err := w.Encrypter(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+		return encrypter, config.NewPanicCrypter(), nil
+	}
+
 	sm, state, err := ssml.GetSecretsManager(ctx, s, ps)
 	if err != nil {
 		return nil, nil, err
@@ -371,23 +405,26 @@ func saveTemplateConfig(
 	ctx context.Context, sink diag.Sink, ssml cmdStack.SecretsManagerLoader, ws pkgWorkspace.Context,
 	project *workspace.Project, s backend.Stack, values []templateConfigValue,
 	commandLineConfig config.Map, configFile string,
-) error {
+) (config.Map, error) {
 	if len(values) == 0 && len(commandLineConfig) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	encrypter, _, err := stackCrypters(ctx, sink, ssml, project, s, configFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	c, err := encryptTemplateConfig(ctx, encrypter, values, commandLineConfig)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(c) == 0 {
-		return nil
+		return nil, nil
 	}
-	return SaveConfig(ctx, sink, ws, s, c, configFile)
+	if err := SaveConfig(ctx, sink, ws, s, c, configFile); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 // ParseConfig parses the config values passed via command line flags.
@@ -447,7 +484,17 @@ func SaveConfig(
 		return err
 	}
 
-	maps.Copy(ps.Config, c)
-
-	return cmdStack.SaveProjectStack(ctx, stack, ps, configFile)
+	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
+	w, err := cmdConfig.NewConfigWriter(stack, project, ps, configFile, &ssml)
+	if err != nil {
+		return err
+	}
+	keys := slices.Collect(maps.Keys(c))
+	sort.Sort(config.KeyArray(keys))
+	for _, key := range keys {
+		if err := w.Set(ctx, key, c[key], false /*path*/); err != nil {
+			return fmt.Errorf("could not set config %v: %w", key, err)
+		}
+	}
+	return w.Save(ctx)
 }

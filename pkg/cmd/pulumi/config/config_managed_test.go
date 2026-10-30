@@ -571,6 +571,17 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 	}
 }
 
+func TestNewConfigWriterRejectsConfigFile(t *testing.T) {
+	t.Parallel()
+
+	managed, _ := managedTestStack(t, backend.StackConfigLocation{ManagedEnvironment: "proj/dev"})
+
+	_, err := NewConfigWriter(managed, &workspace.Project{Name: "proj"}, &workspace.ProjectStack{},
+		"Pulumi.other.yaml", &failingEncrypterFactory{t: t})
+
+	require.EqualError(t, err, "--config-file is not supported on stacks with an ESC-managed environment yet")
+}
+
 func managedStacksLoginManager(managed string) (cmdBackend.LoginManager, pkgWorkspace.Context) {
 	be := &backend.MockBackend{
 		ParseStackReferenceF: func(name string) (backend.StackReference, error) {

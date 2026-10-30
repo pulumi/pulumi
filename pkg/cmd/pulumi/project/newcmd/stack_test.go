@@ -17,7 +17,9 @@ package newcmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,8 +46,9 @@ func stackCreationBackend(t *testing.T, failures int, created *[]string) *backen
 		ValidateStackNameF:     func(s string) error { return nil },
 		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
 			return &backend.MockStackReference{
-				NameV:   tokens.MustParseStackName(s),
-				StringV: s,
+				NameV:               tokens.MustParseStackName(s),
+				StringV:             s,
+				FullyQualifiedNameV: tokens.QName(s),
 			}, nil
 		},
 		DefaultSecretManagerF: func(ctx context.Context, ps *workspace.ProjectStack) (secrets.Manager, error) {
@@ -132,4 +135,96 @@ func TestCreateStackWithRetryDefaultOrgFailureIsFatal(t *testing.T) {
 	assert.Empty(t, created, "CreateStack must not be attempted when buildStackName fails")
 	assert.Empty(t, resolved)
 	assert.Nil(t, s)
+}
+
+func TestCreateStackWithRetryStopsOnUnfixableFailure(t *testing.T) {
+	t.Parallel()
+
+	fail := func(err error) func(backend.StackReference) (backend.Stack, error) {
+		return func(backend.StackReference) (backend.Stack, error) { return nil, err }
+	}
+	tests := []struct {
+		name        string
+		createStack func(ref backend.StackReference) (backend.Stack, error)
+		wantErr     error
+	}{
+		{
+			name:        "stack config save failed",
+			createStack: fail(fmt.Errorf("%w: disk full", cmdStack.ErrSaveStackConfig)),
+			wantErr:     cmdStack.ErrSaveStackConfig,
+		},
+		{
+			name: "backend created the stack without a managed environment",
+			createStack: func(ref backend.StackReference) (backend.Stack, error) {
+				return &backend.MockStack{
+					RefF:            func() backend.StackReference { return ref },
+					ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
+				}, nil
+			},
+			wantErr: cmdStack.ErrCreatedWithoutManagedEnvironment,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var created []string
+			b := stackCreationBackend(t, 0, &created)
+			b.CreateStackF = func(ctx context.Context, ref backend.StackReference, root string,
+				initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+			) (backend.Stack, error) {
+				created = append(created, ref.String())
+				return tt.createStack(ref)
+			}
+			prompt := func(yes bool, valueType, defaultValue string, secret bool,
+				isValidFn func(string) error, opts display.Options,
+			) (string, error) {
+				t.Errorf("unexpected prompt %q: the failure must not be retried", valueType)
+				return "second", nil
+			}
+
+			managed := &backend.MockManagedEnvironmentsBackend{
+				MockEnvironmentsBackend: backend.MockEnvironmentsBackend{MockBackend: *b},
+			}
+
+			s, _, err := createStackWithRetry(t.Context(), cmdutil.Diag(), io.Discard, pkgWorkspace.Instance,
+				managed, prompt, "first", t.TempDir(), false, display.Options{},
+				cmdStack.CreateStackOptions{
+					SecretsProvider:    "default",
+					ConfigFile:         filepath.Join(t.TempDir(), "Pulumi.first.yaml"),
+					ManagedEnvironment: true,
+					Quiet:              true,
+				})
+
+			require.ErrorIs(t, err, tt.wantErr)
+			assert.Nil(t, s)
+			assert.Equal(t, []string{"first"}, created)
+		})
+	}
+}
+
+func TestCreateStackWithRetryStopsWhenSelectingTheCreatedStackFails(t *testing.T) {
+	t.Parallel()
+
+	var created []string
+	b := stackCreationBackend(t, 0, &created)
+	b.URLF = func() string { return "https://api.example.com" }
+	ws := &pkgWorkspace.MockContext{
+		NewF: func(string) (pkgWorkspace.W, error) { return nil, errors.New("workspace settings are read-only") },
+	}
+	prompt := func(yes bool, valueType, defaultValue string, secret bool,
+		isValidFn func(string) error, opts display.Options,
+	) (string, error) {
+		t.Errorf("unexpected prompt %q: the failure must not be retried", valueType)
+		return "second", nil
+	}
+
+	s, _, err := createStackWithRetry(t.Context(), cmdutil.Diag(), io.Discard, ws,
+		b, prompt, "first", t.TempDir(), false, display.Options{},
+		cmdStack.CreateStackOptions{SetCurrent: true, SecretsProvider: "default", Quiet: true})
+
+	require.ErrorIs(t, err, cmdStack.ErrSelectCreatedStack)
+	assert.ErrorContains(t, err, "workspace settings are read-only")
+	assert.Nil(t, s)
+	assert.Equal(t, []string{"first"}, created)
 }

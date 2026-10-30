@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -31,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
@@ -273,6 +275,42 @@ func TestPreflightCloudCredentialsPackages(t *testing.T) {
 			assert.Equal(t, len(tt.warnings), strings.Count(buf.String(), "warning:"))
 		})
 	}
+}
+
+func TestPreflightCloudCredentialsManagedStackUsesSavedConfig(t *testing.T) {
+	t.Parallel()
+
+	var news property.Map
+	host := &plugin.MockHost{
+		ProviderF: func(*plugin.Context, workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
+			prov := schemaProvider(`{"name":"aws","displayName":"AWS","validateCredentialsOnNew":true}`)
+			prov.CheckConfigF = func(_ context.Context, req plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+				news = req.News
+				return plugin.CheckConfigResponse{Properties: req.News}, nil
+			}
+			return prov, nil
+		},
+	}
+	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{ManagedEnvironment: "proj/dev"}
+		},
+	}
+	saved := config.Map{
+		config.MustMakeKey("aws", "region"):    config.NewValue("us-west-2"),
+		config.MustMakeKey("aws", "secretKey"): config.NewSecureValue("ciphertext"),
+	}
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+
+	// The package directory has no Pulumi.yaml, so reloading the stack file would fail and skip the check.
+	preflightCloudCredentials(t.Context(), newArgs{interactive: true, stdout: io.Discard}, sink, host,
+		&workspace.Project{Name: "proj"}, t.TempDir(), s, []workspace.PackageDescriptor{resourcePackage("aws", "7.0.0")},
+		saved, display.Options{Color: colors.Never})
+
+	assert.Equal(t, property.NewMap(map[string]property.Value{"region": property.New("us-west-2")}), news)
 }
 
 func TestPreflightCloudCredentialsSkipsMismatchedParameterization(t *testing.T) {
