@@ -93,7 +93,10 @@ func TestPluginCredentialsUseProjectBackend(t *testing.T) {
 }
 
 func TestLoginCredentialHelperSelection(t *testing.T) {
-	for _, test := range []struct{ name, explicit, environment, project, expectedSelected string }{
+	for _, test := range []struct {
+		name, explicit, environment, project, expectedSelected string
+		interactive                                            bool
+	}{
 		{name: "helper precedes saved current"},
 		{name: "explicit URL", explicit: "https://explicit.example.com", expectedSelected: "https://explicit.example.com"},
 		{
@@ -101,6 +104,7 @@ func TestLoginCredentialHelperSelection(t *testing.T) {
 			expectedSelected: "https://environment.example.com",
 		},
 		{name: "project URL", project: "https://project.example.com", expectedSelected: "https://project.example.com"},
+		{name: "interactive account", interactive: true, expectedSelected: "https://saved.example.com"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			ptesting.IsolateCredentials(t)
@@ -111,7 +115,7 @@ func TestLoginCredentialHelperSelection(t *testing.T) {
 			response := `{"version":1,"backendUrl":"https://helper.example.com"}`
 			expectedURL := "https://helper.example.com"
 			if test.expectedSelected != "" {
-				response = `{"version":1}`
+				response = `{"version":1,"backendUrl":"` + test.expectedSelected + `"}`
 				expectedURL = test.expectedSelected
 			}
 			flags, log := loginHelperFlags(t, response)
@@ -132,14 +136,27 @@ func TestLoginCredentialHelperSelection(t *testing.T) {
 					},
 				}, nil
 			}}
-			cmd := NewLoginCmd(ws, lm, env.Global())
+			chooserCalled := false
+			login := loginCmd{
+				interactive: true,
+				chooseAccount: func(accounts map[string]workspace.Account, _ display.Options) (string, error) {
+					chooserCalled = true
+					assert.Contains(t, accounts, "https://saved.example.com")
+					return "https://saved.example.com", nil
+				},
+			}
+			cmd := login.newCommand(ws, lm, env.Global())
 			cmd.SetOut(io.Discard)
 			cmd.SetErr(io.Discard)
 			if test.explicit != "" {
 				flags = append(flags, test.explicit)
 			}
+			if test.interactive {
+				flags = append(flags, "--interactive")
+			}
 			cmd.SetArgs(flags)
 			require.NoError(t, cmd.Execute())
+			assert.Equal(t, test.interactive, chooserCalled)
 			raw, err := os.ReadFile(log)
 			require.NoError(t, err)
 			var req map[string]any

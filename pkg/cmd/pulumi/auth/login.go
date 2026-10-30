@@ -47,6 +47,15 @@ import (
 )
 
 func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env) *cobra.Command {
+	return (&loginCmd{}).newCommand(ws, lm, store)
+}
+
+type loginCmd struct {
+	interactive   bool
+	chooseAccount func(map[string]workspace.Account, display.Options) (string, error)
+}
+
+func (c *loginCmd) newCommand(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env) *cobra.Command {
 	var helperPath string
 	var helperArgs []string
 	var cloudURL string
@@ -108,6 +117,10 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			"Set PULUMI_CREDENTIAL_HELPER=none to disable saved and automatically discovered helpers.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			isInteractive, choose := c.interactive, c.chooseAccount
+			if choose == nil {
+				isInteractive, choose = cmdutil.Interactive(), chooseAccount
+			}
 			session := lm.CredentialHelperSession()
 
 			if cmd.Flags().Changed("credential-helper-arg") && helperPath == "" {
@@ -204,15 +217,14 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			// to correct it. Stays "none" when the user named the backend themselves.
 			var urlSource pkgWorkspace.CloudURLSource
 
-			isInteractive := cmdutil.Interactive() && interactive
-			if cloudURL == "" && isInteractive {
+			if cloudURL == "" && isInteractive && interactive {
 				creds, err := pkgWorkspace.Instance.GetStoredCredentials()
 				if err != nil {
 					return err
 				}
 				// If there are no accounts, skip this step and continue on with the default behavior below.
 				if len(creds.Accounts) > 0 {
-					act, err := chooseAccount(creds.Accounts, displayOptions)
+					act, err := choose(creds.Accounts, displayOptions)
 					if err != nil {
 						return err
 					}
