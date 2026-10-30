@@ -98,9 +98,8 @@ func editNodes(original, newNode *yaml.Node) (yaml.Node, error) {
 }
 
 // yaml.v3 writes every empty mapping as {}, so that flow style is not a choice worth keeping. This follows the rule in
-// esc/syntax/encoding.YAMLSyntax.Set, which `pulumi env set` uses, except that a commented `{}` restyles only as a
-// block mapping value, where the comment can move to its key: yaml.v3 writes a block mapping's line comment after its
-// last entry.
+// esc/syntax/encoding.YAMLSyntax.Set, which `pulumi env set` uses, except that a `{}` with a line comment restyles
+// only where handleMappingNode can move the comment to its key, and that key has no line comment of its own.
 func restyled(original *yaml.Node, newNode *yaml.Node) bool {
 	return original.Kind == yaml.MappingNode && original.Style == yaml.FlowStyle &&
 		newNode.Style&yaml.FlowStyle == 0 && len(original.Content) == 0 && len(newNode.Content) != 0
@@ -146,20 +145,20 @@ func handleMappingNode(original, newNode *yaml.Node) ([]*yaml.Node, error) {
 			return nil, err
 		}
 		origValue, newValue := original.Content[origIdx+1], newNode.Content[newIdx+1]
-		if origValue.LineComment != "" && key.LineComment == "" && origValue.Anchor == "" &&
-			original.Style&yaml.FlowStyle == 0 && restyled(origValue, newValue) {
-			key.LineComment = origValue.LineComment
-			uncommented := *origValue
-			uncommented.LineComment = ""
-			origValue = &uncommented
-		}
 		value, err := editNodes(origValue, newValue)
 		if err != nil {
 			return nil, err
 		}
+		switch {
+		// yaml.v3 writes a block mapping's line comment after its last entry, so the comment moves to the key. It
+		// writes a key's line comment ahead of the value's anchor, so an anchored {} keeps its flow style.
+		case key.LineComment == "" && origValue.Anchor == "" && original.Style&yaml.FlowStyle == 0 &&
+			restyled(origValue, newValue):
+			value.Style = newValue.Style
+			key.LineComment, value.LineComment = origValue.LineComment, ""
 		// An emptied collection is written as {} or [], which cannot follow a comment on its key's line.
-		if key.LineComment != "" && value.LineComment == "" && len(value.Content) == 0 &&
-			(value.Kind == yaml.MappingNode || value.Kind == yaml.SequenceNode) {
+		case key.LineComment != "" && value.LineComment == "" && len(value.Content) == 0 &&
+			(value.Kind == yaml.MappingNode || value.Kind == yaml.SequenceNode):
 			value.LineComment, key.LineComment = key.LineComment, ""
 		}
 		content = append(content, &key)

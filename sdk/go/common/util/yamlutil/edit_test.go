@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 func assertYamlEdit(t *testing.T, original string, edited any, expected string) {
@@ -149,6 +150,15 @@ func TestEditEmptyFlowCollectionGainsContent(t *testing.T) {
 	}, "values:\n  pulumiConfig: &pc {a: b} # c\n")
 
 	assertYamlEdit(t, "- {} # c\n- x\n", []any{map[string]any{"a": "b"}, "x"}, "- {a: b} # c\n- x\n")
+
+	flowEnvironment := &yaml.Node{Kind: yaml.MappingNode, Style: yaml.FlowStyle, Content: []*yaml.Node{
+		{Kind: yaml.ScalarNode, Value: "imports"},
+		{Kind: yaml.SequenceNode, Style: yaml.FlowStyle, Content: []*yaml.Node{{Kind: yaml.ScalarNode, Value: "e"}}},
+	}}
+	assertYamlEdit(t, "environment: {} # c\nother: 1\n", map[string]any{
+		"environment": flowEnvironment,
+		"other":       1,
+	}, "environment: {imports: [e]} # c\nother: 1\n")
 }
 
 func TestEditCollectionEmptiedUnderCommentedKey(t *testing.T) {
