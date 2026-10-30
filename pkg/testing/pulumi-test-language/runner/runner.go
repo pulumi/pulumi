@@ -853,7 +853,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		} else {
 			host.providers[key] = func() (plugin.Provider, error) {
-				return provider(), nil
+				return host.serveProvider(provider())
 			}
 		}
 	}
