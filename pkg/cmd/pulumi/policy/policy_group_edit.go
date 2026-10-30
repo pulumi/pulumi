@@ -239,7 +239,67 @@ func runPolicyGroupEdit(
 		return fmt.Errorf("reading policy group after edit: %w", err)
 	}
 
-	return args.outputFormat.Get()(w, resp)
+	if err := args.outputFormat.Get()(w, resp); err != nil {
+		return err
+	}
+
+	// The service can accept a membership change without applying it, for
+	// example when a stack reference does not name an existing stack. Check the
+	// group after the edit so that such a change fails instead of silently
+	// doing nothing.
+	return verifyPolicyGroupMembership(resp, addStacks, removeStacks,
+		args.addInsightsAccount, args.removeInsightsAccount)
+}
+
+// verifyPolicyGroupMembership returns an error naming every requested stack or
+// Insights account change that is not reflected in the Policy Group after the
+// edit.
+func verifyPolicyGroupMembership(
+	resp apitype.GetPolicyGroupResponse,
+	addStacks, removeStacks []apitype.PulumiStackReference,
+	addAccounts, removeAccounts []string,
+) error {
+	hasStack := func(ref apitype.PulumiStackReference) bool {
+		return slices.ContainsFunc(resp.Stacks, func(s apitype.PulumiStackReference) bool {
+			return s.Name == ref.Name && (ref.RoutingProject == "" || s.RoutingProject == ref.RoutingProject)
+		})
+	}
+
+	var errs []error
+	for _, s := range addStacks {
+		if !hasStack(s) {
+			errs = append(errs, fmt.Errorf(
+				"stack %q was not added to Policy Group %q; check that the stack exists "+
+					"and pass it as 'project/stack'", formatStackReference(s), resp.Name))
+		}
+	}
+	for _, s := range removeStacks {
+		if hasStack(s) {
+			errs = append(errs, fmt.Errorf(
+				"stack %q was not removed from Policy Group %q", formatStackReference(s), resp.Name))
+		}
+	}
+	for _, a := range addAccounts {
+		if !slices.Contains(resp.Accounts, a) {
+			errs = append(errs, fmt.Errorf(
+				"the Insights account %q was not added to Policy Group %q; check that the account exists",
+				a, resp.Name))
+		}
+	}
+	for _, a := range removeAccounts {
+		if slices.Contains(resp.Accounts, a) {
+			errs = append(errs, fmt.Errorf(
+				"the Insights account %q was not removed from Policy Group %q", a, resp.Name))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func formatStackReference(s apitype.PulumiStackReference) string {
+	if s.RoutingProject == "" {
+		return s.Name
+	}
+	return s.RoutingProject + "/" + s.Name
 }
 
 // policyGroupUpdates converts the requested edits into one update per

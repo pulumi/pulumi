@@ -120,6 +120,11 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 		Name:       "production",
 		EntityType: apitype.PolicyGroupEntityTypeStacks, //nolint:staticcheck
 		Mode:       apitype.PolicyGroupModePreventative,
+		Stacks: []apitype.PulumiStackReference{
+			{Name: "prod", RoutingProject: "web"},
+			{Name: "standalone", RoutingProject: "web"},
+		},
+		Accounts: []string{"acct-2"},
 	}}
 
 	args := policyGroupEditArgs{
@@ -166,9 +171,12 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 		"isOrgDefault": false,
 		"entityType": "stacks",
 		"mode": "preventative",
-		"stacks": [],
+		"stacks": [
+			{"name": "prod", "routingProject": "web"},
+			{"name": "standalone", "routingProject": "web"}
+		],
 		"appliedPolicyPacks": [],
-		"accounts": []
+		"accounts": ["acct-2"]
 	}`, buf.String())
 }
 
@@ -251,4 +259,93 @@ func TestPolicyGroupEdit_InvalidPolicyPackRef(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, `policy pack reference "@1" is missing a name`, err.Error())
 	assert.Empty(t, c.updates)
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/25235: the
+// service can accept a stack addition without applying it, so the command
+// must fail instead of printing the unchanged group and exiting 0.
+func TestPolicyGroupEdit_AddStackNotApplied(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupEditClient{getResp: apitype.GetPolicyGroupResponse{
+		Name: "eval",
+		Mode: apitype.PolicyGroupModePreventative,
+	}}
+	var buf bytes.Buffer
+	err := runPolicyGroupEdit(t.Context(), &buf,
+		stubPolicyGroupEditFactory(c, "acme"), "eval", policyGroupEditArgs{
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			addStack:     []string{"eval/dev", "standalone"},
+			changed:      map[string]bool{"add-stack": true},
+		})
+	require.Error(t, err)
+	assert.Equal(t,
+		`stack "eval/dev" was not added to Policy Group "eval"; check that the stack exists `+
+			"and pass it as 'project/stack'\n"+
+			`stack "standalone" was not added to Policy Group "eval"; check that the stack exists `+
+			"and pass it as 'project/stack'",
+		err.Error())
+	assert.Equal(t, [][]apitype.UpdatePolicyGroupRequest{{
+		{AddStack: &apitype.PulumiStackReference{Name: "dev", RoutingProject: "eval"}},
+		{AddStack: &apitype.PulumiStackReference{Name: "standalone"}},
+	}}, c.updates)
+	// The group is still printed so the user can see its current state.
+	assert.Contains(t, buf.String(), "Stacks:                0\n")
+}
+
+func TestPolicyGroupEdit_MembershipApplied(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupEditClient{getResp: apitype.GetPolicyGroupResponse{
+		Name: "eval",
+		Mode: apitype.PolicyGroupModeAudit,
+		Stacks: []apitype.PulumiStackReference{
+			{Name: "dev", RoutingProject: "eval"},
+			{Name: "standalone", RoutingProject: "web"},
+		},
+		Accounts: []string{"acct-2"},
+	}}
+	var buf bytes.Buffer
+	err := runPolicyGroupEdit(t.Context(), &buf,
+		stubPolicyGroupEditFactory(c, "acme"), "eval", policyGroupEditArgs{
+			outputFormat:          defaultPolicyGroupGetOutputFormat(),
+			addStack:              []string{"eval/dev", "standalone"},
+			removeStack:           []string{"eval/prod"},
+			addInsightsAccount:    []string{"acct-2"},
+			removeInsightsAccount: []string{"acct-1"},
+			changed: map[string]bool{
+				"add-stack": true, "remove-stack": true,
+				"add-insights-account": true, "remove-insights-account": true,
+			},
+		})
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "Stacks:                2\n  - eval/dev\n  - web/standalone\n")
+}
+
+func TestPolicyGroupEdit_RemoveAndAccountsNotApplied(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupEditClient{getResp: apitype.GetPolicyGroupResponse{
+		Name:     "eval",
+		Mode:     apitype.PolicyGroupModeAudit,
+		Stacks:   []apitype.PulumiStackReference{{Name: "prod", RoutingProject: "eval"}},
+		Accounts: []string{"acct-1"},
+	}}
+	var buf bytes.Buffer
+	err := runPolicyGroupEdit(t.Context(), &buf,
+		stubPolicyGroupEditFactory(c, "acme"), "eval", policyGroupEditArgs{
+			outputFormat:          defaultPolicyGroupGetOutputFormat(),
+			removeStack:           []string{"eval/prod"},
+			addInsightsAccount:    []string{"acct-2"},
+			removeInsightsAccount: []string{"acct-1"},
+			changed: map[string]bool{
+				"remove-stack": true, "add-insights-account": true, "remove-insights-account": true,
+			},
+		})
+	require.Error(t, err)
+	assert.Equal(t,
+		`stack "eval/prod" was not removed from Policy Group "eval"`+"\n"+
+			`the Insights account "acct-2" was not added to Policy Group "eval"; check that the account exists`+"\n"+
+			`the Insights account "acct-1" was not removed from Policy Group "eval"`,
+		err.Error())
 }
