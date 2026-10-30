@@ -511,6 +511,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Commands: []*cobra.Command{
 				auth.NewLoginCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, env.Global()),
 				auth.NewLogoutCmd(pkgWorkspace.Instance),
+				auth.NewAuthCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				whoami.NewWhoAmICmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager),
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
