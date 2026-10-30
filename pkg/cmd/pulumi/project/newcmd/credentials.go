@@ -16,63 +16,30 @@ package newcmd
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
-	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/credentialcheck"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
-
-// cloudProvider describes a provider package that opted into the `pulumi new` credentials
-// preflight through its schema.
-type cloudProvider struct {
-	// pkg is the provider package name, which is also the stack config namespace.
-	pkg string
-	// displayName is how the provider is referred to in warnings.
-	displayName string
-	// docURL points at the provider's installation & configuration docs; may be empty.
-	docURL string
-}
 
 // credentialsCheckEnabled reports whether this run should preflight cloud credentials: only
 // interactive runs that actually set up a project, and only when the user hasn't opted out.
 func credentialsCheckEnabled(args newArgs) bool {
 	return args.interactive && !args.generateOnly && !args.offline && !env.SkipNewCredentialsCheck.Value()
-}
-
-// providerConfigProperties extracts the plaintext values in the provider's config
-// namespace from the saved stack config for use as CheckConfig inputs. Secure values
-// are skipped.
-func providerConfigProperties(pkg string, cfg config.Map) property.Map {
-	m := map[string]property.Value{}
-	for k, v := range cfg {
-		if k.Namespace() != pkg || v.Secure() {
-			continue
-		}
-		plain, err := v.Value(config.NopDecrypter)
-		if err != nil {
-			continue
-		}
-		m[k.Name()] = property.New(plain)
-	}
-	return property.NewMap(m)
 }
 
 // credentialsPreflight holds what the per-package credentials check needs beyond the
@@ -83,13 +50,6 @@ type credentialsPreflight struct {
 	cfg    config.Map
 	stdout io.Writer
 	opts   display.Options
-}
-
-// credentialsProblem is what the preflight reports to the user when a provider rejects
-// the stack's configuration or cannot validate the user's credentials.
-type credentialsProblem struct {
-	headline string
-	details  []string
 }
 
 // preflightCloudCredentials runs the best-effort cloud credentials check for a freshly
@@ -138,7 +98,6 @@ func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.
 	}
 	defer contract.IgnoreClose(prov)
 
-	pkg := desc.Name
 	request := plugin.GetSchemaRequest{}
 	if parameterization := desc.Parameterization; parameterization != nil {
 		resp, err := prov.Parameterize(ctx, plugin.ParameterizeRequest{Parameters: &plugin.ParameterizeValue{
@@ -153,121 +112,34 @@ func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.
 				"err", fmt.Errorf("unexpected parameterization response: %s@%s", resp.Name, resp.Version))
 			return
 		}
-		pkg = parameterization.Name
 		request.SubpackageName = resp.Name
 		request.SubpackageVersion = &resp.Version
 	}
 
-	cp, ok := cloudProviderFromSchema(ctx, prov, pkg, request)
-	if !ok {
-		return
-	}
-	if problem := probeCredentials(ctx, cp, prov, providerConfigProperties(cp.pkg, pf.cfg)); problem != nil {
-		pf.printWarning(cp, problem)
+	target := &deploy.Target{Config: plaintextConfig(pf.cfg), Decrypter: config.NopDecrypter}
+	_, err = credentialcheck.Check(ctx, prov, request, target)
+	if problem, ok := errors.AsType[*credentialcheck.Problem](err); ok {
+		pf.printWarning(problem)
+	} else if err != nil {
+		slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name, "err", err)
 	}
 }
 
-// cloudProviderFromSchema fetches the provider's schema and returns the preflight metadata it
-// declares. ok is false when the provider did not opt into the check or its schema is unavailable.
-func cloudProviderFromSchema(
-	ctx context.Context, prov plugin.Provider, pkg string, request plugin.GetSchemaRequest,
-) (cp cloudProvider, ok bool) {
-	resp, err := prov.GetSchema(ctx, request)
-	if err != nil {
-		slog.DebugContext(ctx, "skipping credentials check", "provider", pkg, "err", err)
-		return cloudProvider{}, false
-	}
-	var info schema.PackageInfoSpec
-	if err := json.Unmarshal(resp.Schema, &info); err != nil {
-		slog.DebugContext(ctx, "skipping credentials check", "provider", pkg, "err", err)
-		return cloudProvider{}, false
-	}
-	if !info.ValidateCredentialsOnNew {
-		return cloudProvider{}, false
-	}
-	cp = cloudProvider{pkg: pkg, displayName: info.DisplayName, docURL: info.ConfigurationDocsURL}
-	if cp.displayName == "" {
-		cp.displayName = pkg
-	}
-	return cp, true
-}
-
-// probeCredentials calls the cloud provider's CheckConfig and then Configure, which is
-// where providers validate credentials and initialise their clients. It returns nil when
-// both succeed, and also when ctx is cancelled, in which case the check stays silent.
-func probeCredentials(
-	ctx context.Context, cp cloudProvider, prov plugin.Provider, news property.Map,
-) *credentialsProblem {
-	urn := resource.NewURN("dev", "default", "", tokens.Type("pulumi:providers:"+cp.pkg), "default")
-
-	resp, err := prov.CheckConfig(ctx, plugin.CheckConfigRequest{URN: urn, News: news})
-	if err == nil && len(resp.Failures) == 0 {
-		err = configureProvider(ctx, prov, urn, resp.Properties)
-	}
-	if ctx.Err() != nil {
-		slog.DebugContext(ctx, "credentials check timed out or was cancelled", "provider", cp.pkg)
-		return nil
-	}
-	if err != nil {
-		return &credentialsProblem{
-			headline: fmt.Sprintf("Could not validate your %s credentials:", cp.displayName),
-			details:  strings.Split(strings.TrimSpace(errorMessage(err)), "\n"),
+// plaintextConfig returns cfg without its secure values, which this check does not decrypt.
+func plaintextConfig(cfg config.Map) config.Map {
+	plain := config.Map{}
+	for k, v := range cfg {
+		if !v.Secure() {
+			plain[k] = v
 		}
 	}
-	if len(resp.Failures) == 0 {
-		return nil
-	}
-	problem := &credentialsProblem{
-		headline: fmt.Sprintf("The %s provider reported problems with this stack's configuration:", cp.displayName),
-	}
-	for _, f := range resp.Failures {
-		reason := strings.ReplaceAll(strings.TrimSpace(f.Reason), "\n", "\n    ")
-		if f.Property != "" {
-			reason = string(f.Property) + ": " + reason
-		}
-		problem.details = append(problem.details, reason)
-	}
-	return problem
+	return plain
 }
 
 // printWarning renders a credentials problem as an advisory warning.
-func (pf credentialsPreflight) printWarning(cp cloudProvider, problem *credentialsProblem) {
-	warning := pf.opts.Color.Colorize(colors.SpecWarning + "warning:" + colors.Reset)
-	fmt.Fprintf(pf.stdout, "%s %s\n", warning, problem.headline)
-	for _, line := range problem.details {
-		fmt.Fprintf(pf.stdout, "    %s\n", line)
-	}
-	fmt.Fprintln(pf.stdout, "`pulumi up` may fail until this is resolved.")
-	// Providers often link their configuration docs in the error itself; don't repeat the link.
-	details := strings.Join(problem.details, "\n")
-	if cp.docURL != "" && !strings.Contains(details, strings.TrimSuffix(cp.docURL, "/")) {
-		fmt.Fprintf(pf.stdout, "For help configuring the %s provider, see %s\n", cp.displayName, cp.docURL)
-	}
+func (pf credentialsPreflight) printWarning(problem *credentialcheck.Problem) {
+	warning := colors.SpecWarning + "warning:" + colors.Reset + " " + problem.Error() + "\n" +
+		"`pulumi up` may fail until this is resolved."
+	fmt.Fprintln(pf.stdout, pf.opts.Color.Colorize(colors.HighlightCommands(warning)))
 	fmt.Fprintln(pf.stdout)
-}
-
-// configureProvider calls Configure with the checked config and returns any error it produced.
-func configureProvider(
-	ctx context.Context, prov plugin.Provider, urn resource.URN, inputs property.Map,
-) error {
-	name := urn.Name()
-	typ := urn.Type()
-	id := resource.ID("preflight")
-	_, err := prov.Configure(ctx, plugin.ConfigureRequest{
-		URN:    &urn,
-		Name:   &name,
-		Type:   &typ,
-		ID:     &id,
-		Inputs: inputs,
-	})
-	return err
-}
-
-// errorMessage unwraps gRPC status errors to their message so the provider's own
-// wording is shown without the "rpc error: code = ..." prefix.
-func errorMessage(err error) string {
-	if rpcErr, ok := rpcerror.FromError(err); ok {
-		return rpcErr.Message()
-	}
-	return err.Error()
 }
