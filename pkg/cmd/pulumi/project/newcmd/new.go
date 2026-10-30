@@ -183,8 +183,8 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		}
 
 		if args.escConfig {
-			if _, ok := b.(backend.ManagedEnvironmentsBackend); !ok {
-				return fmt.Errorf("--esc-config: %w by this backend", backend.ErrManagedEnvironmentNotSupported)
+			if _, err := backend.AsManagedEnvironmentsBackend(b); err != nil {
+				return fmt.Errorf("--esc-config: %w", err)
 			}
 		}
 	}
