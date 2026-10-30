@@ -797,6 +797,9 @@ func TestManagedConfigEnvCommands(t *testing.T) {
 func TestManagedConfigSetAll(t *testing.T) {
 	cases := []struct {
 		name       string
+		file       string
+		imported   *esc.Environment
+		override   bool
 		plaintext  []string
 		secret     []string
 		json       string
@@ -804,6 +807,24 @@ func TestManagedConfigSetAll(t *testing.T) {
 		added      string
 		err        string
 	}{
+		{
+			name:     "imported key is refused before its secret is encrypted",
+			file:     importingStackFile,
+			imported: importedConfigEnv("bar"),
+			secret:   []string{"app:bar=one"},
+			err: "config key app:bar is defined by imported environment proj/base; the CLI does not edit imported " +
+				"environments. Set it in that environment with `pulumi env set proj/base pulumiConfig.bar <value>`, " +
+				"remove the import, or pass `--override-import` to override it in this stack's environment",
+		},
+		{
+			name:       "override-import writes an imported key under the import's spelling",
+			file:       importingStackFile,
+			imported:   importedConfigEnv("bar"),
+			override:   true,
+			secret:     []string{"app:bar=one"},
+			plaintexts: []string{"one"},
+			added:      "      bar:\n        fn::secret:\n          ciphertext: ct1\n",
+		},
 		{
 			name:       "secret flags",
 			secret:     []string{"app:a=one", "app:b=two"},
@@ -852,10 +873,21 @@ func TestManagedConfigSetAll(t *testing.T) {
 			dir := t.TempDir()
 			t.Chdir(dir)
 			require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte("name: app\nruntime: yaml\n"), 0o600))
+			if c.file == "" {
+				c.file = managedStackFile
+			}
 			stackFile := filepath.Join(dir, "Pulumi.dev.yaml")
-			require.NoError(t, os.WriteFile(stackFile, []byte(managedStackFile), 0o600))
+			require.NoError(t, os.WriteFile(stackFile, []byte(c.file), 0o600))
 			configFile := ""
 			s, plaintexts := managedTestStack(t, backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"})
+			if c.imported != nil {
+				be := s.BackendF().(*backend.MockManagedEnvironmentsBackend)
+				be.CheckYAMLEnvironmentF = func(
+					context.Context, string, []byte,
+				) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+					return c.imported, nil, nil
+				}
+			}
 			ws := &pkgWorkspace.MockContext{
 				ReadProjectF: func(string) (*workspace.Project, string, error) {
 					return &workspace.Project{Name: "app"}, "", nil
@@ -882,19 +914,22 @@ func TestManagedConfigSetAll(t *testing.T) {
 			if c.json != "" {
 				require.NoError(t, cmd.PersistentFlags().Set("json", c.json))
 			}
+			if c.override {
+				require.NoError(t, cmd.PersistentFlags().Set("override-import", "true"))
+			}
 
 			err := cmd.RunE(cmd, nil)
 			written, readErr := os.ReadFile(stackFile)
 			require.NoError(t, readErr)
 			if c.err != "" {
 				require.EqualError(t, err, c.err)
-				require.Equal(t, managedStackFile, string(written))
+				require.Equal(t, c.file, string(written))
 				require.Empty(t, *plaintexts)
 				return
 			}
 			require.NoError(t, err)
 			require.Equal(t, c.plaintexts, *plaintexts)
-			expected := strings.Replace(managedStackFile, "foo: short\n", "foo: short\n"+c.added, 1)
+			expected := strings.Replace(c.file, "foo: short\n", "foo: short\n"+c.added, 1)
 			require.Equal(t, expected, string(written))
 		})
 	}

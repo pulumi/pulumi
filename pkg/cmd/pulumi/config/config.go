@@ -974,6 +974,7 @@ func newConfigSetAllCmd(
 	var secretArgs []string
 	var path bool
 	var jsonArg string
+	var overrideImport bool
 
 	setCmd := &cobra.Command{
 		Use:   "set-all",
@@ -1038,7 +1039,7 @@ func newConfigSetAllCmd(
 				return err
 			}
 
-			w, err := newConfigWriter(stack, project.Name, ps, *configFile, ssml, false /*overrideImport*/)
+			w, err := newConfigWriter(stack, project.Name, ps, *configFile, ssml, overrideImport)
 			if err != nil {
 				return err
 			}
@@ -1184,6 +1185,12 @@ func newConfigSetAllCmd(
 		&jsonArg, "json", "",
 		"Read values from a JSON string in the format produced by 'pulumi config --json'",
 	)
+	setCmd.PersistentFlags().BoolVar(
+		&overrideImport, "override-import", false,
+		"On a stack with an ESC-managed environment, set keys that an imported environment defines in the stack's "+
+			"own environment, overriding the imported values",
+	)
+	_ = setCmd.PersistentFlags().MarkHidden("override-import")
 
 	return setCmd
 }
