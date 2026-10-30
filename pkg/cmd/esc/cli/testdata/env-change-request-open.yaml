@@ -1,0 +1,120 @@
+run: |
+  esc env init default/test
+  esc env open-request default/test --grant-expiration-seconds 1h --access-duration-seconds 30m
+  esc env change-request ls
+  esc env change-request get test-request-id-12345
+  esc env change-request get test-request-id-12345 --output json
+  esc env change-request diff test-request-id-12345 || true
+  esc env change-request rebase test-request-id-12345 || true
+  esc env change-request approve test-request-id-12345 --dry-run
+  esc env change-request approve test-request-id-12345 --yes
+  esc env change-request apply test-request-id-12345 --yes
+  esc env change-request log test-request-id-12345
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env open-request default/test --grant-expiration-seconds 1h --access-duration-seconds 30m
+Created environment open request with ID: test-request-id-12345
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=test-request-id-12345
+Change request submitted
+> esc env change-request ls
+┌───────────────────────┬──────────────┬────────┬───────────┐
+│ ID                    │ ENVIRONMENT  │ ACTION │ AUTHOR    │
+├───────────────────────┼──────────────┼────────┼───────────┤
+│ test-request-id-12345 │ default/test │ open   │ test-user │
+└───────────────────────┴──────────────┴────────┴───────────┘
+> esc env change-request get test-request-id-12345
+ID: test-request-id-12345
+Environment: test-user/default/test
+Action: open
+Status: pending
+Author: Test User <test-user>
+Created: a long while ago
+Revision: 1
+Access duration: 30m0s
+Grant expiration: 1h0m0s
+Approved: false
+  Require approval (not satisfied): 0 of 1 approvals
+URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=test-request-id-12345
+> esc env change-request get test-request-id-12345 --output json
+{
+  "id": "test-request-id-12345",
+  "status": "pending",
+  "action": "open",
+  "description": "",
+  "createdAt": "0001-01-01T00:00:00Z",
+  "createdBy": {
+    "name": "Test User",
+    "githubLogin": "test-user"
+  },
+  "latestRevisionNumber": 1,
+  "entity": {
+    "entityType": "environment",
+    "project": "default",
+    "name": "test"
+  },
+  "gateEvaluation": {
+    "satisfied": false,
+    "applicableGates": [
+      {
+        "id": "gate-1",
+        "name": "Require approval",
+        "satisfied": false,
+        "ruleDetails": {
+          "ruleType": "approval_required",
+          "requiredApprovals": 1
+        }
+      }
+    ]
+  },
+  "openRequest": {
+    "grantExpirationSeconds": 3600,
+    "accessDurationSeconds": 1800
+  },
+  "url": "https://app.fake.pulumi.com/test-user/esc/default/test?version=test-request-id-12345"
+}
+> esc env change-request diff test-request-id-12345
+> esc env change-request rebase test-request-id-12345
+> esc env change-request approve test-request-id-12345 --dry-run
+Change request test-request-id-12345 will allow test-user to open environment test-user/default/test.
+
+Access duration: 30m0s
+Grant expiration: 1h0m0s
+
+> esc env change-request approve test-request-id-12345 --yes
+Change request test-request-id-12345 will allow test-user to open environment test-user/default/test.
+
+Access duration: 30m0s
+Grant expiration: 1h0m0s
+
+> esc env change-request apply test-request-id-12345 --yes
+Change request test-request-id-12345 will allow test-user to open environment test-user/default/test.
+
+Access duration: 30m0s
+Grant expiration: 1h0m0s
+
+> esc env change-request log test-request-id-12345
+a long while ago  test-user created the change request
+a long while ago  test-user submitted the change request for approval
+a long while ago  test-user approved revision 1
+a long while ago  test-user changed the status from pending to ready (approval rules met)
+a long while ago  test-user applied the change request
+
+---
+> esc env init default/test
+> esc env open-request default/test --grant-expiration-seconds 1h --access-duration-seconds 30m
+> esc env change-request ls
+> esc env change-request get test-request-id-12345
+> esc env change-request get test-request-id-12345 --output json
+> esc env change-request diff test-request-id-12345
+Error: diff is only supported for environment drafts
+> esc env change-request rebase test-request-id-12345
+Error: rebase is only supported for environment drafts
+> esc env change-request approve test-request-id-12345 --dry-run
+> esc env change-request approve test-request-id-12345 --yes
+Approved change request test-request-id-12345
+> esc env change-request apply test-request-id-12345 --yes
+Applied change request test-request-id-12345
+Run `esc env open test-user/default/test` to open the environment.
+> esc env change-request log test-request-id-12345
