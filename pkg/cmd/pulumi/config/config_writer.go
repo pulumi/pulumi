@@ -64,7 +64,7 @@ func NewConfigWriter(
 	configFile string,
 	ef encrypterFactory,
 ) (ConfigWriter, error) {
-	if err := rejectConfigFileOnManagedStack(s, configFile); err != nil {
+	if err := cmdStack.RejectConfigFlagsOnManagedStack(s, nil, configFile); err != nil {
 		return nil, err
 	}
 	return newConfigWriter(s, project.Name, ps, configFile, ef, false /*overrideImport*/)
