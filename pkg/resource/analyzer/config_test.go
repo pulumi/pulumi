@@ -1312,12 +1312,12 @@ func TestParsePolicyPackConfigV2(t *testing.T) {
 		"all": {EnforcementLevel: apitype.Mandatory},
 		"p":   {EnforcementLevel: apitype.Advisory, Properties: map[string]any{"max": float64(3)}},
 	}, file.Config)
-	assert.Equal(t, 1, file.Exceptions.Len())
+	assert.Equal(t, 1, file.Exceptions.len())
 
 	file, err = parsePolicyPackConfig([]byte(`{"version": 2}`))
 	require.NoError(t, err)
 	assert.Empty(t, file.Config)
-	assert.Equal(t, 0, file.Exceptions.Len())
+	assert.Equal(t, 0, file.Exceptions.len())
 
 	// An unversioned file is parsed as before.
 	file, err = parsePolicyPackConfig([]byte(`{"p": "advisory", "environments": ["policy/shared"]}`))
@@ -1376,5 +1376,5 @@ func TestLoadPolicyPackConfigFile(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, map[string]plugin.AnalyzerPolicyConfig{"p": {EnforcementLevel: apitype.Advisory}}, f.Config)
 	assert.Equal(t, []string{"policy/shared"}, f.Environments)
-	assert.Equal(t, 1, f.Exceptions.Len())
+	assert.Equal(t, 1, f.Exceptions.len())
 }

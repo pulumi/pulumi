@@ -272,31 +272,6 @@ func TestPolicyEnable_ConfigFileEnvironments(t *testing.T) {
 	}
 }
 
-func TestPolicyEnable_ConfigFileExceptionsWarning(t *testing.T) {
-	t.Parallel()
-
-	path := filepath.Join(t.TempDir(), "config.json")
-	require.NoError(t, os.WriteFile(path, []byte(`{
-		"version": 2,
-		"policies": {"s3-no-public": "mandatory"},
-		"exceptions": {"a": {"reason": "r", "match": [
-			{"policies": ["s3-no-public"], "targets": ["urn:pulumi:prod::web::pkg:index:R::r"]}
-		]}}
-	}`), 0o600))
-
-	pack := &backend.MockPolicyPack{
-		RefF:    func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "aws-guardrails"} },
-		EnableF: func(context.Context, string, backend.PolicyPackOperation) error { return nil },
-	}
-	handler := respondJSON(t, "/api/orgs/acme/policygroups/default-policy-group",
-		apitype.GetPolicyGroupResponse{Name: "default-policy-group"})
-
-	out, err := runPolicyPackCmd(t, newPolicyEnableTestCmd(t, pack, handler),
-		"acme/aws-guardrails", "latest", "--config", path)
-	require.NoError(t, err)
-	assert.Contains(t, out, "warning: ignoring the exceptions in "+path)
-}
-
 func TestLoadPolicyConfigFromFile(t *testing.T) {
 	t.Parallel()
 
@@ -343,15 +318,15 @@ func TestLoadPolicyConfigFromFile(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "config.json")
 			require.NoError(t, os.WriteFile(path, []byte(tt.file), 0o600))
 
-			file, err := loadPolicyConfigFromFile(path)
+			config, environments, err := loadPolicyConfigFromFile(path)
 			require.NoError(t, err)
 
-			got := make(map[string]string, len(file.config))
-			for k, v := range file.config {
+			got := make(map[string]string, len(config))
+			for k, v := range config {
 				got[k] = string(*v)
 			}
 			assert.Equal(t, tt.wantConfig, got)
-			assert.Equal(t, tt.wantEnvironments, file.environments)
+			assert.Equal(t, tt.wantEnvironments, environments)
 		})
 	}
 }

@@ -104,15 +104,12 @@ func newPolicyEnableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 			}
 
 			// Load the configuration from the user-specified JSON file into config object.
-			var file policyConfigFile
+			var config map[string]*json.RawMessage
+			var environments []string
 			if args.config != "" {
-				file, err = loadPolicyConfigFromFile(args.config)
+				config, environments, err = loadPolicyConfigFromFile(args.config)
 				if err != nil {
 					return err
-				}
-				if file.exceptions.Len() > 0 {
-					fmt.Fprintf(cmd.ErrOrStderr(),
-						"warning: ignoring the exceptions in %s; pulumi policy enable does not apply them\n", args.config)
 				}
 			}
 
@@ -121,8 +118,8 @@ func newPolicyEnableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 				backend.PolicyPackOperation{
 					VersionTag:   version,
 					Scopes:       backend.CancellationScopes,
-					Config:       file.config,
-					Environments: file.environments,
+					Config:       config,
+					Environments: environments,
 				})
 			if err != nil {
 				return err
@@ -157,29 +154,22 @@ func newPolicyEnableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 	return cmd
 }
 
-// policyConfigFile is a policy pack config file, with its policy config in the form the service expects.
-type policyConfigFile struct {
-	config       map[string]*json.RawMessage
-	environments []string
-	exceptions   resourceanalyzer.PolicyExceptions
-}
-
-func loadPolicyConfigFromFile(path string) (policyConfigFile, error) {
-	file, err := resourceanalyzer.LoadPolicyPackConfigFile(path)
+func loadPolicyConfigFromFile(file string) (map[string]*json.RawMessage, []string, error) {
+	analyzerPolicyConfigMap, environments, err := resourceanalyzer.LoadPolicyPackConfigAndEnvironmentsFromFile(file)
 	if err != nil {
-		return policyConfigFile{}, err
+		return nil, nil, err
 	}
 
 	// Convert type map[string]plugin.AnalyzerPolicyConfig to map[string]*json.RawMessage.
 	config := make(map[string]*json.RawMessage)
-	for k, v := range file.Config {
+	for k, v := range analyzerPolicyConfigMap {
 		raw, err := marshalAnalyzerPolicyConfig(v)
 		if err != nil {
-			return policyConfigFile{}, err
+			return nil, nil, err
 		}
 		config[k] = raw
 	}
-	return policyConfigFile{config: config, environments: file.Environments, exceptions: file.Exceptions}, nil
+	return config, environments, nil
 }
 
 // marshalAnalyzerPolicyConfig converts the type plugin.AnalyzerPolicyConfig to structure the data
