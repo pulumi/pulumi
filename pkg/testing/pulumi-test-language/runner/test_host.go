@@ -175,6 +175,12 @@ func (h *testHost) Provider(
 		return nil, fmt.Errorf("unknown provider %s", key)
 	}
 
+	return provider, nil
+}
+
+// serveProvider puts an in-process provider behind a gRPC server, so that the engine talks to it as
+// it talks to a plugin. The host closes the server when it closes.
+func (h *testHost) serveProvider(provider plugin.Provider) (plugin.Provider, error) {
 	grpcProvider, closer, err := wrapProviderWithGrpc(provider)
 	if err != nil {
 		return nil, err
