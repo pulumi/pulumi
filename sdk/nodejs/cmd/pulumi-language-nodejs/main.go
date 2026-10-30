@@ -262,6 +262,8 @@ type nodeLanguageHost struct {
 	otelEndpoint  string
 	cancelCtx     context.Context    // Cancelled when we receive the `Cancel` RPC
 	cancelFunc    context.CancelFunc // Cancel the cancelCtx
+	cancelParent  context.Context
+	cancelMu      sync.Mutex
 
 	// used by language conformance tests to force TSC usage
 	forceTsc bool
@@ -379,7 +381,8 @@ func newLanguageHost(
 	ctx context.Context,
 	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool, installCacheDir string,
 ) pulumirpc.LanguageRuntimeServer {
-	ctx, cancel := context.WithCancel(ctx)
+	parentCtx := ctx
+	ctx, cancel := context.WithCancel(parentCtx)
 	return &nodeLanguageHost{
 		engineAddress:   engineAddress,
 		tracing:         tracing,
@@ -389,6 +392,7 @@ func newLanguageHost(
 		runtime:         runtime,
 		cancelCtx:       ctx,
 		cancelFunc:      cancel,
+		cancelParent:    parentCtx,
 	}
 }
 
@@ -982,8 +986,9 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	// Cancel if either the Cancel RPC fires (host.cancelCtx) or the gRPC request ends (ctx)
-	cmdCtx, cmdCancel := context.WithCancel(host.cancelCtx)
+	// Cancel if either the Cancel RPC fires or the gRPC request ends (ctx).
+	// Take a snapshot because Cancel replaces the context for the next run.
+	cmdCtx, cmdCancel := context.WithCancel(host.cancellationContext())
 	context.AfterFunc(ctx, cmdCancel)
 	cmd := exec.CommandContext(cmdCtx, runtimeBin, runtimeArgs...)
 	cmd.Cancel = func() error {
@@ -2329,8 +2334,18 @@ func (host *nodeLanguageHost) Link(
 	}, nil
 }
 
+func (host *nodeLanguageHost) cancellationContext() context.Context {
+	host.cancelMu.Lock()
+	defer host.cancelMu.Unlock()
+	return host.cancelCtx
+}
+
 func (host *nodeLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	host.cancelMu.Lock()
+	defer host.cancelMu.Unlock()
+
 	host.cancelFunc()
+	host.cancelCtx, host.cancelFunc = context.WithCancel(host.cancelParent)
 	return &emptypb.Empty{}, nil
 }
 
