@@ -103,20 +103,27 @@ func newStackNewCmd() *cobra.Command {
 		&sicmd.remoteConfig, "remote-config", false, "Store stack configuration remotely",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-config")
+	AddESCConfigFlag(cmd, &sicmd.escConfig, "remote-config", "copy-config-from")
+	cmd.PersistentFlags().BoolVarP(
+		&sicmd.yes, "yes", "y", false,
+		"Skip interactive prompts; fail if required information is missing")
+	return cmd
+}
+
+// AddESCConfigFlag adds the --esc-config flag to cmd, bound to p, hidden unless PULUMI_EXPERIMENTAL is set, and
+// mutually exclusive with each flag in exclusiveWith.
+func AddESCConfigFlag(cmd *cobra.Command, p *bool, exclusiveWith ...string) {
 	cmd.PersistentFlags().BoolVar(
-		&sicmd.escConfig, "esc-config", false,
+		p, "esc-config", false,
 		"[EXPERIMENTAL] Create an ESC environment, managed by the stack, that holds the stack's configuration. "+
 			"ESC encrypts secret config values; --secrets-provider applies only to secrets in the stack's state",
 	)
 	if !env.Experimental.Value() {
 		_ = cmd.PersistentFlags().MarkHidden("esc-config")
 	}
-	cmd.MarkFlagsMutuallyExclusive("esc-config", "remote-config")
-	cmd.MarkFlagsMutuallyExclusive("esc-config", "copy-config-from")
-	cmd.PersistentFlags().BoolVarP(
-		&sicmd.yes, "yes", "y", false,
-		"Skip interactive prompts; fail if required information is missing")
-	return cmd
+	for _, flag := range exclusiveWith {
+		cmd.MarkFlagsMutuallyExclusive("esc-config", flag)
+	}
 }
 
 // stackNewCmd implements the `pulumi stack new` command.
