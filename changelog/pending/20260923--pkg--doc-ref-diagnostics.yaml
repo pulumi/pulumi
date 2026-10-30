@@ -1,0 +1,4 @@
+component: pkg
+kind: fix
+body: Render documentation references that fail to bind as their fallback name instead of the empty string, and add PackageReference.InterpretPulumiRefsWithDiagnostics, which returns the rendered text with its diagnostics rather than reporting one failed reference as an error for the whole string
+time: 2026-09-23T14:00:00.000000000+02:00
