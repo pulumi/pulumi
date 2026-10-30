@@ -133,8 +133,8 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	if stack.ConfigLocation().ManagedEnvironment != "" {
-		return cmdStack.ManagedEnvironmentNotSupportedError("`pulumi config env init`")
+	if err := cmdStack.RejectManagedStack(stack, "`pulumi config env init`"); err != nil {
+		return err
 	}
 
 	envBackend, ok := stack.Backend().(backend.EnvironmentsBackend)

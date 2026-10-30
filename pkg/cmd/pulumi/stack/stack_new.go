@@ -223,8 +223,8 @@ func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		if copyStack.ConfigLocation().ManagedEnvironment != "" {
-			return ManagedEnvironmentNotSupportedError("`pulumi stack init --copy-config-from`")
+		if err := RejectManagedStack(copyStack, "`pulumi stack init --copy-config-from`"); err != nil {
+			return err
 		}
 	}
 

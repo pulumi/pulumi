@@ -197,4 +197,8 @@ func TestRejectConfigFlagsOnManagedStack(t *testing.T) {
 		"--config-file is not supported on stacks with an ESC-managed environment yet")
 	require.NoError(t, RejectConfigFlagsOnManagedStack(managed, nil, ""))
 	require.NoError(t, RejectConfigFlagsOnManagedStack(unmanaged, []string{"a=b"}, "Pulumi.other.yaml"))
+
+	assert.EqualError(t, RejectManagedStack(managed, "`pulumi up <template>`"),
+		"`pulumi up <template>` is not supported on stacks with an ESC-managed environment yet")
+	require.NoError(t, RejectManagedStack(unmanaged, "`pulumi up <template>`"))
 }

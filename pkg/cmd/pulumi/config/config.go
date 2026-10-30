@@ -215,9 +215,10 @@ func newConfigCopyCmd(
 			if err != nil {
 				return err
 			}
-			if currentStack.ConfigLocation().ManagedEnvironment != "" {
-				return cmdStack.ManagedEnvironmentNotSupportedError(
-					fmt.Sprintf("`pulumi config copy` from stack %s", currentStack.Ref()))
+			err = cmdStack.RejectManagedStack(
+				currentStack, fmt.Sprintf("`pulumi config copy` from stack %s", currentStack.Ref()))
+			if err != nil {
+				return err
 			}
 			if currentStack.Ref().Name().String() == destinationStackName {
 				return errors.New("current stack and destination stack are the same")
@@ -241,9 +242,10 @@ func newConfigCopyCmd(
 			if err != nil {
 				return err
 			}
-			if destinationStack.ConfigLocation().ManagedEnvironment != "" {
-				return cmdStack.ManagedEnvironmentNotSupportedError(
-					fmt.Sprintf("`pulumi config copy` to stack %s", destinationStack.Ref()))
+			err = cmdStack.RejectManagedStack(
+				destinationStack, fmt.Sprintf("`pulumi config copy` to stack %s", destinationStack.Ref()))
+			if err != nil {
+				return err
 			}
 			destinationProjectStack, err := cmdStack.LoadProjectStack(
 				ctx, cmdutil.Diag(), project, destinationStack, *configFile,
@@ -604,8 +606,8 @@ func newConfigRefreshCmd(
 			if err != nil {
 				return err
 			}
-			if s.ConfigLocation().ManagedEnvironment != "" {
-				return cmdStack.ManagedEnvironmentNotSupportedError("`pulumi config refresh`")
+			if err := cmdStack.RejectManagedStack(s, "`pulumi config refresh`"); err != nil {
+				return err
 			}
 
 			var configPath string

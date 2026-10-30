@@ -88,6 +88,14 @@ func RejectConfigFlagsOnManagedStack(s backend.Stack, configArray []string, conf
 	return nil
 }
 
+// RejectManagedStack returns ManagedEnvironmentNotSupportedError(what) when s has an ESC-managed environment.
+func RejectManagedStack(s backend.Stack, what string) error {
+	if s.ConfigLocation().ManagedEnvironment != "" {
+		return ManagedEnvironmentNotSupportedError(what)
+	}
+	return nil
+}
+
 // ManagedEnvironmentNotSupportedError is the error for a command or flag that does not work on a stack with an
 // ESC-managed environment.
 func ManagedEnvironmentNotSupportedError(what string) error {
