@@ -1,0 +1,3 @@
+component: sdkgen/go
+kind: fix
+body: Generate valid Go identifiers for properties whose names contain dots or other characters not allowed in Go identifiers
