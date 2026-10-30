@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cli
 
 import (
 	"bytes"
@@ -33,7 +33,7 @@ import (
 //
 //nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
 func TestUnknownCommandSuggestions(t *testing.T) {
-	pulumiCmd, cleanup := NewPulumiCmd()
+	pulumiCmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	var stdout, stderr bytes.Buffer
@@ -65,7 +65,7 @@ func TestListAliases(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(strings.Join(c.args, " "), func(t *testing.T) {
-			pulumiCmd, cleanup := NewPulumiCmd()
+			pulumiCmd, cleanup := NewPulumiCmd(Options{})
 			defer cleanup()
 
 			found, _, err := pulumiCmd.Find(c.args)
@@ -82,7 +82,7 @@ func TestBareRootPrintsHelpAndFails(t *testing.T) {
 	// run; keep the async update check from hitting the network.
 	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
 
-	pulumiCmd, cleanup := NewPulumiCmd()
+	pulumiCmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	var stdout, stderr bytes.Buffer

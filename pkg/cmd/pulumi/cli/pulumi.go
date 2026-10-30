@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cli
 
 import (
 	"bytes"
@@ -34,6 +34,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -67,7 +68,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packagecmd"
@@ -203,9 +203,23 @@ func parseRootPersistentFlags(rootPersistent *pflag.FlagSet, args []string) {
 	_ = pf.Parse(args)
 }
 
+// Options configures the commands that NewPulumiCmd adds to the root command.
+type Options struct {
+	AICommands []*cobra.Command
+}
+
+var initTerminal sync.Once
+
+// processSetup lets only the first root command to run set process-wide state, so embedded commands reuse the host's.
+var processSetup sync.Once
+
 // NewPulumiCmd creates a new Pulumi Cmd instance.
-func NewPulumiCmd() (*cobra.Command, func()) {
+func NewPulumiCmd(opts Options) (*cobra.Command, func()) {
 	var cwd string
+	var emoji bool
+	var fullyQualifyStackNames bool
+	var disableIntegrityChecking bool
+	var nonInteractive bool
 	var logFlow bool
 	var logToStderr bool
 	var tracingFlag string
@@ -217,6 +231,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var memProfileRate int
 	var rootSpan oteltrace.Span
 	var autoLogger *backendlogging.Logger
+	var ownsProcess bool
 
 	processStartTime := time.Now()
 
@@ -224,6 +239,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 	var cmd *cobra.Command
 	cleanup := func() {
+		if !ownsProcess {
+			return
+		}
 		// Logger.Close is a no-op when autoLogger is nil.
 		if err := autoLogger.Close(); err != nil {
 			slog.Info("automatic log close error", "err", err)
@@ -255,7 +273,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 	// We run this method for its side-effects. On windows, this will enable the windows terminal
 	// to understand ANSI escape codes.
-	_, _, _ = term.StdStreams()
+	initTerminal.Do(func() { _, _, _ = term.StdStreams() })
 
 	cmd = &cobra.Command{
 		Use:           "pulumi",
@@ -299,6 +317,24 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
 			}
 
+			if cwd != "" {
+				if err := os.Chdir(cwd); err != nil {
+					return err
+				}
+			}
+
+			processSetup.Do(func() { ownsProcess = true })
+			if !ownsProcess {
+				ctx := httpstate.ContextWithAgentCredentialUse(cmd.Context())
+				cmd.SetContext(httpstate.ContextWithCommandName(ctx, cmd.CommandPath()))
+				return nil
+			}
+
+			cmdutil.Emoji = emoji
+			cmdutil.FullyQualifyStackNames = fullyQualifyStackNames
+			cmdutil.DisableInteractive = nonInteractive
+			backend.DisableIntegrityChecking = disableIntegrityChecking
+
 			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
 			client.SetUserAgentCommand(commandPath)
 			client.SetUserAgentAIAgent(agentdetect.Detect(os.Getenv))
@@ -310,12 +346,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			if cmdFlag != nil {
 				err := cmdutil.SetGlobalColorization(cmdFlag.Value.String())
 				if err != nil {
-					return err
-				}
-			}
-
-			if cwd != "" {
-				if err := os.Chdir(cwd); err != nil {
 					return err
 				}
 			}
@@ -450,17 +480,17 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 	cmd.PersistentFlags().StringVarP(&cwd, "cwd", "C", "",
 		"Run pulumi as if it had been started in another directory")
-	cmd.PersistentFlags().BoolVarP(&cmdutil.Emoji, "emoji", "e", runtime.GOOS == "darwin",
+	cmd.PersistentFlags().BoolVarP(&emoji, "emoji", "e", runtime.GOOS == "darwin",
 		"Enable emojis in the output")
-	cmd.PersistentFlags().BoolVarP(&cmdutil.FullyQualifyStackNames, "fully-qualify-stack-names", "Q", false,
+	cmd.PersistentFlags().BoolVarP(&fullyQualifyStackNames, "fully-qualify-stack-names", "Q", false,
 		"Show fully-qualified stack names")
-	cmd.PersistentFlags().BoolVar(&backend.DisableIntegrityChecking, "disable-integrity-checking", false,
+	cmd.PersistentFlags().BoolVar(&disableIntegrityChecking, "disable-integrity-checking", false,
 		"Disable integrity checking of checkpoint files")
 	cmd.PersistentFlags().BoolVar(&logFlow, "logflow", false,
 		"Flow log settings to child processes (like plugins)")
 	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false,
 		"Log to stderr instead of to files")
-	cmd.PersistentFlags().BoolVar(&cmdutil.DisableInteractive, "non-interactive", false,
+	cmd.PersistentFlags().BoolVar(&nonInteractive, "non-interactive", false,
 		"Disable interactive mode for all commands")
 	cmd.PersistentFlags().StringVar(&tracingFlag, "tracing", "",
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
@@ -575,10 +605,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			},
 		},
 		{
-			Name: "AI Commands",
-			Commands: []*cobra.Command{
-				neo.NewNeoCmd(),
-			},
+			Name:     "AI Commands",
+			Commands: opts.AICommands,
 		},
 	})
 
@@ -1103,6 +1131,15 @@ func isDevVersion(s semver.Version) bool {
 // have some basic type information, we can use it to do things like accepting 1
 // and 0 as boolean values.
 func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
+	declare := false
+	flagEnvironmentDeclared.Do(func() { declare = true })
+	exposeFlagsAsEnvironmentVariables(cmd, declare)
+}
+
+// The declared registry is process-wide, so only the first root command registers its flags.
+var flagEnvironmentDeclared sync.Once
+
+func exposeFlagsAsEnvironmentVariables(cmd *cobra.Command, declare bool) {
 	convertToEnvironmentVariable := func(name string) string {
 		name = strings.ReplaceAll(name, "-", "_")
 		name = "OPTION_" + strings.ToUpper(name)
@@ -1113,17 +1150,18 @@ func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 	exposeAsEnvironmentVariable := func(f *pflag.Flag) {
 		name := convertToEnvironmentVariable(f.Name)
 
-		var env declared.Value
-		switch f.Value.Type() {
-		case "int", "int32":
-			env = declared.Int(name, f.Usage)
-		case "bool":
-			env = declared.Bool(name, f.Usage)
-		default:
-			env = declared.String(name, f.Usage)
+		if declare {
+			switch f.Value.Type() {
+			case "int", "int32":
+				declared.Int(name, f.Usage)
+			case "bool":
+				declared.Bool(name, f.Usage)
+			default:
+				declared.String(name, f.Usage)
+			}
 		}
 
-		value, present := env.Underlying()
+		value, present := declared.Global.Raw(declared.Prefix + name)
 		if f.Changed || !present {
 			return
 		}
@@ -1161,7 +1199,7 @@ func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 	cmd.Flags().VisitAll(exposeAsEnvironmentVariable)
 
 	for _, command := range cmd.Commands() {
-		declareFlagsAsEnvironmentVariables(command)
+		exposeFlagsAsEnvironmentVariables(command, declare)
 	}
 }
 

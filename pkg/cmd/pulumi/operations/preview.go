@@ -393,7 +393,13 @@ func NewPreviewCmd() *cobra.Command {
 					return err
 				}
 
-				meta = metadata.GetLanguageRuntimeMetadata(ctx, root, proj)
+				metaCtx, cancelMeta := context.WithCancel(ctx)
+				meta = metadata.GetLanguageRuntimeMetadata(metaCtx, root, proj)
+				// Embedded callers need the lookup finished before the command returns.
+				defer func() {
+					cancelMeta()
+					_, _ = meta.Result(context.Background())
+				}()
 			}
 
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
@@ -618,6 +624,7 @@ func NewPreviewCmd() *cobra.Command {
 				maps.Copy(m.Environment, metadata)
 			}
 
+			allEvents, waitForEvents := withContextEngineEvents(ctx, events)
 			plan, changes, res := backend.PreviewStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
@@ -628,7 +635,8 @@ func NewPreviewCmd() *cobra.Command {
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
-			}, events)
+			}, allEvents)
+			waitForEvents()
 			// If we made an events channel then we need to close it to trigger the exit of the import goroutine above.
 			// The engine doesn't close the channel for us, but once its returned here we know it won't append any more
 			// events.

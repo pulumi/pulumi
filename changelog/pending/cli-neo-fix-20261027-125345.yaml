@@ -1,0 +1,4 @@
+component: cli/neo
+kind: fix
+body: Honor `PULUMI_OPTION_*` settings in agent previews and updates, including running the program during refresh
+time: 2026-10-27T12:53:45.000000-04:00

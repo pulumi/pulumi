@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package cli
 
 import (
 	"bytes"
@@ -1024,7 +1024,7 @@ func TestGroupCommandsBareInvocationExitsNonZero(t *testing.T) {
 	// update check. t.Setenv also rules out t.Parallel here.
 	t.Setenv("PULUMI_SKIP_UPDATE_CHECK", "true")
 
-	pulumiCmd, cleanup := NewPulumiCmd()
+	pulumiCmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	var stdout, stderr bytes.Buffer
@@ -1043,7 +1043,7 @@ func TestGroupCommandsBareInvocationExitsNonZero(t *testing.T) {
 //
 //nolint:paralleltest // NewPulumiCmd registers env vars in a process-wide registry
 func TestGroupCommandsHelpFlagSucceeds(t *testing.T) {
-	pulumiCmd, cleanup := NewPulumiCmd()
+	pulumiCmd, cleanup := NewPulumiCmd(Options{})
 	defer cleanup()
 
 	var stdout, stderr bytes.Buffer
