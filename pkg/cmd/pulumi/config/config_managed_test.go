@@ -337,6 +337,14 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 			err:      "config key app:obj reaches into a list that imported environment proj/base defines",
 		},
 		{
+			name:     "path rm of an imported list under a local object errors",
+			file:     importingDefinition + "\n      obj:\n        added: x\n",
+			remove:   []string{"app:obj.items"},
+			path:     true,
+			imported: listImportEnv(),
+			err:      "config key app:obj.items is defined by imported environment proj/base",
+		},
+		{
 			name:     "override rejects a path into an imported list under a local object",
 			file:     importingDefinition + "\n      obj:\n        added: x\n",
 			set:      []string{"app:obj.items[0]", "z"},

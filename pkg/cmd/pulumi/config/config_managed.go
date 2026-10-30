@@ -117,7 +117,7 @@ func (m *managedStore) Set(ctx context.Context, key config.Key, v config.Value, 
 	if err != nil {
 		return err
 	}
-	names, err := m.checkImported(ctx, root, subPath, false)
+	names, err := m.checkImported(ctx, key, root, subPath, false)
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func (m *managedStore) Remove(ctx context.Context, key config.Key, path bool) er
 	if err != nil {
 		return err
 	}
-	if _, err := m.checkImported(ctx, root, subPath, true); err != nil {
+	if _, err := m.checkImported(ctx, key, root, subPath, true); err != nil {
 		return err
 	}
 	return pulumiconfig.Remove(m.definition, m.entryNames(root), subPath)
@@ -173,12 +173,18 @@ func (m *managedStore) entryNames(root config.Key) []string {
 }
 
 func (m *managedStore) checkImported(
-	ctx context.Context, root config.Key, subPath resource.PropertyPath, removing bool,
+	ctx context.Context, key, root config.Key, subPath resource.PropertyPath, removing bool,
 ) ([]string, error) {
 	imported, checkWarning := m.importedConfig(ctx)
 	names := m.entryNames(root)
 	local, isLocal := pulumiconfig.Find(m.definition, names)
 	if removing && isLocal {
+		// The local entry may be an object that ESC merges with the import, so the path can name only an imported value.
+		if value, ok := imported[local]; ok && len(subPath) > 0 && hasPath(value, subPath) {
+			if _, ok := pulumiconfig.Get(m.definition, local, subPath); !ok {
+				return nil, errRemoveImported(key, value.Trace.Def.Environment)
+			}
+		}
 		return names, nil
 	}
 	if checkWarning != nil {
@@ -207,9 +213,7 @@ func (m *managedStore) checkImported(
 				local, env, name)
 		}
 		if removing {
-			return nil, fmt.Errorf("config key %s is defined by imported environment %s; the CLI does not edit "+
-				"imported environments. Set it in that environment with `pulumi env set`, or remove the import",
-				root, env)
+			return nil, errRemoveImported(root, env)
 		}
 		if m.overrideImport {
 			if m.entersImportedList(name, value, subPath) {
@@ -257,6 +261,35 @@ func importedListPrefix(v esc.Value, path resource.PropertyPath) (resource.Prope
 		}
 	}
 	return nil, false
+}
+
+func errRemoveImported(key config.Key, env string) error {
+	return fmt.Errorf("config key %s is defined by imported environment %s; the CLI does not edit "+
+		"imported environments. Set it in that environment with `pulumi env set`, or remove the import", key, env)
+}
+
+func hasPath(v esc.Value, path resource.PropertyPath) bool {
+	for _, segment := range path {
+		switch repr := v.Value.(type) {
+		case map[string]esc.Value:
+			key, ok := segment.(string)
+			if !ok {
+				return false
+			}
+			if v, ok = repr[key]; !ok {
+				return false
+			}
+		case []esc.Value:
+			index, ok := segment.(int)
+			if !ok || index < 0 || index >= len(repr) {
+				return false
+			}
+			v = repr[index]
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func errEntersImportedList(root config.Key, env string) error {
