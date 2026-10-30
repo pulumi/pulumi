@@ -28,6 +28,9 @@ import (
 type ConfigWriter interface {
 	Set(ctx context.Context, key config.Key, v config.Value, path bool) error
 	Remove(ctx context.Context, key config.Key, path bool) error
+	// CheckSet returns the error that Set would return for key whatever the value, so a caller can fail before it
+	// encrypts a secret.
+	CheckSet(ctx context.Context, key config.Key, path bool) error
 	// Call Encrypter only to write a secret: for the stack file it loads the stack secrets manager, which can prompt for a
 	// passphrase or need cloud credentials.
 	Encrypter(ctx context.Context) (config.Encrypter, error)
@@ -61,6 +64,10 @@ type stackFileWriter struct {
 
 func (w *stackFileWriter) Set(_ context.Context, key config.Key, v config.Value, path bool) error {
 	return w.ps.Config.Set(key, v, path)
+}
+
+func (w *stackFileWriter) CheckSet(context.Context, config.Key, bool) error {
+	return nil
 }
 
 func (w *stackFileWriter) Remove(_ context.Context, key config.Key, path bool) error {

@@ -47,6 +47,17 @@ type managedStore struct {
 	imported    *importCheck
 
 	overrideImport bool
+	setTargets     map[setKey]setTarget
+}
+
+type setKey struct {
+	key  config.Key
+	path bool
+}
+
+type setTarget struct {
+	names   []string
+	subPath resource.PropertyPath
 }
 
 type importCheck struct {
@@ -84,19 +95,41 @@ func newManagedStore(
 }
 
 func (m *managedStore) Set(ctx context.Context, key config.Key, v config.Value, path bool) error {
-	root, subPath, err := m.entryPath(key, path)
+	target, err := m.setTarget(ctx, key, path)
 	if err != nil {
 		return err
+	}
+	value, err := pulumiconfig.ValueNode(v, len(target.subPath) > 0)
+	if err != nil {
+		return err
+	}
+	return pulumiconfig.Set(m.definition, target.names, target.subPath, value)
+}
+
+func (m *managedStore) CheckSet(ctx context.Context, key config.Key, path bool) error {
+	_, err := m.setTarget(ctx, key, path)
+	return err
+}
+
+// setTarget checks each key once, so CheckSet followed by Set prints the import warning or override note once.
+func (m *managedStore) setTarget(ctx context.Context, key config.Key, path bool) (setTarget, error) {
+	if target, ok := m.setTargets[setKey{key, path}]; ok {
+		return target, nil
+	}
+	root, subPath, err := m.entryPath(key, path)
+	if err != nil {
+		return setTarget{}, err
 	}
 	names, err := m.checkImported(ctx, key, root, subPath, false)
 	if err != nil {
-		return err
+		return setTarget{}, err
 	}
-	value, err := pulumiconfig.ValueNode(v, len(subPath) > 0)
-	if err != nil {
-		return err
+	target := setTarget{names: names, subPath: subPath}
+	if m.setTargets == nil {
+		m.setTargets = map[setKey]setTarget{}
 	}
-	return pulumiconfig.Set(m.definition, names, subPath, value)
+	m.setTargets[setKey{key, path}] = target
+	return target, nil
 }
 
 func (m *managedStore) Remove(ctx context.Context, key config.Key, path bool) error {

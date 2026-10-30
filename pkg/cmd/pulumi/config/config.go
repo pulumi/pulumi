@@ -909,6 +909,9 @@ func (c *configSetCmd) Run(
 	// Encrypt the config value if needed.
 	var v config.Value
 	if c.Secret {
+		if err := w.CheckSet(ctx, key, c.Path); err != nil {
+			return fmt.Errorf("could not set config: %w", err)
+		}
 		encrypter, cerr := w.Encrypter(ctx)
 		if cerr != nil {
 			return cerr
@@ -1091,6 +1094,9 @@ func newConfigSetAllCmd(
 				if err != nil {
 					return err
 				}
+				if err := w.CheckSet(ctx, key, path); err != nil {
+					return err
+				}
 
 				enc, err := encrypt(value)
 				if err != nil {
@@ -1119,11 +1125,15 @@ func newConfigSetAllCmd(
 					}
 
 					var value config.Value
-					var path bool
+					path := jsonValue.ObjectValue != nil
+					if jsonValue.Secret {
+						if err := w.CheckSet(ctx, key, path); err != nil {
+							return jsonConfigSetError(jsonKey, err)
+						}
+					}
 					if jsonValue.ObjectValue != nil {
 						// If we have an ObjectValue, Value will be the stringified version of the object. We'll thus operate on
 						// ObjectValue directly.
-						path = true
 						if jsonValue.Secret {
 							enc, err := encrypt(*jsonValue.Value)
 							if err != nil {
