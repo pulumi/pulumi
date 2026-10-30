@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -99,13 +100,13 @@ func runPolicyExceptionRemove(
 		return err
 	}
 
-	err = c.RemovePolicyException(ctx, org, exceptionID)
+	err = policyExceptionsError(c.RemovePolicyException(ctx, org, exceptionID), org)
 	apiErr, _ := errors.AsType[*apitype.ErrorResponse](err)
 	switch {
 	case apiErr != nil && apiErr.Code == http.StatusNotFound:
 		return fmt.Errorf("policy exception %s not found in %s", exceptionID, org)
-	// Pulumi Cloud returns a 409 for an exception that's already removed, which is what was asked for.
-	case apiErr != nil && apiErr.Code == http.StatusConflict:
+	// Removing an exception that's already removed does what was asked for.
+	case apiErr != nil && apiErr.Code == http.StatusConflict && strings.Contains(apiErr.Message, "already removed"):
 		fmt.Fprintf(stderr, "Policy exception %s is already removed.\n", exceptionID)
 		return args.outputFormat.Get()(stdout, io.Discard, org, exceptionID)
 	case err != nil:

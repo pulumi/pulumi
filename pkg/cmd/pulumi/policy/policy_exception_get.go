@@ -93,6 +93,7 @@ func runPolicyExceptionGet(
 	}
 
 	exception, err := c.GetPolicyException(ctx, org, exceptionID)
+	err = policyExceptionsError(err, org)
 	if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusNotFound {
 		return fmt.Errorf("policy exception %s not found in %s", exceptionID, org)
 	} else if err != nil {

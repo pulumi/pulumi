@@ -310,19 +310,16 @@ func runPolicyExceptionNew(
 				}
 			}
 		}
+		// Fail before reading the run and prompting when the organization can't have exceptions.
+		if _, err := c.ListPolicyExceptions(ctx, org, client.ListPolicyExceptionsOptions{}); err != nil {
+			return policyExceptionsError(err, org)
+		}
 		if err := readPolicyExceptionViolations(ctx, c, stacks, pack, args, &result); err != nil {
 			return err
 		}
 		if len(result.Violations) == 0 {
 			result.OrganizationName, result.pack = org, pack
 			return render(result)
-		}
-		if interactive {
-			result.Violations, err = pickPolicyExceptionViolations(
-				result.Violations, len(stacks) > 1, cmdCmd.WriterWidth(stdout), opts)
-			if err != nil {
-				return err
-			}
 		}
 		if pack, err = choosePolicyExceptionPack(pack, result.Violations, interactive, args.dryRun, opts); err != nil {
 			return err
@@ -331,6 +328,15 @@ func runPolicyExceptionNew(
 			result.Violations = slices.DeleteFunc(result.Violations, func(v policyExceptionViolation) bool {
 				return v.PolicyPack != pack
 			})
+		}
+		if interactive {
+			result.Violations, err = pickPolicyExceptionViolations(
+				result.Violations, len(stacks) > 1, cmdCmd.WriterWidth(stdout), opts)
+			if err != nil {
+				return err
+			}
+		}
+		if pack != "" {
 			exempt := result.Violations
 			if !interactive {
 				// Without the picker, take what it would select: violations that an exception doesn't exempt already.
@@ -382,7 +388,7 @@ func runPolicyExceptionNew(
 	}
 
 	if err := createPolicyException(ctx, c, org, args.draft, &result); err != nil {
-		return err
+		return policyExceptionsError(err, org)
 	}
 	return render(result)
 }
