@@ -44,11 +44,32 @@ func (ft *forTemp) SyntaxNode() hclsyntax.Node {
 }
 
 type forSpiller struct {
-	temps []*forTemp
-	count int
+	temps   []*forTemp
+	count   int
+	fnDepth int
+}
+
+func (fs *forSpiller) preVisit(x model.Expression) (model.Expression, hcl.Diagnostics) {
+	if _, ok := x.(*model.AnonymousFunctionExpression); ok {
+		fs.fnDepth++
+	}
+	return x, nil
 }
 
 func (fs *forSpiller) spillExpression(x model.Expression) (model.Expression, hcl.Diagnostics) {
+	if _, ok := x.(*model.AnonymousFunctionExpression); ok {
+		fs.fnDepth--
+		return x, nil
+	}
+
+	// Don't spill for expressions inside anonymous functions (such as the callback of an
+	// apply): the loop may read the function's parameters, so it has to be generated inside
+	// the function body. It is spilled there when genAnonymousFunctionExpression lowers the
+	// body.
+	if fs.fnDepth > 0 {
+		return x, nil
+	}
+
 	f, ok := x.(*model.ForExpression)
 	if !ok {
 		return x, nil
@@ -79,7 +100,7 @@ func (g *generator) rewriteForExpressions(
 	spiller *forSpiller,
 ) (model.Expression, []*forTemp, hcl.Diagnostics) {
 	spiller.temps = nil
-	x, diags := model.VisitExpression(x, nil, spiller.spillExpression)
+	x, diags := model.VisitExpression(x, spiller.preVisit, spiller.spillExpression)
 
 	return x, spiller.temps, diags
 }
