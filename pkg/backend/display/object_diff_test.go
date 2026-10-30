@@ -16,8 +16,11 @@ package display
 
 import (
 	"bytes"
+	"encoding/json"
+	"math/rand"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -522,6 +525,149 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				tt.truncateOutput, /* truncateOutput */
 			)
 			require.Equal(t, tt.expected, s)
+		})
+	}
+}
+
+// randomText returns lines newline-separated lines of width pseudo-random lowercase characters.
+func randomText(seed int64, width int, lines int) string {
+	r := rand.New(rand.NewSource(seed)) //nolint:gosec // Deterministic test data.
+	var sb strings.Builder
+	for l := range lines {
+		if l > 0 {
+			sb.WriteByte('\n')
+		}
+		for range width {
+			sb.WriteByte(byte('a' + r.Intn(26)))
+		}
+	}
+	return sb.String()
+}
+
+// renderStringDiff renders a diff of a changed string property, failing the test if it takes too long.
+func renderStringDiff(t *testing.T, old, new string, truncateOutput bool) string {
+	t.Helper()
+
+	diff := resource.NewPropertyMapFromMap(map[string]any{"value": old}).
+		Diff(resource.NewPropertyMapFromMap(map[string]any{"value": new}))
+	require.NotNil(t, diff)
+
+	done := make(chan string, 1)
+	go func() {
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, *diff, nil, false, 1, false, truncateOutput, false, false, nil)
+		done <- buf.String()
+	}()
+	select {
+	case out := <-done:
+		return out
+	case <-time.After(30 * time.Second):
+		t.Fatal("timed out rendering a text diff")
+		return ""
+	}
+}
+
+func TestTextDiffLimits(t *testing.T) {
+	t.Parallel()
+
+	bigOld := randomText(1, 1<<20, 1)
+	bigNew := randomText(2, 1<<20, 1)
+	longLinesOld := randomText(1, 100_000, 10)
+	longLinesNew := randomText(2, 100_000, 10)
+	lastNewLine := longLinesNew[strings.LastIndex(longLinesNew, "\n")+1:]
+	oneLongLineChanged := longLinesOld[:strings.LastIndex(longLinesOld, "\n")+1] + lastNewLine
+	values := make([]int, 20_000)
+	for i := range values {
+		values[i] = i
+	}
+	minified, err := json.Marshal(values)
+	require.NoError(t, err)
+	indented, err := json.MarshalIndent(values, "", "  ")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name        string
+		old, new    string
+		untruncated bool
+		contains    []string
+		notContains []string
+		minLen      int // Set for values that are still diffed, which prints them in full.
+		maxLen      int // Set for values that are replaced or whose printed lines are truncated.
+	}{
+		{
+			name: "single line over limit is replaced", old: bigOld, new: bigNew,
+			contains: []string{bigOld[:150] + "...", bigNew[:150] + "..."}, maxLen: 4096,
+		},
+		{
+			name: "single line over limit is replaced in full", old: bigOld, new: bigNew, untruncated: true,
+			contains: []string{bigOld, bigNew}, maxLen: 4 * (len(bigOld) + len(bigNew)),
+		},
+		{
+			name: "single line at limit is diffed",
+			old:  randomText(1, maxCharacterDiffLength, 1), new: randomText(2, maxCharacterDiffLength, 1),
+			minLen: maxCharacterDiffLength,
+		},
+		{
+			name: "multi-line over limit is replaced",
+			old:  randomText(1, 20, maxLineDiffLines+1), new: randomText(2, 20, maxLineDiffLines+1),
+			contains: []string{" => "}, maxLen: 4096,
+		},
+		{
+			name: "multi-line over limit with trailing newline is replaced",
+			old:  randomText(1, 20, maxLineDiffLines+1) + "\n", new: randomText(2, 20, maxLineDiffLines+1) + "\n",
+			contains: []string{" => "}, maxLen: 4096,
+		},
+		{
+			name: "multi-line at limit is diffed",
+			old:  randomText(1, 20, maxLineDiffLines), new: randomText(2, 20, maxLineDiffLines),
+			minLen: 100_000,
+		},
+		{
+			name: "multi-line at limit with trailing newline is diffed",
+			old:  randomText(1, 20, maxLineDiffLines) + "\n", new: randomText(2, 20, maxLineDiffLines) + "\n",
+			minLen: 100_000,
+		},
+		{
+			name: "long line with trailing newline is line diffed", old: bigOld + "\n", new: bigNew + "\n",
+			contains:    []string{bigOld[:150] + "...", bigNew[:150] + "..."},
+			notContains: []string{" => "}, maxLen: 4096,
+		},
+		{
+			name: "long line with trailing newline on one side is line diffed", old: bigOld, new: bigNew + "\n",
+			contains:    []string{bigOld[:150] + "...", bigNew[:150] + "..."},
+			notContains: []string{" => "}, maxLen: 4096,
+		},
+		{
+			name: "long lines all changed are line diffed", old: longLinesOld, new: longLinesNew,
+			contains: []string{longLinesNew[:150] + "..."}, notContains: []string{" => "}, maxLen: 8192,
+		},
+		{
+			name: "one long line changed is line diffed", old: longLinesOld, new: oneLongLineChanged,
+			contains: []string{lastNewLine[:150] + "..."}, notContains: []string{" => "}, maxLen: 8192,
+		},
+		{
+			// The values decode to the same JSON, so the text is replaced and must be quoted only once.
+			name: "reformatted JSON over limit is replaced", old: string(minified), new: string(indented),
+			contains: []string{`"[0,1,2,3`}, notContains: []string{`\"[`}, maxLen: 4096,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			out := renderStringDiff(t, tt.old, tt.new, !tt.untruncated)
+			for _, s := range tt.contains {
+				assert.Contains(t, out, s)
+			}
+			for _, s := range tt.notContains {
+				assert.NotContains(t, out, s)
+			}
+			if tt.minLen > 0 {
+				assert.Greater(t, len(out), tt.minLen)
+			}
+			if tt.maxLen > 0 {
+				assert.Less(t, len(out), tt.maxLen)
+			}
 		})
 	}
 }
