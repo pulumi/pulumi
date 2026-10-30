@@ -17,7 +17,9 @@ package policy
 import (
 	"github.com/spf13/cobra"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
 func newPolicyIssueCmd() *cobra.Command {
@@ -34,5 +36,6 @@ func newPolicyIssueCmd() *cobra.Command {
 
 	cmd.AddCommand(newPolicyIssueListCmd())
 	cmd.AddCommand(newPolicyIssueGetCmd())
+	cmd.AddCommand(newPolicyIssueExportCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	return cmd
 }
