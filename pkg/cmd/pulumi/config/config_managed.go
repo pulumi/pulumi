@@ -124,9 +124,9 @@ func rejectSecretObjects(jsonConfig map[string]configValueJSON) error {
 }
 
 func (m *managedStore) Encrypter(context.Context) (config.Encrypter, error) {
-	be, ok := m.stack.Backend().(backend.ManagedEnvironmentsBackend)
-	if !ok {
-		return nil, fmt.Errorf("backend %v does not support ESC-managed environments", m.stack.Backend().Name())
+	be, err := backend.AsManagedEnvironmentsBackend(m.stack.Backend())
+	if err != nil {
+		return nil, err
 	}
 	project, name := m.stack.ConfigLocation().ManagedEnvironmentRef()
 	return &managedEnvEncrypter{backend: be, org: m.org, project: project, name: name}, nil
