@@ -397,6 +397,11 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		return nil, fmt.Errorf("%s already has config or an environment; delete its `config` and `environment` "+
 			"sections, or the file, before creating a managed stack", managedStackFile)
 	}
+	// preview and up would load a stack secrets manager from these keys and ask for its passphrase or key.
+	if opts.ManagedEnvironment && (ps.SecretsProvider != "" || ps.EncryptionSalt != "" || ps.EncryptedKey != "") {
+		return nil, fmt.Errorf("%s already has secrets provider settings; delete its `secretsprovider`, "+
+			"`encryptionsalt` and `encryptedkey` keys, or the file, before creating a managed stack", managedStackFile)
+	}
 	needsSave, sm, err := createSecretsManagerForNewStack(ctx, b, ps, opts.SecretsProvider)
 	if err != nil {
 		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)

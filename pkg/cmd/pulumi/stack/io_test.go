@@ -270,6 +270,21 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 				"or the file, before creating a managed stack",
 		},
 		{
+			name:       "existing passphrase salt",
+			stackFile:  "Pulumi.dev.yaml",
+			contents:   "encryptionsalt: v1:abc\n",
+			managedEnv: "proj/renamed",
+			wantErr: "already has secrets provider settings; delete its `secretsprovider`, `encryptionsalt` and " +
+				"`encryptedkey` keys, or the file, before creating a managed stack",
+		},
+		{
+			name:       "existing secrets provider",
+			stackFile:  "Pulumi.dev.yaml",
+			contents:   "secretsprovider: awskms://alias/x\nencryptedkey: abc\n",
+			managedEnv: "proj/renamed",
+			wantErr:    "already has secrets provider settings",
+		},
+		{
 			name:        "service without managed environments",
 			stackFile:   "Pulumi.dev.yaml",
 			wantCreated: true,
