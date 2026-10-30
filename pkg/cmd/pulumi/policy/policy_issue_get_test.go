@@ -149,7 +149,7 @@ func TestPolicyIssueGet_ClientError(t *testing.T) {
 		stubPolicyIssueGetFactory(c, "acme"), "missing",
 		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
 	require.Error(t, err)
-	assert.Equal(t, "getting policy issue: not found", err.Error())
+	assert.Equal(t, "not found", err.Error())
 }
 
 func TestPolicyIssueGet_FactoryError(t *testing.T) {

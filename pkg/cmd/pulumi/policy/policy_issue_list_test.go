@@ -502,15 +502,21 @@ func TestPolicyIssueList_TableShowsClosedStatuses(t *testing.T) {
 func TestPolicyIssueList_ClosedFlagPassedToClient(t *testing.T) {
 	t.Parallel()
 
-	var closedByPage []bool
-	c := &pagingPolicyIssueListClient{
-		onCall: func(closed bool) { closedByPage = append(closedByPage, closed) },
+	for _, closed := range []bool{false, true} {
+		t.Run(fmt.Sprintf("closed=%t", closed), func(t *testing.T) {
+			t.Parallel()
+
+			var closedByPage []bool
+			c := &pagingPolicyIssueListClient{
+				onCall: func(closed bool) { closedByPage = append(closedByPage, closed) },
+			}
+			err := runPolicyIssueList(t.Context(), &bytes.Buffer{},
+				stubPolicyIssueListFactory(c, "acme"),
+				policyIssueListArgs{closed: closed, all: true, outputFormat: defaultPolicyIssueListOutputFormat()})
+			require.NoError(t, err)
+			assert.Equal(t, []bool{closed, closed}, closedByPage)
+		})
 	}
-	err := runPolicyIssueList(t.Context(), &bytes.Buffer{},
-		stubPolicyIssueListFactory(c, "acme"),
-		policyIssueListArgs{closed: true, all: true, outputFormat: defaultPolicyIssueListOutputFormat()})
-	require.NoError(t, err)
-	assert.Equal(t, []bool{true, true}, closedByPage)
 }
 
 func TestPolicyIssueList_ClosedEmptyMessage(t *testing.T) {

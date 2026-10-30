@@ -172,13 +172,15 @@ func runPolicyIssueGet(
 
 	resp, err := c.GetPolicyIssue(ctx, org, issueID)
 	if err != nil {
-		return fmt.Errorf("getting policy issue: %w", err)
+		return err
 	}
 
 	return args.outputFormat.Get()(w, resp)
 }
 
 type policyIssueGetRenderFunc func(w io.Writer, resp apitype.GetPolicyIssueResponse) error
+
+const policyIssueLabelWidth = 20
 
 func renderPolicyIssueGetText(w io.Writer, resp apitype.GetPolicyIssueResponse) error {
 	issue := resp.PolicyIssue
@@ -191,59 +193,57 @@ func renderPolicyIssueGetText(w io.Writer, resp apitype.GetPolicyIssueResponse) 
 		stack = fmt.Sprintf("%s/%s", issue.EntityProject, issue.EntityID)
 	}
 
-	fmt.Fprintf(w, "%-20s %s\n", "ID:", issue.ID)
-	fmt.Fprintf(w, "%-20s %s\n", "Policy pack:", pack)
-	fmt.Fprintf(w, "%-20s %s\n", "Policy:", issue.PolicyName)
-	fmt.Fprintf(w, "%-20s %s\n", "Enforcement level:", issue.Level)
+	fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "ID:", issue.ID)
+	fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Policy pack:", pack)
+	fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Policy:", issue.PolicyName)
+	fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Enforcement level:", issue.Level)
 	if issue.Severity != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Severity:", string(issue.Severity))
+		fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Severity:", string(issue.Severity))
 	}
 	if issue.Status != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Status:", issue.Status)
+		fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Status:", issue.Status)
 	}
 	if issue.Priority != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Priority:", issue.Priority)
+		fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Priority:", issue.Priority)
 	}
 	if a := issue.AssignedTo; a != nil && a.GitHubLogin != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Assignee:", a.GitHubLogin)
+		fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Assignee:", a.GitHubLogin)
 	}
 	if issue.PolicyGroupName != nil && *issue.PolicyGroupName != "" {
 		group := *issue.PolicyGroupName
 		if t := issue.PolicyGroupType; t != nil && *t != "" {
 			group = fmt.Sprintf("%s (%s)", group, *t)
 		}
-		fmt.Fprintf(w, "%-20s %s\n", "Policy group:", group)
+		fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Policy group:", group)
 	}
 	if issue.Kind != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Kind:", issue.Kind)
+		fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Kind:", issue.Kind)
 	}
 	if stack != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Stack:", stack)
+		fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Stack:", stack)
 	}
 	if issue.ResourceURN != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Resource URN:", issue.ResourceURN)
+		fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Resource URN:", issue.ResourceURN)
 	}
 	if issue.ResourceType != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Resource type:", issue.ResourceType)
+		fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Resource type:", issue.ResourceType)
 	}
 	if issue.ObservedAt != nil {
-		fmt.Fprintf(w, "%-20s %s\n", "Observed at:", issue.ObservedAt.Format(time.RFC3339Nano))
+		fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Observed at:", issue.ObservedAt.Format(time.RFC3339Nano))
 	}
 	printPolicyIssueMultiline(w, "Message:", issue.Message)
 	if policy := resp.Policy; policy != nil {
 		printPolicyIssueMultiline(w, "Description:", policy.Description)
 		printPolicyIssueMultiline(w, "Remediation:", policy.RemediationSteps)
 		if framework := formatPolicyFramework(policy.Framework); framework != "" {
-			fmt.Fprintf(w, "%-20s %s\n", "Framework:", framework)
+			fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "Framework:", framework)
 		}
 		if policy.URL != "" {
-			fmt.Fprintf(w, "%-20s %s\n", "More info:", policy.URL)
+			fmt.Fprintf(w, "%-*s %s\n", policyIssueLabelWidth, "More info:", policy.URL)
 		}
 	}
 	return nil
 }
-
-const policyIssueLabelWidth = 20
 
 func printPolicyIssueMultiline(w io.Writer, label, value string) {
 	value = strings.TrimSpace(strings.ReplaceAll(value, "\r\n", "\n"))

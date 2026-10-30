@@ -201,7 +201,7 @@ func runPolicyIssueList(
 			Closed:   args.closed,
 		})
 		if err != nil {
-			return fmt.Errorf("listing policy issues: %w", err)
+			return err
 		}
 		rowCount = resp.RowCount
 		allIssues = append(allIssues, resp.PolicyIssues...)
