@@ -64,6 +64,15 @@ func createdManagedEnvironment(t *testing.T, command string, stdout string, stde
 	return created[1]
 }
 
+// removeStack is deferred before the command that creates the stack, since that command can fail after it has
+// created the stack and its environment.
+func removeStack(t *testing.T, e *ptesting.Environment, stackRef string) {
+	_, stderr, err := e.GetCommandResults("pulumi", "stack", "rm", "--yes", "--force", "--stack", stackRef)
+	if err != nil {
+		t.Errorf("removing stack %s: %v\n%s", stackRef, err, stderr)
+	}
+}
+
 func latestUpdateEnvironment(t *testing.T, e *ptesting.Environment) map[string]string {
 	t.Helper()
 	out, _ := e.RunCommand("pulumi", "stack", "history", "--json")
@@ -101,10 +110,10 @@ func TestManagedEnvironment(t *testing.T) {
 	integration.CreatePulumiRepo(e, managedEnvProjectYAML)
 
 	stackName := ptesting.RandomStackName()
+	defer removeStack(t, e, org+"/"+managedEnvProject+"/"+stackName)
 	stdout, stderr := e.RunCommand("pulumi", "stack", "init", org+"/"+stackName, "--esc-config")
 	managedEnv := createdManagedEnvironment(t, "stack init", stdout, stderr)
 	envProject, envName, _ := strings.Cut(managedEnv, "/")
-	defer e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
 
 	escClient := client.New("pulumi-integration-tests", apiURL, token, false)
 	httpClient := &http.Client{Timeout: time.Minute}
@@ -243,14 +252,7 @@ func TestManagedEnvironment(t *testing.T) {
 		// A unique project, since non-interactive `pulumi new` refuses a project name that already exists.
 		stackName := ptesting.RandomStackName()
 		projectName := managedEnvProject + "-new-" + stackName
-		stackRef := org + "/" + projectName + "/" + stackName
-		// Registered before `pulumi new`, which can fail after it has created the stack and its environment.
-		defer func() {
-			_, rmErr, err := e.GetCommandResults("pulumi", "stack", "rm", "--yes", "--force", "--stack", stackRef)
-			if err != nil {
-				t.Errorf("removing stack %s: %v\n%s", stackRef, err, rmErr)
-			}
-		}()
+		defer removeStack(t, e, org+"/"+projectName+"/"+stackName)
 		stdout, stderr := e.RunCommand("pulumi", "new", templateDir, "--name", projectName,
 			"--stack", org+"/"+stackName, "--esc-config", "--yes", "--force")
 		managedEnv := createdManagedEnvironment(t, "pulumi new", stdout, stderr)
