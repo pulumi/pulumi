@@ -29,6 +29,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// SetEachConfigValueHint tells the user how to write config values into a managed stack's environment.
+const SetEachConfigValueHint = "set each value with `pulumi config set` (`--secret` for secrets)"
+
 var errManagedEnvironmentRequiresYAML = errors.New("stack-managed environments require a YAML stack file")
 
 // ManagedEnvironmentDefinition returns the definition node backing ps.Environment, or an error with a recovery hint.
@@ -47,8 +50,7 @@ func ManagedEnvironmentDefinition(
 	stackFile := stackConfigFilePath(stackName, configFile)
 	if err == nil {
 		return nil, fmt.Errorf("%s has values under `config:`, which stacks with an ESC-managed environment "+
-			"don't use. Remove the `config:` section, then set each value with `pulumi config set` "+
-			"(`--secret` for secrets)", stackFile)
+			"don't use. Remove the `config:` section, then %s", stackFile, SetEachConfigValueHint)
 	}
 	if isJSONStackFile(stackFile, err) {
 		return nil, errManagedEnvironmentRequiresYAML

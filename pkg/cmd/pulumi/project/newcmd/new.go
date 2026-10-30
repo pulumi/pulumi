@@ -364,7 +364,8 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 	var unsavedManagedStack backend.Stack
 	defer func() {
 		if err != nil && unsavedManagedStack != nil {
-			err = managedStackWithoutConfigError(err, unsavedManagedStack.Ref())
+			err = cmdStack.ManagedStackCreatedError(err, unsavedManagedStack.Ref(),
+				"no config was saved, so "+cmdStack.SetEachConfigValueHint)
 		}
 	}()
 	if !args.generateOnly && s == nil {

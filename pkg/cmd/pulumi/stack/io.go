@@ -517,14 +517,24 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	return stack, nil
 }
 
-// The name is fully qualified because `pulumi new --dir` reports it outside the project directory.
 func managedStackCreatedError(opts CreateStackOptions, stack backend.Stack, err error) error {
 	if !opts.ManagedEnvironment {
 		return err
 	}
-	ref := stack.Ref().FullyQualifiedName()
-	return fmt.Errorf("%w. Stack %[2]s and its ESC environment were created; remove them with `pulumi stack rm %[2]s`",
-		err, ref)
+	return ManagedStackCreatedError(err, stack.Ref(), "")
+}
+
+// ManagedStackCreatedError extends err, from a step after stack ref and its ESC environment were created, with how to
+// remove them. A non-empty alternative is offered first as another way to recover.
+//
+// The name is fully qualified because `pulumi new --dir` reports it outside the project directory.
+func ManagedStackCreatedError(err error, ref backend.StackReference, alternative string) error {
+	name := ref.FullyQualifiedName()
+	recovery := fmt.Sprintf("remove them with `pulumi stack rm %s`", name)
+	if alternative != "" {
+		recovery = alternative + ", or " + recovery
+	}
+	return fmt.Errorf("%w. Stack %s and its ESC environment were created; %s", err, name, recovery)
 }
 
 func CopyEntireConfigMap(

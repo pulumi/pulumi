@@ -250,8 +250,8 @@ func TestNewEscConfigEncryptFailureKeepsPlaceholder(t *testing.T) {
 	err := runNew(t.Context(),
 		managedNewArgs(writeLocalTemplate(t, t.TempDir(), "managed", managedTemplateYAML)))
 
-	require.ErrorContains(t, err, "service unavailable. Stack my-org/dev and its ESC environment were created and "+
-		"no config was saved; set each value with `pulumi config set` (`--secret` for secrets), or remove the stack "+
+	require.ErrorContains(t, err, "service unavailable. Stack my-org/dev and its ESC environment were created; "+
+		"no config was saved, so set each value with `pulumi config set` (`--secret` for secrets), or remove them "+
 		"with `pulumi stack rm my-org/dev`")
 	assert.Equal(t, "environment:\n  values:\n    pulumiConfig: {}\n", readStackFile(t, tempdir))
 }
@@ -270,8 +270,8 @@ func TestNewEscConfigFailureBeforeConfigSaveNamesRecovery(t *testing.T) {
 	err := runNew(t.Context(), args)
 
 	require.ErrorContains(t, err, "language template: template failed. Stack my-org/dev and its ESC environment were "+
-		"created and no config was saved; set each value with `pulumi config set` (`--secret` for secrets), or remove "+
-		"the stack with `pulumi stack rm my-org/dev`")
+		"created; no config was saved, so set each value with `pulumi config set` (`--secret` for secrets), or remove "+
+		"them with `pulumi stack rm my-org/dev`")
 	assert.Equal(t, []string{"my-org/dev"}, *created)
 	assertOnlyPulumiConfig(t, tempdir, map[string]any{})
 	assert.Empty(t, b.encrypted)
