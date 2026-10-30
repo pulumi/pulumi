@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Preserve provider transforms alongside caller transforms on remote components and their children
+time: 2026-09-10T08:53:09Z
