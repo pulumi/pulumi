@@ -115,6 +115,11 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 
 	// Assert.
 	assert.Equal(t, expectedSm.State(), actualDeployment.SecretsProviders.State)
+	// The initial checkpoint only stores the secrets provider. It is not an update, so it must
+	// not carry a manifest time. `pulumi stack` and `pulumi stack ls` treat that time as
+	// "last updated".
+	assert.True(t, actualDeployment.Manifest.Time.IsZero(),
+		"initial stack state must not record an update time, got %v", actualDeployment.Manifest.Time)
 }
 
 // Tests that CreateStack announces the new stack unless Quiet is set.

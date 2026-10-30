@@ -180,7 +180,12 @@ func runStackText(ctx context.Context, s backend.Stack, out io.Writer, args stac
 		renderCloudStackText(out, cloudInfo)
 	}
 
-	if snap != nil {
+	updated, err := stackHasBeenUpdated(ctx, s, snap)
+	if err != nil {
+		return err
+	}
+
+	if snap != nil && updated {
 		t := snap.Manifest.Time.Local()
 		if args.startTime == "" {
 			if !t.IsZero() && t.Before(time.Now()) {
@@ -190,6 +195,11 @@ func runStackText(ctx context.Context, s backend.Stack, out io.Writer, args stac
 		if snap.Manifest.Version != "" {
 			fmt.Fprintf(out, "    Pulumi version used: %s\n", snap.Manifest.Version)
 		}
+	} else {
+		fmt.Fprintf(out, "    No updates yet; run `pulumi up`\n")
+	}
+
+	if snap != nil {
 		var typ string
 		if snap.SecretsManager != nil {
 			typ = snap.SecretsManager.Type()
@@ -197,17 +207,17 @@ func runStackText(ctx context.Context, s backend.Stack, out io.Writer, args stac
 		if typ != "" {
 			fmt.Fprintf(out, "    Secrets provider: %s\n", typ)
 		}
-		for _, p := range snap.Manifest.Plugins {
-			var pluginVersion string
-			if p.Version == nil {
-				pluginVersion = "?"
-			} else {
-				pluginVersion = p.Version.String()
+		if updated {
+			for _, p := range snap.Manifest.Plugins {
+				var pluginVersion string
+				if p.Version == nil {
+					pluginVersion = "?"
+				} else {
+					pluginVersion = p.Version.String()
+				}
+				fmt.Fprintf(out, "    Plugin %s [%s] version: %s\n", p.Name, p.Kind, pluginVersion)
 			}
-			fmt.Fprintf(out, "    Plugin %s [%s] version: %s\n", p.Name, p.Kind, pluginVersion)
 		}
-	} else {
-		fmt.Fprintf(out, "    No updates yet; run `pulumi up`\n")
 	}
 
 	var resourceCount int
@@ -254,6 +264,27 @@ func runStackText(ctx context.Context, s backend.Stack, out io.Writer, args stac
 	fmt.Fprintf(out, "Use `pulumi stack select` to change stack; `pulumi stack ls` lists known ones\n")
 
 	return nil
+}
+
+// stackHasBeenUpdated reports whether the stack has a deployment.
+// A snapshot with no resources is a deployment only when update history is non-empty.
+func stackHasBeenUpdated(ctx context.Context, s backend.Stack, snap *deploy.Snapshot) (bool, error) {
+	if snap != nil && len(snap.Resources) > 0 {
+		return true, nil
+	}
+	if snap == nil {
+		return false, nil
+	}
+	return stackHasUpdateHistory(ctx, s)
+}
+
+// stackHasUpdateHistory reports whether the backend has recorded an update for the stack.
+func stackHasUpdateHistory(ctx context.Context, s backend.Stack) (bool, error) {
+	updates, err := s.Backend().GetHistory(ctx, s.Ref(), 1 /*pageSize*/, 1 /*page*/)
+	if err != nil {
+		return false, fmt.Errorf("getting history: %w", err)
+	}
+	return len(updates) > 0, nil
 }
 
 func fprintStackOutputs(w io.Writer, outputs map[string]any) error {
