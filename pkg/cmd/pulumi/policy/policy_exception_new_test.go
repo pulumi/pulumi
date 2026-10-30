@@ -95,7 +95,8 @@ func TestPolicyExceptionNew(t *testing.T) {
 	assert.Empty(t, stdout)
 	assert.Equal(t, "Created policy exception EXC-7: http://localhost:3000/acme/web/prod?exception=EXC-7\n", stderr)
 	assert.Equal(t, []string{"acme/web/prod update/12 [9]"}, c.gotReads)
-	assert.Empty(t, c.gotListOpts, "existing exceptions aren't read")
+	assert.Equal(t, []client.ListPolicyExceptionsOptions{{}}, c.gotListOpts,
+		"listing only checks that the organization can have exceptions")
 	assert.Equal(t, []apitype.CreatePolicyExceptionRequest{{
 		PolicyPack: "aws",
 		PolicyException: apitype.PolicyException{
@@ -556,7 +557,6 @@ func TestPolicyExceptionNew_RequiresApproval(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, stdout)
 	assert.Equal(t, requested+"Policy exception created.\n", stderr)
-	assert.Empty(t, c.gotListOpts, "the exception isn't looked up")
 
 	// The same request from the same author returns their open change request, which isn't submitted again.
 	c = twoBuckets()
@@ -587,8 +587,15 @@ func TestPolicyExceptionNew_RequiresApproval(t *testing.T) {
 	c = twoBuckets()
 	c.createErr = &apitype.ErrorResponse{Code: http.StatusConflict, Message: `"acme" does not support policy-exceptions.`}
 	_, _, err = runNew(t, c, "", args)
-	assert.EqualError(t, err, `[409] "acme" does not support policy-exceptions.`)
+	assert.EqualError(t, err, "policy exceptions aren't enabled for organization acme")
 	assert.Empty(t, c.gotDrafts)
+
+	// The organization is checked before the run is read.
+	c = twoBuckets()
+	c.err = &apitype.ErrorResponse{Code: http.StatusConflict, Message: `"acme" does not support policy-exceptions.`}
+	_, _, err = runNew(t, c, "", args)
+	assert.EqualError(t, err, "policy exceptions aren't enabled for organization acme")
+	assert.Empty(t, c.gotReads)
 }
 
 func TestPolicyExceptionNew_Draft(t *testing.T) {

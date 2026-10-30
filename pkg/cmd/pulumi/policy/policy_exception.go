@@ -18,7 +18,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -33,6 +35,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
+
+// policyExceptionsError explains the 409 that Pulumi Cloud returns for an organization without policy exceptions.
+func policyExceptionsError(err error, org string) error {
+	apiErr, ok := errors.AsType[*apitype.ErrorResponse](err)
+	if ok && apiErr.Code == http.StatusConflict && strings.Contains(apiErr.Message, "does not support") {
+		return fmt.Errorf("policy exceptions aren't enabled for organization %s", org)
+	}
+	return err
+}
 
 type policyExceptionClient interface {
 	CreatePolicyException(

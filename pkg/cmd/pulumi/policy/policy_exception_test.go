@@ -273,6 +273,13 @@ func TestPolicyExceptionList_Errors(t *testing.T) {
 		policyExceptionListArgs{outputFormat: defaultPolicyExceptionListOutputFormat()})
 	assert.EqualError(t, err, "policy exceptions aren't available for acme on this Pulumi Cloud")
 
+	c = &mockPolicyExceptionClient{
+		err: &apitype.ErrorResponse{Code: http.StatusConflict, Message: `"acme" does not support policy-exceptions.`},
+	}
+	err = runPolicyExceptionList(t.Context(), &bytes.Buffer{}, &bytes.Buffer{}, stubPolicyExceptionFactory(c, "acme"),
+		policyExceptionListArgs{outputFormat: defaultPolicyExceptionListOutputFormat()})
+	assert.EqualError(t, err, "policy exceptions aren't enabled for organization acme")
+
 	c = &mockPolicyExceptionClient{err: &apitype.ErrorResponse{Code: http.StatusInternalServerError, Message: "boom"}}
 	err = runPolicyExceptionList(t.Context(), &bytes.Buffer{}, &bytes.Buffer{}, stubPolicyExceptionFactory(c, "acme"),
 		policyExceptionListArgs{outputFormat: defaultPolicyExceptionListOutputFormat()})
@@ -462,6 +469,13 @@ func TestPolicyExceptionRemove(t *testing.T) {
 	err = runPolicyExceptionRemove(t.Context(), &stdout, &stderr, stubPolicyExceptionFactory(c, "acme"), "EXC-3", args)
 	require.NoError(t, err, "removing an exception twice isn't an error")
 	assert.Equal(t, "Policy exception EXC-3 is already removed.\n", stderr.String())
+
+	c = &mockPolicyExceptionClient{
+		err: &apitype.ErrorResponse{Code: http.StatusConflict, Message: `"acme" does not support policy-exceptions.`},
+	}
+	err = runPolicyExceptionRemove(t.Context(), &stdout, &stderr, stubPolicyExceptionFactory(c, "acme"), "EXC-3", args)
+	assert.EqualError(t, err, "policy exceptions aren't enabled for organization acme",
+		"only the 409 for a removed exception means it's removed")
 
 	c = &mockPolicyExceptionClient{err: &apitype.ErrorResponse{Code: http.StatusInternalServerError, Message: "boom"}}
 	err = runPolicyExceptionRemove(t.Context(), &stdout, &stderr, stubPolicyExceptionFactory(c, "acme"), "EXC-3", args)

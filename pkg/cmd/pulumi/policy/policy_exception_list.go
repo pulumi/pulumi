@@ -129,6 +129,7 @@ func runPolicyExceptionList(
 	}
 	for {
 		resp, err := c.ListPolicyExceptions(ctx, org, opts)
+		err = policyExceptionsError(err, org)
 		if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusNotFound {
 			return fmt.Errorf("policy exceptions aren't available for %s on this Pulumi Cloud", org)
 		} else if err != nil {
