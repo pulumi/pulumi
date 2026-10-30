@@ -284,6 +284,8 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 				ps.EncryptedKey = ""
 			}
 		} else {
+			// See PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER (env.go) and
+			// https://github.com/pulumi/pulumi/issues/16412.
 			sm, err = s.DefaultSecretManager(ctx, ps)
 		}
 	}
