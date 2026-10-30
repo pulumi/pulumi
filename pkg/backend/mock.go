@@ -88,7 +88,7 @@ type MockBackend struct {
 	UpdateF func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	ImportF func(context.Context, Stack,
-		UpdateOperation, []deploy.Import) (sdkDisplay.ResourceChanges, error)
+		UpdateOperation, []deploy.Import) (sdkDisplay.ResourceChanges, *deploy.Snapshot, error)
 	RefreshF func(context.Context, Stack,
 		UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	DestroyF func(context.Context, Stack,
@@ -321,7 +321,7 @@ func (be *MockBackend) Update(ctx context.Context, stack Stack,
 
 func (be *MockBackend) Import(ctx context.Context, stack Stack,
 	op UpdateOperation, imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, error) {
+) (sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	if be.ImportF != nil {
 		return be.ImportF(ctx, stack, op, imports)
 	}

@@ -213,9 +213,12 @@ type Backend interface {
 	// Update updates the target stack with the current workspace's contents (config and code).
 	Update(ctx context.Context, stack Stack, op UpdateOperation, events chan<- engine.Event,
 	) (sdkDisplay.ResourceChanges, error)
-	// Import imports resources into a stack.
+	// Import imports resources into a stack. In addition to the resource changes it also returns
+	// the final in-memory snapshot produced by the engine so callers can drive post-import work
+	// (e.g. codegen for `pulumi import`) without re-reading persisted state. The snapshot is
+	// populated even on dry-run / preview-only imports.
 	Import(ctx context.Context, stack Stack, op UpdateOperation,
-		imports []deploy.Import) (sdkDisplay.ResourceChanges, error)
+		imports []deploy.Import) (sdkDisplay.ResourceChanges, *deploy.Snapshot, error)
 	// Refresh refreshes the stack's state from the cloud provider.
 	Refresh(ctx context.Context, stack Stack, op UpdateOperation) (sdkDisplay.ResourceChanges, error)
 	// Destroy destroys all of this stack's resources.

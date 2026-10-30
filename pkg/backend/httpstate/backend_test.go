@@ -1392,7 +1392,7 @@ func TestRunEngineActionPropagatesSnapshotJournalerError(t *testing.T) {
 
 	var runErr error
 	require.NotPanics(t, func() {
-		_, _, runErr = fx.backend.runEngineAction(
+		_, _, _, runErr = fx.backend.runEngineAction(
 			t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
 			"lease-token", "", updateStartedEvent, callerEvents, false, 0,
 		)
@@ -1423,7 +1423,7 @@ func TestRunEngineActionDeliversUpdateStartedEventWhenNewUpdateFails(t *testing.
 
 	var runErr error
 	require.NotPanics(t, func() {
-		_, _, runErr = fx.backend.runEngineAction(
+		_, _, _, runErr = fx.backend.runEngineAction(
 			t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
 			"lease-token", "", updateStartedEvent, callerEvents, false, 0,
 		)
@@ -1491,7 +1491,7 @@ func TestRunEngineActionPropagatesJournalManagerError(t *testing.T) {
 
 			var runErr error
 			require.NotPanics(t, func() {
-				_, _, runErr = fx.backend.runEngineAction(
+				_, _, _, runErr = fx.backend.runEngineAction(
 					t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
 					"lease-token", "", engine.NewEvent(engine.UpdateStartedEventPayload{}), nil, false, tc.journalVersion,
 				)
@@ -1603,7 +1603,7 @@ func TestRunEngineActionCoherenceWindow(t *testing.T) {
 				readingIDs <- seen
 			}()
 
-			_, _, err := fx.backend.runEngineAction(
+			_, _, _, err := fx.backend.runEngineAction(
 				t.Context(), apitype.DestroyUpdate, fx.stackRef, fx.op, fx.update,
 				"lease-token", "", engine.NewEvent(engine.UpdateStartedEventPayload{UpdateID: "update-id"}),
 				events, true /* dryRun */, 0,

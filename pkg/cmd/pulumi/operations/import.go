@@ -679,21 +679,6 @@ func parseImportFile(
 	return imports, names, errs
 }
 
-func getCurrentDeploymentForStack(
-	ctx context.Context,
-	s backend.Stack,
-) (*deploy.Snapshot, error) {
-	deployment, err := backend.ExportStackDeployment(ctx, s)
-	if err != nil {
-		return nil, err
-	}
-	snap, err := resourcestack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
-	if err != nil {
-		return nil, resourcestack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
-	}
-	return snap, err
-}
-
 type programGeneratorFunc func(
 	p *pcl.Program,
 	loader schema.ReferenceLoader,
@@ -1218,7 +1203,7 @@ func NewImportCmd() *cobra.Command {
 				SkipPluginPreInstall: skipPluginPreInstall,
 			}
 
-			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
+			_, finalSnap, err := backend.ImportStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -1228,21 +1213,17 @@ func NewImportCmd() *cobra.Command {
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			}, imports)
+			// err is checked below after handling context.Canceled and writing the import file.
 
-			if generateCode && proj.Runtime.Name() != "" {
-				deployment, err := getCurrentDeploymentForStack(ctx, s)
-				if err != nil {
-					return err
-				}
-
-				validImports, err := generateImportedDefinitions(
-					pCtx, output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+			if generateCode && proj.Runtime.Name() != "" && finalSnap != nil {
+				validImports, err2 := generateImportedDefinitions(
+					pCtx, output, s.Ref().Name(), proj.Name, finalSnap, programGenerator, nameTable, imports,
 					protectResources)
-				if err != nil {
-					if _, ok := err.(*importer.DiagnosticsError); ok {
-						err = fmt.Errorf("internal error: %w", err)
+				if err2 != nil {
+					if _, ok := err2.(*importer.DiagnosticsError); ok {
+						err2 = fmt.Errorf("internal error: %w", err2)
 					}
-					return err
+					return err2
 				}
 
 				if validImports {
