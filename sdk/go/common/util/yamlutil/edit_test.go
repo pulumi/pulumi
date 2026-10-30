@@ -144,6 +144,10 @@ func TestEditEmptyFlowCollectionGainsContent(t *testing.T) {
 		"other":  1,
 	}, "config: # keep me\n  a: b\nother: 1\n")
 
+	assertYamlEdit(t, "values:\n  pulumiConfig: &pc {} # c\n", map[string]any{
+		"values": map[string]any{"pulumiConfig": map[string]any{"a": "b"}},
+	}, "values:\n  pulumiConfig: &pc {a: b} # c\n")
+
 	assertYamlEdit(t, "- {} # c\n- x\n", []any{map[string]any{"a": "b"}, "x"}, "- {a: b} # c\n- x\n")
 }
 

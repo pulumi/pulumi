@@ -146,8 +146,8 @@ func handleMappingNode(original, newNode *yaml.Node) ([]*yaml.Node, error) {
 			return nil, err
 		}
 		origValue, newValue := original.Content[origIdx+1], newNode.Content[newIdx+1]
-		if origValue.LineComment != "" && key.LineComment == "" && original.Style&yaml.FlowStyle == 0 &&
-			restyled(origValue, newValue) {
+		if origValue.LineComment != "" && key.LineComment == "" && origValue.Anchor == "" &&
+			original.Style&yaml.FlowStyle == 0 && restyled(origValue, newValue) {
 			key.LineComment = origValue.LineComment
 			uncommented := *origValue
 			uncommented.LineComment = ""
