@@ -307,15 +307,31 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 		remove   []string
 		path     bool
 		override bool
-		imported *esc.Environment
-		diags    apitype.EnvironmentDiagnostics
-		checkErr error
-		noCall   bool
-		expected string
-		warning  string
-		info     string
-		err      string
+		// checkFirst calls CheckSet before Set, as set --secret does before it encrypts.
+		checkFirst bool
+		imported   *esc.Environment
+		diags      apitype.EnvironmentDiagnostics
+		checkErr   error
+		noCall     bool
+		expected   string
+		warning    string
+		info       string
+		err        string
 	}{
+		{
+			name:       "CheckSet refuses an imported key",
+			set:        []string{"app:bar", "v"},
+			checkFirst: true,
+			err:        "config key app:bar is defined by imported environment proj/base",
+		},
+		{
+			name:       "CheckSet then Set prints the override note once",
+			set:        []string{"app:bar", "v"},
+			override:   true,
+			checkFirst: true,
+			expected:   importingStackFile + "      bar: v\n",
+			info:       "app:bar overrides the value from imported environment proj/base",
+		},
 		{
 			name: "set of an imported key errors",
 			set:  []string{"app:bar", "v"},
@@ -512,7 +528,13 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 			store.sink = diag.DefaultSink(&infos, &warnings, diag.FormatOptions{Color: colors.Never})
 
 			if c.set != nil {
-				err = store.Set(t.Context(), config.MustParseKey(c.set[0]), config.NewValue(c.set[1]), c.path)
+				key := config.MustParseKey(c.set[0])
+				if c.checkFirst {
+					err = store.CheckSet(t.Context(), key, c.path)
+				}
+				if err == nil {
+					err = store.Set(t.Context(), key, config.NewValue(c.set[1]), c.path)
+				}
 			}
 			for _, k := range c.remove {
 				if err == nil {
@@ -534,7 +556,7 @@ func TestManagedConfigImportedKeys(t *testing.T) {
 				require.Contains(t, warnings.String(), c.warning)
 			}
 			if c.info != "" {
-				require.Contains(t, infos.String(), c.info)
+				require.Equal(t, 1, strings.Count(infos.String(), c.info), infos.String())
 			}
 			written, readErr := os.ReadFile(configFile)
 			require.NoError(t, readErr)
