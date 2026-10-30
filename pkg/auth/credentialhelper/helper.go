@@ -30,9 +30,10 @@
 //	{"version":1,"accessToken":"my-token","headers":{"X-Session":["my-session"]}}
 //
 // Only initial responses may supply backendUrl or env, and backendUrl is allowed
-// only when no backend was selected. Refresh responses must supply HTTP credentials
-// and preserve whether an access token is supplied. Unknown fields, invalid JSON,
-// unsupported versions, and nonzero exit codes are errors.
+// when no backend was selected or it matches the selected URL, ignoring a trailing slash.
+// Refresh responses must supply HTTP credentials and preserve whether an access
+// token is supplied. Unknown fields, invalid JSON, unsupported versions, and
+// nonzero exit codes are errors.
 package credentialhelper
 
 import (
@@ -280,14 +281,15 @@ func (s *Session) Resolve(ctx context.Context, backendURL string) (*Result, erro
 			return nil, err
 		}
 		if resp.BackendURL != nil {
-			if backendURL != "" {
-				return nil, errors.New("credentials helper cannot return backendUrl when a backend is selected")
-			}
 			if err := validateURL(*resp.BackendURL); err != nil {
 				return nil, err
 			}
-			r.url = *resp.BackendURL
-			r.selectedBackend = true
+			if backendURL == "" {
+				r.url = *resp.BackendURL
+				r.selectedBackend = true
+			} else if strings.TrimSuffix(backendURL, "/") != strings.TrimSuffix(*resp.BackendURL, "/") {
+				return nil, errors.New("credentials helper cannot return backendUrl different from the selected backend")
+			}
 			logging.AddGlobalSecretFilter(httputil.URLSecrets(r.url), "[credential]")
 		}
 		if resp.AccessToken != "" || len(resp.Headers) > 0 {

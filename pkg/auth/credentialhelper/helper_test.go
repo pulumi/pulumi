@@ -270,6 +270,28 @@ func TestHelperCannotOverrideSelectedBackend(t *testing.T) {
 	require.ErrorContains(t, err, "cannot return backendUrl")
 }
 
+func TestHelperCanConfirmSelectedBackend(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct{ name, selected, returned string }{
+		{"same URL", "https://api.example.com", "https://api.example.com"},
+		{"selected trailing slash", "https://api.example.com/", "https://api.example.com"},
+		{"returned trailing slash", "https://api.example.com", "https://api.example.com/"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			ctx, session, _ := testSession(t, map[string]string{
+				"initial": `{"version":1,"backendUrl":"` + test.returned + `","accessToken":"secret"}`,
+			})
+			result, err := session.Resolve(ctx, test.selected)
+			require.NoError(t, err)
+			assert.Equal(t, test.selected, result.BackendURL())
+			assert.False(t, result.SelectedBackend())
+			assert.Equal(t, "secret", result.Token())
+		})
+	}
+}
+
 func TestResolvePreservesSelectedBackend(t *testing.T) {
 	t.Parallel()
 
