@@ -2698,31 +2698,44 @@ func TestGetStackPolicyGroups(t *testing.T) {
 	}}}, resp)
 }
 
-func TestGetStackPolicyPacksForMode(t *testing.T) {
+func TestGetStackPolicyPacks(t *testing.T) {
 	t.Parallel()
 
-	var method, url string
-	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
-		method, url = req.Method, req.URL.String()
-		return `{"requiredPolicies": [{"name": "aws-guardrails", "version": 3, "versionTag": "1.2.0",
-			"displayName": "AWS Guardrails", "packLocation": "https://example.com/pack.tgz"}]}`
-	})
-	defer server.Close()
+	for _, tt := range []struct {
+		name    string
+		mode    apitype.PolicyGroupMode
+		wantURL string
+	}{
+		{"all modes", "", "/api/stacks/acme/web/prod/policypacks"},
+		{"audit", apitype.PolicyGroupModeAudit, "/api/stacks/acme/web/prod/policypacks?mode=audit"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	resp, err := newMockClient(server).GetStackPolicyPacksForMode(t.Context(), StackIdentifier{
-		Owner:   "acme",
-		Project: "web",
-		Stack:   tokens.MustParseStackName("prod"),
-	}, apitype.PolicyGroupModeAudit)
-	require.NoError(t, err)
+			var method, url string
+			server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+				method, url = req.Method, req.URL.String()
+				return `{"requiredPolicies": [{"name": "aws-guardrails", "version": 3, "versionTag": "1.2.0",
+					"displayName": "AWS Guardrails", "packLocation": "https://example.com/pack.tgz"}]}`
+			})
+			defer server.Close()
 
-	assert.Equal(t, http.MethodGet, method)
-	assert.Equal(t, "/api/stacks/acme/web/prod/policypacks?mode=audit", url)
-	assert.Equal(t, apitype.GetStackPolicyPacksResponse{RequiredPolicies: []apitype.RequiredPolicy{{
-		Name:         "aws-guardrails",
-		Version:      3,
-		VersionTag:   "1.2.0",
-		DisplayName:  "AWS Guardrails",
-		PackLocation: "https://example.com/pack.tgz",
-	}}}, resp)
+			resp, err := newMockClient(server).GetStackPolicyPacks(t.Context(), StackIdentifier{
+				Owner:   "acme",
+				Project: "web",
+				Stack:   tokens.MustParseStackName("prod"),
+			}, tt.mode)
+			require.NoError(t, err)
+
+			assert.Equal(t, http.MethodGet, method)
+			assert.Equal(t, tt.wantURL, url)
+			assert.Equal(t, apitype.GetStackPolicyPacksResponse{RequiredPolicies: []apitype.RequiredPolicy{{
+				Name:         "aws-guardrails",
+				Version:      3,
+				VersionTag:   "1.2.0",
+				DisplayName:  "AWS Guardrails",
+				PackLocation: "https://example.com/pack.tgz",
+			}}}, resp)
+		})
+	}
 }

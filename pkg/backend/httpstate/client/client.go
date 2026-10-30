@@ -2337,28 +2337,17 @@ func (pc *Client) RemovePolicyPackByVersion(ctx context.Context, orgName string,
 	return nil
 }
 
-// GetStackPolicyPacks gets the required policy packs currently applicable to the stack.
+// GetStackPolicyPacks gets the required policy packs currently applicable to the stack. A
+// non-empty mode limits them to the packs enabled by the stack's policy groups of that mode.
 func (pc *Client) GetStackPolicyPacks(ctx context.Context,
-	stackID StackIdentifier,
-) (apitype.GetStackPolicyPacksResponse, error) {
-	var resp apitype.GetStackPolicyPacksResponse
-	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "policypacks"), nil, nil, &resp); err != nil {
-		return apitype.GetStackPolicyPacksResponse{}, err
-	}
-	return resp, nil
-}
-
-// GetStackPolicyPacksForMode gets the Policy Packs that the stack's policy
-// groups of the given mode enable for it.
-func (pc *Client) GetStackPolicyPacksForMode(ctx context.Context,
 	stackID StackIdentifier, mode apitype.PolicyGroupMode,
 ) (apitype.GetStackPolicyPacksResponse, error) {
 	query := struct {
-		Mode string `url:"mode"`
-	}{Mode: string(mode)}
+		Mode apitype.PolicyGroupMode `url:"mode,omitempty"`
+	}{Mode: mode}
 	var resp apitype.GetStackPolicyPacksResponse
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "policypacks"), query, nil, &resp); err != nil {
-		return apitype.GetStackPolicyPacksResponse{}, fmt.Errorf("getting stack policy packs: %w", err)
+		return apitype.GetStackPolicyPacksResponse{}, err
 	}
 	return resp, nil
 }

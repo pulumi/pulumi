@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
@@ -78,8 +79,8 @@ const matchRuleHelp = "Match rules (preview; requires the tag-based policy group
 	"  - A JSON PermissionBooleanExpression, as returned in the stackMatchRule\n" +
 	"    and accountMatchRule fields of `pulumi policy group get --output json`.\n" +
 	"\n" +
-	"Use JSON when a tag key or value contains ',', '=' or \" OR \", or a key\n" +
-	"starts or ends with '!'."
+	"Use JSON when a tag key or value contains ',', '=' or the word \"or\", or a\n" +
+	"key starts or ends with '!' or starts with '{'."
 
 // parseMatchRuleFlag parses the value of kind's flag, or returns nil when the
 // flag was not passed or its value is empty.
@@ -96,8 +97,10 @@ func parseMatchRuleFlag(
 func parseMatchRule(kind matchRuleKind, value string) (cloudapitype.PermissionBooleanExpression, error) {
 	trimmed := strings.TrimSpace(value)
 	switch {
-	case trimmed == "":
+	case value == "":
 		return nil, nil
+	case trimmed == "":
+		return nil, matchRuleError(kind, "rule contains only whitespace; pass '' for no rule")
 	case strings.HasPrefix(trimmed, "{"):
 		return parseMatchRuleJSON(kind, []byte(trimmed))
 	default:
@@ -122,6 +125,11 @@ func parseAlternatives(kind matchRuleKind, value string) (cloudapitype.Permissio
 		alt = strings.TrimSpace(alt)
 		if alt == "OR" || strings.HasPrefix(alt, "OR ") || strings.HasSuffix(alt, " OR") {
 			return nil, matchRuleError(kind, `" OR " must separate two alternatives`)
+		}
+		if orWord.MatchString(alt) {
+			return nil, matchRuleError(kind, fmt.Sprintf(
+				`%q: separate alternatives with " OR " (uppercase, between spaces); `+
+					`use a JSON expression for a key or value containing the word "or"`, alt))
 		}
 		expr, err := parseTagConditions(kind, alt)
 		if err != nil {
@@ -174,6 +182,9 @@ func parseTagCondition(kind matchRuleKind, cond string) (cloudapitype.Permission
 		if key == "" {
 			return nil, matchRuleError(kind, fmt.Sprintf("tag condition %q is missing a key", cond))
 		}
+		if !isShorthandKey(key) {
+			return nil, unrepresentableTagError(kind, cond, "key", key)
+		}
 		hasTag := cloudapitype.PermissionExpressionHasTagBuilder{Context: kind.context(), Key: key}.Build()
 		if negate {
 			return notExpression(hasTag), nil
@@ -199,6 +210,12 @@ func parseTagCondition(kind matchRuleKind, cond string) (cloudapitype.Permission
 		return nil, matchRuleError(kind,
 			fmt.Sprintf("tag condition %q is missing a value; write %q to require only that the tag exists", cond, key))
 	}
+	if !isShorthandKey(key) {
+		return nil, unrepresentableTagError(kind, cond, "key", key)
+	}
+	if !isShorthandValue(value) {
+		return nil, unrepresentableTagError(kind, cond, "value", value)
+	}
 
 	equal := cloudapitype.PermissionExpressionEqualBuilder{
 		Left:  cloudapitype.PermissionExpressionTagBuilder{Context: kind.context(), Key: key}.Build(),
@@ -218,6 +235,11 @@ func notExpression(node cloudapitype.PermissionBooleanExpression) cloudapitype.P
 
 func matchRuleError(kind matchRuleKind, msg string) error {
 	return cmdCmd.ConfigurationError{Message: fmt.Sprintf("invalid %s: %s", kind.flag, msg)}
+}
+
+func unrepresentableTagError(kind matchRuleKind, cond, part, s string) error {
+	return matchRuleError(kind,
+		fmt.Sprintf("tag condition %q: %s %q needs a JSON expression; see --help", cond, part, s))
 }
 
 // formatMatchRule renders a rule in the tag-condition syntax the rule flags
@@ -260,17 +282,17 @@ func formatTagCondition(kind matchRuleKind, expr cloudapitype.PermissionBooleanE
 
 	switch e := expr.(type) {
 	case cloudapitype.PermissionExpressionHasTag:
-		if !kind.isOwn(e.Context()) || !isShorthandSafe(e.Key()) {
+		if !kind.isOwn(e.Context()) || !isShorthandKey(e.Key()) {
 			return "", false
 		}
 		return prefix + e.Key(), true
 	case cloudapitype.PermissionExpressionEqual:
 		tag, ok := e.Left().(cloudapitype.PermissionExpressionTag)
-		if !ok || !kind.isOwn(tag.Context()) || !isShorthandSafe(tag.Key()) {
+		if !ok || !kind.isOwn(tag.Context()) || !isShorthandKey(tag.Key()) {
 			return "", false
 		}
 		lit, ok := e.Right().(cloudapitype.PermissionLiteralExpressionString)
-		if !ok || !isShorthandSafe(lit.Value()) {
+		if !ok || !isShorthandValue(lit.Value()) {
 			return "", false
 		}
 		return tag.Key() + op + lit.Value(), true
@@ -278,13 +300,22 @@ func formatTagCondition(kind matchRuleKind, expr cloudapitype.PermissionBooleanE
 	return "", false
 }
 
-// isShorthandSafe reports whether s reads back as the same key or value when
+// orWord matches "or" as a whole word in any case, which the tag-condition
+// syntax reserves for separating alternatives.
+var orWord = regexp.MustCompile(`(?i)(^|\s)or(\s|$)`)
+
+// isShorthandValue reports whether s reads back as the same tag value when
 // written in the tag-condition syntax.
-func isShorthandSafe(s string) bool {
-	return s != "" && s != "OR" && s == strings.TrimSpace(s) &&
-		!strings.ContainsAny(s, ",=") && !strings.HasPrefix(s, "!") && !strings.HasSuffix(s, "!") &&
-		!strings.HasPrefix(s, "{") &&
-		!strings.Contains(s, " OR ") && !strings.HasPrefix(s, "OR ") && !strings.HasSuffix(s, " OR")
+func isShorthandValue(s string) bool {
+	return s != "" && s == strings.TrimSpace(s) && !strings.ContainsAny(s, ",=") && !orWord.MatchString(s)
+}
+
+// isShorthandKey reports whether s reads back as the same tag key when written
+// in the tag-condition syntax, where a '!' next to the key negates the
+// condition and a leading '{' starts a JSON expression.
+func isShorthandKey(s string) bool {
+	return isShorthandValue(s) &&
+		!strings.HasPrefix(s, "!") && !strings.HasSuffix(s, "!") && !strings.HasPrefix(s, "{")
 }
 
 func formatMatchRuleJSON(rule cloudapitype.PermissionBooleanExpression) string {

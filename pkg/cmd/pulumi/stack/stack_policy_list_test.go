@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,6 +46,7 @@ type mockStackPolicyListClient struct {
 	groupErr error
 	packErr  error
 
+	mu        sync.Mutex
 	gotStacks []client.StackIdentifier
 	gotModes  []apitype.PolicyGroupMode
 }
@@ -52,13 +54,17 @@ type mockStackPolicyListClient struct {
 func (m *mockStackPolicyListClient) GetStackPolicyGroups(
 	_ context.Context, stackID client.StackIdentifier,
 ) (apitype.ListPolicyGroupsResponse, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.gotStacks = append(m.gotStacks, stackID)
 	return m.groups, m.groupErr
 }
 
-func (m *mockStackPolicyListClient) GetStackPolicyPacksForMode(
+func (m *mockStackPolicyListClient) GetStackPolicyPacks(
 	_ context.Context, stackID client.StackIdentifier, mode apitype.PolicyGroupMode,
 ) (apitype.GetStackPolicyPacksResponse, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.gotStacks = append(m.gotStacks, stackID)
 	m.gotModes = append(m.gotModes, mode)
 	return m.packs[mode], m.packErr
@@ -121,9 +127,10 @@ func TestStackPolicyList_JSON(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, runStackPolicyList(t.Context(), &buf, c, stackPolicyTestStackID, args))
 
-	assert.Equal(t, []apitype.PolicyGroupMode{
+	assert.ElementsMatch(t, []apitype.PolicyGroupMode{
 		apitype.PolicyGroupModePreventative, apitype.PolicyGroupModeAudit,
 	}, c.gotModes)
+	require.Len(t, c.gotStacks, 3)
 	for _, id := range c.gotStacks {
 		assert.Equal(t, stackPolicyTestStackID, id)
 	}
@@ -233,7 +240,7 @@ func newStackPolicyListServer(t *testing.T, c *mockStackPolicyListClient) *httpt
 			resp, err = c.GetStackPolicyGroups(r.Context(), stackPolicyTestStackID)
 		case "/api/stacks/acme/web/prod/policypacks":
 			mode := apitype.PolicyGroupMode(r.URL.Query().Get("mode"))
-			resp, err = c.GetStackPolicyPacksForMode(r.Context(), stackPolicyTestStackID, mode)
+			resp, err = c.GetStackPolicyPacks(r.Context(), stackPolicyTestStackID, mode)
 		default:
 			http.NotFound(w, r)
 			return
