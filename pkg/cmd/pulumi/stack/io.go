@@ -373,6 +373,15 @@ func InitStack(
 // (e.g. so they can clean it up).
 var ErrSaveStackConfig = errors.New("saving stack config")
 
+// ErrCreatedWithoutManagedEnvironment is returned by `CreateStack` when the backend created the stack but did not
+// create the ESC environment it was asked for, so the stack exists despite the error.
+var ErrCreatedWithoutManagedEnvironment = errors.New("the stack was created without an ESC environment")
+
+// StackCreatedDespiteError reports whether err is a `CreateStack` error returned after the backend created the stack.
+func StackCreatedDespiteError(err error) bool {
+	return errors.Is(err, ErrSaveStackConfig) || errors.Is(err, ErrCreatedWithoutManagedEnvironment)
+}
+
 // CreateStack creates a stack with the given name, and optionally selects it as the current.
 func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	b backend.Backend, stackRef backend.StackReference, root string, opts CreateStackOptions,
@@ -472,8 +481,8 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	if opts.ManagedEnvironment {
 		managedEnv := stack.ConfigLocation().ManagedEnvironment
 		if managedEnv == "" {
-			return nil, fmt.Errorf("stack %[1]s was created without an ESC environment; "+
-				"remove it with `pulumi stack rm %[1]s`", stack.Ref())
+			return nil, fmt.Errorf("%w; remove it with `pulumi stack rm %s`", ErrCreatedWithoutManagedEnvironment,
+				stack.Ref())
 		}
 		if !opts.Quiet {
 			sink.Infof(diag.Message("", "Created environment %s for stack configuration"), managedEnv)

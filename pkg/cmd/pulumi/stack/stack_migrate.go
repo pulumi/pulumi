@@ -460,10 +460,10 @@ func (cmd *stackMigrateCmd) Run(
 		SecretsProvider: cmd.secretsProvider,
 	})
 	if err != nil {
-		// Only adopt-and-rollback when ErrSaveStackConfig signals b.CreateStack succeeded.
+		// Only adopt-and-rollback when the error signals b.CreateStack succeeded.
 		// Other failures (AlreadyExists / OverLimit / network / SM construct) might leave a
 		// stack we don't own; force-removing it would clobber unrelated work.
-		if errors.Is(err, ErrSaveStackConfig) {
+		if StackCreatedDespiteError(err) {
 			if probe, probeErr := targetBE.GetStack(ctx, targetRef); probeErr == nil && probe != nil {
 				targetStack = probe
 				targetCreated = true

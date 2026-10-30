@@ -288,7 +288,7 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 			name:        "service without managed environments",
 			stackFile:   "Pulumi.dev.yaml",
 			wantCreated: true,
-			wantErr:     "stack dev was created without an ESC environment; remove it with `pulumi stack rm dev`",
+			wantErr:     "the stack was created without an ESC environment; remove it with `pulumi stack rm dev`",
 		},
 	}
 	for _, tt := range tests {
@@ -318,6 +318,7 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 			assert.Equal(t, tt.wantCreated, createdManaged)
 			if tt.wantErr != "" {
 				assert.ErrorContains(t, err, tt.wantErr)
+				assert.Equal(t, tt.wantCreated, StackCreatedDespiteError(err))
 				if tt.contents == "" {
 					assert.NoFileExists(t, stackFile)
 				}
