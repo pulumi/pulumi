@@ -20,6 +20,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,7 +28,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // testJWT is a test JWT token used in tests.
@@ -157,6 +160,56 @@ func TestGetTokenValue(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, tt.wantValue, value)
 			}
+		})
+	}
+}
+
+func TestOIDCLoginNormalizesBackendURL(t *testing.T) {
+	for _, test := range []struct {
+		name, suffix string
+		useDefault   bool
+	}{
+		{name: "without trailing slash"},
+		{name: "with trailing slash", suffix: "/"},
+		{name: "default backend", useDefault: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				// Accept doubled slashes so credential storage is checked even if the request path is wrong.
+				switch strings.TrimLeft(r.URL.Path, "/") {
+				case "api/oauth/token":
+					assert.Equal(t, "/api/oauth/token", r.RequestURI)
+					assert.Equal(t, http.MethodPost, r.Method)
+					_ = json.NewEncoder(w).Encode(apitype.TokenExchangeGrantResponse{
+						AccessToken: "access-token", ExpiresIn: 3600, TokenType: "Bearer",
+					})
+				case "api/user":
+					assert.Equal(t, "/api/user", r.RequestURI)
+					assert.Equal(t, "token access-token", r.Header.Get("Authorization"))
+					_, _ = w.Write([]byte(`{"githubLogin":"alice","organizations":[]}`))
+				default:
+					t.Errorf("unexpected request: %s", r.URL.Path)
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}))
+			t.Cleanup(server.Close)
+			t.Setenv("PULUMI_API", server.URL)
+			cloudURL := server.URL + test.suffix
+			if test.useDefault {
+				cloudURL = ""
+			}
+			_, err := NewLoginManager().LoginWithOIDCToken(
+				t.Context(), diagtest.LogSink(t), cloudURL, false, testJWT, "org", "org:org", time.Hour, true)
+			require.NoError(t, err)
+			creds, err := workspace.GetStoredCredentials()
+			require.NoError(t, err)
+			assert.Equal(t, server.URL, creds.Current)
+			require.Len(t, creds.Accounts, 1)
+			require.Contains(t, creds.Accounts, server.URL)
+			assert.Equal(t, "access-token", creds.Accounts[server.URL].AccessToken)
+			assert.Equal(t, "alice", creds.Accounts[server.URL].Username)
 		})
 	}
 }
