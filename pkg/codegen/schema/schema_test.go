@@ -1409,6 +1409,86 @@ func TestBindSpecPrintableNames(t *testing.T) {
 	}
 }
 
+func TestBindSpecReducedPropertyNames(t *testing.T) {
+	t.Parallel()
+
+	bindProperties := func(names ...string) (*Package, hcl.Diagnostics) {
+		properties := map[string]PropertySpec{}
+		for _, name := range names {
+			properties[name] = PropertySpec{TypeSpec: TypeSpec{Type: "string"}}
+		}
+		pkg, diags, _ := BindSpec(PackageSpec{
+			Name: "test",
+			Types: map[string]ComplexTypeSpec{
+				"test:index:TestType": {
+					ObjectTypeSpec: ObjectTypeSpec{Type: "object", Properties: properties},
+				},
+			},
+		}, noOpLoader{}, ValidationOptions{AllowDanglingReferences: true})
+		return pkg, diags
+	}
+
+	tests := []struct {
+		name  string
+		props []string
+		want  hcl.Diagnostics
+	}{
+		{
+			name:  "valid",
+			props: []string{"foo", "@bar!", "😃baz", "__qux__", "12quux", "a1", "kebab-case"},
+		},
+		{
+			name:  "no letters",
+			props: []string{"123", "@!"},
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/types/test:index:TestType/properties/123: property name must contain an ASCII letter",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/types/test:index:TestType/properties/@%21: property name must contain an ASCII letter",
+				},
+			},
+		},
+		{
+			name:  "conflicts",
+			props: []string{"MyFoo", "my-foo", "my_foo", "bar"},
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/my-foo: property name conflicts with "MyFoo": ` +
+						`both reduce to "myfoo"`,
+				},
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/my_foo: property name conflicts with "MyFoo": ` +
+						`both reduce to "myfoo"`,
+				},
+			},
+		},
+		{
+			name:  "leading digits",
+			props: []string{"1foo", "foo"},
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/foo: property name conflicts with "1foo": ` +
+						`both reduce to "foo"`,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			pkg, diags := bindProperties(tt.props...)
+			assert.Equal(t, tt.want, diags)
+			assert.Equal(t, tt.want.HasErrors(), pkg == nil)
+		})
+	}
+}
+
 func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewContext(testdataPath))

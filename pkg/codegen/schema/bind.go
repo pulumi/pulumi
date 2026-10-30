@@ -109,6 +109,20 @@ func validatePrintableName(path, kind, name string) *hcl.Diagnostic {
 	return nil
 }
 
+// ReducePropertyName lower-cases name and drops every character that is not an ASCII letter or digit. It also drops
+// leading digits. Two property names in the same property bag should not reduce to the same string.
+func ReducePropertyName(name string) string {
+	var reduced strings.Builder
+	for _, r := range name {
+		isLetter := ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z')
+		isDigit := '0' <= r && r <= '9'
+		if isLetter || (isDigit && reduced.Len() > 0) {
+			reduced.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return reduced.String()
+}
+
 func validateSpec(spec PackageSpec) (hcl.Diagnostics, error) {
 	bytes, err := json.Marshal(spec)
 	if err != nil {
@@ -1393,13 +1407,12 @@ func bindDefaultValue(path string, value any, spec *DefaultSpec, typ Type) (*Def
 	return dv, diags
 }
 
-// bindProperties binds the map of property specs and list of required properties into a sorted list of properties and
-// a lookup table.
-func (t *types) bindProperties(path string, properties map[string]PropertySpec, requiredPath string, required []string,
-	inputShape bool, options ValidationOptions,
-) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
+// validatePropertyNames validates the names in one property bag. Call it once per bag, so that each warning is
+// reported once.
+func validatePropertyNames(path string, properties map[string]PropertySpec) (hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
-	for name := range properties {
+	reducedNames := map[string]string{}
+	for _, name := range slices.Sorted(maps.Keys(properties)) {
 		propertyPath := path + "/" + url.PathEscape(name)
 		if diag := validatePrintableName(propertyPath, "property name", name); diag != nil {
 			diags = diags.Append(diag)
@@ -1407,10 +1420,30 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 		if isReservedKeyword(name) {
 			diags = diags.Append(errorf(propertyPath, "%s", name+" is a reserved property name"))
 		}
+		// Each SDK derives its own name for a property, so the names should stay unique after the most aggressive
+		// reduction that any SDK can apply. A conflict is only a warning because published schemas contain them.
+		reduced := ReducePropertyName(name)
+		if reduced == "" {
+			diags = diags.Append(errorf(propertyPath, "property name must contain an ASCII letter"))
+		} else if other, ok := reducedNames[reduced]; ok {
+			diags = diags.Append(warningf(propertyPath,
+				"property name conflicts with %q: both reduce to %q", other, reduced))
+		} else {
+			reducedNames[reduced] = name
+		}
 	}
 	if diags.HasErrors() {
-		return nil, nil, diags, fmt.Errorf("invalid property names: %s", diags.Error())
+		return diags, fmt.Errorf("invalid property names: %s", diags.Error())
 	}
+	return diags, nil
+}
+
+// bindProperties binds the map of property specs and list of required properties into a sorted list of properties and
+// a lookup table. The caller must validate the property names with validatePropertyNames first.
+func (t *types) bindProperties(path string, properties map[string]PropertySpec, requiredPath string, required []string,
+	inputShape bool, options ValidationOptions,
+) ([]*Property, map[string]*Property, hcl.Diagnostics, error) {
+	var diags hcl.Diagnostics
 
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
@@ -1484,6 +1517,12 @@ func (t *types) bindObjectTypeDetails(path string, obj *ObjectType, token string
 	if len(spec.Plain) > 0 {
 		diags = diags.Append(errorf(path+"/plain",
 			"plain has been removed; the property type must be marked as plain instead"))
+	}
+
+	nameDiags, err := validatePropertyNames(path+"/properties", spec.Properties)
+	diags = diags.Extend(nameDiags)
+	if err != nil {
+		return diags, err
 	}
 
 	properties, propertyMap, propertiesDiags, err := t.bindProperties(path+"/properties", spec.Properties,
@@ -2145,8 +2184,14 @@ func bindExtensionParameterization(spec *ExtensionParameterizationSpec) (*Extens
 }
 
 func bindConfig(spec ConfigSpec, types *types, options ValidationOptions) ([]*Property, hcl.Diagnostics, error) {
-	properties, _, diags, err := types.bindProperties("#/config/variables", spec.Variables,
+	diags, err := validatePropertyNames("#/config/variables", spec.Variables)
+	if err != nil {
+		return nil, diags, err
+	}
+
+	properties, _, propertyDiags, err := types.bindProperties("#/config/variables", spec.Variables,
 		"#/config/defaults", spec.Required, false, options)
+	diags = diags.Extend(propertyDiags)
 
 	return properties, diags, err
 }
@@ -2210,6 +2255,12 @@ func (t *types) bindResourceDetails(
 			"plainInputs has been removed; individual property types must be marked as plain instead"))
 	}
 
+	nameDiags, err := validatePropertyNames(path+"/properties", spec.Properties)
+	diags = diags.Extend(nameDiags)
+	if err != nil {
+		return diags, fmt.Errorf("failed to bind properties for %v: %w", token, err)
+	}
+
 	properties, _, propertyDiags, err := t.bindProperties(path+"/properties", spec.Properties,
 		path+"/required", spec.Required, false, options)
 	diags = diags.Extend(propertyDiags)
@@ -2228,6 +2279,12 @@ func (t *types) bindResourceDetails(
 			warnPath := path + "/properties/" + property.Name
 			diags = diags.Append(warningf(warnPath, "%s", property.Name+" is a reserved property name for resources"))
 		}
+	}
+
+	inputNameDiags, err := validatePropertyNames(path+"/inputProperties", spec.InputProperties)
+	diags = diags.Extend(inputNameDiags)
+	if err != nil {
+		return diags, fmt.Errorf("failed to bind input properties for %v: %w", token, err)
 	}
 
 	inputProperties, _, inputDiags, err := t.bindProperties(path+"/inputProperties", spec.InputProperties,
