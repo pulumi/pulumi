@@ -32,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -299,7 +298,7 @@ func NewUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
-			SecretsProvider:    secrets.DefaultProvider,
+			SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 			Scopes:             backend.CancellationScopes,
 			CoherenceWindow:    coherenceWindow,
 		}, nil /* events */)
@@ -578,7 +577,7 @@ func NewUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
-			SecretsProvider:    secrets.DefaultProvider,
+			SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 			Scopes:             backend.CancellationScopes,
 			CoherenceWindow:    coherenceWindow,
 		}, nil /* events */)

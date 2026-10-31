@@ -15,7 +15,6 @@
 package policy
 
 import (
-	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -32,7 +31,7 @@ func NewPolicyCmd() *cobra.Command {
 
 	cmd.AddCommand(newPolicyAnalyzeCmd(
 		pkgWorkspace.Instance, cmdBackend.DefaultLoginManager,
-		backendSecrets.DefaultProvider, nil))
+		cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), nil))
 	cmd.AddCommand(newPolicyDisableCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyEnableCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyGetCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))

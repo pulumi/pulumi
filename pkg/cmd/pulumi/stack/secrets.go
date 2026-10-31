@@ -23,7 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgLogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -249,7 +249,7 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 		// default secrets manager which differs from what the user has previously
 		// specified.
 		if l.FallbackToState {
-			snap, err := s.Snapshot(ctx, backend_secrets.DefaultProvider)
+			snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 			if err != nil {
 				return nil, SecretsManagerUnchanged, err
 			}

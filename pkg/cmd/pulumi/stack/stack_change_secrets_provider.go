@@ -21,7 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -92,7 +91,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string) error {
 	stdout := cmd.stdout
 	if cmd.secretsProvider == nil {
-		cmd.secretsProvider = backend_secrets.DefaultProvider
+		cmd.secretsProvider = cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager)
 	}
 
 	// For change-secrets-provider, we explicitly don't want any fallback behaviour when loading secrets providers.

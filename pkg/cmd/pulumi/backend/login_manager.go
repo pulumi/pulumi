@@ -24,14 +24,19 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	backendsecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
+	// ClientSource shares authenticated clients for this command's backends and secrets providers.
+	ClientSource() *httpstate.ClientSource
 	// Current returns the currently logged in backend instance for the given url.
 	//
 	// If the user does not have a logged in backend, then Current will return (nil, nil).
@@ -83,9 +88,24 @@ func WithoutNewProjectHint() LoginOption {
 	}
 }
 
-var DefaultLoginManager LoginManager = &lm{}
+var DefaultLoginManager = NewLoginManager(cmdutil.Diag())
 
-type lm struct{}
+type lm struct {
+	clients *httpstate.ClientSource
+}
+
+// NewLoginManager shares authenticated backend clients for one command.
+func NewLoginManager(sink diag.Sink) LoginManager {
+	return &lm{clients: httpstate.NewClientSource(sink)}
+}
+
+// ClientSource returns the command's authenticated backend clients.
+func (f *lm) ClientSource() *httpstate.ClientSource { return f.clients }
+
+// SecretsProvider constructs standard secrets managers using the login manager's clients.
+func SecretsProvider(lm LoginManager) secrets.Provider {
+	return backendsecrets.NewProvider(lm.ClientSource().ClientForURL)
+}
 
 func (f *lm) Current(
 	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
@@ -100,7 +120,7 @@ func (f *lm) Current(
 	if err != nil || account == nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
+	return httpstate.New(ctx, sink, url, project, insecure, f.clients)
 }
 
 func (f *lm) Login(
@@ -131,7 +151,7 @@ func (f *lm) Login(
 	if err != nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
+	return httpstate.New(ctx, sink, url, project, insecure, f.clients)
 }
 
 // LoginFromAuthContext logs in to a backend using the provided authentication context.
@@ -154,12 +174,13 @@ func (f *lm) LoginFromAuthContext(
 		if err != nil {
 			return nil, err
 		}
-		return httpstate.New(ctx, sink, url, project, insecure)
+		return httpstate.New(ctx, sink, url, project, insecure, f.clients)
 	}
 	return nil, fmt.Errorf("unknown auth context grant type: %s", authContext.GrantType)
 }
 
 type MockLoginManager struct {
+	Clients  *httpstate.ClientSource
 	CurrentF func(
 		ctx context.Context,
 		ws pkgWorkspace.Context,
@@ -238,4 +259,11 @@ func (lm *MockLoginManager) Current(
 		return lm.CurrentF(ctx, ws, sink, url, project, setCurrent)
 	}
 	panic("not implemented")
+}
+
+func (m *MockLoginManager) ClientSource() *httpstate.ClientSource {
+	if m.Clients == nil {
+		m.Clients = httpstate.NewClientSource(cmdutil.Diag())
+	}
+	return m.Clients
 }

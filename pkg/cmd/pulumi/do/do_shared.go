@@ -40,7 +40,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemainfo"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -983,7 +983,7 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 	if err != nil {
 		return property.Map{}, fmt.Errorf("load stack: %w", err)
 	}
-	snap, err := s.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return property.Map{}, fmt.Errorf("load stack snapshot: %w", err)
 	}

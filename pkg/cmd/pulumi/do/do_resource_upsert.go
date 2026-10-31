@@ -30,8 +30,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -215,7 +215,7 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
@@ -346,7 +346,7 @@ func (pc *packageCommand) runStatefulSnippetPatch(
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
@@ -457,7 +457,7 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
@@ -855,7 +855,7 @@ func DefaultRunStatefulUpdate(
 		Opts:               backend.UpdateOptions{Engine: engineOpts, Display: displayOpts, AutoApprove: req.Yes},
 		StackConfiguration: cfg,
 		SecretsManager:     sm,
-		SecretsProvider:    backendSecrets.DefaultProvider,
+		SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 		Scopes:             backend.CancellationScopes,
 	}
 

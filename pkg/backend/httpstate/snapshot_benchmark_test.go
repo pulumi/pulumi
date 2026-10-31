@@ -617,7 +617,9 @@ func newMockPersister(t testing.TB, server *httptest.Server) *cloudSnapshotPersi
 	}
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	backendGeneric, err := New(t.Context(), sink, server.URL, &workspace.Project{}, false)
+	backendGeneric, err := New(t.Context(), sink, server.URL, &workspace.Project{}, false,
+		NewClientSource(sink),
+	)
 	require.NoError(t, err)
 
 	backend := backendGeneric.(*cloudBackend)
