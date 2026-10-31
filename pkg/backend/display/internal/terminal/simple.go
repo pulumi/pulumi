@@ -30,6 +30,8 @@ type SimpleTerminal struct {
 
 	keys chan string
 
+	paused chan struct{}
+
 	dest io.Writer
 }
 
@@ -42,6 +44,7 @@ func NewSimpleTerminal(dest io.Writer, width, height int) *SimpleTerminal {
 		raw:    true,
 		info:   nil,
 		keys:   make(chan string),
+		paused: make(chan struct{}),
 		dest:   dest,
 	}
 }
@@ -75,11 +78,25 @@ func (t *SimpleTerminal) HideCursor()          {}
 func (t *SimpleTerminal) ShowCursor()          {}
 
 func (t *SimpleTerminal) ReadKey() (string, error) {
-	k, ok := <-t.keys
-	if !ok {
+	select {
+	case k, ok := <-t.keys:
+		if !ok {
+			return "", io.EOF
+		}
+		return k, nil
+	case <-t.paused:
 		return "", io.EOF
 	}
-	return k, nil
+}
+
+func (t *SimpleTerminal) Suspend() error {
+	close(t.paused)
+	return nil
+}
+
+func (t *SimpleTerminal) Resume() error {
+	t.paused = make(chan struct{})
+	return nil
 }
 
 func (t *SimpleTerminal) SetSize(width, height int) {

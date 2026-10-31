@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -309,4 +310,45 @@ func TestTreeRenderDoesntRenderBeforeItHasContent(t *testing.T) {
 		assert.Truef(t, treeRenderer.dirty,
 			"Expecting the renderer to be dirty after headers are initialized, and after a tick has happened")
 	}()
+}
+
+func TestTreeSuspend(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	term := terminal.NewMockTerminal(&buf, 80, 24, true)
+	treeRenderer, display := createRendererAndDisplay(term, true)
+
+	addManySystemEvents(display, 10, strings.Repeat("a", 32))
+	treeRenderer.markDirty()
+	treeRenderer.frame(false, false)
+	require.Equal(t, 14, treeRenderer.rewind)
+
+	buf.Reset()
+	resume := treeRenderer.suspend()
+	assert.Equal(t, "\r<%cursor-up:14%><%clear-to-end%>", buf.String())
+
+	buf.Reset()
+	treeRenderer.markDirty()
+	treeRenderer.frame(false, false)
+	assert.Empty(t, buf.String())
+
+	keyRead := make(chan struct{})
+	go func() {
+		term.SendKey("x")
+		close(keyRead)
+	}()
+	select {
+	case <-keyRead:
+		t.Fatal("key was read while suspended")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	// After resuming, keys are read again and the next frame starts below the prompt instead of rewinding over it.
+	resume()
+	<-keyRead
+	buf.Reset()
+	treeRenderer.frame(false, false)
+	assert.NotContains(t, buf.String(), "<%cursor-up")
+	assert.Contains(t, buf.String(), "System Messages")
 }

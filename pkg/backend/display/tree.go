@@ -27,6 +27,7 @@ import (
 
 	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -57,6 +58,9 @@ type treeRenderer struct {
 	keys   chan string
 	closed chan bool
 
+	pollStopped chan struct{}
+	suspended   bool // true while a prompt is using the terminal
+
 	treeTableOffset    int // The scroll offset into the tree table.
 	maxTreeTableOffset int // The maximum scroll offset.
 }
@@ -81,13 +85,47 @@ func newInteractiveRenderer(term terminal.Terminal, permalink string, opts Optio
 		r.ticker.Stop()
 	}
 	go r.handleEvents()
-	go r.pollInput()
+	r.pollStopped = make(chan struct{})
+	go r.pollInput(r.pollStopped)
+	display.SetSuspender(r.suspend)
 	return r
 }
 
 func (r *treeRenderer) Close() error {
+	display.SetSuspender(nil)
 	r.term.ShowCursor()
 	return r.term.Close()
+}
+
+func (r *treeRenderer) suspend() (resume func()) {
+	r.m.Lock()
+	r.suspended = true
+	r.term.CarriageReturn()
+	if r.rewind > 0 {
+		r.term.CursorUp(r.rewind)
+	}
+	r.term.ClearEnd()
+	// Otherwise the first frame after resume moves the cursor up and draws over the prompt.
+	r.rewind = 0
+	pollStopped := r.pollStopped
+	// Unlock before waiting: pollInput may be blocked handing a key to handleEvents, which needs the lock.
+	r.m.Unlock()
+
+	contract.IgnoreError(r.term.Suspend())
+	// The key reader must be gone before the prompt starts, or it can take the prompt's first keystroke.
+	<-pollStopped
+
+	return func() {
+		contract.IgnoreError(r.term.Resume())
+
+		r.m.Lock()
+		defer r.m.Unlock()
+		r.suspended = false
+		r.dirty = true
+		r.term.HideCursor()
+		r.pollStopped = make(chan struct{})
+		go r.pollInput(r.pollStopped)
+	}
 }
 
 func (r *treeRenderer) initializeDisplay(display *ProgressDisplay) {
@@ -250,7 +288,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 		defer r.m.Unlock()
 	}
 
-	if !done && !r.dirty {
+	if !done && (!r.dirty || r.suspended) {
 		return
 	}
 	r.dirty = false
@@ -530,13 +568,15 @@ func (r *treeRenderer) handleKey(key string) {
 	}
 }
 
-func (r *treeRenderer) pollInput() {
+func (r *treeRenderer) pollInput(stopped chan<- struct{}) {
+	defer close(stopped)
+
 	for {
 		key, err := r.term.ReadKey()
 		if err == nil {
 			r.keys <- key
 		} else if errors.Is(err, io.EOF) {
-			close(r.keys)
+			// Don't close r.keys: EOF may just mean suspend, and the pollInput started on resume sends on it.
 			return
 		}
 	}
