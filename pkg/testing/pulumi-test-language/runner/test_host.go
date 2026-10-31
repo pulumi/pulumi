@@ -16,6 +16,7 @@ package runner
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -60,7 +61,7 @@ type testHost struct {
 	// here when Loader runs so the conformance runner can reuse it to bind PCL programs.
 	loader *providerLoader
 
-	// contextServices holds the loader/mapper gRPC servers this host hosts for each context; they
+	// contextServices holds the loader, mapper and resolver gRPC servers this host hosts for each context; they
 	// are shut down in that context's ReleaseContext.
 	contextServices map[*plugin.Context][]*plugin.GrpcServer
 
@@ -249,7 +250,7 @@ func (h *testHost) ResolvePlugin(
 }
 
 // ReleaseContext closes the providers this host booted from a path for the context, then shuts down
-// the loader and mapper gRPC servers it hosts for the context. The servers go last because the
+// the loader, mapper and resolver gRPC servers it hosts for the context. The servers go last because the
 // providers may use them while they shut down. Other providers are torn down when the host closes.
 func (h *testHost) ReleaseContext(ctx *plugin.Context) error {
 	h.servicesMu.Lock()
@@ -319,8 +320,72 @@ func (h *testHost) Mapper(ctx *plugin.Context) (*plugin.GrpcServer, error) {
 	return srv, nil
 }
 
+// Resolver serves a package resolver bound to ctx. The resolver resolves package specs against the
+// test's own providers via this host.
 func (h *testHost) Resolver(ctx *plugin.Context) (*plugin.GrpcServer, error) {
-	return nil, nil
+	srv, err := plugin.NewServer(ctx, func(srv *grpc.Server) {
+		pulumirpc.RegisterPackageResolverServer(srv, &providerResolver{pctx: ctx, host: h})
+	})
+	if err != nil {
+		return nil, err
+	}
+	h.servicesMu.Lock()
+	h.contextServices[ctx] = append(h.contextServices[ctx], srv)
+	h.servicesMu.Unlock()
+	return srv, nil
+}
+
+// A providerResolver is a package resolver that resolves package specs from a given set of providers.
+// A spec's source is the name of the provider.
+type providerResolver struct {
+	pulumirpc.UnimplementedPackageResolverServer
+
+	pctx *plugin.Context
+	host plugin.Host
+}
+
+func (r *providerResolver) ResolvePackage(
+	ctx context.Context, req *pulumirpc.PackageSpec,
+) (*pulumirpc.PackageDependency, error) {
+	if len(req.Parameters) > 0 {
+		return nil, status.Errorf(codes.Unimplemented,
+			"resolving package %q: parameterized package specs are not supported", req.Source)
+	}
+
+	var version *semver.Version
+	if req.Version != "" {
+		v, err := semver.Parse(req.Version)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"resolving package %q: invalid version %q: %v", req.Source, req.Version, err)
+		}
+		version = &v
+	}
+
+	provider, err := r.host.Provider(r.pctx, workspace.PluginDescriptor{
+		Kind:    apitype.ResourcePlugin,
+		Name:    req.Source,
+		Version: version,
+	}, env.NewEnv(env.Global))
+	if err != nil {
+		return nil, fmt.Errorf("resolving package %q: %w", req.Source, err)
+	}
+
+	resp, err := provider.GetSchema(ctx, plugin.GetSchemaRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("resolving package %q: getting schema: %w", req.Source, err)
+	}
+	var pkg schema.PartialPackageSpec
+	if err := json.Unmarshal(resp.Schema, &pkg); err != nil {
+		return nil, fmt.Errorf("resolving package %q: unmarshaling schema: %w", req.Source, err)
+	}
+
+	return &pulumirpc.PackageDependency{
+		Name:    pkg.Name,
+		Kind:    string(apitype.ResourcePlugin),
+		Version: pkg.Version,
+		Server:  pkg.PluginDownloadURL,
+	}, nil
 }
 
 func (h *testHost) SignalCancellation() error {
