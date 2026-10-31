@@ -118,7 +118,7 @@ func TestProviderFromPathHandshakesOnce(t *testing.T) {
 	tempDir := t.TempDir()
 	snk := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	pctx, err := plugin.NewContextWithRoot(
-		t.Context(), snk, snk, host, tempDir, tempDir, nil, false, nil, nil, nil, nil)
+		t.Context(), snk, snk, host, tempDir, tempDir, nil, false, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, host.ReleaseContext(pctx))

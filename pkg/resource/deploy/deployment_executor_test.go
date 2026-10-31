@@ -387,7 +387,7 @@ func TestStateMigrationWaitsForAsyncPlanning(t *testing.T) {
 
 	sink := &deploytest.NoopSink{}
 	host := deploytest.NewPluginHost(sink, sink, nil, loader)
-	plugctx, err := plugin.NewContext(t.Context(), sink, sink, host, nil, "", nil, false, nil)
+	plugctx, err := plugin.NewContext(t.Context(), sink, sink, host, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, plugctx.Close()) }()
 

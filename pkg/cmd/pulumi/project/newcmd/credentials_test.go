@@ -252,7 +252,7 @@ func TestPreflightCloudCredentialsPackages(t *testing.T) {
 			}
 
 			sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-			pctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+			pctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil, nil)
 			require.NoError(t, err)
 			defer pctx.Close()
 
@@ -335,7 +335,7 @@ func TestPreflightCloudCredentialsSkipsMismatchedParameterization(t *testing.T) 
 		},
 	}
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	pctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, host, "", "", nil, nil)
 	require.NoError(t, err)
 	defer pctx.Close()
 
