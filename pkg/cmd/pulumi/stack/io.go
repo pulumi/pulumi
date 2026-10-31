@@ -168,7 +168,7 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 		})
 	}
 
-	return nil, backenderr.StackNotFoundError{StackName: stackName}
+	return nil, backenderr.StackNotFoundError{StackName: stackName, OfferCreate: true}
 }
 
 func requireCurrentStack(
@@ -203,17 +203,6 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	b backend.Backend, lopt LoadOption, opts display.Options, configFile string,
 ) (backend.Stack, error) {
 	lopt ^= SetCurrent
-	// Prepare our error in case we need to issue it.  Bail early if we're not interactive.
-	var chooseStackErr string
-	if lopt.OfferNew() {
-		chooseStackErr = "no stack selected; please use `pulumi stack select` or `pulumi stack init` to choose one"
-	} else {
-		chooseStackErr = "no stack selected; please use `pulumi stack select` to choose one"
-	}
-	if !cmdutil.Interactive() {
-		return nil, errors.New(chooseStackErr)
-	}
-
 	proj, root, err := ws.ReadProject("")
 	if err != nil {
 		return nil, err
@@ -246,6 +235,11 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		options = append(options, name)
 	}
 	sort.Strings(options)
+
+	noStackSelectedErr := backenderr.NoStackSelectedError{HasStacks: len(options) > 0}
+	if !cmdutil.Interactive() {
+		return nil, noStackSelectedErr
+	}
 
 	// If a stack is already selected, make that the default.
 	var defaultOption string
@@ -289,7 +283,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 		Options: options,
 		Default: defaultOption,
 	}, &option, ui.SurveyIcons(opts.Color)); err != nil {
-		return nil, errors.New(chooseStackErr)
+		return nil, noStackSelectedErr
 	}
 
 	if option == newOption {

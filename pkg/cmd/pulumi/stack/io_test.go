@@ -29,6 +29,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -67,6 +70,87 @@ func TestStackLoadOption(t *testing.T) {
 				"SetCurrent did not match")
 		})
 	}
+}
+
+//nolint:paralleltest // mutates global interactive-mode state
+func TestChooseStackNonInteractiveError(t *testing.T) {
+	previousDisableInteractive := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = true
+	t.Cleanup(func() { cmdutil.DisableInteractive = previousDisableInteractive })
+
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "test-project"}, "", nil
+		},
+	}
+
+	tests := []struct {
+		name      string
+		stackRefs []backend.StackReference
+		expected  string
+	}{
+		{
+			name:     "no stacks exist",
+			expected: "no stack selected; use `pulumi stack init <name>` to create one",
+		},
+		{
+			name: "stacks exist",
+			stackRefs: []backend.StackReference{
+				&backend.MockStackReference{StringV: "dev"},
+			},
+			expected: "no stack selected; use `pulumi stack select <name>` to choose one " +
+				"(list available stacks with `pulumi stack ls`)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockBackend := &backend.MockBackend{
+				ListStackNamesF: func(context.Context, backend.ListStackNamesFilter, backend.ContinuationToken) (
+					[]backend.StackReference, backend.ContinuationToken, error,
+				) {
+					return tt.stackRefs, nil, nil
+				},
+			}
+
+			_, err := ChooseStack(t.Context(), cmdutil.Diag(), ws, mockBackend, OfferNew, display.Options{}, "")
+			require.EqualError(t, err, tt.expected)
+		})
+	}
+}
+
+//nolint:paralleltest // mutates global interactive-mode state
+func TestRequireStackNotFoundError(t *testing.T) {
+	previousDisableInteractive := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = true
+	t.Cleanup(func() { cmdutil.DisableInteractive = previousDisableInteractive })
+
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func(string) (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "test-project"}, "", nil
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{StringV: s}, nil
+		},
+		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			context.Context, pkgWorkspace.Context, diag.Sink, string, *workspace.Project, bool, bool,
+			colors.Colorization, ...cmdBackend.LoginOption,
+		) (backend.Backend, error) {
+			return mockBackend, nil
+		},
+	}
+
+	_, err := RequireStack(t.Context(), cmdutil.Diag(), ws, lm, "dev", LoadOnly, display.Options{}, "")
+	require.EqualError(t, err, "no stack named 'dev' found; use `pulumi stack select 'dev' --create` to create it")
+	_, ok := errors.AsType[backenderr.StackNotFoundError](err)
+	assert.True(t, ok)
 }
 
 // Tests that CreateStack will send an appropriate initial state when it is asked to create a stack with a non-default
