@@ -28,8 +28,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -140,6 +142,7 @@ func TestProviderFromPathHandshakesOnce(t *testing.T) {
 	rootDir := filepath.Dir(providerDir)
 	mapperAddr := pctx.MapperAddr()
 	loaderAddr := pctx.LoaderAddr()
+	resolverAddr := pctx.ResolverAddr()
 	recorder.mu.Lock()
 	defer recorder.mu.Unlock()
 	assert.Equal(t, []plugin.ProviderHandshakeRequest{{
@@ -152,9 +155,65 @@ func TestProviderFromPathHandshakesOnce(t *testing.T) {
 		InvokeWithPreview:           true,
 		MapperTarget:                &mapperAddr,
 		LoaderTarget:                &loaderAddr,
+		ResolverTarget:              &resolverAddr,
 		AcceptsByteString:           true,
 		SendsOldOutputsToCheck:      true,
 		AcceptsOutputsInInvoke:      true,
 		AcceptsOutputsInCall:        true,
 	}}, recorder.handshakes)
+}
+
+// The resolver that the host serves for a context resolves a package spec to one of the test's
+// providers. A spec without a version resolves to the latest version of the named provider.
+func TestResolverResolvesTestProviders(t *testing.T) {
+	t.Parallel()
+
+	v3 := semver.MustParse("3.0.0")
+	host := &testHost{
+		engine: &languageTestServer{addr: "127.0.0.1:1"},
+		providers: map[string]func() (plugin.Provider, error){
+			"simple@2.0.0": func() (plugin.Provider, error) { return &providers.SimpleProvider{}, nil },
+			"simple@3.0.0": func() (plugin.Provider, error) { return &providers.SimpleProvider{Version: &v3}, nil },
+		},
+		connections:      make(map[plugin.Provider]io.Closer),
+		contextServices:  make(map[*plugin.Context][]*plugin.GrpcServer),
+		contextProviders: make(map[*plugin.Context][]plugin.Provider),
+	}
+	t.Cleanup(func() { require.NoError(t, host.Close()) })
+
+	tempDir := t.TempDir()
+	snk := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	pctx, err := plugin.NewContextWithRoot(
+		t.Context(), snk, snk, host, tempDir, tempDir, nil, false, nil, nil, nil, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, host.ReleaseContext(pctx))
+		require.NoError(t, pctx.Close())
+	})
+
+	conn, err := grpc.NewClient(pctx.ResolverAddr(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, conn.Close()) })
+	resolver := pulumirpc.NewPackageResolverClient(conn)
+
+	versioned, err := resolver.ResolvePackage(t.Context(), &pulumirpc.PackageSpec{Source: "simple", Version: "2.0.0"})
+	require.NoError(t, err)
+	assertProtoEqual(t, &pulumirpc.PackageDependency{
+		Name:    "simple",
+		Kind:    "resource",
+		Version: "2.0.0",
+	}, versioned)
+
+	latest, err := resolver.ResolvePackage(t.Context(), &pulumirpc.PackageSpec{Source: "simple"})
+	require.NoError(t, err)
+	assertProtoEqual(t, &pulumirpc.PackageDependency{
+		Name:    "simple",
+		Kind:    "resource",
+		Version: "3.0.0",
+	}, latest)
+}
+
+func assertProtoEqual(t *testing.T, expected, actual proto.Message) {
+	t.Helper()
+	assert.Truef(t, proto.Equal(expected, actual), "expected: %v\nactual: %v", expected, actual)
 }
