@@ -1,0 +1,4 @@
+component: pkg
+kind: feat
+body: add --list-templatest and template discovery to policy new
+time: 2026-10-31T05:51:40.153082837+05:30
