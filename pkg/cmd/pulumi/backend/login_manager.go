@@ -17,8 +17,11 @@ package backend
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
 
 	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -29,12 +32,15 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // LoginManager provides a slim wrapper around functions related to backend logins.
 type LoginManager interface {
+	// CredentialHelperSession owns helper discovery and backend preparations for this command.
+	CredentialHelperSession() *credentialhelper.Session
 	// ClientSource shares authenticated clients for this command's backends and secrets providers.
 	ClientSource() *httpstate.ClientSource
 	// Current returns the currently logged in backend instance for the given url.
@@ -88,15 +94,29 @@ func WithoutNewProjectHint() LoginOption {
 	}
 }
 
-var DefaultLoginManager = NewLoginManager(cmdutil.Diag())
+var DefaultLoginManager = NewLoginManager(
+	cmdutil.Diag(), credentialhelper.NewSession(helperDiagnosticWriter{sink: cmdutil.Diag}))
+
+type helperDiagnosticWriter struct {
+	sink func() diag.Sink
+}
+
+func (w helperDiagnosticWriter) Write(p []byte) (int, error) {
+	w.sink().Infoerrf(diag.RawMessage("", strings.TrimSuffix(string(p), "\n")))
+	return len(p), nil
+}
 
 type lm struct {
+	session *credentialhelper.Session
 	clients *httpstate.ClientSource
 }
 
-// NewLoginManager shares authenticated backend clients for one command.
-func NewLoginManager(sink diag.Sink) LoginManager {
-	return &lm{clients: httpstate.NewClientSource(sink)}
+// NewLoginManager shares backend clients and helper credentials for one command.
+func NewLoginManager(sink diag.Sink, session *credentialhelper.Session) LoginManager {
+	if session == nil {
+		session = credentialhelper.NewSession(helperDiagnosticWriter{sink: func() diag.Sink { return sink }})
+	}
+	return &lm{session: session, clients: httpstate.NewClientSource(session, sink)}
 }
 
 // ClientSource returns the command's authenticated backend clients.
@@ -107,20 +127,35 @@ func SecretsProvider(lm LoginManager) secrets.Provider {
 	return backendsecrets.NewProvider(lm.ClientSource().ClientForURL)
 }
 
+// CredentialHelperSession returns the helper session explicitly owned by this manager.
+func (f *lm) CredentialHelperSession() *credentialhelper.Session {
+	return f.session
+}
+
 func (f *lm) Current(
 	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
 ) (backend.Backend, error) {
+	var err error
+	session := f.CredentialHelperSession()
+	url, setCurrent, err = prepareBackend(ctx, session, ws, url, setCurrent)
+	if err != nil {
+		return nil, err
+	}
 	if diy.IsDIYBackendURL(url) {
-		return diy.New(ctx, sink, url, project)
+		be, err := diy.New(ctx, sink, url, project)
+		if err == nil && setCurrent {
+			err = credentialhelper.SetCurrent(url)
+		}
+		return be, err
 	}
 
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
-	lm := httpstate.NewLoginManager()
+	lm := httpstate.NewLoginManagerWithCredentials(session.Lookup(url))
 	account, err := lm.Current(ctx, url, insecure, setCurrent)
 	if err != nil || account == nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure, f.clients)
+	return f.openHTTPBackend(ctx, sink, url, project, insecure, setCurrent, session.Lookup(url))
 }
 
 func (f *lm) Login(
@@ -132,6 +167,12 @@ func (f *lm) Login(
 		opt(&o)
 	}
 
+	var err error
+	session := f.CredentialHelperSession()
+	url, setCurrent, err = prepareBackend(ctx, session, ws, url, setCurrent)
+	if err != nil {
+		return nil, err
+	}
 	if diy.IsDIYBackendURL(url) {
 		if setCurrent {
 			return diy.Login(ctx, sink, url, project)
@@ -139,7 +180,7 @@ func (f *lm) Login(
 		return diy.New(ctx, sink, url, project)
 	}
 
-	lm := httpstate.NewLoginManager()
+	lm := httpstate.NewLoginManagerWithCredentials(session.Lookup(url))
 	// Color is the only thing used by lm.Login, so we can just request a colors.Colorization and only fill that part of
 	// the display options in. It's hard to change Login itself because it's circularly depended on by esc.
 	displayOpts := display.Options{
@@ -147,11 +188,11 @@ func (f *lm) Login(
 	}
 	consoleURL := client.CloudConsoleURL(httpstate.ValueOrDefaultURL(ws, url))
 	welcome := func(opts display.Options) { httpstate.WelcomeUser(opts, consoleURL, !o.omitNewProjectHint) }
-	_, err := lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", welcome, setCurrent, displayOpts)
+	_, err = lm.Login(ctx, url, insecure, "pulumi", "Pulumi stacks", welcome, setCurrent, displayOpts)
 	if err != nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure, f.clients)
+	return f.openHTTPBackend(ctx, sink, url, project, insecure, setCurrent, session.Lookup(url))
 }
 
 // LoginFromAuthContext logs in to a backend using the provided authentication context.
@@ -167,20 +208,21 @@ func (f *lm) LoginFromAuthContext(
 	authContext pkgauth.AuthContext,
 ) (backend.Backend, error) {
 	if authContext.GrantType == pkgauth.AuthContextGrantTypeTokenExchange {
-		lm := httpstate.NewLoginManager()
+		lm := httpstate.NewLoginManager() // OIDC login doesn't use credentials helpers.
 		_, err := lm.LoginWithOIDCToken(
 			ctx, sink, url, insecure, authContext.Token, authContext.Organization, authContext.Scope,
 			authContext.Expiration, setCurrent)
 		if err != nil {
 			return nil, err
 		}
-		return httpstate.New(ctx, sink, url, project, insecure, f.clients)
+		return f.openHTTPBackend(ctx, sink, url, project, insecure, setCurrent, nil)
 	}
 	return nil, fmt.Errorf("unknown auth context grant type: %s", authContext.GrantType)
 }
 
 type MockLoginManager struct {
 	Clients  *httpstate.ClientSource
+	Helpers  *credentialhelper.Session
 	CurrentF func(
 		ctx context.Context,
 		ws pkgWorkspace.Context,
@@ -261,9 +303,65 @@ func (lm *MockLoginManager) Current(
 	panic("not implemented")
 }
 
+func prepareBackend(
+	ctx context.Context, s *credentialhelper.Session, ws pkgWorkspace.Context, raw string, setCurrent bool,
+) (string, bool, error) {
+	if raw == "" {
+		raw = env.APIURL.Value()
+	}
+	r, err := s.Resolve(ctx, raw)
+	if err != nil {
+		return "", false, err
+	}
+	resolved := r.BackendURL()
+	selectedByHelper := r.SelectedBackend()
+	if resolved == "" {
+		resolved = httpstate.ValueOrDefaultURL(ws, "")
+	}
+	if err := s.SelectBackend(r, resolved); err != nil {
+		return "", false, err
+	}
+	return resolved, setCurrent || selectedByHelper, nil
+}
+
+func (f *lm) openHTTPBackend(
+	ctx context.Context, sink diag.Sink, raw string, project *workspace.Project,
+	insecure, setCurrent bool, helper *credentialhelper.Result,
+) (backend.Backend, error) {
+	be, err := httpstate.New(ctx, sink, raw, project, insecure, f.clients)
+	if err != nil {
+		return nil, err
+	}
+	if setCurrent && helper != nil && helper.HasHTTP() {
+		creds, err := workspace.GetStoredCredentials()
+		if err != nil {
+			return nil, err
+		}
+		account, ok := creds.Accounts[be.CloudURL()]
+		if !ok {
+			// OIDC login may have stored the account with a trailing slash.
+			account = creds.Accounts[be.CloudURL()+"/"]
+		}
+		// Persist the connection setting while preserving stored credentials
+		account.Insecure = insecure
+		if err := workspace.StoreAccount(be.CloudURL(), account, true); err != nil {
+			return nil, err
+		}
+	}
+	return be, nil
+}
+
+// CredentialHelperSession returns the helper session used by a test login manager.
+func (m *MockLoginManager) CredentialHelperSession() *credentialhelper.Session {
+	if m.Helpers == nil {
+		m.Helpers = credentialhelper.NewSession(io.Discard)
+	}
+	return m.Helpers
+}
+
 func (m *MockLoginManager) ClientSource() *httpstate.ClientSource {
 	if m.Clients == nil {
-		m.Clients = httpstate.NewClientSource(cmdutil.Diag())
+		m.Clients = httpstate.NewClientSource(m.CredentialHelperSession(), cmdutil.Diag())
 	}
 	return m.Clients
 }

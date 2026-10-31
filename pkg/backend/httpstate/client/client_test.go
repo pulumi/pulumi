@@ -2111,6 +2111,43 @@ func TestRefreshableAPIAccessToken(t *testing.T) {
 	})
 }
 
+func TestGetPulumiAccountDetailsConcurrent(t *testing.T) {
+	t.Parallel()
+
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/user", r.URL.Path)
+		requests.Add(1)
+		_, _ = w.Write([]byte(`{"githubLogin":"alice","organizations":[{"githubLogin":"org"}],` +
+			`"tokenInfo":{"name":"token","organization":"org","team":"team"}}`))
+	}))
+	t.Cleanup(server.Close)
+	c := NewClient(server.URL, "token", false, nil)
+	start := make(chan struct{})
+	errs := make(chan error, 16)
+	var wg sync.WaitGroup
+	for range 16 {
+		wg.Go(func() {
+			<-start
+			user, orgs, info, err := c.GetPulumiAccountDetails(t.Context())
+			errs <- err
+			if err != nil {
+				return
+			}
+			assert.Equal(t, "alice", user)
+			assert.Equal(t, []string{"org"}, orgs)
+			assert.Equal(t, &workspace.TokenInformation{Name: "token", Organization: "org", Team: "team"}, info)
+		})
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	assert.Equal(t, int32(1), requests.Load())
+}
+
 func TestClient_WithRefresh(t *testing.T) {
 	t.Parallel()
 

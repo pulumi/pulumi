@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -222,6 +223,43 @@ func TestBackendSelectionAndCaching(t *testing.T) {
 	assert.True(t, r.SelectedBackend())
 }
 
+func TestHTTPHelperCredentialsRequireBackend(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name, response string
+		valid          bool
+	}{
+		{"token without backend", `{"version":1,"accessToken":"secret"}`, false},
+		{"headers without backend", `{"version":1,"headers":{"X-Session":["secret"]}}`, false},
+		{
+			"token with backend",
+			`{"version":1,"backendUrl":"https://api.example.com","accessToken":"secret"}`,
+			true,
+		},
+		{
+			"headers with backend",
+			`{"version":1,"backendUrl":"https://api.example.com","headers":{"X-Session":["secret"]}}`,
+			true,
+		},
+		{"decline", `{"version":1}`, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			ctx, s, _ := testSession(t, map[string]string{"initial": test.response})
+			r, err := s.Resolve(ctx, "")
+			if test.valid {
+				require.NoError(t, err)
+				require.NoError(t, s.SelectBackend(r, "https://api.example.com"))
+			} else {
+				require.ErrorContains(t, err, "must return backendUrl")
+				assert.NotContains(t, err.Error(), "secret")
+				assert.Nil(t, s.Lookup(""))
+			}
+		})
+	}
+}
+
 func TestHelperCannotOverrideSelectedBackend(t *testing.T) {
 	t.Parallel()
 
@@ -230,6 +268,28 @@ func TestHelperCannotOverrideSelectedBackend(t *testing.T) {
 	})
 	_, err := s.Resolve(ctx, "https://other.example.com")
 	require.ErrorContains(t, err, "cannot return backendUrl")
+}
+
+func TestHelperCanConfirmSelectedBackend(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct{ name, selected, returned string }{
+		{"same URL", "https://api.example.com", "https://api.example.com"},
+		{"selected trailing slash", "https://api.example.com/", "https://api.example.com"},
+		{"returned trailing slash", "https://api.example.com", "https://api.example.com/"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			ctx, session, _ := testSession(t, map[string]string{
+				"initial": `{"version":1,"backendUrl":"` + test.returned + `","accessToken":"secret"}`,
+			})
+			result, err := session.Resolve(ctx, test.selected)
+			require.NoError(t, err)
+			assert.Equal(t, test.selected, result.BackendURL())
+			assert.False(t, result.SelectedBackend())
+			assert.Equal(t, "secret", result.Token())
+		})
+	}
 }
 
 func TestResolvePreservesSelectedBackend(t *testing.T) {
@@ -272,8 +332,9 @@ func TestEnvironmentMerge(t *testing.T) {
 	ctx, s, _ := testSession(t, map[string]string{
 		"initial": `{"version":1,"env":{"PULUMI_HELPER_TEST_INHERITED":"replacement","PULUMI_HELPER_TEST_APPLIED":"first"}}`,
 	})
-	_, err := s.Resolve(ctx, "s3://bucket-one")
+	r, err := s.Resolve(ctx, "")
 	require.NoError(t, err)
+	require.NoError(t, s.SelectBackend(r, "s3://bucket-one"))
 	assert.Equal(t, "original", os.Getenv(inherited))
 	assert.Equal(t, "first", os.Getenv(applied))
 	c, _ := helperConfig(t, map[string]string{"initial": `{"version":1,"env":{"PULUMI_HELPER_TEST_APPLIED":"second"}}`})
@@ -522,7 +583,7 @@ func TestConcurrentResolutionAndSelection(t *testing.T) {
 	var wg sync.WaitGroup
 	for range 8 {
 		wg.Go(func() {
-			r, err := s.Resolve(ctx, "")
+			r, err := s.Resolve(ctx, "https://api.example.com")
 			if err != nil {
 				t.Errorf("resolving helper: %v", err)
 				return
@@ -604,6 +665,53 @@ func TestPersistenceDoesNotSaveToken(t *testing.T) {
 	creds, err = workspace.GetStoredCredentials()
 	require.NoError(t, err)
 	assert.Nil(t, creds.CredentialHelper)
+}
+
+func TestPersistencePreservesHelperSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("requires symlink support")
+	}
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_CREDENTIAL_STORE", "plaintext")
+	t.Setenv("PULUMI_CREDENTIAL_HELPER", "")
+
+	config, _ := helperConfig(t, map[string]string{"initial": `{"version":1,"accessToken":"secret"}`})
+	executable := config.Path
+
+	// Copy the test executable to helper-v1, then create a symlink named helper pointing to that copy.
+	dir := t.TempDir()
+	helperLink := filepath.Join(dir, "helper")
+	helperV1 := filepath.Join(dir, "helper-v1")
+	contents, err := os.ReadFile(executable)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(helperV1, contents, 0o600))
+	require.NoError(t, os.Chmod(helperV1, 0o700))
+	require.NoError(t, os.Symlink(helperV1, helperLink))
+
+	// Configure the session with the symlink's path and verify that the helper runs.
+	session := NewSession(io.Discard)
+	require.NoError(t, session.Configure(helperLink, config.Args))
+	result, err := session.Resolve(t.Context(), "https://api.example.com")
+	require.NoError(t, err)
+	assert.Equal(t, "secret", result.Token())
+
+	// Save the configuration and check that it records helper, rather than its target helper-v1.
+	require.NoError(t, session.SaveConfiguration())
+	creds, err := workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	require.NotNil(t, creds.CredentialHelper)
+	assert.Equal(t, helperLink, creds.CredentialHelper.Path)
+
+	// Delete helper-v1 and repoint helper to the original test executable.
+	// Any configuration that saved the old target now refers to a missing file.
+	require.NoError(t, os.Remove(helperLink))
+	require.NoError(t, os.Remove(helperV1))
+	require.NoError(t, os.Symlink(executable, helperLink))
+
+	// A fresh session must load the saved symlink path and successfully follow its new target.
+	result, err = NewSession(io.Discard).Resolve(t.Context(), "https://api.example.com")
+	require.NoError(t, err)
+	assert.Equal(t, "secret", result.Token())
 }
 
 func TestDisabledHelper(t *testing.T) {
@@ -709,7 +817,7 @@ func TestHTTPFallbackRejectsDIY(t *testing.T) {
 	t.Parallel()
 
 	ctx, s, _ := testSession(t, map[string]string{"initial": `{"version":1,"accessToken":"token"}`})
-	result, err := s.Resolve(ctx, "")
+	result, err := s.Resolve(ctx, "https://api.example.com")
 	require.NoError(t, err)
 	require.NoError(t, s.SelectBackend(result, "https://api.example.com"))
 	assert.False(t, result.SelectedBackend())

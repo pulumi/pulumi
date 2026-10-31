@@ -30,9 +30,10 @@
 //	{"version":1,"accessToken":"my-token","headers":{"X-Session":["my-session"]}}
 //
 // Only initial responses may supply backendUrl or env, and backendUrl is allowed
-// only when no backend was selected. Refresh responses must supply HTTP credentials
-// and preserve whether an access token is supplied. Unknown fields, invalid JSON,
-// unsupported versions, and nonzero exit codes are errors.
+// when no backend was selected or it matches the selected URL, ignoring a trailing slash.
+// Refresh responses must supply HTTP credentials and preserve whether an access
+// token is supplied. Unknown fields, invalid JSON, unsupported versions, and
+// nonzero exit codes are errors.
 package credentialhelper
 
 import (
@@ -110,10 +111,6 @@ func resolve(path string, args []string) (*workspace.CredentialHelper, error) {
 		return nil, fmt.Errorf("finding credentials helper: %w", err)
 	}
 	p, err = filepath.Abs(p)
-	if err != nil {
-		return nil, err
-	}
-	p, err = filepath.EvalSymlinks(p)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +263,7 @@ func (s *Session) Current() *Result {
 }
 
 // Resolve invokes the helper for backendURL and caches the result.
-// If backendURL is empty, the helper may supply a backend URL.
+// If backendURL is empty, the helper must supply a backend URL when returning HTTP credentials.
 func (s *Session) Resolve(ctx context.Context, backendURL string) (*Result, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -284,18 +281,25 @@ func (s *Session) Resolve(ctx context.Context, backendURL string) (*Result, erro
 			return nil, err
 		}
 		if resp.BackendURL != nil {
-			if backendURL != "" {
-				return nil, errors.New("credentials helper cannot return backendUrl when a backend is selected")
-			}
 			if err := validateURL(*resp.BackendURL); err != nil {
 				return nil, err
 			}
-			r.url = *resp.BackendURL
-			r.selectedBackend = true
+			if backendURL == "" {
+				r.url = *resp.BackendURL
+				r.selectedBackend = true
+			} else if strings.TrimSuffix(backendURL, "/") != strings.TrimSuffix(*resp.BackendURL, "/") {
+				return nil, errors.New("credentials helper cannot return backendUrl different from the selected backend")
+			}
 			logging.AddGlobalSecretFilter(httputil.URLSecrets(r.url), "[credential]")
 		}
-		if (resp.AccessToken != "" || len(resp.Headers) > 0) && r.url != "" && !isHTTP(r.url) {
-			return nil, errors.New("credentials helper HTTP credentials require an HTTP backend")
+		if resp.AccessToken != "" || len(resp.Headers) > 0 {
+			if r.url == "" {
+				return nil, errors.New(
+					"credentials helper must return backendUrl with HTTP credentials when no backend is selected")
+			}
+			if !isHTTP(r.url) {
+				return nil, errors.New("credentials helper HTTP credentials require an HTTP backend")
+			}
 		}
 		for k, v := range resp.Env {
 			if old, ok := s.applied[environmentKey(k)]; ok && old != v {

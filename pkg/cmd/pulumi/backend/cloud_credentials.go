@@ -25,9 +25,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// PluginCloudCredentialEnv resolves environment or stored credentials for a new plugin context.
+// PluginCloudCredentialEnv resolves helper, environment, or stored credentials for a new plugin context.
 func PluginCloudCredentialEnv(
-	_ context.Context, ws pkgWorkspace.Context, _ LoginManager, project *workspace.Project,
+	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
 ) (map[string]string, error) {
 	if project == nil {
 		var err error
@@ -44,6 +44,14 @@ func PluginCloudCredentialEnv(
 		if creds, err := workspace.GetAgentStoredCredentials(); err == nil {
 			url = creds.Current
 		}
+	}
+	session := lm.CredentialHelperSession()
+	url, _, err = prepareBackend(ctx, session, ws, url, false)
+	if err != nil {
+		return nil, err
+	}
+	if credentials := session.Lookup(url).PluginEnv(); credentials != nil {
+		return credentials, nil
 	}
 	return pulumiCloudCredentialEnv(env.Global(), url), nil
 }

@@ -17,18 +17,20 @@ package env
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-func NewEnvCmd() *cobra.Command {
+func NewEnvCmd(helpers *credentialhelper.Session) *cobra.Command {
 	escCLI := cli.New(&cli.Options{
-		ParentPath: "pulumi",
-		Colors:     cmdutil.GetGlobalColorization(),
-		Login:      httpstate.NewLoginManager(),
-		UserAgent:  client.UserAgent(),
+		ParentPath:        "pulumi",
+		Colors:            cmdutil.GetGlobalColorization(),
+		CredentialHelpers: helpers,
+		Login:             httpstate.NewLoginManager(),
+		UserAgent:         client.UserAgent(),
 	})
 
 	// Add the `env` command to the root. We'll add an alias so that users can also use `pulumi esc` to run the command.

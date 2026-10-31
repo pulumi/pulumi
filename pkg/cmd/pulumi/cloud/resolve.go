@@ -20,8 +20,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
@@ -79,24 +80,49 @@ func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
 	// Resolve the URL ourselves before probing credentials so we honour
 	// a project-declared backend (Pulumi.yaml's `backend.url`) without
 	// triggering CurrentBackend's interactive login path.
-	var projectURL string
-	if project != nil {
-		if u, perr := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), project); perr == nil {
-			projectURL = u
+	projectURL, source, err := pkgWorkspace.GetCurrentCloudURLWithSource(ws, env.Global(), project)
+	if err != nil {
+		projectURL, err = pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
+		if err != nil {
+			return nil, err
 		}
+		source = pkgWorkspace.CloudURLSourceCredentials
 	}
-	cloudURL := httpstate.ValueOrDefaultURL(ws, projectURL)
+	// Falling back to a cloud endpoint for API calls must not replace an existing backend.
+	setCurrent := projectURL == ""
+	if source == pkgWorkspace.CloudURLSourceCredentials && diy.IsDIYBackendURL(projectURL) {
+		projectURL = ""
+	}
+	if projectURL == "" {
+		projectURL = env.APIURL.Value()
+	}
+	session := cmdBackend.DefaultLoginManager.CredentialHelperSession()
+	result, err := session.Resolve(ctx, projectURL)
+	if err != nil {
+		return nil, err
+	}
+	cloudURL := result.BackendURL()
+	if cloudURL == "" {
+		cloudURL = httpstate.ValueOrDefaultURL(ws, projectURL)
+	}
+	if err := session.SelectBackend(result, cloudURL); err != nil {
+		return nil, err
+	}
+	if diy.IsDIYBackendURL(cloudURL) {
+		return nil, errors.New("`pulumi api` requires the Pulumi Cloud backend; run `pulumi login`")
+	}
+	insecure := pkgWorkspace.GetCloudInsecure(ws, cloudURL)
 
 	// Probe credentials non-interactively. (account == nil, err == nil) is
 	// the legitimate not-logged-in case — fall through to anonymous below.
-	account, err := httpstate.NewLoginManager().Current(ctx, cloudURL, false, false)
+	account, err := httpstate.NewLoginManagerWithCredentials(result).Current(ctx, cloudURL, insecure, false)
 	if err != nil {
 		return nil, fmt.Errorf("resolving credentials: %w", err)
 	}
 
 	if account == nil {
 		return &ResolvedContext{
-			Client:   client.NewClient(cloudURL, "", false, cmdutil.Diag()),
+			Client:   client.NewClient(cloudURL, "", insecure, cmdutil.Diag()),
 			CloudURL: cloudURL,
 			Project:  project,
 			LoggedIn: false,
@@ -105,16 +131,15 @@ func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
 
 	// Authenticated path: get a backend so pkgBackend.GetDefaultOrg can
 	// fall back to the backend's opinion when no local default is set.
-	// CurrentBackend reuses the credentials we just validated.
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project,
-		display.Options{Color: cmdutil.GetGlobalColorization()})
+	be, err := httpstate.New(
+		ctx, cmdutil.Diag(), cloudURL, project, insecure, cmdBackend.DefaultLoginManager.ClientSource())
 	if err != nil {
 		return nil, fmt.Errorf("resolving backend: %w", err)
 	}
-	cloudBe, ok := be.(httpstate.Backend)
-	if !ok {
-		return nil, errors.New("`pulumi api` requires the Pulumi Cloud backend; " +
-			"run `pulumi login`")
+	if setCurrent && result.SelectedBackend() {
+		if err := credentialhelper.SetCurrent(cloudURL); err != nil {
+			return nil, err
+		}
 	}
 
 	orgName, err := be.GetDefaultOrg(ctx)
@@ -125,8 +150,8 @@ func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
 	stackOrg, stackProj, stackName := currentStackSelection(ctx, ws, be)
 
 	return &ResolvedContext{
-		Client:    cloudBe.Client(),
-		CloudURL:  cloudBe.CloudURL(),
+		Client:    be.Client(),
+		CloudURL:  be.CloudURL(),
 		OrgName:   orgName,
 		Project:   project,
 		StackOrg:  stackOrg,

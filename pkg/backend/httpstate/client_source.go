@@ -22,8 +22,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -34,6 +36,7 @@ type clientKey struct {
 
 type resolvedClient struct {
 	client    *client.Client
+	helper    *credentialhelper.Result
 	account   workspace.Account
 	fromAgent bool
 }
@@ -41,13 +44,15 @@ type resolvedClient struct {
 // ClientSource shares authenticated backend clients within a command.
 type ClientSource struct {
 	mu      sync.Mutex
+	session *credentialhelper.Session
 	diag    diag.Sink
 	clients map[clientKey]resolvedClient
 }
 
-// NewClientSource creates a lazy source of authenticated backend clients.
-func NewClientSource(d diag.Sink) *ClientSource {
-	return &ClientSource{diag: d, clients: map[clientKey]resolvedClient{}}
+// NewClientSource creates a lazy client source using the command's helper session.
+func NewClientSource(session *credentialhelper.Session, d diag.Sink) *ClientSource {
+	contract.Requiref(session != nil, "session", "expected a credential helper session")
+	return &ClientSource{session: session, diag: d, clients: map[clientKey]resolvedClient{}}
 }
 
 // ClientForURL resolves credentials without changing the selected backend or starting an interactive login.
@@ -56,7 +61,7 @@ func (s *ClientSource) ClientForURL(ctx context.Context, apiURL string, insecure
 	if err != nil {
 		return nil, err
 	}
-	if !r.account.HasCredential() {
+	if !r.helper.HasHTTP() && !r.account.HasCredential() {
 		return nil, fmt.Errorf("could not find credentials for %s, have you logged in?", apiURL)
 	}
 	return r.client, nil
@@ -75,11 +80,22 @@ func (s *ClientSource) resolve(ctx context.Context, apiURL string, insecure bool
 		}
 		return c, nil
 	}
-	account, fromAgent, err := getBackendAccount(ctx, apiURL)
+	helper, err := s.session.Resolve(ctx, key.url)
 	if err != nil {
-		return resolvedClient{}, fmt.Errorf("getting stored credentials: %w", err)
+		return resolvedClient{}, err
 	}
-	c := client.NewClient(key.url, account.AccessToken, insecure, s.diag)
+	var account workspace.Account
+	var fromAgent bool
+	var c *client.Client
+	if helper.HasHTTP() {
+		c = client.NewClientWithCredentials(helper, insecure, s.diag)
+	} else {
+		account, fromAgent, err = getBackendAccount(ctx, apiURL)
+		if err != nil {
+			return resolvedClient{}, fmt.Errorf("getting stored credentials: %w", err)
+		}
+		c = client.NewClient(key.url, account.AccessToken, insecure, s.diag)
+	}
 	c.WithRefresh(account.RefreshToken, func(at string, expiresAt time.Time, rt string) error {
 		account.SetCredentials(at, expiresAt, rt)
 		s.mu.Lock()
@@ -89,8 +105,8 @@ func (s *ClientSource) resolve(ctx context.Context, apiURL string, insecure bool
 		s.mu.Unlock()
 		return account.Save(apiURL, false)
 	})
-	r := resolvedClient{client: c, account: account, fromAgent: fromAgent}
-	if account.HasCredential() {
+	r := resolvedClient{client: c, helper: helper, account: account, fromAgent: fromAgent}
+	if helper.HasHTTP() || account.HasCredential() {
 		s.clients[key] = r
 	}
 	return r, nil
