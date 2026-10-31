@@ -111,6 +111,20 @@
             }
         },
         {
+            "path": ["config", "set"],
+            "propagate": false,
+            "flags": {
+                "override-import": { "omit": true }
+            }
+        },
+        {
+            "path": ["config", "set-all"],
+            "propagate": false,
+            "flags": {
+                "override-import": { "omit": true }
+            }
+        },
+        {
             "path": ["config", "refresh"],
             "propagate": false,
             "flags": {
@@ -213,7 +227,9 @@
         {
             "path": ["new"],
             "propagate": true,
-            "flags": {}
+            "flags": {
+                "esc-config": { "omit": true }
+            }
         },
         {
             "path": ["org"],
