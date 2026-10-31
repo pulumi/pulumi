@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 
+	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -443,6 +444,54 @@ func (d *Deployment) LookupOrRegisterExtension(
 	return nil, completionSource
 }
 
+// ParameterizeExtension parameterizes the provider behind providerRef with ext. It calls the provider's Parameterize
+// once per (providerRef, ref) pair for the whole deployment, whichever of a resource, a remote component, an invoke or
+// a call needs the extension first. Concurrent callers for the same pair wait for that one call to finish.
+func (d *Deployment) ParameterizeExtension(
+	ctx context.Context, providerRef sdkproviders.Reference, ref apitype.ExtensionRef, ext apitype.Extension,
+) error {
+	existing, created := d.LookupOrRegisterExtension(providerRef, ref)
+	if created == nil {
+		_, err := existing.Result(ctx)
+		return err
+	}
+	provider, ok := d.providers.GetProvider(providerRef)
+	if !ok {
+		err := fmt.Errorf("provider %s not registered", providerRef)
+		created.MustReject(err)
+		return err
+	}
+	// Other callers share the result, so the cancellation of this caller must not fail the call for them.
+	err := parameterizeExtension(context.WithoutCancel(ctx), provider, ext)
+	if err != nil {
+		created.MustReject(err)
+		return err
+	}
+	created.MustFulfill(struct{}{})
+	return nil
+}
+
+func parameterizeExtension(ctx context.Context, provider plugin.Provider, ext apitype.Extension) error {
+	version, err := semver.Parse(ext.Version)
+	if err != nil {
+		return fmt.Errorf("parse extension version %q: %w", ext.Version, err)
+	}
+	resp, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
+		Parameters: &plugin.ParameterizeValue{
+			Name:    ext.Name,
+			Version: version,
+			Value:   ext.Value,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("parameterize provider for extension %q: %w", ext.Name, err)
+	}
+	if resp.Name != ext.Name {
+		return fmt.Errorf("parameterize response name %q does not match expected package %q", resp.Name, ext.Name)
+	}
+	return nil
+}
+
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
 // information for these providers is sourced from the snapshot's manifest; inputs parameters are sourced from the
 // stack's configuration.
@@ -778,8 +827,7 @@ func (d *Deployment) ensureProviderExtension(res *pkgresource.State) error {
 	if err != nil {
 		return fmt.Errorf("invalid provider reference %v: %w", res.Provider, err)
 	}
-	provider, ok := d.providers.GetProvider(providerRef)
-	if !ok {
+	if _, ok := d.providers.GetProvider(providerRef); !ok {
 		return nil
 	}
 	ref := res.ExtensionRef
@@ -787,13 +835,7 @@ func (d *Deployment) ensureProviderExtension(res *pkgresource.State) error {
 	if !ok {
 		return fmt.Errorf("extension blob for %s (resource %s) not found in snapshot", res.ExtensionRef, res.URN)
 	}
-	_, created := d.LookupOrRegisterExtension(providerRef, ref)
-	if created == nil {
-		return nil
-	}
-	step := NewExtensionParameterizeStep(d, provider, ref, blob, created)
-	_, _, err = step.Apply()
-	return err
+	return d.ParameterizeExtension(context.TODO(), providerRef, ref, blob)
 }
 
 func (d *Deployment) GetProvider(ref sdkproviders.Reference) (plugin.Provider, bool) {
