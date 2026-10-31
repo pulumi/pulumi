@@ -17,7 +17,9 @@ package deployment
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -101,7 +103,9 @@ func newDeploymentRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return errResult
 			}
 
-			return RunDeployment(ctx, ws, cmd, display, operation, s.Ref().FullyQualifiedName().String(), url, remoteArgs)
+			stackName := s.Ref().FullyQualifiedName().String()
+			err = RunDeployment(ctx, ws, cmd, display, operation, stackName, url, remoteArgs)
+			return deploymentRunError(err, stackName, operation, url, remoteArgs)
 		},
 	}
 
@@ -127,4 +131,26 @@ func newDeploymentRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 	)
 
 	return cmd
+}
+
+func deploymentRunError(
+	err error,
+	stack string,
+	operation apitype.PulumiOperation,
+	url string,
+	args RemoteArgs,
+) error {
+	if err == nil || url != "" || !args.InheritSettings {
+		return err
+	}
+
+	errResp, ok := errors.AsType[*apitype.ErrorResponse](err)
+	if !ok || errResp.Code != http.StatusBadRequest ||
+		!strings.Contains(errResp.Message, "no deployment settings found for program") {
+		return err
+	}
+
+	return fmt.Errorf("no deployment settings are configured for stack %s.\n"+
+		"Configure them with 'pulumi deployment settings edit', or pass a repo URL: "+
+		"'pulumi deployment run %s <git-url>'.", stack, operation)
 }
