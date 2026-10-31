@@ -146,6 +146,8 @@ var expectedFailures = map[string]string{
 
 	"l2-invoke-per-value-deps": "output aware invokes not yet implemented",
 	"l2-call-per-value-deps":   "output aware calls not yet implemented",
+
+	"l2-component-output-value-input-deps": "SDK does not yet set uses_output_values on RegisterResource",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

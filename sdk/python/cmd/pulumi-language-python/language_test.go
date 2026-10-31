@@ -109,6 +109,8 @@ var expectedFailures = map[string]string{
 	"l2-raw-string-bytes":                "the Python SDK does not set accepts_byte_string: strings containing non-UTF8 bytes cannot be received from the engine", //nolint:lll
 	"l2-invoke-per-value-deps":           "output aware invokes not yet implemented",
 	"l2-call-per-value-deps":             "output aware calls not yet implemented",
+
+	"l2-component-output-value-input-deps": "SDK does not yet set uses_output_values on RegisterResource",
 }
 
 type languageTestConfig struct {

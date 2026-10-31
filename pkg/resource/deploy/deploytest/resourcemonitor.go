@@ -454,6 +454,11 @@ type ResourceOptions struct {
 	// custom resources too so we can exercise engine paths that handle unusual SDK behaviour.
 	KeepOutputValues bool
 
+	// UsesOutputValues sets the uses_output_values flag on the RegisterResourceRequest, telling the engine
+	// that the inputs carry per-leaf dependency information as OutputValues and PropertyDeps should not be
+	// consulted (and will typically be nil).
+	UsesOutputValues bool
+
 	Transforms           []*pulumirpc.Callback
 	StateMigrations      []*pulumirpc.Callback
 	ResourceHookBindings ResourceHookBindings
@@ -500,7 +505,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		KeepUnknowns:     true,
 		KeepSecrets:      rm.supportsSecrets,
 		KeepResources:    rm.supportsResourceReferences,
-		KeepOutputValues: opts.Remote || opts.KeepOutputValues,
+		KeepOutputValues: opts.Remote || opts.KeepOutputValues || opts.UsesOutputValues,
 		KeepByteString:   true,
 	})
 	if err != nil {
@@ -623,6 +628,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		PackageRef:                 opts.PackageRef,
 		Hooks:                      resourceHooks,
 		EnvVarMappings:             opts.EnvVarMappings,
+		UsesOutputValues:           opts.UsesOutputValues,
 	}
 
 	ctx := context.Background()
