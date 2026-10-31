@@ -613,47 +613,55 @@ func TestLinkImportInstructions(t *testing.T) {
 		expectedImport string
 		// expectedModule is the module path Link is expected to add a replace directive for.
 		expectedModule string
+		// expectedVersion is the version Link is expected to add a require directive for.
+		expectedVersion string
 	}{
 		{
-			name:           "no go language info",
-			namespace:      "example",
-			expectedImport: "github.com/example/pulumi-file/sdk/go/file",
-			expectedModule: "github.com/example/pulumi-file/sdk/go",
+			name:            "no go language info",
+			namespace:       "example",
+			expectedImport:  "github.com/example/pulumi-file/sdk/go/file",
+			expectedModule:  "github.com/example/pulumi-file/sdk/go",
+			expectedVersion: "v0.0.0-00010101000000-000000000000",
 		},
 		{
-			name:           "no go language info and no namespace",
-			expectedImport: "example.com/pulumi-file/sdk/go/file",
-			expectedModule: "example.com/pulumi-file/sdk/go",
+			name:            "no go language info and no namespace",
+			expectedImport:  "example.com/pulumi-file/sdk/go/file",
+			expectedModule:  "example.com/pulumi-file/sdk/go",
+			expectedVersion: "v0.0.0-00010101000000-000000000000",
 		},
 		{
-			name:           "import base path only",
-			namespace:      "example",
-			goInfo:         map[string]any{"importBasePath": "github.com/example/File/sdk/go/File"},
-			expectedImport: "github.com/example/File/sdk/go/File",
-			expectedModule: "github.com/example/File/sdk/go",
+			name:            "import base path only",
+			namespace:       "example",
+			goInfo:          map[string]any{"importBasePath": "github.com/example/File/sdk/go/File"},
+			expectedImport:  "github.com/example/File/sdk/go/File",
+			expectedModule:  "github.com/example/File/sdk/go",
+			expectedVersion: "v0.0.0-00010101000000-000000000000",
 		},
 		{
 			// The import base path replaces the default that the namespace builds, so the
 			// absent namespace makes no difference.
-			name:           "import base path only and no namespace",
-			goInfo:         map[string]any{"importBasePath": "github.com/example/File/sdk/go/File"},
-			expectedImport: "github.com/example/File/sdk/go/File",
-			expectedModule: "github.com/example/File/sdk/go",
+			name:            "import base path only and no namespace",
+			goInfo:          map[string]any{"importBasePath": "github.com/example/File/sdk/go/File"},
+			expectedImport:  "github.com/example/File/sdk/go/File",
+			expectedModule:  "github.com/example/File/sdk/go",
+			expectedVersion: "v0.0.0-00010101000000-000000000000",
 		},
 		{
-			name:           "module path only",
-			namespace:      "example",
-			goInfo:         map[string]any{"modulePath": "github.com/example/File/sdk/go"},
-			expectedImport: "github.com/example/File/sdk/go/file",
-			expectedModule: "github.com/example/File/sdk/go",
+			name:            "module path only",
+			namespace:       "example",
+			goInfo:          map[string]any{"modulePath": "github.com/example/File/sdk/go"},
+			expectedImport:  "github.com/example/File/sdk/go/file",
+			expectedModule:  "github.com/example/File/sdk/go",
+			expectedVersion: "v0.0.0-00010101000000-000000000000",
 		},
 		{
 			// The module path replaces the default that the namespace builds, and the package
 			// name still gives the directory of the root package.
-			name:           "module path only and no namespace",
-			goInfo:         map[string]any{"modulePath": "github.com/example/File/sdk/go"},
-			expectedImport: "github.com/example/File/sdk/go/file",
-			expectedModule: "github.com/example/File/sdk/go",
+			name:            "module path only and no namespace",
+			goInfo:          map[string]any{"modulePath": "github.com/example/File/sdk/go"},
+			expectedImport:  "github.com/example/File/sdk/go/file",
+			expectedModule:  "github.com/example/File/sdk/go",
+			expectedVersion: "v0.0.0-00010101000000-000000000000",
 		},
 		{
 			name:      "module path and import base path",
@@ -662,8 +670,9 @@ func TestLinkImportInstructions(t *testing.T) {
 				"modulePath":     "github.com/example/File/sdk/go",
 				"importBasePath": "github.com/example/File/sdk/go/File",
 			},
-			expectedImport: "github.com/example/File/sdk/go/File",
-			expectedModule: "github.com/example/File/sdk/go",
+			expectedImport:  "github.com/example/File/sdk/go/File",
+			expectedModule:  "github.com/example/File/sdk/go",
+			expectedVersion: "v0.0.0-00010101000000-000000000000",
 		},
 		{
 			// The module path wins over the import base path, so the generated SDK holds its
@@ -675,8 +684,21 @@ func TestLinkImportInstructions(t *testing.T) {
 				"modulePath":     "github.com/example/File/sdk",
 				"importBasePath": "github.com/example/File/sdk/go/File",
 			},
-			expectedImport: "github.com/example/File/sdk/File",
-			expectedModule: "github.com/example/File/sdk",
+			expectedImport:  "github.com/example/File/sdk/File",
+			expectedModule:  "github.com/example/File/sdk",
+			expectedVersion: "v0.0.0-00010101000000-000000000000",
+		},
+		{
+			// A module path with a major-version suffix must require the matching major
+			// version, or the Go toolchain rejects the module path.
+			name:      "module path with a major version suffix",
+			namespace: "example",
+			goInfo: map[string]any{
+				"modulePath": "github.com/example/pulumi-file/sdk/go/v3",
+			},
+			expectedImport:  "github.com/example/pulumi-file/sdk/go/v3/file",
+			expectedModule:  "github.com/example/pulumi-file/sdk/go/v3",
+			expectedVersion: "v3.0.0-00010101000000-000000000000",
 		},
 	}
 
@@ -748,6 +770,14 @@ func TestLinkImportInstructions(t *testing.T) {
 			}
 			require.Equal(t, relativeStart+"sdks/example-file", replaced[tt.expectedModule])
 
+			// A module that is replaced but not required is rejected by the Go toolchain,
+			// so Link must add a matching require directive with the zero pseudo-version.
+			required := map[string]string{}
+			for _, require := range gomod.Require {
+				required[require.Mod.Path] = require.Mod.Version
+			}
+			require.Equal(t, tt.expectedVersion, required[tt.expectedModule])
+
 			// The printed import path must address the root package of the SDK that the
 			// generator writes, so that a program which follows the instructions compiles
 			// against the linked SDK.
@@ -769,4 +799,151 @@ func TestLinkImportInstructions(t *testing.T) {
 			require.Equal(t, tt.expectedImport, path.Join(generated.Module.Mod.Path, rootDirs[0]))
 		})
 	}
+}
+
+// TestPseudoVersionForModule checks the version that Link requires for a module that it
+// replaces with a local path.
+func TestPseudoVersionForModule(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		modulePath string
+		expected   string
+	}{
+		{
+			name:       "no major version suffix",
+			modulePath: "github.com/pulumi/pulumi-terraform-provider/sdks/go/random",
+			expected:   "v0.0.0-00010101000000-000000000000",
+		},
+		{
+			name:       "major version suffix v3",
+			modulePath: "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3",
+			expected:   "v3.0.0-00010101000000-000000000000",
+		},
+		{
+			name:       "pulumi sdk",
+			modulePath: "github.com/pulumi/pulumi/sdk/v3",
+			expected:   "v3.0.0-00010101000000-000000000000",
+		},
+		{
+			name:       "major version suffix v2",
+			modulePath: "github.com/example/pulumi-file/sdk/go/v2",
+			expected:   "v2.0.0-00010101000000-000000000000",
+		},
+		{
+			name:       "major version suffix v12",
+			modulePath: "github.com/example/pulumi-file/sdk/go/v12",
+			expected:   "v12.0.0-00010101000000-000000000000",
+		},
+		{
+			// A major version of 0 or 1 is not a major-version suffix, so the module path
+			// carries no suffix at all.
+			name:       "major version suffix v1",
+			modulePath: "github.com/example/pulumi-file/sdk/go/v1",
+			expected:   "v0.0.0-00010101000000-000000000000",
+		},
+		{
+			name:       "major version suffix v0",
+			modulePath: "github.com/example/pulumi-file/sdk/go/v0",
+			expected:   "v0.0.0-00010101000000-000000000000",
+		},
+		{
+			name:       "non numeric major version suffix",
+			modulePath: "github.com/example/pulumi-file/sdk/go/vnext",
+			expected:   "v0.0.0-00010101000000-000000000000",
+		},
+		{
+			name:       "suffix that only starts with v",
+			modulePath: "github.com/example/pulumi-file/sdk/go/vault",
+			expected:   "v0.0.0-00010101000000-000000000000",
+		},
+		{
+			name:       "module path without a directory part",
+			modulePath: "v3",
+			expected:   "v0.0.0-00010101000000-000000000000",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.expected, pseudoVersionForModule(tt.modulePath))
+		})
+	}
+}
+
+// TestLinkAddsRequireForReplacedModule checks that Link writes both a replace and a
+// require directive for the linked SDK, so that a program which imports the SDK compiles
+// without an extra `go mod tidy`.
+func TestLinkAddsRequireForReplacedModule(t *testing.T) {
+	t.Parallel()
+
+	cancel := make(chan bool)
+	t.Cleanup(func() { close(cancel) })
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Init: func(srv *grpc.Server) error {
+			raw, err := json.Marshal(map[string]any{
+				"modulePath": "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3",
+			})
+			require.NoError(t, err)
+			spec := schema.PackageSpec{
+				Name:      "random",
+				Namespace: "pulumi",
+				Version:   "0.1.0",
+				Meta:      &schema.MetadataSpec{SupportPack: true},
+				Language:  map[string]schema.RawMessage{"go": raw},
+			}
+			pkg, diags, err := schema.BindSpec(spec, &testSchemaLoader{}, schema.ValidationOptions{})
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "%v", diags)
+			loader := &testSchemaLoader{pkg: pkg}
+			schema.LoaderRegistration(schema.NewLoaderServer(loader))(srv)
+			return nil
+		},
+		Cancel: cancel,
+	})
+	require.NoError(t, err)
+
+	programDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(programDir, "go.mod"),
+		[]byte("module example.com/program\n\ngo 1.25\n"), 0o600))
+
+	host := &goLanguageHost{}
+	resp, err := host.Link(t.Context(), &pulumirpc.LinkRequest{
+		Info: &pulumirpc.ProgramInfo{
+			RootDirectory:    programDir,
+			ProgramDirectory: programDir,
+		},
+		LoaderTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
+		Packages: []*pulumirpc.LinkRequest_LinkDependency{{
+			Package: &pulumirpc.PackageDependency{Name: "random", Version: "0.1.0"},
+			Path:    "sdks/example-random",
+		}},
+	})
+	require.NoError(t, err)
+	require.Contains(t, resp.ImportInstructions,
+		"\"github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3/random\"")
+
+	gomodContent, err := os.ReadFile(filepath.Join(programDir, "go.mod"))
+	require.NoError(t, err)
+	gomod, err := modfile.Parse("go.mod", gomodContent, nil)
+	require.NoError(t, err)
+
+	const modulePath = "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3"
+
+	// The module must be replaced with the local path of the generated SDK.
+	replaced := map[string]string{}
+	for _, replace := range gomod.Replace {
+		replaced[replace.Old.Path] = replace.New.Path
+	}
+	require.Equal(t, "."+string(filepath.Separator)+"sdks/example-random", replaced[modulePath])
+
+	// The module must also be required, because the Go toolchain rejects a module that
+	// is replaced but not required.
+	required := map[string]string{}
+	for _, require := range gomod.Require {
+		required[require.Mod.Path] = require.Mod.Version
+	}
+	require.Equal(t, "v3.0.0-00010101000000-000000000000", required[modulePath])
 }

@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Add a matching `require` directive for the SDK that `pulumi package add` links, so that a Go program compiles without an extra `go mod tidy`
+time: 2026-10-31T16:00:00.000000+02:00

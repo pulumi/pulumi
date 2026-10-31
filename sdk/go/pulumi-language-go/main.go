@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -1599,6 +1600,46 @@ func (host *goLanguageHost) Handshake(
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
 }
 
+// pseudoVersionForModule returns the pseudo-version to require for a module that is
+// replaced by a local path.
+//
+// The version is the zero pseudo-version that `go mod tidy` produces for a module that
+// only exists as a local replacement: the timestamp and the revision are both zero, so
+// the version sorts below every real release of the module and never claims a revision
+// that does not exist.
+//
+// A module path whose last element is a major-version suffix such as "/v3" requires the
+// matching major version in its version, so the version of the pseudo-version follows
+// that suffix. Every other module path uses the zero major version.
+func pseudoVersionForModule(modulePath string) string {
+	if major, ok := majorVersionSuffix(modulePath); ok {
+		return fmt.Sprintf("v%d.0.0-00010101000000-000000000000", major)
+	}
+	return "v0.0.0-00010101000000-000000000000"
+}
+
+// majorVersionSuffix reports the major version of a module path whose last element is a
+// major-version suffix such as "/v2" or "/v3", and whether the path has such a suffix.
+//
+// A major-version suffix must be at least 2, because a module without a suffix has
+// major version 0 or 1.
+func majorVersionSuffix(modulePath string) (int, bool) {
+	base := path.Base(modulePath)
+	if base == modulePath {
+		// The path has no directory part, so it cannot carry a major-version suffix.
+		return 0, false
+	}
+	prefix, suffix, ok := strings.Cut(base, "v")
+	if !ok || prefix != "" {
+		return 0, false
+	}
+	major, err := strconv.Atoi(suffix)
+	if err != nil || major < 2 {
+		return 0, false
+	}
+	return major, true
+}
+
 func (host *goLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
@@ -1705,6 +1746,14 @@ func (host *goLanguageHost) Link(
 		err = gomod.AddReplace(modulePath, "", path, "")
 		if err != nil {
 			return nil, fmt.Errorf("could not add replace statement: %w", err)
+		}
+
+		// A replace directive alone does not make the module available to the program: the
+		// Go toolchain rejects a module that is replaced but not required. Add the matching
+		// require directive so that the program compiles without an extra `go mod tidy`.
+		err = gomod.AddRequire(modulePath, pseudoVersionForModule(modulePath))
+		if err != nil {
+			return nil, fmt.Errorf("could not add require statement: %w", err)
 		}
 	}
 
