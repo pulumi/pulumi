@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -177,6 +178,84 @@ func TestStackNew_RejectsCopyConfigFromManagedStack(t *testing.T) {
 	err := cmd.Run(t.Context(), nil /* args */)
 	require.EqualError(t, err,
 		"`pulumi stack init --copy-config-from` is not supported on stacks with an ESC-managed environment yet")
+}
+
+//nolint:paralleltest // uses t.Chdir
+func TestStackNewAfterRenameReadsOwnStackFile(t *testing.T) {
+	redirects := map[string]*backend.MockStack{
+		"renamed stack": {
+			RefF: func() backend.StackReference {
+				return &backend.MockStackReference{
+					StringV:  "org/proj/renamed",
+					NameV:    tokens.MustParseStackName("renamed"),
+					ProjectV: "proj",
+				}
+			},
+		},
+		"renamed project": {
+			RefF: func() backend.StackReference {
+				return &backend.MockStackReference{
+					StringV:  "org/newproj/dev",
+					NameV:    tokens.MustParseStackName("dev"),
+					ProjectV: "newproj",
+				}
+			},
+			ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{IsRemote: true} },
+			LoadRemoteF: func(context.Context, *workspace.Project) (*workspace.ProjectStack, error) {
+				return &workspace.ProjectStack{Environment: workspace.NewEnvironment([]string{"other"})}, nil
+			},
+		},
+	}
+	for name, redirect := range redirects {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), []byte("name: proj\nruntime: yaml\n"), 0o600))
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.renamed.yaml"), []byte("config:\n  proj:a: b\n"), 0o600))
+			require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.dev.yaml"), []byte("config:\n  proj:own: x\n"), 0o600))
+			t.Chdir(dir)
+
+			var newStackConfig *workspace.ProjectStack
+			be := &backend.MockBackend{
+				NameF:              func() string { return "mock" },
+				ValidateStackNameF: func(string) error { return nil },
+				GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+					return redirect, nil
+				},
+				CreateStackF: func(
+					_ context.Context,
+					ref backend.StackReference,
+					_ string,
+					_ *apitype.UntypedDeployment,
+					_ *backend.CreateStackOptions,
+				) (backend.Stack, error) {
+					return &backend.MockStack{
+						RefF:            func() backend.StackReference { return ref },
+						ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
+					}, nil
+				},
+				DefaultSecretManagerF: func(_ context.Context, ps *workspace.ProjectStack) (secrets.Manager, error) {
+					newStackConfig = ps
+					return nil, nil
+				},
+			}
+			cmd := &stackNewCmd{
+				stackName: "org/proj/dev",
+				noSelect:  true,
+				stdout:    io.Discard,
+				currentBackend: func(
+					context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
+				) (backend.Backend, error) {
+					return be, nil
+				},
+			}
+
+			require.NoError(t, cmd.Run(t.Context(), nil /* args */))
+
+			require.NotNil(t, newStackConfig)
+			assert.Equal(t, config.Map{config.MustMakeKey("proj", "own"): config.NewValue("x")}, newStackConfig.Config)
+			assert.Nil(t, newStackConfig.Environment)
+		})
+	}
 }
 
 // This test demonstrates that newCreateStackOptions will filter
