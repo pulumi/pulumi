@@ -17,6 +17,7 @@ package workspace
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -202,53 +203,78 @@ func toConfigMap(
 			if err != nil {
 				return nil, err
 			}
-			plaintextMap[key] = toPlaintext(value)
+			plaintext, err := toPlaintext(key.String(), value)
+			if err != nil {
+				return nil, err
+			}
+			plaintextMap[key] = plaintext
 		}
 	}
 	return config.EncryptMap(ctx, plaintextMap, encrypter)
 }
 
-func toPlaintext(v esc.Value) config.Plaintext {
+var errLoneSecureString = errors.New(`a map whose only key is "secure" with a string value is reserved for ` +
+	`encrypted config values; rename the key, or wrap the plaintext in fn::secret if the value should be secret`)
+
+func toPlaintext(path string, v esc.Value) (config.Plaintext, error) {
 	if v.Unknown {
 		if v.Secret {
-			return config.NewPlaintext(config.PlaintextSecret("[unknown]"))
+			return config.NewPlaintext(config.PlaintextSecret("[unknown]")), nil
 		}
-		return config.NewPlaintext("[unknown]")
+		return config.NewPlaintext("[unknown]"), nil
 	}
 
 	switch repr := v.Value.(type) {
 	case nil:
-		return config.Plaintext{}
+		return config.Plaintext{}, nil
 	case bool:
-		return config.NewPlaintext(repr)
+		return config.NewPlaintext(repr), nil
 	case json.Number:
 		if i, err := repr.Int64(); err == nil {
-			return config.NewPlaintext(i)
+			return config.NewPlaintext(i), nil
 		} else if f, err := repr.Float64(); err == nil {
-			return config.NewPlaintext(f)
+			return config.NewPlaintext(f), nil
 		}
 		// TODO(pdg): this disagrees with config unmarshaling semantics. Should probably fail.
-		return config.NewPlaintext(string(repr))
+		return config.NewPlaintext(string(repr)), nil
 	case string:
 		if v.Secret {
-			return config.NewPlaintext(config.PlaintextSecret(repr))
+			return config.NewPlaintext(config.PlaintextSecret(repr)), nil
 		}
-		return config.NewPlaintext(repr)
+		return config.NewPlaintext(repr), nil
 	case []esc.Value:
 		vs := make([]config.Plaintext, len(repr))
 		for i, v := range repr {
-			vs[i] = toPlaintext(v)
+			p, err := toPlaintext(fmt.Sprintf("%s[%d]", path, i), v)
+			if err != nil {
+				return config.Plaintext{}, err
+			}
+			vs[i] = p
 		}
-		return config.NewPlaintext(vs)
+		return config.NewPlaintext(vs), nil
 	case map[string]esc.Value:
 		vs := make(map[string]config.Plaintext, len(repr))
 		for k, v := range repr {
-			vs[k] = toPlaintext(v)
+			p, err := toPlaintext(path+"."+k, v)
+			if err != nil {
+				return config.Plaintext{}, err
+			}
+			vs[k] = p
 		}
-		return config.NewPlaintext(vs)
+		if secure, ok := vs["secure"]; ok && len(vs) == 1 {
+			// config.NewPlaintext fails a contract on this shape.
+			if _, isString := secure.Value().(string); isString {
+				if !repr["secure"].Unknown {
+					return config.Plaintext{}, fmt.Errorf("environment config %q: %w", path, errLoneSecureString)
+				}
+				// Without opening the environment, an fn::open output is unknown and not yet marked secret.
+				vs["secure"] = config.NewPlaintext(config.PlaintextSecret("[unknown]"))
+			}
+		}
+		return config.NewPlaintext(vs), nil
 	default:
 		contract.Failf("unexpected environments value of type %T", repr)
-		return config.Plaintext{}
+		return config.Plaintext{}, nil
 	}
 }
 

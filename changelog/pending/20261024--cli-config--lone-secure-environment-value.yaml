@@ -1,0 +1,4 @@
+component: cli/config
+kind: fix
+body: Fail with an error instead of panicking when an environment's `pulumiConfig` sets a value to a map whose only key is `secure` with a string value
+time: 2026-10-24T00:00:00Z

@@ -733,3 +733,52 @@ config:
 	require.Len(t, stack.Config, 1, "Stack config now has three values")
 	assert.Equal(t, "18446744073709551615", getConfigValue(t, stack.Config, "test:instanceSize"))
 }
+
+func TestEnvironmentLoneSecureString(t *testing.T) {
+	t.Parallel()
+
+	loneSecure := func(v esc.Value) esc.Value { return esc.NewValue(map[string]esc.Value{"secure": v}) }
+	tests := []struct {
+		name    string
+		value   esc.Value
+		wantErr string
+	}{
+		{name: "string", value: loneSecure(esc.NewValue("ciphertext")), wantErr: "test:key"},
+		{name: "nested in an object", value: esc.NewValue(map[string]esc.Value{
+			"inner": loneSecure(esc.NewValue("ciphertext")),
+		}), wantErr: "test:key.inner"},
+		{
+			name:    "nested in an array",
+			value:   esc.NewValue([]esc.Value{esc.NewValue(true), loneSecure(esc.NewValue("ciphertext"))}),
+			wantErr: "test:key[1]",
+		},
+		{
+			name:    "number too large for a float becomes a string",
+			value:   loneSecure(esc.NewValue(json.Number("1e400"))),
+			wantErr: "test:key",
+		},
+		{name: "unknown before the environment is opened", value: loneSecure(esc.Value{Unknown: true})},
+		{name: "secret string", value: loneSecure(esc.NewSecret("hunter2"))},
+		{name: "boolean", value: loneSecure(esc.NewValue(true))},
+		{name: "with another key", value: esc.NewValue(map[string]esc.Value{
+			"secure": esc.NewValue("ciphertext"),
+			"other":  esc.NewValue("value"),
+		})},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			project := &workspace.Project{Name: "test"}
+			env := esc.NewValue(map[string]esc.Value{"test:key": tt.value})
+			err := ApplyProjectConfig(t.Context(), "dev", project, env, config.Map{}, config.Base64Crypter, nil)
+			if tt.wantErr != "" {
+				assert.EqualError(t, err, fmt.Sprintf(`environment config %q: a map whose only key is "secure" `+
+					`with a string value is reserved for encrypted config values; rename the key, `+
+					`or wrap the plaintext in fn::secret if the value should be secret`, tt.wantErr))
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
