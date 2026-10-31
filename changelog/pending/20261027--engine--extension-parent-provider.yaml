@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Inherit a parent's provider for resources of an extension package
+time: 2026-10-27T00:00:00Z
