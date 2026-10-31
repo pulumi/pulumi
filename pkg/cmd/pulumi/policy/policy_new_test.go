@@ -15,6 +15,7 @@
 package policy
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"path/filepath"
@@ -102,4 +103,76 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		assert.Error(t, err)
 		assertNotFoundError(t, err)
 	})
+}
+
+func setupMockPolicyTemplateDir(t *testing.T) string {
+	t.Helper()
+	templateDir := t.TempDir()
+	t.Setenv("PULUMI_POLICY_TEMPLATE_PATH", templateDir)
+
+	gitDir := filepath.Join(templateDir, ".git")
+	require.NoError(t, os.MkdirAll(gitDir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("ref: refs/heads/master\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(gitDir, "config"), []byte(`[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+[remote "origin"]
+	url = https://github.com/pulumi/templates-policy.git
+`), 0o600))
+
+	subDir := filepath.Join(templateDir, "aws-typescript")
+	require.NoError(t, os.MkdirAll(subDir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(subDir, "PulumiPolicy.yaml"), []byte(`runtime: nodejs
+description: A minimal AWS TypeScript policy pack
+`), 0o600))
+
+	return templateDir
+}
+
+//nolint:paralleltest // modifies environment
+func TestPolicyNewListTemplates(t *testing.T) {
+	setupMockPolicyTemplateDir(t)
+
+	var stdout bytes.Buffer
+	cmd := newPolicyNewCmd()
+	cmd.SetOut(&stdout)
+	cmd.SetArgs([]string{"--list-templates", "--offline"})
+	require.NoError(t, cmd.ExecuteContext(t.Context()))
+
+	expectedOut := "Available Templates:\n  aws-typescript    A minimal AWS TypeScript policy pack\n"
+	assert.Equal(t, expectedOut, stdout.String())
+}
+
+//nolint:paralleltest // modifies environment
+func TestPolicyNewTemplateNotFound(t *testing.T) {
+	setupMockPolicyTemplateDir(t)
+
+	cmd := newPolicyNewCmd()
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetArgs([]string{"nonexistent", "--offline", "--force"})
+	err := cmd.ExecuteContext(t.Context())
+	require.Error(t, err)
+
+	expectedErr := "template 'nonexistent' not found\n\n" +
+		"Run 'pulumi policy new --list-templates' to see available templates\n\n" +
+		"Available Templates:\n" +
+		"  aws-typescript    A minimal AWS TypeScript policy pack"
+	assert.EqualError(t, err, expectedErr)
+}
+
+func TestPolicyNewHelp(t *testing.T) {
+	t.Parallel()
+
+	cmd := newPolicyNewCmd()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetArgs([]string{"--help"})
+	require.NoError(t, cmd.ExecuteContext(t.Context()))
+
+	assert.Contains(t, stdout.String(), "--list-templates")
+	assert.Contains(t, stdout.String(), "aws-typescript")
+	assert.Contains(t, stdout.String(), "aws-python")
+	assert.Contains(t, stdout.String(), "aws-opa")
 }
