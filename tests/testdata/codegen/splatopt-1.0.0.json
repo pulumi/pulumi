@@ -1,0 +1,43 @@
+{
+  "name": "splatopt",
+  "version": "1.0.0",
+  "types": {
+    "splatopt:index:Detail": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": []
+    }
+  },
+  "resources": {
+    "splatopt:index:Container": {
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/splatopt:index:Detail"
+          }
+        }
+      },
+      "required": ["inputs", "details"],
+      "inputProperties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "requiredInputs": ["inputs"]
+    }
+  }
+}
