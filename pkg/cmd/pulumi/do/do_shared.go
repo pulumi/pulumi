@@ -983,7 +983,7 @@ func (pc *packageCommand) loadProviderInputsFromStack(
 	if err != nil {
 		return property.Map{}, fmt.Errorf("load stack: %w", err)
 	}
-	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
+	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(pc.lm))
 	if err != nil {
 		return property.Map{}, fmt.Errorf("load stack snapshot: %w", err)
 	}

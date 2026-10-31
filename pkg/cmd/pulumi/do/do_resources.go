@@ -139,7 +139,7 @@ func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend
 	if err != nil {
 		return fmt.Errorf("load stack: %w", err)
 	}
-	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(lm))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
