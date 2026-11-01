@@ -18,7 +18,9 @@ package stackenv
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"strconv"
 	"strings"
@@ -38,6 +40,8 @@ type Evaluation struct {
 	Environment *esc.Environment
 	// BaseRevision is the published revision the local definition was compared with.
 	BaseRevision int
+	// PublishedDefinition is the definition of BaseRevision as the service returned it.
+	PublishedDefinition []byte
 	// ChangeRequestID is set when the definition differs from BaseRevision.
 	ChangeRequestID string
 	// DraftRevision is the change request revision that was opened. It is meaningful only when
@@ -74,7 +78,7 @@ func Evaluate(
 		return nil, nil, err
 	}
 
-	evaluation := &Evaluation{BaseRevision: revision}
+	evaluation := &Evaluation{BaseRevision: revision, PublishedDefinition: published}
 	var openID string
 	var diags []client.EnvironmentDiagnostic
 	if equal {
@@ -82,6 +86,11 @@ func Evaluate(
 	} else {
 		evaluation.ChangeRequestID, diags, err = c.CreateEnvironmentDraft(ctx, org, project, env, definition, etag)
 		if err != nil {
+			if apiErr, ok := errors.AsType[*client.EnvironmentErrorResponse](err); ok &&
+				apiErr.Code == http.StatusForbidden {
+				return nil, nil, fmt.Errorf(
+					"you need write access to environment %s/%s to evaluate local changes to it", project, env)
+			}
 			return nil, nil, fmt.Errorf("creating a draft of managed environment %s/%s: %w", project, env, err)
 		}
 		if len(diags) != 0 {
