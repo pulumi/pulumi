@@ -501,7 +501,7 @@ func TestUvExportWorkspacePackages(t *testing.T) {
 
 		_, err = member.ListPackages(t.Context(), true)
 
-		require.ErrorContains(t, err, "Upgrade the Pulumi Python SDK")
+		require.ErrorContains(t, err, "Upgrade the Pulumi Python SDK to version 3.224.0 or later")
 		require.NotContains(t, err.Error(), "Traceback")
 	})
 
