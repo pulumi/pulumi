@@ -926,6 +926,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	expiration time.Duration,
 	setCurrent bool,
 ) (*workspace.Account, error) {
+	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	accessToken, expiresAt, err := exchangeOidcToken(
 		ctx, sink, cloudURL, insecure, oidcTokenSource, organization, scope, expiration)
 	if err != nil {
