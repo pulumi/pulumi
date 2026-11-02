@@ -670,7 +670,7 @@ func TestTargetedDeleteBeforeReplaceWithDroppedDeletedWithDependency(t *testing.
 	updated, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 	_, isSIE := snapshot.AsSnapshotIntegrityError(err)
 	require.False(t, isSIE, "unexpected snapshot integrity error: %v", err)
-	require.ErrorContains(t, err, "step generator errored")
+	require.EqualError(t, err, "BAIL: step generator errored")
 	require.NotNil(t, updated)
 	require.Len(t, updated.Resources, 5)
 	require.Equal(t, resource.ID("new-id-resA"), updated.Resources[1].ID)
