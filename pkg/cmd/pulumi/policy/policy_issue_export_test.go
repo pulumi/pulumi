@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/iotest"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
@@ -44,11 +45,12 @@ import (
 const exportCSV = "id,policyName\ni1,p\n"
 
 type mockPolicyIssueExportClient struct {
-	csv    string
-	err    error
-	org    string
-	req    cloudapitype.AngularGridGetRowsRequest
-	closed bool
+	csv     string
+	err     error
+	readErr error
+	org     string
+	req     cloudapitype.AngularGridGetRowsRequest
+	closed  bool
 }
 
 func (m *mockPolicyIssueExportClient) ExportPolicyIssues(
@@ -57,6 +59,9 @@ func (m *mockPolicyIssueExportClient) ExportPolicyIssues(
 	m.org, m.req, m.closed = org, req, closed
 	if m.err != nil {
 		return nil, m.err
+	}
+	if m.readErr != nil {
+		return io.NopCloser(io.MultiReader(strings.NewReader(m.csv), iotest.ErrReader(m.readErr))), nil
 	}
 	return io.NopCloser(strings.NewReader(m.csv)), nil
 }
@@ -192,5 +197,15 @@ func TestPolicyIssueExport_ServerError(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "issues.csv")
 	_, err := runPolicyIssueExportCmd(t, c, "--file", path)
 	require.ErrorContains(t, err, assert.AnError.Error())
+	assert.NoFileExists(t, path)
+}
+
+func TestPolicyIssueExport_StreamErrorRemovesFile(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyIssueExportClient{csv: exportCSV, readErr: assert.AnError}
+	path := filepath.Join(t.TempDir(), "issues.csv")
+	err := runPolicyIssueExport(t.Context(), &bytes.Buffer{}, c, "acme", policyIssueExportArgs{file: path})
+	require.ErrorIs(t, err, assert.AnError)
 	assert.NoFileExists(t, path)
 }

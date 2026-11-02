@@ -308,17 +308,16 @@ func buildPolicyIssueGrid(
 	}
 
 	var perFlag []cloudapitype.AngularGridFilterModel
-	addColumn := func(c policyIssueFilterColumn) error {
+	addColumn := func(c policyIssueFilterColumn) {
 		values := *c.values(&f)
 		if len(values) == 0 {
-			return nil
+			return
 		}
 		leaves := make([]cloudapitype.AngularGridFilterModel, 0, len(values))
 		for _, v := range values {
 			leaves = append(leaves, gridLeaf(c.colID, v))
 		}
 		perFlag = append(perFlag, gridGroup(gridCombinatorOr, leaves))
-		return nil
 	}
 
 	for _, c := range policyIssueFilterColumns() {
@@ -330,9 +329,7 @@ func buildPolicyIssueGrid(
 				perFlag = append(perFlag, buildAccountCondition(f.accounts))
 			}
 		}
-		if err := addColumn(c); err != nil {
-			return nil, nil, err
-		}
+		addColumn(c)
 	}
 
 	if len(perFlag) == 0 {

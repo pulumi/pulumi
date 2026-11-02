@@ -110,5 +110,10 @@ func runPolicyIssueExport(
 		return err
 	}
 	_, err = io.Copy(f, stream)
-	return errors.Join(err, f.Close())
+	err = errors.Join(err, f.Close())
+	if err != nil {
+		// Don't leave a truncated CSV behind that could be mistaken for a complete export.
+		err = errors.Join(err, os.Remove(args.file))
+	}
+	return err
 }
