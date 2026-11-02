@@ -486,6 +486,25 @@ func TestUvExportWorkspacePackages(t *testing.T) {
 		require.NotContains(t, packages, "pulumi-inactive")
 	})
 
+	t.Run("explain missing packaging", func(t *testing.T) {
+		t.Parallel()
+		root := writeUvExportTestWorkspace(t)
+		dir := filepath.Join(root, "a")
+		projectPath := filepath.Join(dir, "pyproject.toml")
+		project, err := os.ReadFile(projectPath)
+		require.NoError(t, err)
+		project = bytes.ReplaceAll(project, []byte(`"packaging>=26.0", `), nil)
+		require.NoError(t, os.WriteFile(projectPath, project, 0o600))
+		member, err := newUv(dir, "")
+		require.NoError(t, err)
+		require.NoError(t, member.InstallDependencies(t.Context(), dir, false, false, nil, nil))
+
+		_, err = member.ListPackages(t.Context(), true)
+
+		require.ErrorContains(t, err, "Upgrade the Pulumi Python SDK")
+		require.NotContains(t, err.Error(), "Traceback")
+	})
+
 	t.Run("preserve local package versions", func(t *testing.T) {
 		t.Parallel()
 		_, member := newUvExportTestWorkspace(t)
