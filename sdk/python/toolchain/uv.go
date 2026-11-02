@@ -315,7 +315,17 @@ packages = json.load(sys.stdin)
 result = []
 for package in packages:
     if package["marker"]:
-        from packaging.markers import Marker
+        try:
+            from packaging.markers import Marker
+        except ModuleNotFoundError as error:
+            if error.name != "packaging":
+                raise
+            sys.exit(
+                "The Python package 'packaging' is required to discover uv dependencies "
+                "but is not installed in the project's Python environment. "
+                "Upgrade the Pulumi Python SDK to version 3.224.0 or later, "
+                "or run 'uv add packaging' in the project directory."
+            )
         if not Marker(package["marker"]).evaluate():
             continue
     result.append({
