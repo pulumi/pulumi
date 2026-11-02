@@ -67,6 +67,7 @@ jobs:
           with: |
             version: 2026.10.3
             experimental: true
+            install_args: --locked
       - name: Create PR
         env:
           PULUMI_VERSION: ${{ inputs.version }}

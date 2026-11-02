@@ -38,6 +38,7 @@ CHANGIE = [
     "mise",
     "exec",
     "--yes",
+    "--locked",
     "changie",
     "--",
     "changie",

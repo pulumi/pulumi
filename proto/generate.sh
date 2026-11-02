@@ -17,7 +17,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROTO_DIR="$REPO_ROOT/proto"
 cd "$PROTO_DIR"
 
-PROTOC_DIR="$(mise where protoc)"
+PROTOC_DIR="$(mise --locked where protoc)"
 PROTOC_INCLUDE="$PROTOC_DIR/include"
 
 PROTOC_VERSION=$(protoc --version | head -n1 | tr -d '\n\r')
