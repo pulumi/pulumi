@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,28 +42,30 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:nestedcollections")
 
 					foo := RequireSingleResource(l, snap.Resources, "nestedcollections:index:Foo")
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"conditionSets": []any{
-							[]any{
-								[]any{
-									map[string]any{"prop": "first"},
-									map[string]any{"prop": "second"},
-								},
-							},
-						},
-						"privateEndpoint": map[string]any{
-							"outer": map[string]any{
-								"inner": map[string]any{
-									"leaf": "deep",
-								},
-							},
-						},
+					want := property.NewMap(map[string]property.Value{
+						"conditionSets": property.New([]property.Value{
+							property.New([]property.Value{
+								property.New([]property.Value{
+									property.New(map[string]property.Value{"prop": property.New("first")}),
+									property.New(map[string]property.Value{"prop": property.New("second")}),
+								}),
+							}),
+						}),
+						"privateEndpoint": property.New(map[string]property.Value{
+							"outer": property.New(map[string]property.Value{
+								"inner": property.New(map[string]property.Value{
+									"leaf": property.New("deep"),
+								}),
+							}),
+						}),
 					})
-					assert.Equal(l, want, foo.Outputs, "expected the computed nested collection outputs")
+					assert.Equal(l, want, resource.FromResourcePropertyMap(foo.Outputs),
+						"expected the computed nested collection outputs")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "secondProp", resource.NewProperty("second"))
-					AssertPropertyMapMember(l, stack.Outputs, "leaf", resource.NewProperty("deep"))
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, stackOutputs, "secondProp", property.New("second"))
+					AssertPropertyMapMember(l, stackOutputs, "leaf", property.New("deep"))
 				},
 			},
 		},

@@ -427,14 +427,14 @@ func TestInvalidInputDiagnosticsRedactSecrets(t *testing.T) {
 			name:   "construct redacted",
 			remote: true,
 			expected: "pkgA:m:typA resource 'resA' has a problem: bad request\n" +
-				"\t\t- property conn with value '{map[host:{example.com} password:{[secret]}]}' has a problem: bad conn\n",
+				"\t\t- property conn with value {\"host\": \"example.com\", \"password\": <secret>} has a problem: bad conn\n",
 		},
 		{
 			name:        "construct with --show-secrets",
 			remote:      true,
 			showSecrets: true,
 			expected: "pkgA:m:typA resource 'resA' has a problem: bad request\n" +
-				"\t\t- property conn with value '{map[host:{example.com} password:{&{{secret-input-value}}}]}' " +
+				"\t\t- property conn with value {\"host\": \"example.com\", \"password\": \"secret-input-value\"} " +
 				"has a problem: bad conn\n",
 		},
 	}

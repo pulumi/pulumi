@@ -1,0 +1,4 @@
+component: cli/env
+kind: fix
+body: Show only environment change requests in `pulumi env change-request` commands
+time: 2026-10-28T00:00:00Z

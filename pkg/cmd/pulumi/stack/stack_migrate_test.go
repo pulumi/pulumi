@@ -655,6 +655,35 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) {
 			}(),
 			wantSubstr: "checking target backend for existing stack",
 		},
+		{
+			name: "managed source",
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func(string) (*workspace.Project, string, error) {
+				return project, "Pulumi.yaml", nil
+			}},
+			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+				_ ...cmdBackend.LoginOption,
+			) (backend.Backend, error) {
+				sourceBE := newSourceBackend()
+				sourceBE.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return &backend.MockStack{
+						RefF: func() backend.StackReference { return ref },
+						ConfigLocationF: func() backend.StackConfigLocation {
+							return backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"}
+						},
+					}, nil
+				}
+				return sourceBE, nil
+			}},
+			targetBE: func() *backend.MockBackend {
+				be := newTargetBackend()
+				be.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return nil, errors.New("target lookup boom")
+				}
+				return be
+			}(),
+			wantSubstr: "`pulumi stack migrate` is not supported on stacks with an ESC-managed environment yet",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1449,7 +1478,7 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 	tgtCrypter := prefixCrypter{prefix: "tgt"}
 
 	// "test-prefix" is a fake secrets-manager type registered with the custom provider below so
-	// DeserializeUntypedDeployment can find a manager for it; the real backend_secrets.DefaultProvider
+	// DeserializeUntypedDeployment can find a manager for it; the standard secrets provider
 	// only knows passphrase / service / cloud.
 	srcSM := &secrets.MockSecretsManager{
 		TypeF:      func() string { return "test-prefix" },
@@ -2106,7 +2135,7 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 			resource.MakeSecret(resource.NewProperty(resource.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"})),
 		}),
 	}
-	replacementTrigger := property.New(property.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"})
+	replacementTrigger := property.New(property.NewResourceReference(siblingURN, property.Value{}, ""))
 
 	snap := &deploy.Snapshot{
 		SecretsManager: srcSM,

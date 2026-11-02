@@ -64,19 +64,20 @@ func (c *confirmedNew) createStack(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b backend.Backend,
 	root string, args newArgs, opts display.Options,
 ) (backend.Stack, string, error) {
-	if c.createsStack() {
-		// Quiet: the confirmation already showed the stack name, and the summary repeats it.
-		return createStackWithRetry(ctx, sink, args.stdout, ws, b, args.prompt, c.stackName, root, args.yes, opts,
-			cmdStack.CreateStackOptions{
-				SetCurrent:      true,
-				SecretsProvider: args.secretsProvider,
-				UseRemoteConfig: args.remoteStackConfig,
-				Quiet:           true,
-			})
+	createOpts := cmdStack.CreateStackOptions{
+		SetCurrent:         true,
+		SecretsProvider:    args.secretsProvider,
+		UseRemoteConfig:    args.remoteStackConfig,
+		ManagedEnvironment: args.escConfig,
 	}
-	s, err := PromptAndCreateStack(ctx, sink, ws, b, args.prompt,
-		args.stack, root, true /*setCurrent*/, args.yes, opts, args.secretsProvider,
-		args.remoteStackConfig, "")
+	if c.createsStack() {
+		// Quiet: the confirmation already showed the stack name, and the summary repeats it and names any
+		// managed environment.
+		createOpts.Quiet = true
+		return createStackWithRetry(ctx, sink, args.stdout, ws, b, args.prompt, c.stackName, root, args.yes, opts,
+			createOpts)
+	}
+	s, err := promptAndCreateStack(ctx, sink, ws, b, args.prompt, args.stack, root, args.yes, opts, createOpts)
 	if err != nil {
 		return nil, "", err
 	}
@@ -91,11 +92,11 @@ func (c *confirmedNew) saveConfig(
 	ctx context.Context, sink diag.Sink, ssml cmdStack.SecretsManagerLoader, ws pkgWorkspace.Context,
 	proj *workspace.Project, s backend.Stack, template cmdTemplates.ProjectTemplate,
 	args newArgs, opts display.Options,
-) error {
+) (config.Map, error) {
 	if c.createsStack() {
 		return saveTemplateConfig(ctx, sink, ssml, ws, proj, s, c.config, c.commandLineConfig, "")
 	}
-	return HandleConfig(ctx, sink, ssml, ws, args.prompt, proj, s,
+	return handleConfig(ctx, sink, ssml, ws, args.prompt, proj, s,
 		args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts, "")
 }
 

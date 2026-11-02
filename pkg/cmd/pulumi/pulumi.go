@@ -205,6 +205,7 @@ func parseRootPersistentFlags(rootPersistent *pflag.FlagSet, args []string) {
 
 // NewPulumiCmd creates a new Pulumi Cmd instance.
 func NewPulumiCmd() (*cobra.Command, func()) {
+	helpers := cmdBackend.DefaultLoginManager.CredentialHelperSession()
 	var cwd string
 	var logFlow bool
 	var logToStderr bool
@@ -503,7 +504,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Environment Commands",
 			Commands: []*cobra.Command{
-				cmdEnv.NewEnvCmd(),
+				cmdEnv.NewEnvCmd(helpers),
 			},
 		},
 		{
@@ -558,7 +559,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
 				convert.NewConvertCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance),
-				operations.NewWatchCmd(),
 				logs.NewLogsCmd(pkgWorkspace.Instance),
 				templatecmd.NewTemplateCmd(),
 			},

@@ -679,8 +679,8 @@ func (a *fakeAnalyzer) Configure(context.Context, map[string]plugin.AnalyzerPoli
 func (a *fakeAnalyzer) Cancel(context.Context) error { return nil }
 func (a *fakeAnalyzer) Close() error                 { return nil }
 
-// An excepted violation is reported with its exceptions, and doesn't fail the run.
-func TestPolicyAnalyzeCmd_ExceptedViolation(t *testing.T) {
+// An exempted violation is reported with its exceptions, and doesn't fail the run.
+func TestPolicyAnalyzeCmd_ExemptedViolation(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "config.json")
@@ -691,19 +691,51 @@ func TestPolicyAnalyzeCmd_ExceptedViolation(t *testing.T) {
 		}
 	}}`), 0o600))
 
-	be, stk := newMockBackendForAnalyze()
-	stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
-		return makeAnalyzeSnapshot(), nil
+	run := func(t *testing.T, args ...string) (string, error) {
+		be, stk := newMockBackendForAnalyze()
+		stk.SnapshotF = func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+			return makeAnalyzeSnapshot(), nil
+		}
+		ws, lm := newMockWsAndLm(be)
+		stdout, _, err := runAnalyzeCmd(t, ws, lm,
+			stubLoadAnalyzers([]plugin.Analyzer{&fakeAnalyzer{mandatory: true}}),
+			append([]string{"--stack", "my-stack", "--policy-pack-config", path}, args...)...)
+		return stdout, err
 	}
-	ws, lm := newMockWsAndLm(be)
-	stdout, _, err := runAnalyzeCmd(t, ws, lm, stubLoadAnalyzers([]plugin.Analyzer{&fakeAnalyzer{mandatory: true}}),
-		"--stack", "my-stack", "--policy-pack-config", path, "--json")
-	require.NoError(t, err)
 
-	events := decodeEngineEventsJSON(t, stdout)
-	require.NotEmpty(t, events)
-	require.NotNil(t, events[0].PolicyEvent)
-	assert.Equal(t, "mandatory", events[0].PolicyEvent.EnforcementLevel)
-	assert.Equal(t, []apitype.PolicyEventException{{ID: "EXC-42", Reason: "Needed for the CDN"}},
-		events[0].PolicyEvent.Exceptions)
+	t.Run("progress", func(t *testing.T) {
+		t.Parallel()
+		stdout, err := run(t)
+		require.NoError(t, err)
+		// The violation didn't block the analysis, so the summary is shown as usual.
+		assert.Equal(t, ""+
+			"    pulumi:pulumi:Stack project-stack  \n"+
+			"Policies:\n"+
+			"    ✅ test-pack@v\n"+
+			"        · [exempted] [mandatory]  test-policy  (pkg:index:MyResource: res)\n"+
+			"          test violation\n"+
+			"          EXC-42: Needed for the CDN\n\n"+
+			"Resources:\n\n"+
+			"Duration: 0s\n\n", stdout)
+	})
+
+	t.Run("diff", func(t *testing.T) {
+		t.Parallel()
+		stdout, err := run(t, "--diff")
+		require.NoError(t, err)
+		assert.Equal(t,
+			"    test-pack@v [exempted: EXC-42] [mandatory]  test-policy  (pkg:index:MyResource: res)test violation\n", stdout)
+	})
+
+	t.Run("json", func(t *testing.T) {
+		t.Parallel()
+		stdout, err := run(t, "--json")
+		require.NoError(t, err)
+		events := decodeEngineEventsJSON(t, stdout)
+		require.NotEmpty(t, events)
+		require.NotNil(t, events[0].PolicyEvent)
+		assert.Equal(t, "mandatory", events[0].PolicyEvent.EnforcementLevel)
+		assert.Equal(t, []apitype.PolicyEventException{{ID: "EXC-42", Reason: "Needed for the CDN"}},
+			events[0].PolicyEvent.Exceptions)
+	})
 }

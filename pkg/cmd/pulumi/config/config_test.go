@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -1490,4 +1492,247 @@ func TestConfigPathOperations(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestListConfigManagedDoesNotLoadSecretsManager(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		showSecrets bool
+		jsonOut     bool
+		expected    string
+	}{
+		{"plain", false, false, `
+KEY         VALUE
+env:nested  {"s":["[secret]"]}
+env:secret  [secret]
+env:value   envVal1
+`},
+		{"show secrets", true, false, `
+KEY         VALUE
+env:nested  {"s":["envSecret2"]}
+env:secret  envSecret1
+env:value   envVal1
+`},
+		{"json", false, true, `{
+  "env:nested": {"secret": true},
+  "env:secret": {"secret": true},
+  "env:value": {"value": "envVal1", "secret": false}
+}`},
+		{"show secrets json", true, true, `{
+  "env:nested": {"value": "{\"s\":[\"envSecret2\"]}", "objectValue": {"s": ["envSecret2"]}, "secret": true},
+  "env:secret": {"value": "envSecret1", "secret": true},
+  "env:value": {"value": "envVal1", "secret": false}
+}`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			s, be := newManagedStack(t, func(
+				string, string, string, []byte,
+			) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+				return &backend.ManagedEnvironmentEvaluation{Environment: &esc.Environment{Properties: map[string]esc.Value{
+					"pulumiConfig": esc.NewValue(map[string]esc.Value{
+						"env:value":  esc.NewValue("envVal1"),
+						"env:secret": esc.NewSecret("envSecret1"),
+						"env:nested": esc.NewValue(map[string]esc.Value{
+							"s": esc.NewValue([]esc.Value{esc.NewSecret("envSecret2")}),
+						}),
+					}),
+				}}}, nil, nil
+			})
+			be.CheckYAMLEnvironmentF = func(
+				context.Context, string, []byte,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				return &esc.Environment{Properties: map[string]esc.Value{
+					"pulumiConfig": esc.NewValue(map[string]esc.Value{
+						"env:value":  esc.NewValue("envVal1"),
+						"env:secret": {Secret: true, Unknown: true},
+						"env:nested": esc.NewValue(map[string]esc.Value{
+							"s": esc.NewValue([]esc.Value{{Secret: true, Unknown: true}}),
+						}),
+					}),
+				}}, nil, nil
+			}
+
+			project := workspace.Project{Name: "otherproj"}
+			stackFile, ps := writeManagedListStack(t, &project)
+
+			ssml := cmdStack.SecretsManagerLoader{}
+			_, _, err := ssml.GetSecretsManager(t.Context(), s, ps)
+			require.Error(t, err, "the stack secrets provider must fail if loaded")
+
+			before, err := os.ReadFile(stackFile)
+			require.NoError(t, err)
+
+			var stdout bytes.Buffer
+			err = listConfig(
+				t.Context(), ssml, &stdout, &project, s, ps, c.showSecrets, c.jsonOut, c.showSecrets, stackFile)
+			require.NoError(t, err)
+			if c.jsonOut {
+				assert.JSONEq(t, c.expected, stdout.String())
+			} else {
+				assert.Equal(t, strings.TrimSpace(c.expected), strings.TrimSpace(stdout.String()))
+			}
+
+			after, err := os.ReadFile(stackFile)
+			require.NoError(t, err)
+			assert.Equal(t, string(before), string(after))
+		})
+	}
+}
+
+func TestGetConfigManagedDoesNotLoadSecretsManager(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		key      string
+		path     bool
+		jsonOut  bool
+		open     bool
+		expected string
+	}{
+		{"value", "env:value", false, false, true, "envVal1"},
+		{"secret", "env:secret", false, false, true, "envSecret1"},
+		{"path", "env:nested.s[0]", true, false, true, "envSecret2"},
+		{
+			"json", "env:nested", false, true, true,
+			`{"value": "{\"s\":[\"envSecret2\"]}", "objectValue": {"s": ["envSecret2"]}, "secret": true}`,
+		},
+		{"not open", "env:value", false, false, false, "envVal1"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			s, be := newManagedStack(t, func(
+				string, string, string, []byte,
+			) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+				return &backend.ManagedEnvironmentEvaluation{Environment: &esc.Environment{Properties: map[string]esc.Value{
+					"pulumiConfig": esc.NewValue(map[string]esc.Value{
+						"env:value":  esc.NewValue("envVal1"),
+						"env:secret": esc.NewSecret("envSecret1"),
+						"env:nested": esc.NewValue(map[string]esc.Value{
+							"s": esc.NewValue([]esc.Value{esc.NewSecret("envSecret2")}),
+						}),
+					}),
+				}}}, nil, nil
+			})
+			be.CheckYAMLEnvironmentF = func(
+				context.Context, string, []byte,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				return &esc.Environment{Properties: map[string]esc.Value{
+					"pulumiConfig": esc.NewValue(map[string]esc.Value{"env:value": esc.NewValue("envVal1")}),
+				}}, nil, nil
+			}
+
+			project := workspace.Project{Name: "otherproj"}
+			stackFile, ps := writeManagedListStack(t, &project)
+
+			ssml := cmdStack.SecretsManagerLoader{}
+			_, _, err := ssml.GetSecretsManager(t.Context(), s, ps)
+			require.Error(t, err, "the stack secrets provider must fail if loaded")
+
+			before, err := os.ReadFile(stackFile)
+			require.NoError(t, err)
+
+			ws := &pkgWorkspace.MockContext{
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
+					return &project, filepath.Dir(stackFile), nil
+				},
+			}
+			var stdout bytes.Buffer
+			err = getConfig(t.Context(), &stdout, cmdutil.Diag(), ssml, ws, s,
+				config.MustParseKey(c.key), c.path, c.jsonOut, c.open, stackFile)
+			require.NoError(t, err)
+			if c.jsonOut {
+				assert.JSONEq(t, c.expected, stdout.String())
+			} else {
+				assert.Equal(t, c.expected+"\n", stdout.String())
+			}
+
+			after, err := os.ReadFile(stackFile)
+			require.NoError(t, err)
+			assert.Equal(t, string(before), string(after))
+		})
+	}
+}
+
+func TestConfigManagedEnvironmentDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	diagsFrom := func(summary string) apitype.EnvironmentDiagnostics {
+		return apitype.EnvironmentDiagnostics{{
+			Summary: summary,
+			Range:   &esc.Range{Environment: "proj/dev", Begin: esc.Pos{Line: 5, Column: 20}},
+		}}
+	}
+
+	cases := []struct {
+		open     bool
+		expected string
+	}{
+		{true, "opening environment:\nproj/dev:5:20: evaluate failed"},
+		{false, "opening environment:\nproj/dev:5:20: check failed"},
+	}
+	for _, c := range cases {
+		t.Run(fmt.Sprintf("open=%v", c.open), func(t *testing.T) {
+			t.Parallel()
+
+			s, be := newManagedStack(t, func(
+				string, string, string, []byte,
+			) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+				return nil, diagsFrom("evaluate failed"), nil
+			})
+			be.CheckYAMLEnvironmentF = func(
+				context.Context, string, []byte,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				return nil, diagsFrom("check failed"), nil
+			}
+			project := workspace.Project{Name: "otherproj"}
+			stackFile, ps := writeManagedListStack(t, &project)
+			ws := &pkgWorkspace.MockContext{
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
+					return &project, filepath.Dir(stackFile), nil
+				},
+			}
+
+			var listOut bytes.Buffer
+			err := listConfig(t.Context(), cmdStack.SecretsManagerLoader{}, &listOut, &project, s, ps,
+				c.open, false, c.open, stackFile)
+			require.EqualError(t, err, c.expected)
+			assert.Empty(t, listOut.String())
+
+			var getOut bytes.Buffer
+			err = getConfig(t.Context(), &getOut, cmdutil.Diag(), cmdStack.SecretsManagerLoader{}, ws, s,
+				config.MustParseKey("env:value"), false, false, c.open, stackFile)
+			require.EqualError(t, err, c.expected)
+			assert.Empty(t, getOut.String())
+		})
+	}
+}
+
+func writeManagedListStack(
+	t *testing.T,
+	project *workspace.Project,
+) (string, *workspace.ProjectStack) {
+	t.Helper()
+
+	stackYAML := `secretsprovider: bogus://unregistered
+environment:
+  values:
+    pulumiConfig:
+      env:value: envVal1
+      env:secret:
+        fn::secret:
+          ciphertext: ZXNjeAAAAAEAAAEA
+`
+	stackFile := filepath.Join(t.TempDir(), "Pulumi.new.yaml")
+	require.NoError(t, os.WriteFile(stackFile, []byte(stackYAML), 0o600))
+	ps, err := workspace.LoadProjectStack(cmdutil.Diag(), project, stackFile)
+	require.NoError(t, err)
+	return stackFile, ps
 }

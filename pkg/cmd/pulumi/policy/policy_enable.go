@@ -15,7 +15,9 @@
 package policy
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"maps"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -23,6 +25,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/spf13/cobra"
 )
 
@@ -33,18 +38,58 @@ type policyEnableArgs struct {
 	config      string
 }
 
-func newPolicyEnableCmd() *cobra.Command {
+// requirePolicyPackAndClient logs into the cloud backend and retrieves the requested policy pack along with
+// a client for reading back the result of an update.
+func requirePolicyPackAndClient(
+	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, policyPackRef string,
+) (backend.PolicyPack, policyGroupGetClient, error) {
+	b, err := loginToCloudBackend(ctx, ws, lm)
+	if err != nil {
+		return nil, nil, err
+	}
+	client, err := cloudClient(b)
+	if err != nil {
+		return nil, nil, err
+	}
+	policyPack, err := requirePolicyPackForBackend(ctx, policyPackRef, b)
+	if err != nil {
+		return nil, nil, err
+	}
+	return policyPack, client, nil
+}
+
+// readBackPolicyGroup fetches the group a pack was just enabled in or disabled from, since the update endpoint
+// returns nothing.
+func readBackPolicyGroup(
+	ctx context.Context, client policyGroupGetClient, policyPack backend.PolicyPack, group string,
+) (apitype.GetPolicyGroupResponse, error) {
+	if group == "" {
+		group = apitype.DefaultPolicyGroup
+	}
+	resp, err := client.GetPolicyGroup(ctx, policyPack.Ref().OrgName(), group)
+	if err != nil {
+		return apitype.GetPolicyGroupResponse{}, fmt.Errorf("reading policy group %q after update: %w", group, err)
+	}
+	return resp, nil
+}
+
+func newPolicyEnableCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	args := policyEnableArgs{}
+	outputFormat := defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Use:   "enable",
 		Short: "Enable a Policy Pack for a Pulumi organization",
 		Long: "Enable a Policy Pack for a Pulumi organization. " +
-			"Can specify latest to enable the latest version of the Policy Pack or a specific version number.",
+			"Can specify latest to enable the latest version of the Policy Pack or a specific version number.\n" +
+			"\n" +
+			"Examples:\n" +
+			"  pulumi policy enable acme/aws-guardrails latest\n" +
+			"  pulumi policy enable acme/aws-guardrails 3 --policy-group prod --output json",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			policyPack, err := requirePolicyPack(ctx, cliArgs[0], cmdBackend.DefaultLoginManager)
+			policyPack, client, err := requirePolicyPackAndClient(ctx, ws, lm, cliArgs[0])
 			if err != nil {
 				return err
 			}
@@ -65,12 +110,21 @@ func newPolicyEnableCmd() *cobra.Command {
 			}
 
 			// Attempt to enable the Policy Pack.
-			return policyPack.Enable(ctx, args.policyGroup,
+			err = policyPack.Enable(ctx, args.policyGroup,
 				backend.PolicyPackOperation{
 					VersionTag: version,
 					Scopes:     backend.CancellationScopes,
 					Config:     config,
 				})
+			if err != nil {
+				return err
+			}
+
+			resp, err := readBackPolicyGroup(ctx, client, policyPack, args.policyGroup)
+			if err != nil {
+				return err
+			}
+			return outputFormat.Get()(cmd.OutOrStdout(), resp)
 		},
 	}
 
@@ -90,6 +144,7 @@ func newPolicyEnableCmd() *cobra.Command {
 		&args.config, "config", "",
 		"The file path for the Policy Pack configuration file")
 
+	outputflag.VarP(cmd.Flags(), &outputFormat)
 	return cmd
 }
 

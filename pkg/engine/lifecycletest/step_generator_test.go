@@ -631,13 +631,16 @@ func TestExistsResourceWithProperties(t *testing.T) {
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
 				readCalled = true
-				// Verify that properties were passed through.
-				if foo := req.State.Get("foo"); !foo.IsString() || foo.AsString() != "bar" {
+				// Verify that properties were passed through as inputs, with no state.
+				if foo := req.Inputs.Get("foo"); !foo.IsString() || foo.AsString() != "bar" {
 					return plugin.ReadResponse{}, fmt.Errorf("expected foo=bar, got %v", foo)
+				}
+				if req.State.Len() != 0 {
+					return plugin.ReadResponse{}, fmt.Errorf("expected no state, got %v", req.State)
 				}
 				return plugin.ReadResponse{
 					ReadResult: plugin.ReadResult{
-						Outputs: &req.State,
+						Outputs: &req.Inputs,
 					},
 					Status: resource.StatusOK,
 				}, nil

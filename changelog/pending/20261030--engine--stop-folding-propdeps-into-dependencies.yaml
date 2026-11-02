@@ -1,0 +1,4 @@
+component: engine
+kind: improvement
+body: Stop folding per-property dependencies into a resource's top-level `Dependencies` list after transforms run — `Dependencies` now reflects only the user's explicit `depends_on`, matching the behaviour already used for resources without transforms
+time: 2026-10-30T00:00:00Z

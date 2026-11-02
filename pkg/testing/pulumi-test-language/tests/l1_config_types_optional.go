@@ -16,6 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,9 +28,9 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					assert.Equal(l, resource.PropertyMap{
-						"namesLength": resource.NewProperty(3.0),
-					}, stack.Outputs)
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"namesLength": property.New(3.0),
+					}), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

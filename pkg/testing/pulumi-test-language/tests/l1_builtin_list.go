@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,15 +30,15 @@ func init() {
 		config.MustMakeKey("l1-builtin-list", "aString"): config.NewObjectValue(`"foo-bar-baz"`),
 	}
 
-	commonOutputs := resource.PropertyMap{
-		"elementOutput1": resource.NewProperty("bar"),
-		"elementOutput2": resource.NewProperty("baz"),
-		"joinOutput":     resource.NewProperty("foo|bar|baz"),
-		"lengthOutput":   resource.NewProperty(3.0),
-		"splitOutput": resource.NewProperty([]resource.PropertyValue{
-			resource.NewProperty("foo"),
-			resource.NewProperty("bar"),
-			resource.NewProperty("baz"),
+	commonOutputs := map[string]property.Value{
+		"elementOutput1": property.New("bar"),
+		"elementOutput2": property.New("baz"),
+		"joinOutput":     property.New("foo|bar|baz"),
+		"lengthOutput":   property.New(3.0),
+		"splitOutput": property.New([]property.Value{
+			property.New("foo"),
+			property.New("bar"),
+			property.New("baz"),
 		}),
 	}
 
@@ -56,13 +57,13 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					want := resource.PropertyMap{}
+					want := map[string]property.Value{}
 					maps.Copy(want, commonOutputs)
-					want["singleOrNoneOutput"] = resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty("single"),
+					want["singleOrNoneOutput"] = property.New([]property.Value{
+						property.New("single"),
 					})
 
-					assert.Equal(l, want, stack.Outputs)
+					assert.Equal(l, property.NewMap(want), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 			{
@@ -88,13 +89,13 @@ func init() {
 					require.NoError(l, res.Err)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					want := resource.PropertyMap{}
+					want := map[string]property.Value{}
 					maps.Copy(want, commonOutputs)
-					want["singleOrNoneOutput"] = resource.NewProperty([]resource.PropertyValue{
-						resource.NewNullProperty(),
+					want["singleOrNoneOutput"] = property.New([]property.Value{
+						property.New(property.Null),
 					})
 
-					assert.Equal(l, want, stack.Outputs)
+					assert.Equal(l, property.NewMap(want), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

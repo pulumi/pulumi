@@ -1,0 +1,4 @@
+component: cli/stack
+kind: fix
+body: Load the `--copy-config-from` stack before `pulumi stack init` creates the new stack, so a source stack that does not exist no longer leaves an empty stack behind
+time: 2026-10-22T00:00:00Z

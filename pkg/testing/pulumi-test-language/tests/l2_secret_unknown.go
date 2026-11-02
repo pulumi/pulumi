@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,31 +38,32 @@ func init() {
 				AssertPreview: func(l *L, res AssertPreviewArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 
-					var stackOutputs resource.PropertyMap
+					var stackOutputs *property.Map
 					for _, evt := range res.Events {
 						if evt.Type == engine.ResourceOutputsEvent {
 							payload := evt.Payload().(engine.ResourceOutputsEventPayload)
 							if payload.Metadata.URN.Type() == resource.RootStackType {
-								stackOutputs = payload.Metadata.New.Outputs
+								stackOutputs = new(resource.FromResourcePropertyMap(payload.Metadata.New.Outputs))
 							}
 						}
 					}
 					require.NotNil(l, stackOutputs, "expected stack outputs event")
 
-					wrapped, ok := stackOutputs["wrapped"]
+					wrapped, ok := stackOutputs.GetOk("wrapped")
 					require.True(l, ok, "expected stack output 'wrapped'")
-					assert.True(l, wrapped.ContainsSecrets(),
+					assert.True(l, wrapped.HasSecrets(),
 						"expected wrapping an unknown with secret() to keep the secret marker: %v", wrapped)
-					assert.True(l, wrapped.ContainsUnknowns(),
+					assert.True(l, wrapped.HasComputed(),
 						"expected wrapped stack output to still be unknown: %v", wrapped)
 				},
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 
 					stack := RequireSingleResource(l, res.Snap.Resources, resource.RootStackType)
-					wrapped, ok := stack.Outputs["wrapped"]
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					wrapped, ok := stackOutputs.GetOk("wrapped")
 					require.True(l, ok, "expected stack output 'wrapped'")
-					assert.True(l, wrapped.ContainsSecrets(),
+					assert.True(l, wrapped.HasSecrets(),
 						"expected wrapped stack output to be secret after update: %v", wrapped)
 				},
 			},

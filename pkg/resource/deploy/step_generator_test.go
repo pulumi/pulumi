@@ -1039,8 +1039,9 @@ func TestStepGenerator(t *testing.T) {
 				providers:  registry,
 				panicErrs:  make(chan error, 1),
 			},
-			urns:   map[resource.URN]bool{},
-			events: eventsChan,
+			urns:           map[resource.URN]bool{},
+			extensionSteps: map[extensionStepKey]*promise.Promise[struct{}]{},
+			events:         eventsChan,
 		}
 
 		event := &testRegEvent{
@@ -1080,6 +1081,31 @@ func TestStepGenerator(t *testing.T) {
 	})
 }
 
+// newExtensionStepDeployment returns a deployment whose provider registry holds prov under the returned reference.
+func newExtensionStepDeployment(t *testing.T, prov plugin.Provider) (*Deployment, sdkproviders.Reference) {
+	host := &plugin.MockHost{
+		ProviderF: func(_ *plugin.Context, _ workspace.PluginDescriptor, _ env.Env) (plugin.Provider, error) {
+			return prov, nil
+		},
+	}
+	registry := providers.NewRegistry(newMockRegistryContext(host), false, nil)
+	providerURN := resource.URN("urn:pulumi:stack::project::pulumi:providers:k8s::default")
+	err := registry.Same(t.Context(), &pkgresource.State{
+		URN:    providerURN,
+		Custom: true,
+		Type:   tokens.Type("pulumi:providers:k8s"),
+		ID:     "id-1",
+		Inputs: resource.PropertyMap{"version": resource.NewProperty("1.0.0")},
+	}, false)
+	require.NoError(t, err)
+	providerRef, err := sdkproviders.NewReference(providerURN, "id-1")
+	require.NoError(t, err)
+	return &Deployment{
+		extensions: map[sdkproviders.Reference][]inFlightExtension{},
+		providers:  registry,
+	}, providerRef
+}
+
 func TestExtensionParameterizeStepApply_Success(t *testing.T) {
 	t.Parallel()
 
@@ -1097,9 +1123,10 @@ func TestExtensionParameterizeStepApply_Success(t *testing.T) {
 		},
 	}
 
+	d, providerRef := newExtensionStepDeployment(t, prov)
 	completionSource := &promise.CompletionSource[struct{}]{}
 	step := NewExtensionParameterizeStep(
-		&Deployment{}, prov, apitype.ExtensionRef("ref-success"), extension, completionSource)
+		d, providerRef, apitype.ExtensionRef("ref-success"), extension, completionSource)
 
 	status, _, err := step.Apply()
 	require.NoError(t, err)
@@ -1127,10 +1154,11 @@ func TestExtensionParameterizeStepApply_ProviderError(t *testing.T) {
 		},
 	}
 
+	d, providerRef := newExtensionStepDeployment(t, prov)
 	completionSource := &promise.CompletionSource[struct{}]{}
 	step := NewExtensionParameterizeStep(
-		&Deployment{},
-		prov,
+		d,
+		providerRef,
 		apitype.ExtensionRef("ref-err"),
 		apitype.Extension{Name: "x", Version: "1.0.0", Value: []byte{}},
 		completionSource,
@@ -1154,10 +1182,11 @@ func TestExtensionParameterizeStepApply_MalformedVersion(t *testing.T) {
 		},
 	}
 
+	d, providerRef := newExtensionStepDeployment(t, prov)
 	completionSource := &promise.CompletionSource[struct{}]{}
 	step := NewExtensionParameterizeStep(
-		&Deployment{},
-		prov,
+		d,
+		providerRef,
 		apitype.ExtensionRef("ref-badver"),
 		apitype.Extension{Name: "x", Version: "not-a-version", Value: nil},
 		completionSource,

@@ -16,6 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func init() {
@@ -33,9 +34,9 @@ func init() {
 
 					// Check we have an output in the stack for true
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					AssertPropertyMapMember(l, outputs, "output_true", resource.NewProperty(true))
+					AssertPropertyMapMember(l, outputs, "output_true", property.New(true))
 				},
 			},
 		},

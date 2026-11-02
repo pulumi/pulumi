@@ -1,0 +1,3 @@
+component: cli/policy
+kind: feat
+body: Add `--output json` to `pulumi policy publish`, `enable`, `disable`, `rm` and `validate-config`, and print the updated policy group after `enable` and `disable`

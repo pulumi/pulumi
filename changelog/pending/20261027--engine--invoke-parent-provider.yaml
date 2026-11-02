@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Use the explicit provider of a custom `parent` for an invoke that sets no `provider`
+time: 2026-10-27T00:00:00Z

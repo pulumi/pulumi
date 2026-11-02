@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,7 +43,8 @@ func init() {
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:nestedobject")
 
 					boolTarget := RequireSingleNamedResource(l, res.Snap.Resources, "boolTarget")
-					AssertPropertyMapMember(l, boolTarget.Inputs, "name", resource.NewProperty("bool-resource+"))
+					AssertPropertyMapMember(l, resource.FromResourcePropertyMap(boolTarget.Inputs),
+						"name", property.New("bool-resource+"))
 				},
 			},
 		},

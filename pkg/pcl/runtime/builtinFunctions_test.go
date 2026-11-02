@@ -15,6 +15,7 @@
 package runtime
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // evaluateLocals binds a program of local variables and evaluates each one with no
@@ -37,7 +39,7 @@ func evaluateLocals(t *testing.T, source string) map[string]property.Value {
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), diags.Error())
 
-	ectx := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil)
+	ectx := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil, nil)
 	values := map[string]property.Value{}
 	for _, node := range program.Nodes {
 		local := node.(*pcl.LocalVariable)
@@ -58,13 +60,15 @@ tuple = length([1, 2, 3])
 object = length({"a" = 1, "b" = 2})
 emptyObject = length({})
 map = length({for k, v in {"a" = 1, "b" = 2, "c" = 3} : k => v})
+optionalList = length(false ? null : [1])
 `)
 	assert.Equal(t, map[string]property.Value{
-		"string":      property.New(3.0),
-		"tuple":       property.New(3.0),
-		"object":      property.New(2.0),
-		"emptyObject": property.New(0.0),
-		"map":         property.New(3.0),
+		"string":       property.New(3.0),
+		"tuple":        property.New(3.0),
+		"object":       property.New(2.0),
+		"emptyObject":  property.New(0.0),
+		"map":          property.New(3.0),
+		"optionalList": property.New(1.0),
 	}, values)
 }
 
@@ -167,4 +171,50 @@ reversed = range(5, 2)
 		"empty2":   list(),
 		"reversed": list(5, 4, 3),
 	}, values)
+}
+
+func TestResourceExists(t *testing.T) {
+	t.Parallel()
+
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(strings.NewReader(`
+exists = resourceExists("pkg:index:Resource", "existing")
+withState = resourceExists("pkg:index:Resource", "missing", { value = false })
+unknown = resourceExists("pkg:index:Resource", "unknowable")
+`), "main.pp"))
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewNullLoader())
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), diags.Error())
+
+	requests := map[string]*pulumirpc.ExistsResourceRequest{}
+	existsResource := func(
+		_ context.Context, req *pulumirpc.ExistsResourceRequest,
+	) (*pulumirpc.ExistsResourceResponse, error) {
+		requests[req.GetId()] = req
+		switch req.GetId() {
+		case "existing":
+			return &pulumirpc.ExistsResourceResponse{Exists: true}, nil
+		case "unknowable":
+			return &pulumirpc.ExistsResourceResponse{Unknown: true}, nil
+		default:
+			return &pulumirpc.ExistsResourceResponse{}, nil
+		}
+	}
+	ectx := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil, existsResource)
+
+	values := map[string]property.Value{}
+	for _, node := range program.Nodes {
+		local := node.(*pcl.LocalVariable)
+		value, _, diags := ectx.Evaluate(local.Definition.Value)
+		require.False(t, diags.HasErrors(), "%s: %s", local.Name(), diags.Error())
+		values[local.Name()] = value
+	}
+
+	assert.Equal(t, property.New(true), values["exists"])
+	assert.Equal(t, property.New(false), values["withState"])
+	assert.True(t, values["unknown"].IsComputed())
+
+	assert.Equal(t, "pkg:index:Resource", requests["missing"].GetType())
+	assert.Equal(t, map[string]any{"value": false}, requests["missing"].GetProperties().AsMap())
+	assert.Empty(t, requests["existing"].GetProperties().AsMap())
 }

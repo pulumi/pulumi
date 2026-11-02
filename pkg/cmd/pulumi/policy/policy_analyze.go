@@ -99,6 +99,10 @@ func newPolicyAnalyzeCmd(
 					if err != nil {
 						return nil, nil, fmt.Errorf("getting working directory: %w", err)
 					}
+					cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, nil)
+					if err != nil {
+						return nil, nil, err
+					}
 					reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), env.Global())
 					pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(),
 						nil, pkgWorkspace.EnsureLanguageInstalled,
@@ -108,7 +112,7 @@ func newPolicyAnalyzeCmd(
 						return nil, nil, fmt.Errorf("creating plugin host: %w", err)
 					}
 					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
-						pluginHost, nil, cwd, nil, true, nil)
+						pluginHost, nil, cwd, nil, true, nil, cloudCredentialEnv)
 					if err != nil {
 						contract.IgnoreClose(pluginHost)
 						return nil, nil, fmt.Errorf("creating plugin context: %w", err)
@@ -354,6 +358,7 @@ func newAnalyzeEvents(
 		Color:                  colorization,
 		Type:                   displayType,
 		ShowPolicyRemediations: true,
+		ShowPolicyExceptions:   true,
 		IsInteractive:          cmdutil.Interactive(),
 		JSONDisplay:            jsonDisplay,
 		Stdout:                 out,
@@ -413,7 +418,7 @@ func (e *analyzeEvents) writeEvent(event engine.Event) {
 		return
 	}
 
-	msg := display.RenderDiffEvent(event, 0, e.seen, e.opts)
+	msg := display.RenderDiffEvent(event, 0, 0, e.seen, e.opts)
 	if msg == "" {
 		return
 	}

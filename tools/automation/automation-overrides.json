@@ -30,7 +30,6 @@
         {
             "path": ["up"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -112,6 +111,20 @@
             }
         },
         {
+            "path": ["config", "set"],
+            "propagate": false,
+            "flags": {
+                "override-import": { "omit": true }
+            }
+        },
+        {
+            "path": ["config", "set-all"],
+            "propagate": false,
+            "flags": {
+                "override-import": { "omit": true }
+            }
+        },
+        {
             "path": ["config", "refresh"],
             "propagate": false,
             "flags": {
@@ -132,12 +145,6 @@
             "flags": {
                 "json": { "omit": true, "preset": true }
             }
-        },
-        {
-            "path": ["api"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
         },
         {
             "path": ["console"],
@@ -213,24 +220,20 @@
         },
         {
             "path": ["logs"],
-            "propagate": true,
+            "propagate": false,
             "exclude": true,
             "flags": {}
         },
         {
             "path": ["new"],
             "propagate": true,
-            "flags": {}
+            "flags": {
+                "esc-config": { "omit": true }
+            }
         },
         {
             "path": ["org"],
             "propagate": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "audit-log"],
-            "propagate": true,
-            "exclude": true,
             "flags": {}
         },
         {
@@ -241,12 +244,6 @@
         },
         {
             "path": ["org", "role"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "usage"],
             "propagate": true,
             "exclude": true,
             "flags": {}
@@ -294,12 +291,6 @@
             "flags": {}
         },
         {
-            "path": ["schema"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["stack"],
             "propagate": true,
             "exclude": true,
@@ -313,12 +304,6 @@
         },
         {
             "path": ["view-trace"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["watch"],
             "propagate": true,
             "exclude": true,
             "flags": {}

@@ -1,0 +1,3 @@
+component: sdk/nodejs
+kind: fix
+body: Restrict `@opentelemetry/api` to 1.9.x so package managers such as bun and pnpm no longer install 1.10.0, which the OpenTelemetry SDK 2.x packages do not support

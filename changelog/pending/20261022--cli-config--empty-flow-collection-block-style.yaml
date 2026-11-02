@@ -1,0 +1,4 @@
+component: cli/config
+kind: fix
+body: Write block-style YAML when a CLI edit adds the first entry to an empty `{}` mapping in a stack or project file, instead of keeping the mapping on one line, as `pulumi env set` does
+time: 2026-10-22T00:00:00Z

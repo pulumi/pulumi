@@ -15,199 +15,23 @@
 package logs
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
-
-const logsRemovalWarning = "This command will be removed in a future version of pulumi.\n" +
-	"\n" +
-	"The removal is being tracked in https://github.com/pulumi/pulumi/issues/24718. If you believe that \n" +
-	"`pulumi logs` should not be removed, please comment on the issue explaining why.\n"
 
 func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	var stackName string
-	var configFile string
-	var follow bool
-	var since string
-	var resource string
-	var jsonOut bool
 
 	logsCmd := &cobra.Command{
 		Use:   "logs",
-		Short: "Show aggregated resource logs for a stack",
-		Long: "[EXPERIMENTAL] Show aggregated resource logs for a stack\n" +
+		Short: "Manage automatic log files",
+		Long: "Manage the automatic log files that the Pulumi CLI writes.\n" +
 			"\n" +
-			"This command aggregates log entries associated with the resources in a stack from the corresponding\n" +
-			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
-			"CloudWatch Logs for log data relevant to resources in a stack.\n",
-		RunE: func(cobraCmd *cobra.Command, args []string) error {
-			// Setting cobra's Deprecated field would hide the `pulumi logs` subcommands, which are not deprecated.
-			if !env.DisableExperimentalLogsRemovalError.Value() {
-				return fmt.Errorf("command %q is deprecated and disabled by default.\n\n%s\n"+
-					"To run the command until it is removed, set %s=1.",
-					cobraCmd.Name(), logsRemovalWarning, env.DisableExperimentalLogsRemovalError.Var().Name())
-			}
-			if !env.DisableExperimentalLogsRemovalWarning.Value() {
-				cobraCmd.PrintErrf("Command %q is deprecated, %s\n", cobraCmd.Name(), logsRemovalWarning)
-			}
-
-			ctx := cobraCmd.Context()
-			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
-			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
-			}
-
-			// Fetch the project.
-			proj, _, err := ws.ReadProject("")
-			if err != nil {
-				return err
-			}
-
-			s, err := cmdStack.RequireStack(
-				ctx,
-				cmdutil.Diag(),
-				ws,
-				cmdBackend.DefaultLoginManager,
-				stackName,
-				cmdStack.LoadOnly,
-				opts,
-				configFile,
-			)
-			if err != nil {
-				return err
-			}
-
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj, configFile, nil)
-			if err != nil {
-				return fmt.Errorf("getting stack configuration: %w", err)
-			}
-
-			decrypter := sm.Decrypter()
-			encrypter := sm.Encrypter()
-
-			stackName := s.Ref().Name().String()
-			configErr := pkgWorkspace.ValidateStackConfigAndApplyProjectConfig(
-				ctx,
-				stackName,
-				proj,
-				cfg.Environment,
-				cfg.Config,
-				encrypter,
-				decrypter)
-			if configErr != nil {
-				return fmt.Errorf("validating stack config: %w", configErr)
-			}
-
-			startTime, err := parseSince(since, time.Now())
-			if err != nil {
-				return fmt.Errorf("failed to parse argument to '--since' as duration or timestamp: %w", err)
-			}
-			var resourceFilter *operations.ResourceFilter
-			if resource != "" {
-				rf := operations.ResourceFilter(resource)
-				resourceFilter = &rf
-			}
-
-			out := cobraCmd.OutOrStdout()
-			if !jsonOut {
-				fmt.Fprintf(
-					out,
-					opts.Color.Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
-					s.Ref().String(),
-					cmd.FormatTime(*startTime),
-				)
-			}
-
-			// IDEA: This map will grow forever as new log entries are found.  We may need to do a more approximate
-			// approach here to ensure we don't grow memory unboundedly while following logs.
-			//
-			// Note: Just tracking latest log date is not sufficient - as stale logs may show up which should have been
-			// displayed before previously rendered log entries, but weren't available at the time, so still need to be
-			// rendered now even though they are technically out of order.
-			shown := map[operations.LogEntry]bool{}
-			for {
-				logs, err := backend.GetStackLogs(ctx, secrets.DefaultProvider, s, cfg, operations.LogQuery{
-					StartTime:      startTime,
-					ResourceFilter: resourceFilter,
-				})
-				if err != nil {
-					return fmt.Errorf("failed to get logs: %w", err)
-				}
-
-				// When we are emitting a fixed number of log entries, and outputting JSON, wrap them in an array.
-				if !follow && jsonOut {
-					entries := slice.Prealloc[logEntryJSON](len(logs))
-
-					for _, logEntry := range logs {
-						if _, shownAlready := shown[logEntry]; !shownAlready {
-							eventTime := time.Unix(0, logEntry.Timestamp*1000000)
-
-							entries = append(entries, logEntryJSON{
-								ID:        logEntry.ID,
-								Timestamp: cmd.FormatTime(eventTime.UTC()),
-								Message:   logEntry.Message,
-							})
-
-							shown[logEntry] = true
-						}
-					}
-
-					return ui.FprintJSON(out, entries)
-				}
-
-				for _, logEntry := range logs {
-					if _, shownAlready := shown[logEntry]; !shownAlready {
-						eventTime := time.Unix(0, logEntry.Timestamp*1000000)
-
-						if !jsonOut {
-							fmt.Fprintf(
-								out,
-								"%30.30s[%30.30s] %v\n",
-								cmd.FormatTime(eventTime),
-								logEntry.ID,
-								strings.TrimRight(logEntry.Message, "\n"),
-							)
-						} else {
-							err = ui.FprintJSON(out, logEntryJSON{
-								ID:        logEntry.ID,
-								Timestamp: cmd.FormatTime(eventTime.UTC()),
-								Message:   logEntry.Message,
-							})
-							if err != nil {
-								return err
-							}
-						}
-
-						shown[logEntry] = true
-					}
-				}
-
-				if !follow {
-					return nil
-				}
-
-				time.Sleep(time.Second)
-			}
-		},
+			"Use these commands to list, decrypt, share and remove the log files.",
 	}
 
 	constrictor.AttachArguments(logsCmd, constrictor.NoArgs)
@@ -220,21 +44,6 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 	logsCmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	logsCmd.PersistentFlags().StringVar(
-		&configFile, "config-file", "",
-		"Use the configuration values in the specified file rather than detecting the file name")
-	logsCmd.PersistentFlags().BoolVarP(
-		&jsonOut, "json", "j", false, "Emit output as JSON")
-	logsCmd.PersistentFlags().BoolVarP(
-		&follow, "follow", "f", false,
-		"Follow the log stream in real time (like tail -f)")
-	logsCmd.PersistentFlags().StringVar(
-		&since, "since", "1h",
-		"Only return logs newer than a relative duration ('5s', '2m', '3h') or absolute timestamp.  "+
-			"Defaults to returning the last 1 hour of logs.")
-	logsCmd.PersistentFlags().StringVarP(
-		&resource, "resource", "r", "",
-		"Only return logs for the requested resource ('name', 'type::name' or full URN).  Defaults to returning all logs.")
 
 	return logsCmd
 }
@@ -253,13 +62,4 @@ func parseSince(since string, reference time.Time) (*time.Time, error) {
 	}
 	startTime := time.Unix(startTimeSec, startTimeNs)
 	return &startTime, nil
-}
-
-// logEntryJSON is the shape of the --json output of this command. When --json is passed, if we are not following the
-// log stream, we print an array of logEntry objects. If we are following the log stream, we instead print each object
-// at top level.
-type logEntryJSON struct {
-	ID        string
-	Timestamp string
-	Message   string
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,21 +40,23 @@ func init() {
 					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
 
 					// Check that the large string is in the snapshot
-					largeString := resource.NewProperty(strings.Repeat("hello world", 9532509))
+					largeString := property.New(strings.Repeat("hello world", 9532509))
 					large := RequireSingleResource(l, snap.Resources, "large:index:String")
 					require.Equal(l,
-						resource.NewProperty("hello world"),
-						large.Inputs["value"],
+						property.New("hello world"),
+						resource.FromResourcePropertyMap(large.Inputs).Get("value"),
 					)
 					require.Equal(l,
 						largeString,
-						large.Outputs["value"],
+						resource.FromResourcePropertyMap(large.Outputs).Get("value"),
 					)
 
 					// Check the stack output value is as well
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					require.Equal(l, resource.RootStackType, stack.Type, "expected a stack resource")
-					require.Equal(l, largeString, stack.Outputs["output"], "expected large string stack output")
+					require.Equal(l, largeString,
+						resource.FromResourcePropertyMap(stack.Outputs).Get("output"),
+						"expected large string stack output")
 				},
 			},
 		},

@@ -65,6 +65,21 @@ func IsBail(err error) bool {
 	return ok
 }
 
+// UnwrapBail returns the inner error carried by a BailError. If err is a BailError, the wrapped
+// error is returned; otherwise err is returned as-is. This is intentionally decoupled from
+// errors.Unwrap: bailError does not implement Unwrap so that errors.Is/As traversal cannot
+// accidentally cross a bail boundary. Callers who need to inspect the wrapped error type (for
+// example to map to a specific exit code) can use this helper explicitly.
+func UnwrapBail(err error) error {
+	if err == nil {
+		return nil
+	}
+	if b, ok := err.(*bailError); ok {
+		return b.err
+	}
+	return err
+}
+
 // MergeBails accepts a set of errors and returns a single error that is the
 // result of merging them according to the following criteria:
 //

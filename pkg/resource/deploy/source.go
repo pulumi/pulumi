@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -40,6 +41,11 @@ const (
 type ProviderSource interface {
 	// GetProvider fetches the provider plugin for the given reference.
 	GetProvider(ref providers.Reference) (plugin.Provider, bool)
+	// ParameterizeExtension parameterizes the provider for the given reference with ext. The provider receives
+	// one Parameterize call per (provider, extension) pair, however many callers ask for it.
+	ParameterizeExtension(
+		ctx context.Context, ref providers.Reference, extRef apitype.ExtensionRef, ext apitype.Extension,
+	) error
 }
 
 // A Source can generate a new set of resources that the planner will process accordingly.
@@ -121,7 +127,7 @@ type RegisterResourceOutputsEvent interface {
 	// URN is the resource URN that this completion applies to.
 	URN() resource.URN
 	// Outputs returns a property map of output properties to add to a resource before completing.
-	Outputs() resource.PropertyMap
+	Outputs() property.Map
 	// Done indicates that we are done with this step.  It must be called to perform cleanup associated with the step.
 	Done()
 }
@@ -141,7 +147,7 @@ type ReadResourceEvent interface {
 	// Parent is the parent resource of the resource being read.
 	Parent() resource.URN
 	// Properties is the property bag that will be passed to Read as search parameters.
-	Properties() resource.PropertyMap
+	Properties() property.Map
 	// Dependencies returns the list of URNs upon which this read depends.
 	Dependencies() []resource.URN
 	// Done indicates that we are done with this event.

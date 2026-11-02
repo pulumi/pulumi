@@ -372,6 +372,8 @@ type HostFactory func(
 //
 //nolint:structcheck
 type UpdateOptions struct {
+	// CloudCredentialEnv overrides the Pulumi backend credentials passed to plugins.
+	CloudCredentialEnv map[string]string
 	// true if the step generator should calculate diffs in parallel via DiffSteps.
 	ParallelDiff bool
 
@@ -843,7 +845,7 @@ func loadPolicyAnalyzer(
 		plugctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromContext)
+	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromContext, plugctx.CloudCredentialEnv)
 	if installErr != nil {
 		return nil, fmt.Errorf("failed to automatically install analyzer plugin %q: %w: %w",
 			string(name), installErr, me)
@@ -1239,7 +1241,7 @@ func newUpdateSource(ctx context.Context,
 			}
 			for _, r := range target.Snapshot.Resources {
 				if r != nil && !r.Delete && !slices.Contains(opts.TargetSnippets, r.SnippetID) {
-					observer.Resolve(r.URN, r.ID, r.Outputs)
+					observer.Resolve(r.URN, r.ID, resource.FromResourcePropertyMap(r.Outputs))
 				}
 			}
 		}
@@ -1416,10 +1418,17 @@ func (acts *updateActions) OnResourceStepPost(
 			errorURN = step.URN()
 		}
 
-		// Issue a true, bonafide error.
-		acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
+		// Issue a diagnostic. Await failures surface as warnings (the provider merely couldn't
+		// wait for the operation, and the CLI will report a distinct exit code); all other
+		// failures are true bonafide errors.
+		_, awaited := errors.AsType[*plugin.AwaitError](err)
+		if awaited {
+			acts.Opts.Diag.Warningf(diag.GetResourceOperationFailedError(errorURN), err)
+		} else {
+			acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
+		}
 		steps := atomic.LoadInt32(&acts.Steps)
-		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, acts.Opts.Debug, acts.Opts.ShowSecrets)
+		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, awaited, acts.Opts.Debug, acts.Opts.ShowSecrets)
 	} else {
 		if t := acts.Opts.snippetDeletions; t != nil {
 			t.recordStep(step)
@@ -1619,6 +1628,13 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (any, error) {
 		acts.Opts.ShowSecrets,
 	)
 
+	// If a SnapshotManager is wired up (e.g. by the backend for preview/dry-run), mutate it so
+	// the in-memory snapshot reflects what would have happened. Nothing is persisted — the
+	// backend installs a discarding persister for dry-run — but callers like `pulumi import
+	// --preview-only` need the resulting snapshot to drive codegen.
+	if acts.Context.SnapshotManager != nil {
+		return acts.Context.SnapshotManager.BeginMutation(step)
+	}
 	return nil, nil
 }
 
@@ -1675,6 +1691,11 @@ func (acts *previewActions) OnResourceStepPost(ctx any,
 		)
 	}
 
+	// Commit the step to the in-memory snapshot if a SnapshotManager is wired up. See
+	// OnResourceStepPre for the rationale.
+	if mutation, ok := ctx.(SnapshotMutation); ok && mutation != nil {
+		return mutation.End(step, err == nil)
+	}
 	return nil
 }
 

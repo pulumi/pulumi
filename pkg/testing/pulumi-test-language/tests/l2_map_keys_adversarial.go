@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,32 +51,38 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:primitive")
 					primResource := RequireSingleResource(l, snap.Resources, "primitive:index:Resource")
 
-					adversarialMap := resource.PropertyMap{
-						"__type":                        resource.NewProperty(true),
-						"__internal":                    resource.NewProperty(false),
-						"__provider":                    resource.NewProperty(true),
-						"__version":                     resource.NewProperty(false),
-						"":                              resource.NewProperty(true),
-						resource.PropertyKey(escapeKey): resource.NewProperty(false),
-						resource.PropertyKey(formatKey): resource.NewProperty(true),
+					adversarialMap := map[string]property.Value{
+						"__type":     property.New(true),
+						"__internal": property.New(false),
+						"__provider": property.New(true),
+						"__version":  property.New(false),
+						"":           property.New(true),
+						escapeKey:    property.New(false),
+						formatKey:    property.New(true),
 					}
 
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean":     false,
-						"float":       2.17,
-						"integer":     -12,
-						"string":      "adversarial",
-						"numberArray": []any{0, 1},
+					want := property.NewMap(map[string]property.Value{
+						"boolean": property.New(false),
+						"float":   property.New(2.17),
+						"integer": property.New(-12.0),
+						"string":  property.New("adversarial"),
+						"numberArray": property.New([]property.Value{
+							property.New(0.0), property.New(1.0),
+						}),
+						"booleanMap": property.New(adversarialMap),
 					})
-					want["booleanMap"] = resource.NewProperty(adversarialMap)
 
-					assert.Equal(l, want, primResource.Inputs, "resource inputs should preserve adversarial map keys")
-					assert.Equal(l, primResource.Inputs, primResource.Outputs, "expected inputs and outputs to match")
+					primInputs := resource.FromResourcePropertyMap(primResource.Inputs)
+					assert.Equal(l, want, primInputs, "resource inputs should preserve adversarial map keys")
+					assert.Equal(l, primInputs,
+						resource.FromResourcePropertyMap(primResource.Outputs),
+						"expected inputs and outputs to match")
 
-					AssertPropertyMapMember(l, stack.Outputs,
-						"resourceBooleanMap", resource.NewProperty(adversarialMap))
-					AssertPropertyMapMember(l, stack.Outputs,
-						"invokeBooleanMap", resource.NewProperty(adversarialMap))
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, stackOutputs,
+						"resourceBooleanMap", property.New(adversarialMap))
+					AssertPropertyMapMember(l, stackOutputs,
+						"invokeBooleanMap", property.New(adversarialMap))
 				},
 			},
 		},

@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,11 +43,12 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
 					stk := RequireSingleResource(l, snap.Resources, resource.RootStackType)
 
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"name": "res1",
-						"type": "simple:index:Resource",
+					want := property.NewMap(map[string]property.Value{
+						"name": property.New("res1"),
+						"type": property.New("simple:index:Resource"),
 					})
-					assert.Equal(l, want, stk.Outputs, "expected stack outputs to be %v", want)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(stk.Outputs),
+						"expected stack outputs to be %v", want)
 				},
 			},
 		},

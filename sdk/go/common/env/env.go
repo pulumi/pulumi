@@ -79,6 +79,9 @@ var SkipNewCredentialsCheck = env.Bool("SKIP_NEW_CREDENTIALS_CHECK",
 	"Skips the best-effort cloud credentials check that `pulumi new` runs after "+
 		"creating a project for providers that opt in through their schema.")
 
+var EnableAutomaticAgentSignup = env.Bool("ENABLE_AUTOMATIC_AGENT_SIGNUP",
+	"Automatically create a temporary Pulumi Cloud account when an AI agent runs the CLI without credentials.")
+
 var SkipConfirmations = env.Bool("SKIP_CONFIRMATIONS",
 	`Whether or not confirmation prompts should be skipped. This should be used by pass any requirement
 that a --yes parameter has been set for non-interactive scenarios.
@@ -147,6 +150,12 @@ var CredentialStore = env.String("CREDENTIAL_STORE",
 	`How to keep CLI credentials: "auto" encrypts them with a key protected by the operating `+
 		`system (macOS Keychain, Windows Credential Manager, Linux Secret Service, TPM) when such `+
 		`protection is usable, "os" requires it, and "plaintext" uses the plaintext credentials file.`)
+
+var CredentialHelper = env.String("CREDENTIAL_HELPER",
+	`[EXPERIMENTAL] Path to the credentials helper executable, or "none" to disable it.`)
+
+var CredentialHelperArgs = env.String("CREDENTIAL_HELPER_ARGS",
+	"[EXPERIMENTAL] JSON array of arguments passed to the credentials helper.", env.Secret)
 
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
@@ -283,19 +292,3 @@ var GoroutinePanicRecovery = env.Bool("GOROUTINE_PANIC_RECOVERY",
 
 var ParallelAnalyze = env.Int("PARALLEL_ANALYZE",
 	"(Experimental) Number of parallel analyze calls per resource (1 for no parallelism)")
-
-// TODO[https://github.com/pulumi/pulumi/issues/24717]: Remove when `pulumi watch` is removed.
-var DisableExperimentalWatchRemovalWarning = env.Bool("DISABLE_EXPERIMENTAL_WATCH_REMOVAL_WARNING",
-	"Disable the removal warning when using `pulumi watch`.")
-
-// TODO[https://github.com/pulumi/pulumi/issues/24717]: Remove when `pulumi watch` is removed.
-var DisableExperimentalWatchRemovalError = env.Bool("DISABLE_EXPERIMENTAL_WATCH_REMOVAL_ERROR",
-	"Re-enable `pulumi watch`, which errors by default before its removal.")
-
-// TODO[https://github.com/pulumi/pulumi/issues/24718]: Remove when `pulumi logs` is removed.
-var DisableExperimentalLogsRemovalWarning = env.Bool("DISABLE_EXPERIMENTAL_LOGS_REMOVAL_WARNING",
-	"Disable the removal warning when using `pulumi logs`.")
-
-// TODO[https://github.com/pulumi/pulumi/issues/24718]: Remove when `pulumi logs` is removed.
-var DisableExperimentalLogsRemovalError = env.Bool("DISABLE_EXPERIMENTAL_LOGS_REMOVAL_ERROR",
-	"Re-enable `pulumi logs`, which errors by default before its removal.")

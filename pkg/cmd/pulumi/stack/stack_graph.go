@@ -24,7 +24,6 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/graph"
@@ -91,7 +90,7 @@ func newStackGraphCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+			snap, err := s.Snapshot(ctx, backend.SecretsProvider(backend.DefaultLoginManager))
 			if err != nil {
 				return err
 			}
