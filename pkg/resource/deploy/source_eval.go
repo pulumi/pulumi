@@ -240,7 +240,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 }
 
 type evalSourceIterator struct {
-	mon         SourceResourceMonitor              // the resource monitor, per iterator.
+	mon         *resmon                            // the resource monitor, per iterator.
 	src         *evalSource                        // the owning eval source object.
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
@@ -478,8 +478,6 @@ type resmon struct {
 	componentAliases     map[resource.URN][]resource.URN
 	componentAliasesLock sync.Mutex
 }
-
-var _ SourceResourceMonitor = (*resmon)(nil)
 
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(
