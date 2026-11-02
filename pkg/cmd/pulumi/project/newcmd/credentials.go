@@ -20,11 +20,13 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -34,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -83,6 +86,10 @@ type credentialsPreflight struct {
 	cfg    config.Map
 	stdout io.Writer
 	opts   display.Options
+
+	// signIn offers to fix a credentials problem by signing the user in, and reports whether they
+	// did. It is nil when the preflight must not stop to ask, as under --yes.
+	signIn func(ctx context.Context, cp cloudProvider, problem *credentialsProblem) bool
 }
 
 // credentialsProblem is what the preflight reports to the user when a provider rejects
@@ -117,6 +124,14 @@ func preflightCloudCredentials(
 	defer contract.IgnoreClose(pctx)
 
 	pf := credentialsPreflight{host: host, pctx: pctx, cfg: ps.Config, stdout: args.stdout, opts: opts}
+	if !args.yes {
+		pf.signIn = awsSignIn{
+			cli: execCLI{}, cfg: ps.Config, stdout: args.stdout, getenv: os.Getenv,
+			confirm: func(prompt string) bool {
+				return ui.PromptUser(prompt, []string{"yes", "no"}, "yes", opts.Color) == "yes"
+			},
+		}.offer
+	}
 	for _, pkg := range packages {
 		if pkg.Kind != apitype.ResourcePlugin || pkg.ExtensionParameterization != nil {
 			continue
@@ -128,13 +143,37 @@ func preflightCloudCredentials(
 	}
 }
 
-// checkPackage loads a single provider, asks its schema whether it wants the credentials
-// check and, if so, runs it and prints any problem it finds.
+// checkPackage checks the credentials of a single provider and prints any problem it finds. When
+// the user signs in to fix the problem, it checks them again.
 func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.PackageDescriptor) {
+	cp, problem, ok := pf.checkOnce(ctx, desc)
+	if !ok || problem == nil {
+		return
+	}
+	pf.printWarning(cp, problem)
+	if pf.signIn == nil || !pf.signIn(ctx, cp, problem) {
+		return
+	}
+
+	if _, problem, ok = pf.checkOnce(ctx, desc); !ok || ctx.Err() != nil {
+		return
+	}
+	if problem != nil {
+		pf.printWarning(cp, problem)
+		return
+	}
+	fmt.Fprintf(pf.stdout, "%s credentials verified. %s\n\n", cp.displayName, cmdutil.EmojiOr("✅", ""))
+}
+
+// checkOnce loads a single provider and, if its schema opts into the credentials check, probes its
+// credentials. ok is false when the package is not checked.
+func (pf credentialsPreflight) checkOnce(
+	ctx context.Context, desc workspace.PackageDescriptor,
+) (cp cloudProvider, problem *credentialsProblem, ok bool) {
 	prov, err := pf.host.Provider(pf.pctx, desc.PluginDescriptor, env.Global())
 	if err != nil {
 		slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name, "err", err)
-		return
+		return cloudProvider{}, nil, false
 	}
 	defer contract.IgnoreClose(prov)
 
@@ -146,25 +185,23 @@ func (pf credentialsPreflight) checkPackage(ctx context.Context, desc workspace.
 		}})
 		if err != nil {
 			slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name, "err", err)
-			return
+			return cloudProvider{}, nil, false
 		}
 		if resp.Name != parameterization.Name || !resp.Version.EQ(parameterization.Version) {
 			slog.DebugContext(ctx, "skipping credentials check", "provider", desc.Name,
 				"err", fmt.Errorf("unexpected parameterization response: %s@%s", resp.Name, resp.Version))
-			return
+			return cloudProvider{}, nil, false
 		}
 		pkg = parameterization.Name
 		request.SubpackageName = resp.Name
 		request.SubpackageVersion = &resp.Version
 	}
 
-	cp, ok := cloudProviderFromSchema(ctx, prov, pkg, request)
+	cp, ok = cloudProviderFromSchema(ctx, prov, pkg, request)
 	if !ok {
-		return
+		return cloudProvider{}, nil, false
 	}
-	if problem := probeCredentials(ctx, cp, prov, providerConfigProperties(cp.pkg, pf.cfg)); problem != nil {
-		pf.printWarning(cp, problem)
-	}
+	return cp, probeCredentials(ctx, cp, prov, providerConfigProperties(cp.pkg, pf.cfg)), true
 }
 
 // cloudProviderFromSchema fetches the provider's schema and returns the preflight metadata it
