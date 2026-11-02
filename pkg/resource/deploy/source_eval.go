@@ -2434,17 +2434,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid parent URN: %s", err))
 	}
 
-	defer rm.registrations.MarkInFlight(parent)()
-
-	if parent != "" {
-		rm.resGoalsLock.Lock()
-		parentGoal, ok := rm.resGoals[parent]
-		if ok {
-			inheritFromParent(req, parentGoal)
-		}
-		rm.resGoalsLock.Unlock()
-	}
-
 	// Custom resources must have a three-part type so that we can 1) identify if they are providers and 2) retrieve the
 	// provider responsible for managing a particular resource (based on the type's Package).
 	var t tokens.Type
@@ -2456,6 +2445,17 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	} else {
 		// Component resources may have any format type.
 		t = tokens.Type(req.GetType())
+	}
+
+	defer rm.registrations.MarkInFlight(parent)()
+
+	if parent != "" {
+		rm.resGoalsLock.Lock()
+		parentGoal, ok := rm.resGoals[parent]
+		if ok {
+			inheritFromParent(req, parentGoal)
+		}
+		rm.resGoalsLock.Unlock()
 	}
 
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
