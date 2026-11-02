@@ -148,10 +148,6 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 	}
 
 	acct.BackendURL = backendURL
-	if err := esc.checkBackendURL(acct.BackendURL); err != nil {
-		return err
-	}
-
 	ok, err := esc.getCachedCredentials(ctx, acct.BackendURL, acct.Insecure)
 	if err != nil {
 		return fmt.Errorf("getting credentials: %w", err)
