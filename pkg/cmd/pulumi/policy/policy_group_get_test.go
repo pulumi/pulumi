@@ -291,3 +291,43 @@ func TestPolicyGroupGet_AgentPoolPointer(t *testing.T) {
 		})
 	}
 }
+
+func TestPolicyGroupGet_DefaultOutput_MatchRules(t *testing.T) {
+	t.Parallel()
+
+	group := `{
+		"name": "tagged",
+		"isOrgDefault": false,
+		"entityType": "stacks",
+		"mode": "audit",
+		"stacks": [{"name": "prod", "routingProject": "web"}],
+		"appliedPolicyPacks": [],
+		"accounts": [],
+		"stackMatchRule": ` + binaryJSON("Or",
+		binaryJSON("And", tagEqualsJSON(stackCtxJSON, "env", "prod"), notJSON(hasTagJSON(stackCtxJSON, "temp"))),
+		hasTagJSON(stackCtxJSON, "owner")) + `,
+		"accountMatchRule": {
+			"__type": "PermissionExpressionIn",
+			"target": {"__type": "PermissionExpressionTag", "context": ` + accountCtxJSON + `, "key": "env"},
+			"values": {"__type": "PermissionSetExpressionString", "values": ["prod"]}
+		}
+	}`
+	var resp apitype.GetPolicyGroupResponse
+	require.NoError(t, json.Unmarshal([]byte(group), &resp))
+
+	var buf bytes.Buffer
+	require.NoError(t, renderPolicyGroupGetText(&buf, resp))
+	assert.Equal(t, `Name:                  tagged
+Org default:           no
+Mode:                  audit
+Applied policy packs:  0
+Stack rule:            env=prod,!temp OR owner
+Stacks:                1
+  - web/prod
+Account rule:          {"__type":"PermissionExpressionIn",`+
+		`"target":{"__type":"PermissionExpressionTag",`+
+		`"context":{"__type":"PermissionExpressionInsightsAccount"},"key":"env"},`+
+		`"values":{"__type":"PermissionSetExpressionString","values":["prod"]}}
+Accounts:              0
+`, buf.String())
+}
