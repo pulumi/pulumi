@@ -41,6 +41,11 @@ const (
 type ProviderSource interface {
 	// GetProvider fetches the provider plugin for the given reference.
 	GetProvider(ref providers.Reference) (plugin.Provider, bool)
+	// ParameterizeExtension parameterizes the provider for the given reference with ext. The provider receives
+	// one Parameterize call per (provider, extension) pair, however many callers ask for it.
+	ParameterizeExtension(
+		ctx context.Context, ref providers.Reference, extRef apitype.ExtensionRef, ext apitype.Extension,
+	) error
 }
 
 // A Source can generate a new set of resources that the planner will process accordingly.

@@ -284,6 +284,12 @@ func (s *testProviderSource) GetProvider(ref sdkproviders.Reference) (plugin.Pro
 	return provider, ok
 }
 
+func (s *testProviderSource) ParameterizeExtension(
+	context.Context, sdkproviders.Reference, apitype.ExtensionRef, apitype.Extension,
+) error {
+	return errors.New("testProviderSource does not support extensions")
+}
+
 func newProviderEvent(pkg, name string, inputs resource.PropertyMap, parent resource.URN) RegisterResourceEvent {
 	if inputs == nil {
 		inputs = resource.PropertyMap{}
@@ -2644,6 +2650,12 @@ type providerSourceMock struct {
 
 func (ps *providerSourceMock) GetProvider(ref sdkproviders.Reference) (plugin.Provider, bool) {
 	return ps.Provider, ps.Provider != nil
+}
+
+func (ps *providerSourceMock) ParameterizeExtension(
+	context.Context, sdkproviders.Reference, apitype.ExtensionRef, apitype.Extension,
+) error {
+	return errors.New("providerSourceMock does not support extensions")
 }
 
 var _ ProviderSource = (*providerSourceMock)(nil)
