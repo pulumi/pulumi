@@ -124,6 +124,9 @@ func renderPolicyExceptionGetText(w io.Writer, e apitype.PolicyExceptionInfo) er
 		}
 		fmt.Fprintln(w)
 	}
+	if !e.ExpiresAt.IsZero() {
+		fmt.Fprintf(w, "%-14s %s\n", "Expires:", e.ExpiresAt.UTC().Format(time.RFC3339))
+	}
 
 	fmt.Fprintln(w, "\nPolicy Pack exceptions configuration:")
 	return ui.FprintJSON(w, e.PolicyException)

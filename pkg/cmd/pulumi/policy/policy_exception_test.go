@@ -80,7 +80,12 @@ func (m *mockPolicyExceptionClient) CreatePolicyException(
 		return apitype.PolicyExceptionInfo{}, false,
 			&apitype.ErrorResponse{Code: http.StatusConflict, Message: "requires approval"}
 	}
-	return apitype.PolicyExceptionInfo{ID: "EXC-7"}, m.existed, cmp.Or(m.createErr, m.err)
+	created := apitype.PolicyExceptionInfo{ID: "EXC-7"}
+	if req.ExpiresInSeconds != 0 {
+		createdAt := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+		created.ExpiresAt = createdAt.Add(time.Duration(req.ExpiresInSeconds) * time.Second)
+	}
+	return created, m.existed, cmp.Or(m.createErr, m.err)
 }
 
 func (m *mockPolicyExceptionClient) CreatePolicyExceptionDraft(
@@ -189,9 +194,12 @@ func samplePolicyException(id string) apitype.PolicyExceptionInfo {
 func TestPolicyExceptionList(t *testing.T) {
 	t.Parallel()
 
+	expiring := samplePolicyException("EXC-2")
+	expiring.ExpiresAt = time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
+
 	var errBuf bytes.Buffer
 	c := &mockPolicyExceptionClient{pages: []apitype.ListPolicyExceptionsResponse{
-		{Exceptions: []apitype.PolicyExceptionInfo{samplePolicyException("EXC-2")}, ContinuationToken: "next"},
+		{Exceptions: []apitype.PolicyExceptionInfo{expiring}, ContinuationToken: "next"},
 		{Exceptions: []apitype.PolicyExceptionInfo{samplePolicyException("EXC-1")}},
 	}}
 	var buf bytes.Buffer
@@ -216,10 +224,28 @@ func TestPolicyExceptionList(t *testing.T) {
 	next := query
 	next.ContinuationToken = "next"
 	assert.Equal(t, []client.ListPolicyExceptionsOptions{query, next}, c.gotListOpts)
-	want := `┌───────┬──────────────┬────────┬──────────────────────────────────┬─────────┬───────────────────────────┐
+	// The table starts on the next line, to stay under the line limit.
+	want := `
+┌───────┬──────────────┬────────┬──────────────────────────────────┬─────────┬───────────────────────────┬────────────┐
+│ ID    │ POLICY PACK  │ STATUS │ POLICIES                         │ TARGETS │ REASON                    │ EXPIRES    │
+├───────┼──────────────┼────────┼──────────────────────────────────┼─────────┼───────────────────────────┼────────────┤
+│ EXC-2 │ aws-security │ active │ required-tags, s3-no-public-read │       2 │ Logs are public by design │ 2026-11-09 │
+│ EXC-1 │ aws-security │ active │ required-tags, s3-no-public-read │       2 │ Logs are public by design │            │
+└───────┴──────────────┴────────┴──────────────────────────────────┴─────────┴───────────────────────────┴────────────┘
+`
+	assert.Equal(t, want, "\n"+buf.String())
+
+	// Without an expiring exception, there's no EXPIRES column.
+	c = &mockPolicyExceptionClient{pages: []apitype.ListPolicyExceptionsResponse{
+		{Exceptions: []apitype.PolicyExceptionInfo{samplePolicyException("EXC-1")}},
+	}}
+	buf.Reset()
+	err = runPolicyExceptionList(t.Context(), &buf, &errBuf, stubPolicyExceptionFactory(c, "acme"),
+		policyExceptionListArgs{outputFormat: defaultPolicyExceptionListOutputFormat()})
+	require.NoError(t, err)
+	want = `┌───────┬──────────────┬────────┬──────────────────────────────────┬─────────┬───────────────────────────┐
 │ ID    │ POLICY PACK  │ STATUS │ POLICIES                         │ TARGETS │ REASON                    │
 ├───────┼──────────────┼────────┼──────────────────────────────────┼─────────┼───────────────────────────┤
-│ EXC-2 │ aws-security │ active │ required-tags, s3-no-public-read │       2 │ Logs are public by design │
 │ EXC-1 │ aws-security │ active │ required-tags, s3-no-public-read │       2 │ Logs are public by design │
 └───────┴──────────────┴────────┴──────────────────────────────────┴─────────┴───────────────────────────┘
 `
@@ -305,6 +331,7 @@ func TestPolicyExceptionGet(t *testing.T) {
 	removed.RemovedAt = time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC)
 	removed.ChangeRequestID = "cr-1"
 	removed.Match = removed.Match[:1]
+	removed.ExpiresAt = time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC)
 	c := &mockPolicyExceptionClient{exception: removed}
 	var buf bytes.Buffer
 	err := runPolicyExceptionGet(t.Context(), &buf, stubPolicyExceptionFactory(c, "acme"), "EXC-3",
@@ -317,6 +344,7 @@ Status:        removed
 Requested in:  change request cr-1
 Created:       2026-10-01T12:00:00Z by alice
 Removed:       2026-10-02T09:30:00Z by bob
+Expires:       2026-10-09T00:00:00Z
 
 Policy Pack exceptions configuration:
 {

@@ -145,6 +145,8 @@ type PolicyExceptionInfo struct {
 	RemovedBy UserInfo `json:"removedBy,omitzero"`
 	// When the exception was removed. Zero when it's active.
 	RemovedAt time.Time `json:"removedAt,omitzero"`
+	// When the exception expires, after which it's removed. Zero when it never expires.
+	ExpiresAt time.Time `json:"expiresAt,omitzero"`
 }
 
 // CreatePolicyExceptionRequest creates a policy exception in Pulumi Cloud.
@@ -153,6 +155,8 @@ type CreatePolicyExceptionRequest struct {
 
 	// The name of the Policy Pack the exception applies to.
 	PolicyPack string `json:"policyPack"`
+	// How long after it's created the exception expires, in whole hours of seconds. Zero when it never expires.
+	ExpiresInSeconds int64 `json:"expiresInSeconds,omitzero"`
 }
 
 // PolicyExceptionDraft is a policy exception requested in a change request, which creates it once approved.

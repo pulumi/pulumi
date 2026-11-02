@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
@@ -154,7 +155,12 @@ func renderPolicyExceptionListTable(w, stderr io.Writer, exceptions []apitype.Po
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.SetStyle(table.StyleLight)
-	t.AppendHeader(table.Row{"ID", "POLICY PACK", "STATUS", "POLICIES", "TARGETS", "REASON"})
+	expires := slices.ContainsFunc(exceptions, func(e apitype.PolicyExceptionInfo) bool { return !e.ExpiresAt.IsZero() })
+	header := table.Row{"ID", "POLICY PACK", "STATUS", "POLICIES", "TARGETS", "REASON"}
+	if expires {
+		header = append(header, "EXPIRES")
+	}
+	t.AppendHeader(header)
 	for _, e := range exceptions {
 		var policies []string
 		var targets []string
@@ -164,14 +170,22 @@ func renderPolicyExceptionListTable(w, stderr io.Writer, exceptions []apitype.Po
 		}
 		slices.Sort(policies)
 		slices.Sort(targets)
-		t.AppendRow(table.Row{
+		row := table.Row{
 			e.ID,
 			e.PolicyPack,
 			e.Status,
 			strings.Join(slices.Compact(policies), ", "),
 			len(slices.Compact(targets)),
 			truncateMessage(e.Reason, policyIssueMessageMax),
-		})
+		}
+		if expires {
+			expiry := ""
+			if !e.ExpiresAt.IsZero() {
+				expiry = e.ExpiresAt.UTC().Format(time.DateOnly)
+			}
+			row = append(row, expiry)
+		}
+		t.AppendRow(row)
 	}
 	t.Render()
 	return nil

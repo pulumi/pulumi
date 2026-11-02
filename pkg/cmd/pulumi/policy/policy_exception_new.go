@@ -26,6 +26,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
@@ -75,6 +76,7 @@ type policyExceptionNewArgs struct {
 	levels       []string
 	file         string
 	reason       string
+	expiresIn    string
 	dryRun       bool
 	draft        bool
 	yes          bool
@@ -119,6 +121,8 @@ type policyExceptionNewResult struct {
 	ChangeRequestStatus string `json:"changeRequestStatus,omitempty"`
 	// Updated is set when Pulumi Cloud returned an existing exception or change request for the same request.
 	Updated bool `json:"updated,omitempty"`
+	// ExpiresAt is when the created exception expires. It's zero when it never expires, or it's still requested.
+	ExpiresAt time.Time `json:"expiresAt,omitzero"`
 	// URL is the console page of the exception, or of the change request that requested it.
 	URL    string `json:"url,omitempty"`
 	DryRun bool   `json:"dryRun,omitempty"`
@@ -161,6 +165,7 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 			"When the organization requires approval for policy exceptions, or --draft is passed, the\n" +
 			"command creates a change request for the exception instead and submits it, with the reason as\n" +
 			"its description. The exception is created once the change request is approved and applied.\n" +
+			"With --expires-in, the exception is removed once it expires.\n" +
 			"\n" +
 			"The command prints a link to the exception, or to its change request. --output json prints the\n" +
 			"result, with the exception's ID, to stdout. --dry-run --output json prints the run's violations,\n" +
@@ -179,6 +184,8 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 			"  pulumi policy exception new aws-security --dry-run --output json | jq '.violations'\n\n" +
 			"  # Create an exception from a file, or from stdin with -\n" +
 			"  pulumi policy exception new aws-security --file exception.yaml\n\n" +
+			"  # Exempt a policy for 30 days\n" +
+			"  pulumi policy exception new aws-security --policy required-tags --reason \"LOG-31\" --expires-in 30d\n\n" +
 			"  # Request the exception in a change request, even if no approval is required\n" +
 			"  pulumi policy exception new aws-security --policy required-tags --reason \"LOG-31\" --draft\n\n" +
 			"  # See where violations are recorded, or the findings of a stack\n" +
@@ -219,6 +226,8 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 	flags.StringVar(&args.file, "file", "",
 		"Read the exception from this JSON or YAML file, or from stdin with -; its policyPack is the default")
 	flags.StringVar(&args.reason, "reason", "", "Why it's safe to exempt the violations")
+	flags.StringVar(&args.expiresIn, "expires-in", "",
+		"Expire the exception this long after it's created, in days (7d) or hours (12h); by default it never expires")
 	flags.BoolVar(&args.dryRun, "dry-run", false, "Show the violations and the exception, without creating it")
 	flags.BoolVar(&args.draft, "draft", false,
 		"Request the exception in a change request, even if the organization doesn't require approval")
@@ -258,6 +267,10 @@ func runPolicyExceptionNew(
 	}
 	if slices.Contains(args.levels, allLevels) {
 		args.levels = nil
+	}
+	expiresIn, err := parsePolicyExceptionExpiresIn(args.expiresIn)
+	if err != nil {
+		return err
 	}
 	render := func(result policyExceptionNewResult) error {
 		return args.outputFormat.Get()(stdout, stderr, result)
@@ -354,6 +367,7 @@ func runPolicyExceptionNew(
 	result.OrganizationName = org
 	result.Exception.PolicyPack = pack
 	result.Exception.Reason = cmp.Or(args.reason, result.Exception.Reason)
+	result.Exception.ExpiresInSeconds = int64(expiresIn / time.Second)
 
 	if args.dryRun {
 		result.DryRun = true
@@ -381,6 +395,7 @@ func runPolicyExceptionNew(
 		if err := ui.FprintJSON(stderr, result.Exception.PolicyException); err != nil {
 			return err
 		}
+		fprintPolicyExceptionExpiry(stderr, result)
 		answer, err := ui.PromptUserErr("Create this policy exception?", []string{"yes", "no"}, "yes", opts.Color)
 		if err != nil || answer != "yes" {
 			return backenderr.CancelledError{Operation: "creating the policy exception"}
@@ -401,7 +416,7 @@ func createPolicyException(
 	if !draft {
 		created, existed, err := c.CreatePolicyException(ctx, org, result.Exception)
 		if err == nil {
-			result.ID, result.Updated = created.ID, existed
+			result.ID, result.Updated, result.ExpiresAt = created.ID, existed, created.ExpiresAt
 			result.URL = policyExceptionConsoleURL(c.URL(), org, result.Exception.Match, created.ID)
 			return nil
 		}
@@ -786,6 +801,7 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 		default:
 			fmt.Fprintln(stderr, "Exception will be applied after the request is approved.")
 		}
+		fprintPolicyExceptionExpiry(stderr, r)
 		return nil
 	}
 
@@ -821,5 +837,44 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 		return nil
 	}
 	fmt.Fprintln(stdout, "\nPolicy Pack exceptions configuration:")
-	return ui.FprintJSON(stdout, r.Exception.PolicyException)
+	if err := ui.FprintJSON(stdout, r.Exception.PolicyException); err != nil {
+		return err
+	}
+	fprintPolicyExceptionExpiry(stdout, r)
+	return nil
+}
+
+// fprintPolicyExceptionExpiry prints when a created exception expires, or how long after it's created it will.
+func fprintPolicyExceptionExpiry(w io.Writer, r policyExceptionNewResult) {
+	if !r.ExpiresAt.IsZero() {
+		fmt.Fprintf(w, "Expires: %s\n", r.ExpiresAt.UTC().Format(time.RFC3339))
+		return
+	}
+	seconds := r.Exception.ExpiresInSeconds
+	if seconds <= 0 {
+		return
+	}
+	n, unit := seconds/(24*3600), "day"
+	if seconds%(24*3600) != 0 {
+		n, unit = seconds/3600, "hour"
+	}
+	if n != 1 {
+		unit += "s"
+	}
+	fmt.Fprintf(w, "Expires: %d %s after it's created\n", n, unit)
+}
+
+// parsePolicyExceptionExpiresIn reads days, like 7d, or hours, like 12h. Pulumi Cloud takes whole hours only.
+func parsePolicyExceptionExpiresIn(s string) (time.Duration, error) {
+	if s == "" {
+		return 0, nil
+	}
+	unit := map[string]time.Duration{"d": 24 * time.Hour, "h": time.Hour}[strings.ToLower(s[len(s)-1:])]
+	n, err := strconv.Atoi(s[:len(s)-1])
+	if unit == 0 || err != nil || n <= 0 {
+		return 0, cmdCmd.ConfigurationError{
+			Message: fmt.Sprintf("invalid --expires-in %q: use days, like 7d, or hours, like 12h", s),
+		}
+	}
+	return time.Duration(n) * unit, nil
 }

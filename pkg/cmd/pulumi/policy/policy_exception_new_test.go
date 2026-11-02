@@ -18,9 +18,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -633,4 +635,52 @@ func TestPolicyExceptionNew_Draft(t *testing.T) {
 		policyPack: "aws", reason: "x", policies: []string{"s3-no-public-read"}, draft: true,
 	})
 	assert.EqualError(t, err, "submitting change request cr-1: [400] bad")
+}
+
+func TestPolicyExceptionNew_ExpiresIn(t *testing.T) {
+	t.Parallel()
+
+	c := twoBuckets()
+	_, stderr, err := runNew(t, c, "", policyExceptionNewArgs{
+		policyPack: "aws", reason: "x", policies: []string{"s3-no-public-read"}, expiresIn: "7d",
+	})
+	require.NoError(t, err)
+	require.Len(t, c.gotCreated, 1)
+	assert.Equal(t, int64(7*24*3600), c.gotCreated[0].ExpiresInSeconds)
+	assert.Equal(t, "Created policy exception EXC-7: http://localhost:3000/acme/web/prod?exception=EXC-7\n"+
+		"Expires: 2026-10-08T12:00:00Z\n", stderr)
+
+	// A request's exception expires counting from when it's approved and created.
+	c = twoBuckets()
+	c.crStatus = "pending"
+	_, stderr, err = runNew(t, c, "", policyExceptionNewArgs{
+		policyPack: "aws", reason: "x", policies: []string{"s3-no-public-read"}, expiresIn: "1d", draft: true,
+	})
+	require.NoError(t, err)
+	require.Len(t, c.gotDrafts, 1)
+	assert.Equal(t, int64(24*3600), c.gotDrafts[0].ExpiresInSeconds)
+	assert.True(t, strings.HasSuffix(stderr, "approved.\nExpires: 1 day after it's created\n"), stderr)
+
+	c = twoBuckets()
+	stdout, _, err := runNew(t, c, "", policyExceptionNewArgs{
+		policyPack: "aws", reason: "x", policies: []string{"s3-no-public-read"}, expiresIn: "36h", dryRun: true,
+	})
+	require.NoError(t, err)
+	assert.True(t, strings.HasSuffix(stdout, "]\n}\nExpires: 36 hours after it's created\n"), stdout)
+}
+
+func TestParsePolicyExceptionExpiresIn(t *testing.T) {
+	t.Parallel()
+
+	for s, want := range map[string]time.Duration{
+		"": 0, "7d": 7 * 24 * time.Hour, "12h": 12 * time.Hour, "2D": 48 * time.Hour,
+	} {
+		got, err := parsePolicyExceptionExpiresIn(s)
+		require.NoError(t, err, s)
+		assert.Equal(t, want, got, s)
+	}
+	for _, s := range []string{"0d", "-1h", "7", "x", "d", "1.5d", "90m", "1h30m"} {
+		_, err := parsePolicyExceptionExpiresIn(s)
+		assert.EqualError(t, err, fmt.Sprintf("invalid --expires-in %q: use days, like 7d, or hours, like 12h", s))
+	}
 }
