@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Deprecated optional input type properties no longer fire spurious deprecation warnings
