@@ -42,7 +42,7 @@ const (
 	confirmChange = "Change these values"
 )
 
-var errConfirmationInterrupted = errors.New("no project created; please use `pulumi new` to start again")
+var errNoProjectCreated = errors.New("no project created; please use `pulumi new` to start again")
 
 // setupAnswers is what `pulumi new` learned from its questions, through either the guided
 // confirmation or the sequential prompts.
@@ -120,7 +120,8 @@ func (c *setupAnswers) saveConfig(
 		args.templateNameOrURL, template, args.configArray, args.yes, args.configPath, opts, "")
 }
 
-// askSetupQuestions asks what `pulumi new` needs to know about the project.
+// askSetupQuestions asks what `pulumi new` needs to know about the project. Nothing has been written
+// when it returns, so a cancelled question leaves nothing behind.
 func askSetupQuestions(
 	ctx context.Context, b backend.Backend, orgName string, template cmdTemplates.ProjectTemplate,
 	args newArgs, opts display.Options, cwd string,
@@ -288,7 +289,7 @@ func confirmGuidedValues(
 
 	accepted, err := askConfirmation(args.stdout, opts, args.selectOne, rows, c.configRows())
 	if err != nil {
-		return nil, friendlyInterrupt(err, errConfirmationInterrupted)
+		return nil, err
 	}
 	if accepted {
 		return c, nil

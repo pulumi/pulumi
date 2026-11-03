@@ -291,7 +291,7 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 
 	answers, err := askSetupQuestions(ctx, b, orgName, template, args, opts, cwd)
 	if err != nil {
-		return err
+		return friendlyInterrupt(err, errNoProjectCreated)
 	}
 	args.name, args.description = answers.name, answers.description
 
