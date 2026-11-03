@@ -210,6 +210,28 @@ func TestTreeRenderCallsFrameOnTick(t *testing.T) {
 	assert.Contains(t, terminalText, strings.Repeat("a", 70))
 }
 
+func TestTreeRenderShowsProgressWithSystemMessages(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	term := terminal.NewMockTerminal(&buf, 80, 24, true)
+	treeRenderer, display := createRendererAndDisplay(term, true)
+
+	addManySystemEvents(display, 1, "Environment app/dev: local changes based on revision 3")
+	display.handleProgressEvent(engine.ProgressEventPayload{
+		Type:      engine.PluginDownload,
+		ID:        "aws",
+		Message:   "Downloading plugin aws",
+		Completed: 1,
+		Total:     2,
+	})
+	treeRenderer.frame(false, false)
+
+	terminalText := buf.String()
+	assert.Contains(t, terminalText, "Environment app/dev: local changes based on revision 3")
+	assert.Contains(t, terminalText, "Downloading plugin aws")
+}
+
 // Tests that when the tree renderer correctly clears stale rows when it renders
 // a frame with fewer rows than the one which preceded it.
 func TestTreeRenderRewindsCorrectly(t *testing.T) {

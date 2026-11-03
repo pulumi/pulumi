@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
+	"log/slog"
 	"os"
 	"slices"
 	"strings"
@@ -26,11 +26,13 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/stackenv"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -153,8 +155,11 @@ func getStackConfigurationFromProjectStack(
 		printESCDiagnostics(os.Stderr, diags) //nolint:forbidigo
 		return backend.StackConfiguration{}, errors.New("opening environment: too many errors")
 	}
+	var managedRevision *apitype.UpdateProgramEnvironment
+	var managedNotice string
 	if managedEnv != nil {
-		printManagedEnvironmentNotices(os.Stderr, stack, managedEnv) //nolint:forbidigo
+		managedRevision = managedEnv.update
+		managedNotice = managedEnvironmentNotice(stack, managedEnv)
 	}
 
 	var pulumiEnv esc.Value
@@ -187,22 +192,24 @@ func getStackConfigurationFromProjectStack(
 	// the correct decrypter for the diy backend would involve prompting for a passphrase)
 	if !needsCrypter(workspaceStack.Config, pulumiEnv) {
 		return backend.StackConfiguration{
-			EnvironmentImports: imports,
-			Environment:        pulumiEnv,
-			Config:             workspaceStack.Config,
-			Decrypter:          config.NewPanicCrypter(),
-			ManagedEnvironment: managedEnv,
+			EnvironmentImports:       imports,
+			Environment:              pulumiEnv,
+			Config:                   workspaceStack.Config,
+			Decrypter:                config.NewPanicCrypter(),
+			ManagedEnvironment:       managedRevision,
+			ManagedEnvironmentNotice: managedNotice,
 		}, nil
 	}
 
 	crypter := sm.Decrypter()
 
 	return backend.StackConfiguration{
-		EnvironmentImports: imports,
-		Environment:        pulumiEnv,
-		Config:             workspaceStack.Config,
-		Decrypter:          crypter,
-		ManagedEnvironment: managedEnv,
+		EnvironmentImports:       imports,
+		Environment:              pulumiEnv,
+		Config:                   workspaceStack.Config,
+		Decrypter:                crypter,
+		ManagedEnvironment:       managedRevision,
+		ManagedEnvironmentNotice: managedNotice,
 	}, nil
 }
 
@@ -250,16 +257,27 @@ func needsCrypter(cfg config.Map, env esc.Value) bool {
 	return cfg.HasSecureValue() || hasSecrets(env)
 }
 
-func printManagedEnvironmentNotices(
-	w io.Writer,
-	stack backend.Stack,
-	managedEnv *apitype.UpdateProgramEnvironment,
-) {
-	if managedEnv.ChangeRequestID != "" {
-		fmt.Fprintf(w,
-			"using local changes to environment %s (based on revision %d); an update publishes them, a preview does not\n",
-			stack.ConfigLocation().ManagedEnvironment, managedEnv.BaseRevision)
+type managedEnvironment struct {
+	update    *apitype.UpdateProgramEnvironment
+	local     []byte
+	published []byte
+}
+
+func managedEnvironmentNotice(stack backend.Stack, managedEnv *managedEnvironment) string {
+	if managedEnv.update.ChangeRequestID == "" {
+		return ""
 	}
+	name, revision := stack.ConfigLocation().ManagedEnvironment, managedEnv.update.BaseRevision
+	changes, err := stackenv.DiffDefinitions(managedEnv.published, managedEnv.local)
+	if err != nil {
+		slog.Debug("diffing managed environment definitions", "environment", name, "err", err)
+		return fmt.Sprintf(
+			"using local changes to environment %s (based on revision %d); an update publishes them, a preview does not\n",
+			name, revision)
+	}
+	var notice strings.Builder
+	stackenv.WriteDefinitionDiff(&notice, colors.Raw, name, revision, changes)
+	return notice.String()
 }
 
 func openStackEnv(
@@ -277,7 +295,7 @@ func openStackEnvWithManaged(
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
-) (*esc.Environment, []apitype.EnvironmentDiagnostic, *apitype.UpdateProgramEnvironment, error) {
+) (*esc.Environment, []apitype.EnvironmentDiagnostic, *managedEnvironment, error) {
 	loc := stack.ConfigLocation()
 	if loc.ManagedEnvironment == "" {
 		env, diags, err := openUnmanagedStackEnv(ctx, stack, workspaceStack, envOverrides)
@@ -301,10 +319,14 @@ func openStackEnvWithManaged(
 	if err != nil || len(diags) != 0 {
 		return nil, diags, nil, err
 	}
-	return evaluation.Environment, nil, &apitype.UpdateProgramEnvironment{
-		BaseRevision:    evaluation.BaseRevision,
-		ChangeRequestID: evaluation.ChangeRequestID,
-		DraftRevision:   evaluation.DraftRevision,
+	return evaluation.Environment, nil, &managedEnvironment{
+		update: &apitype.UpdateProgramEnvironment{
+			BaseRevision:    evaluation.BaseRevision,
+			ChangeRequestID: evaluation.ChangeRequestID,
+			DraftRevision:   evaluation.DraftRevision,
+		},
+		local:     definition,
+		published: evaluation.PublishedDefinition,
 	}, nil
 }
 

@@ -96,10 +96,11 @@ func (b *cloudBackend) EvaluateManagedEnvironment(
 		return nil, convertESCDiags(diags), err
 	}
 	return &backend.ManagedEnvironmentEvaluation{
-		Environment:     evaluation.Environment,
-		BaseRevision:    evaluation.BaseRevision,
-		ChangeRequestID: evaluation.ChangeRequestID,
-		DraftRevision:   evaluation.DraftRevision,
+		Environment:         evaluation.Environment,
+		BaseRevision:        evaluation.BaseRevision,
+		PublishedDefinition: evaluation.PublishedDefinition,
+		ChangeRequestID:     evaluation.ChangeRequestID,
+		DraftRevision:       evaluation.DraftRevision,
 	}, convertESCDiags(diags), err
 }
 

@@ -318,6 +318,9 @@ type ManagedEnvironmentEvaluation struct {
 	Environment *esc.Environment
 	// BaseRevision is the published revision the local definition was compared with.
 	BaseRevision int
+	// PublishedDefinition is the definition of BaseRevision as the service returned it, which the CLI diffs the local
+	// definition against. Always set.
+	PublishedDefinition []byte
 	// ChangeRequestID is set when the definition differs from BaseRevision.
 	ChangeRequestID string
 	// DraftRevision is the change request revision that was evaluated. The update applies exactly this revision and
@@ -395,6 +398,10 @@ type StackConfiguration struct {
 	// ManagedEnvironment is the revision or draft of the stack's managed ESC environment that Environment came from;
 	// nil for unmanaged stacks.
 	ManagedEnvironment *apitype.UpdateProgramEnvironment
+	// ManagedEnvironmentNotice is text with colorization tags that every engine operation on the stack, previews
+	// included, sends as a stdout event before the engine runs. It is empty unless ManagedEnvironment.ChangeRequestID
+	// is set.
+	ManagedEnvironmentNotice string
 }
 
 // LatestConfiguration holds the configuration retrieved from the most recent deployment.
