@@ -20,6 +20,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -29,10 +30,21 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Ctrl-C is simulated the way the real prompts report it; see isCancelled.
+
+const cancelConfigTemplateYAML = `name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime: yaml
+template:
+  description: A cancellation test template
+  config:
+    aws:region:
+      description: The AWS region to deploy into
+`
 
 // cancellingPrompt answers text prompts with their defaults and cancels the first prompt whose
 // valueType contains cancelAt after skipping skip of them, along with any prompt asked after that.
@@ -119,6 +131,12 @@ func TestNewCancelLeavesNothingBehind(t *testing.T) {
 			name:           "named template/stack name",
 			template:       localTemplateYAML,
 			cancelAt:       "Stack name",
+			runtimeOptions: runtimeOptionsNone,
+		},
+		{
+			name:           "named template/config value",
+			template:       cancelConfigTemplateYAML,
+			cancelAt:       "(aws:region)",
 			runtimeOptions: runtimeOptionsNone,
 		},
 	}
@@ -228,4 +246,44 @@ func TestGuidedNewDeclineValidatesStackNameAgainstNewProject(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"my-org/prod"}, *created)
+}
+
+// Config asked before the files are copied must still reach the new stack's config file.
+//
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestNewNamedTemplateSavesConfigAskedUpFront(t *testing.T) {
+	dir := tempProjectDir(t)
+	t.Chdir(dir)
+	templateArg := writeLocalTemplate(t, t.TempDir(), "template", cancelConfigTemplateYAML)
+
+	b, created := guidedNewTestBackend(t)
+	mockCurrentBackend(t, b)
+
+	var prompts []string
+	answers := map[string]string{"The AWS region to deploy into (aws:region)": "us-west-2"}
+	var out bytes.Buffer
+	err := runNew(t.Context(), newArgs{
+		interactive:          true,
+		templateNameOrURL:    templateArg,
+		configArray:          []string{"aws:profile=work"},
+		prompt:               countingPrompt(answers, &prompts),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		secretsProvider:      "default",
+		stdout:               &out,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"my-org/dev"}, *created)
+	assert.Contains(t, out.String(), "Saved config")
+
+	proj := loadProject(t, dir)
+	projStack, err := workspace.LoadProjectStack(nil /*sink*/, proj, filepath.Join(dir, "Pulumi.dev.yaml"))
+	require.NoError(t, err)
+	for key, want := range map[string]string{"region": "us-west-2", "profile": "work"} {
+		v, ok := projStack.Config[config.MustMakeKey("aws", key)]
+		require.True(t, ok, "aws:%s must be saved", key)
+		got, err := v.Value(config.NopDecrypter)
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	}
 }
