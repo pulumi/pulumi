@@ -114,6 +114,12 @@ func TestNewCancelLeavesNothingBehind(t *testing.T) {
 			selects:        []any{"AWS", "Python", terminal.InterruptErr},
 			runtimeOptions: runtimeOptionsNone,
 		},
+		{
+			name:           "named template/stack name",
+			template:       localTemplateYAML,
+			cancelAt:       "Stack name",
+			runtimeOptions: runtimeOptionsNone,
+		},
 	}
 
 	for _, tc := range cases {
