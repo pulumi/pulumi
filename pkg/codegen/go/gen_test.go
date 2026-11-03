@@ -545,6 +545,11 @@ func TestTitle(t *testing.T) {
 	assert.Equal("_3gppInfos", Title("3gppInfos"))
 	assert.Equal("_3gppRaw", Title("3gppRaw"))
 	assert.Equal("_0foo", Title("0foo"))
+	assert.Equal("Timestamp", Title("@timestamp"))
+	assert.Equal("EntityName", Title("entity.name"))
+	assert.Equal("FooBar", Title("foo bar"))
+	assert.Equal("_id", Title("_id"))
+	assert.Equal("__self__", Title("__self__"))
 }
 
 func TestRegressTypeDuplicatesInChunking(t *testing.T) {
