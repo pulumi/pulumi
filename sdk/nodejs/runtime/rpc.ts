@@ -389,6 +389,12 @@ export const specialOutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4";
 
 /** @internal */
 export function serializeSecretValue(value: any): any {
+    if (isRpcSecret(value)) {
+        // Already a secret envelope. Wrapping it again would nest secrets, and every
+        // extra envelope roughly doubles the JSON-escaped size of the value in the
+        // statefile without making it any more secret.
+        return value;
+    }
     return {
         [specialSigKey]: specialSecretSig,
         // coerce 'undefined' to 'null' as required by the protobuf system.
@@ -667,13 +673,14 @@ export function isRpcSecret(obj: any): boolean {
 
 /**
  * Returns the underlying value for a secret, or the value itself if it was not
- * a secret.
+ * a secret. Consecutive secret envelopes, which can occur in values produced by
+ * older engines or providers, are all removed.
  */
 export function unwrapRpcSecret(obj: any): any {
-    if (!isRpcSecret(obj)) {
-        return obj;
+    while (isRpcSecret(obj)) {
+        obj = obj.value;
     }
-    return obj.value;
+    return obj;
 }
 
 function isPrimitive(value: unknown): boolean {
@@ -705,7 +712,10 @@ export function unwrapSecretValues(value: unknown): [unknown, boolean] {
     if (isPrimitive(value)) {
         return [value, false];
     } else if (isRpcSecret(value)) {
-        return [unwrapRpcSecret(value), true];
+        // Recurse into the payload so that secrets nested anywhere below this
+        // envelope are unwrapped as well.
+        const [unwrapped] = unwrapSecretValues(unwrapRpcSecret(value));
+        return [unwrapped, true];
     } else if (value instanceof Array) {
         let hadSecret = false;
         const result = [];
@@ -794,11 +804,16 @@ export function deserializeProperty(prop: any, keepUnknowns?: boolean): any {
                     } else {
                         throw new Error("Invalid archive encountered when unmarshaling resource property");
                     }
-                case specialSecretSig:
+                case specialSecretSig: {
+                    const secretValue = deserializeProperty(prop["value"], keepUnknowns);
+                    // Collapse consecutive secret envelopes into one: Secret(Secret(x)) carries
+                    // the same information as Secret(x), but doubles the serialized size of the
+                    // value every time it round-trips through the state.
                     return {
                         [specialSigKey]: specialSecretSig,
-                        value: deserializeProperty(prop["value"], keepUnknowns),
+                        value: unwrapRpcSecret(secretValue),
                     };
+                }
                 case specialResourceSig:
                     // Deserialize the resource into a live Resource reference
                     const urn = prop["urn"];
