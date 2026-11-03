@@ -48,7 +48,7 @@ func init() {
 						"a.b/c": resource.NewProperty("top"),
 					}
 					for _, r := range []*pkgresource.State{first, second} {
-						assert.Equal(l, tokens.Type("quoted-names:my.module/sub:Resource.v1/thing"), r.Type)
+						assert.Equal(l, tokens.Type("quoted-names:_my-module.v2/sub_3:-Resource_v1.x/thing-2"), r.Type)
 						assert.Equal(l, want, r.Inputs)
 						assert.Equal(l, want, r.Outputs)
 					}

@@ -28,9 +28,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-// QuotedNamesProvider is used to test names that are not identifiers in any language. The resource and function
-// tokens hold `.` and `/`. Resource inputs, resource outputs, function arguments and function results each carry a
-// property name such as `@top!` or `a.b/c` at the top level and in a nested object.
+// QuotedNamesProvider is used to test names that are not identifiers in any language. The module and member names of
+// the type, resource and function tokens start with `_` or `-` and hold `.`, `/`, `-`, `_` and digits. Resource
+// inputs, resource outputs, function arguments and function results each carry a property name such as `@top!` or
+// `a.b/c` at the top level and in a nested object.
 type QuotedNamesProvider struct {
 	plugin.UnimplementedProvider
 }
@@ -50,7 +51,7 @@ func (p *QuotedNamesProvider) Configure(
 func (p *QuotedNamesProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
-	inner := schema.TypeSpec{Ref: "#/types/quoted-names:my.module/sub:Inner.v1/thing"}
+	inner := schema.TypeSpec{Ref: "#/types/quoted-names:_my-module.v2/sub_3:-Inner_v1.x/thing-2"}
 	properties := map[string]schema.PropertySpec{
 		"plain": {TypeSpec: schema.TypeSpec{Type: "string"}},
 		"@top!": {TypeSpec: inner},
@@ -62,7 +63,7 @@ func (p *QuotedNamesProvider) GetSchema(
 		Name:    "quoted-names",
 		Version: "58.0.0",
 		Types: map[string]schema.ComplexTypeSpec{
-			"quoted-names:my.module/sub:Inner.v1/thing": {
+			"quoted-names:_my-module.v2/sub_3:-Inner_v1.x/thing-2": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -73,7 +74,7 @@ func (p *QuotedNamesProvider) GetSchema(
 			},
 		},
 		Resources: map[string]schema.ResourceSpec{
-			"quoted-names:my.module/sub:Resource.v1/thing": {
+			"quoted-names:_my-module.v2/sub_3:-Resource_v1.x/thing-2": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: properties,
@@ -84,7 +85,7 @@ func (p *QuotedNamesProvider) GetSchema(
 			},
 		},
 		Functions: map[string]schema.FunctionSpec{
-			"quoted-names:my.module/sub:invoke.v1/thing": {
+			"quoted-names:_my-module.v2/sub_3:-invoke_v1.x/thing-2": {
 				Inputs: &schema.ObjectTypeSpec{
 					Type:       "object",
 					Properties: properties,
@@ -156,7 +157,7 @@ func (p *QuotedNamesProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
 	switch typ := req.URN.Type(); typ {
-	case "quoted-names:my.module/sub:Resource.v1/thing":
+	case "quoted-names:_my-module.v2/sub_3:-Resource_v1.x/thing-2":
 		if failures := checkQuotedNames(req.NewInputs); failures != nil {
 			return plugin.CheckResponse{Failures: failures}, nil
 		}
@@ -173,7 +174,7 @@ func (p *QuotedNamesProvider) Check(
 func (p *QuotedNamesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if typ := req.URN.Type(); typ != "quoted-names:my.module/sub:Resource.v1/thing" {
+	if typ := req.URN.Type(); typ != "quoted-names:_my-module.v2/sub_3:-Resource_v1.x/thing-2" {
 		return plugin.CreateResponse{Status: resource.StatusUnknown}, fmt.Errorf("invalid URN type: %s", typ)
 	}
 	id := "id"
@@ -190,7 +191,7 @@ func (p *QuotedNamesProvider) Create(
 func (p *QuotedNamesProvider) Invoke(
 	_ context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
-	if req.Tok != "quoted-names:my.module/sub:invoke.v1/thing" {
+	if req.Tok != "quoted-names:_my-module.v2/sub_3:-invoke_v1.x/thing-2" {
 		return plugin.InvokeResponse{}, fmt.Errorf("unknown function %v", req.Tok)
 	}
 	if failures := checkQuotedNames(req.Args); failures != nil {
