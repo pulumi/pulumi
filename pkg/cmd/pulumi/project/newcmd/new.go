@@ -330,12 +330,8 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		})
 	}
 
-	for _, opt := range args.runtimeOptions {
-		parts := strings.Split(strings.TrimSpace(opt), "=")
-		if len(parts) != 2 {
-			return fmt.Errorf("invalid runtime option: %s", opt)
-		}
-		proj.Runtime.SetOption(parts[0], parts[1])
+	if err = setRuntimeOptionFlags(&proj.Runtime, args.runtimeOptions); err != nil {
+		return err
 	}
 
 	if err = pkgWorkspace.SaveProject(proj); err != nil {
@@ -371,37 +367,11 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		}
 	}
 
-	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	hostReg := cmdCmd.NewDefaultRegistry(
-		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global(),
-	)
-	pluginHost, err := pkghost.New(
-		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
-		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
-		packageworkspace.NewResolverServer(hostReg),
-	)
+	pluginHost, pluginCtx, entryPoint, err := newProjectPluginContext(ctx, ws, proj, root)
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
-	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
-	if err != nil {
-		return err
-	}
-	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
-		ctx,
-		projinfo,
-		pluginHost,
-		cmdutil.Diag(),
-		cmdutil.Diag(),
-		false, /* disableProviderPreview */
-		nil,   /* tracingSpan */
-		nil,   /* config */
-		cloudCredentialEnv,
-	)
-	if err != nil {
-		return err
-	}
 	defer pluginCtx.Close()
 
 	// If we're creating an empty project we won't have a runtime name
@@ -504,6 +474,56 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		fmt.Fprintln(args.stdout, template.Quickstart)
 	}
 
+	return nil
+}
+
+// newProjectPluginContext starts a plugin host and context for proj. Close the context before the host.
+func newProjectPluginContext(
+	ctx context.Context, ws pkgWorkspace.Context, proj *workspace.Project, root string,
+) (plugin.Host, *plugin.Context, string, error) {
+	hostReg := cmdCmd.NewDefaultRegistry(
+		ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global(),
+	)
+	pluginHost, err := pkghost.New(
+		context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(), nil, pkgWorkspace.EnsureLanguageInstalled,
+		schema.NewLoaderServerFromContext, convert.NewMapperServerFromContext,
+		packageworkspace.NewResolverServer(hostReg),
+	)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+	if err != nil {
+		contract.IgnoreClose(pluginHost)
+		return nil, nil, "", err
+	}
+	_, entryPoint, pluginCtx, err := engine.ProjectInfoContext(
+		ctx,
+		&engine.Projinfo{Proj: proj, Root: root},
+		pluginHost,
+		cmdutil.Diag(),
+		cmdutil.Diag(),
+		false, /* disableProviderPreview */
+		nil,   /* tracingSpan */
+		nil,   /* config */
+		cloudCredentialEnv,
+	)
+	if err != nil {
+		contract.IgnoreClose(pluginHost)
+		return nil, nil, "", err
+	}
+	return pluginHost, pluginCtx, entryPoint, nil
+}
+
+// setRuntimeOptionFlags applies --runtime-options (key=value pairs) to runtime.
+func setRuntimeOptionFlags(runtime *workspace.ProjectRuntimeInfo, flags []string) error {
+	for _, opt := range flags {
+		parts := strings.Split(strings.TrimSpace(opt), "=")
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid runtime option: %s", opt)
+		}
+		runtime.SetOption(parts[0], parts[1])
+	}
 	return nil
 }
 
