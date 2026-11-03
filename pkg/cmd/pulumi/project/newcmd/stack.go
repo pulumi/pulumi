@@ -145,9 +145,12 @@ func createStackWithRetry(ctx context.Context, sink diag.Sink, w io.Writer, ws p
 }
 
 // A stack name can't fix these, and after some of them the backend stack already exists, so a retry would leave it
-// behind.
+// behind. A cancelled prompt, such as the passphrase, means the user wants to stop.
 func retryableCreateStackError(err error) bool {
 	if _, ok := errors.AsType[backenderr.DefaultOrgError](err); ok {
+		return false
+	}
+	if isCancelled(err) {
 		return false
 	}
 	return !cmdStack.StackCreatedDespiteError(err)

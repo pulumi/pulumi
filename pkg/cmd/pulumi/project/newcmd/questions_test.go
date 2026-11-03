@@ -16,6 +16,7 @@ package newcmd
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"strings"
@@ -26,6 +27,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Ctrl-C is simulated the way the real prompts report it; see isCancelled.
@@ -145,4 +148,40 @@ func TestNewCancelLeavesNothingBehind(t *testing.T) {
 			assertCancelled(t, err, dir, *created)
 		})
 	}
+}
+
+// Cancelling a DIY backend's passphrase prompt surfaces as io.EOF from creating the secrets manager. It
+// must end `pulumi new` instead of asking for another stack name.
+//
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestNewCancelAtPassphrase(t *testing.T) {
+	dir := tempProjectDir(t)
+	t.Chdir(dir)
+	templateArg := writeLocalTemplate(t, t.TempDir(), "template", localTemplateYAML)
+
+	b, created := guidedNewTestBackend(t)
+	b.DefaultSecretManagerF = func(ctx context.Context, ps *workspace.ProjectStack) (secrets.Manager, error) {
+		return nil, io.EOF
+	}
+	mockCurrentBackend(t, b)
+
+	// Answer the first stack-name prompt, so only the passphrase is cancelled, and cancel any
+	// second one so a retry loop ends.
+	var asked []string
+	var out, errOut bytes.Buffer
+	err := runNew(t.Context(), newArgs{
+		interactive:          true,
+		templateNameOrURL:    templateArg,
+		prompt:               cancellingPrompt("Stack name", 1, &asked),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		secretsProvider:      "default",
+		stdout:               &out,
+		stderr:               &errOut,
+	})
+
+	require.ErrorIs(t, err, io.EOF)
+	assert.Equal(t, []string{"Project name", "Project description", "Stack name"}, asked,
+		"cancelling the passphrase must not ask for another stack name; output:\n%s", out.String())
+	assert.Empty(t, *created, "cancelling the passphrase must not create a stack")
 }
