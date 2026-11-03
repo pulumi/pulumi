@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -40,6 +41,11 @@ var quotedLoader = mockLoader{schema.PackageSpec{
 	},
 	Resources: map[string]schema.ResourceSpec{
 		"quoted:index:Resource": {
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Properties: map[string]schema.PropertySpec{
+					"out!": {TypeSpec: schema.TypeSpec{Type: "string"}},
+				},
+			},
 			InputProperties: map[string]schema.PropertySpec{
 				"foo!":  {TypeSpec: schema.TypeSpec{Ref: "#/types/quoted:index:Inner"}},
 				"plain": {TypeSpec: schema.TypeSpec{Type: "string"}},
@@ -60,6 +66,8 @@ func TestBindQuotedProperties(t *testing.T) {
 		inputs []string
 		// The value of the ignoreChanges option of the resource.
 		ignoreChanges []string
+		// The value of the hideDiffs option of the resource.
+		hideDiffs []string
 		// The summaries of the diagnostics.
 		diagnostics []string
 	}{
@@ -146,6 +154,25 @@ resource "r" "quoted:index:Resource" {
 			diagnostics: []string{"unknown property 'nope!' among [foo! plain]"},
 		},
 		{
+			name: "property path of an output",
+			source: `resource "r" "quoted:index:Resource" {
+	options {
+		hideDiffs = [_["out!"], _["foo!"]["baz!"]]
+	}
+}`,
+			inputs:    []string{},
+			hideDiffs: []string{`["out!"]`, `["foo!"]["baz!"]`},
+		},
+		{
+			name: "ignoreChanges of an output",
+			source: `resource "r" "quoted:index:Resource" {
+	options {
+		ignoreChanges = [_["out!"]]
+	}
+}`,
+			diagnostics: []string{"unknown property 'out!' among [foo! plain]"},
+		},
+		{
 			name: "sourceless component",
 			source: `component "c" {
 	token = "my:custom:Component"
@@ -176,20 +203,30 @@ resource "r" "quoted:index:Resource" {
 				return
 			}
 
+			evaluate := func(expr model.Expression) []string {
+				if expr == nil {
+					return nil
+				}
+				value, valueDiags := expr.Evaluate(nil)
+				require.Empty(t, valueDiags)
+				var paths []string
+				for _, v := range value.AsValueSlice() {
+					paths = append(paths, v.AsString())
+				}
+				return paths
+			}
+
 			inputs := []string{}
-			var ignoreChanges []string
+			var ignoreChanges, hideDiffs []string
 			for _, node := range program.Nodes {
 				switch node := node.(type) {
 				case *pcl.Resource:
 					for _, input := range node.Inputs {
 						inputs = append(inputs, input.Name)
 					}
-					if node.Options != nil && node.Options.IgnoreChanges != nil {
-						value, valueDiags := node.Options.IgnoreChanges.Evaluate(nil)
-						require.Empty(t, valueDiags)
-						for _, v := range value.AsValueSlice() {
-							ignoreChanges = append(ignoreChanges, v.AsString())
-						}
+					if node.Options != nil {
+						ignoreChanges = evaluate(node.Options.IgnoreChanges)
+						hideDiffs = evaluate(node.Options.HideDiffs)
 					}
 				case *pcl.Component:
 					for _, input := range node.Inputs {
@@ -199,6 +236,7 @@ resource "r" "quoted:index:Resource" {
 			}
 			assert.Equal(t, c.inputs, inputs)
 			assert.Equal(t, c.ignoreChanges, ignoreChanges)
+			assert.Equal(t, c.hideDiffs, hideDiffs)
 		})
 	}
 }

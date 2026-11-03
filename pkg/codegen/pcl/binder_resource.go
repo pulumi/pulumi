@@ -800,6 +800,7 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 			propertyTypes = []model.Type{s.resource.GetOutputType(), s.resource.GetInputType()}
 		}
 		scope := model.NewRootScope(syntax.None)
+		quoted := map[string]model.Type{}
 		for _, propertyType := range propertyTypes {
 			obj, ok := model.ResolveOutputs(propertyType).(*model.ObjectType)
 			if !ok {
@@ -810,9 +811,12 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 					Path:         hcl.Traversal{hcl.TraverseRoot{Name: k}},
 					PropertyType: t,
 				})
+				if _, ok := quoted[k]; !ok {
+					quoted[k] = t
+				}
 			}
 		}
-		scope.Define(QuotedPropertiesKey, &quotedResourceProperties{properties: obj})
+		scope.Define(QuotedPropertiesKey, &quotedResourceProperties{properties: model.NewObjectType(quoted)})
 		return scope, nil
 	default:
 		return s.root, nil
