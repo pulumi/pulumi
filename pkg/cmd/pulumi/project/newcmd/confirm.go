@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -57,6 +58,8 @@ type setupAnswers struct {
 	// config is the template config gathered for the new stack. When nil, it is asked for once the
 	// stack exists.
 	config *askedConfig
+	// runtimeOptions answer the language runtime's questions, such as which package manager to use.
+	runtimeOptions map[string]any
 }
 
 // askedConfig is template config gathered before the stack exists, held as plaintext until the
@@ -132,6 +135,21 @@ func (c *setupAnswers) saveConfig(
 // askSetupQuestions asks what `pulumi new` needs to know about the project. Nothing has been written
 // when it returns, so a cancelled question leaves nothing behind.
 func askSetupQuestions(
+	ctx context.Context, ws pkgWorkspace.Context, b backend.Backend, orgName string, existing backend.Stack,
+	template cmdTemplates.ProjectTemplate, args newArgs, opts display.Options, cwd string,
+) (*setupAnswers, error) {
+	answers, err := askProjectQuestions(ctx, b, orgName, existing, template, args, opts, cwd)
+	if err != nil {
+		return nil, err
+	}
+	if answers.runtimeOptions, err = promptTemplateRuntimeOptions(ctx, ws, template, args, opts); err != nil {
+		return nil, err
+	}
+	return answers, nil
+}
+
+// askProjectQuestions asks the guided or sequential project questions.
+func askProjectQuestions(
 	ctx context.Context, b backend.Backend, orgName string, existing backend.Stack,
 	template cmdTemplates.ProjectTemplate, args newArgs, opts display.Options, cwd string,
 ) (*setupAnswers, error) {
@@ -165,6 +183,44 @@ func askSetupQuestions(
 		}
 	}
 	return answers, nil
+}
+
+// promptTemplateRuntimeOptions asks the template's language runtime for its options. The language host
+// runs in the template directory because the project directory is still empty; runNew starts another
+// in the project directory for Template and the installs.
+func promptTemplateRuntimeOptions(
+	ctx context.Context, ws pkgWorkspace.Context, template cmdTemplates.ProjectTemplate,
+	args newArgs, opts display.Options,
+) (map[string]any, error) {
+	if args.promptRuntimeOptions == nil {
+		return nil, nil
+	}
+	proj, err := workspace.LoadProject(filepath.Join(template.Dir, "Pulumi.yaml"))
+	if err != nil {
+		return nil, err
+	}
+	if proj.Runtime.Name() == "" {
+		return nil, nil
+	}
+	if err := setRuntimeOptionFlags(&proj.Runtime, args.runtimeOptions); err != nil {
+		return nil, err
+	}
+
+	pluginHost, pluginCtx, entryPoint, err := newProjectPluginContext(ctx, ws, proj, template.Dir)
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(pluginHost)
+	defer pluginCtx.Close()
+
+	lang, err := pluginCtx.Host.LanguageRuntime(pluginCtx, proj.Runtime.Name())
+	if err != nil {
+		return nil, fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
+	}
+	defer lang.Close()
+
+	return args.promptRuntimeOptions(pluginCtx, lang, &proj.Runtime, entryPoint, opts,
+		args.yes, args.interactive, args.prompt)
 }
 
 // useProjectForStackNames lets b resolve stack names without a project before the project is saved.

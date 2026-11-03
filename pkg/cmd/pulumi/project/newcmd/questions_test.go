@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -69,6 +70,13 @@ func cancellingPrompt(cancelAt string, skip int, asked *[]string) promptForValue
 		}
 		return defaultValue, nil
 	}
+}
+
+func runtimeOptionsInterrupted(ctx *plugin.Context, language plugin.LanguageRuntime,
+	info *workspace.ProjectRuntimeInfo, main string, opts display.Options, yes, interactive bool,
+	prompt promptForValueFunc,
+) (map[string]any, error) {
+	return nil, terminal.InterruptErr
 }
 
 // assertCancelled checks, in separate subtests, that a cancelled `pulumi new` left nothing behind and
@@ -138,6 +146,18 @@ func TestNewCancelLeavesNothingBehind(t *testing.T) {
 			template:       cancelConfigTemplateYAML,
 			cancelAt:       "(aws:region)",
 			runtimeOptions: runtimeOptionsNone,
+		},
+		{
+			name:           "named template/runtime option",
+			template:       localTemplateYAML,
+			runtimeOptions: runtimeOptionsInterrupted,
+		},
+		{
+			name:           "guided/runtime option",
+			guided:         true,
+			template:       guidedConfigTemplateYAML,
+			selects:        []any{"AWS", "Python", confirmYes},
+			runtimeOptions: runtimeOptionsInterrupted,
 		},
 	}
 
