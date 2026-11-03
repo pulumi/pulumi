@@ -455,8 +455,8 @@ type ResourceOptions struct {
 	KeepOutputValues bool
 
 	// UsesOutputValues sets the uses_output_values flag on the RegisterResourceRequest, telling the engine
-	// that the inputs carry per-leaf dependency information as OutputValues and PropertyDeps should not be
-	// consulted (and will typically be nil).
+	// that the inputs carry per-leaf dependency information as OutputValues and PropertyDeps must not be
+	// consulted (and must be nil/empty).
 	UsesOutputValues bool
 
 	Transforms           []*pulumirpc.Callback
