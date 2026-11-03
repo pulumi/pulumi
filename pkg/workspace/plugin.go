@@ -99,35 +99,44 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 func downloadPlugin(
 	ctx context.Context, pluginSpec *workspace.PluginDescriptor, log func(sev diag.Severity, msg string),
 ) (*os.File, error) {
+	noun := pluginNoun(pluginSpec.Kind)
 	util.SetKnownPluginDownloadURL(pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
 		pluginSpec.Version, err = pluginstorage.Instance.GetLatestVersion(ctx, *pluginSpec)
 		if err != nil {
-			return nil, fmt.Errorf("could not find latest version for provider %s: %w", pluginSpec.Name, err)
+			return nil, fmt.Errorf("could not find latest version for %s %s: %w", noun, pluginSpec.Name, err)
 		}
 	}
 
 	wrapper := func(stream io.ReadCloser, size int64) io.ReadCloser {
 		// Log at info but to stderr so we don't pollute stdout for commands like `package get-schema`
-		log(diag.Infoerr, "Downloading provider: "+pluginSpec.Name)
+		log(diag.Infoerr, fmt.Sprintf("Downloading %s: %s", noun, pluginSpec.Name))
 		return stream
 	}
 
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
-		log(diag.Warning, fmt.Sprintf("error downloading provider: %s\n"+
-			"Will retry in %v [%d/%d]", err, delay, attempt, limit))
+		log(diag.Warning, fmt.Sprintf("error downloading %s: %s\n"+
+			"Will retry in %v [%d/%d]", noun, err, delay, attempt, limit))
 	}
 
-	logging.V(1).Infof("Automatically downloading provider %s", pluginSpec.Name)
+	logging.V(1).Infof("Automatically downloading %s %s", noun, pluginSpec.Name)
 	downloadedFile, err := workspace.DownloadToFile(ctx, *pluginSpec, wrapper, retry)
 	if err != nil {
 		return nil, &InstallPluginError{
 			Spec: *pluginSpec,
-			Err:  fmt.Errorf("error downloading provider %s to file: %w", pluginSpec.Name, err),
+			Err:  fmt.Errorf("error downloading %s %s to file: %w", noun, pluginSpec.Name, err),
 		}
 	}
 	return downloadedFile, nil
+}
+
+// pluginNoun names a plugin kind in user-facing messages. Resource plugins are called "provider".
+func pluginNoun(kind apitype.PluginKind) string {
+	if kind == apitype.ResourcePlugin {
+		return "provider"
+	}
+	return string(kind) + " plugin"
 }
 
 // EnsureLanguageInstalled downloads and installs the named language runtime if it is not
@@ -138,7 +147,7 @@ func downloadPlugin(
 // It satisfies plugin.LanguageInstaller and is wired into the plugin host at construction so
 // that every load of a language runtime through a default host triggers the install, rather
 // than each caller of Host.LanguageRuntime having to ensure the plugin is present.
-func EnsureLanguageInstalled(ctx context.Context, runtime string) error {
+func EnsureLanguageInstalled(ctx context.Context, runtime string, log func(sev diag.Severity, msg string)) error {
 	if runtime == "" {
 		return nil
 	}
@@ -161,10 +170,6 @@ func EnsureLanguageInstalled(ctx context.Context, runtime string) error {
 	if env.DisableAutomaticPluginAcquisition.Value() {
 		return nil
 	}
-	log := func(sev diag.Severity, msg string) {
-		logging.V(7).Infof("EnsureLanguageInstalled(%s): %s", runtime, msg)
-	}
-
 	// Language hosts are self-contained executables, shared across workspaces and never run with
 	// the support of another language runtime (which would be a bootstrapping cycle). Installing
 	// one is therefore a plain download-and-unpack with no dependency-install step.
