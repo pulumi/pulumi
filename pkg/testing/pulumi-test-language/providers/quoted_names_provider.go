@@ -61,7 +61,7 @@ func (p *QuotedNamesProvider) GetSchema(
 
 	pkg := schema.PackageSpec{
 		Name:    "quoted-names",
-		Version: "58.0.0",
+		Version: "61.0.0",
 		Types: map[string]schema.ComplexTypeSpec{
 			"quoted-names:_my-module.v2/sub_3:-Inner_v1.x/thing-2": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -120,9 +120,9 @@ func (p *QuotedNamesProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.AsString() != "58.0.0" {
+	if version.AsString() != "61.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 58.0.0"),
+			Failures: makeCheckFailure("version", "version is not 61.0.0"),
 		}, nil
 	}
 	if req.News.Len() != 1 {
@@ -201,7 +201,7 @@ func (p *QuotedNamesProvider) Invoke(
 }
 
 func (p *QuotedNamesProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	ver := semver.Version{Major: 58}
+	ver := semver.Version{Major: 61}
 	return plugin.PluginInfo{
 		Version: &ver,
 	}, nil

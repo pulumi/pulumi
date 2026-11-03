@@ -1,4 +1,4 @@
 package "quoted-names" {
   baseProviderName    = "quoted-names"
-  baseProviderVersion = "58.0.0"
+  baseProviderVersion = "61.0.0"
 }
