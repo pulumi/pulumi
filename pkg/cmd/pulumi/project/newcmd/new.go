@@ -289,18 +289,11 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		args.name = projectName
 	}
 
-	defaults := resolveProjectDefaults(ctx, b, orgName, template, args, opts, cwd)
-	confirmed, err := confirmGuidedValues(ctx, b, orgName, defaults, template, args, opts)
+	answers, err := askSetupQuestions(ctx, b, orgName, template, args, opts, cwd)
 	if err != nil {
 		return err
 	}
-	if confirmed != nil {
-		args.name, args.description = confirmed.name, confirmed.description
-	} else if args.name, args.description, err = promptSequentialValues(
-		ctx, b, orgName, defaults, args, opts,
-	); err != nil {
-		return err
-	}
+	args.name, args.description = answers.name, answers.description
 
 	// Actually copy the files.
 	if err = cmdTemplates.CopyTemplateFiles(template.Dir, cwd, args.force, args.name, args.description); err != nil {
@@ -310,7 +303,7 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		return err
 	}
 
-	if confirmed == nil {
+	if !answers.guided {
 		fmt.Fprintf(args.stdout, "Created project '%s'\n", args.name)
 		fmt.Fprintln(args.stdout)
 	}
@@ -370,7 +363,7 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		}
 	}()
 	if !args.generateOnly && s == nil {
-		if s, createdStackName, err = confirmed.createStack(ctx, sink, ws, b, root, args, opts); err != nil {
+		if s, createdStackName, err = answers.createStack(ctx, sink, ws, b, root, args, opts); err != nil {
 			return err
 		}
 		if s.ConfigLocation().ManagedEnvironment != "" {
@@ -450,7 +443,7 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 	// Prompt for config values (if needed) and save.
 	var savedConfig config.Map
 	if !args.generateOnly {
-		if savedConfig, err = confirmed.saveConfig(ctx, cmdutil.Diag(), ssml, ws, proj, s, template, args, opts); err != nil {
+		if savedConfig, err = answers.saveConfig(ctx, cmdutil.Diag(), ssml, ws, proj, s, template, args, opts); err != nil {
 			return err
 		}
 	}
@@ -491,7 +484,7 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 
 	preflightCloudCredentials(ctx, args, sink, pluginHost, proj, root, s, packages, savedConfig, opts)
 
-	if confirmed != nil {
+	if answers.guided {
 		// Any other stack announced itself as it was created, or already existed.
 		rows := []field{{"Project name", args.name}}
 		if createdStackName != "" {
