@@ -1,0 +1,3 @@
+component: cli/new
+kind: fix
+body: Accept a stack name without a project when changing the values shown by guided `pulumi new` on a DIY backend

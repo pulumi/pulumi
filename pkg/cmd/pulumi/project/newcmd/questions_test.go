@@ -17,6 +17,7 @@ package newcmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -190,4 +191,41 @@ func TestNewCancelAtPassphrase(t *testing.T) {
 	assert.Equal(t, []string{"Project name", "Project description", "Stack name"}, asked,
 		"cancelling the passphrase must not ask for another stack name; output:\n%s", out.String())
 	assert.Empty(t, *created, "cancelling the passphrase must not create a stack")
+}
+
+// A DIY backend resolves a stack name without a project against its current project, which
+// `pulumi new` hasn't saved yet when the guided flow asks for a stack name again after "Change
+// these values".
+//
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestGuidedNewDeclineValidatesStackNameAgainstNewProject(t *testing.T) {
+	guidedRepoTemplate(t, "aws-python", guidedConfigTemplateYAML)
+	dir := tempProjectDir(t)
+	t.Chdir(dir)
+
+	b, created := guidedNewTestBackend(t)
+	var current *workspace.Project
+	b.SetCurrentProjectF = func(proj *workspace.Project) { current = proj }
+	// As the DIY backend does (see diyBackend.parseStackReference).
+	b.ValidateStackNameF = func(name string) error {
+		if !strings.Contains(name, "/") && current == nil {
+			return errors.New("no Pulumi.yaml project file found")
+		}
+		return nil
+	}
+	mockCurrentBackend(t, b)
+
+	selectOne, _ := scriptedSelect(t, "AWS", "Python", confirmChange)
+	var prompts []string
+	err := runNew(t.Context(), newArgs{
+		interactive:          true,
+		prompt:               countingPrompt(map[string]string{"Stack name": "prod"}, &prompts),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		selectOne:            selectOne,
+		secretsProvider:      "default",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"my-org/prod"}, *created)
 }
