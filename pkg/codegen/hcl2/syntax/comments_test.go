@@ -252,27 +252,41 @@ func normString(s string) string {
 func TestNewCommentRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	lines := []string{" The main bucket", "", " Second line"}
-	source := fmt.Sprintf("%vbucket = 1\n", TriviaList{NewComment(lines)})
-	assert.Equal(t, "// The main bucket\n//\n// Second line\nbucket = 1\n", source)
-
-	parser := NewParser()
-	require.NoError(t, parser.ParseFile(strings.NewReader(source), "main.pp"))
-	require.False(t, parser.Diagnostics.HasErrors(), parser.Diagnostics.Error())
-
-	file := parser.Files[0]
-	attrTokens := file.Tokens.ForNode(file.Body.Attributes["bucket"]).(*AttributeTokens)
-	var parsed []string
-	for _, trivia := range attrTokens.Name.LeadingTrivia {
-		if comment, ok := trivia.(Comment); ok {
-			parsed = append(parsed, comment.Lines...)
-		}
+	tests := []struct {
+		name     string
+		text     string
+		expected string
+		lines    []string
+	}{
+		{"empty", "", "//\n", []string{""}},
+		{"multiline", " a\n\n b", "// a\n//\n// b\n", []string{" a", "", " b"}},
+		{"trailing newline", " a\n", "// a\n//\n", []string{" a", ""}},
+		{"line comment", " // a", "// // a\n", []string{" // a"}},
+		{"hash comment", "# a", "//# a\n", []string{"# a"}},
+		{"block comment", "/* a\n*/ b", "///* a\n//*/ b\n", []string{"/* a", "*/ b"}},
+		{"carriage return", "a\r\nb\r", "//a\r\n//b\r\n", []string{"a\r", "b\r"}},
+		{"invalid utf8", "\xff", "//\xff\n", []string{"\xff"}},
 	}
-	assert.Equal(t, lines, parsed)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-func TestNewCommentRejectsNewlines(t *testing.T) {
-	t.Parallel()
+			comment := fmt.Sprintf("%v", TriviaList{NewComment(tt.text)})
+			assert.Equal(t, tt.expected, comment)
 
-	assert.Panics(t, func() { NewComment([]string{"a\nb"}) })
+			parser := NewParser()
+			require.NoError(t, parser.ParseFile(strings.NewReader(comment+"x = 1\n"), "main.pp"))
+			require.False(t, parser.Diagnostics.HasErrors(), parser.Diagnostics.Error())
+
+			file := parser.Files[0]
+			attrTokens := file.Tokens.ForNode(file.Body.Attributes["x"]).(*AttributeTokens)
+			var parsed []string
+			for _, trivia := range attrTokens.Name.LeadingTrivia {
+				if comment, ok := trivia.(Comment); ok {
+					parsed = append(parsed, comment.Lines...)
+				}
+			}
+			assert.Equal(t, tt.lines, parsed)
+		})
+	}
 }
