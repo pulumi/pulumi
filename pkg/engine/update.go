@@ -447,6 +447,11 @@ type UpdateOptions struct {
 	// knob for exercising the fallback path against providers that do advertise `accepts_outputs_in_call`.
 	DisableCallOutputValues bool
 
+	// true if the engine should not advertise the REGISTER_RESOURCE_OUTPUT_VALUES monitor feature. SDKs that
+	// check the feature list before opting in will fall back to sending propertyDependencies maps instead of
+	// OutputValues on RegisterResource inputs. Test-only knob for exercising the legacy path.
+	DisableRegisterResourceOutputValues bool
+
 	// HostFactory builds the plugin host for this operation.
 	HostFactory HostFactory
 
@@ -1204,15 +1209,16 @@ func newUpdateSource(ctx context.Context,
 	}
 
 	evalOpts := deploy.EvalSourceOptions{
-		DryRun:                    opts.DryRun,
-		Parallel:                  opts.Parallel,
-		DisableResourceReferences: opts.DisableResourceReferences,
-		DisableOutputValues:       opts.DisableOutputValues,
-		DisableInvokeOutputValues: opts.DisableInvokeOutputValues,
-		DisableCallOutputValues:   opts.DisableCallOutputValues,
-		AttachDebugger:            opts.AttachDebugger,
-		SupportsStateMigrations:   opts.supportsStateMigrations,
-		ShowSecrets:               opts.ShowSecrets,
+		DryRun:                              opts.DryRun,
+		Parallel:                            opts.Parallel,
+		DisableResourceReferences:           opts.DisableResourceReferences,
+		DisableOutputValues:                 opts.DisableOutputValues,
+		DisableInvokeOutputValues:           opts.DisableInvokeOutputValues,
+		DisableCallOutputValues:             opts.DisableCallOutputValues,
+		DisableRegisterResourceOutputValues: opts.DisableRegisterResourceOutputValues,
+		AttachDebugger:                      opts.AttachDebugger,
+		SupportsStateMigrations:             opts.supportsStateMigrations,
+		ShowSecrets:                         opts.ShowSecrets,
 	}
 
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
