@@ -841,3 +841,16 @@ func TestHandleResponse(t *testing.T) {
 		assert.Equal(t, cmdutil.ExitAuthenticationError, apiErr.ExitCode)
 	})
 }
+
+func TestWriteCLICommandHint(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	writeCLICommandHint(&buf, "ListAccounts")
+	assert.Empty(t, buf.String())
+
+	writeCLICommandHint(&buf, "ListPolicyIssues")
+	assert.Equal(t,
+		"ListPolicyIssues has a dedicated command; run `pulumi policy issue list` instead of `pulumi api`.\n",
+		buf.String())
+}
