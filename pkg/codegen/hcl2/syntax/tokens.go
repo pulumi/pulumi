@@ -19,12 +19,15 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var tokenStrings = map[hclsyntax.TokenType]string{
@@ -171,6 +174,19 @@ type Comment struct {
 
 	rng   hcl.Range
 	bytes []byte
+}
+
+// NewComment returns a new piece of comment trivia that prints each line as a `//` line comment. The lines must not
+// contain comment characters or newlines.
+func NewComment(lines []string) Comment {
+	var b bytes.Buffer
+	for _, l := range lines {
+		contract.Requiref(!strings.Contains(l, "\n"), "lines", "must not contain newlines, got %q", l)
+		b.WriteString("//")
+		b.WriteString(l)
+		b.WriteByte('\n')
+	}
+	return Comment{Lines: lines, bytes: b.Bytes()}
 }
 
 // Range returns the range of the comment in the source file.

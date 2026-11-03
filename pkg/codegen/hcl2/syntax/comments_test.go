@@ -16,6 +16,7 @@ package syntax
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -246,4 +247,32 @@ func TestComments(t *testing.T) {
 
 func normString(s string) string {
 	return strings.TrimSuffix(s, "\r")
+}
+
+func TestNewCommentRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	lines := []string{" The main bucket", "", " Second line"}
+	source := fmt.Sprintf("%vbucket = 1\n", TriviaList{NewComment(lines)})
+	assert.Equal(t, "// The main bucket\n//\n// Second line\nbucket = 1\n", source)
+
+	parser := NewParser()
+	require.NoError(t, parser.ParseFile(strings.NewReader(source), "main.pp"))
+	require.False(t, parser.Diagnostics.HasErrors(), parser.Diagnostics.Error())
+
+	file := parser.Files[0]
+	attrTokens := file.Tokens.ForNode(file.Body.Attributes["bucket"]).(*AttributeTokens)
+	var parsed []string
+	for _, trivia := range attrTokens.Name.LeadingTrivia {
+		if comment, ok := trivia.(Comment); ok {
+			parsed = append(parsed, comment.Lines...)
+		}
+	}
+	assert.Equal(t, lines, parsed)
+}
+
+func TestNewCommentRejectsNewlines(t *testing.T) {
+	t.Parallel()
+
+	assert.Panics(t, func() { NewComment([]string{"a\nb"}) })
 }
