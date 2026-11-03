@@ -178,7 +178,7 @@ func objectProperty(node syntax.Node, key string) syntax.Node {
 func findPlaintextSecret(node syntax.Node, path resource.PropertyPath) (syntax.Node, resource.PropertyPath) {
 	switch node := node.(type) {
 	case *syntax.ObjectNode:
-		if node.Len() == 1 && node.Index(0).Key.Value() == "fn::secret" {
+		if isSecretCall(node) {
 			if _, ok := node.Index(0).Value.(*syntax.StringNode); ok {
 				return node, path
 			}
