@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Print a message when the CLI downloads a language runtime
+time: 2026-11-03T12:00:00-08:00

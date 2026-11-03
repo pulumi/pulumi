@@ -15,6 +15,7 @@
 package host
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -24,6 +25,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/stretchr/testify/assert"
@@ -463,7 +465,7 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 		installCalls int
 		gotRuntime   string
 	)
-	installLang := func(_ context.Context, runtime string) error {
+	installLang := func(_ context.Context, runtime string, _ func(diag.Severity, string)) error {
 		installCalls++
 		gotRuntime = runtime
 		return errInstall
@@ -481,4 +483,31 @@ func TestDefaultHostLanguageRuntimeInstallsOnDemand(t *testing.T) {
 	assert.Nil(t, lang)
 	assert.Equal(t, 1, installCalls)
 	assert.Equal(t, "test-lang", gotRuntime)
+}
+
+// The host must route the installer's progress messages to its diagnostic sink, so that users see when a
+// language runtime is downloaded.
+func TestDefaultHostLanguageRuntimeInstallLogsToSink(t *testing.T) {
+	t.Parallel()
+
+	var stdout, stderr bytes.Buffer
+	sink := diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{Color: colors.Never})
+
+	errInstall := errors.New("install boom")
+	installLang := func(_ context.Context, _ string, log func(diag.Severity, string)) error {
+		log(diag.Infoerr, "Downloading language plugin: test-lang")
+		return errInstall
+	}
+
+	h, err := New(t.Context(), sink, sink, nil, installLang, nil, nil, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, h.Close()) })
+	ctx, err := plugin.NewContextWithHost(t.Context(), sink, sink, h, "", "", nil, nil)
+	require.NoError(t, err)
+
+	_, err = h.LanguageRuntime(ctx, "test-lang")
+	require.ErrorIs(t, err, errInstall)
+
+	assert.Equal(t, "", stdout.String())
+	assert.Equal(t, "Downloading language plugin: test-lang\n", stderr.String())
 }

@@ -155,7 +155,7 @@ func TestEnsureLanguageInstalledUsesPathPlugin(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	err = EnsureLanguageInstalled(ctx, "hcl")
+	err = EnsureLanguageInstalled(ctx, "hcl", func(diag.Severity, string) {})
 
 	require.NoError(t, err, "EnsureLanguageInstalled should reuse the runtime on $PATH, not download it")
 }
@@ -170,7 +170,7 @@ func TestEnsureLanguageInstalledHonoursDisabledAcquisition(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	require.NoError(t, EnsureLanguageInstalled(ctx, "opa"))
+	require.NoError(t, EnsureLanguageInstalled(ctx, "opa", func(diag.Severity, string) {}))
 }
 
 func TestPluginInstallCancellation(t *testing.T) {
