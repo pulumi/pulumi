@@ -1,0 +1,4 @@
+component: sdk/python
+kind: fix
+body: Report a missing `python` executable with one message that names the supported Python version and links to install instructions
+time: 2026-10-13T10:03:00.000000+01:00

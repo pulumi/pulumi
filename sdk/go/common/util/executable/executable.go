@@ -52,7 +52,7 @@ func FindExecutable(program string) (string, error) {
 			}
 			return found, nil
 		}
-		return "", fmt.Errorf("%s. Tried: %s", unableToFindProgramTemplate, strings.Join(notFoundPaths, ", "))
+		return "", &NotFoundError{Path: strings.Join(notFoundPaths, ", ")}
 	}
 	return findExecutableWithSuffix(program, "")
 }

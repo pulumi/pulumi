@@ -76,6 +76,20 @@ import (
 // The preferred debug port.  Chosen arbitrarily.
 const preferredDebugPort = 57134
 
+// findGo locates the go executable and reports a missing Go toolchain consistently.
+func findGo() (string, error) {
+	gobin, err := executable.FindExecutable("go")
+	if _, ok := errors.AsType[*executable.NotFoundError](err); ok {
+		return "", &executable.ToolchainNotFoundError{
+			Runtime:    "go",
+			Toolchain:  "Go",
+			Programs:   []string{"go"},
+			InstallURL: "https://www.pulumi.com/docs/iac/languages-sdks/go/",
+		}
+	}
+	return gobin, err
+}
+
 // This function takes a file target to specify where to compile to.
 // If `outfile` is "", the binary is compiled to a new temporary file.
 // This function returns the path of the file that was produced.
@@ -114,9 +128,9 @@ func compileProgram(
 		outfile = f.Name()
 	}
 
-	gobin, err := executable.FindExecutable("go")
+	gobin, err := findGo()
 	if err != nil {
-		return "", fmt.Errorf("unable to find 'go' executable: %w", err)
+		return "", err
 	}
 	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
 	// We add the `-buildvcs=false` flag here because it sometimes fails on Windows.
@@ -781,9 +795,9 @@ func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
 	logging.V(5).Infof("GetRequiredPackages: Determining pulumi packages")
 
-	gobin, err := executable.FindExecutable("go")
+	gobin, err := findGo()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't find go binary: %w", err)
+		return nil, err
 	}
 
 	if err = goversion.CheckMinimumGoVersion(gobin); err != nil {
@@ -1085,9 +1099,9 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 
 	// feature flag to enable deprecated old behavior and use `go run`
 	if os.Getenv("PULUMI_GO_USE_RUN") != "" {
-		gobin, err := executable.FindExecutable("go")
+		gobin, err := findGo()
 		if err != nil {
-			return nil, fmt.Errorf("unable to find 'go' executable: %w", err)
+			return nil, err
 		}
 
 		cmd := exec.Command(gobin, "run", req.Info.ProgramDirectory)
@@ -1219,7 +1233,7 @@ func (host *goLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	gobin, err := executable.FindExecutable("go")
+	gobin, err := findGo()
 	if err != nil {
 		return err
 	}
@@ -1287,9 +1301,9 @@ func (host *goLanguageHost) About(ctx context.Context, req *pulumirpc.AboutReque
 func (host *goLanguageHost) GetProgramDependencies(
 	ctx context.Context, req *pulumirpc.GetProgramDependenciesRequest,
 ) (*pulumirpc.GetProgramDependenciesResponse, error) {
-	gobin, err := executable.FindExecutable("go")
+	gobin, err := findGo()
 	if err != nil {
-		return nil, fmt.Errorf("couldn't find go binary: %w", err)
+		return nil, err
 	}
 
 	_, gomod, err := host.loadGomod(gobin, req.Info.ProgramDirectory)

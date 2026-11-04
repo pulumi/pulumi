@@ -15,16 +15,20 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -34,6 +38,17 @@ func TestGetRequiredPluginsWithoutRuntime(t *testing.T) {
 	plugins, err := GetRequiredPlugins(t.Context(), nil, "", plugin.ProgramInfo{})
 	require.NoError(t, err)
 	assert.Empty(t, plugins)
+}
+
+func TestRequirementsError(t *testing.T) {
+	t.Parallel()
+
+	err := requirementsError("package", errors.New("go list failed"))
+	assert.EqualError(t, err, "failed to discover package requirements: go list failed")
+
+	precondition := rpcerror.Convert(status.Error(codes.FailedPrecondition, "the go runtime requires Go"))
+	err = requirementsError("package", precondition)
+	assert.EqualError(t, err, "the go runtime requires Go")
 }
 
 func TestDefaultProvidersSingle(t *testing.T) {
