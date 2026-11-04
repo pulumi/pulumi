@@ -1578,14 +1578,14 @@ func (pc *Client) CreateUpdate(
 	}
 
 	return UpdateIdentifier{
-			StackIdentifier: stack,
-			UpdateKind:      kind,
-			UpdateID:        updateResponse.UpdateID,
-		}, CreateUpdateDetails{
-			Messages:                updateResponse.Messages,
-			RequiredPolicies:        updateResponse.RequiredPolicies,
-			IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
-		}, nil
+		StackIdentifier: stack,
+		UpdateKind:      kind,
+		UpdateID:        updateResponse.UpdateID,
+	}, CreateUpdateDetails{
+		Messages:                updateResponse.Messages,
+		RequiredPolicies:        updateResponse.RequiredPolicies,
+		IsNeoIntegrationEnabled: updateResponse.AISettings.CopilotIsEnabled,
+	}, nil
 }
 
 // RenameStack renames the provided stack to have the new identifier.
