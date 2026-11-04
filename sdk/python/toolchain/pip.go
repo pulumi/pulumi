@@ -361,7 +361,7 @@ func CommandPath() (string /*pythonPath*/, string /*pythonCmd*/, error) {
 		}
 		if err != nil {
 			return "", "", fmt.Errorf(
-				"failed to locate any of %q on your PATH. Have you installed Python 3.6 or greater?",
+				"failed to locate any of %q on your PATH. Have you installed Python 3.10 or greater?",
 				pythonCmds)
 		}
 	}
