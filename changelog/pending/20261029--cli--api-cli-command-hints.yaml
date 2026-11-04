@@ -1,3 +1,0 @@
-component: cli
-kind: improvement
-body: Point AI agents that call policy endpoints through `pulumi api` to the matching `pulumi policy` command

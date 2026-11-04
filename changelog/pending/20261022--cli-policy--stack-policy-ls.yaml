@@ -1,3 +1,0 @@
-component: cli/policy
-kind: feat
-body: Add `pulumi stack policy ls` to list the policy groups and policy packs that apply to a stack

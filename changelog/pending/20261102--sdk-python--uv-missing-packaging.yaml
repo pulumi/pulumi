@@ -1,3 +1,0 @@
-component: sdk/python
-kind: fix
-body: Explain how to install missing Python dependencies when uv package discovery requires packaging

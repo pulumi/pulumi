@@ -1,4 +1,0 @@
-component: sdk/python
-kind: fix
-body: Fix `RecursionError` after creating many dynamic resources in one process
-time: 2026-11-01T02:01:38.705979-07:00
