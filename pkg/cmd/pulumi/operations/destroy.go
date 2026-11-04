@@ -42,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -370,6 +371,12 @@ func NewDestroyCmd() *cobra.Command {
 				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
 
+			if remove && len(*targets) == 0 {
+				if warning := cmdStack.ManagedEnvironmentRemovalWarning(s); warning != "" {
+					cmdutil.Diag().Warningf(diag.RawMessage("", warning))
+				}
+			}
+
 			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
@@ -402,7 +409,7 @@ func NewDestroyCmd() *cobra.Command {
 							return detectErr
 						} else if !jsonDisplay && output != "json" {
 							fmt.Fprintf(out, "The resources in the stack have been deleted, and the history and "+
-								"configuration removed.\n")
+								"configuration removed.%s\n", cmdStack.ManagedEnvironmentDeletionNotice(s))
 						}
 					}
 				}

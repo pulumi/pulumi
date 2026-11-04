@@ -84,9 +84,8 @@ func newStackRemoveCmd() *cobra.Command {
 			}
 
 			// Ensure the user really wants to do this.
-			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Ref())
 			if err := ui.ConfirmDeletion(
-				yes, cmdutil.Interactive(), prompt, s.Ref().String(), cmd.OutOrStdout(), opts,
+				yes, cmdutil.Interactive(), removeStackPrompt(s), s.Ref().String(), cmd.OutOrStdout(), opts,
 			); err != nil {
 				return err
 			}
@@ -103,21 +102,20 @@ func newStackRemoveCmd() *cobra.Command {
 				return err
 			}
 
-			if !preserveConfig {
+			proj, stackFile, inProject := stackFileInCurrentProject(s)
+			if !preserveConfig && inProject {
 				// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
-				if proj, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q()); err == nil {
-					// Check that the detected project matches the stacks project, users can run `rm --stack
-					// <name>` from a different projects directory.
-					stackProject, has := s.Ref().Project()
-					if has && stackProject == tokens.Name(proj.Name) {
-						if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
-							return err
-						}
-					}
+				if err = os.Remove(stackFile); err != nil && !os.IsNotExist(err) {
+					return err
 				}
 			}
 
-			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Ref(), colors.Reset)
+			msg := fmt.Sprintf("%sStack '%s' has been removed!%s%s",
+				colors.SpecAttention, s.Ref(), colors.Reset, ManagedEnvironmentDeletionNotice(s))
+			if preserveConfig && inProject && managedEnvironmentName(s) != "" &&
+				holdsManagedDefinition(proj, stackFile) {
+				msg += fmt.Sprintf(" %s still holds the environment's definition.", stackFile)
+			}
 			fmt.Fprintln(cmd.OutOrStdout(), opts.Color.Colorize(msg))
 
 			contract.IgnoreError(state.SetCurrentStack(ws, state.BackendURLKey(s.Backend()), ""))
@@ -149,4 +147,62 @@ func newStackRemoveCmd() *cobra.Command {
 		"Additionally remove backups of the stack, if using the DIY backend")
 
 	return cmd
+}
+
+func stackFileInCurrentProject(s backend.Stack) (*workspace.Project, string, bool) {
+	proj, path, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
+	if err != nil {
+		return nil, "", false
+	}
+	// Users can run `rm --stack <name>` from a different project's directory.
+	if stackProject, has := s.Ref().Project(); !has || stackProject != tokens.Name(proj.Name) {
+		return nil, "", false
+	}
+	return proj, path, true
+}
+
+func holdsManagedDefinition(proj *workspace.Project, stackFile string) bool {
+	ps, err := workspace.LoadProjectStack(cmdutil.Diag(), proj, stackFile)
+	if err != nil {
+		return false
+	}
+	_, err = ps.Environment.DefinitionNode()
+	return err == nil
+}
+
+func removeStackPrompt(s backend.Stack) string {
+	if managedEnv := managedEnvironmentName(s); managedEnv != "" {
+		return fmt.Sprintf("This will permanently remove the '%s' stack and its ESC environment '%s'!",
+			s.Ref(), managedEnv)
+	}
+	return fmt.Sprintf("This will permanently remove the '%s' stack!", s.Ref())
+}
+
+// ManagedEnvironmentDeletionNotice returns a sentence, with a leading space, naming the ESC environment that Pulumi
+// Cloud deletes along with s, or "" when s has no managed environment.
+func ManagedEnvironmentDeletionNotice(s backend.Stack) string {
+	managedEnv := managedEnvironmentName(s)
+	if managedEnv == "" {
+		return ""
+	}
+	return fmt.Sprintf(" Pulumi Cloud deletes the stack's ESC environment '%s'.", managedEnv)
+}
+
+// ManagedEnvironmentRemovalWarning returns what `destroy --remove` warns before it starts, or "" for an unmanaged
+// stack.
+func ManagedEnvironmentRemovalWarning(s backend.Stack) string {
+	notice := ManagedEnvironmentDeletionNotice(s)
+	if notice == "" {
+		return ""
+	}
+	return "--remove removes this stack after the destroy." + notice
+}
+
+func managedEnvironmentName(s backend.Stack) string {
+	managedEnv := s.ConfigLocation().ManagedEnvironment
+	orgNamer, ok := s.(interface{ OrgName() string })
+	if managedEnv == "" || !ok {
+		return ""
+	}
+	return orgNamer.OrgName() + "/" + managedEnv
 }
