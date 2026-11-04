@@ -528,7 +528,7 @@ func TestPolicyGroupGet_Stacks_StopsOnEmptyPageWithToken(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, c.gotOpts, 2)
 	assert.Contains(t, out, `"name": "a"`)
-	assert.Empty(t, errOut)
+	assert.Contains(t, errOut, "More stacks available")
 }
 
 func TestPolicyGroupGet_Stacks_PageError(t *testing.T) {

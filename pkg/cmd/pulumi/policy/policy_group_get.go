@@ -359,7 +359,7 @@ func fetchPolicyGroupMembers[T any](
 		}
 		// An empty page that still carries a token would otherwise loop forever.
 		if !hasNext || len(page) == 0 {
-			return members, false, nil
+			return members, hasNext, nil
 		}
 		token = next
 	}
