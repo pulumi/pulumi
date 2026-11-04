@@ -45,7 +45,6 @@ require (
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
-	github.com/frankli0324/gocloud-ext v0.0.0-20231023175140-d65b9f66f793 // indirect
 	github.com/go-git/gcfg/v2 v2.0.2 // indirect
 	github.com/go-git/go-billy/v6 v6.0.0-beta.1 // indirect
 	github.com/go-git/go-git/v6 v6.0.0-beta.1 // indirect
@@ -307,5 +306,3 @@ require (
 )
 
 tool github.com/quasilyte/go-ruleguard/dsl
-
-replace github.com/frankli0324/gocloud-ext => github.com/marlon-costa-dc/gocloud-ext v0.0.0-20261104190733-88392e67caca
