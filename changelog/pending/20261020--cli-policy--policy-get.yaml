@@ -1,3 +1,0 @@
-component: cli/policy
-kind: feat
-body: Add `pulumi policy get` to show a policy pack's policies

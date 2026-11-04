@@ -1,3 +1,0 @@
-component: cli/policy
-kind: improvement
-body: Show each group's mode and Insights account count in `pulumi policy group ls`, including new `mode` and `numAccounts` keys in its JSON output

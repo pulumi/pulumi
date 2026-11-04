@@ -1,3 +1,0 @@
-component: cli
-kind: fix
-body: Normalize backend URLs when logging in with OIDC
