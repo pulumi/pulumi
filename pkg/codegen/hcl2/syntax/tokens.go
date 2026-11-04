@@ -166,11 +166,6 @@ func (trivia TriviaList) Format(f fmt.State, c rune) {
 }
 
 // Comment is a piece of trivia that represents a line or block comment in a source file.
-//
-// A comment that was not parsed from source has a zero Range, and prints from its Lines. Each line starts at column
-// zero, and the comment ends with a newline. Like the trivia of other tokens, the caller supplies indentation as
-// Whitespace trivia: to indent a comment of more than one line, use one Comment for each line and put the indentation
-// before each Comment and after the last one.
 type Comment struct {
 	// Lines contains the lines of the comment without leading comment characters or trailing newlines.
 	Lines []string
@@ -184,9 +179,7 @@ func (c Comment) Range() hcl.Range {
 	return c.rng
 }
 
-// Bytes returns the raw bytes that comprise the comment. If the comment has a zero Range, Bytes renders each of its
-// lines as a `//` line comment. A line comment ends only at a newline, so a newline in a line starts a new line
-// comment, and comment characters in a line need no escaping.
+// Bytes returns the raw bytes that comprise the comment.
 func (c Comment) Bytes() []byte {
 	if c.rng != (hcl.Range{}) {
 		return c.bytes
@@ -229,8 +222,6 @@ func (Whitespace) isTrivia() {}
 
 // TemplateDelimiter is a piece of trivia that represents a token that demarcates an interpolation or control sequence
 // inside of a template.
-//
-// A delimiter that was not parsed from source has a zero Range, and prints from its Type.
 type TemplateDelimiter struct {
 	// Type is the type of the delimiter (e.g. hclsyntax.TokenTemplateInterp)
 	Type hclsyntax.TokenType
@@ -258,8 +249,7 @@ func (t TemplateDelimiter) Range() hcl.Range {
 	return t.rng
 }
 
-// Bytes returns the raw bytes that comprise the delimiter. If the delimiter has a zero Range, Bytes renders the text of
-// its Type. If the Type is not a template delimiter, Bytes returns nil.
+// Bytes returns the raw bytes that comprise the delimiter.
 func (t TemplateDelimiter) Bytes() []byte {
 	if t.rng != (hcl.Range{}) || !isTemplateDelimiter(t.Type) {
 		return t.bytes
