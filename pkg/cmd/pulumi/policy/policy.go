@@ -24,7 +24,12 @@ import (
 func NewPolicyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "policy",
-		Short: "Manage resource policies",
+		Short: "Manage policies, including policy packs, groups and issues",
+		Long: "Manage policies, including policy packs, groups and issues.\n" +
+			"\n" +
+			"Policy packs define the policies your resources are checked against. Policy groups control\n" +
+			"which packs are enforced on which stacks and cloud accounts. Policy issues are the violations\n" +
+			"those packs report.",
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
