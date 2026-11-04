@@ -38,7 +38,7 @@ import (
 )
 
 var managedEnvironmentNotice = "Environment p/env: local changes based on revision 7; " +
-	"an update publishes them, a preview does not\n" +
+	"up, refresh and destroy publish them, preview does not\n" +
 	"    " + colors.SpecCreate + `+ values.pulumiConfig["p:a"]: 1` + colors.Reset + "\n"
 
 type publishedEnvironmentClient struct {

@@ -30,7 +30,7 @@ import (
 func TestManagedEnvironmentNotice(t *testing.T) {
 	t.Parallel()
 
-	const header = "Environment p/old: local changes based on revision 7; an update publishes them, a preview does not\n"
+	const header = "Environment p/old: local changes based on revision 7; up, refresh and destroy publish them, preview does not\n"
 	cases := []struct {
 		name            string
 		published       string
@@ -50,14 +50,14 @@ func TestManagedEnvironmentNotice(t *testing.T) {
 			published:       "values: {pulumiConfig: {otherproj:key: env}}\n",
 			changeRequestID: "cr-1",
 			expected: "Environment p/old: local changes based on revision 7 (no value changes); " +
-				"an update publishes them, a preview does not\n",
+				"up, refresh and destroy publish them, preview does not\n",
 		},
 		{
 			name:            "diff error",
 			published:       "- not a mapping\n",
 			changeRequestID: "cr-1",
 			expected: "using local changes to environment p/old (based on revision 7); " +
-				"an update publishes them, a preview does not\n",
+				"up, refresh and destroy publish them, preview does not\n",
 		},
 		{
 			name:      "unchanged",

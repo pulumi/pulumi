@@ -272,7 +272,8 @@ func managedEnvironmentNotice(stack backend.Stack, managedEnv *managedEnvironmen
 	if err != nil {
 		slog.Debug("diffing managed environment definitions", "environment", name, "err", err)
 		return fmt.Sprintf(
-			"using local changes to environment %s (based on revision %d); an update publishes them, a preview does not\n",
+			"using local changes to environment %s (based on revision %d); "+
+				"up, refresh and destroy publish them, preview does not\n",
 			name, revision)
 	}
 	var notice strings.Builder
