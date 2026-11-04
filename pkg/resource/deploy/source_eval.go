@@ -1696,7 +1696,9 @@ func (rm *resmon) wrapTransformCallback(cb *pulumirpc.Callback) (TransformFuncti
 		if err != nil {
 			return property.Map{}, nil, fmt.Errorf("marshaling transform properties: %w", err)
 		}
-		mprops := propertyrpc.Marshal(filteredProps)
+		mprops := propertyrpc.MarshalWithOptions(filteredProps, propertyrpc.MarshalOptions{
+			PreferOutputValues: true,
+		})
 
 		request, err := proto.Marshal(&pulumirpc.TransformRequest{
 			Name:       name,
