@@ -1,5 +1,7 @@
 # Changelog
 
+<!-- Temporary mixed source/changelog CI test; do not merge this branch -->
+
 ## 3.273.0 (2026-10-28)
 
 ### Features
