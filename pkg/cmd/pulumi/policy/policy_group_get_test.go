@@ -21,7 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/stretchr/testify/assert"
@@ -432,7 +434,7 @@ func TestPolicyGroupGet_Stacks_Table(t *testing.T) {
 
 	for _, want := range []string{
 		"NAME", "SOURCE", "TAGS",
-		"infra/prod", "explicit", "env=prod, team=platform",
+		"infra/prod", "explicit", "env=prod ", "team=platform ",
 		"standalone", "rule",
 	} {
 		assert.Contains(t, out, want)
@@ -443,18 +445,41 @@ func TestPolicyGroupGet_Stacks_Table(t *testing.T) {
 	assert.Equal(t, []client.ListPolicyGroupMembersOptions{{Count: 100}}, c.gotOpts)
 }
 
+func TestPolicyGroupGet_Stacks_TableTagsOnePerLine(t *testing.T) {
+	t.Parallel()
+
+	tags := map[string]string{}
+	for i := range 8 {
+		tags[fmt.Sprintf("vcs:repository-%d", i)] = "github.com/acme/infrastructure"
+	}
+	tags["pulumi:description"] = "Prod stack, owner=platform"
+	c := &mockPolicyGroupMembersClient{stackPages: []cloudapitype.ListPolicyGroupStacksResponse{{
+		Stacks: []cloudapitype.PolicyGroupStack{
+			{Name: "prod", RoutingProject: "infra", Source: cloudapitype.PolicyGroupMemberSourceRule, Tags: tags},
+		},
+	}}}
+	out, _, err := runPolicyGroupGetMembers(t, c, policyGroupGetArgs{stacks: true}, "")
+	require.NoError(t, err)
+
+	for line := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
+		assert.LessOrEqual(t, utf8.RuneCountInString(line), 100, line)
+	}
+	assert.Contains(t, out, "vcs:repository-7=github.com/acme/infrastructure ")
+	assert.Contains(t, out, "pulumi:description=Prod stack, owner=platform ")
+}
+
 func TestPolicyGroupGet_Stacks_Empty(t *testing.T) {
 	t.Parallel()
 
 	c := &mockPolicyGroupMembersClient{stackPages: []cloudapitype.ListPolicyGroupStacksResponse{{}}}
 	out, _, err := runPolicyGroupGetMembers(t, c, policyGroupGetArgs{stacks: true}, "")
 	require.NoError(t, err)
-	assert.Equal(t, "No stacks found.\n", out)
+	assert.Equal(t, "No stacks found that you can read.\n", out)
 
 	c = &mockPolicyGroupMembersClient{stackPages: []cloudapitype.ListPolicyGroupStacksResponse{{}}}
 	out, _, err = runPolicyGroupGetMembers(t, c, policyGroupGetArgs{stacks: true}, "json")
 	require.NoError(t, err)
-	assert.JSONEq(t, `{"stacks": []}`, out)
+	assert.JSONEq(t, `{"stacks": [], "hasMore": false}`, out)
 }
 
 func TestPolicyGroupGet_Stacks_DefaultCountHintsAtMore(t *testing.T) {
@@ -466,12 +491,29 @@ func TestPolicyGroupGet_Stacks_DefaultCountHintsAtMore(t *testing.T) {
 	out, errOut, err := runPolicyGroupGetMembers(t, c, policyGroupGetArgs{stacks: true}, "json")
 	require.NoError(t, err)
 
-	var resp cloudapitype.ListPolicyGroupStacksResponse
+	var resp policyGroupStacksJSON
 	require.NoError(t, json.Unmarshal([]byte(out), &resp))
 	require.Len(t, resp.Stacks, 100)
+	assert.True(t, resp.HasMore)
 	assert.NotContains(t, out, "continuationToken")
 	assert.Equal(t, "More stacks available; re-run with --count <N> or --all to fetch more.\n", errOut)
 	require.Len(t, c.gotOpts, 1)
+}
+
+func TestPolicyGroupGet_Stacks_ExactlyCountWithoutToken(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupMembersClient{stackPages: []cloudapitype.ListPolicyGroupStacksResponse{
+		stackPage("", stackNames(100)...),
+	}}
+	out, errOut, err := runPolicyGroupGetMembers(t, c, policyGroupGetArgs{stacks: true}, "json")
+	require.NoError(t, err)
+
+	var resp policyGroupStacksJSON
+	require.NoError(t, json.Unmarshal([]byte(out), &resp))
+	require.Len(t, resp.Stacks, 100)
+	assert.False(t, resp.HasMore)
+	assert.Empty(t, errOut)
 }
 
 func TestPolicyGroupGet_Stacks_CountSpansPages(t *testing.T) {
@@ -482,12 +524,13 @@ func TestPolicyGroupGet_Stacks_CountSpansPages(t *testing.T) {
 		stackPage("t2", stackNames(200)...),
 	}}
 	out, errOut, err := runPolicyGroupGetMembers(t, c,
-		policyGroupGetArgs{stacks: true, count: 700, source: "rule"}, "json")
+		policyGroupGetArgs{stacks: true, count: 700, countSet: true, source: "rule"}, "json")
 	require.NoError(t, err)
 
-	var resp cloudapitype.ListPolicyGroupStacksResponse
+	var resp policyGroupStacksJSON
 	require.NoError(t, json.Unmarshal([]byte(out), &resp))
 	require.Len(t, resp.Stacks, 700)
+	assert.True(t, resp.HasMore)
 	assert.Equal(t, []client.ListPolicyGroupMembersOptions{
 		{Source: cloudapitype.PolicyGroupMemberSourceRule, Count: 500},
 		{Source: cloudapitype.PolicyGroupMemberSourceRule, Count: 200, ContinuationToken: new("t1")},
@@ -506,9 +549,10 @@ func TestPolicyGroupGet_Stacks_AllFollowsEveryPage(t *testing.T) {
 	out, errOut, err := runPolicyGroupGetMembers(t, c, policyGroupGetArgs{stacks: true, all: true}, "json")
 	require.NoError(t, err)
 
-	var resp cloudapitype.ListPolicyGroupStacksResponse
+	var resp policyGroupStacksJSON
 	require.NoError(t, json.Unmarshal([]byte(out), &resp))
 	require.Len(t, resp.Stacks, 1003)
+	assert.False(t, resp.HasMore)
 	assert.Empty(t, errOut)
 	assert.Equal(t, []client.ListPolicyGroupMembersOptions{
 		{Count: 500},
@@ -528,6 +572,7 @@ func TestPolicyGroupGet_Stacks_StopsOnEmptyPageWithToken(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, c.gotOpts, 2)
 	assert.Contains(t, out, `"name": "a"`)
+	assert.Contains(t, out, `"hasMore": true`)
 	assert.Contains(t, errOut, "More stacks available")
 }
 
@@ -571,7 +616,7 @@ func TestPolicyGroupGet_Accounts(t *testing.T) {
 	assert.JSONEq(t, `{"accounts": [
 		{"id": "acc-1", "name": "aws-prod", "source": "explicit", "tags": {}},
 		{"id": "acc-2", "name": "aws-payments", "source": "rule", "tags": {"env": "prod"}}
-	]}`, out)
+	], "hasMore": false}`, out)
 }
 
 func TestPolicyGroupGet_MemberFlagValidation(t *testing.T) {
@@ -583,9 +628,19 @@ func TestPolicyGroupGet_MemberFlagValidation(t *testing.T) {
 		wantErr string
 	}{
 		{"source without member flag", policyGroupGetArgs{source: "rule"}, "--source requires --stacks or --accounts"},
-		{"count without member flag", policyGroupGetArgs{count: 5}, "--count requires --stacks or --accounts"},
+		{
+			"count without member flag",
+			policyGroupGetArgs{count: 5, countSet: true},
+			"--count requires --stacks or --accounts",
+		},
+		{"zero count without member flag", policyGroupGetArgs{countSet: true}, "--count requires --stacks or --accounts"},
 		{"all without member flag", policyGroupGetArgs{all: true}, "--all requires --stacks or --accounts"},
-		{"negative count", policyGroupGetArgs{stacks: true, count: -1}, "--count must be non-negative, got -1"},
+		{
+			"negative count",
+			policyGroupGetArgs{stacks: true, count: -1, countSet: true},
+			"--count must be at least 1, got -1",
+		},
+		{"zero count", policyGroupGetArgs{stacks: true, countSet: true}, "--count must be at least 1, got 0"},
 		{
 			"unknown source",
 			policyGroupGetArgs{accounts: true, source: "tag"},

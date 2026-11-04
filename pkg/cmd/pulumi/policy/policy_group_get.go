@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
 
@@ -33,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -71,6 +73,7 @@ type policyGroupGetArgs struct {
 	showConfig   bool
 	source       string
 	count        int
+	countSet     bool
 	all          bool
 	outputFormat outputflag.OutputFlag[policyGroupGetRender]
 }
@@ -87,25 +90,24 @@ func defaultPolicyGroupGetOutputFormat() outputflag.OutputFlag[policyGroupGetRen
 // policyGroupGetRender holds one renderer per thing `policy group get` can
 // print, so a single --output flag selects the format for all of them.
 type policyGroupGetRender struct {
-	group           policyGroupGetRenderFunc
-	groupWithConfig policyGroupGetRenderFunc
-	stacks          func(w io.Writer, resp cloudapitype.ListPolicyGroupStacksResponse) error
-	accounts        func(w io.Writer, resp cloudapitype.ListPolicyGroupAccountsResponse) error
+	group    func(w io.Writer, resp apitype.GetPolicyGroupResponse, showConfig bool) error
+	stacks   func(w io.Writer, stacks []cloudapitype.PolicyGroupStack, more bool) error
+	accounts func(w io.Writer, accounts []cloudapitype.PolicyGroupAccount, more bool) error
 }
 
 func defaultPolicyGroupGetRenderers() outputflag.OutputFlag[policyGroupGetRender] {
 	return outputflag.OutputFlag[policyGroupGetRender]{
 		RenderForTerminal: policyGroupGetRender{
-			group:           renderPolicyGroupGetText,
-			groupWithConfig: renderPolicyGroupGetTextWithConfig,
-			stacks:          renderPolicyGroupStacksTable,
-			accounts:        renderPolicyGroupAccountsTable,
+			group:    writePolicyGroupText,
+			stacks:   renderPolicyGroupStacksTable,
+			accounts: renderPolicyGroupAccountsTable,
 		},
 		RenderJSON: policyGroupGetRender{
-			group:           renderPolicyGroupGetJSON,
-			groupWithConfig: renderPolicyGroupGetJSON,
-			stacks:          renderPolicyGroupStacksJSON,
-			accounts:        renderPolicyGroupAccountsJSON,
+			group: func(w io.Writer, resp apitype.GetPolicyGroupResponse, _ bool) error {
+				return renderPolicyGroupGetJSON(w, resp)
+			},
+			stacks:   renderPolicyGroupStacksJSON,
+			accounts: renderPolicyGroupAccountsJSON,
 		},
 	}
 }
@@ -113,6 +115,7 @@ func defaultPolicyGroupGetRenderers() outputflag.OutputFlag[policyGroupGetRender
 const (
 	policyGroupMembersDefaultCount = 100
 	policyGroupMembersPageSize     = 500
+	policyGroupMemberTagsMax       = 60
 )
 
 // newPolicyGroupGetCmd builds `pulumi policy group get` with the production
@@ -139,11 +142,12 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 			"syntax `pulumi policy group edit --stack-rule` accepts, or as JSON when\n" +
 			"that syntax cannot express them.\n" +
 			"\n" +
-			"Pass --stacks or --accounts to list every stack or Insights account that\n" +
-			"is a member of the group instead: both those added individually and\n" +
-			"those matched by the group's match rule. --source narrows the list\n" +
-			"to one of the two. The first 100 members are shown by default; use\n" +
-			"--count or --all to fetch more.\n" +
+			"Pass --stacks or --accounts to list the group's member stacks or Insights\n" +
+			"accounts instead: both those added individually and those matched by the\n" +
+			"group's match rule. Only members you have permission to read are listed.\n" +
+			"--source narrows the list to one of the two. The first 100 members are\n" +
+			"shown by default; use --count or --all to fetch more. With --output=json,\n" +
+			"hasMore reports whether members were left out.\n" +
 			"\n" +
 			"Each applied Policy Pack shows how many of its policies the group configures;\n" +
 			"pass --show-config to list them.\n" +
@@ -161,6 +165,7 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 			"  # List only the Insights accounts matched by a Policy Group's match rule\n" +
 			"  pulumi policy group get compliance --accounts --source rule",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
+			args.countSet = cmd.Flags().Changed("count")
 			return runPolicyGroupGet(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), factory, posArgs[0], args)
 		},
 	}
@@ -174,9 +179,9 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the Policy Group")
 	cmd.Flags().BoolVar(&args.stacks, "stacks", false,
-		"List every stack in the group, added individually or matched by its match rule")
+		"List the stacks in the group that you can read, added individually or matched by its match rule")
 	cmd.Flags().BoolVar(&args.accounts, "accounts", false,
-		"List every Insights account in the group, added individually or matched by its match rule")
+		"List the Insights accounts in the group that you can read, added individually or matched by its match rule")
 	cmd.Flags().BoolVar(&args.showConfig, "show-config", false,
 		"List each policy pack's configured policies under the pack")
 	cmd.Flags().StringVar(&args.source, "source", "",
@@ -185,7 +190,7 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 	cmd.Flags().IntVar(&args.count, "count", 0,
 		"With --stacks or --accounts, the maximum number of members to return (default 100)")
 	cmd.Flags().BoolVar(&args.all, "all", false,
-		"With --stacks or --accounts, return every member; mutually exclusive with --count")
+		"With --stacks or --accounts, return every member you can read; mutually exclusive with --count")
 	cmd.MarkFlagsMutuallyExclusive("stacks", "accounts")
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
 	cmd.MarkFlagsMutuallyExclusive("show-config", "stacks")
@@ -256,7 +261,7 @@ func runPolicyGroupGet(
 
 	render := args.outputFormat.Get()
 	want := policyGroupMembersDefaultCount
-	if args.count > 0 {
+	if args.countSet {
 		want = args.count
 	} else if args.all {
 		want = -1
@@ -274,7 +279,7 @@ func runPolicyGroupGet(
 		if err != nil {
 			return err
 		}
-		if err := render.stacks(w, cloudapitype.ListPolicyGroupStacksResponse{Stacks: stacks}); err != nil {
+		if err := render.stacks(w, stacks, more); err != nil {
 			return err
 		}
 		printMorePolicyGroupMembersHint(errW, more, "stacks")
@@ -290,7 +295,7 @@ func runPolicyGroupGet(
 		if err != nil {
 			return err
 		}
-		if err := render.accounts(w, cloudapitype.ListPolicyGroupAccountsResponse{Accounts: accounts}); err != nil {
+		if err := render.accounts(w, accounts, more); err != nil {
 			return err
 		}
 		printMorePolicyGroupMembersHint(errW, more, "accounts")
@@ -302,26 +307,24 @@ func runPolicyGroupGet(
 		return fmt.Errorf("getting policy group: %w", err)
 	}
 
-	if args.showConfig {
-		return render.groupWithConfig(w, resp)
-	}
-	return render.group(w, resp)
+	return render.group(w, resp, args.showConfig)
 }
 
 func validatePolicyGroupGetArgs(args policyGroupGetArgs) (cloudapitype.PolicyGroupMemberSource, error) {
 	if !args.stacks && !args.accounts {
-		for _, f := range []struct {
-			name string
-			set  bool
-		}{{"source", args.source != ""}, {"count", args.count != 0}, {"all", args.all}} {
-			if f.set {
-				return "", fmt.Errorf("--%s requires --stacks or --accounts", f.name)
-			}
+		if args.source != "" {
+			return "", errors.New("--source requires --stacks or --accounts")
+		}
+		if args.countSet {
+			return "", errors.New("--count requires --stacks or --accounts")
+		}
+		if args.all {
+			return "", errors.New("--all requires --stacks or --accounts")
 		}
 		return "", nil
 	}
-	if args.count < 0 {
-		return "", fmt.Errorf("--count must be non-negative, got %d", args.count)
+	if args.countSet && args.count < 1 {
+		return "", fmt.Errorf("--count must be at least 1, got %d", args.count)
 	}
 	source := cloudapitype.PolicyGroupMemberSource(args.source)
 	if args.source != "" && !source.IsValid() {
@@ -384,74 +387,79 @@ func formatMemberTags(tags map[string]string) string {
 	for i, k := range keys {
 		pairs[i] = k + "=" + tags[k]
 	}
-	return strings.Join(pairs, ", ")
+	return strings.Join(pairs, "\n")
 }
 
-func renderPolicyGroupStacksTable(w io.Writer, resp cloudapitype.ListPolicyGroupStacksResponse) error {
-	if len(resp.Stacks) == 0 {
-		fmt.Fprintln(w, "No stacks found.")
+func renderPolicyGroupStacksTable(w io.Writer, stacks []cloudapitype.PolicyGroupStack, _ bool) error {
+	if len(stacks) == 0 {
+		fmt.Fprintln(w, "No stacks found that you can read.")
 		return nil
 	}
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.SetStyle(table.StyleLight)
 	t.AppendHeader(table.Row{"NAME", "SOURCE", "TAGS"})
-	for _, s := range resp.Stacks {
+	for _, s := range stacks {
 		name := s.Name
 		if s.RoutingProject != "" {
 			name = s.RoutingProject + "/" + s.Name
 		}
 		t.AppendRow(table.Row{name, string(s.Source), formatMemberTags(s.Tags)})
 	}
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Name: "TAGS", WidthMax: policyGroupMemberTagsMax, WidthMaxEnforcer: text.WrapSoft},
+	})
 	t.Render()
 	return nil
 }
 
-func renderPolicyGroupAccountsTable(w io.Writer, resp cloudapitype.ListPolicyGroupAccountsResponse) error {
-	if len(resp.Accounts) == 0 {
-		fmt.Fprintln(w, "No accounts found.")
+func renderPolicyGroupAccountsTable(w io.Writer, accounts []cloudapitype.PolicyGroupAccount, _ bool) error {
+	if len(accounts) == 0 {
+		fmt.Fprintln(w, "No accounts found that you can read.")
 		return nil
 	}
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.SetStyle(table.StyleLight)
 	t.AppendHeader(table.Row{"NAME", "SOURCE", "TAGS"})
-	for _, a := range resp.Accounts {
+	for _, a := range accounts {
 		t.AppendRow(table.Row{a.Name, string(a.Source), formatMemberTags(a.Tags)})
 	}
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Name: "TAGS", WidthMax: policyGroupMemberTagsMax, WidthMaxEnforcer: text.WrapSoft},
+	})
 	t.Render()
 	return nil
 }
 
-func renderPolicyGroupStacksJSON(w io.Writer, resp cloudapitype.ListPolicyGroupStacksResponse) error {
-	if resp.Stacks == nil {
-		resp.Stacks = []cloudapitype.PolicyGroupStack{}
-	}
-	return encodePolicyGroupGetJSON(w, resp)
+type policyGroupStacksJSON struct {
+	Stacks  []cloudapitype.PolicyGroupStack `json:"stacks"`
+	HasMore bool                            `json:"hasMore"`
 }
 
-func renderPolicyGroupAccountsJSON(w io.Writer, resp cloudapitype.ListPolicyGroupAccountsResponse) error {
-	if resp.Accounts == nil {
-		resp.Accounts = []cloudapitype.PolicyGroupAccount{}
-	}
-	return encodePolicyGroupGetJSON(w, resp)
+type policyGroupAccountsJSON struct {
+	Accounts []cloudapitype.PolicyGroupAccount `json:"accounts"`
+	HasMore  bool                              `json:"hasMore"`
 }
 
-func encodePolicyGroupGetJSON(w io.Writer, v any) error {
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	return enc.Encode(v)
+func renderPolicyGroupStacksJSON(w io.Writer, stacks []cloudapitype.PolicyGroupStack, more bool) error {
+	if stacks == nil {
+		stacks = []cloudapitype.PolicyGroupStack{}
+	}
+	return ui.FprintJSON(w, policyGroupStacksJSON{Stacks: stacks, HasMore: more})
+}
+
+func renderPolicyGroupAccountsJSON(w io.Writer, accounts []cloudapitype.PolicyGroupAccount, more bool) error {
+	if accounts == nil {
+		accounts = []cloudapitype.PolicyGroupAccount{}
+	}
+	return ui.FprintJSON(w, policyGroupAccountsJSON{Accounts: accounts, HasMore: more})
 }
 
 type policyGroupGetRenderFunc func(w io.Writer, resp apitype.GetPolicyGroupResponse) error
 
 func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) error {
 	return writePolicyGroupText(w, resp, false)
-}
-
-func renderPolicyGroupGetTextWithConfig(w io.Writer, resp apitype.GetPolicyGroupResponse) error {
-	return writePolicyGroupText(w, resp, true)
 }
 
 func writePolicyGroupText(w io.Writer, resp apitype.GetPolicyGroupResponse, showConfig bool) error {
@@ -594,5 +602,5 @@ func renderPolicyGroupGetJSON(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 	if resp.Accounts == nil {
 		resp.Accounts = []string{}
 	}
-	return encodePolicyGroupGetJSON(w, resp)
+	return ui.FprintJSON(w, resp)
 }
