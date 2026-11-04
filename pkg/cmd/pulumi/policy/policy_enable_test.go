@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -220,4 +222,111 @@ func TestPolicyEnable_JSONMatchesGroupGet(t *testing.T) {
 		stubPolicyGroupGetFactory(&mockPolicyGroupGetClient{resp: group}, "acme"), group.Name, getArgs))
 
 	assert.JSONEq(t, getOut.String(), enableOut)
+}
+
+func TestPolicyEnable_ConfigFileEnvironments(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		file             string
+		wantEnvironments []string
+	}{
+		{
+			name:             "with environments",
+			file:             `{"s3-no-public": "mandatory", "environments": ["policies/aws-creds@3"]}`,
+			wantEnvironments: []string{"policies/aws-creds@3"},
+		},
+		{
+			name: "without environments",
+			file: `{"s3-no-public": "mandatory"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "config.json")
+			require.NoError(t, os.WriteFile(path, []byte(tt.file), 0o600))
+
+			var gotOp backend.PolicyPackOperation
+			pack := &backend.MockPolicyPack{
+				RefF: func() backend.PolicyPackReference { return stubPolicyPackRef{"acme", "aws-guardrails"} },
+				EnableF: func(_ context.Context, _ string, op backend.PolicyPackOperation) error {
+					gotOp = op
+					return nil
+				},
+			}
+			handler := respondJSON(t, "/api/orgs/acme/policygroups/default-policy-group",
+				apitype.GetPolicyGroupResponse{Name: "default-policy-group"})
+
+			_, err := runPolicyPackCmd(t, newPolicyEnableTestCmd(t, pack, handler),
+				"acme/aws-guardrails", "latest", "--config", path, "--output", "json")
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.wantEnvironments, gotOp.Environments)
+			require.Contains(t, gotOp.Config, "s3-no-public")
+			assert.JSONEq(t, `{"enforcementLevel":"mandatory"}`, string(*gotOp.Config["s3-no-public"]))
+		})
+	}
+}
+
+func TestLoadPolicyConfigFromFile(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		file             string
+		wantConfig       map[string]string
+		wantEnvironments []string
+	}{
+		{
+			name: "unversioned with environments",
+			file: `{
+				"s3-no-public": "mandatory",
+				"required-tags": {"enforcementLevel": "advisory", "tags": ["owner"]},
+				"environments": ["policies/aws-creds", "policies/shared@3"]
+			}`,
+			wantConfig: map[string]string{
+				"s3-no-public":  `{"enforcementLevel":"mandatory"}`,
+				"required-tags": `{"enforcementLevel":"advisory","tags":["owner"]}`,
+			},
+			wantEnvironments: []string{"policies/aws-creds", "policies/shared@3"},
+		},
+		{
+			name: "version 2 with environments",
+			file: `{
+				"version": 2,
+				"environments": ["policies/aws-creds"],
+				"policies": {"s3-no-public": "mandatory"}
+			}`,
+			wantConfig:       map[string]string{"s3-no-public": `{"enforcementLevel":"mandatory"}`},
+			wantEnvironments: []string{"policies/aws-creds"},
+		},
+		{
+			name:       "without environments",
+			file:       `{"s3-no-public": "mandatory"}`,
+			wantConfig: map[string]string{"s3-no-public": `{"enforcementLevel":"mandatory"}`},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "config.json")
+			require.NoError(t, os.WriteFile(path, []byte(tt.file), 0o600))
+
+			config, environments, err := loadPolicyConfigFromFile(path)
+			require.NoError(t, err)
+
+			got := make(map[string]string, len(config))
+			for k, v := range config {
+				got[k] = string(*v)
+			}
+			assert.Equal(t, tt.wantConfig, got)
+			assert.Equal(t, tt.wantEnvironments, environments)
+		})
+	}
 }

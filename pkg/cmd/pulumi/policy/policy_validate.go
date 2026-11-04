@@ -76,7 +76,7 @@ func newPolicyValidateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *
 			// Load the configuration from the user-specified JSON file into config object.
 			var config map[string]*json.RawMessage
 			if argConfig != "" {
-				config, err = loadPolicyConfigFromFile(argConfig)
+				config, _, err = loadPolicyConfigFromFile(argConfig)
 				if err != nil {
 					return err
 				}
