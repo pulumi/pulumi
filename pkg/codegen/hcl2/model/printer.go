@@ -42,18 +42,12 @@ type printable interface {
 type printer struct {
 	indent string
 
-	// item holds the layout of the body item that is printing until its first token prints.
-	item *itemLayout
-	// moved holds the comments of the body item that is printing that print before the item and not in its
-	// trailing trivia.
-	moved []syntax.Comment
-}
-
-// itemLayout holds the information that the first token of a body item needs to print generated comments.
-type itemLayout struct {
-	// prefix is the text that the printer wrote before the item on the item's first line.
-	prefix string
-	// moved holds the comments to print after the leading trivia of the item.
+	// itemStart is true while a body item prints and its first token has not printed yet.
+	itemStart bool
+	// itemPrefix is the text that the printer wrote before the body item on the item's first line.
+	itemPrefix string
+	// moved holds the comments of the body item that is printing that print after the item's leading trivia and not
+	// in its trailing trivia.
 	moved []syntax.Comment
 }
 
@@ -138,11 +132,13 @@ func (p *printer) fprintf(w io.Writer, f string, v ...any) {
 // printToken prints a token like syntax.Token.Format, but lays out the generated comments in its trivia.
 func (p *printer) printToken(f fmt.State, t syntax.Token) {
 	leading, prefix := t.LeadingTrivia, ""
-	if item := p.item; item != nil {
-		p.item = nil
-		prefix = item.prefix
-		if len(item.moved) > 0 {
-			leading = append(append(syntax.TriviaList{}, leading...), commentTrivia(item.moved)...)
+	if p.itemStart {
+		p.itemStart, prefix = false, p.itemPrefix
+		if len(p.moved) > 0 {
+			leading = append(syntax.TriviaList{}, leading...)
+			for _, c := range p.moved {
+				leading = append(leading, c)
+			}
 		}
 	}
 
@@ -172,7 +168,10 @@ func (p *printer) printLeadingTrivia(w io.Writer, trivia syntax.TriviaList, pref
 		}
 
 		indent := p.lineIndent(trivia[:i], prefix)
-		_, nextIsWhitespace := next(trivia, i).(syntax.Whitespace)
+		nextIsWhitespace := false
+		if i+1 < len(trivia) {
+			_, nextIsWhitespace = trivia[i+1].(syntax.Whitespace)
+		}
 		p.printComment(w, c, indent, !nextIsWhitespace)
 	}
 }
@@ -194,14 +193,9 @@ func (p *printer) printTrailingTrivia(w io.Writer, trivia syntax.TriviaList) {
 // printComment prints the lines of a generated comment, which ends with a newline. It writes indent before each line
 // after the first, and after the final newline if indentLast is true.
 func (p *printer) printComment(w io.Writer, c syntax.Comment, indent string, indentLast bool) {
-	lines := bytes.Split(bytes.TrimSuffix(c.Bytes(), []byte{'\n'}), []byte{'\n'})
-	for i, l := range lines {
-		if i > 0 {
-			p.write(w, []byte(indent))
-		}
-		p.write(w, l)
-		p.write(w, []byte{'\n'})
-	}
+	text := bytes.TrimSuffix(c.Bytes(), []byte{'\n'})
+	p.write(w, bytes.ReplaceAll(text, []byte{'\n'}, []byte("\n"+indent)))
+	p.write(w, []byte{'\n'})
 	if indentLast {
 		p.write(w, []byte(indent))
 	}
@@ -273,24 +267,9 @@ func withoutComments(trivia syntax.TriviaList, comments []syntax.Comment) syntax
 // backing array of their Lines.
 func containsComment(comments []syntax.Comment, c syntax.Comment) bool {
 	for _, other := range comments {
-		if len(c.Lines) > 0 && len(other.Lines) > 0 && &c.Lines[0] == &other.Lines[0] {
+		if len(c.Lines) > 0 && &c.Lines[0] == &other.Lines[0] {
 			return true
 		}
 	}
 	return false
-}
-
-func commentTrivia(comments []syntax.Comment) syntax.TriviaList {
-	trivia := make(syntax.TriviaList, len(comments))
-	for i, c := range comments {
-		trivia[i] = c
-	}
-	return trivia
-}
-
-func next(trivia syntax.TriviaList, i int) syntax.Trivia {
-	if i+1 < len(trivia) {
-		return trivia[i+1]
-	}
-	return nil
 }
