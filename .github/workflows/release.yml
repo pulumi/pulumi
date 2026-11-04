@@ -37,17 +37,9 @@ on:
         description: "Whether to run dispatch commands"
         type: boolean
       version-set:
-        required: false
+        required: true
         description: "Set of language versions to use for builds, lints, releases, etc."
         type: string
-        # Example provided for illustration, this value is derived by scripts/get-job-matrix.py build
-        default: |
-          {
-            "dotnet": "8.0.x",
-            "go": "1.18.x",
-            "nodejs": "20.x",
-            "python": "3.9.x"
-          }
 
 env:
   PULUMI_VERSION: ${{ inputs.version }}
