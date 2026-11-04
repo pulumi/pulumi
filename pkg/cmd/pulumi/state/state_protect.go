@@ -59,7 +59,7 @@ Setting the 'protect' bit on a resource in your stack's state is not sufficient 
 all cases. If your program does not also set the 'protect' resource option, Pulumi will
 unprotect the resource the next time your program runs (e.g. as part of a ` + "`pulumi up`" + `).
 
-See https://www.pulumi.com/docs/iac/concepts/options/protect/ for more information on
+See https://www.pulumi.com/docs/iac/concepts/resources/options/protect/ for more information on
 the 'protect' resource option and how it can be used to protect resources in your program.
 
 To unprotect a resource, use ` + "`pulumi unprotect`" + `on the resource URN.
