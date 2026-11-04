@@ -99,7 +99,7 @@ func WriteDefinitionDiff(
 		noChanges = " (no value changes)"
 	}
 	fmt.Fprintf(w,
-		"Environment %s: local changes based on revision %d%s; an update publishes them, a preview does not\n",
+		"Environment %s: local changes based on revision %d%s; up, refresh and destroy publish them, preview does not\n",
 		env, baseRevision, noChanges)
 	for _, c := range changes {
 		var spec, text string

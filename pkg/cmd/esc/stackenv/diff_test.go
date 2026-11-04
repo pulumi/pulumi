@@ -155,7 +155,7 @@ func TestDiffDefinitionsNoValueChanges(t *testing.T) {
 	var b strings.Builder
 	WriteDefinitionDiff(&b, colors.Never, "org/proj/env", 7, changes)
 	assert.Equal(t, "Environment org/proj/env: local changes based on revision 7 (no value changes); "+
-		"an update publishes them, a preview does not\n", b.String())
+		"up, refresh and destroy publish them, preview does not\n", b.String())
 }
 
 func TestDiffDefinitionsErrors(t *testing.T) {
@@ -176,7 +176,7 @@ func TestWriteDefinitionDiff(t *testing.T) {
 	require.NoError(t, err)
 
 	const header = "Environment org/proj/env: local changes based on revision 7; " +
-		"an update publishes them, a preview does not\n"
+		"up, refresh and destroy publish them, preview does not\n"
 	cases := []struct {
 		color                         colors.Colorization
 		update, delete, create, reset string
