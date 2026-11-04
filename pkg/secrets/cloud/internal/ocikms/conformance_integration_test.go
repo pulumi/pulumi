@@ -18,7 +18,7 @@ package ocikms_test
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"os"
 	"testing"
 
@@ -49,10 +49,11 @@ func (h realHarness) MakeDriver(ctx context.Context) (driver.Keeper, driver.Keep
 }
 
 func TestOCIConformance(t *testing.T) {
+	t.Parallel()
 	drivertest.RunConformanceTests(t, func(ctx context.Context, t *testing.T) (drivertest.Harness, error) {
 		urls := [2]string{os.Getenv("OCIKMS_TEST_URL"), os.Getenv("OCIKMS_SECOND_TEST_URL")}
 		if urls[0] == "" || urls[1] == "" || urls[0] == urls[1] {
-			return nil, fmt.Errorf("two distinct authorized OCI test key URLs are required")
+			return nil, errors.New("two distinct authorized OCI test key URLs are required")
 		}
 		return realHarness{urls: urls}, nil
 	}, nil)

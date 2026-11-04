@@ -32,11 +32,12 @@ import (
 )
 
 func TestOCIRealKeeper(t *testing.T) {
+	t.Parallel()
 	uri := os.Getenv("OCIKMS_TEST_URL")
 	if uri == "" {
 		t.Fatal("OCIKMS_TEST_URL must select an existing OCI Key Management key")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 	k, err := secrets.OpenKeeper(ctx, uri)
 	if err != nil {
