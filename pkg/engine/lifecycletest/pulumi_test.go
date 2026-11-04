@@ -4357,7 +4357,7 @@ func TestSourcePositions(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs:  &req.Inputs,
-							Outputs: coalesceReadOutputs(req),
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil

@@ -181,7 +181,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: coalesceReadOutputs(req),
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
