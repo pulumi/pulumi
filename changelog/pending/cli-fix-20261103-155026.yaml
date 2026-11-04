@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Allow a project config key named `secret`, which was rejected by Pulumi.yaml validation
+time: 2026-11-03T15:50:26.988581-08:00
