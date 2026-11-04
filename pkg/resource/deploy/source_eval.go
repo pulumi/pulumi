@@ -106,6 +106,8 @@ type EvalSourceOptions struct {
 	DisableInvokeOutputValues bool
 	// true to not advertise CALL_OUTPUT_VALUES on the monitor. Legacy SDKs / test knob for the fallback path.
 	DisableCallOutputValues bool
+	// true to not advertise REGISTER_RESOURCE_OUTPUT_VALUES on the monitor. Legacy SDKs / test knob for the fallback path.
+	DisableRegisterResourceOutputValues bool
 	// true if this deployment can safely execute and persist state migrations.
 	SupportsStateMigrations bool
 	// true if the engine should display secrets in diagnostic messages.
@@ -240,7 +242,7 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 }
 
 type evalSourceIterator struct {
-	mon         SourceResourceMonitor              // the resource monitor, per iterator.
+	mon         *resmon                            // the resource monitor, per iterator.
 	src         *evalSource                        // the owning eval source object.
 	regChan     chan *registerResourceEvent        // the channel that contains resource registrations.
 	regOutChan  chan *registerResourceOutputsEvent // the channel that contains resource completions.
@@ -459,12 +461,6 @@ type resmon struct {
 	// A map of UUIDs to the provider extension they respond to
 	extensionRefMap map[string]extensionRef
 
-	// parameterizedExtensions tracks (providerRef, packageRef) pairs already
-	// passed to Parameterize so remote-component Construct calls don't repeat
-	// the RPC. Keyed by "providerRef|packageRef".
-	parameterizedExtensionsLock sync.Mutex
-	parameterizedExtensions     map[string]bool
-
 	// the organization name for the deployment.
 	organization string
 
@@ -478,8 +474,6 @@ type resmon struct {
 	componentAliases     map[resource.URN][]resource.URN
 	componentAliasesLock sync.Mutex
 }
-
-var _ SourceResourceMonitor = (*resmon)(nil)
 
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(
@@ -511,34 +505,33 @@ func newResourceMonitor(
 
 	// New up an engine RPC server.
 	resmon := &resmon{
-		diagnostics:             src.plugctx.Diag,
-		providers:               provs,
-		defaultProviders:        d,
-		workingDirectory:        src.runinfo.Pwd,
-		sourcePositions:         newSourcePositions(src.runinfo.ProjectRoot),
-		pendingTransforms:       map[string][]TransformFunction{},
-		pendingStateMigrations:  map[string]pendingStateMigration{},
-		parents:                 map[resource.URN]resource.URN{},
-		resGoals:                map[resource.URN]pkgresource.Goal{},
-		componentProviders:      map[resource.URN]map[string]string{},
-		regChan:                 regChan,
-		regOutChan:              regOutChan,
-		regReadChan:             regReadChan,
-		abortChan:               abortChan,
-		cancel:                  cancel,
-		signalFin:               signalFin,
-		programComplete:         programComplete,
-		waitForShutdownChan:     make(chan struct{}, 1),
-		opts:                    src.opts,
-		callbacks:               map[string]*CallbacksClient{},
-		resourceHooks:           src.resourceHooks,
-		resourceTransforms:      map[resource.URN][]TransformFunction{},
-		packageRefMap:           map[string]providers.ProviderRequest{},
-		extensionRefMap:         map[string]extensionRef{},
-		parameterizedExtensions: map[string]bool{},
-		grpcDialOptions:         src.plugctx.DialOptions,
-		observer:                src.observer,
-		componentAliases:        map[resource.URN][]resource.URN{},
+		diagnostics:            src.plugctx.Diag,
+		providers:              provs,
+		defaultProviders:       d,
+		workingDirectory:       src.runinfo.Pwd,
+		sourcePositions:        newSourcePositions(src.runinfo.ProjectRoot),
+		pendingTransforms:      map[string][]TransformFunction{},
+		pendingStateMigrations: map[string]pendingStateMigration{},
+		parents:                map[resource.URN]resource.URN{},
+		resGoals:               map[resource.URN]pkgresource.Goal{},
+		componentProviders:     map[resource.URN]map[string]string{},
+		regChan:                regChan,
+		regOutChan:             regOutChan,
+		regReadChan:            regReadChan,
+		abortChan:              abortChan,
+		cancel:                 cancel,
+		signalFin:              signalFin,
+		programComplete:        programComplete,
+		waitForShutdownChan:    make(chan struct{}, 1),
+		opts:                   src.opts,
+		callbacks:              map[string]*CallbacksClient{},
+		resourceHooks:          src.resourceHooks,
+		resourceTransforms:     map[resource.URN][]TransformFunction{},
+		packageRefMap:          map[string]providers.ProviderRequest{},
+		extensionRefMap:        map[string]extensionRef{},
+		grpcDialOptions:        src.plugctx.DialOptions,
+		observer:               src.observer,
+		componentAliases:       map[resource.URN][]resource.URN{},
 	}
 
 	otelParent := func() oteltrace.Span {
@@ -691,10 +684,11 @@ func (rm *resmon) getProviderReference(defaultProviders *defaultProviders, req p
 
 // getProviderFromSource fetches the provider plugin for a resource, read, or invoke from the given
 // package with the given unparsed provider reference. If the unparsed provider reference is empty,
-// this function returns the plugin for the indicated package's default provider.
+// this function returns the plugin for the indicated package's default provider. If packageRef refers
+// to an extension, the returned provider is parameterized with that extension.
 func (rm *resmon) getProviderFromSource(
-	providerSource ProviderSource, defaultProviders *defaultProviders,
-	req providers.ProviderRequest, rawProviderRef string,
+	ctx context.Context, providerSource ProviderSource, defaultProviders *defaultProviders,
+	req providers.ProviderRequest, rawProviderRef string, packageRef string,
 	token tokens.ModuleMember,
 ) (plugin.Provider, error) {
 	providerRef, err := rm.getProviderReference(defaultProviders, req, rawProviderRef)
@@ -708,6 +702,9 @@ func (rm *resmon) getProviderFromSource(
 	provider, ok := providerSource.GetProvider(providerRef)
 	if !ok {
 		return nil, fmt.Errorf("unknown provider '%v' -> '%v'", rawProviderRef, providerRef)
+	}
+	if err := rm.ensureExtensionParameterized(ctx, providerRef, packageRef); err != nil {
+		return nil, err
 	}
 	return provider, nil
 }
@@ -842,13 +839,12 @@ func (rm *resmon) lookupPackageRef(ref string) (providers.ProviderRequest, bool)
 	return req, has
 }
 
-// ensureExtensionParameterizedForConstruct parameterizes the extension behind
-// packageRef on provider, once per (providerRef, packageRef) pair. Regular
-// resources are parameterized via the step generator, but remote-component
-// Construct bypasses it — so for those, this is where it happens.
-func (rm *resmon) ensureExtensionParameterizedForConstruct(
-	ctx context.Context, provider plugin.Provider,
-	providerRef sdkproviders.Reference, packageRef string,
+// ensureExtensionParameterized parameterizes provider with the extension behind
+// packageRef, if packageRef refers to an extension. Regular resources are
+// parameterized via the step generator, but remote-component Construct, Invoke
+// and Call bypass it — so for those, this is where it happens.
+func (rm *resmon) ensureExtensionParameterized(
+	ctx context.Context, providerRef sdkproviders.Reference, packageRef string,
 ) error {
 	if packageRef == "" {
 		return nil
@@ -859,35 +855,7 @@ func (rm *resmon) ensureExtensionParameterizedForConstruct(
 	if !isExtension {
 		return nil
 	}
-	ext := extRef.extension
-
-	key := providerRef.String() + "|" + packageRef
-	rm.parameterizedExtensionsLock.Lock()
-	if rm.parameterizedExtensions[key] {
-		rm.parameterizedExtensionsLock.Unlock()
-		return nil
-	}
-	rm.parameterizedExtensions[key] = true
-	rm.parameterizedExtensionsLock.Unlock()
-
-	version, err := semver.Parse(ext.Version)
-	if err != nil {
-		return fmt.Errorf("parse extension version %q: %w", ext.Version, err)
-	}
-	if _, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
-		Parameters: &plugin.ParameterizeValue{
-			Name:    ext.Name,
-			Version: version,
-			Value:   ext.Value,
-		},
-	}); err != nil {
-		// Roll back the dedup entry so a retry can succeed.
-		rm.parameterizedExtensionsLock.Lock()
-		delete(rm.parameterizedExtensions, key)
-		rm.parameterizedExtensionsLock.Unlock()
-		return fmt.Errorf("parameterize provider for extension component: %w", err)
-	}
-	return nil
+	return rm.providers.ParameterizeExtension(ctx, providerRef, apitype.ExtensionRef(packageRef), extRef.extension)
 }
 
 func (rm *resmon) SupportsFeature(ctx context.Context,
@@ -920,6 +888,8 @@ func (rm *resmon) supportsFeatureID(id string) bool {
 		return !rm.opts.DisableResourceReferences
 	case "outputValues":
 		return !rm.opts.DisableOutputValues
+	case "registerResourceOutputValues":
+		return !rm.opts.DisableRegisterResourceOutputValues
 	case "aliasSpecs":
 		return true
 	case "replacementTrigger":
@@ -999,6 +969,10 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	}
 	if !rm.opts.DisableCallOutputValues {
 		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES)
+	}
+	if !rm.opts.DisableRegisterResourceOutputValues {
+		features = append(features,
+			pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES)
 	}
 	return features
 }
@@ -1107,7 +1081,8 @@ func (rm *resmon) Invoke(
 		}
 	}
 
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, opts.Provider, tok)
+	prov, err := rm.getProviderFromSource(
+		ctx, rm.providers, rm.defaultProviders, providerReq, opts.Provider, packageRef, tok)
 	if err != nil {
 		return nil, fmt.Errorf("Invoke: %w", err)
 	}
@@ -1313,7 +1288,8 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 		}
 	}
 
-	prov, err := rm.getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, rawProviderRef, tok)
+	prov, err := rm.getProviderFromSource(
+		ctx, rm.providers, rm.defaultProviders, providerReq, rawProviderRef, packageRef, tok)
 	if err != nil {
 		return nil, err
 	}
@@ -2550,11 +2526,21 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		dependencies.Add(urn)
 	}
 
+	usesOutputValues := req.GetUsesOutputValues()
+	if usesOutputValues && len(req.GetPropertyDependencies()) != 0 {
+		return nil, rpcerror.New(codes.InvalidArgument,
+			"uses_output_values is set but propertyDependencies is non-empty; "+
+				"carry per-leaf dependency information inline on inputs as OutputValues instead")
+	}
+
 	propertyDependencies := make(map[resource.PropertyKey]mapset.Set[resource.URN])
-	if len(req.GetPropertyDependencies()) == 0 && !remote {
+	if len(req.GetPropertyDependencies()) == 0 && !remote && !usesOutputValues {
 		// If this request did not specify property dependencies, treat each property as depending on every resource
 		// in the request's dependency list. We don't need to do this when remote is true, because all clients that
 		// support remote already support passing property dependencies, so there's no need to backfill here.
+		// uses_output_values takes a different path: SDKs that set that flag are expected to carry per-leaf
+		// dependency information inline on inputs as OutputValues, so a plain leaf means "no dependency"
+		// and must not inherit the top-level set.
 		// Clone so that downstream code merging a property's Output-value dependencies into its set does not
 		// leak those dependencies into every other property via a shared underlying set instance.
 		for k := range props.All {
@@ -2575,8 +2561,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}
 	}
 
-	// If we're running any transforms we need to update all the property values to Outputs to track dependencies.
-	if len(req.Transforms) > 0 {
+	// If we're running any transforms we need to update all the property values to Outputs to track
+	// dependencies. Skip when uses_output_values is set — the SDK has already placed per-leaf dependency
+	// information on inputs as OutputValues, which carries richer attribution than the flat
+	// propertyDependencies map upgradeOutputValues would stamp onto top-level values.
+	if len(req.Transforms) > 0 && !usesOutputValues {
 		props = upgradeOutputValues(props, propertyDependencies)
 	}
 
@@ -2822,9 +2811,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			deps := mapset.NewSet[resource.URN]()
 			addOutputDependencies(deps, output)
 			propertyDependencies[pk] = deps
-
-			// Also add these to the overall dependencies
-			dependencies = dependencies.Union(deps)
 		}
 	} else {
 		// If we ran transforms we would have merged all the dependencies togther already, but if we didn't we want to
@@ -3018,9 +3004,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// custom-resource path's lazy parameterize doesn't fire. Ensure the
 		// provider has been parameterized for any extension this packageRef
 		// represents before invoking Construct.
-		if err := rm.ensureExtensionParameterizedForConstruct(
-			ctx, provider, providerRef, req.GetPackageRef(),
-		); err != nil {
+		if err := rm.ensureExtensionParameterized(ctx, providerRef, req.GetPackageRef()); err != nil {
 			return nil, err
 		}
 

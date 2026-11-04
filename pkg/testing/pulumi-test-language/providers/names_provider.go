@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // This provider offers resources with names that could potentially cause problems in go
@@ -243,11 +244,11 @@ func (p *NamesProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugi
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	readInputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"value": resource.NewProperty(true),
+	readInputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
 	})
-	readOutputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"value": resource.NewProperty(true),
+	readOutputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
 	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{

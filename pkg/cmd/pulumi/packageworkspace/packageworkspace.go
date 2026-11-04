@@ -398,7 +398,7 @@ func (w Workspace) servers(
 	}
 
 	host := cachedLoaderHost{Host: w.pctx.Host, refs: refs}
-	pctx, err := plugin.NewContextWithHost(ctx, d, d, host, dir, dir, w.parentSpan)
+	pctx, err := plugin.NewContextWithHost(ctx, d, d, host, dir, dir, w.parentSpan, w.pctx.CloudCredentialEnv)
 	if err != nil {
 		return servers{}, err
 	}
@@ -474,11 +474,11 @@ func (w Workspace) RunPackage(
 		Color: diagutils.GetGlobalColorization(),
 	})
 
-	pctx, err := plugin.NewContextWithHost(ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan)
+	pctx, err := plugin.NewContextWithHost(
+		ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan, w.pctx.CloudCredentialEnv)
 	if err != nil {
 		return nil, fmt.Errorf("could not start context for plugin at %q: %w", pluginPath, err)
 	}
-	pctx.CloudCredentialEnv = w.pctx.CloudCredentialEnv
 	pctx.DialOptions = w.pctx.DialOptions
 	pctx.DebugTraceMutex = w.pctx.DebugTraceMutex
 	p, err := w.pctx.Host.ProviderFromPath(pctx, pluginPath, env.Global())

@@ -136,3 +136,16 @@ func TestManagedEnvironmentRef(t *testing.T) {
 	assert.Empty(t, project)
 	assert.Empty(t, name)
 }
+
+func TestAsManagedEnvironmentsBackend(t *testing.T) {
+	t.Parallel()
+
+	managed := &MockManagedEnvironmentsBackend{}
+	got, err := AsManagedEnvironmentsBackend(managed)
+	require.NoError(t, err)
+	assert.Same(t, managed, got)
+
+	_, err = AsManagedEnvironmentsBackend(&MockBackend{NameF: func() string { return "diy" }})
+	require.ErrorIs(t, err, ErrManagedEnvironmentNotSupported)
+	assert.EqualError(t, err, "ESC-managed environments are not supported by backend diy")
+}

@@ -1,0 +1,4 @@
+component: sdk/go
+kind: improvement
+body: Take the ID passed to `Context.ExistsResource` as a `StringInput`, since it is an import ID rather than a resource ID
+time: 2026-10-22T14:44:10.976504+02:00

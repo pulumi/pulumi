@@ -44,7 +44,12 @@ func newPackagePackSdkCmd() *cobra.Command {
 
 			reg := cmdCmd.NewDefaultRegistry(
 				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
-			pCtx, err := packages.NewPluginContext(cwd, reg)
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+				cmd.Context(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+			if err != nil {
+				return err
+			}
+			pCtx, err := packages.NewPluginContext(cwd, reg, cloudCredentialEnv)
 			if err != nil {
 				return fmt.Errorf("create plugin context: %w", err)
 			}

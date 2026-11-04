@@ -29,6 +29,7 @@ import (
 	"github.com/hashicorp/hcl/v2"
 	segmentiojson "github.com/segmentio/encoding/json"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageinstallation"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
@@ -195,7 +196,12 @@ func GenSDK(
 			return nil, err
 		}
 
-		pCtx, err := NewPluginContext(cwd, reg)
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+			ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+		if err != nil {
+			return nil, err
+		}
+		pCtx, err := NewPluginContext(cwd, reg, cloudCredentialEnv)
 		if err != nil {
 			return nil, fmt.Errorf("create plugin context: %w", err)
 		}
@@ -343,7 +349,7 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 	return nil
 }
 
-func NewPluginContext(cwd string, reg registry.Registry) (*plugin.Context, error) {
+func NewPluginContext(cwd string, reg registry.Registry, credentials map[string]string) (*plugin.Context, error) {
 	// Helper used by callers without a *cobra.Command writer; emits to
 	// process stderr.
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{ //nolint:forbidigo
@@ -355,7 +361,7 @@ func NewPluginContext(cwd string, reg registry.Registry) (*plugin.Context, error
 	if err != nil {
 		return nil, err
 	}
-	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, pluginHost, nil, cwd, nil, true, nil, credentials)
 	if err != nil {
 		return nil, errors.Join(err, pluginHost.Close())
 	}

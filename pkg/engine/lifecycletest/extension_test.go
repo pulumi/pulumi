@@ -16,6 +16,7 @@ package lifecycletest
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -31,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
@@ -325,6 +327,181 @@ func TestExtensionParameterizedProviderDeleteParameterizesFromState(t *testing.T
 			mu.Unlock()
 			require.True(t, parameterized,
 				"a from-state delete must parameterize the provider from state")
+		})
+	}
+}
+
+// TestExtensionParameterizedProviderInvoke checks that the engine parameterizes a provider with an
+// extension before it sends an invoke of that extension's package. The program creates no resource of
+// the extension package, so the invoke is the first use of the extension on the provider.
+func TestExtensionParameterizedProviderInvoke(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		explicit bool
+	}{
+		{"default_provider", false},
+		{"explicit_provider", true},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					var mu sync.Mutex
+					parameterized := ""
+					return &deploytest.Provider{
+						ParameterizeF: func(
+							_ context.Context, req plugin.ParameterizeRequest,
+						) (plugin.ParameterizeResponse, error) {
+							value := req.Parameters.(*plugin.ParameterizeValue)
+							mu.Lock()
+							parameterized = value.Name
+							mu.Unlock()
+							return plugin.ParameterizeResponse{Name: value.Name, Version: value.Version}, nil
+						},
+						InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+							mu.Lock()
+							defer mu.Unlock()
+							if parameterized != string(req.Tok.Package()) {
+								return plugin.InvokeResponse{}, fmt.Errorf("unknown function %s", req.Tok)
+							}
+							return plugin.InvokeResponse{}, nil
+						},
+					}, nil
+				}),
+			}
+
+			program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				ref, err := monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, &pulumirpc.Parameterization{
+					Name: "ext", Version: "2.0.0", Value: []byte("blob"),
+				})
+				require.NoError(t, err)
+
+				provider := ""
+				if c.explicit {
+					prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true)
+					require.NoError(t, err)
+					provRef, err := providers.NewReference(prov.URN, prov.ID)
+					require.NoError(t, err)
+					provider = provRef.String()
+				}
+
+				_, _, err = monitor.Invoke("ext:index:echo", nil, provider, "", ref, deploytest.InvokeOptions{})
+				return err
+			})
+
+			hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+			p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+			_, err := lt.TestOp(Update).
+				RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "")
+			require.NoError(t, err)
+		})
+	}
+}
+
+// TestExtensionParameterizedOncePerProvider checks that the engine parameterizes a provider with an extension
+// exactly once, whatever mix of invokes, remote components and resources uses the extension first. The extension
+// blob must still reach the snapshot when an invoke or a remote component parameterizes the provider first.
+func TestExtensionParameterizedOncePerProvider(t *testing.T) {
+	t.Parallel()
+
+	type op func(t *testing.T, monitor *deploytest.ResourceMonitor, ref string)
+	invoke := func(t *testing.T, monitor *deploytest.ResourceMonitor, ref string) {
+		_, _, err := monitor.Invoke("ext:index:echo", nil, "", "", ref, deploytest.InvokeOptions{})
+		require.NoError(t, err)
+	}
+	register := func(t *testing.T, monitor *deploytest.ResourceMonitor, ref string) {
+		_, err := monitor.RegisterResource("ext:index:Res", "res", true, deploytest.ResourceOptions{PackageRef: ref})
+		require.NoError(t, err)
+	}
+	construct := func(t *testing.T, monitor *deploytest.ResourceMonitor, ref string) {
+		_, err := monitor.RegisterResource("ext:index:Comp", "comp", false, deploytest.ResourceOptions{
+			PackageRef: ref,
+			Remote:     true,
+		})
+		require.NoError(t, err)
+	}
+
+	cases := []struct {
+		name string
+		ops  []op
+	}{
+		{"invoke_then_resource", []op{invoke, register}},
+		{"resource_then_invoke", []op{register, invoke}},
+		{"construct_then_resource", []op{construct, register}},
+		{"resource_then_construct", []op{register, construct}},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			var mu sync.Mutex
+			var parameterized []string
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{
+						ParameterizeF: func(
+							_ context.Context, req plugin.ParameterizeRequest,
+						) (plugin.ParameterizeResponse, error) {
+							value := req.Parameters.(*plugin.ParameterizeValue)
+							mu.Lock()
+							parameterized = append(parameterized, value.Name)
+							mu.Unlock()
+							return plugin.ParameterizeResponse{Name: value.Name, Version: value.Version}, nil
+						},
+						InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+							return plugin.InvokeResponse{}, nil
+						},
+						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+							return plugin.CreateResponse{
+								ID:         resource.ID("id-" + req.URN.Name()),
+								Properties: req.Properties,
+								Status:     resource.StatusOK,
+							}, nil
+						},
+						ConstructF: func(
+							_ context.Context, req plugin.ConstructRequest, monitor *deploytest.ResourceMonitor,
+						) (plugin.ConstructResponse, error) {
+							resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+								Parent: req.Parent,
+							})
+							if err != nil {
+								return plugin.ConstructResponse{}, err
+							}
+							return plugin.ConstructResponse{URN: resp.URN}, nil
+						},
+					}, nil
+				}),
+			}
+
+			var ref string
+			program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				var err error
+				ref, err = monitor.RegisterPackage("pkgA", "1.0.0", "", nil, nil, &pulumirpc.Parameterization{
+					Name: "ext", Version: "2.0.0", Value: []byte("blob"),
+				})
+				require.NoError(t, err)
+				for _, o := range c.ops {
+					o(t, monitor, ref)
+				}
+				return nil
+			})
+
+			hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+			p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+			snap, err := lt.TestOp(Update).
+				RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "")
+			require.NoError(t, err)
+
+			assert.Equal(t, []string{"ext"}, parameterized)
+			assert.Equal(t, map[apitype.ExtensionRef]apitype.Extension{
+				apitype.ExtensionRef(ref): {Name: "ext", Version: "2.0.0", Value: []byte("blob")},
+			}, snap.Extensions)
 		})
 	}
 }

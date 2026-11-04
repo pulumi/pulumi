@@ -556,7 +556,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		return nil, fmt.Errorf("setup plugin host: %w", err)
 	}
 	defer contract.IgnoreClose(pluginHost)
-	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, pluginHost, "", "", nil, false, nil, nil, nil, nil)
+	pctx, err := plugin.NewContextWithRoot(ctx, snk, snk, pluginHost, "", "", nil, false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -768,7 +768,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	}
 
 	pctx, err := plugin.NewContextWithRoot(
-		ctx, snk, snk, host, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil)
+		ctx, snk, snk, host, token.TemporaryDirectory, token.TemporaryDirectory, nil, false, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("setup plugin context: %w", err)
 	}
@@ -853,7 +853,7 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		} else {
 			host.providers[key] = func() (plugin.Provider, error) {
-				return provider(), nil
+				return host.serveProvider(provider())
 			}
 		}
 	}

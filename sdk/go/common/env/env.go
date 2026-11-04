@@ -137,7 +137,10 @@ var NeoSummaryMaxLen = env.Int("NEO_SUMMARY_MAXLEN",
 var CopilotSummaryMaxLen = NeoSummaryMaxLen
 
 var FallbackToStateSecretsManager = env.Bool("FALLBACK_TO_STATE_SECRETS_MANAGER",
-	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete.")
+	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete. "+
+		"Set this if you see secret decryption errors when running from a workspace that doesn't carry local "+
+		"stack configuration between invocations, such as the Automation API or a saved update plan applied "+
+		"from a different directory (see https://github.com/pulumi/pulumi/issues/16412).")
 
 var Parallel = env.Int("PARALLEL",
 	"Allow P resource operations to run in parallel at once (1 for no parallelism)")
@@ -150,6 +153,12 @@ var CredentialStore = env.String("CREDENTIAL_STORE",
 	`How to keep CLI credentials: "auto" encrypts them with a key protected by the operating `+
 		`system (macOS Keychain, Windows Credential Manager, Linux Secret Service, TPM) when such `+
 		`protection is usable, "os" requires it, and "plaintext" uses the plaintext credentials file.`)
+
+var CredentialHelper = env.String("CREDENTIAL_HELPER",
+	`[EXPERIMENTAL] Path to the credentials helper executable, or "none" to disable it.`)
+
+var CredentialHelperArgs = env.String("CREDENTIAL_HELPER_ARGS",
+	"[EXPERIMENTAL] JSON array of arguments passed to the credentials helper.", env.Secret)
 
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")

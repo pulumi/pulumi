@@ -111,6 +111,20 @@
             }
         },
         {
+            "path": ["config", "set"],
+            "propagate": false,
+            "flags": {
+                "override-import": { "omit": true }
+            }
+        },
+        {
+            "path": ["config", "set-all"],
+            "propagate": false,
+            "flags": {
+                "override-import": { "omit": true }
+            }
+        },
+        {
             "path": ["config", "refresh"],
             "propagate": false,
             "flags": {
@@ -131,12 +145,6 @@
             "flags": {
                 "json": { "omit": true, "preset": true }
             }
-        },
-        {
-            "path": ["api"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
         },
         {
             "path": ["console"],
@@ -219,17 +227,13 @@
         {
             "path": ["new"],
             "propagate": true,
-            "flags": {}
+            "flags": {
+                "esc-config": { "omit": true }
+            }
         },
         {
             "path": ["org"],
             "propagate": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "role"],
-            "propagate": true,
-            "exclude": true,
             "flags": {}
         },
         {
@@ -270,12 +274,6 @@
         },
         {
             "path": ["replay-events"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["schema"],
             "propagate": true,
             "exclude": true,
             "flags": {}

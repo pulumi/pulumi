@@ -1,0 +1,4 @@
+component: sdk/python
+kind: fix
+body: Select the provider for `pulumi.runtime.exists_resource` from its options and parent when no resource is given
+time: 2026-10-30T11:30:45.760698+01:00

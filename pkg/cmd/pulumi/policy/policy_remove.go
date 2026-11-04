@@ -16,12 +16,15 @@ package policy
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -29,19 +32,49 @@ import (
 
 const allKeyword = "all"
 
-func newPolicyRemoveCmd() *cobra.Command {
+type policyRemoveResult struct {
+	OrganizationName string  `json:"organizationName"`
+	Name             string  `json:"name"`
+	VersionTag       *string `json:"versionTag"`
+}
+
+type policyRemoveRenderFunc func(w io.Writer, result policyRemoveResult) error
+
+func renderPolicyRemoveText(w io.Writer, result policyRemoveResult) error {
+	if result.VersionTag == nil {
+		fmt.Fprintf(w, "Removed policy pack %s/%s.\n", result.OrganizationName, result.Name)
+	} else {
+		fmt.Fprintf(w, "Removed version %s of policy pack %s/%s.\n",
+			*result.VersionTag, result.OrganizationName, result.Name)
+	}
+	return nil
+}
+
+func renderPolicyRemoveJSON(w io.Writer, result policyRemoveResult) error {
+	return ui.FprintJSON(w, result)
+}
+
+func newPolicyRemoveCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var yes bool
+	outputFormat := outputflag.OutputFlag[policyRemoveRenderFunc]{
+		RenderForTerminal: renderPolicyRemoveText,
+		RenderJSON:        renderPolicyRemoveJSON,
+	}
 	cmd := &cobra.Command{
 		Use:     "remove",
 		Aliases: []string{"rm", "delete"},
 		Short:   "Removes a Policy Pack from a Pulumi organization",
 		Long: "Removes a Policy Pack from a Pulumi organization. " +
-			"The Policy Pack must be disabled from all Policy Groups before it can be removed.",
+			"The Policy Pack must be disabled from all Policy Groups before it can be removed.\n" +
+			"\n" +
+			"Examples:\n" +
+			"  pulumi policy rm acme/aws-guardrails 3\n" +
+			"  pulumi policy rm acme/aws-guardrails all --yes --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			yes = yes || env.SkipConfirmations.Value()
 			// Obtain current PolicyPack, tied to the Pulumi Cloud backend.
-			policyPack, err := requirePolicyPack(ctx, args[0], cmdBackend.DefaultLoginManager)
+			policyPack, err := requirePolicyPack(ctx, ws, lm, args[0])
 			if err != nil {
 				return err
 			}
@@ -51,13 +84,15 @@ func newPolicyRemoveCmd() *cobra.Command {
 				version = &args[1]
 			}
 
+			// The prompt goes to stderr so stdout only carries the result.
 			opts := display.Options{
-				Color: cmdutil.GetGlobalColorization(),
+				Color:  cmdutil.GetGlobalColorization(),
+				Stdout: cmd.ErrOrStderr(),
 			}
 
 			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", args[0])
 			if err := ui.ConfirmDeletion(
-				yes, cmdutil.Interactive(), prompt, args[0], cmd.OutOrStdout(), opts,
+				yes, cmdutil.Interactive(), prompt, args[0], cmd.ErrOrStderr(), opts,
 			); err != nil {
 				return err
 			}
@@ -70,7 +105,11 @@ func newPolicyRemoveCmd() *cobra.Command {
 				return err
 			}
 
-			return nil
+			return outputFormat.Get()(cmd.OutOrStdout(), policyRemoveResult{
+				OrganizationName: policyPack.Ref().OrgName(),
+				Name:             string(policyPack.Ref().Name()),
+				VersionTag:       version,
+			})
 		},
 	}
 
@@ -86,5 +125,6 @@ func newPolicyRemoveCmd() *cobra.Command {
 		&yes, "yes", "y", false,
 		"Skip confirmation prompts, and proceed with removal anyway")
 
+	outputflag.VarP(cmd.Flags(), &outputFormat)
 	return cmd
 }

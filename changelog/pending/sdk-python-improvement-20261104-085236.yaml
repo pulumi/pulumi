@@ -1,0 +1,4 @@
+component: sdk/python
+kind: improvement
+body: Preserve value types and check key types when indexing Python Outputs
+time: 2026-11-04T08:52:36.112696+01:00

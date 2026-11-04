@@ -1,0 +1,4 @@
+component: sdkgen/python
+kind: feat
+body: Generate static `exists` methods that check whether a resource with a given ID exists without adopting it into the stack
+time: 2026-10-22T15:41:50.776563+02:00

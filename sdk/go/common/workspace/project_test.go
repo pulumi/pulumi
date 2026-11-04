@@ -554,6 +554,25 @@ config:
 	assert.Nil(t, secretString.Items)
 }
 
+func TestProjectLoadsConfigKeyNamedSecret(t *testing.T) {
+	t.Parallel()
+	projectContent := `
+name: test
+runtime: dotnet
+config:
+  secret:
+    type: string
+    secret: true
+  `
+
+	project, err := loadProjectFromText(t, projectContent)
+	require.NoError(t, err, "A config key named 'secret' should load like any other key")
+	secretKey, ok := project.Config["secret"]
+	require.True(t, ok, "should be able to read secret")
+	assert.Equal(t, "string", secretKey.TypeName())
+	assert.True(t, secretKey.Secret)
+}
+
 func TestNamespacedProjectConfigShouldNotBeExplicitlyTyped(t *testing.T) {
 	t.Parallel()
 	projectYaml := `

@@ -99,7 +99,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-resource-exists":            "Go program generation does not support resourceExists yet",
 	"l2-resource-any":               "a list inside an any-typed input generates pulumi.Any{...}, but pulumi.Any is a func not a type; does not compile", //nolint:lll
 	"l2-config-default-from-invoke": "config variable defaulting to an invoke result is never declared; generated code does not compile",                 //nolint:lll
 	"l1-config-types-object":        "fails to compile",
@@ -147,6 +146,8 @@ var expectedFailures = map[string]string{
 
 	"l2-invoke-per-value-deps": "output aware invokes not yet implemented",
 	"l2-call-per-value-deps":   "output aware calls not yet implemented",
+
+	"l2-component-output-value-input-deps": "SDK does not yet set uses_output_values on RegisterResource",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

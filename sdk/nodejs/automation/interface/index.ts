@@ -196,6 +196,381 @@ export class API {
         return this.__run(options, __final);
     }
 
+    apiDescribe(options: PulumiApiDescribeOptions, pathOrOperationId: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("api");
+        __final.push("describe");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose) {
+            __flags.push("--verbose");
+        }
+
+        if (options.all) {
+            __flags.push("--all");
+        }
+
+        if (options.body != null) {
+            __flags.push("--body", "" + options.body);
+        }
+
+        if (options.dryRun) {
+            __flags.push("--dry-run");
+        }
+
+        if (options.envelopeVersion != null) {
+            __flags.push("--envelope-version", "" + options.envelopeVersion);
+        }
+
+        for (const __item of options.field ?? []) {
+            if (__item != null) {
+                __flags.push("--field", "" + __item);
+            }
+        }
+
+        for (const __item of options.header ?? []) {
+            if (__item != null) {
+                __flags.push("--header", "" + __item);
+            }
+        }
+
+        if (options.include) {
+            __flags.push("--include");
+        }
+
+        if (options.input != null) {
+            __flags.push("--input", "" + options.input);
+        }
+
+        if (options.method != null) {
+            __flags.push("--method", "" + options.method);
+        }
+
+        if (options.output != null) {
+            __flags.push("--output", "" + options.output);
+        }
+
+        for (const __item of options.rawField ?? []) {
+            if (__item != null) {
+                __flags.push("--raw-field", "" + __item);
+            }
+        }
+
+        if (options.refreshSpec) {
+            __flags.push("--refresh-spec");
+        }
+
+        if (options.silent) {
+            __flags.push("--silent");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        __arguments.push("" + pathOrOperationId);
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    apiList(options: PulumiApiListOptions): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("api");
+        __final.push("list");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose) {
+            __flags.push("--verbose");
+        }
+
+        if (options.all) {
+            __flags.push("--all");
+        }
+
+        if (options.body != null) {
+            __flags.push("--body", "" + options.body);
+        }
+
+        if (options.dryRun) {
+            __flags.push("--dry-run");
+        }
+
+        if (options.envelopeVersion != null) {
+            __flags.push("--envelope-version", "" + options.envelopeVersion);
+        }
+
+        for (const __item of options.field ?? []) {
+            if (__item != null) {
+                __flags.push("--field", "" + __item);
+            }
+        }
+
+        for (const __item of options.header ?? []) {
+            if (__item != null) {
+                __flags.push("--header", "" + __item);
+            }
+        }
+
+        if (options.include) {
+            __flags.push("--include");
+        }
+
+        if (options.input != null) {
+            __flags.push("--input", "" + options.input);
+        }
+
+        if (options.method != null) {
+            __flags.push("--method", "" + options.method);
+        }
+
+        if (options.output != null) {
+            __flags.push("--output", "" + options.output);
+        }
+
+        for (const __item of options.rawField ?? []) {
+            if (__item != null) {
+                __flags.push("--raw-field", "" + __item);
+            }
+        }
+
+        if (options.refreshSpec) {
+            __flags.push("--refresh-spec");
+        }
+
+        if (options.silent) {
+            __flags.push("--silent");
+        }
+
+        if (options.filter != null) {
+            __flags.push("--filter", "" + options.filter);
+        }
+
+        if (options.includeDeprecated) {
+            __flags.push("--include-deprecated");
+        }
+
+        if (options.includePreview) {
+            __flags.push("--include-preview");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    api(options: PulumiApiOptions): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("api");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose) {
+            __flags.push("--verbose");
+        }
+
+        if (options.all) {
+            __flags.push("--all");
+        }
+
+        if (options.body != null) {
+            __flags.push("--body", "" + options.body);
+        }
+
+        if (options.dryRun) {
+            __flags.push("--dry-run");
+        }
+
+        if (options.envelopeVersion != null) {
+            __flags.push("--envelope-version", "" + options.envelopeVersion);
+        }
+
+        for (const __item of options.field ?? []) {
+            if (__item != null) {
+                __flags.push("--field", "" + __item);
+            }
+        }
+
+        for (const __item of options.header ?? []) {
+            if (__item != null) {
+                __flags.push("--header", "" + __item);
+            }
+        }
+
+        if (options.include) {
+            __flags.push("--include");
+        }
+
+        if (options.input != null) {
+            __flags.push("--input", "" + options.input);
+        }
+
+        if (options.method != null) {
+            __flags.push("--method", "" + options.method);
+        }
+
+        if (options.output != null) {
+            __flags.push("--output", "" + options.output);
+        }
+
+        for (const __item of options.rawField ?? []) {
+            if (__item != null) {
+                __flags.push("--raw-field", "" + __item);
+            }
+        }
+
+        if (options.refreshSpec) {
+            __flags.push("--refresh-spec");
+        }
+
+        if (options.silent) {
+            __flags.push("--silent");
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
     cancel(options: PulumiCancelOptions, stackName?: string): ReturnType<API["__run"]> {
         const __final: string[] = [];
         __final.push("cancel");
@@ -7541,6 +7916,465 @@ export class API {
         return this.__run(options, __final);
     }
 
+    orgRoleAssign(options: PulumiOrgRoleAssignOptions, roleId: string, team: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("org");
+        __final.push("role");
+        __final.push("assign");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.org != null) {
+            __flags.push("--org", "" + options.org);
+        }
+
+        if (options.output != null) {
+            __flags.push("--output", "" + options.output);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        __arguments.push("" + roleId);
+        __arguments.push("" + team);
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    orgRoleEdit(options: PulumiOrgRoleEditOptions, roleId: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("org");
+        __final.push("role");
+        __final.push("edit");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.description != null) {
+            __flags.push("--description", "" + options.description);
+        }
+
+        if (options.detailsFile != null) {
+            __flags.push("--details-file", "" + options.detailsFile);
+        }
+
+        if (options.name != null) {
+            __flags.push("--name", "" + options.name);
+        }
+
+        if (options.org != null) {
+            __flags.push("--org", "" + options.org);
+        }
+
+        if (options.output != null) {
+            __flags.push("--output", "" + options.output);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        __arguments.push("" + roleId);
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    orgRoleList(options: PulumiOrgRoleListOptions): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("org");
+        __final.push("role");
+        __final.push("list");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.org != null) {
+            __flags.push("--org", "" + options.org);
+        }
+
+        if (options.output != null) {
+            __flags.push("--output", "" + options.output);
+        }
+
+        if (options.purpose != null) {
+            __flags.push("--purpose", "" + options.purpose);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    orgRoleNew(options: PulumiOrgRoleNewOptions, name: string, detailsFile: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("org");
+        __final.push("role");
+        __final.push("new");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.description != null) {
+            __flags.push("--description", "" + options.description);
+        }
+
+        if (options.org != null) {
+            __flags.push("--org", "" + options.org);
+        }
+
+        if (options.output != null) {
+            __flags.push("--output", "" + options.output);
+        }
+
+        if (options.purpose != null) {
+            __flags.push("--purpose", "" + options.purpose);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        __arguments.push("" + name);
+        __arguments.push("" + detailsFile);
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    orgRoleRemove(options: PulumiOrgRoleRemoveOptions, roleId: string): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("org");
+        __final.push("role");
+        __final.push("remove");
+
+        const __flags: string[] = [];
+
+        __flags.push("--yes");
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.force) {
+            __flags.push("--force");
+        }
+
+        if (options.org != null) {
+            __flags.push("--org", "" + options.org);
+        }
+
+        if (options.output != null) {
+            __flags.push("--output", "" + options.output);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        __arguments.push("" + roleId);
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    orgRole(options: PulumiOrgRoleOptions): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("org");
+        __final.push("role");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
     orgSearchAi(options: PulumiOrgSearchAiOptions): ReturnType<API["__run"]> {
         const __final: string[] = [];
         __final.push("org");
@@ -8186,6 +9020,93 @@ export class API {
 
         const __arguments: string[] = [];
 
+        if (__arguments.length > 0) {
+            __final.push("--");
+            __final.push(...__arguments);
+        }
+
+        return this.__run(options, __final);
+    }
+
+    schemaCheck(
+        options: PulumiSchemaCheckOptions,
+        schemaSource: string,
+        ...providerParameter: string[]
+    ): ReturnType<API["__run"]> {
+        const __final: string[] = [];
+        __final.push("schema");
+        __final.push("check");
+
+        const __flags: string[] = [];
+
+        if (options.color != null) {
+            __flags.push("--color", "" + options.color);
+        }
+
+        if (options.disableIntegrityChecking) {
+            __flags.push("--disable-integrity-checking");
+        }
+
+        if (options.fullyQualifyStackNames) {
+            __flags.push("--fully-qualify-stack-names");
+        }
+
+        if (options.logflow) {
+            __flags.push("--logflow");
+        }
+
+        if (options.logtostderr) {
+            __flags.push("--logtostderr");
+        }
+
+        if (options.memprofilerate != null) {
+            __flags.push("--memprofilerate", "" + options.memprofilerate);
+        }
+
+        if (options.otelTraces != null) {
+            __flags.push("--otel-traces", "" + options.otelTraces);
+        }
+
+        if (options.profiling != null) {
+            __flags.push("--profiling", "" + options.profiling);
+        }
+
+        if (options.tracing != null) {
+            __flags.push("--tracing", "" + options.tracing);
+        }
+
+        if (options.tracingHeader != null) {
+            __flags.push("--tracing-header", "" + options.tracingHeader);
+        }
+
+        if (options.verbose != null) {
+            __flags.push("--verbose", "" + options.verbose);
+        }
+
+        if (options.allowDanglingReferences) {
+            __flags.push("--allow-dangling-references");
+        }
+
+        if (options.extension != null) {
+            __flags.push("--extension", "" + options.extension);
+        }
+
+        if (options.server != null) {
+            __flags.push("--server", "" + options.server);
+        }
+
+        __final.push(...__flags);
+
+        const __arguments: string[] = [];
+
+        for (const __item of schemaSource ?? []) {
+            __arguments.push("" + __item);
+        }
+        if (providerParameter != null) {
+            for (const __item of providerParameter ?? []) {
+                __arguments.push("" + __item);
+            }
+        }
         if (__arguments.length > 0) {
             __final.push("--");
             __final.push(...__arguments);
@@ -9563,6 +10484,168 @@ export interface PulumiAboutEnvOptions extends BaseOptions {
     stack?: string;
     /** Include transitive dependencies */
     transitive?: boolean;
+}
+
+/** Options for the `pulumi api` command. */
+export interface PulumiApiOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Dump full request and response to stderr */
+    verbose?: boolean;
+    /** Follow pagination cursors and emit the combined result */
+    all?: boolean;
+    /** Inline request body sent verbatim (default Content-Type: application/json). Mutually exclusive with --input */
+    body?: string;
+    /** Print the resolved request without sending it */
+    dryRun?: boolean;
+    /** Pin the JSON envelope version the caller expects */
+    envelopeVersion?: number;
+    /** Typed key=value; numbers/bools/null auto-detected; JSON object/array literals parsed; @file reads file; @- reads stdin. Sent as query params on GET/HEAD, JSON body fields otherwise */
+    field?: string[];
+    /** Custom HTTP header `Key: Value` (repeatable) */
+    header?: string[];
+    /** Include HTTP status line and response headers in output */
+    include?: boolean;
+    /** Read request body from file; `-` reads stdin */
+    input?: string;
+    /** HTTP method (default GET, POST when body fields are present) */
+    method?: string;
+    /** Drive content negotiation and rendering. Default uses the op's primary response content type (usually JSON). `json` or `markdown` request that format via the Accept header — rejected if the op's spec doesn't declare it. `raw` keeps the op's default Accept and writes the body through unchanged. */
+    output?: string;
+    /** String key=value with no type coercion. Sent as query params on GET/HEAD, JSON body fields otherwise */
+    rawField?: string[];
+    /** Re-fetch the OpenAPI spec from Pulumi Cloud and overwrite the local cache */
+    refreshSpec?: boolean;
+    /** Do not print the response body on success; errors are still printed and exit non-zero */
+    silent?: boolean;
+}
+
+/** Options for the `pulumi api describe` command. */
+export interface PulumiApiDescribeOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Dump full request and response to stderr */
+    verbose?: boolean;
+    /** Follow pagination cursors and emit the combined result */
+    all?: boolean;
+    /** Inline request body sent verbatim (default Content-Type: application/json). Mutually exclusive with --input */
+    body?: string;
+    /** Print the resolved request without sending it */
+    dryRun?: boolean;
+    /** Pin the JSON envelope version the caller expects */
+    envelopeVersion?: number;
+    /** Typed key=value; numbers/bools/null auto-detected; JSON object/array literals parsed; @file reads file; @- reads stdin. Sent as query params on GET/HEAD, JSON body fields otherwise */
+    field?: string[];
+    /** Custom HTTP header `Key: Value` (repeatable) */
+    header?: string[];
+    /** Include HTTP status line and response headers in output */
+    include?: boolean;
+    /** Read request body from file; `-` reads stdin */
+    input?: string;
+    /** HTTP method to look up (a path can map to multiple ops by method) */
+    method?: string;
+    /** Output format: default is a human-readable schema render; `markdown` emits a markdown document (piping friendly, renders in IDEs/glow); `json` emits the stable agent envelope */
+    output?: string;
+    /** String key=value with no type coercion. Sent as query params on GET/HEAD, JSON body fields otherwise */
+    rawField?: string[];
+    /** Re-fetch the OpenAPI spec from Pulumi Cloud and overwrite the local cache */
+    refreshSpec?: boolean;
+    /** Do not print the response body on success; errors are still printed and exit non-zero */
+    silent?: boolean;
+}
+
+/** Options for the `pulumi api list` command. */
+export interface PulumiApiListOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Dump full request and response to stderr */
+    verbose?: boolean;
+    /** Follow pagination cursors and emit the combined result */
+    all?: boolean;
+    /** Inline request body sent verbatim (default Content-Type: application/json). Mutually exclusive with --input */
+    body?: string;
+    /** Print the resolved request without sending it */
+    dryRun?: boolean;
+    /** Pin the JSON envelope version the caller expects */
+    envelopeVersion?: number;
+    /** Typed key=value; numbers/bools/null auto-detected; JSON object/array literals parsed; @file reads file; @- reads stdin. Sent as query params on GET/HEAD, JSON body fields otherwise */
+    field?: string[];
+    /** Custom HTTP header `Key: Value` (repeatable) */
+    header?: string[];
+    /** Include HTTP status line and response headers in output */
+    include?: boolean;
+    /** Read request body from file; `-` reads stdin */
+    input?: string;
+    /** HTTP method (default GET, POST when body fields are present) */
+    method?: string;
+    /** Output format: `table` (human-readable, default when interactive), `json` (stable agent envelope, default when non-interactive). Use --output=table to keep the table when redirecting. */
+    output?: string;
+    /** String key=value with no type coercion. Sent as query params on GET/HEAD, JSON body fields otherwise */
+    rawField?: string[];
+    /** Re-fetch the OpenAPI spec from Pulumi Cloud and overwrite the local cache */
+    refreshSpec?: boolean;
+    /** Do not print the response body on success; errors are still printed and exit non-zero */
+    silent?: boolean;
+    /** Show only operations whose ID, path, tag, summary, or description contains this text (case-insensitive) */
+    filter?: string;
+    /** Include endpoints marked as deprecated */
+    includeDeprecated?: boolean;
+    /** Include endpoints marked as preview */
+    includePreview?: boolean;
 }
 
 /** Options for the `pulumi cancel` command. */
@@ -12695,6 +13778,196 @@ export interface PulumiOrgMemberRemoveOptions extends BaseOptions {
     output?: string;
 }
 
+/** Options for the `pulumi org role` command. */
+export interface PulumiOrgRoleOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+}
+
+/** Options for the `pulumi org role assign` command. */
+export interface PulumiOrgRoleAssignOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** The organization that owns the role. Defaults to the current default organization */
+    org?: string;
+    /** Output format. Supported values are: default and json */
+    output?: string;
+}
+
+/** Options for the `pulumi org role edit` command. */
+export interface PulumiOrgRoleEditOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Update the role's description */
+    description?: string;
+    /** Path to a JSON file containing the role's new permission tree (use `-` for stdin) */
+    detailsFile?: string;
+    /** Rename the role */
+    name?: string;
+    /** The organization that owns the role. Defaults to the current default organization */
+    org?: string;
+    /** Output format. Supported values are: default and json */
+    output?: string;
+}
+
+/** Options for the `pulumi org role list` command. */
+export interface PulumiOrgRoleListOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** The organization to list roles for. Defaults to the current default organization */
+    org?: string;
+    /** Output format. Supported values are: default and json */
+    output?: string;
+    /** Filter by UX purpose: role, role_private, role_temporary, policy, or set */
+    purpose?: string;
+}
+
+/** Options for the `pulumi org role new` command. */
+export interface PulumiOrgRoleNewOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** A description for the role */
+    description?: string;
+    /** The organization to create the role in. Defaults to the current default organization */
+    org?: string;
+    /** Output format. Supported values are: default and json */
+    output?: string;
+    /** The UX purpose for the role: organization, team, or token */
+    purpose?: string;
+}
+
+/** Options for the `pulumi org role remove` command. */
+export interface PulumiOrgRoleRemoveOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Force deletion even if the role is currently assigned to members or teams */
+    force?: boolean;
+    /** The organization that owns the role. Defaults to the current default organization */
+    org?: string;
+    /** Output format. Supported values are: default and json */
+    output?: string;
+}
+
 /** Options for the `pulumi org search` command. */
 export interface PulumiOrgSearchOptions extends BaseOptions {
     /** Colorize output. Choices are: always, never, raw, auto */
@@ -12950,6 +14223,38 @@ export interface PulumiRefreshOptions extends BaseOptions {
     targetDependents?: boolean;
     /** Display full URNs instead of short resource names */
     urns?: boolean;
+}
+
+/** Options for the `pulumi schema check` command. */
+export interface PulumiSchemaCheckOptions extends BaseOptions {
+    /** Colorize output. Choices are: always, never, raw, auto */
+    color?: string;
+    /** Disable integrity checking of checkpoint files */
+    disableIntegrityChecking?: boolean;
+    /** Show fully-qualified stack names */
+    fullyQualifyStackNames?: boolean;
+    /** Flow log settings to child processes (like plugins) */
+    logflow?: boolean;
+    /** Log to stderr instead of to files */
+    logtostderr?: boolean;
+    /** Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate */
+    memprofilerate?: number;
+    /** Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors */
+    otelTraces?: string;
+    /** Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively */
+    profiling?: string;
+    /** Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file */
+    tracing?: string;
+    /** Include the tracing header with the given contents. */
+    tracingHeader?: string;
+    /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
+    verbose?: number;
+    /** Whether references to nonexistent types should be considered errors */
+    allowDanglingReferences?: boolean;
+    /** Add an extension layered onto a base provider rather than a replacement. The value is the extension's provider-defined parameters as one shell-quoted string, e.g. --extension "key=value ..." */
+    extension?: string;
+    /** A URL to download the plugin from. When set, the schema source is used as the plugin name directly and no package resolution is performed. */
+    server?: string;
 }
 
 /** Options for the `pulumi state edit` command. */

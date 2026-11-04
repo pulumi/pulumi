@@ -56,113 +56,6 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-//
-// Mock resource monitor.
-//
-
-type mockResmon struct {
-	AddressF func() string
-
-	CancelF func(ctx context.Context) error
-
-	InvokeF func(ctx context.Context,
-		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
-
-	CallF func(ctx context.Context,
-		req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
-
-	ReadResourceF func(ctx context.Context,
-		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
-
-	ExistsResourceF func(ctx context.Context,
-		req *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error)
-
-	RegisterResourceF func(ctx context.Context,
-		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
-
-	RegisterResourceOutputsF func(ctx context.Context,
-		req *pulumirpc.RegisterResourceOutputsRequest) (*emptypb.Empty, error)
-
-	AbortChanF func() <-chan bool
-}
-
-var _ SourceResourceMonitor = (*mockResmon)(nil)
-
-func (rm *mockResmon) AbortChan() <-chan bool {
-	if rm.AbortChanF != nil {
-		return rm.AbortChanF()
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) Address() string {
-	if rm.AddressF != nil {
-		return rm.AddressF()
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) Cancel(ctx context.Context) error {
-	if rm.CancelF != nil {
-		return rm.CancelF(ctx)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) Invoke(ctx context.Context,
-	req *pulumirpc.ResourceInvokeRequest,
-) (*pulumirpc.ResourceInvokeResponse, error) {
-	if rm.InvokeF != nil {
-		return rm.InvokeF(ctx, req)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) Call(ctx context.Context,
-	req *pulumirpc.ResourceCallRequest,
-) (*pulumirpc.CallResponse, error) {
-	if rm.CallF != nil {
-		return rm.CallF(ctx, req)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) ReadResource(ctx context.Context,
-	req *pulumirpc.ReadResourceRequest,
-) (*pulumirpc.ReadResourceResponse, error) {
-	if rm.ReadResourceF != nil {
-		return rm.ReadResourceF(ctx, req)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) ExistsResource(ctx context.Context,
-	req *pulumirpc.ExistsResourceRequest,
-) (*pulumirpc.ExistsResourceResponse, error) {
-	if rm.ExistsResourceF != nil {
-		return rm.ExistsResourceF(ctx, req)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) RegisterResource(ctx context.Context,
-	req *pulumirpc.RegisterResourceRequest,
-) (*pulumirpc.RegisterResourceResponse, error) {
-	if rm.RegisterResourceF != nil {
-		return rm.RegisterResourceF(ctx, req)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) RegisterResourceOutputs(ctx context.Context,
-	req *pulumirpc.RegisterResourceOutputsRequest,
-) (*emptypb.Empty, error) {
-	if rm.RegisterResourceOutputsF != nil {
-		return rm.RegisterResourceOutputsF(ctx, req)
-	}
-	panic("not implemented")
-}
-
 type testRegEvent struct {
 	goal         *pkgresource.Goal
 	result       *RegisterResult
@@ -256,7 +149,7 @@ func newTestPluginContext(t testing.TB, program deploytest.ProgramFunc) (*plugin
 	lang := deploytest.NewLanguageRuntime(program)
 	host := deploytest.NewPluginHost(sink, statusSink, lang)
 	return plugin.NewContext(t.Context(), sink, statusSink, host, nil, "", nil, false,
-		nil)
+		nil, nil)
 }
 
 type testProviderSource struct {
@@ -282,6 +175,12 @@ func (s *testProviderSource) GetProvider(ref sdkproviders.Reference) (plugin.Pro
 		return s.defaultProvider, true
 	}
 	return provider, ok
+}
+
+func (s *testProviderSource) ParameterizeExtension(
+	context.Context, sdkproviders.Reference, apitype.ExtensionRef, apitype.Extension,
+) error {
+	return errors.New("testProviderSource does not support extensions")
 }
 
 func newProviderEvent(pkg, name string, inputs resource.PropertyMap, parent resource.URN) RegisterResourceEvent {
@@ -2646,6 +2545,12 @@ func (ps *providerSourceMock) GetProvider(ref sdkproviders.Reference) (plugin.Pr
 	return ps.Provider, ps.Provider != nil
 }
 
+func (ps *providerSourceMock) ParameterizeExtension(
+	context.Context, sdkproviders.Reference, apitype.ExtensionRef, apitype.Extension,
+) error {
+	return errors.New("providerSourceMock does not support extensions")
+}
+
 var _ ProviderSource = (*providerSourceMock)(nil)
 
 type decrypterMock struct {
@@ -2804,7 +2709,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 	plugctx, err := plugin.NewContext(t.Context(),
 		&deploytest.NoopSink{}, &deploytest.NoopSink{},
 		deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-		nil, "", nil, false, nil)
+		nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 
 	plainKey := config.MustMakeKey("test", "region")
@@ -2892,21 +2797,6 @@ func TestSourceEvalServeOptions(t *testing.T) {
 
 func TestEvalSourceIterator(t *testing.T) {
 	t.Parallel()
-	t.Run("Close", func(t *testing.T) {
-		t.Parallel()
-		var called bool
-		iter := &evalSourceIterator{
-			mon: &mockResmon{
-				CancelF: func(context.Context) error {
-					called = true
-					return nil
-				},
-			},
-		}
-		err := iter.Cancel(t.Context())
-		require.NoError(t, err)
-		require.True(t, called)
-	})
 	t.Run("Next", func(t *testing.T) {
 		t.Parallel()
 		t.Run("iter.done", func(t *testing.T) {
@@ -3036,7 +2926,7 @@ func TestInvoke(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3094,7 +2984,7 @@ func TestInvoke(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3173,7 +3063,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3245,7 +3135,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3348,7 +3238,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3414,7 +3304,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)

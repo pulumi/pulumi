@@ -78,6 +78,12 @@ class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_
     dependencies into the call's wait-set), and will honour `accept_output_values` on the request to return
     OutputValues in `CallResponse.return`.
     """
+    RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES: _ResourceMonitorFeature.ValueType  # 19
+    """The monitor accepts OutputValues nested in `RegisterResourceRequest.object` and will harvest their
+    dependencies into the resource's `propertyDependencies`. Clients that set `uses_output_values` on
+    `RegisterResourceRequest` can omit `propertyDependencies` and let the engine derive it from the
+    OutputValue tree.
+    """
 
 class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitorFeatureEnumTypeWrapper):
     """ResourceMonitorFeature is a strongly typed monitor capability identifier.
@@ -120,6 +126,12 @@ RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES: ResourceMonitorFeature.ValueType  #
 """The monitor accepts OutputValues nested in `ResourceCallRequest.args` (and will harvest their
 dependencies into the call's wait-set), and will honour `accept_output_values` on the request to return
 OutputValues in `CallResponse.return`.
+"""
+RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES: ResourceMonitorFeature.ValueType  # 19
+"""The monitor accepts OutputValues nested in `RegisterResourceRequest.object` and will harvest their
+dependencies into the resource's `propertyDependencies`. Clients that set `uses_output_values` on
+`RegisterResourceRequest` can omit `propertyDependencies` and let the engine derive it from the
+OutputValue tree.
 """
 global___ResourceMonitorFeature = ResourceMonitorFeature
 
@@ -697,6 +709,7 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     SNIPPETID_FIELD_NUMBER: builtins.int
     ACCEPTS_BYTE_STRING_FIELD_NUMBER: builtins.int
     STATE_MIGRATIONS_FIELD_NUMBER: builtins.int
+    USES_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     type: builtins.str
     """the type of the object allocated."""
     name: builtins.str
@@ -751,6 +764,14 @@ class RegisterResourceRequest(google.protobuf.message.Message):
     accepts_byte_string: builtins.bool
     """When true operations may return strings containing bytes that are not valid UTF-8, marshaled as objects
     carrying the byte string signature and a base64 encoding of the string's bytes.
+    """
+    uses_output_values: builtins.bool
+    """When true the `object` field uses OutputValues to carry per-leaf dependency information. The engine
+    harvests dependencies from the OutputValue tree. `propertyDependencies` must be empty in this case —
+    the engine rejects requests that set this flag together with a non-empty propertyDependencies map.
+    Leaves of `object` that are plain values (not OutputValues) are treated as having no dependencies;
+    they do not inherit the top-level `dependencies` list. Clients should only set this when the monitor
+    advertises `RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES`.
     """
     @property
     def object(self) -> google.protobuf.struct_pb2.Struct:
@@ -876,9 +897,10 @@ class RegisterResourceRequest(google.protobuf.message.Message):
         snippetId: builtins.str = ...,
         accepts_byte_string: builtins.bool = ...,
         state_migrations: collections.abc.Iterable[pulumi.callback_pb2.Callback] | None = ...,
+        uses_output_values: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "customTimeouts", b"customTimeouts", "hooks", b"hooks", "object", b"object", "protect", b"protect", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "accepts_byte_string", b"accepts_byte_string", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "envVarMappings", b"envVarMappings", "hideDiffs", b"hideDiffs", "hooks", b"hooks", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "snippetId", b"snippetId", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "state_migrations", b"state_migrations", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "version", b"version"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_hooks", b"_hooks", "_protect", b"_protect", "_retainOnDelete", b"_retainOnDelete", "acceptResources", b"acceptResources", "acceptSecrets", b"acceptSecrets", "accepts_byte_string", b"accepts_byte_string", "additionalSecretOutputs", b"additionalSecretOutputs", "aliasSpecs", b"aliasSpecs", "aliasURNs", b"aliasURNs", "aliases", b"aliases", "custom", b"custom", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "deletedWith", b"deletedWith", "dependencies", b"dependencies", "envVarMappings", b"envVarMappings", "hideDiffs", b"hideDiffs", "hooks", b"hooks", "ignoreChanges", b"ignoreChanges", "importId", b"importId", "name", b"name", "object", b"object", "packageRef", b"packageRef", "parent", b"parent", "parentStackTraceHandle", b"parentStackTraceHandle", "pluginChecksums", b"pluginChecksums", "pluginDownloadURL", b"pluginDownloadURL", "propertyDependencies", b"propertyDependencies", "protect", b"protect", "provider", b"provider", "providers", b"providers", "remote", b"remote", "replaceOnChanges", b"replaceOnChanges", "replace_with", b"replace_with", "replacement_trigger", b"replacement_trigger", "retainOnDelete", b"retainOnDelete", "snippetId", b"snippetId", "sourcePosition", b"sourcePosition", "stackTrace", b"stackTrace", "state_migrations", b"state_migrations", "supportsPartialValues", b"supportsPartialValues", "supportsResultReporting", b"supportsResultReporting", "transforms", b"transforms", "type", b"type", "uses_output_values", b"uses_output_values", "version", b"version"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_hooks", b"_hooks"]) -> typing.Literal["hooks"] | None: ...
     @typing.overload

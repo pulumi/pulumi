@@ -43,7 +43,7 @@ func TestStartupFailure(t *testing.T) {
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil, nil)
 	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/provider-language")
@@ -67,7 +67,7 @@ func TestNonZeroExitcode(t *testing.T) {
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil, nil)
 	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/provider-language")
@@ -128,7 +128,7 @@ func TestZeroExitcode(t *testing.T) {
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, h.Close()) }()
-	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil, nil)
 	require.NoError(t, err)
 
 	pluginPath, err := filepath.Abs("./testdata/provider-language")
@@ -191,7 +191,7 @@ func TestPulumiVersionRangeYaml(t *testing.T) {
 	h, err := New(t.Context(), d, d, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, h.Close()) })
-	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { ctx.Close() })
 
@@ -252,7 +252,7 @@ func TestProviderLoadDuringProviderBoot(t *testing.T) {
 	require.NoError(t, err)
 	host, ok := h.(*defaultHost)
 	require.True(t, ok)
-	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil)
+	ctx, err := plugin.NewContextWithHost(t.Context(), d, d, h, "", "", nil, nil)
 	require.NoError(t, err)
 
 	inner := workspace.PluginDescriptor{Name: "inner", Kind: apitype.ResourcePlugin}

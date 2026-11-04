@@ -23,6 +23,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optabout"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optaboutenv"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optapi"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optapidescribe"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optapilist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optcancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfig"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigcopy"
@@ -112,12 +115,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgmemberedit"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgmemberlist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgmemberremove"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgrole"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgroleassign"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgroleedit"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgrolelist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgrolenew"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgroleremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearch"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsearchai"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgsetdefault"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgusage"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optorgusageget"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optschemacheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateedit"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateget"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstatemove"
@@ -290,6 +300,401 @@ func (a *API) AboutEnv(
 
 	if o.Verbose != 0 {
 		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Api corresponds to `pulumi api`.
+func (a *API) Api(
+	ctx context.Context,
+	opts ...optapi.Option,
+) (base.CommandResult, error) {
+	o := optapi.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"api"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Body != "" {
+		final = append(final, "--body", fmt.Sprint(o.Body))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.EnvelopeVersion != 0 {
+		final = append(final, "--envelope-version", fmt.Sprint(o.EnvelopeVersion))
+	}
+
+	for _, v := range o.Field {
+		final = append(final, "--field", fmt.Sprint(v))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	for _, v := range o.Header {
+		final = append(final, "--header", fmt.Sprint(v))
+	}
+
+	if o.Include {
+		final = append(final, "--include")
+	}
+
+	if o.Input != "" {
+		final = append(final, "--input", fmt.Sprint(o.Input))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Method != "" {
+		final = append(final, "--method", fmt.Sprint(o.Method))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	for _, v := range o.RawField {
+		final = append(final, "--raw-field", fmt.Sprint(v))
+	}
+
+	if o.RefreshSpec {
+		final = append(final, "--refresh-spec")
+	}
+
+	if o.Silent {
+		final = append(final, "--silent")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose {
+		final = append(final, "--verbose")
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ApiDescribe corresponds to `pulumi api describe`.
+//
+// Show the parameters, request body, and response schema for a Pulumi Cloud
+// API operation.
+//
+// The argument may be either a path (with optional template variables, e.g.
+// `/api/stacks/{orgName}`) or an operation ID as shown in `list` (e.g.
+// `ListAccounts`). Operation IDs are matched case-insensitively.
+//
+// Default output is a human-readable schema render. Pass --output=json for the
+// stable agent envelope, including the inlined JSON schema.
+func (a *API) ApiDescribe(
+	ctx context.Context,
+	pathOrOperationId string,
+	opts ...optapidescribe.Option,
+) (base.CommandResult, error) {
+	o := optapidescribe.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"api", "describe"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Body != "" {
+		final = append(final, "--body", fmt.Sprint(o.Body))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.EnvelopeVersion != 0 {
+		final = append(final, "--envelope-version", fmt.Sprint(o.EnvelopeVersion))
+	}
+
+	for _, v := range o.Field {
+		final = append(final, "--field", fmt.Sprint(v))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	for _, v := range o.Header {
+		final = append(final, "--header", fmt.Sprint(v))
+	}
+
+	if o.Include {
+		final = append(final, "--include")
+	}
+
+	if o.Input != "" {
+		final = append(final, "--input", fmt.Sprint(o.Input))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Method != "" {
+		final = append(final, "--method", fmt.Sprint(o.Method))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	for _, v := range o.RawField {
+		final = append(final, "--raw-field", fmt.Sprint(v))
+	}
+
+	if o.RefreshSpec {
+		final = append(final, "--refresh-spec")
+	}
+
+	if o.Silent {
+		final = append(final, "--silent")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose {
+		final = append(final, "--verbose")
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(pathOrOperationId))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// ApiList corresponds to `pulumi api list`.
+//
+// List every endpoint exposed by the Pulumi Cloud OpenAPI spec.
+//
+// Output is sorted by (tag asc, path asc, method precedence). The default is a
+// human-readable table when interactive; when non-interactive, list switches to
+// the JSON envelope so downstream parsers don't have to deal with the table's
+// box-drawing characters. Pass --output=json to request JSON explicitly, or
+// --output=table to keep the table when redirecting.
+//
+// Preview endpoints are listed by default; deprecated endpoints are hidden. Use
+// --include-preview=false or --include-deprecated to change that.
+//
+// --filter keeps only operations whose ID, path, tag, summary, or description
+// contain the given text (case-insensitive).
+func (a *API) ApiList(
+	ctx context.Context,
+	opts ...optapilist.Option,
+) (base.CommandResult, error) {
+	o := optapilist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"api", "list"}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Body != "" {
+		final = append(final, "--body", fmt.Sprint(o.Body))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.EnvelopeVersion != 0 {
+		final = append(final, "--envelope-version", fmt.Sprint(o.EnvelopeVersion))
+	}
+
+	for _, v := range o.Field {
+		final = append(final, "--field", fmt.Sprint(v))
+	}
+
+	if o.Filter != "" {
+		final = append(final, "--filter", fmt.Sprint(o.Filter))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	for _, v := range o.Header {
+		final = append(final, "--header", fmt.Sprint(v))
+	}
+
+	if o.Include {
+		final = append(final, "--include")
+	}
+
+	if o.IncludeDeprecated {
+		final = append(final, "--include-deprecated")
+	}
+
+	if o.IncludePreview {
+		final = append(final, "--include-preview")
+	}
+
+	if o.Input != "" {
+		final = append(final, "--input", fmt.Sprint(o.Input))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Method != "" {
+		final = append(final, "--method", fmt.Sprint(o.Method))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	for _, v := range o.RawField {
+		final = append(final, "--raw-field", fmt.Sprint(v))
+	}
+
+	if o.RefreshSpec {
+		final = append(final, "--refresh-spec")
+	}
+
+	if o.Silent {
+		final = append(final, "--silent")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose {
+		final = append(final, "--verbose")
 	}
 
 	return a.run(ctx, base.BaseOptions{
@@ -8606,6 +9011,543 @@ func (a *API) OrgMemberRemove(
 	}, final)
 }
 
+// OrgRole corresponds to `pulumi org role`.
+func (a *API) OrgRole(
+	ctx context.Context,
+	opts ...optorgrole.Option,
+) (base.CommandResult, error) {
+	o := optorgrole.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "role"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgRoleAssign corresponds to `pulumi org role assign`.
+//
+// [EXPERIMENTAL] Assign a custom role to a team.
+//
+// Each team can hold a single custom role at a time, so running this command
+// replaces the team's previously assigned role.
+//
+// Both --output default and --output json report the assignment, with JSON
+// shaped as an envelope (organization, action, team, roleId) for scripting.
+func (a *API) OrgRoleAssign(
+	ctx context.Context,
+	roleId string,
+	team string,
+	opts ...optorgroleassign.Option,
+) (base.CommandResult, error) {
+	o := optorgroleassign.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "role", "assign"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(roleId))
+	args = append(args, fmt.Sprint(team))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgRoleEdit corresponds to `pulumi org role edit`.
+//
+// [EXPERIMENTAL] Update a custom role's name, description, or permissions.
+//
+// Each field follows ternary semantics: a flag that is not passed leaves the
+// current value unchanged.
+//
+// --details-file replaces the role's permission tree. Pass `-` to read from
+// stdin. Both --output default and --output json print the updated role.
+func (a *API) OrgRoleEdit(
+	ctx context.Context,
+	roleId string,
+	opts ...optorgroleedit.Option,
+) (base.CommandResult, error) {
+	o := optorgroleedit.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "role", "edit"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Description != "" {
+		final = append(final, "--description", fmt.Sprint(o.Description))
+	}
+
+	if o.DetailsFile != "" {
+		final = append(final, "--details-file", fmt.Sprint(o.DetailsFile))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Name != "" {
+		final = append(final, "--name", fmt.Sprint(o.Name))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(roleId))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgRoleList corresponds to `pulumi org role list`.
+//
+// [EXPERIMENTAL] List custom roles for an organization.
+//
+// Displays the ID, name, description, UX purpose, and version of each role.
+// By default the output is a human-readable table; pass --output=json for a
+// stable, machine-readable JSON envelope containing the same fields.
+func (a *API) OrgRoleList(
+	ctx context.Context,
+	opts ...optorgrolelist.Option,
+) (base.CommandResult, error) {
+	o := optorgrolelist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "role", "list"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Purpose != "" {
+		final = append(final, "--purpose", fmt.Sprint(o.Purpose))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgRoleNew corresponds to `pulumi org role new`.
+//
+// [EXPERIMENTAL] Create a new custom role for an organization.
+//
+// The role's permission tree is read from the JSON file at <details-file>.
+// Pass `-` to read the JSON from stdin instead.
+//
+// Both `--output default` and `--output json` print the same fields for the
+// newly created role (id, name, description, purpose, version, etc.).
+func (a *API) OrgRoleNew(
+	ctx context.Context,
+	name string,
+	detailsFile string,
+	opts ...optorgrolenew.Option,
+) (base.CommandResult, error) {
+	o := optorgrolenew.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "role", "new"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Description != "" {
+		final = append(final, "--description", fmt.Sprint(o.Description))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Purpose != "" {
+		final = append(final, "--purpose", fmt.Sprint(o.Purpose))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(name))
+	args = append(args, fmt.Sprint(detailsFile))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// OrgRoleRemove corresponds to `pulumi org role remove`.
+//
+// [EXPERIMENTAL] Delete a custom role from an organization.
+//
+// Removing a role revokes any permissions it had granted to members and
+// teams. If the role is currently assigned, the service rejects the delete
+// unless --force is passed.
+//
+// By default the command asks for confirmation; pass --yes to skip the
+// prompt. Both --output default and --output json report the deletion
+// outcome, with the JSON form including the organization and role id for
+// scripting.
+func (a *API) OrgRoleRemove(
+	ctx context.Context,
+	roleId string,
+	opts ...optorgroleremove.Option,
+) (base.CommandResult, error) {
+	o := optorgroleremove.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"org", "role", "remove"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Force {
+		final = append(final, "--force")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(roleId))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
 // OrgSearch corresponds to `pulumi org search`.
 func (a *API) OrgSearch(
 	ctx context.Context,
@@ -9222,6 +10164,104 @@ func (a *API) Refresh(
 
 	if o.Verbose != 0 {
 		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// SchemaCheck corresponds to `pulumi schema check`.
+//
+// Check a Pulumi package schema for errors.
+//
+// Ensure that a Pulumi package schema meets the requirements imposed by the
+// schema spec as well as additional requirements imposed by the supported
+// target languages.
+//
+// <schema_source> can be a package name, the path to a plugin binary or folder,
+// or a JSON/YAML schema file. Pass "-" to read a JSON schema from stdin.
+func (a *API) SchemaCheck(
+	ctx context.Context,
+	schemaSource string,
+	providerParameter []string,
+	opts ...optschemacheck.Option,
+) (base.CommandResult, error) {
+	o := optschemacheck.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"schema", "check"}
+
+	if o.AllowDanglingReferences {
+		final = append(final, "--allow-dangling-references")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Extension != "" {
+		final = append(final, "--extension", fmt.Sprint(o.Extension))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Server != "" {
+		final = append(final, "--server", fmt.Sprint(o.Server))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(schemaSource))
+	for _, v := range providerParameter {
+		args = append(args, fmt.Sprint(v))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
 	}
 
 	return a.run(ctx, base.BaseOptions{

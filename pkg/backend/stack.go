@@ -106,10 +106,12 @@ func UpdateStack(
 	return s.Backend().Update(ctx, s, op, events)
 }
 
-// ImportStack updates the target stack with the current workspace's contents (config and code).
+// ImportStack imports resources into the target stack. In addition to the resource changes it
+// returns the final in-memory snapshot produced by the engine; callers can use the snapshot to
+// drive codegen without re-reading persisted state. The snapshot is populated even on dry-run.
 func ImportStack(ctx context.Context, s Stack, op UpdateOperation,
 	imports []deploy.Import,
-) (display.ResourceChanges, error) {
+) (display.ResourceChanges, *deploy.Snapshot, error) {
 	return s.Backend().Import(ctx, s, op, imports)
 }
 

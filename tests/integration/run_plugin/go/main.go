@@ -69,7 +69,7 @@ func main() {
 			return err
 		}
 		defer contract.IgnoreClose(pluginHost)
-		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil)
+		pCtx, err := plugin.NewContext(ctx.Context(), sink, sink, pluginHost, nil, wd, nil, false, nil, nil)
 		if err != nil {
 			return err
 		}

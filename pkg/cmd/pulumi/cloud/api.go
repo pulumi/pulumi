@@ -37,6 +37,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -250,6 +251,9 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 	method, mr, rawQuery, err := resolveAPIArg(idx, userArg, api, methodExplicit)
 	if err != nil {
 		return err
+	}
+	if agentdetect.Detect(os.Getenv) != "" {
+		writeCLICommandHint(cmd.ErrOrStderr(), mr.Op.OperationID)
 	}
 
 	fields, err := parseFields(api.fields, api.rawFields, os.Stdin)

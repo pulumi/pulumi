@@ -63,6 +63,7 @@ jobs:
           with: |
             version: 2026.10.3
             experimental: true
+            install_args: --locked
             cache_key_prefix: mise-npm-shell-out-v0
       - name: Install CLI
         run: SDKS='' make install

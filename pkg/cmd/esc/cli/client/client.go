@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/google/go-querystring/query"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 
@@ -617,6 +618,14 @@ func New(userAgent, apiURL, apiToken string, insecure bool) Client {
 	return newClient(userAgent, apiURL, apiToken, newHTTPClient(insecure))
 }
 
+// NewWithCredentials creates an ESC client using shared helper credentials.
+func NewWithCredentials(userAgent, apiURL, apiToken string, insecure bool, r *credentialhelper.Result) Client {
+	if r == nil || !r.HasHTTP() {
+		return New(userAgent, apiURL, apiToken, insecure)
+	}
+	return newClient(userAgent, apiURL, "", r.HTTPClient(newHTTPClient(insecure)))
+}
+
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *client) URL() string {
 	return pc.apiURL
@@ -974,8 +983,9 @@ func (pc *client) ListChangeRequests(
 	continuationToken string,
 ) ([]ChangeRequest, string, error) {
 	queryObj := struct {
+		EntityType        string `url:"entityType"`
 		ContinuationToken string `url:"continuationToken,omitempty"`
-	}{ContinuationToken: continuationToken}
+	}{EntityType: "environment", ContinuationToken: continuationToken}
 
 	var resp ListChangeRequestsResponse
 	path := fmt.Sprintf("/api/change-requests/%v", orgName)
@@ -1963,6 +1973,7 @@ func (pc *client) httpCall(
 	body []byte,
 	opts httpCallOptions,
 ) (*http.Response, error) {
+	ctx = credentialhelper.WithOperation(ctx)
 	// Normalize URL components
 	cloudAPI := strings.TrimSuffix(pc.apiURL, "/")
 	path = cleanPath(path)

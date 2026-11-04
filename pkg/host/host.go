@@ -525,7 +525,10 @@ func (host *defaultHost) LanguageRuntime(ctx *plugin.Context, runtime string,
 
 		// Download and install the language runtime on demand if it is unbundled and missing.
 		if host.installLang != nil {
-			if err := host.installLang(ctx.Request(), runtime); err != nil {
+			log := func(sev diag.Severity, msg string) {
+				host.Log(sev, "", msg, 0)
+			}
+			if err := host.installLang(ctx.Request(), runtime, log); err != nil {
 				return nil, fmt.Errorf("failed to install language plugin %s: %w", runtime, err)
 			}
 		}

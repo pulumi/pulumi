@@ -75,6 +75,11 @@ const (
 	// dependencies into the call's wait-set), and will honour `accept_output_values` on the request to return
 	// OutputValues in `CallResponse.return`.
 	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES ResourceMonitorFeature = 18
+	// The monitor accepts OutputValues nested in `RegisterResourceRequest.object` and will harvest their
+	// dependencies into the resource's `propertyDependencies`. Clients that set `uses_output_values` on
+	// `RegisterResourceRequest` can omit `propertyDependencies` and let the engine derive it from the
+	// OutputValue tree.
+	ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES ResourceMonitorFeature = 19
 )
 
 // Enum value maps for ResourceMonitorFeature.
@@ -99,27 +104,29 @@ var (
 		16: "RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS",
 		17: "RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES",
 		18: "RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES",
+		19: "RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES",
 	}
 	ResourceMonitorFeature_value = map[string]int32{
-		"RESOURCE_MONITOR_FEATURE_SECRETS":                0,
-		"RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES":    1,
-		"RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES":          2,
-		"RESOURCE_MONITOR_FEATURE_ALIAS_SPECS":            3,
-		"RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER":    4,
-		"RESOURCE_MONITOR_FEATURE_DELETED_WITH":           5,
-		"RESOURCE_MONITOR_FEATURE_REPLACE_WITH":           6,
-		"RESOURCE_MONITOR_FEATURE_TRANSFORMS":             7,
-		"RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS":      8,
-		"RESOURCE_MONITOR_FEATURE_PARAMETERIZATION":       9,
-		"RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS":         10,
-		"RESOURCE_MONITOR_FEATURE_ERROR_HOOKS":            11,
-		"RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS": 12,
-		"RESOURCE_MONITOR_FEATURE_BYTE_STRING":            13,
-		"RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON":      14,
-		"RESOURCE_MONITOR_FEATURE_INVOKE_PARENT":          15,
-		"RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS":       16,
-		"RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES":   17,
-		"RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES":     18,
+		"RESOURCE_MONITOR_FEATURE_SECRETS":                         0,
+		"RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES":             1,
+		"RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES":                   2,
+		"RESOURCE_MONITOR_FEATURE_ALIAS_SPECS":                     3,
+		"RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER":             4,
+		"RESOURCE_MONITOR_FEATURE_DELETED_WITH":                    5,
+		"RESOURCE_MONITOR_FEATURE_REPLACE_WITH":                    6,
+		"RESOURCE_MONITOR_FEATURE_TRANSFORMS":                      7,
+		"RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS":               8,
+		"RESOURCE_MONITOR_FEATURE_PARAMETERIZATION":                9,
+		"RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS":                  10,
+		"RESOURCE_MONITOR_FEATURE_ERROR_HOOKS":                     11,
+		"RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS":          12,
+		"RESOURCE_MONITOR_FEATURE_BYTE_STRING":                     13,
+		"RESOURCE_MONITOR_FEATURE_INVOKE_DEPENDS_ON":               14,
+		"RESOURCE_MONITOR_FEATURE_INVOKE_PARENT":                   15,
+		"RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS":                16,
+		"RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES":            17,
+		"RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES":              18,
+		"RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES": 19,
 	}
 )
 
@@ -875,8 +882,15 @@ type RegisterResourceRequest struct {
 	AcceptsByteString bool `protobuf:"varint,42,opt,name=accepts_byte_string,json=acceptsByteString,proto3" json:"accepts_byte_string,omitempty"`
 	// A list of state migrations to apply to the prior state of this resource and its descendants before diffing.
 	StateMigrations []*Callback `protobuf:"bytes,43,rep,name=state_migrations,json=stateMigrations,proto3" json:"state_migrations,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// When true the `object` field uses OutputValues to carry per-leaf dependency information. The engine
+	// harvests dependencies from the OutputValue tree. `propertyDependencies` must be empty in this case —
+	// the engine rejects requests that set this flag together with a non-empty propertyDependencies map.
+	// Leaves of `object` that are plain values (not OutputValues) are treated as having no dependencies;
+	// they do not inherit the top-level `dependencies` list. Clients should only set this when the monitor
+	// advertises `RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES`.
+	UsesOutputValues bool `protobuf:"varint,44,opt,name=uses_output_values,json=usesOutputValues,proto3" json:"uses_output_values,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *RegisterResourceRequest) Reset() {
@@ -1208,6 +1222,13 @@ func (x *RegisterResourceRequest) GetStateMigrations() []*Callback {
 		return x.StateMigrations
 	}
 	return nil
+}
+
+func (x *RegisterResourceRequest) GetUsesOutputValues() bool {
+	if x != nil {
+		return x.UsesOutputValues
+	}
+	return false
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
@@ -3606,7 +3627,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"J\n" +
 	"\x16ExistsResourceResponse\x12\x16\n" +
 	"\x06exists\x18\x01 \x01(\bR\x06exists\x12\x18\n" +
-	"\aunknown\x18\x02 \x01(\bR\aunknown\"\xdf\x16\n" +
+	"\aunknown\x18\x02 \x01(\bR\aunknown\"\x8d\x17\n" +
 	"\x17RegisterResourceRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -3659,7 +3680,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x0eenvVarMappings\x18) \x03(\v26.pulumirpc.RegisterResourceRequest.EnvVarMappingsEntryR\x0eenvVarMappings\x12\x1c\n" +
 	"\tsnippetId\x18( \x01(\tR\tsnippetId\x12.\n" +
 	"\x13accepts_byte_string\x18* \x01(\bR\x11acceptsByteString\x12>\n" +
-	"\x10state_migrations\x18+ \x03(\v2\x13.pulumirpc.CallbackR\x0fstateMigrations\x1a*\n" +
+	"\x10state_migrations\x18+ \x03(\v2\x13.pulumirpc.CallbackR\x0fstateMigrations\x12,\n" +
+	"\x12uses_output_values\x18, \x01(\bR\x10usesOutputValues\x1a*\n" +
 	"\x14PropertyDependencies\x12\x12\n" +
 	"\x04urns\x18\x01 \x03(\tR\x04urns\x1al\n" +
 	"\x0eCustomTimeouts\x12\x16\n" +
@@ -3938,7 +3960,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\rignore_errors\x18\x04 \x01(\bR\fignoreErrors\"_\n" +
 	"\x18RegisterErrorHookRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12/\n" +
-	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\xfb\x06\n" +
+	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\xb9\a\n" +
 	"\x16ResourceMonitorFeature\x12$\n" +
 	" RESOURCE_MONITOR_FEATURE_SECRETS\x10\x00\x120\n" +
 	",RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES\x10\x01\x12*\n" +
@@ -3959,7 +3981,8 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"&RESOURCE_MONITOR_FEATURE_INVOKE_PARENT\x10\x0f\x12-\n" +
 	")RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS\x10\x10\x121\n" +
 	"-RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES\x10\x11\x12/\n" +
-	"+RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES\x10\x12*+\n" +
+	"+RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES\x10\x12\x12<\n" +
+	"8RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES\x10\x13*+\n" +
 	"\x06Result\x12\v\n" +
 	"\aSUCCESS\x10\x00\x12\b\n" +
 	"\x04FAIL\x10\x01\"\x04\b\x02\x10\x02*\x04SKIP2\xa6\t\n" +
