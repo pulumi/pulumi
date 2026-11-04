@@ -110,6 +110,11 @@ func TestPrintGeneratedComments(t *testing.T) {
 				attribute("trailing", syntax.TriviaList{tab}, space, syntax.Comment{Lines: []string{" one"}}),
 				attribute("moved", syntax.TriviaList{tab}, space, syntax.Comment{Lines: []string{" one", " two"}}),
 				&Attribute{Name: "noTokens", Value: literal(space, syntax.Comment{Lines: []string{" one", " two"}})},
+				attribute("twoComments", syntax.TriviaList{
+					tab, syntax.Comment{Lines: []string{" one"}}, syntax.Comment{Lines: []string{" two", " three"}},
+				}),
+				attribute("leadingAndMoved", syntax.TriviaList{tab, syntax.Comment{Lines: []string{" one"}}},
+					space, syntax.Comment{Lines: []string{" two", " three"}}),
 			}},
 		},
 	}}
@@ -129,6 +134,14 @@ func TestPrintGeneratedComments(t *testing.T) {
 		"    // one\n" +
 		"    // two\n" +
 		"    noTokens = 1\n" +
+		"\t// one\n" +
+		"\t// two\n" +
+		"\t// three\n" +
+		"\ttwoComments = 1\n" +
+		"\t// one\n" +
+		"\t// two\n" +
+		"\t// three\n" +
+		"\tleadingAndMoved = 1\n" +
 		"}\n"
 	assert.Equal(t, expected, fmt.Sprintf("%v", body))
 

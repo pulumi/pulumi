@@ -160,20 +160,23 @@ func (p *printer) printToken(f fmt.State, t syntax.Token) {
 // starts at the column of the comment's first line. If whitespace trivia follows the comment, that trivia sets the
 // position of the token instead.
 func (p *printer) printLeadingTrivia(w io.Writer, trivia syntax.TriviaList, prefix string) {
+	// The column of a comment depends on the text that the earlier trivia printed, so collect that text.
+	out := bytes.NewBufferString(prefix)
 	for i, t := range trivia {
 		c, ok := t.(syntax.Comment)
 		if !ok || !isGeneratedComment(c) {
-			p.write(w, t.Bytes())
+			p.write(out, t.Bytes())
 			continue
 		}
 
-		indent := p.lineIndent(trivia[:i], prefix)
+		indent := p.lineIndent(out.Bytes())
 		nextIsWhitespace := false
 		if i+1 < len(trivia) {
 			_, nextIsWhitespace = trivia[i+1].(syntax.Whitespace)
 		}
-		p.printComment(w, c, indent, !nextIsWhitespace)
+		p.printComment(out, c, indent, !nextIsWhitespace)
 	}
+	p.write(w, out.Bytes()[len(prefix):])
 }
 
 // printTrailingTrivia prints trivia that follows a token. It omits the comments that print before the body item.
@@ -201,17 +204,10 @@ func (p *printer) printComment(w io.Writer, c syntax.Comment, indent string, ind
 	}
 }
 
-// lineIndent returns the whitespace between the start of the current line and the end of the trivia, which starts
-// after prefix. If the line holds text that is not whitespace, lineIndent returns the current indentation.
-func (p *printer) lineIndent(trivia syntax.TriviaList, prefix string) string {
-	var text []byte
-	for _, t := range trivia {
-		text = append(text, t.Bytes()...)
-	}
-	line := prefix + string(text)
-	if nl := bytes.LastIndexByte(text, '\n'); nl != -1 {
-		line = string(text[nl+1:])
-	}
+// lineIndent returns the text after the last newline in text. If that text is not only whitespace, lineIndent returns
+// the current indentation.
+func (p *printer) lineIndent(text []byte) string {
+	line := string(text[bytes.LastIndexByte(text, '\n')+1:])
 	if strings.Trim(line, " \t") != "" {
 		return p.indent
 	}

@@ -105,9 +105,9 @@ func (*Body) printItem(w io.Writer, p *printer, item BodyItem) {
 		prefix = p.indent
 	}
 
-	outer := *p
+	outerStart, outerPrefix, outerMoved := p.itemStart, p.itemPrefix, p.moved
 	p.itemStart, p.itemPrefix, p.moved = true, prefix, moved
-	defer func() { p.itemStart, p.itemPrefix, p.moved = outer.itemStart, outer.itemPrefix, outer.moved }()
+	defer func() { p.itemStart, p.itemPrefix, p.moved = outerStart, outerPrefix, outerMoved }()
 
 	p.fprintf(w, "% v", item)
 	if !withoutComments(trailing, moved).EndsOnNewLine() {
