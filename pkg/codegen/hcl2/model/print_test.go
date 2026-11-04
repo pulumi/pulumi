@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -148,4 +149,31 @@ func TestPrintGeneratedComments(t *testing.T) {
 	parser := syntax.NewParser()
 	require.NoError(t, parser.ParseFile(strings.NewReader(expected), "main.pp"))
 	assert.Empty(t, parser.Diagnostics)
+}
+
+func TestPrintGeneratedCommentAfterParentheses(t *testing.T) {
+	t.Parallel()
+
+	tokens := syntax.NewLiteralValueTokens(cty.NumberIntVal(1))
+	tokens.Parentheses = syntax.Parentheses{
+		Open: []syntax.Token{{
+			Raw:           hclsyntax.Token{Type: hclsyntax.TokenOParen},
+			LeadingTrivia: syntax.TriviaList{syntax.NewWhitespace(' ')},
+		}},
+		Close: []syntax.Token{{
+			Raw: hclsyntax.Token{Type: hclsyntax.TokenCParen},
+			TrailingTrivia: syntax.TriviaList{
+				syntax.NewWhitespace(' '), syntax.Comment{Lines: []string{" one", " two"}},
+			},
+		}},
+	}
+	body := &Body{Items: []BodyItem{
+		&Attribute{
+			Tokens: syntax.NewAttributeTokens("x"),
+			Name:   "x",
+			Value:  &LiteralValueExpression{Tokens: tokens, Value: cty.NumberIntVal(1)},
+		},
+	}}
+
+	assert.Equal(t, "// one\n// two\nx = (1)\n", fmt.Sprintf("%v", body))
 }

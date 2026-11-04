@@ -121,6 +121,10 @@ func (p *printer) fprintf(w io.Writer, f string, v ...any) {
 			v[i] = formatter(func(f fmt.State, c rune) {
 				p.printTrailingTrivia(f, e)
 			})
+		case syntax.Parentheses:
+			v[i] = formatter(func(f fmt.State, c rune) {
+				p.printParentheses(f, c, e)
+			})
 		}
 	}
 
@@ -152,6 +156,22 @@ func (p *printer) printToken(f fmt.State, t syntax.Token) {
 		panic(err)
 	}
 	p.printTrailingTrivia(f, t.TrailingTrivia)
+}
+
+// printParentheses prints parentheses like syntax.Parentheses.Format, but prints each token with printToken.
+func (p *printer) printParentheses(f fmt.State, c rune, parens syntax.Parentheses) {
+	switch c {
+	case '(':
+		for i := len(parens.Open) - 1; i >= 0; i-- {
+			p.printToken(f, parens.Open[i])
+		}
+	case ')':
+		for _, t := range parens.Close {
+			p.printToken(f, t)
+		}
+	default:
+		parens.Format(f, c)
+	}
 }
 
 // printLeadingTrivia prints trivia that precedes a token. The trivia starts after prefix on its line.
@@ -231,7 +251,7 @@ func isGeneratedComment(c syntax.Comment) bool {
 func movedComments(trivia syntax.TriviaList) []syntax.Comment {
 	var moved []syntax.Comment
 	for _, t := range trivia {
-		if c, ok := t.(syntax.Comment); ok && isGeneratedComment(c) && bytes.Count(c.Bytes(), []byte{'\n'}) > 1 {
+		if c, ok := t.(syntax.Comment); ok && isGeneratedComment(c) && lineCount(c) > 1 {
 			moved = append(moved, c)
 		}
 	}
@@ -268,4 +288,13 @@ func containsComment(comments []syntax.Comment, c syntax.Comment) bool {
 		}
 	}
 	return false
+}
+
+// lineCount returns the number of lines that a generated comment prints.
+func lineCount(c syntax.Comment) int {
+	n := len(c.Lines)
+	for _, l := range c.Lines {
+		n += strings.Count(l, "\n")
+	}
+	return n
 }
