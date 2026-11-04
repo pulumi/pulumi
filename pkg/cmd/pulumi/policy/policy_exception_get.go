@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -32,7 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-type policyExceptionGetRenderFunc func(w io.Writer, exception apitype.PolicyExceptionInfo) error
+type policyExceptionGetRenderFunc func(w io.Writer, exception cloudapitype.PolicyException) error
 
 type policyExceptionGetArgs struct {
 	org          string
@@ -42,7 +43,7 @@ type policyExceptionGetArgs struct {
 func defaultPolicyExceptionGetOutputFormat() outputflag.OutputFlag[policyExceptionGetRenderFunc] {
 	return outputflag.OutputFlag[policyExceptionGetRenderFunc]{
 		RenderForTerminal: renderPolicyExceptionGetText,
-		RenderJSON: func(w io.Writer, exception apitype.PolicyExceptionInfo) error {
+		RenderJSON: func(w io.Writer, exception cloudapitype.PolicyException) error {
 			return ui.FprintJSON(w, exception)
 		},
 	}
@@ -103,7 +104,7 @@ func runPolicyExceptionGet(
 	return args.outputFormat.Get()(w, exception)
 }
 
-func renderPolicyExceptionGetText(w io.Writer, e apitype.PolicyExceptionInfo) error {
+func renderPolicyExceptionGetText(w io.Writer, e cloudapitype.PolicyException) error {
 	fmt.Fprintf(w, "%-14s %s\n", "ID:", e.ID)
 	fmt.Fprintf(w, "%-14s %s\n", "Policy pack:", e.PolicyPack)
 	fmt.Fprintf(w, "%-14s %s\n", "Status:", e.Status)

@@ -27,6 +27,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -38,7 +39,7 @@ import (
 )
 
 // policyExceptionListRenderFunc writes the exceptions to stdout, and status messages to stderr.
-type policyExceptionListRenderFunc func(stdout, stderr io.Writer, exceptions []apitype.PolicyExceptionInfo) error
+type policyExceptionListRenderFunc func(stdout, stderr io.Writer, exceptions []cloudapitype.PolicyException) error
 
 type policyExceptionListArgs struct {
 	org          string
@@ -52,11 +53,11 @@ type policyExceptionListArgs struct {
 func defaultPolicyExceptionListOutputFormat() outputflag.OutputFlag[policyExceptionListRenderFunc] {
 	return outputflag.OutputFlag[policyExceptionListRenderFunc]{
 		RenderForTerminal: renderPolicyExceptionListTable,
-		RenderJSON: func(w, _ io.Writer, exceptions []apitype.PolicyExceptionInfo) error {
+		RenderJSON: func(w, _ io.Writer, exceptions []cloudapitype.PolicyException) error {
 			if exceptions == nil {
-				exceptions = []apitype.PolicyExceptionInfo{}
+				exceptions = []cloudapitype.PolicyException{}
 			}
-			return ui.FprintJSON(w, apitype.ListPolicyExceptionsResponse{Exceptions: exceptions})
+			return ui.FprintJSON(w, cloudapitype.ListPolicyExceptionsResponse{Exceptions: exceptions})
 		},
 	}
 }
@@ -121,7 +122,7 @@ func runPolicyExceptionList(
 		return err
 	}
 
-	var exceptions []apitype.PolicyExceptionInfo
+	var exceptions []cloudapitype.PolicyException
 	opts := client.ListPolicyExceptionsOptions{
 		PolicyPack: args.policyPack,
 		Policy:     args.policy,
@@ -146,7 +147,7 @@ func runPolicyExceptionList(
 	return args.outputFormat.Get()(w, stderr, exceptions)
 }
 
-func renderPolicyExceptionListTable(w, stderr io.Writer, exceptions []apitype.PolicyExceptionInfo) error {
+func renderPolicyExceptionListTable(w, stderr io.Writer, exceptions []cloudapitype.PolicyException) error {
 	if len(exceptions) == 0 {
 		fmt.Fprintln(stderr, "No policy exceptions found.")
 		return nil
@@ -155,7 +156,7 @@ func renderPolicyExceptionListTable(w, stderr io.Writer, exceptions []apitype.Po
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.SetStyle(table.StyleLight)
-	expires := slices.ContainsFunc(exceptions, func(e apitype.PolicyExceptionInfo) bool { return e.ExpiresAt != nil })
+	expires := slices.ContainsFunc(exceptions, func(e cloudapitype.PolicyException) bool { return e.ExpiresAt != nil })
 	header := table.Row{"ID", "POLICY PACK", "STATUS", "POLICIES", "TARGETS", "REASON"}
 	if expires {
 		header = append(header, "EXPIRES")

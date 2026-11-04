@@ -3042,7 +3042,7 @@ func TestCreatePolicyExceptionExisted(t *testing.T) {
 		})
 		client := NewClient(server.URL, "token", true, nil)
 
-		got, existed, err := client.CreatePolicyException(t.Context(), "org", apitype.CreatePolicyExceptionRequest{})
+		got, existed, err := client.CreatePolicyException(t.Context(), "org", cloudapitype.CreatePolicyExceptionRequest{})
 		server.Close()
 		require.NoError(t, err)
 		assert.Equal(t, "EXC-7", got.ID)
@@ -3075,13 +3075,14 @@ func TestPolicyExceptionRequests(t *testing.T) {
 		ContinuationToken: "next",
 	})
 	require.NoError(t, err)
-	_, existed, err := client.CreatePolicyException(ctx, "org", apitype.CreatePolicyExceptionRequest{PolicyPack: "aws"})
+	createReq := cloudapitype.CreatePolicyExceptionRequest{PolicyPack: "aws"}
+	_, existed, err := client.CreatePolicyException(ctx, "org", createReq)
 	require.NoError(t, err)
 	assert.True(t, existed)
 	_, err = client.GetPolicyException(ctx, "org", "EXC-1")
 	require.NoError(t, err)
 	require.NoError(t, client.RemovePolicyException(ctx, "org", "EXC-1"))
-	draft, err := client.CreatePolicyExceptionDraft(ctx, "org", apitype.CreatePolicyExceptionRequest{PolicyPack: "aws"})
+	draft, err := client.CreatePolicyExceptionDraft(ctx, "org", createReq)
 	require.NoError(t, err)
 	assert.Equal(t, "cr-1", draft.ChangeRequestID)
 

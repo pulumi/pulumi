@@ -119,26 +119,6 @@ type PolicyException struct {
 // PolicyExceptionMatch matches the violations of any of its policies on any of its targets.
 type PolicyExceptionMatch = cloudapitype.PolicyExceptionMatch
 
-// PolicyExceptionInfo is the Cloud SDK's PolicyException: a policy exception stored in Pulumi Cloud.
-type PolicyExceptionInfo = cloudapitype.PolicyException
-
-// CreatePolicyExceptionRequest is the Cloud SDK's CreatePolicyExceptionRequest.
-type CreatePolicyExceptionRequest = cloudapitype.CreatePolicyExceptionRequest
-
-// PolicyExceptionDraft is a policy exception requested in a change request, which creates it once approved. The
-// Cloud SDK doesn't have it, because the draft routes aren't public.
-type PolicyExceptionDraft struct {
-	CreatePolicyExceptionRequest
-
-	// The ID of the change request.
-	ChangeRequestID string `json:"changeRequestId"`
-	// The change request's latest revision, which approvals refer to.
-	LatestRevisionNumber int `json:"latestRevisionNumber"`
-}
-
-// ListPolicyExceptionsResponse is the Cloud SDK's ListPolicyExceptionsResponse.
-type ListPolicyExceptionsResponse = cloudapitype.ListPolicyExceptionsResponse
-
 // Policy is the Cloud SDK's AppPolicy.
 type Policy = cloudapitype.AppPolicy
 

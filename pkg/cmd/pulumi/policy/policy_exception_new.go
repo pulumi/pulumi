@@ -32,6 +32,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -111,7 +112,7 @@ type policyExceptionNewResult struct {
 	Runs             []policyExceptionRun       `json:"runs"`
 	Violations       []policyExceptionViolation `json:"violations"`
 	// Exception is the exception to create. It's empty when there was nothing to exempt.
-	Exception apitype.CreatePolicyExceptionRequest `json:"exception,omitzero"`
+	Exception cloudapitype.CreatePolicyExceptionRequest `json:"exception,omitzero"`
 	// ID is the created exception's ID. It's empty for a dry run, when there was nothing to exempt, or when the
 	// exception was requested in a change request.
 	ID string `json:"id,omitempty"`
@@ -286,11 +287,10 @@ func runPolicyExceptionNew(
 				Message: "--file can't be used with --stack, --update, --preview, --policy or --target",
 			}
 		}
-		exception, filePack, err := readPolicyExceptionFile(stdin, args.file)
-		if err != nil {
+		if result.Exception, err = readPolicyExceptionFile(stdin, args.file); err != nil {
 			return err
 		}
-		result.Exception.Reason, result.Exception.Match = exception.Reason, exception.Match
+		filePack := result.Exception.PolicyPack
 		if pack != "" && filePack != "" && pack != filePack {
 			return cmdCmd.ConfigurationError{
 				Message: fmt.Sprintf("the file's exception is for Policy Pack %q, not %q", filePack, pack),
@@ -489,7 +489,8 @@ func parsePolicyPackArg(s string) (string, string, error) {
 }
 
 // readPolicyExceptionFile reads `{reason, match}`, or a version 2 config file with one exception, as JSON or YAML.
-func readPolicyExceptionFile(stdin io.Reader, file string) (apitype.PolicyException, string, error) {
+// The policyPack and expiresInSeconds of a create request, or of `--dry-run --output json`, are read too.
+func readPolicyExceptionFile(stdin io.Reader, file string) (cloudapitype.CreatePolicyExceptionRequest, error) {
 	var data []byte
 	var err error
 	if file == "-" {
@@ -498,50 +499,60 @@ func readPolicyExceptionFile(stdin io.Reader, file string) (apitype.PolicyExcept
 		data, err = os.ReadFile(file)
 	}
 	if err != nil {
-		return apitype.PolicyException{}, "", fmt.Errorf("reading the exception: %w", err)
+		return cloudapitype.CreatePolicyExceptionRequest{}, fmt.Errorf("reading the exception: %w", err)
 	}
 
 	var doc struct {
 		apitype.PolicyException `yaml:",inline"`
 		PolicyPack              string                             `yaml:"policyPack"`
+		ExpiresInSeconds        *int64                             `yaml:"expiresInSeconds"`
 		Exceptions              map[string]apitype.PolicyException `yaml:"exceptions"`
 		// Exception is where `--dry-run --output json` puts it.
 		Exception struct {
 			apitype.PolicyException `yaml:",inline"`
 			PolicyPack              string `yaml:"policyPack"`
+			ExpiresInSeconds        *int64 `yaml:"expiresInSeconds"`
 		} `yaml:"exception"`
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return apitype.PolicyException{}, "", cmdCmd.ConfigurationError{Message: fmt.Sprintf("invalid exception: %v", err)}
+		return cloudapitype.CreatePolicyExceptionRequest{}, cmdCmd.ConfigurationError{
+			Message: fmt.Sprintf("invalid exception: %v", err),
+		}
 	}
 	if len(doc.Exceptions) > 1 {
-		return apitype.PolicyException{}, "", cmdCmd.ConfigurationError{Message: "the file has more than one exception"}
+		return cloudapitype.CreatePolicyExceptionRequest{}, cmdCmd.ConfigurationError{
+			Message: "the file has more than one exception",
+		}
 	}
-	e, pack := doc.PolicyException, doc.PolicyPack
+	e, pack, expiresIn := doc.PolicyException, doc.PolicyPack, doc.ExpiresInSeconds
 	if len(doc.Exception.Match) > 0 {
-		e, pack = doc.Exception.PolicyException, doc.Exception.PolicyPack
+		e, pack, expiresIn = doc.Exception.PolicyException, doc.Exception.PolicyPack, doc.Exception.ExpiresInSeconds
 	}
 	for _, v := range doc.Exceptions {
 		e = v
 	}
 	if len(e.Match) == 0 {
-		return apitype.PolicyException{}, "", cmdCmd.ConfigurationError{Message: "the exception has no match entries"}
+		return cloudapitype.CreatePolicyExceptionRequest{}, cmdCmd.ConfigurationError{
+			Message: "the exception has no match entries",
+		}
 	}
 	for i, m := range e.Match {
 		if len(m.Policies) == 0 || len(m.Targets) == 0 || slices.Contains(m.Policies, "") {
-			return apitype.PolicyException{}, "", cmdCmd.ConfigurationError{
+			return cloudapitype.CreatePolicyExceptionRequest{}, cmdCmd.ConfigurationError{
 				Message: fmt.Sprintf("match entry %d needs at least one policy and one target", i+1),
 			}
 		}
 		for _, t := range m.Targets {
 			if _, err := resource.ParseURN(t); err != nil {
-				return apitype.PolicyException{}, "", cmdCmd.ConfigurationError{
+				return cloudapitype.CreatePolicyExceptionRequest{}, cmdCmd.ConfigurationError{
 					Message: fmt.Sprintf("match entry %d: invalid target %q: %v", i+1, t, err),
 				}
 			}
 		}
 	}
-	return e, pack, nil
+	return cloudapitype.CreatePolicyExceptionRequest{
+		PolicyPack: pack, Match: e.Match, Reason: e.Reason, ExpiresInSeconds: expiresIn,
+	}, nil
 }
 
 // policyExceptionRunOf picks the run whose violations to read: the one --update or --preview names, or the stack's
@@ -849,7 +860,7 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 }
 
 // policyExceptionConfig is the exception as it's written in a Policy Pack's configuration.
-func policyExceptionConfig(r apitype.CreatePolicyExceptionRequest) apitype.PolicyException {
+func policyExceptionConfig(r cloudapitype.CreatePolicyExceptionRequest) apitype.PolicyException {
 	return apitype.PolicyException{Reason: r.Reason, Match: r.Match}
 }
 

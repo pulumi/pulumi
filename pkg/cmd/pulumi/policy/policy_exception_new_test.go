@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -99,7 +100,7 @@ func TestPolicyExceptionNew(t *testing.T) {
 	assert.Equal(t, []string{"acme/web/prod update/12 [9]"}, c.gotReads)
 	assert.Equal(t, []client.ListPolicyExceptionsOptions{{}}, c.gotListOpts,
 		"listing only checks that the organization can have exceptions")
-	assert.Equal(t, []apitype.CreatePolicyExceptionRequest{{
+	assert.Equal(t, []cloudapitype.CreatePolicyExceptionRequest{{
 		PolicyPack: "aws",
 		Reason:     "LOG-31",
 		Match: []apitype.PolicyExceptionMatch{
@@ -377,7 +378,7 @@ func TestPolicyExceptionNew_File(t *testing.T) {
 			c := &mockPolicyExceptionClient{}
 			_, _, err := runNew(t, c, input, policyExceptionNewArgs{policyPack: "aws", file: "-"})
 			require.NoError(t, err)
-			assert.Equal(t, []apitype.CreatePolicyExceptionRequest{{
+			assert.Equal(t, []cloudapitype.CreatePolicyExceptionRequest{{
 				PolicyPack: "aws",
 				Reason:     "LOG-31",
 				Match:      []apitype.PolicyExceptionMatch{match([]string{"required-tags"}, logsURN)},
@@ -391,6 +392,18 @@ func TestPolicyExceptionNew_File(t *testing.T) {
 		`"match": [{"policies": ["p"], "targets": ["`+logsURN+`"]}]}}`, policyExceptionNewArgs{file: "-"})
 	require.NoError(t, err)
 	assert.Equal(t, "gcp", c.gotCreated[0].PolicyPack, "the file's Policy Pack is the default")
+
+	expiring := `{"exception": {"policyPack": "aws", "reason": "x", "expiresInSeconds": 259200, ` +
+		`"match": [{"policies": ["p"], "targets": ["` + logsURN + `"]}]}}`
+	c = &mockPolicyExceptionClient{}
+	_, _, err = runNew(t, c, expiring, policyExceptionNewArgs{file: "-"})
+	require.NoError(t, err)
+	assert.Equal(t, new(int64(3*24*3600)), c.gotCreated[0].ExpiresInSeconds, "the dry run's expiry is kept")
+
+	c = &mockPolicyExceptionClient{}
+	_, _, err = runNew(t, c, expiring, policyExceptionNewArgs{file: "-", expiresIn: "12h"})
+	require.NoError(t, err)
+	assert.Equal(t, new(int64(12*3600)), c.gotCreated[0].ExpiresInSeconds, "--expires-in replaces the file's")
 }
 
 func TestPolicyExceptionNew_Errors(t *testing.T) {
@@ -503,7 +516,7 @@ func TestPolicyExceptionNew_RequiresApproval(t *testing.T) {
 	t.Parallel()
 
 	args := policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31", policies: []string{"s3-no-public-read"}}
-	want := apitype.CreatePolicyExceptionRequest{
+	want := cloudapitype.CreatePolicyExceptionRequest{
 		PolicyPack: "aws",
 		Reason:     "LOG-31",
 		Match:      []apitype.PolicyExceptionMatch{match([]string{"s3-no-public-read"}, cdnLogsURN)},
@@ -516,8 +529,8 @@ func TestPolicyExceptionNew_RequiresApproval(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, stdout, "there's no exception ID until the change request is approved")
 	assert.Equal(t, requested+"Exception will be applied after the request is approved.\n", stderr)
-	assert.Equal(t, []apitype.CreatePolicyExceptionRequest{want}, c.gotCreated)
-	assert.Equal(t, []apitype.CreatePolicyExceptionRequest{want}, c.gotDrafts)
+	assert.Equal(t, []cloudapitype.CreatePolicyExceptionRequest{want}, c.gotCreated)
+	assert.Equal(t, []cloudapitype.CreatePolicyExceptionRequest{want}, c.gotDrafts)
 	assert.Equal(t, []string{"cr-1: LOG-31"}, c.gotSubmitted)
 
 	jsonArgs := args

@@ -2082,7 +2082,7 @@ type ListPolicyExceptionsOptions struct {
 // `ListPolicyExceptions` Pulumi Cloud REST endpoint (GET /api/orgs/{orgName}/policy/exceptions).
 func (pc *Client) ListPolicyExceptions(
 	ctx context.Context, orgName string, opts ListPolicyExceptionsOptions,
-) (apitype.ListPolicyExceptionsResponse, error) {
+) (cloudapitype.ListPolicyExceptionsResponse, error) {
 	queryObj := struct {
 		PolicyPack        string   `url:"policyPack,omitempty"`
 		Policy            string   `url:"policy,omitempty"`
@@ -2097,7 +2097,7 @@ func (pc *Client) ListPolicyExceptions(
 		ContinuationToken: opts.ContinuationToken,
 	}
 
-	var resp apitype.ListPolicyExceptionsResponse
+	var resp cloudapitype.ListPolicyExceptionsResponse
 	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions", url.PathEscape(orgName))
 	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
 		return resp, fmt.Errorf("listing policy exceptions: %w", err)
@@ -2108,35 +2108,46 @@ func (pc *Client) ListPolicyExceptions(
 // CreatePolicyException creates a policy exception (POST /api/orgs/{orgName}/policy/exceptions), and returns whether
 // it already existed.
 func (pc *Client) CreatePolicyException(
-	ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
-) (apitype.PolicyExceptionInfo, bool, error) {
+	ctx context.Context, orgName string, req cloudapitype.CreatePolicyExceptionRequest,
+) (cloudapitype.PolicyException, bool, error) {
 	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions", url.PathEscape(orgName))
 
 	var httpResp *http.Response
 	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &httpResp); err != nil {
-		return apitype.PolicyExceptionInfo{}, false, fmt.Errorf("creating policy exception: %w", err)
+		return cloudapitype.PolicyException{}, false, fmt.Errorf("creating policy exception: %w", err)
 	}
 	body, err := readBody(httpResp)
 	if err != nil {
-		return apitype.PolicyExceptionInfo{}, false, fmt.Errorf("reading the created policy exception: %w", err)
+		return cloudapitype.PolicyException{}, false, fmt.Errorf("reading the created policy exception: %w", err)
 	}
-	var resp apitype.PolicyExceptionInfo
+	var resp cloudapitype.PolicyException
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return apitype.PolicyExceptionInfo{}, false, fmt.Errorf("reading the created policy exception: %w", err)
+		return cloudapitype.PolicyException{}, false, fmt.Errorf("reading the created policy exception: %w", err)
 	}
 	return resp, httpResp.StatusCode == http.StatusOK, nil
+}
+
+// PolicyExceptionDraft is a policy exception requested in a change request, which creates it once approved. It isn't
+// in the Cloud SDK, because the draft routes aren't public.
+type PolicyExceptionDraft struct {
+	cloudapitype.CreatePolicyExceptionRequest
+
+	// The ID of the change request.
+	ChangeRequestID string `json:"changeRequestId"`
+	// The change request's latest revision, which approvals refer to.
+	LatestRevisionNumber int `json:"latestRevisionNumber"`
 }
 
 // CreatePolicyExceptionDraft requests a policy exception in a draft change request
 // (POST /api/orgs/{orgName}/policy/exceptions/drafts).
 func (pc *Client) CreatePolicyExceptionDraft(
-	ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
-) (apitype.PolicyExceptionDraft, error) {
+	ctx context.Context, orgName string, req cloudapitype.CreatePolicyExceptionRequest,
+) (PolicyExceptionDraft, error) {
 	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions/drafts", url.PathEscape(orgName))
 
-	var resp apitype.PolicyExceptionDraft
+	var resp PolicyExceptionDraft
 	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
-		return apitype.PolicyExceptionDraft{}, fmt.Errorf("creating policy exception draft: %w", err)
+		return PolicyExceptionDraft{}, fmt.Errorf("creating policy exception draft: %w", err)
 	}
 	return resp, nil
 }
@@ -2145,12 +2156,12 @@ func (pc *Client) CreatePolicyExceptionDraft(
 // (GET /api/orgs/{orgName}/policy/exceptions/{exceptionId}).
 func (pc *Client) GetPolicyException(
 	ctx context.Context, orgName, exceptionID string,
-) (apitype.PolicyExceptionInfo, error) {
+) (cloudapitype.PolicyException, error) {
 	path := fmt.Sprintf("/api/orgs/%s/policy/exceptions/%s", url.PathEscape(orgName), url.PathEscape(exceptionID))
 
-	var resp apitype.PolicyExceptionInfo
+	var resp cloudapitype.PolicyException
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
-		return apitype.PolicyExceptionInfo{}, fmt.Errorf("getting policy exception: %w", err)
+		return cloudapitype.PolicyException{}, fmt.Errorf("getting policy exception: %w", err)
 	}
 	return resp, nil
 }

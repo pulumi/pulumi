@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
@@ -44,8 +45,8 @@ import (
 // mockPolicyExceptionClient serves pages of exceptions in order and one exception, a stack's runs and their events
 // (keyed by `<kind>/<id>`), and records what it's asked for.
 type mockPolicyExceptionClient struct {
-	pages     []apitype.ListPolicyExceptionsResponse
-	exception apitype.PolicyExceptionInfo
+	pages     []cloudapitype.ListPolicyExceptionsResponse
+	exception cloudapitype.PolicyException
 	err       error
 	updates   []apitype.UpdateInfo
 	previews  []apitype.StackPreview
@@ -65,22 +66,22 @@ type mockPolicyExceptionClient struct {
 	gotOrgFlag   string
 	gotOrg       string
 	gotRemoved   []string
-	gotCreated   []apitype.CreatePolicyExceptionRequest
-	gotDrafts    []apitype.CreatePolicyExceptionRequest
+	gotCreated   []cloudapitype.CreatePolicyExceptionRequest
+	gotDrafts    []cloudapitype.CreatePolicyExceptionRequest
 	gotSubmitted []string
 	gotReads     []string
 }
 
 func (m *mockPolicyExceptionClient) CreatePolicyException(
-	_ context.Context, org string, req apitype.CreatePolicyExceptionRequest,
-) (apitype.PolicyExceptionInfo, bool, error) {
+	_ context.Context, org string, req cloudapitype.CreatePolicyExceptionRequest,
+) (cloudapitype.PolicyException, bool, error) {
 	m.gotOrg = org
 	m.gotCreated = append(m.gotCreated, req)
 	if m.gated {
-		return apitype.PolicyExceptionInfo{}, false,
+		return cloudapitype.PolicyException{}, false,
 			&apitype.ErrorResponse{Code: http.StatusConflict, Message: "requires approval"}
 	}
-	created := apitype.PolicyExceptionInfo{ID: "EXC-7"}
+	created := cloudapitype.PolicyException{ID: "EXC-7"}
 	if req.ExpiresInSeconds != nil {
 		createdAt := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
 		created.ExpiresAt = new(createdAt.Add(time.Duration(*req.ExpiresInSeconds) * time.Second))
@@ -89,11 +90,11 @@ func (m *mockPolicyExceptionClient) CreatePolicyException(
 }
 
 func (m *mockPolicyExceptionClient) CreatePolicyExceptionDraft(
-	_ context.Context, org string, req apitype.CreatePolicyExceptionRequest,
-) (apitype.PolicyExceptionDraft, error) {
+	_ context.Context, org string, req cloudapitype.CreatePolicyExceptionRequest,
+) (client.PolicyExceptionDraft, error) {
 	m.gotOrg = org
 	m.gotDrafts = append(m.gotDrafts, req)
-	return apitype.PolicyExceptionDraft{CreatePolicyExceptionRequest: req, ChangeRequestID: "cr-1"}, m.err
+	return client.PolicyExceptionDraft{CreatePolicyExceptionRequest: req, ChangeRequestID: "cr-1"}, m.err
 }
 
 func (m *mockPolicyExceptionClient) SubmitChangeRequest(_ context.Context, org, id string, description *string) error {
@@ -139,21 +140,21 @@ func (m *mockPolicyExceptionClient) GetUpdateEngineEvents(
 
 func (m *mockPolicyExceptionClient) ListPolicyExceptions(
 	_ context.Context, org string, opts client.ListPolicyExceptionsOptions,
-) (apitype.ListPolicyExceptionsResponse, error) {
+) (cloudapitype.ListPolicyExceptionsResponse, error) {
 	m.gotOrg = org
 	m.gotListOpts = append(m.gotListOpts, opts)
 	if m.err != nil {
-		return apitype.ListPolicyExceptionsResponse{}, m.err
+		return cloudapitype.ListPolicyExceptionsResponse{}, m.err
 	}
 	if i := len(m.gotListOpts) - 1; i < len(m.pages) {
 		return m.pages[i], nil
 	}
-	return apitype.ListPolicyExceptionsResponse{}, nil
+	return cloudapitype.ListPolicyExceptionsResponse{}, nil
 }
 
 func (m *mockPolicyExceptionClient) GetPolicyException(
 	_ context.Context, org, _ string,
-) (apitype.PolicyExceptionInfo, error) {
+) (cloudapitype.PolicyException, error) {
 	m.gotOrg = org
 	return m.exception, m.err
 }
@@ -173,8 +174,8 @@ func stubPolicyExceptionFactory(c *mockPolicyExceptionClient, org string) policy
 
 const logsURN = "urn:pulumi:prod::web::aws:s3/bucket:Bucket::logs"
 
-func samplePolicyException(id string) apitype.PolicyExceptionInfo {
-	return apitype.PolicyExceptionInfo{
+func samplePolicyException(id string) cloudapitype.PolicyException {
+	return cloudapitype.PolicyException{
 		Reason: "Logs are public by design",
 		Match: []apitype.PolicyExceptionMatch{
 			{Policies: []string{"s3-no-public-read", "required-tags"}, Targets: []string{logsURN}},
@@ -196,9 +197,9 @@ func TestPolicyExceptionList(t *testing.T) {
 	expiring.ExpiresAt = new(time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC))
 
 	var errBuf bytes.Buffer
-	c := &mockPolicyExceptionClient{pages: []apitype.ListPolicyExceptionsResponse{
-		{Exceptions: []apitype.PolicyExceptionInfo{expiring}, ContinuationToken: new("next")},
-		{Exceptions: []apitype.PolicyExceptionInfo{samplePolicyException("EXC-1")}},
+	c := &mockPolicyExceptionClient{pages: []cloudapitype.ListPolicyExceptionsResponse{
+		{Exceptions: []cloudapitype.PolicyException{expiring}, ContinuationToken: new("next")},
+		{Exceptions: []cloudapitype.PolicyException{samplePolicyException("EXC-1")}},
 	}}
 	var buf bytes.Buffer
 	err := runPolicyExceptionList(t.Context(), &buf, &errBuf, stubPolicyExceptionFactory(c, "acme"),
@@ -234,8 +235,8 @@ func TestPolicyExceptionList(t *testing.T) {
 	assert.Equal(t, want, "\n"+buf.String())
 
 	// Without an expiring exception, there's no EXPIRES column.
-	c = &mockPolicyExceptionClient{pages: []apitype.ListPolicyExceptionsResponse{
-		{Exceptions: []apitype.PolicyExceptionInfo{samplePolicyException("EXC-1")}},
+	c = &mockPolicyExceptionClient{pages: []cloudapitype.ListPolicyExceptionsResponse{
+		{Exceptions: []cloudapitype.PolicyException{samplePolicyException("EXC-1")}},
 	}}
 	buf.Reset()
 	err = runPolicyExceptionList(t.Context(), &buf, &errBuf, stubPolicyExceptionFactory(c, "acme"),
@@ -249,7 +250,7 @@ func TestPolicyExceptionList(t *testing.T) {
 `
 	assert.Equal(t, want, buf.String())
 
-	c = &mockPolicyExceptionClient{pages: []apitype.ListPolicyExceptionsResponse{{}}}
+	c = &mockPolicyExceptionClient{pages: []cloudapitype.ListPolicyExceptionsResponse{{}}}
 	buf.Reset()
 	err = runPolicyExceptionList(t.Context(), &buf, &errBuf, stubPolicyExceptionFactory(c, "acme"),
 		policyExceptionListArgs{outputFormat: defaultPolicyExceptionListOutputFormat()})
@@ -262,15 +263,15 @@ func TestPolicyExceptionList_JSONOutput(t *testing.T) {
 	t.Parallel()
 
 	var errBuf bytes.Buffer
-	c := &mockPolicyExceptionClient{pages: []apitype.ListPolicyExceptionsResponse{{}}}
+	c := &mockPolicyExceptionClient{pages: []cloudapitype.ListPolicyExceptionsResponse{{}}}
 	args := policyExceptionListArgs{outputFormat: defaultPolicyExceptionListOutputFormat()}
 	require.NoError(t, args.outputFormat.Set("json"))
 	var buf bytes.Buffer
 	require.NoError(t, runPolicyExceptionList(t.Context(), &buf, &errBuf, stubPolicyExceptionFactory(c, "acme"), args))
 	assert.JSONEq(t, `{"exceptions": []}`, buf.String())
 
-	c = &mockPolicyExceptionClient{pages: []apitype.ListPolicyExceptionsResponse{
-		{Exceptions: []apitype.PolicyExceptionInfo{samplePolicyException("EXC-1")}},
+	c = &mockPolicyExceptionClient{pages: []cloudapitype.ListPolicyExceptionsResponse{
+		{Exceptions: []cloudapitype.PolicyException{samplePolicyException("EXC-1")}},
 	}}
 	buf.Reset()
 	require.NoError(t, runPolicyExceptionList(t.Context(), &buf, &errBuf, stubPolicyExceptionFactory(c, "acme"), args))

@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -47,16 +48,16 @@ func policyExceptionsError(err error, org string) error {
 
 type policyExceptionClient interface {
 	CreatePolicyException(
-		ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
-	) (apitype.PolicyExceptionInfo, bool, error)
+		ctx context.Context, orgName string, req cloudapitype.CreatePolicyExceptionRequest,
+	) (cloudapitype.PolicyException, bool, error)
 	ListPolicyExceptions(
 		ctx context.Context, orgName string, opts client.ListPolicyExceptionsOptions,
-	) (apitype.ListPolicyExceptionsResponse, error)
-	GetPolicyException(ctx context.Context, orgName, exceptionID string) (apitype.PolicyExceptionInfo, error)
+	) (cloudapitype.ListPolicyExceptionsResponse, error)
+	GetPolicyException(ctx context.Context, orgName, exceptionID string) (cloudapitype.PolicyException, error)
 	RemovePolicyException(ctx context.Context, orgName, exceptionID string) error
 	CreatePolicyExceptionDraft(
-		ctx context.Context, orgName string, req apitype.CreatePolicyExceptionRequest,
-	) (apitype.PolicyExceptionDraft, error)
+		ctx context.Context, orgName string, req cloudapitype.CreatePolicyExceptionRequest,
+	) (client.PolicyExceptionDraft, error)
 	// URL is the Pulumi Cloud API URL, which console links are derived from.
 	URL() string
 	GetStackUpdates(
