@@ -16,15 +16,10 @@ package model
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
-
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
 func TestPrintNoTokens(t *testing.T) {
@@ -75,105 +70,4 @@ func TestPrettyPrintingDynamicType(t *testing.T) {
 	t.Parallel()
 	pretty := DynamicType.Pretty().String()
 	assert.Equal(t, "dynamic", pretty)
-}
-
-func TestPrintGeneratedComments(t *testing.T) {
-	t.Parallel()
-
-	literal := func(trailing ...syntax.Trivia) *LiteralValueExpression {
-		tokens := syntax.NewLiteralValueTokens(cty.NumberIntVal(1))
-		tokens.Value[0].LeadingTrivia = syntax.TriviaList{syntax.NewWhitespace(' ')}
-		tokens.Value[0].TrailingTrivia = trailing
-		return &LiteralValueExpression{Tokens: tokens, Value: cty.NumberIntVal(1)}
-	}
-	// attribute builds an attribute with explicit whitespace, in the style of a PCL formatter.
-	attribute := func(name string, leading syntax.TriviaList, trailing ...syntax.Trivia) *Attribute {
-		tokens := syntax.NewAttributeTokens(name)
-		tokens.Name.LeadingTrivia = leading
-		return &Attribute{Tokens: tokens, Name: name, Value: literal(trailing...)}
-	}
-	tab := syntax.NewWhitespace('\t')
-	space := syntax.NewWhitespace(' ')
-
-	blockTokens := syntax.NewBlockTokens("resource", "r", "pkg:index:Res")
-	blockTokens.Type.LeadingTrivia = syntax.TriviaList{syntax.Comment{Lines: []string{" block", " comment"}}}
-	blockTokens.OpenBrace.TrailingTrivia = syntax.TriviaList{syntax.NewWhitespace('\n')}
-	blockTokens.CloseBrace.LeadingTrivia = nil
-	blockTokens.CloseBrace.TrailingTrivia = syntax.TriviaList{space, syntax.Comment{Lines: []string{" after", " block"}}}
-
-	body := &Body{Items: []BodyItem{
-		&Block{
-			Tokens: blockTokens,
-			Type:   "resource",
-			Labels: []string{"r", "pkg:index:Res"},
-			Body: &Body{Items: []BodyItem{
-				attribute("leading", syntax.TriviaList{tab, syntax.Comment{Lines: []string{" one", " two"}}}),
-				attribute("trailing", syntax.TriviaList{tab}, space, syntax.Comment{Lines: []string{" one"}}),
-				attribute("moved", syntax.TriviaList{tab}, space, syntax.Comment{Lines: []string{" one", " two"}}),
-				&Attribute{Name: "noTokens", Value: literal(space, syntax.Comment{Lines: []string{" one", " two"}})},
-				attribute("twoComments", syntax.TriviaList{
-					tab, syntax.Comment{Lines: []string{" one"}}, syntax.Comment{Lines: []string{" two", " three"}},
-				}),
-				attribute("leadingAndMoved", syntax.TriviaList{tab, syntax.Comment{Lines: []string{" one"}}},
-					space, syntax.Comment{Lines: []string{" two", " three"}}),
-			}},
-		},
-	}}
-
-	expected := "// block\n" +
-		"// comment\n" +
-		"// after\n" +
-		"// block\n" +
-		"resource r \"pkg:index:Res\" {\n" +
-		"\t// one\n" +
-		"\t// two\n" +
-		"\tleading = 1\n" +
-		"\ttrailing = 1 // one\n" +
-		"\t// one\n" +
-		"\t// two\n" +
-		"\tmoved = 1\n" +
-		"    // one\n" +
-		"    // two\n" +
-		"    noTokens = 1\n" +
-		"\t// one\n" +
-		"\t// two\n" +
-		"\t// three\n" +
-		"\ttwoComments = 1\n" +
-		"\t// one\n" +
-		"\t// two\n" +
-		"\t// three\n" +
-		"\tleadingAndMoved = 1\n" +
-		"}\n"
-	assert.Equal(t, expected, fmt.Sprintf("%v", body))
-
-	parser := syntax.NewParser()
-	require.NoError(t, parser.ParseFile(strings.NewReader(expected), "main.pp"))
-	assert.Empty(t, parser.Diagnostics)
-}
-
-func TestPrintGeneratedCommentAfterParentheses(t *testing.T) {
-	t.Parallel()
-
-	tokens := syntax.NewLiteralValueTokens(cty.NumberIntVal(1))
-	tokens.Parentheses = syntax.Parentheses{
-		Open: []syntax.Token{{
-			Raw:           hclsyntax.Token{Type: hclsyntax.TokenOParen},
-			LeadingTrivia: syntax.TriviaList{syntax.NewWhitespace(' ')},
-		}},
-		Close: []syntax.Token{{
-			Raw: hclsyntax.Token{Type: hclsyntax.TokenCParen},
-			TrailingTrivia: syntax.TriviaList{
-				syntax.NewWhitespace(' '), syntax.Comment{Lines: []string{" one", " two"}},
-			},
-		}},
-	}
-	body := &Body{Items: []BodyItem{
-		&Attribute{
-			Tokens: syntax.NewAttributeTokens("x"),
-			Name:   "x",
-			Value:  &LiteralValueExpression{Tokens: tokens, Value: cty.NumberIntVal(1)},
-		},
-	}}
-
-	assert.Equal(t, "// one\n// two\nx = (1)\n", fmt.Sprintf("%v", body))
 }

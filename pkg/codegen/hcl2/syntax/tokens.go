@@ -167,7 +167,10 @@ func (trivia TriviaList) Format(f fmt.State, c rune) {
 
 // Comment is a piece of trivia that represents a line or block comment in a source file.
 //
-// A comment that was not parsed from source has a zero Range, and prints from its Lines.
+// A comment that was not parsed from source has a zero Range, and prints from its Lines. Each line starts at column
+// zero, and the comment ends with a newline. Like the trivia of other tokens, the caller supplies indentation as
+// Whitespace trivia: to indent a comment of more than one line, use one Comment for each line and put the indentation
+// before each Comment and after the last one.
 type Comment struct {
 	// Lines contains the lines of the comment without leading comment characters or trailing newlines.
 	Lines []string
