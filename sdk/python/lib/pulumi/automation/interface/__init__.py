@@ -360,7 +360,7 @@ class API:
         :param offline: Use locally cached templates without making any network requests
         :param remote_stack_config: Store stack configuration remotely
         :param runtime_options: Additional options for the language runtime (format: key1=value1,key2=value2)
-        :param secrets_provider: The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)
+        :param secrets_provider: The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault, ocikms)
         :param stack: The stack name; either an existing stack or stack to create; if not specified, a prompt will request it
         :param template_mode: Deprecated: template mode is now the only mode; this flag is a no-op
         :param cwd: Working directory to run the command in.

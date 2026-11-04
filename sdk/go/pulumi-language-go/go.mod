@@ -141,3 +141,5 @@ require (
 )
 
 tool github.com/quasilyte/go-ruleguard/dsl
+
+replace github.com/frankli0324/gocloud-ext => github.com/marlon-costa-dc/gocloud-ext v0.0.0-20261104190733-88392e67caca

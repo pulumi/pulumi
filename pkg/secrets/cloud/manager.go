@@ -25,6 +25,7 @@ import (
 	"os"
 	"strings"
 
+	_ "github.com/frankli0324/gocloud-ext/secrets/ocikms" // support for ocikms://
 	gosecrets "gocloud.dev/secrets"
 	_ "gocloud.dev/secrets/awskms"        // support for awskms://
 	_ "gocloud.dev/secrets/azurekeyvault" // support for azurekeyvault://

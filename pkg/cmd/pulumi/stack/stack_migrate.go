@@ -85,7 +85,7 @@ func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 			"\n" +
 			"To use a non-default secrets provider for the target stack, pass `--secrets-provider`. Valid\n" +
 			"values are the same as those accepted by `pulumi stack init`: `default`, `passphrase`, `awskms`,\n" +
-			"`azurekeyvault`, `gcpkms`, `hashivault`.",
+			"`azurekeyvault`, `gcpkms`, `hashivault`, `ocikms`.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return smcmd.Run(cmd, ws, lm, args)
 		},

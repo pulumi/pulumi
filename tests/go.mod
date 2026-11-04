@@ -46,9 +46,11 @@ require (
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect
+	github.com/frankli0324/gocloud-ext v0.0.0-20231023175140-d65b9f66f793 // indirect
 	github.com/go-git/gcfg/v2 v2.0.2 // indirect
 	github.com/go-git/go-billy/v6 v6.0.0-alpha.1 // indirect
 	github.com/go-git/go-git/v6 v6.0.0-alpha.4 // indirect
+	github.com/gofrs/flock v0.10.0 // indirect
 	github.com/golang/glog v1.2.5 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/jedib0t/go-pretty/v6 v6.7.10 // indirect
@@ -57,12 +59,14 @@ require (
 	github.com/moby/go-archive v0.3.0 // indirect
 	github.com/moby/moby/api v1.54.1 // indirect
 	github.com/moby/moby/client v0.4.0 // indirect
+	github.com/oracle/oci-go-sdk/v65 v65.50.0 // indirect
 	github.com/pb33f/jsonpath v0.8.2 // indirect
 	github.com/pb33f/libopenapi v0.36.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.1 // indirect
 	github.com/pgavlin/diff v0.0.0-20230503175810-113847418e2e // indirect
 	github.com/pgavlin/text v0.0.0-20240821195002-b51d0990e284 // indirect
 	github.com/pulumi/pulumi-cloud-sdk/go v1.20260918.0 // indirect
+	github.com/sony/gobreaker v0.5.0 // indirect
 	github.com/vbauerster/cupwriter v0.0.4 // indirect
 	github.com/vbauerster/mpb/v8 v8.15.2 // indirect
 	github.com/zalando/go-keyring v0.2.8 // indirect
@@ -306,3 +310,5 @@ require (
 )
 
 tool github.com/quasilyte/go-ruleguard/dsl
+
+replace github.com/frankli0324/gocloud-ext => github.com/marlon-costa-dc/gocloud-ext v0.0.0-20261104190733-88392e67caca

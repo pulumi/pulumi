@@ -126,6 +126,12 @@ require (
 )
 
 require (
+	github.com/gofrs/flock v0.10.0 // indirect
+	github.com/oracle/oci-go-sdk/v65 v65.50.0 // indirect
+	github.com/sony/gobreaker v0.5.0 // indirect
+)
+
+require (
 	cel.dev/expr v0.25.2 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.22.0 // indirect
@@ -196,6 +202,7 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
+	github.com/frankli0324/gocloud-ext v0.0.0-20231023175140-d65b9f66f793
 	github.com/git-pkgs/manifests v0.4.1 // indirect
 	github.com/git-pkgs/packageurl-go v0.3.1 // indirect
 	github.com/git-pkgs/purl v0.1.10 // indirect
@@ -311,3 +318,5 @@ tool (
 	github.com/iwahbe/helpmakego
 	github.com/quasilyte/go-ruleguard/dsl
 )
+
+replace github.com/frankli0324/gocloud-ext => github.com/marlon-costa-dc/gocloud-ext v0.0.0-20261104190733-88392e67caca
