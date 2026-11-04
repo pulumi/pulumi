@@ -442,6 +442,10 @@ func TestInvalidTypes(t *testing.T) {
 		{"bad-type-2.json", "invalid token 'fake-provider::provider' (provider is a reserved word for the root module)"},
 		{"bad-type-3.json", "invalid token 'fake-provider:noModulePart' (should have three parts)"},
 		{"bad-type-4.json", "invalid token 'noParts' (should have three parts); "},
+		{
+			"bad-type-5.json",
+			"invalid token 'fake-provider:index/provider:Provider' (provider is a reserved word for the root module)",
+		},
 	}
 
 	for _, tt := range tests {
@@ -774,7 +778,7 @@ func TestImportResourceRef(t *testing.T) {
 func Test_parseTypeSpecRef(t *testing.T) {
 	t.Parallel()
 
-	toVersionPtr := func(version string) *semver.Version { v := semver.MustParse(version); return &v }
+	toVersionPtr := func(version string) *semver.Version { return new(semver.MustParse(version)) }
 	toURL := func(rawurl string) *url.URL {
 		parsed, err := url.Parse(rawurl)
 		require.NoError(t, err, "failed to parse ref")
@@ -1401,6 +1405,86 @@ func TestBindSpecPrintableNames(t *testing.T) {
 				}
 			}
 			assert.True(t, found, "expected diagnostic containing %q, got %v", tt.wantSummary, diags)
+		})
+	}
+}
+
+func TestBindSpecReducedPropertyNames(t *testing.T) {
+	t.Parallel()
+
+	bindProperties := func(names ...string) (*Package, hcl.Diagnostics) {
+		properties := map[string]PropertySpec{}
+		for _, name := range names {
+			properties[name] = PropertySpec{TypeSpec: TypeSpec{Type: "string"}}
+		}
+		pkg, diags, _ := BindSpec(PackageSpec{
+			Name: "test",
+			Types: map[string]ComplexTypeSpec{
+				"test:index:TestType": {
+					ObjectTypeSpec: ObjectTypeSpec{Type: "object", Properties: properties},
+				},
+			},
+		}, noOpLoader{}, ValidationOptions{AllowDanglingReferences: true})
+		return pkg, diags
+	}
+
+	tests := []struct {
+		name  string
+		props []string
+		want  hcl.Diagnostics
+	}{
+		{
+			name:  "valid",
+			props: []string{"foo", "@bar!", "😃baz", "__qux__", "12quux", "a1", "kebab-case"},
+		},
+		{
+			name:  "no letters",
+			props: []string{"123", "@!"},
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/types/test:index:TestType/properties/123: property name must contain an ASCII letter",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/types/test:index:TestType/properties/@%21: property name must contain an ASCII letter",
+				},
+			},
+		},
+		{
+			name:  "conflicts",
+			props: []string{"MyFoo", "my-foo", "my_foo", "bar"},
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/my-foo: property name conflicts with "MyFoo": ` +
+						`both reduce to "myfoo"`,
+				},
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/my_foo: property name conflicts with "MyFoo": ` +
+						`both reduce to "myfoo"`,
+				},
+			},
+		},
+		{
+			name:  "leading digits",
+			props: []string{"1foo", "foo"},
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/foo: property name conflicts with "1foo": ` +
+						`both reduce to "foo"`,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			pkg, diags := bindProperties(tt.props...)
+			assert.Equal(t, tt.want, diags)
+			assert.Equal(t, tt.want.HasErrors(), pkg == nil)
 		})
 	}
 }
@@ -2669,7 +2753,7 @@ func debugProvidersHelperContext(t *testing.T) *plugin.Context {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, pluginHost.Close()) })
 	pluginCtx, err := plugin.NewContext(
-		t.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+		t.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil, nil)
 	require.NoError(t, err)
 	return pluginCtx
 }

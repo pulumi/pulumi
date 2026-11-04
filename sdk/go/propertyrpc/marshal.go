@@ -25,47 +25,68 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
+// MarshalOptions controls how [MarshalWithOptions] and [MarshalValueWithOptions] serialize values.
+type MarshalOptions struct {
+	// PreferOutputValues causes secrets and computed (unknown) values to be emitted as OutputValue
+	// envelopes (with empty dependencies) rather than Secret / unknown sentinels. Values that
+	// already carry dependencies are always emitted as OutputValue envelopes regardless of this
+	// setting. Use this when sending to a peer that negotiated OutputValue support and expects to
+	// receive outputs on the wire, so that it can round-trip the "this value was/is an output"
+	// signal rather than observing a bare secret.
+	PreferOutputValues bool
+}
+
 func Marshal(m property.Map) *structpb.Struct {
+	return MarshalWithOptions(m, MarshalOptions{})
+}
+
+func MarshalWithOptions(m property.Map, opts MarshalOptions) *structpb.Struct {
 	fields := make(map[string]*structpb.Value, m.Len())
 	for k, v := range m.All {
-		fields[k] = MarshalValue(v)
+		fields[k] = MarshalValueWithOptions(v, opts)
 	}
 	return &structpb.Struct{Fields: fields}
 }
 
 func MarshalValue(v property.Value) *structpb.Value {
-	// If we have dependencies, this must be an output
-	if deps := v.Dependencies(); len(deps) > 0 || (v.Secret() && v.IsComputed()) {
+	return MarshalValueWithOptions(v, MarshalOptions{})
+}
+
+func MarshalValueWithOptions(v property.Value, opts MarshalOptions) *structpb.Value {
+	// If we have dependencies, this must be an output. When PreferOutputValues is set, also wrap
+	// bare secrets and computed values as OutputValue envelopes so the peer sees them as outputs.
+	if deps := v.Dependencies(); len(deps) > 0 ||
+		(opts.PreferOutputValues && (v.Secret() || v.IsComputed())) {
 		fields := map[string]*structpb.Value{
 			sig.Key: structpb.NewStringValue(sig.OutputValue),
 		}
 		if !v.IsComputed() {
-			fields["value"] = marshalPlainValue(v)
+			fields["value"] = marshalPlainValue(v, opts)
 		}
 		if v.Secret() {
 			fields["secret"] = trueValue
 		}
-		if len(deps) > 0 {
-			urns := make([]*structpb.Value, len(deps))
-			for i, urn := range deps {
-				urns[i] = structpb.NewStringValue(string(urn))
-			}
-			fields["dependencies"] = structpb.NewListValue(&structpb.ListValue{Values: urns})
+
+		urns := make([]*structpb.Value, len(deps))
+		for i, urn := range deps {
+			urns[i] = structpb.NewStringValue(string(urn))
 		}
+		fields["dependencies"] = structpb.NewListValue(&structpb.ListValue{Values: urns})
+
 		return structpb.NewStructValue(&structpb.Struct{Fields: fields})
 	}
 
 	if v.Secret() {
 		return structpb.NewStructValue(&structpb.Struct{Fields: map[string]*structpb.Value{
 			sig.Key: structpb.NewStringValue(sig.Secret),
-			"value": marshalPlainValue(v),
+			"value": marshalPlainValue(v, opts),
 		}})
 	}
 
-	return marshalPlainValue(v)
+	return marshalPlainValue(v, opts)
 }
 
-func marshalPlainValue(v property.Value) *structpb.Value {
+func marshalPlainValue(v property.Value, opts MarshalOptions) *structpb.Value {
 	switch {
 	case v.IsBool():
 		return structpb.NewBoolValue(v.AsBool())
@@ -74,9 +95,9 @@ func marshalPlainValue(v property.Value) *structpb.Value {
 	case v.IsString():
 		return marshalString(v.AsString())
 	case v.IsArray():
-		return structpb.NewListValue(marshalArray(v.AsArray()))
+		return structpb.NewListValue(marshalArray(v.AsArray(), opts))
 	case v.IsMap():
-		return structpb.NewStructValue(Marshal(v.AsMap()))
+		return structpb.NewStructValue(MarshalWithOptions(v.AsMap(), opts))
 	case v.IsAsset():
 		return marshalSerialized(v.AsAsset().Serialize())
 	case v.IsArchive():
@@ -133,18 +154,16 @@ func marshalResourceReference(ref property.ResourceReference) *structpb.Value {
 	return structpb.NewStructValue(&structpb.Struct{Fields: fields})
 }
 
-var computedValue = structpb.NewStructValue(&structpb.Struct{
-	Fields: map[string]*structpb.Value{
-		sig.Key: structpb.NewStringValue(sig.OutputValue),
-	},
-})
+// N.B. While there are similar sentinel values for other types of unknown values in practice we only ever use the
+// string one, and the non-Go SDKs have only _ever_ sent the unknown string sentinel.
+var computedValue = structpb.NewStringValue(sig.UnknownStringValue)
 
 var trueValue = structpb.NewBoolValue(true)
 
-func marshalArray(array property.Array) *structpb.ListValue {
+func marshalArray(array property.Array, opts MarshalOptions) *structpb.ListValue {
 	values := make([]*structpb.Value, array.Len())
 	for i, v := range array.All {
-		values[i] = MarshalValue(v)
+		values[i] = MarshalValueWithOptions(v, opts)
 	}
 	return &structpb.ListValue{Values: values}
 }

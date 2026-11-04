@@ -1,4 +1,0 @@
-component: pcl
-kind: fix
-body: Fix the `length` built-in in the PCL interpreter to accept objects and maps
-time: 2026-09-23T14:15:31.246709+02:00

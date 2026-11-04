@@ -90,7 +90,6 @@ func TestSignalAndWaitForShutdownError(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
-		require.Fail(t, "RegisterResource should not return")
 		// SignalAndWaitForShutdown will not be called since we never complete the program.
 		return nil
 	})

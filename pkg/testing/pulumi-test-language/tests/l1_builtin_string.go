@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/rivo/uniseg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,9 +28,9 @@ import (
 func init() {
 	addTest := func(input string) TestRun {
 		parts := strings.Split(input, "-")
-		splitResult := make([]resource.PropertyValue, len(parts))
+		splitResult := make([]property.Value, len(parts))
 		for i, p := range parts {
-			splitResult[i] = resource.NewProperty(p)
+			splitResult[i] = property.New(p)
 		}
 
 		return TestRun{
@@ -39,15 +40,15 @@ func init() {
 			Assert: func(l *L, res AssertArgs) {
 				require.NoError(l, res.Err)
 				stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-				assert.Equal(l, resource.PropertyMap{
+				assert.Equal(l, property.NewMap(map[string]property.Value{
 					// GraphemeClusterCount returns the number of Unicode grapheme clusters in s, matching the behavior
 					// of PCL's length() on strings.
-					"lengthResult": resource.NewProperty(
+					"lengthResult": property.New(
 						float64(uniseg.GraphemeClusterCount(input))),
-					"splitResult":       resource.NewProperty(splitResult),
-					"joinResult":        resource.NewProperty(strings.Join(parts, "|")),
-					"interpolateResult": resource.NewProperty("prefix-" + input),
-				}, stack.Outputs)
+					"splitResult":       property.New(splitResult),
+					"joinResult":        property.New(strings.Join(parts, "|")),
+					"interpolateResult": property.New("prefix-" + input),
+				}), resource.FromResourcePropertyMap(stack.Outputs))
 			},
 		}
 	}

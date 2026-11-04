@@ -15,10 +15,12 @@
 package tests
 
 import (
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -29,6 +31,41 @@ func init() {
 		},
 		Runs: []TestRun{
 			{
+				// During preview, src has not actually been created yet. Per issue
+				// https://github.com/pulumi/pulumi/issues/16395 the engine should
+				// skip the provider Read when a dependsOn target is being newly
+				// created, returning unknown outputs to the SDK so a real-world
+				// Read is not performed against a resource that does not yet exist.
+				AssertPreview: func(l *L, res AssertPreviewArgs) {
+					RequireStackResource(l, res.Err, res.Changes)
+
+					var stackEvent engine.ResourceOutputsEventPayload
+					foundStackEvent := false
+					for _, evt := range res.Events {
+						if evt.Type != engine.ResourceOutputsEvent {
+							continue
+						}
+						payload := evt.Payload().(engine.ResourceOutputsEventPayload)
+						if payload.Metadata.URN.Type() == resource.RootStackType {
+							stackEvent = payload
+							foundStackEvent = true
+						}
+					}
+					require.True(l, foundStackEvent, "expected stack outputs event")
+
+					outputs := stackEvent.Metadata.New.Outputs
+					assert.False(l, outputs["resourceUrn"].IsComputed(),
+						"expected resourceUrn to be known: %v", outputs["resourceUrn"])
+					// The id passed to a read is an import/lookup string, not necessarily
+					// the real resource id — the provider's Read is what resolves it. Since
+					// Read is skipped here, resourceId must come back unknown.
+					assert.True(l, outputs["resourceId"].IsComputed(),
+						"expected resourceId to be unknown: %v", outputs["resourceId"])
+					assert.True(l, outputs["lookup"].IsComputed(),
+						"expected lookup to be unknown: %v", outputs["lookup"])
+					assert.True(l, outputs["value"].IsComputed(),
+						"expected value to be unknown: %v", outputs["value"])
+				},
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 

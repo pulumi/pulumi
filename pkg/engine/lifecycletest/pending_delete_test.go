@@ -29,6 +29,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -242,4 +244,92 @@ func TestDestroyWithUntargetedPendingDelete(t *testing.T) {
 	require.Len(t, snap.Resources, 1)
 	require.Equal(t, resBURN, snap.Resources[0].URN)
 	require.Equal(t, true, snap.Resources[0].Delete)
+}
+
+// A failed delete of a protected child must preserve the pending-delete copy of its parent that precedes the child in
+// the snapshot. The copy that follows the child cannot be its parent, so the engine deletes it.
+func TestDestroyProtectedChildOfDuplicatePendingDeleteParent(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+
+	var prov, parent, child *pkgresource.State
+	snap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov = &pkgresource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
+			Custom: true,
+			ID:     "id-prov",
+		}
+		s.Resources = append(s.Resources, prov)
+
+		provRef, err := providers.NewReference(prov.URN, prov.ID)
+		require.NoError(t, err)
+
+		parent = &pkgresource.State{
+			Type:     "pkgA:m:typA",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::parent",
+			Custom:   true,
+			Delete:   true,
+			ID:       "id-parent",
+			Provider: provRef.String(),
+		}
+		s.Resources = append(s.Resources, parent)
+
+		child = &pkgresource.State{
+			Type:     "pkgA:m:typB",
+			URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA$pkgA:m:typB::child",
+			Custom:   true,
+			ID:       "id-child",
+			Provider: provRef.String(),
+			Parent:   parent.URN,
+			Protect:  true,
+		}
+		s.Resources = append(s.Resources, child)
+
+		trailingParent := parent.Copy()
+		trailingParent.ID = "id-trailing-parent"
+		s.Resources = append(s.Resources, trailingParent)
+
+		return s
+	}()
+	require.NoError(t, snap.VerifyIntegrity())
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	for name, op := range map[string]lt.TestOp{
+		"destroy":   Destroy,
+		"destroyV2": DestroyV2,
+		"update":    Update,
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := lt.TestUpdateOptions{
+				T:                t,
+				HostF:            hostF,
+				SkipDisplayTests: true,
+			}
+
+			finalSnap, err := op.RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+			require.ErrorContains(t, err, "cannot be deleted")
+			_, isSIE := snapshot.AsSnapshotIntegrityError(err)
+			require.False(t, isSIE, "unexpected snapshot integrity error: %v", err)
+			assert.Equal(t, []*pkgresource.State{prov, parent, child}, finalSnap.Resources)
+		})
+	}
 }

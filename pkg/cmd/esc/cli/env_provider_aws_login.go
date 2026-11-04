@@ -48,6 +48,7 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 	var sessionToken string
 	var pathStr string
 	var draft string
+	var reason string
 	var create bool
 	var exportEnvVars bool
 
@@ -97,7 +98,7 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
 				return err
 			}
-			return applyProviderUpdate(ctx, env, ref, draft, path, node, envVars)
+			return applyProviderUpdate(ctx, env, ref, draft, reason, path, node, envVars)
 		},
 	}
 
@@ -111,6 +112,7 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(&draft, "draft", "",
 		"set flag without a value (--draft) to create a draft rather than saving changes directly. --draft=<change-request-id> to update an existing change request.") //nolint:lll
 	cmd.Flag("draft").NoOptDefVal = "new"
+	cmd.Flags().StringVar(&reason, "reason", "", "the description for the change request created by --draft")
 
 	return cmd
 }
@@ -167,6 +169,7 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 	var subjectAttributes []string
 	var pathStr string
 	var draft string
+	var reason string
 	var create bool
 	var exportEnvVars bool
 
@@ -217,7 +220,7 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 			if err := ensureProviderEnv(ctx, env, ref, create); err != nil {
 				return err
 			}
-			return applyProviderUpdate(ctx, env, ref, draft, path, node, envVars)
+			return applyProviderUpdate(ctx, env, ref, draft, reason, path, node, envVars)
 		},
 	}
 
@@ -235,6 +238,7 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().StringVar(&draft, "draft", "",
 		"set flag without a value (--draft) to create a draft rather than saving changes directly. --draft=<change-request-id> to update an existing change request.") //nolint:lll
 	cmd.Flag("draft").NoOptDefVal = "new"
+	cmd.Flags().StringVar(&reason, "reason", "", "the description for the change request created by --draft")
 
 	return cmd
 }

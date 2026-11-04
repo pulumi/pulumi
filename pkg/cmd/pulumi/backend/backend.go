@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
+func IsDIYBackend(ctx context.Context, lm LoginManager, ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return false, fmt.Errorf("getting current working directory: %w", err)
@@ -49,6 +49,10 @@ func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 		return false, fmt.Errorf("could not get cloud url: %w", err)
 	}
 
+	url, _, err = prepareBackend(ctx, lm.CredentialHelperSession(), ws, url, false)
+	if err != nil {
+		return false, err
+	}
 	return diy.IsDIYBackendURL(url), nil
 }
 
@@ -70,6 +74,14 @@ func CurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
 	opts display.Options,
 ) (backend.Backend, error) {
+	return CurrentBackendWithOptions(ctx, ws, lm, project, opts)
+}
+
+// CurrentBackendWithOptions is CurrentBackend with LoginOptions that are passed on to LoginManager.Login.
+func CurrentBackendWithOptions(
+	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
+	opts display.Options, loginOpts ...LoginOption,
+) (backend.Backend, error) {
 	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(ws, env.Global(), project)
 	if err != nil {
 		return nil, fmt.Errorf("could not get cloud url: %w", err)
@@ -79,5 +91,5 @@ func CurrentBackend(
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 
 	// Only set current if we don't currently have a cloud URL set.
-	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, opts.Color)
+	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, opts.Color, loginOpts...)
 }

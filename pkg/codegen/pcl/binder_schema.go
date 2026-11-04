@@ -17,6 +17,7 @@ package pcl
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -417,11 +418,22 @@ func buildEnumValue(v any) cty.Value {
 	case int64:
 		return cty.NumberIntVal(v)
 	case float64:
-		return cty.NumberFloatVal(v)
+		return ctyNumberFromFloat64(v)
 	default:
 		contract.Failf("Found unexpected constant type %T: %[1]v", v)
 		return cty.NilVal
 	}
+}
+
+// ctyNumberFromFloat64 builds a [cty.Number] whose internal big.Float matches the one cty creates when parsing
+// the number from text. cty.NumberFloatVal rounds to 53 bits (float64's mantissa) while cty.ParseNumberVal uses
+// 512 bits, and cty.Value.RawEquals is representation-sensitive — so a schema const built with NumberFloatVal
+// never compares equal to the same number parsed back out of HCL source. Routing through ParseNumberVal keeps
+// the two paths bit-identical.
+func ctyNumberFromFloat64(v float64) cty.Value {
+	// strconv.FormatFloat with precision -1 emits the shortest decimal that round-trips through float64, which
+	// is sufficient for ParseNumberVal to recover the exact same bits.
+	return cty.MustParseNumberVal(strconv.FormatFloat(v, 'g', -1, 64))
 }
 
 // A marker struct to ensure type safety when retrieving the type from an
@@ -552,7 +564,7 @@ func (b *binder) schemaTypeToTypeOrConst(typ schema.Type, prop *schema.Property)
 		case int32:
 			value = cty.NumberIntVal(int64(v))
 		case float64:
-			value = cty.NumberFloatVal(v)
+			value = ctyNumberFromFloat64(v)
 		case string:
 			value = cty.StringVal(v)
 		default:

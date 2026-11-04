@@ -170,40 +170,46 @@ function evaluateExpr(value) {
 
 // ── Download & extract ──────────────────────────────────────────────────────
 
-async function downloadAction(owner, repo, ref) {
+async function downloadAction(owner, repo, ref, token) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "retry-action-"));
-  const tarPath = path.join(tmpDir, "action.tar.gz");
-  const extractDir = path.join(tmpDir, "src");
-  fs.mkdirSync(extractDir);
+  try {
+    const tarPath = path.join(tmpDir, "action.tar.gz");
+    const extractDir = path.join(tmpDir, "src");
+    fs.mkdirSync(extractDir);
 
-  const url = `https://github.com/${owner}/${repo}/archive/${ref}.tar.gz`;
-  info(`Downloading ${owner}/${repo}@${ref}`);
+    const url = `https://codeload.github.com/${owner}/${repo}/tar.gz/${ref}`;
+    info(`Downloading ${owner}/${repo}@${ref}`);
 
-  const headers = { "User-Agent": "pulumi/retry-action" };
-  const token = process.env.GITHUB_TOKEN;
-  if (token) headers["Authorization"] = `token ${token}`;
+    const headers = { "User-Agent": "pulumi/retry-action" };
+    if (token) headers["Authorization"] = `token ${token}`;
 
-  const resp = await fetch(url, { redirect: "follow", headers });
-  if (!resp.ok)
-    throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
+    const resp = await fetch(url, { headers });
+    if (!resp.ok)
+      throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
 
-  fs.writeFileSync(tarPath, Buffer.from(await resp.arrayBuffer()));
-  // On Windows, MSYS2/Git tar needs two fixes:
-  // 1. --force-local: prevents D: drive letters from being interpreted as remote hosts
-  // 2. Forward slashes: prevents backslashes from being interpreted as escape characters
-  const tarFile =
-    process.platform === "win32" ? tarPath.replace(/\\/g, "/") : tarPath;
-  const tarDest =
-    process.platform === "win32" ? extractDir.replace(/\\/g, "/") : extractDir;
-  const forceLocal = process.platform === "win32" ? " --force-local" : "";
-  execSync(`tar -xzf "${tarFile}" -C "${tarDest}"${forceLocal}`, {
-    stdio: "pipe",
-  });
+    fs.writeFileSync(tarPath, Buffer.from(await resp.arrayBuffer()));
+    // On Windows, MSYS2/Git tar needs two fixes:
+    // 1. --force-local: prevents D: drive letters from being interpreted as remote hosts
+    // 2. Forward slashes: prevents backslashes from being interpreted as escape characters
+    const tarFile =
+      process.platform === "win32" ? tarPath.replace(/\\/g, "/") : tarPath;
+    const tarDest =
+      process.platform === "win32"
+        ? extractDir.replace(/\\/g, "/")
+        : extractDir;
+    const forceLocal = process.platform === "win32" ? " --force-local" : "";
+    execSync(`tar -xzf "${tarFile}" -C "${tarDest}"${forceLocal}`, {
+      stdio: "pipe",
+    });
 
-  const entries = fs.readdirSync(extractDir);
-  if (!entries.length) throw new Error("Archive was empty");
+    const entries = fs.readdirSync(extractDir);
+    if (!entries.length) throw new Error("Archive was empty");
 
-  return { dir: path.join(extractDir, entries[0]), tmpDir };
+    return { dir: path.join(extractDir, entries[0]), tmpDir };
+  } catch (err) {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    throw err;
+  }
 }
 
 // ── Build the environment for the child action ──────────────────────────────
@@ -298,7 +304,29 @@ async function main() {
   const subPath = parts.slice(2).join("/");
 
   // Download & extract the action.
-  const { dir: repoDir, tmpDir } = await downloadAction(owner, repo, ref);
+  const token = process.env.GITHUB_TOKEN || getInput("github_token");
+  let repoDir, tmpDir;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      ({ dir: repoDir, tmpDir } = await downloadAction(
+        owner,
+        repo,
+        ref,
+        token,
+      ));
+      break;
+    } catch (err) {
+      if (attempt >= attemptLimit) {
+        logError(
+          `Downloading ${actionRef} failed after ${attemptLimit} attempts. Last: ${err.message}`,
+        );
+        process.exitCode = 1;
+        return;
+      }
+      warning(`Download attempt ${attempt} failed: ${err.message}`);
+      await new Promise((r) => setTimeout(r, attemptDelay));
+    }
+  }
   const actionDir = subPath ? path.join(repoDir, subPath) : repoDir;
 
   // Always save tmpDir so post.js can clean it up.

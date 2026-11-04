@@ -9,7 +9,7 @@ import * as utilities from "./utilities";
 import * as pulumiEnum from "@pulumi/enum";
 
 /**
- * Resource is a basic resource. Use fun to set {{% ref#/resources/docs:index:Resource/inputProperties/in %}} using FunResult.out.
+ * Resource is a basic resource configured by Provider using Provider.someConfig. See also the external Provider. Use fun to set ResourceArgs.in using FunResult.out.
  */
 export class Resource extends pulumi.CustomResource {
     /**
@@ -22,6 +22,16 @@ export class Resource extends pulumi.CustomResource {
      */
     public static get(name: string, id: pulumi.Input<pulumi.ID>, opts?: pulumi.CustomResourceOptions): Resource {
         return new Resource(name, undefined as any, { ...opts, id: id });
+    }
+
+    /**
+     * Check whether an existing Resource resource with the given ID exists.
+     *
+     * @param id The _unique_ provider ID of the resource to check.
+     * @param opts Optional settings to control the behavior of the CustomResource.
+     */
+    public static exists(id: pulumi.Input<string>, opts?: pulumi.CustomResourceOptions): pulumi.Output<boolean> {
+        return pulumi.runtime.existsResource("docs:index:Resource", id, {}, { ...opts }, undefined);
     }
 
     /** @internal */

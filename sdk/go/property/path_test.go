@@ -307,3 +307,36 @@ func TestAlter(t *testing.T) {
 		})
 	}
 }
+
+func TestAppendSegment(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		path     property.Path
+		segment  property.PathSegment
+		expected property.Path
+	}{
+		{
+			name:     "append-to-empty",
+			path:     property.PathFromSegments(),
+			segment:  property.NewSegment("k"),
+			expected: property.PathFromSegments(property.NewSegment("k")),
+		},
+		{
+			name:     "append-to-non-empty",
+			path:     property.PathFromSegments(property.NewSegment("a")),
+			segment:  property.NewSegment("b"),
+			expected: property.PathFromSegments(property.NewSegment("a"), property.NewSegment("b")),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := tt.path.AppendSegment(tt.segment)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

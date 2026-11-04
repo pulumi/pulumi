@@ -1,0 +1,23 @@
+{
+  "name": "fake-provider",
+  "version": "0.0.1",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "resources": {
+    "fake-provider:index/provider:Provider": {
+      "properties": {
+        "a": {
+          "type": "boolean"
+        }
+      },
+      "inputProperties": {
+        "a": {
+          "type": "boolean",
+          "plain": true
+        }
+      },
+      "type": "object"
+    }
+  }
+}

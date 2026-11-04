@@ -193,6 +193,25 @@ func TestCapabilities(t *testing.T) {
 		}, actual)
 	})
 
+	t.Run("parse coherence windows", func(t *testing.T) {
+		t.Parallel()
+		for _, version := range []int{1, 2} {
+			response := CapabilitiesResponse{
+				Capabilities: []APICapabilityConfig{
+					{
+						Capability: CoherenceWindows,
+						Version:    version,
+					},
+				},
+			}
+			actual, err := response.Parse()
+			require.NoError(t, err)
+			assert.Equal(t, Capabilities{
+				CoherenceWindowsVersion: version,
+			}, actual)
+		}
+	})
+
 	t.Run("parse api version v1", func(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{

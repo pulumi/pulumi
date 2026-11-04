@@ -192,7 +192,7 @@ func TestDoCmdShowResourcesFallsBackToGlobalProject(t *testing.T) {
 		},
 		LoginF: func(
 			context.Context, pkgWorkspace.Context, diag.Sink,
-			string, *workspace.Project, bool, bool, colors.Colorization,
+			string, *workspace.Project, bool, bool, colors.Colorization, ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},

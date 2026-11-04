@@ -1,0 +1,6 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pkgB:m:typB::failing: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::dependent: (create)
+<{%fg 2%}>    name : <{%reset%}><{%fg 2%}>"auto"<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 2%}>    value: <{%reset%}><{%fg 2%}>[unknown]<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 to create<{%reset%}>

@@ -22,7 +22,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -348,19 +347,20 @@ func TestErrorCatchingSecretsManager_Batching_Enqueue_Success(t *testing.T) {
 	require.True(t, ok)
 	batchDecrypter, completeCrypterBatch := batchingManager.BeginBatchDecryption()
 
-	secret1 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
-	secret2 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
-
-	err = batchDecrypter.Enqueue(t.Context(), "encrypted1", secret1)
+	err = batchDecrypter.Enqueue(t.Context(), "encrypted1")
 	require.NoError(t, err)
-	err = batchDecrypter.Enqueue(t.Context(), "encrypted2", secret2)
+	err = batchDecrypter.Enqueue(t.Context(), "encrypted2")
 	require.NoError(t, err)
 
 	err = completeCrypterBatch(t.Context())
 	require.NoError(t, err)
 
-	assert.Equal(t, resource.MakeSecret(resource.NewPropertyValue("decrypted1")).SecretValue(), secret1)
-	assert.Equal(t, resource.MakeSecret(resource.NewPropertyValue("decrypted2")).SecretValue(), secret2)
+	pt1, err := batchDecrypter.DecryptValue(t.Context(), "encrypted1")
+	require.NoError(t, err)
+	assert.Equal(t, "\"decrypted1\"", pt1)
+	pt2, err := batchDecrypter.DecryptValue(t.Context(), "encrypted2")
+	require.NoError(t, err)
+	assert.Equal(t, "\"decrypted2\"", pt2)
 	assert.True(t, encDecrypter.batchDecryptCalled)
 }
 
@@ -418,12 +418,9 @@ func TestErrorCatchingSecretsManager_Batching_ErrorPropagated(t *testing.T) {
 	require.True(t, ok)
 	batchDecrypter, completeCrypterBatch := batchingManager.BeginBatchDecryption()
 
-	secret1 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
-	secret2 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
-
-	err = batchDecrypter.Enqueue(t.Context(), "encrypted1", secret1)
+	err = batchDecrypter.Enqueue(t.Context(), "encrypted1")
 	require.NoError(t, err)
-	err = batchDecrypter.Enqueue(t.Context(), "encrypted2", secret2)
+	err = batchDecrypter.Enqueue(t.Context(), "encrypted2")
 	require.NoError(t, err)
 
 	err = completeCrypterBatch(t.Context())
@@ -485,19 +482,20 @@ func TestErrorCatchingSecretsManager_Batching_ErrorIgnored(t *testing.T) {
 	require.True(t, ok)
 	batchDecrypter, completeCrypterBatch := batchingManager.BeginBatchDecryption()
 
-	secret1 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
-	secret2 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
-
-	err = batchDecrypter.Enqueue(t.Context(), "encrypted1", secret1)
+	err = batchDecrypter.Enqueue(t.Context(), "encrypted1")
 	require.NoError(t, err)
-	err = batchDecrypter.Enqueue(t.Context(), "encrypted2", secret2)
+	err = batchDecrypter.Enqueue(t.Context(), "encrypted2")
 	require.NoError(t, err)
 
 	err = completeCrypterBatch(t.Context())
 	require.NoError(t, err)
 
-	assert.Equal(t, resource.MakeSecret(resource.NewProperty(resource.PropertyMap{})).SecretValue(), secret1)
-	assert.Equal(t, resource.MakeSecret(resource.NewProperty(resource.PropertyMap{})).SecretValue(), secret2)
+	pt1, err := batchDecrypter.DecryptValue(t.Context(), "encrypted1")
+	require.NoError(t, err)
+	assert.Equal(t, "{}", pt1)
+	pt2, err := batchDecrypter.DecryptValue(t.Context(), "encrypted2")
+	require.NoError(t, err)
+	assert.Equal(t, "{}", pt2)
 	assert.True(t, encDecrypter.batchDecryptCalled)
 	assert.True(t, onDecryptErrorCalled)
 }
@@ -539,12 +537,9 @@ func TestErrorCatchingSecretsManager_Batching_NilDecrypter(t *testing.T) {
 	require.True(t, ok)
 	batchDecrypter, completeCrypterBatch := batchingManager.BeginBatchDecryption()
 
-	secret1 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
-	secret2 := resource.MakeSecret(resource.NewNullProperty()).SecretValue()
-
-	err = batchDecrypter.Enqueue(t.Context(), "encrypted1", secret1)
+	err = batchDecrypter.Enqueue(t.Context(), "encrypted1")
 	require.NoError(t, err)
-	err = batchDecrypter.Enqueue(t.Context(), "encrypted2", secret2)
+	err = batchDecrypter.Enqueue(t.Context(), "encrypted2")
 	require.NoError(t, err)
 
 	err = completeCrypterBatch(t.Context())

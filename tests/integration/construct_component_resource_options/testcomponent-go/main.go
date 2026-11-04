@@ -1,6 +1,18 @@
-// Copyright 2016, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 //go:build !all
-// +build !all
 
 package main
 
@@ -10,7 +22,6 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -39,7 +50,7 @@ func NewComponent(
 		return nil, err
 	}
 
-	_, err := NewResource(ctx, fmt.Sprintf("%s-child", name), pulumi.Parent(&comp))
+	_, err := NewResource(ctx, name+"-child", pulumi.Parent(&comp))
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +77,9 @@ func NewResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption
 }
 
 func main() {
-	err := provider.Main("testcomponent", func(host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+	err := pulumiprovider.Main("testcomponent", func(
+		host *pulumiprovider.HostClient,
+	) (pulumirpc.ResourceProviderServer, error) {
 		return NewProvider(host, "testcomponent", "0.0.1"), nil
 	})
 	if err != nil {
@@ -77,7 +90,7 @@ func main() {
 type Provider struct {
 	pulumirpc.UnimplementedResourceProviderServer
 
-	host    *provider.HostClient
+	host    *pulumiprovider.HostClient
 	name    string
 	version string
 
@@ -85,7 +98,7 @@ type Provider struct {
 	currentID atomic.Int64
 }
 
-func NewProvider(host *provider.HostClient, name, version string) pulumirpc.ResourceProviderServer {
+func NewProvider(host *pulumiprovider.HostClient, name, version string) pulumirpc.ResourceProviderServer {
 	return &Provider{
 		host:    host,
 		name:    name,

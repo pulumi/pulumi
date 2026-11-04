@@ -69,6 +69,23 @@ func (p *FailOnCreateProvider) GetSchema(
 				RequiredInputs:  resourceRequired,
 			},
 		},
+		Functions: map[string]schema.FunctionSpec{
+			"fail_on_create:index:fail": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: resourceProperties,
+					Required:   resourceRequired,
+				},
+				Outputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"value":   {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+						"message": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+					Required: []string{"value", "message"},
+				},
+			},
+		},
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
@@ -135,6 +152,12 @@ func (p *FailOnCreateProvider) Create(
 	context.Context, plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
 	return plugin.CreateResponse{}, errors.New("failed create")
+}
+
+func (p *FailOnCreateProvider) Invoke(
+	context.Context, plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	return plugin.InvokeResponse{}, errors.New("failed invoke")
 }
 
 func (p *FailOnCreateProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {

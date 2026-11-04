@@ -638,7 +638,7 @@ func createAWSEnvironments(
 			continue
 		}
 		if err := applyProviderUpdate(
-			ctx, setup.env, ref, "", path, node, awsLoginEnvVars(propertyPathRef(path))); err != nil {
+			ctx, setup.env, ref, "", "", path, node, awsLoginEnvVars(propertyPathRef(path))); err != nil {
 			fmt.Fprintf(setup.esc().stderr, "  %v\n", err)
 			failed++
 			continue
@@ -850,7 +850,10 @@ func newSetupAWSCmd(setup *setupCommand) *cobra.Command {
 	cmd.Flags().StringVar(&policy, "policy", "",
 		"the policy attached to the OIDC role: AdministratorAccess (required for Deployments), "+
 			"ReadOnlyAccess (required for Discovery), or any other policy ARN; prompted for when omitted")
+	cmd.Flags().StringVarP(&orgName, "organization", "o", "", "the Pulumi organization to configure OIDC for")
+	// Deprecated: use -o/--organization
 	cmd.Flags().StringVar(&orgName, "org", "", "the Pulumi organization to configure OIDC for")
+	_ = cmd.Flags().MarkHidden("org")
 	cmd.Flags().BoolVar(&yes, "yes", false, "skip all confirmation prompts")
 	cmd.Flags().StringVar(&projectName, "project", "aws-login",
 		"the ESC project that per-account environments are created in")

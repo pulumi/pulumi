@@ -37,12 +37,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var Runtimes = []string{"python", "java", "go", "yaml", "nodejs", "dotnet"}
+var Runtimes = []string{"python", "go", "yaml", "nodejs", "dotnet"}
 
 // Mapping from the language runtime names to the common language name used by templates and the like.
 var Languages = map[string]string{
 	"python": "python",
-	"java":   "java",
 	"go":     "go",
 	"yaml":   "yaml",
 	"nodejs": "typescript",
@@ -109,6 +108,33 @@ func TestHCLLanguageDownloadSmoke(t *testing.T) {
 	e.RunCommand("pulumi", "destroy", "--yes")
 }
 
+// TestJavaLanguageDownloadSmoke checks that the engine can transparently download the unbundled
+// pulumi-language-java runtime and use it to run a program. A clean PULUMI_HOME has no java
+// runtime, so `pulumi up` must fetch it from the pinned release and launch it to run the
+// (resource-free) program.
+func TestJavaLanguageDownloadSmoke(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// The engine only downloads the language runtime when automatic acquisition is enabled.
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	e.ImportDirectory("testdata/java_smoke")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("pulumi", "up", "--yes")
+
+	// The runtime should now be resolvable as an installed language plugin, proving it was fetched
+	// rather than already bundled.
+	plugins, _ := e.RunCommand("pulumi", "plugin", "ls")
+	assert.Regexp(t, `java\s+language`, plugins)
+
+	e.RunCommand("pulumi", "destroy", "--yes")
+}
+
 // Quick sanity test that `pulumi package new` can scaffold a package from a live template.
 func TestPackageNewSmoke(t *testing.T) {
 	t.Parallel()
@@ -160,7 +186,7 @@ func TestYamlConvertSmoke(t *testing.T) {
 	// Make sure random is installed
 	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.13.0")
 	// renovate: datasource=github-releases depName=pulumi/pulumi-yaml
-	e.RunCommand("pulumi", "plugin", "install", "converter", "yaml", "v1.38.7")
+	e.RunCommand("pulumi", "plugin", "install", "converter", "yaml", "v1.38.16")
 
 	e.RunCommand(
 		"pulumi", "convert", "--strict",
@@ -186,11 +212,6 @@ func TestLanguageConvertSmoke(t *testing.T) {
 	for _, rt := range Runtimes {
 		t.Run(rt, func(t *testing.T) {
 			t.Parallel()
-
-			// TODO[pulumi/pulumi#18451]: Reenable this test
-			if rt == "java" && runtime.GOOS == "windows" {
-				t.Skip("the java test is very flaky on windows")
-			}
 
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
@@ -222,11 +243,6 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 		t.Run(rt, func(t *testing.T) {
 			t.Parallel()
 
-			// TODO[pulumi/pulumi#18451]: Reenable this test
-			if rt == "java" && runtime.GOOS == "windows" {
-				t.Skip("the java test is very flaky on windows")
-			}
-
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
 
@@ -254,9 +270,6 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 
 			if runtime == "yaml" {
 				t.Skip("yaml doesn't support components")
-			}
-			if runtime == "java" {
-				t.Skip("java doesn't support components")
 			}
 
 			e := ptesting.NewEnvironment(t)
@@ -481,6 +494,58 @@ func TestLanguageImportSmoke(t *testing.T) {
 			e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
 			e.RunCommand("pulumi", "import", "--yes", "random:index/randomId:RandomId", "identifier", "p-9hUg")
 		})
+	}
+}
+
+// Check that `pulumi import --preview-only` does not perform the import but still prints the
+// generated resource declaration code.
+func TestImportPreviewOnlyGeneratesCode(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// make sure we can download needed plugins
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	projectDir := filepath.Join(e.RootPath, "project")
+	err := os.Mkdir(projectDir, 0o700)
+	require.NoError(t, err)
+
+	e.CWD = projectDir
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "new", Languages["nodejs"], "--yes")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.19.0")
+
+	stdout, _ := e.RunCommand("pulumi", "import", "--preview-only",
+		"random:index/randomId:RandomId", "identifier", "p-9hUg")
+
+	// Preview-only should still emit the generated code and the helper message.
+	assert.Contains(t, stdout, "Please copy the following code into your Pulumi application")
+	assert.Contains(t, stdout, `import * as random from "@pulumi/random";`)
+	// The generated declaration should bind the resource to the logical name we passed on the
+	// command line ("identifier") and use the RandomId constructor.
+	generatedRE := regexp.MustCompile(
+		`const\s+identifier\s*=\s*new\s+random\.RandomId\(\s*"identifier"`)
+	assert.Regexp(t, generatedRE, stdout,
+		"expected generated code to declare `const identifier = new random.RandomId(\"identifier\", ...)`")
+	// The import ID we passed on the command line must appear as an `import:` resource option in
+	// the generated code: in dry-run the engine preserves the resource's ImportID on the state
+	// so codegen can emit it.
+	assert.Regexp(t, regexp.MustCompile(`import:\s*"p-9hUg"`), stdout,
+		"expected generated code to include the import ID in resource options")
+
+	// Nothing should have been imported into the stack.
+	exportStdout, _ := e.RunCommand("pulumi", "stack", "export")
+	var deployment struct {
+		Deployment apitype.DeploymentV3 `json:"deployment"`
+	}
+	err = json.Unmarshal([]byte(exportStdout), &deployment)
+	require.NoError(t, err)
+	for _, r := range deployment.Deployment.Resources {
+		assert.NotEqual(t, "random:index/randomId:RandomId", string(r.Type),
+			"preview-only must not create resources in the stack")
 	}
 }
 
@@ -1469,6 +1534,7 @@ func TestPulumiNewEmptyOperations(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	require.NoError(t, os.Remove(filepath.Join(e.RootPath, ".yarnrc")))
 
+	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "new", "-y")
 	e.RunCommand("pulumi", "stack", "init", "testing")
 	e.RunCommand("pulumi", "config", "set", "key", "value")

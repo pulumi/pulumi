@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,10 +37,10 @@ import (
 func TestPreviewRefreshWithProgram(t *testing.T) {
 	t.Parallel()
 
-	programInputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	createOutputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
-	updateOutputs := resource.PropertyMap{"foo": resource.NewProperty("qux")}
-	readOutputs := resource.PropertyMap{"foo": resource.NewProperty("baz")}
+	programInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	updateOutputs := property.NewMap(map[string]property.Value{"foo": property.New("qux")})
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -52,8 +53,8 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Inputs:  req.Inputs,
-								Outputs: readOutputs,
+								Inputs:  &req.Inputs,
+								Outputs: &readOutputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -62,8 +63,8 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Inputs:  resource.PropertyMap{},
-							Outputs: resource.PropertyMap{},
+							Inputs:  new(property.Map{}),
+							Outputs: new(property.Map{}),
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -86,7 +87,7 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(uuid.String()),
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -106,7 +107,7 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 					}
 
 					return plugin.UpdateResponse{
-						Properties: resource.PropertyMap{},
+						Properties: property.Map{},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -119,15 +120,15 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: programInputs,
+			Inputs: resource.ToResourcePropertyMap(programInputs),
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the update outputs
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resp.Outputs)
+			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		} else {
-			assert.Equal(t, updateOutputs, resp.Outputs)
+			assert.Equal(t, updateOutputs, resource.FromResourcePropertyMap(resp.Outputs))
 		}
 
 		return nil
@@ -146,11 +147,11 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 	assert.Equal(t, 1, programExecutions)
-	assert.Equal(t, createOutputs, snap.Resources[1].Inputs)
-	assert.Equal(t, createOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Change the program inputs to check we don't send changed inputs to the provider for refresh
-	programInputs["foo"] = resource.NewProperty("qux")
+	programInputs = programInputs.Set("foo", property.New("qux"))
 	// Run a preview with refresh
 	p.Options.Refresh = true
 	p.Options.RefreshProgram = true

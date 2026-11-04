@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -83,33 +84,36 @@ func init() {
 					require.NoError(l, err)
 					assert.Equal(l, "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1", assetValue.Hash)
 
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"value": assetValue,
+					want := property.NewMap(map[string]property.Value{
+						"value": property.New(assetValue),
 					})
 
-					assert.Equal(l, want, asset.Inputs, "expected inputs to be {value: %v}", assetValue)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(asset.Inputs),
+						"expected inputs to be {value: %v}", assetValue)
 					assert.Equal(l, asset.Inputs, asset.Outputs, "expected inputs and outputs to match")
 
 					archiveValue, err := resource.NewPathArchiveWithWD("../archive.tar", main)
 					require.NoError(l, err)
 					assert.Equal(l, "2eee410fe85d360552a8c21238d67d43f4b64e60288914f893b67165e8ebfbcf", archiveValue.Hash)
 
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"value": archiveValue,
+					want = property.NewMap(map[string]property.Value{
+						"value": property.New(archiveValue),
 					})
 
-					assert.Equal(l, want, archive.Inputs, "expected inputs to be {value: %v}", archiveValue)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(archive.Inputs),
+						"expected inputs to be {value: %v}", archiveValue)
 					assert.Equal(l, archive.Inputs, archive.Outputs, "expected inputs and outputs to match")
 
 					folderValue, err := resource.NewPathArchiveWithWD("../folder", main)
 					require.NoError(l, err)
 					assert.Equal(l, "25df47ed6b3c8e07479e5d9c908eff93d624ec693b6aa7559a9bcb084db70774", folderValue.Hash)
 
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"value": folderValue,
+					want = property.NewMap(map[string]property.Value{
+						"value": property.New(folderValue),
 					})
 
-					assert.Equal(l, want, folder.Inputs, "expected inputs to be {value: %v}", folderValue)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(folder.Inputs),
+						"expected inputs to be {value: %v}", folderValue)
 					assert.Equal(l, folder.Inputs, folder.Outputs, "expected inputs and outputs to match")
 
 					stringAsset, err := resource.NewTextAsset("file contents")
@@ -123,11 +127,12 @@ func init() {
 					}, main)
 					require.NoError(l, err)
 
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"value": assarcValue,
+					want = property.NewMap(map[string]property.Value{
+						"value": property.New(assarcValue),
 					})
 
-					assert.Equal(l, want, assarc.Inputs, "expected inputs to be {value: %v}", assarcValue)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(assarc.Inputs),
+						"expected inputs to be {value: %v}", assarcValue)
 					assert.Equal(l, assarc.Inputs, assarc.Outputs, "expected inputs and outputs to match")
 
 					remoteassValue, err := resource.NewURIAsset(
@@ -136,11 +141,12 @@ func init() {
 					)
 					require.NoError(l, err)
 
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"value": remoteassValue,
+					want = property.NewMap(map[string]property.Value{
+						"value": property.New(remoteassValue),
 					})
 
-					assert.Equal(l, want, remoteass.Inputs, "expected inputs to be {value: %v}", remoteassValue)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(remoteass.Inputs),
+						"expected inputs to be {value: %v}", remoteassValue)
 					assert.Equal(l, remoteass.Inputs, remoteass.Outputs, "expected inputs and outputs to match")
 					bs, err := remoteassValue.Bytes()
 					require.NoError(l, err)
@@ -154,34 +160,36 @@ func init() {
 					require.NoError(l, err)
 
 					assert.Equal(l,
-						resource.PropertyMap{"value": resource.NewProperty(remotearcValue)},
-						remotearc.Inputs, "expected inputs to be {value: %v}", remotearcValue)
+						property.NewMap(map[string]property.Value{"value": property.New(remotearcValue)}),
+						resource.FromResourcePropertyMap(remotearc.Inputs),
+						"expected inputs to be {value: %v}", remotearcValue)
 					assert.Equal(l, remotearc.Inputs, remotearc.Outputs, "expected inputs and outputs to match")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "assetOutput",
-						resource.NewProperty(assetValue))
-					AssertPropertyMapMember(l, stack.Outputs, "archiveOutput",
-						resource.NewProperty(archiveValue))
-					AssertPropertyMapMember(l, stack.Outputs, "assetList",
-						resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(assetValue),
-							resource.NewProperty(stringAsset),
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, stackOutputs, "assetOutput",
+						property.New(assetValue))
+					AssertPropertyMapMember(l, stackOutputs, "archiveOutput",
+						property.New(archiveValue))
+					AssertPropertyMapMember(l, stackOutputs, "assetList",
+						property.New([]property.Value{
+							property.New(assetValue),
+							property.New(stringAsset),
 						}))
-					AssertPropertyMapMember(l, stack.Outputs, "archiveList",
-						resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(archiveValue),
-							resource.NewProperty(folderValue),
+					AssertPropertyMapMember(l, stackOutputs, "archiveList",
+						property.New([]property.Value{
+							property.New(archiveValue),
+							property.New(folderValue),
 						}))
-					AssertPropertyMapMember(l, stack.Outputs, "assetMap",
-						resource.NewProperty(resource.PropertyMap{
-							"file":   resource.NewProperty(assetValue),
-							"string": resource.NewProperty(stringAsset),
+					AssertPropertyMapMember(l, stackOutputs, "assetMap",
+						property.New(map[string]property.Value{
+							"file":   property.New(assetValue),
+							"string": property.New(stringAsset),
 						}))
-					AssertPropertyMapMember(l, stack.Outputs, "archiveMap",
-						resource.NewProperty(resource.PropertyMap{
-							"tar":    resource.NewProperty(archiveValue),
-							"folder": resource.NewProperty(folderValue),
+					AssertPropertyMapMember(l, stackOutputs, "archiveMap",
+						property.New(map[string]property.Value{
+							"tar":    property.New(archiveValue),
+							"folder": property.New(folderValue),
 						}))
 				},
 			},

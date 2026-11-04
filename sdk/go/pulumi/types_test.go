@@ -302,8 +302,7 @@ func (i arrayLenInput) ToIntPtrOutput() IntPtrOutput {
 
 func (i arrayLenInput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
 	return ToOutput(i).ApplyT(func(arr []any) *int {
-		v := len(arr)
-		return &v
+		return new(len(arr))
 	}).(IntPtrOutput)
 }
 
@@ -523,13 +522,10 @@ func TestUnsecret(t *testing.T) {
 		select {
 		case err := <-errChan:
 			require.NoError(t, err)
-			break
 		case r := <-resultChan:
 			assert.Equal(t, "foo", r)
-			break
 		case isSecret := <-secretChan:
 			assert.False(t, isSecret)
-			break
 		}
 	}
 }
@@ -563,13 +559,10 @@ func TestSecrets(t *testing.T) {
 		select {
 		case err := <-errChan:
 			require.NoError(t, err)
-			break
 		case r := <-resultChan:
 			assert.Equal(t, "foo", r)
-			break
 		case isSecret := <-secretChan:
 			assert.True(t, isSecret)
-			break
 		}
 	}
 }
@@ -608,13 +601,10 @@ func TestSecretApply(t *testing.T) {
 		select {
 		case err := <-errChan:
 			require.NoError(t, err)
-			break
 		case r := <-resultChan:
 			assert.Equal(t, "foobar", r)
-			break
 		case isSecret := <-secretChan:
 			assert.True(t, isSecret)
-			break
 		}
 	}
 }

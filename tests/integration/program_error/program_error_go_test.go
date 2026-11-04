@@ -48,7 +48,7 @@ func TestProgramErrorGo(t *testing.T) {
 		},
 		EditDirs: []integration.EditDir{
 			{
-				Dir:           filepath.Join(d, "step2"),
+				Dir:           filepath.Join(d, "_step2"),
 				Additive:      true,
 				ExpectFailure: true,
 				ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

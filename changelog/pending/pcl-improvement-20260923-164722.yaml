@@ -1,4 +1,0 @@
-component: pcl
-kind: improvement
-body: Name the constant or the enum members a resource property admits when a literal does not match it
-time: 2026-09-23T16:47:22.480567+02:00

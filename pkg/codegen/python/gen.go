@@ -1731,6 +1731,38 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "        return %s(resource_name, opts=opts, __props__=__props__)\n\n", name)
 	}
 
+	// Generate the `exists` static method for non-provider, non-component resources.
+	if !res.IsProvider && !res.IsComponent {
+		fmt.Fprintf(w, "    @staticmethod\n")
+		fmt.Fprintf(w, "    def exists(id: pulumi.Input[str],\n")
+		fmt.Fprintf(w, "            opts: Optional[pulumi.ResourceOptions] = None")
+
+		if hasStateInputs {
+			for _, prop := range res.StateInputs.Properties {
+				pname := InitParamName(prop.Name)
+				ty := mod.typeString(codegen.OptionalType(prop), typeStringOpts{input: true, acceptMapping: true})
+				fmt.Fprintf(w, ",\n            %s: %s = None", pname, ty)
+			}
+		}
+		fmt.Fprintf(w, ") -> pulumi.Output[bool]:\n")
+
+		fmt.Fprintf(w, "        __props__: dict = {}\n")
+		if hasStateInputs {
+			for _, prop := range res.StateInputs.Properties {
+				fmt.Fprintf(w, "        __props__[%q] = %s\n", prop.Name, InitParamName(prop.Name))
+			}
+		}
+		fmt.Fprintf(w, "        return pulumi.runtime.exists_resource(None, '%s', id, __props__, opts or pulumi.ResourceOptions()", tok)
+		pkg, err = res.PackageReference.Definition()
+		if err != nil {
+			return "", err
+		}
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", package_ref=_utilities.get_package()")
+		}
+		fmt.Fprintf(w, ")\n\n")
+	}
+
 	// Write out Python property getters for each of the resource's properties.
 	if err := mod.genProperties(w, res.Properties, false /*setters*/, "", func(prop *schema.Property) string {
 		ty := mod.propertyTypeString(prop, prop.Type, typeStringOpts{})
@@ -2653,6 +2685,10 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 			case *schema.EnumType:
 				base = tokenToName(t.Token)
 			}
+		case schema.DocRefKindProvider, schema.DocRefKindProviderProperty:
+			base = "Provider"
+		case schema.DocRefKindProviderInputProperty:
+			base = "ProviderArgs"
 		case schema.DocRefKindUnknown:
 			return "", false
 		}
@@ -2663,9 +2699,9 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 
 		var property string
 		switch ref.Kind {
-		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType:
+		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType, schema.DocRefKindProvider:
 			return base, true
-		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty:
+		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty, schema.DocRefKindProviderProperty, schema.DocRefKindProviderInputProperty:
 			property = PyName(ref.Property)
 		}
 
@@ -3786,9 +3822,10 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies 
 
 var (
 	// Require the SDK to fall within the same major version.
-	MinimumValidSDKVersion = ">=3.231.0,<4.0.0"
-	// Parameterized packages call `pulumi.runtime.register_package`, which was introduced in 3.247.0
-	MinimumValidParameterizationSDKVersion = ">=3.247.0,<4.0.0"
+	MinimumValidSDKVersion = ">=3.269.0,<4.0.0"
+	// Parameterized packages call `pulumi.runtime.register_package`, which was introduced in 3.247.0, and all packages
+	// call `pulumi.runtime.exists_resource`, which was introduced in 3.269.0.
+	MinimumValidParameterizationSDKVersion = ">=3.269.0,<4.0.0"
 )
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.

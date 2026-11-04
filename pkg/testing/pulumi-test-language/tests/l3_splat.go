@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,12 +34,12 @@ func init() {
 					require.NoError(l, res.Err)
 
 					sink := RequireSingleNamedResource(l, res.Snap.Resources, "sink")
-					assert.Equal(l, resource.PropertyMap{
-						"inputs": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("computed-a"),
-							resource.NewProperty("computed-b"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"inputs": property.New([]property.Value{
+							property.New("computed-a"),
+							property.New("computed-b"),
 						}),
-					}, sink.Inputs)
+					}), resource.FromResourcePropertyMap(sink.Inputs))
 				},
 			},
 		},

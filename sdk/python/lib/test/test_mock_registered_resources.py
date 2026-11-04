@@ -43,3 +43,58 @@ async def test_mock_registered_resources(setup_mocks: mocks.MockMonitor):
     registrations = setup_mocks.get_registered_resources()
     assert component_urn in registrations
     assert custom_urn in registrations
+
+
+@pulumi.runtime.test
+async def test_mock_exists_resource(setup_mocks: mocks.MockMonitor):
+    class Custom(pulumi.CustomResource):
+        def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
+            super().__init__("test:index:Custom", name, {}, opts)
+
+    await Custom("existing").id.future()
+
+    exists = pulumi.runtime.exists_resource(
+        None, "test:index:Custom", "existing_id", {}, pulumi.ResourceOptions()
+    )
+    assert await exists.is_known()
+    assert await exists.future() is True
+
+    missing = pulumi.runtime.exists_resource(
+        None, "test:index:Custom", "missing_id", {}, pulumi.ResourceOptions()
+    )
+    assert await missing.is_known()
+    assert await missing.future() is False
+
+
+@pulumi.runtime.test
+async def test_mock_exists_resource_inherits_parent_provider(
+    setup_mocks: mocks.MockMonitor,
+):
+    class Component(pulumi.ComponentResource):
+        def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
+            super().__init__("test:index:Component", name, {}, opts)
+
+    provider = pulumi.ProviderResource("test", "provider")
+    component = Component("component", pulumi.ResourceOptions(providers=[provider]))
+
+    requests = []
+    exists_resource = setup_mocks.ExistsResource
+
+    def capture(request):
+        requests.append(request)
+        return exists_resource(request)
+
+    setup_mocks.ExistsResource = capture
+
+    exists = pulumi.runtime.exists_resource(
+        None,
+        "test:index:Custom",
+        "some-id",
+        {},
+        pulumi.ResourceOptions(parent=component),
+    )
+    await exists.future()
+
+    provider_urn = await provider.urn.future()
+    provider_id = await provider.id.future()
+    assert [r.provider for r in requests] == [f"{provider_urn}::{provider_id}"]

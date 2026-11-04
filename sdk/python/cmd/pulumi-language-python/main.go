@@ -1337,29 +1337,17 @@ func (host *pythonLanguageHost) InstallDependencies(
 		return err
 	}
 
-	// For plugins with pyproject.toml (bootstrap-less mode), we need to install the package itself
-	// in addition to any dependencies listed in requirements.txt.
+	// For plugins with a buildable pyproject.toml (bootstrap-less mode), we need to install the package itself
+	// in addition to its dependencies.
 	if req.IsPlugin {
 		buildable, err := toolchain.IsBuildablePackage(req.Info.ProgramDirectory)
 		if err != nil {
 			return fmt.Errorf("checking if plugin is a buildable package: %w", err)
 		}
 		if buildable {
-			// Ensure the virtual environment exists first
-			if err := tc.EnsureVenv(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
+			if err := tc.InstallPackage(server.Context(), req.Info.ProgramDirectory, req.UseLanguageVersionTools,
 				true /*showOutput*/, stdout, stderr); err != nil {
-				return fmt.Errorf("creating virtual environment: %w", err)
-			}
-
-			// Install the package itself (pip install .)
-			cmd, err := tc.ModuleCommand(server.Context(), "pip", "install", req.Info.ProgramDirectory)
-			if err != nil {
-				return fmt.Errorf("preparing pip install command: %w", err)
-			}
-			cmd.Stdout = stdout
-			cmd.Stderr = stderr
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("installing package: %w", err)
+				return err
 			}
 		}
 	}
@@ -1392,7 +1380,14 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 		// Pip is always available in a Python installation or virtual environment.
 		choices := slice.Prealloc[*pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue](3)
 		choices = append(choices, pipOption)
-		choices = append(choices, plugin.MakeExecutablePromptChoices("poetry", "uv")...)
+		others := plugin.MakeExecutablePromptChoices("poetry", "uv")
+		// Only offer the other toolchains if at least one is installed. With pip as the single choice, the CLI
+		// uses it without prompting.
+		if slices.ContainsFunc(others, func(c *pulumirpc.RuntimeOptionPrompt_RuntimeOptionValue) bool {
+			return c.DisplayName == c.StringValue
+		}) {
+			choices = append(choices, others...)
+		}
 		prompts = append(prompts, &pulumirpc.RuntimeOptionPrompt{
 			Key:         "toolchain",
 			Description: "The toolchain to use for installing dependencies and running the program",

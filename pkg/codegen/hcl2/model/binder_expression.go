@@ -460,6 +460,36 @@ func (b *expressionBinder) bindFunctionCallExpression(
 		args[i], diagnostics = arg, append(diagnostics, argDiagnostics...)
 	}
 
+	// PCL defines lookup(m, k) as m[k], matching Terraform. Bind it as an index so that a
+	// literal key on an object yields that property's type instead of the unification of every
+	// property.
+	if syntax.Name == "lookup" && len(args) == 2 && !syntax.ExpandFinal {
+		indexTokens := _syntax.NewIndexTokens()
+		indexTokens.Parentheses = tokens.Parentheses
+		indexTokens.OpenBracket.LeadingTrivia = tokens.GetOpenParen().LeadingTrivia
+		indexTokens.CloseBracket.LeadingTrivia = tokens.GetCloseParen().LeadingTrivia
+		indexTokens.CloseBracket.TrailingTrivia = tokens.GetCloseParen().TrailingTrivia
+		expr := &IndexExpression{
+			Syntax: &hclsyntax.IndexExpr{
+				Collection:   syntax.Args[0],
+				Key:          syntax.Args[1],
+				SrcRange:     syntax.Range(),
+				OpenRange:    syntax.OpenParenRange,
+				BracketRange: hcl.RangeBetween(syntax.OpenParenRange, syntax.CloseParenRange),
+			},
+			Tokens:                       indexTokens,
+			Collection:                   args[0],
+			Key:                          args[1],
+			StrictCollectionTypechecking: !b.options.skipRangeTypechecking,
+		}
+		expr.Collection.SetLeadingTrivia(
+			slices.Concat(tokens.GetName(syntax.Name).LeadingTrivia, expr.Collection.GetLeadingTrivia()))
+		// The whitespace after the comma has no place in `m[k]`.
+		expr.Key.SetLeadingTrivia(expr.Key.GetLeadingTrivia().CollapseWhitespace())
+		typecheckDiags := expr.Typecheck(false)
+		return expr, append(diagnostics, typecheckDiags...)
+	}
+
 	// Attempt to bind the name of the function to its definition.
 	function, hasFunction := b.scope.BindFunctionReference(syntax.Name)
 	if !hasFunction {

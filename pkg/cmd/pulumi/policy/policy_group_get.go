@@ -85,11 +85,18 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 		Long: "[EXPERIMENTAL] Get the details of a Policy Group.\n" +
 			"\n" +
 			"Retrieves detailed information about a single Policy Group in an\n" +
-			"organization, including the list of Policy Packs applied to it and\n" +
-			"the stacks or Insights accounts that are members of the group.\n" +
+			"organization, including the list of Policy Packs applied to it, the\n" +
+			"stacks or Insights accounts added to the group individually, and the\n" +
+			"stack and account match rules, if any. Match rules are shown in the\n" +
+			"syntax `pulumi policy group edit --stack-rule` accepts, or as JSON when\n" +
+			"that syntax cannot express them.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"full response as JSON.",
+		Example: "  # Show a Policy Group\n" +
+			"  pulumi policy group get prod-policies\n\n" +
+			"  # Show a Policy Group in another organization as JSON\n" +
+			"  pulumi policy group get prod-policies --org acme --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runPolicyGroupGet(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
@@ -180,10 +187,9 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 
 	fmt.Fprintf(w, "%-22s %s\n", "Name:", resp.Name)
 	fmt.Fprintf(w, "%-22s %s\n", "Org default:", isDefault)
-	fmt.Fprintf(w, "%-22s %s\n", "Entity type:", string(resp.EntityType))
 	fmt.Fprintf(w, "%-22s %s\n", "Mode:", string(resp.Mode))
-	if resp.AgentPoolID != "" {
-		fmt.Fprintf(w, "%-22s %s\n", "Agent pool:", resp.AgentPoolID)
+	if resp.AgentPoolID != nil {
+		fmt.Fprintf(w, "%-22s %s\n", "Agent pool:", *resp.AgentPoolID)
 	}
 
 	fmt.Fprintf(w, "%-22s %d\n", "Applied policy packs:", len(resp.AppliedPolicyPacks))
@@ -195,6 +201,9 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 		fmt.Fprintf(w, "  - %s (%s)\n", pack.Name, version)
 	}
 
+	if resp.StackMatchRule != nil {
+		fmt.Fprintf(w, "%-22s %s\n", "Stack rule:", formatMatchRule(stackMatchRule, resp.StackMatchRule))
+	}
 	fmt.Fprintf(w, "%-22s %d\n", "Stacks:", len(resp.Stacks))
 	for _, s := range resp.Stacks {
 		if s.RoutingProject != "" {
@@ -204,6 +213,9 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 		}
 	}
 
+	if resp.AccountMatchRule != nil {
+		fmt.Fprintf(w, "%-22s %s\n", "Account rule:", formatMatchRule(accountMatchRule, resp.AccountMatchRule))
+	}
 	fmt.Fprintf(w, "%-22s %d\n", "Accounts:", len(resp.Accounts))
 	for _, a := range resp.Accounts {
 		fmt.Fprintf(w, "  - %s\n", a)
@@ -211,48 +223,20 @@ func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) 
 	return nil
 }
 
-// policyGroupGetJSON is the JSON envelope emitted by
-// `pulumi policy group get --output=json`. Nil slices are normalized to empty
-// arrays so scripts can rely on the array keys always existing.
-type policyGroupGetJSON struct {
-	Name               string                         `json:"name"`
-	IsOrgDefault       bool                           `json:"isOrgDefault"`
-	EntityType         apitype.EntityType             `json:"entityType"`
-	Mode               apitype.PolicyGroupMode        `json:"mode"`
-	Stacks             []apitype.PulumiStackReference `json:"stacks"`
-	AppliedPolicyPacks []apitype.PolicyPackMetadata   `json:"appliedPolicyPacks"`
-	Accounts           []string                       `json:"accounts"`
-	AgentPoolID        string                         `json:"agentPoolId,omitempty"`
-}
-
-func toPolicyGroupGetJSON(resp apitype.GetPolicyGroupResponse) policyGroupGetJSON {
-	stacks := resp.Stacks
-	if stacks == nil {
-		stacks = []apitype.PulumiStackReference{}
-	}
-	packs := resp.AppliedPolicyPacks
-	if packs == nil {
-		packs = []apitype.PolicyPackMetadata{}
-	}
-	accounts := resp.Accounts
-	if accounts == nil {
-		accounts = []string{}
-	}
-	return policyGroupGetJSON{
-		Name:               resp.Name,
-		IsOrgDefault:       resp.IsOrgDefault,
-		EntityType:         resp.EntityType,
-		Mode:               resp.Mode,
-		Stacks:             stacks,
-		AppliedPolicyPacks: packs,
-		Accounts:           accounts,
-		AgentPoolID:        resp.AgentPoolID,
-	}
-}
-
+// renderPolicyGroupGetJSON normalizes nil slices to empty arrays so scripts can
+// rely on the array keys always existing.
 func renderPolicyGroupGetJSON(w io.Writer, resp apitype.GetPolicyGroupResponse) error {
+	if resp.Stacks == nil {
+		resp.Stacks = []apitype.PulumiStackReference{}
+	}
+	if resp.AppliedPolicyPacks == nil {
+		resp.AppliedPolicyPacks = []apitype.PolicyPackMetadata{}
+	}
+	if resp.Accounts == nil {
+		resp.Accounts = []string{}
+	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(toPolicyGroupGetJSON(resp))
+	return enc.Encode(resp)
 }

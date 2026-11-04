@@ -728,6 +728,6 @@ func installResourcePluginFromFiles(t *testing.T, spec workspace.PluginDescripto
 		require.NoError(t, err)
 	}
 	err := pkgWorkspace.InstallPluginContent(t.Context(), spec, pluginstorage.DirPlugin(dir),
-		true, schema.NewLoaderServerFromContext)
+		true, schema.NewLoaderServerFromContext, nil)
 	require.NoError(t, err)
 }

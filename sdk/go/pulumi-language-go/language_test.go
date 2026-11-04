@@ -102,7 +102,8 @@ var expectedFailures = map[string]string{
 	"l2-resource-any":               "a list inside an any-typed input generates pulumi.Any{...}, but pulumi.Any is a func not a type; does not compile", //nolint:lll
 	"l2-config-default-from-invoke": "config variable defaulting to an invoke result is never declared; generated code does not compile",                 //nolint:lll
 	"l1-config-types-object":        "fails to compile",
-	"l1-config-types-optional":      "fails to compile: cfg.GetObject signature mismatch (same as l1-config-types-object)", //nolint:lll
+	"l1-operator-precedence":        "exporting a conditional expression of type string passes a string, not a pulumi.Input; does not compile", //nolint:lll
+	"l1-config-types-optional":      "fails to compile: cfg.GetObject signature mismatch (same as l1-config-types-object)",                     //nolint:lll
 	"l1-builtin-try":                "pulumi#18506 Support try in Go program generation",
 	"l1-expand-final":               "Go program generation does not support `...` argument expansion",
 	"l1-builtin-can":                "pulumi#18570 Support can in Go program generation",
@@ -141,9 +142,12 @@ var expectedFailures = map[string]string{
 	"l3-range-map-ref":  "fails with syntax errors: mapResource.K1 undefined (type []*nestedobject.Target has no field or method K1)", //nolint:lll
 	"l3-range-bool-ref": "fails with syntax errors: index < createBool (mismatched types int and bool)",
 
-	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
+	"l2-recover-invoke": "Go SDK output recovery is not implemented",
 
-	"l2-failed-create-recover-continue-on-error": "Go SDK output recovery is not implemented",
+	"l2-invoke-per-value-deps": "output aware invokes not yet implemented",
+	"l2-call-per-value-deps":   "output aware calls not yet implemented",
+
+	"l2-component-output-value-input-deps": "SDK does not yet set uses_output_values on RegisterResource",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

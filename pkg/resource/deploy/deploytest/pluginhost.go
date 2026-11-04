@@ -454,6 +454,7 @@ func (host *pluginHost) plugin(kind apitype.PluginKind, name string, version *se
 				InvokeWithPreview:           true,
 				AcceptsByteString:           true,
 				SendsOldOutputsToCheck:      true,
+				AcceptsOutputsInInvoke:      true,
 			})
 			if err != nil {
 				return nil, errors.Join(err, provider.Close())
@@ -486,6 +487,10 @@ func (host *pluginHost) Provider(
 		return nil, fmt.Errorf("Could not find plugin for (%s, %s)", descriptor.Name, v)
 	}
 	return plug.(plugin.Provider), nil
+}
+
+func (host *pluginHost) ProviderFromPath(ctx *plugin.Context, path string, e env.Env) (plugin.Provider, error) {
+	return nil, fmt.Errorf("deploytest cannot load provider from path %q", path)
 }
 
 func (host *pluginHost) LanguageRuntime(ctx *plugin.Context, runtime string) (plugin.LanguageRuntime, error) {
@@ -549,6 +554,9 @@ func (host *pluginHost) SignalCancellation() error {
 func (host *pluginHost) Close() error {
 	if host.isClosed() {
 		return nil // Close is idempotent
+	}
+	if lr, ok := host.languageRuntime.(*languageRuntime); ok {
+		lr.running.Wait()
 	}
 	host.m.Lock()
 	defer host.m.Unlock()

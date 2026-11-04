@@ -18,6 +18,9 @@
 package diy
 
 import (
+	"database/sql"
+	"fmt"
+	"net/url"
 	"os"
 	"runtime"
 	"testing"
@@ -545,4 +548,108 @@ func TestPostgresBackendConcurrency(t *testing.T) {
 	require.NoError(t, err, "Failed to list stacks after cleanup")
 	assert.Nil(t, token, "Continuation token should be nil")
 	require.Len(t, allStacks, 0, "All stacks should be removed")
+}
+
+// TestPostgresBackendReadOnlyRole tests that a role with only SELECT on an existing state table can open the backend
+// and read state, but cannot write to it. Regression test for https://github.com/pulumi/pulumi/issues/25216.
+func TestPostgresBackendReadOnlyRole(t *testing.T) {
+	t.Parallel()
+
+	skipPostgresTestIfNeeded(t)
+
+	pg := pgtest.New(t)
+
+	ctx := t.Context()
+	tableName := "pulumi_ro_" + pgtest.GenerateID()
+	project := workspace.Project{
+		Name:    "test-project",
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
+	}
+	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{Color: colors.Never})
+
+	// Create the table and a stack as the owner.
+	ownerBackend, err := diy.New(ctx, sink, pg.ConnectionStringWithTable(tableName), nil)
+	require.NoError(t, err)
+	ownerBackend.SetCurrentProject(&project)
+	ownerRef, err := ownerBackend.ParseStackReference("owner-stack")
+	require.NoError(t, err)
+	_, err = ownerBackend.CreateStack(ctx, ownerRef, "", nil, nil)
+	require.NoError(t, err)
+
+	// Create a role that can only read the state table.
+	db, err := sql.Open("pgx", pg.ConnectionString())
+	require.NoError(t, err)
+	defer db.Close()
+	roleName := "pulumi_reader_" + pgtest.GenerateID()
+	for _, stmt := range []string{
+		fmt.Sprintf("CREATE ROLE %s LOGIN PASSWORD 'readerpassword'", roleName),
+		"REVOKE CREATE ON SCHEMA public FROM " + roleName,
+		fmt.Sprintf("GRANT SELECT ON %s TO %s", tableName, roleName),
+	} {
+		_, err = db.ExecContext(ctx, stmt)
+		require.NoError(t, err, stmt)
+	}
+
+	readerURL, err := url.Parse(pg.ConnectionStringWithTable(tableName))
+	require.NoError(t, err)
+	readerURL.User = url.UserPassword(roleName, "readerpassword")
+
+	// The read-only role can open the backend and read state.
+	readerBackend, err := diy.New(ctx, sink, readerURL.String(), nil)
+	require.NoError(t, err, "a read-only role should be able to open an existing state table")
+	readerBackend.SetCurrentProject(&project)
+	stacks, _, err := readerBackend.ListStacks(ctx, backend.ListStacksFilter{}, nil)
+	require.NoError(t, err)
+	require.Len(t, stacks, 1)
+
+	// But it cannot write state.
+	readerRef, err := readerBackend.ParseStackReference("reader-stack")
+	require.NoError(t, err)
+	_, err = readerBackend.CreateStack(ctx, readerRef, "", nil, nil)
+	require.ErrorContains(t, err, "permission denied")
+}
+
+// TestPostgresBackendSchemaQualifiedTable tests that the backend can use an existing table that is referenced by a
+// schema-qualified name.
+func TestPostgresBackendSchemaQualifiedTable(t *testing.T) {
+	t.Parallel()
+
+	skipPostgresTestIfNeeded(t)
+
+	pg := pgtest.New(t)
+
+	ctx := t.Context()
+	schemaName := "pulumi_schema_" + pgtest.GenerateID()
+	tableName := schemaName + ".state"
+	project := workspace.Project{
+		Name:    "test-project",
+		Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
+	}
+
+	db, err := sql.Open("pgx", pg.ConnectionString())
+	require.NoError(t, err)
+	defer db.Close()
+	for _, stmt := range []string{
+		"CREATE SCHEMA " + schemaName,
+		"CREATE TABLE " + tableName + " (key TEXT PRIMARY KEY, data JSON NOT NULL, " +
+			"updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now())",
+	} {
+		_, err = db.ExecContext(ctx, stmt)
+		require.NoError(t, err, stmt)
+	}
+
+	b, err := diy.New(ctx, diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+		Color: colors.Never,
+	}), pg.ConnectionStringWithTable(tableName), nil)
+	require.NoError(t, err)
+	b.SetCurrentProject(&project)
+	stackRef, err := b.ParseStackReference("teststack")
+	require.NoError(t, err)
+	_, err = b.CreateStack(ctx, stackRef, "", nil, nil)
+	require.NoError(t, err)
+
+	var count int
+	err = db.QueryRowContext(ctx, "SELECT count(*) FROM "+tableName).Scan(&count)
+	require.NoError(t, err)
+	assert.Positive(t, count, "state should be written to the schema-qualified table")
 }

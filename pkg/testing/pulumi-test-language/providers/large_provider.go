@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // LargeProvider is a test provider that exercises the provider protocol by returning really large strings, lists, and
@@ -171,6 +172,7 @@ func (p *LargeProvider) Check(
 func (p *LargeProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() != "large:index:String" && req.URN.Type() != "large:index:Map" {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -182,7 +184,7 @@ func (p *LargeProvider) Create(
 		id = ""
 	}
 
-	value, ok := req.Properties["value"]
+	value, ok := properties["value"]
 	if !ok {
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
@@ -196,7 +198,7 @@ func (p *LargeProvider) Create(
 	}
 
 	if req.URN.Type() == "large:index:Map" {
-		depth, ok := req.Properties["depth"]
+		depth, ok := properties["depth"]
 		if !ok || !depth.IsNumber() {
 			return plugin.CreateResponse{
 				Status: resource.StatusUnknown,
@@ -213,9 +215,9 @@ func (p *LargeProvider) Create(
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
-				"value": built,
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"value": resource.FromResourcePropertyValue(built),
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	}
@@ -228,7 +230,7 @@ func (p *LargeProvider) Create(
 	}
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: result,
+		Properties: resource.FromResourcePropertyMap(result),
 		Status:     resource.StatusOK,
 	}, nil
 }

@@ -1,4 +1,0 @@
-component: cli/policy
-kind: fix
-body: Recover from partial installs & wait for parallel installs
-time: 2026-09-18T13:43:42.072416+02:00

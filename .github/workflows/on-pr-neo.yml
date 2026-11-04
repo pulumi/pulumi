@@ -47,9 +47,9 @@ jobs:
         with:
           action: jdx/mise-action@v2
           with: |
-            # Pin mise: the latest advertised version, 2026.9.3, has no release assets.
-            version: 2026.9.2
+            version: 2026.10.3
             experimental: true
+            install_args: --locked
       - id: gen
         run: |
           VERSION_SET=$(./scripts/get-job-matrix.py generate-version-set --version-set current)

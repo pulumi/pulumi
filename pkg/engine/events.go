@@ -58,7 +58,7 @@ type EventPayload interface {
 		ResourcePreEventPayload | ResourceOutputsEventPayload | ResourceOperationFailedPayload |
 		PolicyViolationEventPayload | PolicyRemediationEventPayload | PolicyLoadEventPayload | StartDebuggingEventPayload |
 		PolicyAnalyzeSummaryEventPayload | PolicyRemediateSummaryEventPayload | PolicyAnalyzeStackSummaryEventPayload |
-		ProgressEventPayload | ErrorEventPayload
+		ProgressEventPayload | ErrorEventPayload | UpdateStartedEventPayload
 }
 
 func NewCancelEvent() Event {
@@ -110,6 +110,8 @@ func NewEvent[T EventPayload](payload T) Event {
 		typ = ProgressEvent
 	case ErrorEventPayload:
 		typ = ErrorEvent
+	case UpdateStartedEventPayload:
+		typ = UpdateStartedEvent
 	default:
 		contract.Failf("unknown event type %v", typ)
 	}
@@ -141,6 +143,7 @@ const (
 	StartDebuggingEvent            EventType = "debugging-start"
 	ProgressEvent                  EventType = "progress"
 	ErrorEvent                     EventType = "error"
+	UpdateStartedEvent             EventType = "update-started"
 )
 
 // ProgressType is the type of download occurring.
@@ -163,14 +166,15 @@ func (e Event) Payload() any {
 	return e.payload
 }
 
-// Returns true if this is a ResourcePreEvent or ResourceOutputsEvent with the internal flag set.
+// Returns true if this is a ResourcePreEvent or ResourceOutputsEvent with the internal flag set, or
+// an event type that is never displayed or persisted (StartDebuggingEvent, UpdateStartedEvent).
 func (e Event) Internal() bool {
 	switch payload := e.payload.(type) {
 	case ResourcePreEventPayload:
 		return payload.Internal
 	case ResourceOutputsEventPayload:
 		return payload.Internal
-	case StartDebuggingEventPayload:
+	case StartDebuggingEventPayload, UpdateStartedEventPayload:
 		return true
 	default:
 		return false
@@ -187,6 +191,16 @@ func (e Event) Ephemeral() bool {
 	default:
 		return false
 	}
+}
+
+// Awaited returns true if this is a ResourceOperationFailed event whose failure was caused by an
+// AwaitError from the provider. Callers use this to distinguish "the operation could not be
+// awaited" from a regular resource failure.
+func (e Event) Awaited() bool {
+	if p, ok := e.payload.(ResourceOperationFailedPayload); ok {
+		return p.Awaited
+	}
+	return false
 }
 
 // DiagEventPayload is the payload for an event with type `diag`
@@ -211,6 +225,7 @@ type PolicyViolationEventPayload struct {
 	EnforcementLevel  apitype.EnforcementLevel
 	Prefix            string
 	Severity          apitype.PolicySeverity
+	Exceptions        []apitype.PolicyEventException
 }
 
 // PolicyRemediationEventPayload is the payload for an event with type `policy-remediation`.
@@ -291,6 +306,20 @@ type ProgressEventPayload struct {
 	Done bool
 }
 
+// UpdateStartedEventPayload is emitted by backends that track updates (currently the Pulumi Cloud
+// backend) once an update or preview has been started, before the engine runs. The engine never emits it.
+type UpdateStartedEventPayload struct {
+	// UpdateID is the operation's unique ID.
+	UpdateID string
+	// Version is the value the backend reported when starting the operation. For an update, it
+	// is the stack version the update becomes. For a preview, the backend still reports the
+	// stack's next version, which the preview never becomes, so a consumer that started a
+	// preview must not treat it as identifying that preview.
+	Version int
+	// Permalink is the operation's page in the Pulumi Cloud console.
+	Permalink string
+}
+
 type StdoutEventPayload struct {
 	Message string
 	Color   colors.Colorization
@@ -314,6 +343,10 @@ type ResourceOperationFailedPayload struct {
 	Metadata StepEventMetadata
 	Status   resource.Status
 	Steps    int32
+	// Awaited is true if the failure was caused by a provider returning AwaitError — i.e. the provider had to await the
+	// operation, and the step is being surfaced as failed but with distinct display treatment ("awaiting" rather than
+	// "failed").
+	Awaited bool
 }
 
 type ResourceOutputsEventPayload struct {
@@ -578,7 +611,7 @@ func (e *eventEmitter) sendEvent(event Event) {
 }
 
 func (e *eventEmitter) resourceOperationFailedEvent(
-	step deploy.Step, status resource.Status, steps int32, debug, showSecrets bool,
+	step deploy.Step, status resource.Status, steps int32, awaited, debug, showSecrets bool,
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
@@ -586,6 +619,7 @@ func (e *eventEmitter) resourceOperationFailedEvent(
 		Metadata: makeStepEventMetadata(step.Op(), step, debug, showSecrets),
 		Status:   status,
 		Steps:    steps,
+		Awaited:  awaited,
 	}))
 }
 
@@ -647,7 +681,9 @@ func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Du
 	}))
 }
 
-func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+func (e *eventEmitter) policyViolationEvent(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	// Write prefix.
@@ -685,6 +721,7 @@ func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDi
 		EnforcementLevel:  d.EnforcementLevel,
 		Prefix:            logging.FilterString(prefix.String()),
 		Severity:          d.Severity,
+		Exceptions:        exceptions,
 	}))
 }
 
@@ -774,8 +811,15 @@ func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Sever
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
+	// Diagnostics logged by a provider during an existence check carry a synthetic URN that doesn't name a resource
+	// in the stack, so report them at the stack level instead.
+	urn := d.URN
+	if deploy.IsExistsURN(urn) {
+		urn = ""
+	}
+
 	e.sendEvent(NewEvent(DiagEventPayload{
-		URN:       d.URN,
+		URN:       urn,
 		Prefix:    logging.FilterString(prefix),
 		Message:   logging.FilterString(msg),
 		Color:     colors.Raw,

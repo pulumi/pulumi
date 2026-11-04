@@ -306,6 +306,7 @@ func (p *CallProvider) Create(
 	_ context.Context,
 	req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() == "call:index:Custom" {
 		id := "id-" + req.URN.Name()
 		if req.Preview {
@@ -314,7 +315,7 @@ func (p *CallProvider) Create(
 
 		return plugin.CreateResponse{
 			ID:         resource.ID(id),
-			Properties: req.Properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	}

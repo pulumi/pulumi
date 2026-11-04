@@ -23,12 +23,13 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestEvalContextConcurrentParentChildAccess(t *testing.T) {
 	t.Parallel()
 
-	root := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil)
+	root := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil, nil)
 	root.SetVariable("shared", cty.StringVal("value"))
 
 	child := root.NewChild()
@@ -64,5 +65,5 @@ func TestEvalContextConcurrentParentChildAccess(t *testing.T) {
 	value, poison, diags := child.Evaluate(ref)
 	require.False(t, diags.HasErrors(), "diagnostics: %v", diags)
 	require.Nil(t, poison)
-	require.Equal(t, "value", value.StringValue())
+	require.Equal(t, property.New("value"), value)
 }

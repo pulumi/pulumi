@@ -14,7 +14,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = read.GetResource(ctx, "res", pulumi.ID("existing-id"), &read.ResourceState{
+		res, err := read.GetResource(ctx, "res", pulumi.ID("existing-id"), &read.ResourceState{
 			Lookup: pulumi.String("existing-key"),
 		}, pulumi.DependsOn([]pulumi.Resource{
 			src,
@@ -22,6 +22,10 @@ func main() {
 		if err != nil {
 			return err
 		}
+		ctx.Export("resourceUrn", res.URN())
+		ctx.Export("resourceId", res.ID())
+		ctx.Export("lookup", res.Lookup)
+		ctx.Export("value", res.Value)
 		return nil
 	})
 }

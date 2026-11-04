@@ -1,9 +1,13 @@
+env:
+  ESC_ACTION_ENVIRONMENT: pulumi/github-secrets/pulumi-pulumi
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 name: Release
 
 permissions:
   # To create the follow-up PR.
   contents: write
   pull-requests: write
+  id-token: write
 
 on:
   release:
@@ -18,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: "${{ fromJSON(steps.version.outputs.version) }}"
+      version-set: "${{ fromJSON(steps.matrix.outputs.version-set) }}"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         # Uses release ref (tag)
@@ -28,6 +33,14 @@ jobs:
           PULUMI_VERSION="${TAG#v}" # remove prefix
 
           ./.github/scripts/set-output version "${PULUMI_VERSION}"
+      - name: Compute version set
+        id: matrix
+        run: |
+          VERSION_SET=$(./scripts/get-job-matrix.py \
+            generate-version-set \
+            --version-set current
+          )
+          printf '%s' "${VERSION_SET}" | ./.github/scripts/set-output version-set
 
   release:
     name: release
@@ -36,6 +49,7 @@ jobs:
     with:
       ref: ${{ github.event.release.tag_name }}
       version: ${{ needs.info.outputs.version }}
+      version-set: ${{ needs.info.outputs.version-set }}
       release-notes: ${{ github.event.release.body }}
       queue-merge: true
       run-dispatch-commands: true
@@ -45,9 +59,21 @@ jobs:
     name: update-dotnet-automation-api
     runs-on: ubuntu-latest
     steps:
+      - name: Authenticate with Pulumi Cloud
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@eec71a90d9989af7ff14bd700b83fc72fae36119 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
       - name: Trigger pulumi-dotnet automation API update
         env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
         run: |
           gh api repos/pulumi/pulumi-dotnet/dispatches \
             -f event_type=update-automation-api \

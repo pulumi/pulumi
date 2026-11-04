@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,12 +27,16 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
@@ -1005,7 +1010,6 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 
 	root := t.TempDir()
 
-	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{
 		ReadProjectF: func(_ string) (*workspace.Project, string, error) {
 			return &workspace.Project{
@@ -1059,7 +1063,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		inputFile := writeHCLFile(t, "inputs.pcl", `project = project()`)
 
 		var stdout bytes.Buffer
-		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
+		cmd := NewDoCmd(&cmdBackend.MockLoginManager{}, mws, loader, testHost, panicLoadConverterPlugin, nil)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
 		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
@@ -1077,7 +1081,7 @@ func TestDoCmdFunctionInvokeWithoutStackContext(t *testing.T) {
 		inputFile := writeHCLFile(t, "inputs.pcl", `organization = organization()`)
 
 		var stdout bytes.Buffer
-		cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin, nil)
+		cmd := NewDoCmd(&cmdBackend.MockLoginManager{}, mws, loader, testHost, panicLoadConverterPlugin, nil)
 		cmd.SetOut(&stdout)
 		cmd.SetErr(&stdout)
 		cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
@@ -1328,54 +1332,54 @@ options {
 func TestPropertyValueToPCLLiteral(t *testing.T) {
 	t.Parallel()
 
-	got, err := propertyValueToPCLLiteral("x", resource.NewNullProperty())
+	got, err := propertyValueToPCLLiteral("x", property.New(property.Null))
 	require.NoError(t, err)
 	assert.Equal(t, "null", got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(true))
+	got, err = propertyValueToPCLLiteral("x", property.New(true))
 	require.NoError(t, err)
 	assert.Equal(t, "true", got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(3.5))
+	got, err = propertyValueToPCLLiteral("x", property.New(3.5))
 	require.NoError(t, err)
 	assert.Equal(t, "3.5", got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty("hello"))
+	got, err = propertyValueToPCLLiteral("x", property.New("hello"))
 	require.NoError(t, err)
 	assert.Equal(t, `"hello"`, got)
 
 	// Nested array/object with deterministic key order.
-	inner := resource.PropertyMap{
-		"b": resource.NewProperty("two"),
-		"a": resource.NewProperty(1.0),
-	}
-	arr := resource.NewProperty([]resource.PropertyValue{
-		resource.NewProperty("first"),
-		resource.NewProperty(inner),
+	inner := property.NewMap(map[string]property.Value{
+		"b": property.New("two"),
+		"a": property.New(1.0),
 	})
+	arr := property.New(property.NewArray([]property.Value{
+		property.New("first"),
+		property.New(inner),
+	}))
 	got, err = propertyValueToPCLLiteral("x", arr)
 	require.NoError(t, err)
 	assert.Equal(t, "[\"first\", {\n  a = 1\n  b = \"two\"\n}]", got)
 
 	// Secrets are preserved.
-	got, err = propertyValueToPCLLiteral("x", resource.MakeSecret(resource.NewProperty("s")))
+	got, err = propertyValueToPCLLiteral("x", property.New("s").WithSecret(true))
 	require.NoError(t, err)
 	assert.Equal(t, `secret("s")`, got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
-		"plain":  resource.NewProperty("p"),
-		"secret": resource.MakeSecret(resource.NewProperty("s")),
-	}))
+	got, err = propertyValueToPCLLiteral("x", property.New(property.NewMap(map[string]property.Value{
+		"plain":  property.New("p"),
+		"secret": property.New("s").WithSecret(true),
+	})))
 	require.NoError(t, err)
 	assert.Equal(t, "{\n  plain = \"p\"\n  secret = secret(\"s\")\n}", got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
-		"123":         resource.NewProperty("number prefix"),
-		"cost center": resource.NewProperty("platform"),
-		"quote\"key":  resource.NewProperty("quoted"),
-		"team:name":   resource.NewProperty("infra"),
-		"valid":       resource.NewProperty("identifier"),
-	}))
+	got, err = propertyValueToPCLLiteral("x", property.New(property.NewMap(map[string]property.Value{
+		"123":         property.New("number prefix"),
+		"cost center": property.New("platform"),
+		"quote\"key":  property.New("quoted"),
+		"team:name":   property.New("infra"),
+		"valid":       property.New("identifier"),
+	})))
 	require.NoError(t, err)
 	assert.Equal(t, "{\n"+
 		"  \"123\" = \"number prefix\"\n"+
@@ -1385,11 +1389,11 @@ func TestPropertyValueToPCLLiteral(t *testing.T) {
 		"  valid = \"identifier\"\n"+
 		"}", got)
 
-	got, err = propertyValueToPCLLiteral("x", resource.NewProperty(resource.PropertyMap{
-		"outer key": resource.NewProperty(resource.PropertyMap{
-			"inner:key": resource.MakeSecret(resource.NewProperty("s")),
-		}),
-	}))
+	got, err = propertyValueToPCLLiteral("x", property.New(property.NewMap(map[string]property.Value{
+		"outer key": property.New(property.NewMap(map[string]property.Value{
+			"inner:key": property.New("s").WithSecret(true),
+		})),
+	})))
 	require.NoError(t, err)
 	assert.Equal(t, "{\n  \"outer key\" = {\n    \"inner:key\" = secret(\"s\")\n  }\n}", got)
 
@@ -1403,19 +1407,108 @@ func TestPropertyValueToPCLLiteral(t *testing.T) {
 	// Asset errors.
 	asset, err := resource.NewTextAsset("hello")
 	require.NoError(t, err)
-	_, err = propertyValueToPCLLiteral("cfg", resource.NewProperty(asset))
+	_, err = propertyValueToPCLLiteral("cfg", property.New(asset))
 	require.ErrorContains(t, err, `"cfg"`)
 	require.ErrorContains(t, err, "asset")
 
 	// Resource reference errors.
-	rref := resource.ResourceReference{URN: resource.URN("urn:pulumi:x::y::z::n")}
-	_, err = propertyValueToPCLLiteral("cfg", resource.NewProperty(rref))
+	rref := property.NewResourceReference("urn:pulumi:x::y::z::n", property.Value{}, "")
+	_, err = propertyValueToPCLLiteral("cfg", property.New(rref))
 	require.ErrorContains(t, err, `"cfg"`)
 	require.ErrorContains(t, err, "resource reference")
 
 	// Computed value errors.
 	_, err = propertyValueToPCLLiteral(
-		"cfg", resource.MakeComputed(resource.NewProperty("")))
+		"cfg", property.New(property.Computed))
 	require.ErrorContains(t, err, `"cfg"`)
 	require.ErrorContains(t, err, "computed/output")
+}
+
+// The provider is loaded before do opens a stack, so its context must already carry helper credentials.
+func TestDoProviderHelperCredentials(t *testing.T) {
+	for _, test := range []struct {
+		name, response, token string
+	}{
+		{"token", `{"version":1,"accessToken":"helper-token"}`, "helper-token"},
+		{"headers", `{"version":1,"headers":{"X-Session":["secret"]}}`, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")
+			t.Setenv("PULUMI_ACCESS_TOKEN", "ambient-token")
+			dir := t.TempDir()
+			child, err := os.Executable()
+			require.NoError(t, err)
+			helperArgs, err := json.Marshal([]string{"--", "-credential-helper-test", "credentials", test.response})
+			require.NoError(t, err)
+			t.Setenv("PULUMI_CREDENTIAL_HELPER", child)
+			t.Setenv("PULUMI_CREDENTIAL_HELPER_ARGS", string(helperArgs))
+			output := filepath.Join(dir, "env")
+			childArgs := []string{"-credential-helper-test", "environment", output}
+			stop := errors.New("stop after provider launch")
+			loader := func(_ context.Context, pctx *plugin.Context, _, _ string) (plugin.Provider, error) {
+				p, err := plugin.ExecPlugin(pctx, child, "test", apitype.ResourcePlugin, childArgs, dir, nil, false)
+				require.NoError(t, err)
+				defer p.Close()
+				code, err := p.Wait(t.Context())
+				require.NoError(t, err)
+				require.Zero(t, code)
+				return nil, stop
+			}
+			lm := cmdBackend.NewLoginManager(diagtest.LogSink(t), credentialhelper.NewSession(io.Discard))
+			cmd := NewDoCmd(lm, newTestWorkspace(t), loader, testHost, panicLoadConverterPlugin, nil)
+			cmd.SetContext(t.Context())
+			cmd.SetArgs([]string{"test:index:Thing"})
+			cmd.SetOut(&bytes.Buffer{})
+			cmd.SetErr(&bytes.Buffer{})
+			require.ErrorIs(t, cmd.Execute(), stop)
+			data, err := os.ReadFile(output)
+			require.NoError(t, err)
+			var credentials map[string]string
+			require.NoError(t, json.Unmarshal(data, &credentials))
+			assert.Equal(t, "https://api.example.com", credentials["PULUMI_API"])
+			if test.token == "" {
+				assert.NotContains(t, credentials, "PULUMI_ACCESS_TOKEN")
+			} else {
+				assert.Equal(t, test.token, credentials["PULUMI_ACCESS_TOKEN"])
+			}
+		})
+	}
+}
+
+// The provider is loaded before do opens a stack, so its context must already carry backend credentials.
+func TestDoProviderCredentials(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_BACKEND_URL", "https://api.example.com")
+	require.NoError(t, workspace.StoreAccount("https://api.example.com",
+		workspace.Account{AccessToken: "stored-token"}, false))
+	dir := t.TempDir()
+	output := filepath.Join(dir, "env")
+	child, err := os.Executable()
+	require.NoError(t, err)
+	childArgs := []string{"-credential-helper-test", "environment", output}
+	stop := errors.New("stop after provider launch")
+	loader := func(_ context.Context, pctx *plugin.Context, _, _ string) (plugin.Provider, error) {
+		p, err := plugin.ExecPlugin(pctx, child, "test", apitype.ResourcePlugin, childArgs, dir, nil, false)
+		require.NoError(t, err)
+		defer p.Close()
+		code, err := p.Wait(t.Context())
+		require.NoError(t, err)
+		require.Zero(t, code)
+		return nil, stop
+	}
+	lm := &cmdBackend.MockLoginManager{}
+	cmd := NewDoCmd(lm, newTestWorkspace(t), loader, testHost, panicLoadConverterPlugin, nil)
+	cmd.SetContext(t.Context())
+	cmd.SetArgs([]string{"test:index:Thing"})
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	require.ErrorIs(t, cmd.Execute(), stop)
+	data, err := os.ReadFile(output)
+	require.NoError(t, err)
+	var credentials map[string]string
+	require.NoError(t, json.Unmarshal(data, &credentials))
+	assert.Equal(t, map[string]string{
+		"PULUMI_API": "https://api.example.com", "PULUMI_ACCESS_TOKEN": "stored-token",
+	}, credentials)
 }

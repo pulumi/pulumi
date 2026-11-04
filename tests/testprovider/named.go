@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 //go:build !all
-// +build !all
 
 package main
 
@@ -24,7 +24,7 @@ import (
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -58,7 +58,7 @@ type namedProvider struct {
 	id int
 }
 
-func (p *namedProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
+func (p *namedProvider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
 	if err != nil {
 		return nil, err
@@ -68,11 +68,11 @@ func (p *namedProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.
 		generatedName := "default-name"
 		if req.Autonaming != nil {
 			switch req.Autonaming.Mode {
-			case rpc.CheckRequest_AutonamingOptions_DISABLE:
+			case pulumirpc.CheckRequest_AutonamingOptions_DISABLE:
 				generatedName = ""
-			case rpc.CheckRequest_AutonamingOptions_ENFORCE:
+			case pulumirpc.CheckRequest_AutonamingOptions_ENFORCE:
 				generatedName = req.Autonaming.GetProposedName()
-			case rpc.CheckRequest_AutonamingOptions_PROPOSE:
+			case pulumirpc.CheckRequest_AutonamingOptions_PROPOSE:
 				generatedName = strings.ToLower(req.Autonaming.GetProposedName())
 			}
 		}
@@ -89,10 +89,10 @@ func (p *namedProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.
 		return nil, err
 	}
 
-	return &rpc.CheckResponse{Inputs: inputs, Failures: nil}, nil
+	return &pulumirpc.CheckResponse{Inputs: inputs, Failures: nil}, nil
 }
 
-func (p *namedProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
+func (p *namedProvider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{KeepUnknowns: true, SkipNulls: true})
 	if err != nil {
 		return nil, err
@@ -104,20 +104,20 @@ func (p *namedProvider) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.Di
 	}
 
 	d := olds.Diff(news)
-	changes := rpc.DiffResponse_DIFF_NONE
+	changes := pulumirpc.DiffResponse_DIFF_NONE
 	var replaces []string
 	if d != nil && d.Changed("echo") {
-		changes = rpc.DiffResponse_DIFF_SOME
+		changes = pulumirpc.DiffResponse_DIFF_SOME
 		replaces = append(replaces, "echo")
 	}
 
-	return &rpc.DiffResponse{
+	return &pulumirpc.DiffResponse{
 		Changes:  changes,
 		Replaces: replaces,
 	}, nil
 }
 
-func (p *namedProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
+func (p *namedProvider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
 	inputs, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
 		KeepUnknowns: true,
 		SkipNulls:    true,
@@ -135,31 +135,31 @@ func (p *namedProvider) Create(ctx context.Context, req *rpc.CreateRequest) (*rp
 	}
 
 	p.id++
-	return &rpc.CreateResponse{
+	return &pulumirpc.CreateResponse{
 		Id:         strconv.Itoa(p.id),
 		Properties: outputProperties,
 	}, nil
 }
 
-func (p *namedProvider) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
-	return &rpc.ReadResponse{
+func (p *namedProvider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+	return &pulumirpc.ReadResponse{
 		Id:         req.Id,
 		Properties: req.Properties,
 	}, nil
 }
 
-func (p *namedProvider) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
+func (p *namedProvider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
 	panic("Update not implemented")
 }
 
-func (p *namedProvider) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+func (p *namedProvider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 
-func (p *namedProvider) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
+func (p *namedProvider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	panic("Invoke not implemented")
 }
 
-func (p *namedProvider) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+func (p *namedProvider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	panic("Call not implemented")
 }

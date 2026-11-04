@@ -11,15 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 //go:build !all
-// +build !all
 
 package main
 
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	perrors "github.com/pulumi/pulumi/sdk/v3/go/pulumi/errors"
@@ -36,7 +35,9 @@ type ComponentArgs struct {
 	Foo pulumi.StringInput `pulumi:"foo"`
 }
 
-func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs, opts ...pulumi.ResourceOption) (*Component, error) {
+func NewComponent(ctx *pulumi.Context,
+	name string, args *ComponentArgs, opts ...pulumi.ResourceOption,
+) (*Component, error) {
 	component := &Component{}
 	err := ctx.RegisterComponentResource("testcomponent:index:Component", name, component, opts...)
 	if err != nil {
@@ -58,7 +59,7 @@ const (
 )
 
 func main() {
-	if err := provider.MainWithOptions(provider.Options{
+	if err := pulumiprovider.MainWithOptions(pulumiprovider.Options{
 		Name:    providerName,
 		Version: version,
 		Construct: func(ctx *pulumi.Context, typ, name string, inputs pulumiprovider.ConstructInputs,

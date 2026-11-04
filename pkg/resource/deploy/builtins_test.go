@@ -138,9 +138,9 @@ func TestBuiltinProvider(t *testing.T) {
 		_, err := p.Update(t.Context(), plugin.UpdateRequest{
 			URN:        resource.CreateURN("foo", "not-stack-reference-type", "", "proj", "stack"),
 			ID:         "some-id",
-			OldInputs:  nil,
-			OldOutputs: oldOutputs,
-			NewInputs:  resource.PropertyMap{},
+			OldInputs:  property.Map{},
+			OldOutputs: resource.FromResourcePropertyMap(oldOutputs),
+			NewInputs:  property.Map{},
 		})
 		require.ErrorContains(t, err, "unrecognized resource type 'not-stack-reference-type'")
 	})

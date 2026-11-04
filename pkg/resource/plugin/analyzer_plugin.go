@@ -16,14 +16,12 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 
 	"github.com/blang/semver"
 	"google.golang.org/grpc"
@@ -44,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -65,12 +64,9 @@ type analyzer struct {
 
 var _ Analyzer = (*analyzer)(nil)
 
-// NewPolicyAnalyzer boots the analyzer plugin located at `policyPackpath`. `hasPlugin` is a function that allows the
-// caller to configure how it is determined if the language plugin is available. If nil it will default to looking for
-// the plugin by path.
+// NewPolicyAnalyzer boots the analyzer plugin located at `policyPackpath`.
 func NewPolicyAnalyzer(
 	host Host, ctx *Context, name tokens.QName, policyPackPath string, opts *PolicyAnalyzerOptions,
-	hasPlugin func(workspace.PluginDescriptor) bool,
 ) (Analyzer, error) {
 	// For analyzers the root directory and program directory are the location of the PulumiPolicy.yaml _not_ the
 	// location of the shim plugin.
@@ -141,71 +137,10 @@ func NewPolicyAnalyzer(
 			return nil, fmt.Errorf("failed to load Pulumi policy project located at %q: %w", policyPackPath, err)
 		}
 
-		// This first section is a back compatibility bit for the old way of running analyzer plugins where we
-		// would look for a plugin called "pulumi-analyzer-policy-<runtime>" and invoke that plugin with two
-		// arguments, the engine address and the policy pack path. We don't do this for actual "languages" (i.e.
-		// things with language plugins), but have to leave this in to ensure things like
-		// https://github.com/pulumi/pulumi-policy-opa continue to work (although in time they could probably be
-		// moved to just be language runtimes like the rest).
-		if hasPlugin == nil {
-			hasPlugin = func(spec workspace.PluginDescriptor) bool {
-				path, err := workspace.GetPluginPath(
-					ctx.baseContext,
-					ctx.Diag,
-					spec,
-					ctx.ProjectPlugins(),
-				)
-				return err == nil && path != ""
-			}
-		}
-		foundLanguagePlugin := hasPlugin(workspace.PluginDescriptor{Name: proj.Runtime.Name(), Kind: apitype.LanguagePlugin})
-
-		if !foundLanguagePlugin {
-			// Couldn't get a language plugin, fall back to the old behavior, of trying to run
-			// "pulumi-analyzer-policy-<runtime>".
-			policyAnalyzerName := "policy-" + proj.Runtime.Name()
-
-			// Load the policy-booting analyzer plugin (i.e., `pulumi-analyzer-${policyAnalyzerName}`).
-			var pluginPath string
-			pluginPath, err = workspace.GetPluginPath(
-				ctx.baseContext, ctx.Diag,
-				workspace.PluginDescriptor{Name: policyAnalyzerName, Kind: apitype.AnalyzerPlugin}, ctx.ProjectPlugins(),
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			// The `pulumi-analyzer-policy` plugin is a script that looks for the '@pulumi/pulumi/cmd/run-policy-pack'
-			// node module and runs it with node. To allow non-node Pulumi programs (e.g. Python, .NET, Go, etc.) to
-			// run node policy packs, we must set the plugin's pwd to the policy pack directory instead of the Pulumi
-			// program directory, so that the '@pulumi/pulumi/cmd/run-policy-pack' module from the policy pack's
-			// node_modules is used.
-			pwd := policyPackPath
-
-			args := []string{host.ServerAddr(), "."}
-			for k, v := range proj.Runtime.Options() {
-				if vstr := fmt.Sprintf("%v", v); vstr != "" {
-					args = append(args, fmt.Sprintf("-%s=%s", k, vstr))
-				}
-			}
-
-			// Create the environment variables from the options.
-			analyzerEnv, err = constructEnv(analyzerEnv, opts, proj.Runtime.Name())
-			if err != nil {
-				return nil, err
-			}
-
-			plug, _, err = newPlugin(ctx, pwd, pluginPath, fmt.Sprintf("%v (analyzer)", name),
-				apitype.AnalyzerPlugin, args, analyzerEnv, handshake,
-				analyzerPluginDialOptions(ctx, fmt.Sprintf("%v", name)),
-				host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
-		} else {
-			// Else we _did_ get a language plugin so just use RunPlugin to invoke the policy pack.
-			plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
-				apitype.AnalyzerPlugin, []string{host.ServerAddr()}, analyzerEnv,
-				handshake, analyzerPluginDialOptions(ctx, string(name)),
-				host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
-		}
+		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
+			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, analyzerEnv,
+			handshake, analyzerPluginDialOptions(ctx, string(name)),
+			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	}
 
 	if err != nil {
@@ -303,11 +238,12 @@ func (a *analyzer) Analyze(ctx context.Context, r AnalyzerResource) (AnalyzeResp
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, props.Len())
-	mprops, err := MarshalProperties(resource.ToResourcePropertyMap(props),
-		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+	filtered, err := FilterProperties(props,
+		FilterOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
 		return AnalyzeResponse{}, err
 	}
+	mprops := propertyrpc.Marshal(filtered)
 
 	provider, err := marshalProvider(r.Provider)
 	if err != nil {
@@ -347,11 +283,12 @@ func (a *analyzer) AnalyzeStack(ctx context.Context, resources []AnalyzerStackRe
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
 	for idx, res := range resources {
-		props, err := MarshalProperties(resource.ToResourcePropertyMap(res.Properties),
-			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+		filtered, err := FilterProperties(res.Properties,
+			FilterOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 		if err != nil {
-			return AnalyzeResponse{}, fmt.Errorf("marshalling properties: %w", err)
+			return AnalyzeResponse{}, fmt.Errorf("filtering properties: %w", err)
 		}
+		props := propertyrpc.Marshal(filtered)
 
 		provider, err := marshalProvider(res.Provider)
 		if err != nil {
@@ -423,11 +360,12 @@ func (a *analyzer) Remediate(ctx context.Context, r AnalyzerResource) (Remediate
 
 	label := fmt.Sprintf("%s.Remediate(%s)", a.label(), t)
 	logging.V(7).Infof("%s executing (#props=%d)", label, props.Len())
-	mprops, err := MarshalProperties(resource.ToResourcePropertyMap(props),
-		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
+	filtered, err := FilterProperties(props,
+		FilterOptions{KeepUnknowns: true, KeepSecrets: true})
 	if err != nil {
 		return RemediateResponse{}, err
 	}
+	mprops := propertyrpc.Marshal(filtered)
 
 	provider, err := marshalProvider(r.Provider)
 	if err != nil {
@@ -458,8 +396,11 @@ func (a *analyzer) Remediate(ctx context.Context, r AnalyzerResource) (Remediate
 	remediations := resp.GetRemediations()
 	results := make([]Remediation, len(remediations))
 	for i, r := range remediations {
-		tprops, err := UnmarshalProperties(r.GetProperties(),
-			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
+		raw, err := propertyrpc.Unmarshal(r.GetProperties())
+		if err != nil {
+			return RemediateResponse{}, err
+		}
+		tprops, err := FilterProperties(raw, FilterOptions{KeepUnknowns: true, KeepSecrets: true})
 		if err != nil {
 			return RemediateResponse{}, err
 		}
@@ -475,7 +416,7 @@ func (a *analyzer) Remediate(ctx context.Context, r AnalyzerResource) (Remediate
 			Description:       r.GetDescription(),
 			PolicyPackName:    r.GetPolicyPackName(),
 			PolicyPackVersion: policyPackVersion,
-			Properties:        resource.FromResourcePropertyMap(tprops),
+			Properties:        tprops,
 			Diagnostic:        r.GetDiagnostic(),
 		}
 	}
@@ -768,17 +709,17 @@ func marshalProvider(provider *AnalyzerProviderResource) (*pulumirpc.AnalyzerPro
 		return nil, nil
 	}
 
-	props, err := MarshalProperties(resource.ToResourcePropertyMap(provider.Properties),
-		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+	filtered, err := FilterProperties(provider.Properties,
+		FilterOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
-		return nil, fmt.Errorf("marshalling properties: %w", err)
+		return nil, fmt.Errorf("filtering properties: %w", err)
 	}
 
 	return &pulumirpc.AnalyzerProviderResource{
 		Urn:        string(provider.URN),
 		Type:       string(provider.Type),
 		Name:       provider.Name,
-		Properties: props,
+		Properties: propertyrpc.Marshal(filtered),
 	}, nil
 }
 
@@ -956,62 +897,4 @@ func convertNotApplicable(protoNotApplicable []*pulumirpc.PolicyNotApplicable) [
 			Reason:     p.Reason,
 		}
 	})
-}
-
-// constructEnv creates an Environment containing a store of key/value pairs to be used for the policy pack process.
-// Config is passed as an environment variable (including unencrypted secrets), similar to
-// how config is passed to each language runtime plugin.
-func constructEnv(analyzerEnv env.Env, opts *PolicyAnalyzerOptions, runtime string) (env.Env, error) {
-	store := envutil.MapStore{}
-
-	maybeAppendEnv := func(k, v string) {
-		if v != "" {
-			store[k] = v
-		}
-	}
-
-	config, err := constructConfig(opts)
-	if err != nil {
-		return nil, err
-	}
-	maybeAppendEnv("PULUMI_CONFIG", config)
-
-	if opts != nil {
-		// Set both PULUMI_NODEJS_* and PULUMI_* environment variables for Node.js. The Node.js
-		// SDK currently looks for the PULUMI_NODEJS_* variants only, but we'd like to move to
-		// using the more general PULUMI_* variants for all languages to avoid special casing
-		// like this, and setting the PULUMI_* variants for Node.js is the first step.
-		if runtime == "nodejs" {
-			maybeAppendEnv("PULUMI_NODEJS_ORGANIZATION", opts.Organization)
-			maybeAppendEnv("PULUMI_NODEJS_PROJECT", opts.Project)
-			maybeAppendEnv("PULUMI_NODEJS_STACK", opts.Stack)
-			maybeAppendEnv("PULUMI_NODEJS_DRY_RUN", strconv.FormatBool(opts.DryRun))
-		}
-
-		maybeAppendEnv("PULUMI_ORGANIZATION", opts.Organization)
-		maybeAppendEnv("PULUMI_PROJECT", opts.Project)
-		maybeAppendEnv("PULUMI_STACK", opts.Stack)
-		maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(opts.DryRun))
-	}
-
-	return envutil.NewEnv(envutil.JoinStore(store, analyzerEnv.GetStore())), nil
-}
-
-// constructConfig JSON-serializes the configuration data.
-func constructConfig(opts *PolicyAnalyzerOptions) (string, error) {
-	if opts == nil || opts.Config == nil {
-		return "", nil
-	}
-
-	config := make(map[string]string)
-	for k, v := range opts.Config {
-		config[k.String()] = v
-	}
-
-	configJSON, err := json.Marshal(config)
-	if err != nil {
-		return "", err
-	}
-
-	return string(configJSON), nil
 }

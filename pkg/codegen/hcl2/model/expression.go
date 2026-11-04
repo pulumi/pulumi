@@ -1239,9 +1239,9 @@ func (x *IndexExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 	diagnostics = append(diagnostics, kvDiags...)
 	x.keyType = keyType
 
-	if lit, ok := x.Key.(*LiteralValueExpression); ok {
+	if c, ok := x.Key.Type().(*ConstType); ok {
 		traverser := hcl.TraverseIndex{
-			Key: lit.Value,
+			Key: c.Value,
 		}
 		valueType, traverseDiags := x.Collection.Type().Traverse(traverser)
 		if len(traverseDiags) == 0 {

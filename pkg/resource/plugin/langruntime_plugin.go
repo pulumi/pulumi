@@ -774,7 +774,7 @@ func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 
 func (h *langhost) GenerateProject(
 	ctx context.Context, sourceDirectory, targetDirectory, project string, strict bool,
-	loaderTarget string, localDependencies map[string]string,
+	loaderTarget, mapperTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
 	resp, err := h.client.GenerateProject(ctx, &pulumirpc.GenerateProjectRequest{
@@ -783,6 +783,7 @@ func (h *langhost) GenerateProject(
 		Project:           project,
 		Strict:            strict,
 		LoaderTarget:      loaderTarget,
+		MapperTarget:      mapperTarget,
 		LocalDependencies: localDependencies,
 	})
 	if err != nil {
@@ -833,12 +834,14 @@ func (h *langhost) GeneratePackage(
 	return diags, nil
 }
 
-func (h *langhost) GenerateProgram(ctx context.Context, program map[string]string, loaderTarget string, strict bool,
+func (h *langhost) GenerateProgram(ctx context.Context, program map[string]string, loaderTarget, mapperTarget string,
+	strict bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	logging.V(7).Infof("langhost[%v].GenerateProgram() executing", h.runtime)
 	resp, err := h.client.GenerateProgram(ctx, &pulumirpc.GenerateProgramRequest{
 		Source:       program,
 		LoaderTarget: loaderTarget,
+		MapperTarget: mapperTarget,
 		Strict:       strict,
 	})
 	if err != nil {

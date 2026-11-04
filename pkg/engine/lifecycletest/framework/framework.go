@@ -222,6 +222,7 @@ func (op TestOp) runWithContext(
 	info := NewUpdateInfo(project, target)
 
 	cancelCtx, cancelSrc := cancel.NewContext(context.Background())
+	defer cancelSrc.Terminate()
 	done := make(chan bool)
 	defer close(done)
 	go func() {
@@ -292,10 +293,14 @@ func (op TestOp) runWithContext(
 	ctx := &engine.Context{
 		Cancel:                      cancelCtx,
 		Events:                      events,
-		SnapshotManager:             combined,
 		BackendClient:               backendClient,
 		PluginManager:               pluginManager,
 		SnapshotManagerCapabilities: opts.SnapshotManagerCapabilities,
+	}
+	// Avoid storing a typed-nil interface value in SnapshotManager — the engine's preview actions
+	// now consult this field and would call methods on a nil receiver.
+	if combined != nil {
+		ctx.SnapshotManager = combined
 	}
 
 	updateOpts := opts.Options()

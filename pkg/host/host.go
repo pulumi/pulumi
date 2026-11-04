@@ -24,8 +24,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/opentracing/opentracing-go"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -34,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
@@ -230,7 +233,7 @@ type analyzerPlugin struct {
 	Plugin plugin.Analyzer
 	Info   plugin.PluginInfo
 	Name   string
-	refs   map[*plugin.Context]struct{} // the contexts this plugin was loaded for; it dies with the last one.
+	refs   map[*plugin.Context]struct{} // the lifetime contexts this plugin was loaded for; it dies with the last one.
 }
 
 // languagePluginKey identifies a booted language plugin. The working directory is part of the
@@ -245,7 +248,7 @@ type languagePlugin struct {
 	Plugin plugin.LanguageRuntime
 	Info   plugin.PluginInfo
 	Name   string
-	refs   map[*plugin.Context]struct{} // the contexts this plugin was loaded for; it dies with the last one.
+	refs   map[*plugin.Context]struct{} // the lifetime contexts this plugin was loaded for; it dies with the last one.
 }
 
 type resourcePlugin struct {
@@ -339,12 +342,12 @@ func (host *defaultHost) PolicyAnalyzer(
 		// First see if we already loaded this plugin.
 		if plug, has := host.analyzerPlugins[key]; has {
 			contract.Assertf(plug != nil, "analyzer plugin %v was loaded but is nil", name)
-			plug.refs[ctx] = struct{}{}
+			plug.refs[ctx.LifetimeContext()] = struct{}{}
 			return plug.Plugin, nil
 		}
 
 		// If not, try to load and bind to a plugin.
-		plug, err := plugin.NewPolicyAnalyzer(host, ctx, name, path, opts, nil)
+		plug, err := plugin.NewPolicyAnalyzer(host, ctx, name, path, opts)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo(ctx.Request())
 			if infoerr != nil {
@@ -354,7 +357,8 @@ func (host *defaultHost) PolicyAnalyzer(
 
 			// Memoize the result.
 			host.analyzerPlugins[key] = &analyzerPlugin{
-				Plugin: plug, Info: info, Name: string(name), refs: map[*plugin.Context]struct{}{ctx: {}},
+				Plugin: plug, Info: info, Name: string(name),
+				refs: map[*plugin.Context]struct{}{ctx.LifetimeContext(): {}},
 			}
 		}
 
@@ -366,12 +370,11 @@ func (host *defaultHost) PolicyAnalyzer(
 	return hostedPlugin.(plugin.Analyzer), nil
 }
 
-// Provider boots a resource provider for ctx. Resource providers are not memoized, so only the
-// bookkeeping runs on the loader goroutine; the boot itself runs here. A provider may ask the
-// engine to load another provider while it boots -- a component provider resolves the providers it
-// wraps before it reports its port -- and that nested load needs the loader goroutine to be free.
-func (host *defaultHost) Provider(
-	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+// loadProvider boots a provider with load and registers it with the host. If allowMissingInfo is set, a provider
+// that does not implement GetPluginInfo loads with an empty PluginInfo, so the version check is skipped.
+func (host *defaultHost) loadProvider(
+	ctx *plugin.Context, e env.Env, allowMissingInfo bool,
+	load func() (plugin.Provider, string, *semver.Version, error),
 ) (plugin.Provider, error) {
 	release, err := host.beginLoad()
 	if err != nil {
@@ -379,31 +382,16 @@ func (host *defaultHost) Provider(
 	}
 	defer release()
 
-	pkg := descriptor.Name
-	version := descriptor.Version
-
-	// Try to load and bind to a plugin.
-
-	result := make(map[string]string)
-	for k, v := range ctx.Config() {
-		if k.Namespace() != pkg {
-			continue
-		}
-		result[k.Name()] = v
-	}
-	jsonConfig, err := json.Marshal(result)
-	if err != nil {
-		return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
-	}
-	plug, err := plugin.NewProvider(
-		host, ctx, descriptor,
-		ctx.RuntimeOptions(), ctx.DisableProviderPreview(), string(jsonConfig), ctx.ProjectName(), e,
-	)
+	plug, pkg, version, err := load()
 	if err != nil || plug == nil {
 		return nil, err
 	}
 	info, infoerr := plug.GetPluginInfo(ctx.Request())
-	if infoerr != nil {
+	if infoerr != nil && (!allowMissingInfo || !isUnimplemented(infoerr)) {
+		// Send Cancel before Close so that Plugin.Close does not report the plugin's exit as a crash.
+		cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 5*time.Second)
+		defer cancelCancel()
+		contract.IgnoreError(plug.SignalCancellation(cancelCtx))
 		contract.IgnoreClose(plug)
 		return nil, infoerr
 	}
@@ -447,6 +435,53 @@ func (host *defaultHost) Provider(
 	return hostManagedProvider{plug, host}, nil
 }
 
+// Provider boots a resource provider for ctx. Resource providers are not memoized, so only the
+// bookkeeping runs on the loader goroutine; the boot itself runs here. A provider may ask the
+// engine to load another provider while it boots -- a component provider resolves the providers it
+// wraps before it reports its port -- and that nested load needs the loader goroutine to be free.
+func (host *defaultHost) Provider(
+	ctx *plugin.Context, descriptor workspace.PluginDescriptor, e env.Env,
+) (plugin.Provider, error) {
+	pkg := descriptor.Name
+	version := descriptor.Version
+
+	// Try to load and bind to a plugin.
+
+	result := make(map[string]string)
+	for k, v := range ctx.Config() {
+		if k.Namespace() != pkg {
+			continue
+		}
+		result[k.Name()] = v
+	}
+	jsonConfig, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("Could not marshal config to JSON: %w", err)
+	}
+
+	return host.loadProvider(ctx, e, false, func() (plugin.Provider, string, *semver.Version, error) {
+		plug, err := plugin.NewProvider(
+			host, ctx, descriptor,
+			ctx.RuntimeOptions(), ctx.DisableProviderPreview(), string(jsonConfig), ctx.ProjectName(), e,
+		)
+		return plug, pkg, version, err
+	})
+}
+
+// ProviderFromPath boots the provider binary at path for ctx. A provider loaded from a path has no expected
+// version, so it may leave GetPluginInfo unimplemented.
+func (host *defaultHost) ProviderFromPath(ctx *plugin.Context, path string, e env.Env) (plugin.Provider, error) {
+	return host.loadProvider(ctx, e, true, func() (plugin.Provider, string, *semver.Version, error) {
+		plug, err := plugin.NewProviderFromPath(host, ctx, path, e)
+		return plug, path, nil, err
+	})
+}
+
+func isUnimplemented(err error) bool {
+	rpcErr, ok := rpcerror.FromError(err)
+	return ok && rpcErr.Code() == codes.Unimplemented
+}
+
 // hostManagedProvider wraps a Provider such that it can be closed by the host that created it.
 type hostManagedProvider struct {
 	plugin.Provider
@@ -484,13 +519,16 @@ func (host *defaultHost) LanguageRuntime(ctx *plugin.Context, runtime string,
 		// First see if we already loaded this plugin.
 		if plug, has := host.languagePlugins[key]; has {
 			contract.Assertf(plug != nil, "language plugin %v was loaded but is nil", runtime)
-			plug.refs[ctx] = struct{}{}
+			plug.refs[ctx.LifetimeContext()] = struct{}{}
 			return plug.Plugin, nil
 		}
 
 		// Download and install the language runtime on demand if it is unbundled and missing.
 		if host.installLang != nil {
-			if err := host.installLang(ctx.Request(), runtime); err != nil {
+			log := func(sev diag.Severity, msg string) {
+				host.Log(sev, "", msg, 0)
+			}
+			if err := host.installLang(ctx.Request(), runtime, log); err != nil {
 				return nil, fmt.Errorf("failed to install language plugin %s: %w", runtime, err)
 			}
 		}
@@ -506,7 +544,8 @@ func (host *defaultHost) LanguageRuntime(ctx *plugin.Context, runtime string,
 
 			// Memoize the result.
 			host.languagePlugins[key] = &languagePlugin{
-				Plugin: plug, Info: info, Name: runtime, refs: map[*plugin.Context]struct{}{ctx: {}},
+				Plugin: plug, Info: info, Name: runtime,
+				refs: map[*plugin.Context]struct{}{ctx.LifetimeContext(): {}},
 			}
 		}
 
@@ -535,27 +574,42 @@ func (host *defaultHost) ResolvePlugin(
 // A plugin load that is in flight while its context is released is not torn down here; it stays
 // cached until the host closes.
 func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
+	var mu sync.Mutex
 	var errs []error
-	closePlugins := func(channel chan pluginLoadRequest, close func(cancelCtx context.Context)) error {
+	closePlugins := func(channel chan pluginLoadRequest, collect func() []func(cancelCtx context.Context) error) error {
 		_, err := host.loadPlugin(channel, func() (any, error) {
-			cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 5*time.Second)
-			defer cancelCancel()
-			close(cancelCtx)
+			var wg sync.WaitGroup
+			for _, shutdown := range collect() {
+				wg.Go(func() {
+					cancelCtx, cancelCancel := context.WithTimeout(host.hostCtx, 5*time.Second)
+					defer cancelCancel()
+					if err := shutdown(cancelCtx); err != nil {
+						mu.Lock()
+						errs = append(errs, err)
+						mu.Unlock()
+					}
+				})
+			}
+			wg.Wait()
 			return nil, nil
 		})
 		return err
 	}
 
-	err := closePlugins(host.loadRequests, func(cancelCtx context.Context) {
+	err := closePlugins(host.loadRequests, func() []func(context.Context) error {
+		var shutdowns []func(context.Context) error
 		for key, plug := range host.resourcePlugins {
 			if plug.ctx != ctx {
 				continue
 			}
-			contract.IgnoreError(plug.Plugin.SignalCancellation(cancelCtx))
-			if err := plug.Plugin.Close(); err != nil {
-				errs = append(errs, fmt.Errorf("closing resource plugin %q: %w", plug.Name, err))
-			}
 			delete(host.resourcePlugins, key)
+			shutdowns = append(shutdowns, func(cancelCtx context.Context) error {
+				contract.IgnoreError(plug.Plugin.SignalCancellation(cancelCtx))
+				if err := plug.Plugin.Close(); err != nil {
+					return fmt.Errorf("closing resource plugin %q: %w", plug.Name, err)
+				}
+				return nil
+			})
 		}
 		for key, plug := range host.analyzerPlugins {
 			if _, has := plug.refs[ctx]; !has {
@@ -565,12 +619,16 @@ func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
 			if len(plug.refs) > 0 {
 				continue
 			}
-			contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
-			if err := plug.Plugin.Close(); err != nil {
-				errs = append(errs, fmt.Errorf("closing analyzer plugin %q: %w", plug.Name, err))
-			}
 			delete(host.analyzerPlugins, key)
+			shutdowns = append(shutdowns, func(cancelCtx context.Context) error {
+				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
+				if err := plug.Plugin.Close(); err != nil {
+					return fmt.Errorf("closing analyzer plugin %q: %w", plug.Name, err)
+				}
+				return nil
+			})
 		}
+		return shutdowns
 	})
 	if err != nil {
 		// The only error loadPlugin returns here is that the host is shutting down, in which
@@ -579,7 +637,8 @@ func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
 	}
 
 	// Language plugins are guarded by their own load channel.
-	err = closePlugins(host.languageLoadRequests, func(cancelCtx context.Context) {
+	err = closePlugins(host.languageLoadRequests, func() []func(context.Context) error {
+		var shutdowns []func(context.Context) error
 		for key, plug := range host.languagePlugins {
 			if _, has := plug.refs[ctx]; !has {
 				continue
@@ -588,12 +647,16 @@ func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
 			if len(plug.refs) > 0 {
 				continue
 			}
-			contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
-			if err := plug.Plugin.Close(); err != nil {
-				errs = append(errs, fmt.Errorf("closing language plugin %q: %w", plug.Name, err))
-			}
 			delete(host.languagePlugins, key)
+			shutdowns = append(shutdowns, func(cancelCtx context.Context) error {
+				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
+				if err := plug.Plugin.Close(); err != nil {
+					return fmt.Errorf("closing language plugin %q: %w", plug.Name, err)
+				}
+				return nil
+			})
 		}
+		return shutdowns
 	})
 	if err != nil {
 		return nil //nolint:nilerr
@@ -601,9 +664,7 @@ func (host *defaultHost) ReleaseContext(ctx *plugin.Context) error {
 
 	// Shut down the loader and mapper gRPC servers hosted for ctx, after the plugins they may have
 	// booted have been released.
-	errs = append(errs, host.releaseContextServers(ctx))
-
-	return errors.Join(errs...)
+	return errors.Join(errors.Join(errs...), host.releaseContextServers(ctx))
 }
 
 func (host *defaultHost) SignalCancellation() error {

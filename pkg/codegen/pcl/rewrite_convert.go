@@ -15,6 +15,7 @@
 package pcl
 
 import (
+	"slices"
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -72,8 +73,8 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 	case *model.AnonymousFunctionExpression:
 		x.Body, _ = rewriteConversions(x.Body, to, diags)
 	case *model.BinaryOpExpression:
-		x.LeftOperand, _ = rewriteConversions(x.LeftOperand, model.InputType(x.LeftOperandType()), diags)
-		x.RightOperand, _ = rewriteConversions(x.RightOperand, model.InputType(x.RightOperandType()), diags)
+		x.LeftOperand, _ = rewriteConversions(x.LeftOperand, x.LeftOperandType(), diags)
+		x.RightOperand, _ = rewriteConversions(x.RightOperand, x.RightOperandType(), diags)
 		left, leftUnwrapped := unwrapIntToNumberConvert(x.LeftOperand)
 		right, rightUnwrapped := unwrapIntToNumberConvert(x.RightOperand)
 		if leftUnwrapped && rightUnwrapped {
@@ -82,7 +83,7 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		}
 	case *model.ConditionalExpression:
 		var trueChanged, falseChanged bool
-		x.Condition, _ = rewriteConversions(x.Condition, model.InputType(model.BoolType), diags)
+		x.Condition, _ = rewriteConversions(x.Condition, model.BoolType, diags)
 		x.TrueResult, trueChanged = rewriteConversions(x.TrueResult, to, diags)
 		x.FalseResult, falseChanged = rewriteConversions(x.FalseResult, to, diags)
 		typecheck = trueChanged || falseChanged
@@ -90,10 +91,10 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		traverserType := model.NumberType
 		if x.Key != nil {
 			traverserType = model.StringType
-			x.Key, _ = rewriteConversions(x.Key, model.InputType(model.StringType), diags)
+			x.Key, _ = rewriteConversions(x.Key, model.StringType, diags)
 		}
 		if x.Condition != nil {
-			x.Condition, _ = rewriteConversions(x.Condition, model.InputType(model.BoolType), diags)
+			x.Condition, _ = rewriteConversions(x.Condition, model.BoolType, diags)
 		}
 
 		valueType, tdiags := to.Traverse(model.MakeTraverser(traverserType))
@@ -101,6 +102,15 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 
 		x.Value, typecheck = rewriteConversions(x.Value, valueType.(model.Type), diags)
 	case *model.FunctionCallExpression:
+		// `__convert`'s single argument is the source value being converted. The signature's
+		// declared parameter type was captured at construction (NewConvertCall uses from.Type())
+		// and goes stale when upstream rewriters replace the argument. Rewrite the argument
+		// against its own current type so its substructure still gets cleaned up without
+		// inserting a redundant conversion to the stale type.
+		if x.Name == IntrinsicConvert && len(x.Args) == 1 {
+			x.Args[0], _ = rewriteConversions(x.Args[0], x.Args[0].Type(), diags)
+			break
+		}
 		args := x.Args
 		var expandedFinal model.Expression
 		if x.ExpandFinal && len(args) > 0 {
@@ -111,12 +121,12 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			if len(args) == 0 {
 				break
 			}
-			args[0], _ = rewriteConversions(args[0], model.InputType(param.Type), diags)
+			args[0], _ = rewriteConversions(args[0], param.Type, diags)
 			args = args[1:]
 		}
 		if x.Signature.VarargsParameter != nil {
 			for i := range args {
-				args[i], _ = rewriteConversions(args[i], model.InputType(x.Signature.VarargsParameter.Type), diags)
+				args[i], _ = rewriteConversions(args[i], x.Signature.VarargsParameter.Type, diags)
 			}
 		}
 		if expandedFinal != nil {
@@ -147,7 +157,7 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			*diags = diags.Extend(tdiags)
 
 			var valueChanged bool
-			item.Key, _ = rewriteConversions(item.Key, model.InputType(model.StringType), diags)
+			item.Key, _ = rewriteConversions(item.Key, model.StringType, diags)
 			item.Value, valueChanged = rewriteConversions(item.Value, valueType.(model.Type), diags)
 			typecheck = typecheck || valueChanged
 		}
@@ -169,7 +179,7 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			typecheck = typecheck || exprChanged
 		}
 	case *model.UnaryOpExpression:
-		x.Operand, _ = rewriteConversions(x.Operand, model.InputType(x.OperandType()), diags)
+		x.Operand, _ = rewriteConversions(x.Operand, x.OperandType(), diags)
 		operand, unwrapped := unwrapIntToNumberConvert(x.Operand)
 		if unwrapped {
 			x.Operand = operand
@@ -402,39 +412,42 @@ func literalExprValue(expr model.Expression) (cty.Value, bool) {
 func lowerConversion(from model.Expression, to model.Type) (model.Type, bool) {
 	switch to := to.(type) {
 	case *model.UnionType:
-		// Assignment: it just works
-		for _, to := range to.ElementTypes {
-			// in general, strings are not assignable to enums, but we allow it here
-			// if the enum has an element that matches the `from` expression
-			switch enumType := to.(type) {
-			case *model.EnumType:
-				if literal, ok := literalExprValue(from); ok {
-					for _, enumCase := range enumType.Elements {
-						if enumCase.RawEquals(literal) {
-							return to, true
-						}
-					}
+		// The choice of member must not depend on the order of the union's members. An enum that has the
+		// literal as one of its values is the best target, since it is what the program names, even though a
+		// string is not assignable to an enum in general. After that a member is chosen from the assignable
+		// members, then from the safely convertible ones, then from the unsafely convertible ones. Within each
+		// group none is never a target, and a plain member is preferred to an eventual one, so that the cast
+		// the conversion needs is generated for the value itself.
+		if literal, ok := literalExprValue(from); ok {
+			for _, to := range to.ElementTypes {
+				if enum, ok := to.(*model.EnumType); ok && slices.ContainsFunc(enum.Elements, literal.RawEquals) {
+					return to, true
 				}
 			}
+		}
 
+		// A value of unknown type is left as it is: no member is a better target than another, and a cast that
+		// a generator emits for it may be wrong when the value resolves.
+		if model.ResolveOutputs(from.Type()) == model.DynamicType {
+			return nil, false
+		}
+
+		var assignable, safe, unsafe []model.Type
+		for _, to := range to.ElementTypes {
+			if to == model.NoneType {
+				continue
+			}
 			if to.AssignableFrom(from.Type()) {
-				return to, true
+				assignable = append(assignable, to)
+			} else if c := to.ConversionFrom(from.Type()); c == model.SafeConversion {
+				safe = append(safe, to)
+			} else if c == model.UnsafeConversion {
+				unsafe = append(unsafe, to)
 			}
 		}
-		conversions := make([]model.ConversionKind, len(to.ElementTypes))
-		for i, to := range to.ElementTypes {
-			conversions[i] = to.ConversionFrom(from.Type())
-			if conversions[i] == model.SafeConversion {
-				// We found a safe conversion, and we will use it. We don't need
-				// to search for more conversions.
-				return to, true
-			}
-		}
-
-		// Unsafe conversions:
-		for i, to := range to.ElementTypes {
-			if conversions[i] == model.UnsafeConversion {
-				return to, true
+		for _, candidates := range [][]model.Type{assignable, safe, unsafe} {
+			if len(candidates) > 0 {
+				return preferPlain(candidates), true
 			}
 		}
 		return nil, false
@@ -478,4 +491,14 @@ func LowerConversion(from model.Expression, to model.Type) model.Type {
 		return t
 	}
 	return to
+}
+
+// preferPlain returns the first candidate that holds no output or promise, or the first candidate.
+func preferPlain(candidates []model.Type) model.Type {
+	for _, candidate := range candidates {
+		if outputs, promises := model.ContainsEventuals(candidate); !outputs && !promises {
+			return candidate
+		}
+	}
+	return candidates[0]
 }

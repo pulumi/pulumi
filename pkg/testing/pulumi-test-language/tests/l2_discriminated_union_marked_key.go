@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +36,8 @@ func init() {
 			AssertPreview: func(l *L, res AssertPreviewArgs) {
 				RequireStackResource(l, res.Err, res.Changes)
 
-				var firstOutputs, secondInputs resource.PropertyMap
+				var firstOutputs, secondInputs property.Map
+				var foundFirst, foundSecond bool
 				for _, evt := range res.Events {
 					if evt.Type != engine.ResourceOutputsEvent {
 						continue
@@ -43,64 +45,68 @@ func init() {
 					payload := evt.Payload().(engine.ResourceOutputsEventPayload)
 					switch payload.Metadata.URN.Name() {
 					case "first":
-						firstOutputs = payload.Metadata.New.Outputs
+						firstOutputs = resource.FromResourcePropertyMap(payload.Metadata.New.Outputs)
+						foundFirst = true
 					case "second":
-						secondInputs = payload.Metadata.New.Inputs
+						secondInputs = resource.FromResourcePropertyMap(payload.Metadata.New.Inputs)
+						foundSecond = true
 					}
 				}
-				require.NotNil(l, firstOutputs, "expected a resource outputs event for first")
-				require.NotNil(l, secondInputs, "expected a resource outputs event for second")
+				require.True(l, foundFirst, "expected a resource outputs event for first")
+				require.True(l, foundSecond, "expected a resource outputs event for second")
 
 				// The provider plans unionOut with an unknown discriminator.
-				assert.Equal(l, resource.NewProperty(resource.PropertyMap{
-					"discriminantKind": resource.MakeComputed(resource.NewProperty("")),
-					"field1":           resource.NewProperty("hello"),
-				}), firstOutputs["unionOut"])
+				assert.Equal(l, property.New(map[string]property.Value{
+					"discriminantKind": property.New(property.Computed),
+					"field1":           property.New("hello"),
+				}), firstOutputs.Get("unionOut"))
 
 				// The unknown discriminator flows through the program into second's input. SDKs may
 				// collapse the partially known union into a fully unknown value, so only require
 				// that the input still contains unknowns.
-				unionIn, has := secondInputs["unionIn"]
+				unionIn, has := secondInputs.GetOk("unionIn")
 				require.True(l, has, "expected second to have input unionIn")
-				assert.True(l, unionIn.ContainsUnknowns(),
+				assert.True(l, unionIn.HasComputed(),
 					"expected second's unionIn input to be unknown: %v", unionIn)
 			},
 			Assert: func(l *L, res AssertArgs) {
 				RequireStackResource(l, res.Err, res.Changes)
 
-				secretUnion := resource.NewProperty(resource.PropertyMap{
-					"discriminantKind": resource.MakeSecret(resource.NewProperty("variant1")),
-					"field1":           resource.NewProperty("hello"),
+				secretUnion := property.New(map[string]property.Value{
+					"discriminantKind": property.New("variant1").WithSecret(true),
+					"field1":           property.New("hello"),
 				})
-				plainUnion := resource.NewProperty(resource.PropertyMap{
-					"discriminantKind": resource.NewProperty("variant1"),
-					"field1":           resource.NewProperty("hello"),
+				plainUnion := property.New(map[string]property.Value{
+					"discriminantKind": property.New("variant1"),
+					"field1":           property.New("hello"),
 				})
 
 				first := RequireSingleNamedResource(l, res.Snap.Resources, "first")
-				require.Equal(l, resource.PropertyMap{
-					"unionIn": resource.NewProperty(resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant2"),
-						"field2":           resource.NewProperty("known"),
+				require.Equal(l, property.NewMap(map[string]property.Value{
+					"unionIn": property.New(map[string]property.Value{
+						"discriminantKind": property.New("variant2"),
+						"field2":           property.New("known"),
 					}),
 					"unionOut": secretUnion,
-				}, first.Outputs)
+				}), resource.FromResourcePropertyMap(first.Outputs))
 
 				// The secret discriminator flows through the program into second's input. SDKs may
 				// promote the nested secret to the whole union value, so compare with the secret
 				// markers stripped and assert secretness separately.
 				second := RequireSingleNamedResource(l, res.Snap.Resources, "second")
-				unionIn, has := second.Inputs["unionIn"]
+				secondInputs := resource.FromResourcePropertyMap(second.Inputs)
+				unionIn, has := secondInputs.GetOk("unionIn")
 				require.True(l, has, "expected second to have input unionIn")
-				assert.True(l, unionIn.ContainsSecrets(),
+				assert.True(l, unionIn.HasSecrets(),
 					"expected second's unionIn input to be secret: %v", unionIn)
 				assert.Equal(l, plainUnion, stripSecrets(unionIn))
-				require.Equal(l, secretUnion, second.Outputs["unionOut"])
+				require.Equal(l, secretUnion, resource.FromResourcePropertyMap(second.Outputs).Get("unionOut"))
 
 				stack := RequireSingleResource(l, res.Snap.Resources, resource.RootStackType)
-				out, has := stack.Outputs["out"]
+				stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+				out, has := stackOutputs.GetOk("out")
 				require.True(l, has, "expected stack output out")
-				assert.True(l, out.ContainsSecrets(), "expected stack output out to be secret: %v", out)
+				assert.True(l, out.HasSecrets(), "expected stack output out to be secret: %v", out)
 				assert.Equal(l, plainUnion, stripSecrets(out))
 			},
 		}},
@@ -109,22 +115,22 @@ func init() {
 
 // stripSecrets removes all secret markers from a property value, leaving the underlying values in
 // place.
-func stripSecrets(v resource.PropertyValue) resource.PropertyValue {
+func stripSecrets(v property.Value) property.Value {
+	v = v.WithSecret(false)
 	switch {
-	case v.IsSecret():
-		return stripSecrets(v.SecretValue().Element)
-	case v.IsObject():
-		obj := resource.PropertyMap{}
-		for k, e := range v.ObjectValue() {
+	case v.IsMap():
+		obj := map[string]property.Value{}
+		for k, e := range v.AsMap().AsMap() {
 			obj[k] = stripSecrets(e)
 		}
-		return resource.NewProperty(obj)
+		return property.New(obj)
 	case v.IsArray():
-		arr := make([]resource.PropertyValue, len(v.ArrayValue()))
-		for i, e := range v.ArrayValue() {
+		slice := v.AsArray().AsSlice()
+		arr := make([]property.Value, len(slice))
+		for i, e := range slice {
 			arr[i] = stripSecrets(e)
 		}
-		return resource.NewProperty(arr)
+		return property.New(arr)
 	}
 	return v
 }

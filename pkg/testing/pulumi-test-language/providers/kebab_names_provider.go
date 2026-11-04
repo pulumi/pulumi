@@ -248,6 +248,7 @@ func (p *KebabNamesProvider) Check(
 func (p *KebabNamesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	id := "id"
 	if req.Preview {
 		id = ""
@@ -255,30 +256,30 @@ func (p *KebabNamesProvider) Create(
 
 	switch typ := req.URN.Type(); typ {
 	case "kebab-names:kebab-module:some-resource":
-		nested, ok := req.Properties["nested"]
+		nested, ok := properties["nested"]
 		if !ok {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("missing nested property")
 		}
 		nestedValue := nested.ObjectValue()["nested-value"].StringValue()
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
-				"the-output": resource.NewProperty(resource.PropertyMap{
-					"nested-output": resource.NewProperty(nestedValue),
-				}),
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"the-output": property.New(property.NewMap(map[string]property.Value{
+					"nested-output": property.New(nestedValue),
+				})),
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	case "kebab-names:kebab-module:another-resource":
-		theInput, ok := req.Properties["the-input"]
+		theInput, ok := properties["the-input"]
 		if !ok {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("missing the-input property")
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
-				"the-input": theInput,
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"the-input": resource.FromResourcePropertyValue(theInput),
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	case tokens.RootStackType:

@@ -132,6 +132,7 @@ jobs:
           action: actions/upload-artifact@v7
           with: |
             name: artifacts-signatures
+            overwrite: true
             retention-days: 1
             path: |
               sigs.tmp/*

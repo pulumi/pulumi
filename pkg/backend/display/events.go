@@ -108,6 +108,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			PolicyPackVersionTag: p.PolicyPackVersion,
 			EnforcementLevel:     string(p.EnforcementLevel),
 			Severity:             string(p.Severity),
+			Exceptions:           p.Exceptions,
 		}
 
 	case engine.PolicyRemediationEvent:
@@ -236,6 +237,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			Metadata: convertStepEventMetadata(p.Metadata, showSecrets),
 			Status:   int(p.Status),
 			Steps:    int(p.Steps),
+			Awaited:  p.Awaited,
 		}
 
 	case engine.PolicyLoadEvent:
@@ -262,6 +264,10 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		apiEvent.ErrorEvent = &apitype.ErrorEvent{
 			Error: p.Error,
 		}
+
+	case engine.UpdateStartedEvent:
+		// Internal to in-process callers; it has no wire representation.
+		return apiEvent, fmt.Errorf("event type %q is not serializable", e.Type)
 
 	default:
 		return apiEvent, fmt.Errorf("unknown event type %q", e.Type)
@@ -407,6 +413,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyPackVersion: p.PolicyPackVersion,
 			EnforcementLevel:  apitype.EnforcementLevel(p.EnforcementLevel),
 			Severity:          apitype.PolicySeverity(p.Severity),
+			Exceptions:        p.Exceptions,
 		})
 
 	case apiEvent.PolicyRemediationEvent != nil:
@@ -503,6 +510,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			Metadata: convertJSONStepEventMetadata(p.Metadata),
 			Status:   resource.Status(p.Status),
 			Steps:    int32(p.Steps),
+			Awaited:  p.Awaited,
 		})
 
 	case apiEvent.PolicyLoadEvent != nil:

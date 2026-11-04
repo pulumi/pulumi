@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"pgregory.net/rapid"
 )
 
@@ -164,7 +165,7 @@ func (pcs ProviderCreateSpec) AsCreateF() func(context.Context, plugin.CreateReq
 
 		// To avoid having to randomly generate IDs here, we allow resources to specify an __id input that we'll use as the
 		// ID we return. ResourceSpec.AsResource makes use of this, for instance.
-		id := req.Properties["__id"].String()
+		id := req.Properties.Get("__id").GoString()
 		return plugin.CreateResponse{
 			ID:         resource.ID(id),
 			Properties: req.Properties,
@@ -346,7 +347,7 @@ func (prs ProviderReadSpec) AsReadF() func(context.Context, plugin.ReadRequest) 
 
 		return plugin.ReadResponse{
 			ReadResult: plugin.ReadResult{
-				Outputs: resource.PropertyMap{},
+				Outputs: new(property.Map{}),
 			},
 			Status: resource.StatusOK,
 		}, nil

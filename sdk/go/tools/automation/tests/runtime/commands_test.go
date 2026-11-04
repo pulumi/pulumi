@@ -22,10 +22,6 @@
 // surrounding tree stays green without needing the output/ tree to exist
 // yet. The outer generator tests regenerate output/ and spawn this package
 // with the tag enabled.
-// and the API singleton; running them in parallel provides no benefit and
-// just muddles the output.
-//
-//nolint:paralleltest // These tests share the generated output directory
 package runtime_test
 
 import (
@@ -56,6 +52,8 @@ func runStdout(t *testing.T, fn func() (stdout string, err error)) string {
 }
 
 func TestCancel_Empty(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.Cancel(t.Context(), nil)
@@ -68,6 +66,8 @@ func TestCancel_Empty(t *testing.T) {
 }
 
 func TestCancel_WithStackName(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.Cancel(t.Context(), new("my-stack"))
@@ -80,6 +80,8 @@ func TestCancel_WithStackName(t *testing.T) {
 }
 
 func TestCancel_WithStackFlag(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.Cancel(t.Context(), nil, optcancel.Stack("dev"))
@@ -92,6 +94,8 @@ func TestCancel_WithStackFlag(t *testing.T) {
 }
 
 func TestOrg_ExecutableMenu(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.Org(t.Context())
@@ -104,6 +108,8 @@ func TestOrg_ExecutableMenu(t *testing.T) {
 }
 
 func TestOrgGetDefault(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.OrgGetDefault(t.Context())
@@ -116,6 +122,8 @@ func TestOrgGetDefault(t *testing.T) {
 }
 
 func TestOrgSetDefault(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.OrgSetDefault(t.Context(), "my-org")
@@ -128,6 +136,8 @@ func TestOrgSetDefault(t *testing.T) {
 }
 
 func TestOrgSearch_RepeatableQuery(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.OrgSearch(
@@ -143,6 +153,8 @@ func TestOrgSearch_RepeatableQuery(t *testing.T) {
 }
 
 func TestOrgSearchAI_SingleQuery(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.OrgSearchAI(
@@ -158,6 +170,8 @@ func TestOrgSearchAI_SingleQuery(t *testing.T) {
 }
 
 func TestStateMove_VariadicOnly(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.StateMove(t.Context(), []string{"urn:1", "urn:2"})
@@ -170,6 +184,8 @@ func TestStateMove_VariadicOnly(t *testing.T) {
 }
 
 func TestStateMove_EmptyVariadic(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.StateMove(t.Context(), nil)
@@ -182,6 +198,8 @@ func TestStateMove_EmptyVariadic(t *testing.T) {
 }
 
 func TestStateMove_WithBooleanFlag(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.StateMove(
@@ -198,6 +216,8 @@ func TestStateMove_WithBooleanFlag(t *testing.T) {
 }
 
 func TestStateMove_WithSourceAndDest(t *testing.T) {
+	t.Parallel()
+
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.StateMove(

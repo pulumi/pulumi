@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -40,7 +41,11 @@ func NewAnalyzerServer(analyzer Analyzer) pulumirpc.AnalyzerServer {
 func (a *analyzerServer) Analyze(
 	ctx context.Context, req *pulumirpc.AnalyzeRequest,
 ) (*pulumirpc.AnalyzeResponse, error) {
-	props, err := UnmarshalProperties(req.GetProperties(), MarshalOptions{
+	raw, err := propertyrpc.Unmarshal(req.GetProperties())
+	if err != nil {
+		return nil, err
+	}
+	props, err := FilterProperties(raw, FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		SkipInternalKeys: true,
@@ -58,7 +63,7 @@ func (a *analyzerServer) Analyze(
 		URN:        resource.URN(req.GetUrn()),
 		Type:       tokens.Type(req.GetType()),
 		Name:       req.GetName(),
-		Properties: resource.FromResourcePropertyMap(props),
+		Properties: props,
 		Options:    convertResourceOptions(req.GetOptions()),
 		Provider:   provider,
 	})
@@ -77,7 +82,11 @@ func (a *analyzerServer) AnalyzeStack(
 ) (*pulumirpc.AnalyzeResponse, error) {
 	resources, err := slice.MapError(req.GetResources(),
 		func(r *pulumirpc.AnalyzerResource) (AnalyzerStackResource, error) {
-			props, err := UnmarshalProperties(r.GetProperties(), MarshalOptions{
+			raw, err := propertyrpc.Unmarshal(r.GetProperties())
+			if err != nil {
+				return AnalyzerStackResource{}, err
+			}
+			props, err := FilterProperties(raw, FilterOptions{
 				KeepUnknowns:     true,
 				KeepSecrets:      true,
 				SkipInternalKeys: true,
@@ -106,7 +115,7 @@ func (a *analyzerServer) AnalyzeStack(
 					URN:        resource.URN(r.GetUrn()),
 					Type:       tokens.Type(r.GetType()),
 					Name:       r.GetName(),
-					Properties: resource.FromResourcePropertyMap(props),
+					Properties: props,
 					Options:    convertResourceOptions(r.GetOptions()),
 					Provider:   provider,
 				},
@@ -135,10 +144,13 @@ func (a *analyzerServer) AnalyzeStack(
 func (a *analyzerServer) Remediate(
 	ctx context.Context, req *pulumirpc.AnalyzeRequest,
 ) (*pulumirpc.RemediateResponse, error) {
-	props, err := UnmarshalProperties(req.GetProperties(), MarshalOptions{
-		KeepUnknowns:     true,
-		KeepSecrets:      true,
-		SkipInternalKeys: false,
+	raw, err := propertyrpc.Unmarshal(req.GetProperties())
+	if err != nil {
+		return nil, err
+	}
+	props, err := FilterProperties(raw, FilterOptions{
+		KeepUnknowns: true,
+		KeepSecrets:  true,
 	})
 	if err != nil {
 		return nil, err
@@ -153,7 +165,7 @@ func (a *analyzerServer) Remediate(
 		URN:        resource.URN(req.GetUrn()),
 		Type:       tokens.Type(req.GetType()),
 		Name:       req.GetName(),
-		Properties: resource.FromResourcePropertyMap(props),
+		Properties: props,
 		Options:    convertResourceOptions(req.GetOptions()),
 		Provider:   provider,
 	})
@@ -162,12 +174,10 @@ func (a *analyzerServer) Remediate(
 	}
 
 	remediations, err := slice.MapError(res.Remediations, func(r Remediation) (*pulumirpc.Remediation, error) {
-		mprops, err := MarshalProperties(
-			resource.ToResourcePropertyMap(r.Properties), MarshalOptions{
-				KeepUnknowns:     true,
-				KeepSecrets:      true,
-				SkipInternalKeys: false,
-			})
+		filtered, err := FilterProperties(r.Properties, FilterOptions{
+			KeepUnknowns: true,
+			KeepSecrets:  true,
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +187,7 @@ func (a *analyzerServer) Remediate(
 			PolicyPackName:    r.PolicyPackName,
 			PolicyPackVersion: r.PolicyPackVersion,
 			Description:       r.Description,
-			Properties:        mprops,
+			Properties:        propertyrpc.Marshal(filtered),
 			Diagnostic:        r.Diagnostic,
 		}, nil
 	})
@@ -379,7 +389,11 @@ func convertProvider(p *pulumirpc.AnalyzerProviderResource) (*AnalyzerProviderRe
 		return nil, nil
 	}
 
-	props, err := UnmarshalProperties(p.Properties, MarshalOptions{
+	raw, err := propertyrpc.Unmarshal(p.Properties)
+	if err != nil {
+		return nil, err
+	}
+	props, err := FilterProperties(raw, FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		SkipInternalKeys: true,
@@ -392,7 +406,7 @@ func convertProvider(p *pulumirpc.AnalyzerProviderResource) (*AnalyzerProviderRe
 		URN:        resource.URN(p.Urn),
 		Type:       tokens.Type(p.Type),
 		Name:       p.Name,
-		Properties: resource.FromResourcePropertyMap(props),
+		Properties: props,
 	}, nil
 }
 

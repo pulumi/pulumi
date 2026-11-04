@@ -439,6 +439,7 @@ export function readResource(
                             resp = {
                                 getUrn: () => mockurn,
                                 getProperties: () => req.getProperties(),
+                                getResult: () => 0,
                                 getUnknown: () => false,
                             };
                         }
@@ -447,17 +448,42 @@ export function readResource(
                         resp = {
                             getUrn: () => "",
                             getProperties: () => undefined,
+                            getResult: () => 0,
                             getUnknown: () => false,
                         };
                     }
 
-                    // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
+                    // Now resolve everything: the URN, the ID, and the output properties.
                     resop.resolveURN(resp.getUrn(), err);
-                    resop.resolveID!(resolvedID, resolvedID !== undefined, err);
-                    // A skipped read reports Unknown=true; resolve outputs as unknown so dependents
-                    // propagate unknowns instead of seeing empty values as real.
+                    // Prefer the id returned by the provider's Read, which may differ from the id
+                    // supplied on the request (e.g. a provider that normalizes it to a canonical
+                    // form). An empty response id during preview means "unknown"; during update it
+                    // indicates an older engine that did not populate the field, in which case we
+                    // fall back to the request id for back-compat.
+                    const respID = resp.getId?.() || "";
+                    if (respID !== "") {
+                        resop.resolveID!(respID as ID, true, err);
+                    } else if (isDryRun()) {
+                        resop.resolveID!(undefined as any, false, err);
+                    } else {
+                        resop.resolveID!(resolvedID, resolvedID !== undefined, err);
+                    }
+                    // A skipped read reports Unknown=true and a failed read reports a non-success result;
+                    // resolve outputs as unknown in both cases so dependents propagate unknowns instead of
+                    // seeing empty values as real.
+                    const resultFailed = resp.getResult() !== resproto.Result.SUCCESS;
                     const unknown = !isDryRun() && resp.getUnknown();
-                    await resolveOutputs(res, t, name, props, resp.getProperties(), {}, resop.resolvers, err, unknown);
+                    await resolveOutputs(
+                        res,
+                        t,
+                        name,
+                        resultFailed ? {} : props,
+                        resultFailed ? undefined : resp.getProperties(),
+                        {},
+                        resop.resolvers,
+                        err,
+                        resultFailed || unknown,
+                    );
                     done();
                 });
             })
@@ -467,6 +493,107 @@ export function readResource(
                 throw err;
             }),
         label,
+    );
+}
+
+/**
+ * Checks whether a resource exists in the provider without actually reading or importing it.
+ */
+export function existsResource(
+    type: string,
+    id: Input<string>,
+    props?: Inputs,
+    opts?: CustomResourceOptions,
+    packageRef?: Promise<string | undefined>,
+): Output<boolean> {
+    opts = opts || {};
+
+    const label = `existsResource[${type}]`;
+    log.debug(`Checking resource existence: t=${type}`);
+
+    const idPromise = output(id).promise(true);
+
+    const resultPromise = debuggablePromise(
+        (async (): Promise<{ exists: boolean; known: boolean }> => {
+            const monitor = getMonitor();
+
+            const resolvedID = await serializeProperty(label, await idPromise, new Set(), {
+                keepOutputValues: false,
+            });
+
+            // During previews, if the ID is unknown, we can't check existence, so the result is unknown.
+            if (resolvedID === undefined) {
+                return { exists: false, known: false };
+            }
+
+            // Serialize properties if provided.
+            const serializedProps = props ? await serializeProperties(label, props, { keepOutputValues: false }) : {};
+
+            // Resolve provider reference.
+            let providerRef: string | undefined;
+            if (opts!.provider) {
+                const providerURN = await opts!.provider.urn.promise();
+                const providerID = (await opts!.provider.id.promise()) || "";
+                providerRef = `${providerURN}::${providerID}`;
+            }
+
+            // Resolve parent URN.
+            let parentURN = "";
+            if (opts!.parent) {
+                const parentOutput = getParentURN(opts!.parent);
+                parentURN = (await parentOutput.promise()) || "";
+            }
+
+            // Resolve package ref if available.
+            let packageRefStr: string | undefined;
+            if (packageRef !== undefined) {
+                packageRefStr = await packageRef;
+                if (packageRefStr !== undefined) {
+                    // If we have a package reference we don't need to pass the version or plugin download URL.
+                    opts!.version = "";
+                    opts!.pluginDownloadURL = "";
+                }
+            }
+
+            const req = new resproto.ExistsResourceRequest();
+            req.setType(type);
+            req.setId(resolvedID);
+            req.setParent(parentURN);
+            req.setProperties(gstruct.Struct.fromJavaScript(serializedProps));
+            req.setProvider(providerRef || "");
+            req.setVersion(opts!.version || "");
+            req.setPlugindownloadurl(opts!.pluginDownloadURL || "");
+            req.setPackageref(packageRefStr || "");
+
+            if (!monitor) {
+                // In test mode without a monitor, report a known existing resource.
+                return { exists: true, known: true };
+            }
+
+            const resp = await new Promise<resproto.ExistsResourceResponse>((resolve, reject) => {
+                monitor.existsResource(
+                    req,
+                    (rpcError: grpc.ServiceError | null, innerResponse: resproto.ExistsResourceResponse) => {
+                        if (rpcError) {
+                            reject(new Error(`failed to check existence of resource [${type}]: ${rpcError.message}`));
+                        } else {
+                            resolve(innerResponse);
+                        }
+                    },
+                );
+            });
+
+            return { exists: resp.getExists(), known: !resp.getUnknown() };
+        })(),
+        label,
+    );
+
+    return new Output<boolean>(
+        [],
+        resultPromise.then((r) => r.exists),
+        /*isKnown*/ resultPromise.then((r) => r.known),
+        /*isSecret*/ Promise.resolve(false),
+        /*allResources*/ Promise.resolve(new Set<Resource>()),
     );
 }
 
@@ -809,22 +936,17 @@ export function registerResource(
                         };
                     }
 
-                    // If the engine reported that the resource failed or was skipped, synthesize
-                    // an error so downstream outputs reject. This allows `pulumi.recover` to
-                    // intercept the failure.
+                    // If the engine reported that the resource failed, resolve all of its outputs as
+                    // unknown so the rest of the program can continue.
                     const resultFailed = resp.getResult() !== resproto.Result.SUCCESS;
-                    let effectiveErr = err;
-                    if (!effectiveErr && resultFailed) {
-                        effectiveErr = new Error(`resource ${name} [${t}] failed to register`);
-                    }
 
-                    resop.resolveURN(resp.getUrn(), effectiveErr);
+                    resop.resolveURN(resp.getUrn(), err);
 
                     // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
                     // undefined so that later parts of our system don't have to deal with values like 'null'.
                     if (resop.resolveID) {
                         const id = resp.getId() || undefined;
-                        resop.resolveID(id, id !== undefined, effectiveErr);
+                        resop.resolveID(id, id !== undefined, err);
                     }
 
                     const deps: Record<string, Resource[]> = {};
@@ -843,11 +965,11 @@ export function registerResource(
                         res,
                         t,
                         name,
-                        props,
-                        resp.getObject(),
+                        resultFailed ? {} : props,
+                        resultFailed ? undefined : resp.getObject(),
                         deps,
                         resop.resolvers,
-                        effectiveErr,
+                        err,
                         resultFailed || unknown,
                     );
                     done();
@@ -1308,7 +1430,9 @@ async function resolveOutputs(
     // outputs.  If the same property exists in the inputs and outputs states, the output wins.
     const allProps: Record<string, any> = {};
     if (outputs) {
-        Object.assign(allProps, deserializeProperties(outputs, keepUnknowns));
+        // Unknown outputs from the engine are always unknown, even during an update: a resource's outputs may
+        // depend on resources that failed or are awaiting.
+        Object.assign(allProps, deserializeProperties(outputs, true));
     }
 
     const label = `resource:${name}[${t}]#...`;

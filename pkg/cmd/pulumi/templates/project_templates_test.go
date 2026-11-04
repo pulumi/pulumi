@@ -18,8 +18,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/config"
+	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/object"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -433,7 +439,103 @@ func TestRetrieveFileTemplate(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest
+func TestRetrievePulumiTemplatesConcurrently(t *testing.T) {
+	source := t.TempDir()
+	repo, err := git.PlainInit(source, false)
+	require.NoError(t, err)
+	// go-git honors the user's commit.gpgSign, so turn it off for this scratch repo.
+	cfg, err := repo.Config()
+	require.NoError(t, err)
+	cfg.Commit.GpgSign = config.OptBoolFalse
+	require.NoError(t, repo.SetConfig(cfg))
+	require.NoError(t, os.WriteFile(filepath.Join(source, "Pulumi.yaml"), []byte("name: test\n"), 0o600))
+	worktree, err := repo.Worktree()
+	require.NoError(t, err)
+	_, err = worktree.Add("Pulumi.yaml")
+	require.NoError(t, err)
+	_, err = worktree.Commit("initial", &git.CommitOptions{
+		Author: &object.Signature{Name: "test", Email: "test@example.com", When: time.Now()},
+	})
+	require.NoError(t, err)
+	head, err := repo.Head()
+	require.NoError(t, err)
+
+	t.Setenv(env.TemplateGitRepository.Var().Name(), source)
+	t.Setenv(env.TemplateBranch.Var().Name(), head.Name().Short())
+	t.Setenv(env.TemplatePath.Var().Name(), filepath.Join(t.TempDir(), "templates"))
+
+	errs := make([]error, 8)
+	var wg sync.WaitGroup
+	for i := range errs {
+		wg.Go(func() {
+			_, errs[i] = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+		})
+	}
+	wg.Wait()
+	for _, err := range errs {
+		require.NoError(t, err)
+	}
+}
+
+func newTemplateSourceRepo(t *testing.T, source string) (*git.Repository, *git.Worktree) {
+	repo, err := git.PlainInit(source, false)
+	require.NoError(t, err)
+	cfg, err := repo.Config()
+	require.NoError(t, err)
+	cfg.Commit.GpgSign = config.OptBoolFalse
+	require.NoError(t, repo.SetConfig(cfg))
+	require.NoError(t, os.WriteFile(filepath.Join(source, "Pulumi.yaml"), []byte("name: test\n"), 0o600))
+	worktree, err := repo.Worktree()
+	require.NoError(t, err)
+	_, err = worktree.Add("Pulumi.yaml")
+	require.NoError(t, err)
+	_, err = worktree.Commit("initial", &git.CommitOptions{
+		Author: &object.Signature{Name: "test", Email: "test@example.com", When: time.Now()},
+	})
+	require.NoError(t, err)
+	return repo, worktree
+}
+
+func TestRetrievePulumiTemplatesPrefixURLChange(t *testing.T) {
+	root := t.TempDir()
+	internal := filepath.Join(root, "templates-internal")
+	public := filepath.Join(root, "templates")
+	repo, _ := newTemplateSourceRepo(t, internal)
+	newTemplateSourceRepo(t, public)
+	head, err := repo.Head()
+	require.NoError(t, err)
+
+	templateDir := filepath.Join(t.TempDir(), "templates")
+	t.Setenv(env.TemplateBranch.Var().Name(), head.Name().Short())
+	t.Setenv(env.TemplatePath.Var().Name(), templateDir)
+
+	t.Setenv(env.TemplateGitRepository.Var().Name(), internal)
+	_, err = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+	require.NoError(t, err)
+
+	t.Setenv(env.TemplateGitRepository.Var().Name(), public)
+	_, err = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+	require.NoError(t, err)
+
+	cache, err := git.PlainOpen(templateDir)
+	require.NoError(t, err)
+	remote, err := cache.Remote("origin")
+	require.NoError(t, err)
+	require.Equal(t, []string{public}, remote.Config().URLs)
+}
+
+func TestNormalizeTemplateRepoURL(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t,
+		normalizeTemplateRepoURL("https://github.com/pulumi/templates.git"),
+		normalizeTemplateRepoURL("https://user:pass@github.com/pulumi/templates.git"))
+
+	abs, err := filepath.Abs("templates")
+	require.NoError(t, err)
+	require.Equal(t, normalizeTemplateRepoURL(abs), normalizeTemplateRepoURL("templates"))
+}
+
 func TestCopyTemplateFiles(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -479,12 +581,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("Copy "+tt.testName+": force=false", func(t *testing.T) {
-			testDataDir := "CopyTemplateFilesTestData-Copy"
+			t.Parallel()
 
-			defer func() {
-				err := os.RemoveAll(testDataDir)
-				require.NoError(t, err)
-			}()
+			testDataDir := t.TempDir()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
@@ -495,12 +594,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("Copy "+tt.testName+": force=true", func(t *testing.T) {
-			testDataDir := "CopyTemplateFilesTestData-CopyForce"
+			t.Parallel()
 
-			defer func() {
-				err := os.RemoveAll(testDataDir)
-				require.NoError(t, err)
-			}()
+			testDataDir := t.TempDir()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
@@ -511,12 +607,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("Overwrite "+tt.testName+": force=false", func(t *testing.T) {
-			testDataDir := "CopyTemplateFilesTestData-Overwrite"
+			t.Parallel()
 
-			defer func() {
-				err := os.RemoveAll(testDataDir)
-				require.NoError(t, err)
-			}()
+			testDataDir := t.TempDir()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
@@ -530,12 +623,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("Overwrite "+tt.testName+": force=true", func(t *testing.T) {
-			testDataDir := "CopyTemplateFilesTestData-OverwriteForce"
+			t.Parallel()
 
-			defer func() {
-				err := os.RemoveAll(testDataDir)
-				require.NoError(t, err)
-			}()
+			testDataDir := t.TempDir()
 
 			projectDir, copyDestDir := setupTestData(t, testDataDir, tt.files, tt.directories)
 
@@ -548,12 +638,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 	}
 
 	t.Run("Overwrite directory over file: force=false", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteDirectoryOverFile"
+		t.Parallel()
 
-		defer func() {
-			err := os.RemoveAll(testDataDir)
-			require.NoError(t, err)
-		}()
+		testDataDir := t.TempDir()
 
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
@@ -576,12 +663,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 	})
 
 	t.Run("Overwrite directory over file: force=true", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteDirectoryOverFileForce"
+		t.Parallel()
 
-		defer func() {
-			err := os.RemoveAll(testDataDir)
-			require.NoError(t, err)
-		}()
+		testDataDir := t.TempDir()
 
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
@@ -604,12 +688,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 	})
 
 	t.Run("Overwrite file over empty directory: force=false", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverEmptyDirectory"
+		t.Parallel()
 
-		defer func() {
-			err := os.RemoveAll(testDataDir)
-			require.NoError(t, err)
-		}()
+		testDataDir := t.TempDir()
 
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
@@ -632,12 +713,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 	})
 
 	t.Run("Overwrite file over empty directory: force=true", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverEmptyDirectoryForce"
+		t.Parallel()
 
-		defer func() {
-			err := os.RemoveAll(testDataDir)
-			require.NoError(t, err)
-		}()
+		testDataDir := t.TempDir()
 
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
@@ -660,12 +738,9 @@ func TestCopyTemplateFiles(t *testing.T) {
 	})
 
 	t.Run("Overwrite file over non-empty directory: force=true", func(t *testing.T) {
-		testDataDir := "CopyTemplateFilesTestData-OverwriteFileOverNonEmptyDirectoryWithForce"
+		t.Parallel()
 
-		defer func() {
-			err := os.RemoveAll(testDataDir)
-			require.NoError(t, err)
-		}()
+		testDataDir := t.TempDir()
 
 		directories := []string{"src"}
 		files := []string{"src/main.go", "Pulumi.yaml", "Pulumi.dev.yaml"}
@@ -690,4 +765,55 @@ func TestCopyTemplateFiles(t *testing.T) {
 		err = CopyTemplateFiles(projectDir, copyDestDir, true, "testProjectName", "testProjectDescription")
 		require.NoError(t, err)
 	})
+}
+
+func TestRetrievePulumiTemplatesBranchChange(t *testing.T) {
+	source := t.TempDir()
+	repo, worktree := newTemplateSourceRepo(t, source)
+	head, err := repo.Head()
+	require.NoError(t, err)
+
+	feature := plumbing.NewBranchReferenceName("feature")
+	require.NoError(t, worktree.Checkout(&git.CheckoutOptions{Branch: feature, Create: true}))
+	featureCommit, err := worktree.Commit("feature", &git.CommitOptions{
+		Author:            &object.Signature{Name: "test", Email: "test@example.com", When: time.Now()},
+		AllowEmptyCommits: true,
+	})
+	require.NoError(t, err)
+	require.NoError(t, worktree.Checkout(&git.CheckoutOptions{Branch: head.Name()}))
+
+	templateDir := filepath.Join(t.TempDir(), "templates")
+	t.Setenv(env.TemplateGitRepository.Var().Name(), source)
+	t.Setenv(env.TemplatePath.Var().Name(), templateDir)
+
+	t.Setenv(env.TemplateBranch.Var().Name(), head.Name().Short())
+	_, err = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+	require.NoError(t, err)
+	marker := filepath.Join(templateDir, ".git", "marker")
+	require.NoError(t, os.WriteFile(marker, nil, 0o600))
+
+	t.Setenv(env.TemplateBranch.Var().Name(), feature.Short())
+	_, err = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+	require.NoError(t, err)
+
+	cache, err := git.PlainOpen(templateDir)
+	require.NoError(t, err)
+	cacheHead, err := cache.Head()
+	require.NoError(t, err)
+	require.Equal(t, feature, cacheHead.Name())
+	require.Equal(t, featureCommit, cacheHead.Hash())
+	require.FileExists(t, marker)
+
+	require.NoError(t, worktree.Checkout(&git.CheckoutOptions{Branch: feature}))
+	featureCommit, err = worktree.Commit("feature 2", &git.CommitOptions{
+		Author:            &object.Signature{Name: "test", Email: "test@example.com", When: time.Now()},
+		AllowEmptyCommits: true,
+	})
+	require.NoError(t, err)
+
+	_, err = retrievePulumiTemplates(t.Context(), false, TemplateKindPulumiProject)
+	require.NoError(t, err)
+	cacheHead, err = cache.Head()
+	require.NoError(t, err)
+	require.Equal(t, featureCommit, cacheHead.Hash())
 }

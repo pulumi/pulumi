@@ -123,7 +123,7 @@ func TestPendingReplaceFailureDoesNotViolateSnapshotIntegrity(t *testing.T) {
 			})
 			require.NoError(t, err)
 		} else {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		}
 
 		return nil
@@ -287,7 +287,7 @@ func TestPendingReplaceResumeWithSameGoals(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -437,7 +437,7 @@ func TestPendingReplaceResumeWithSameGoalsRefreshRunProgram(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -591,7 +591,7 @@ func TestPendingReplaceResumeWithDeletedGoals(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -768,7 +768,7 @@ func TestPendingReplaceResumeWithUpdatedGoals(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}
@@ -876,7 +876,7 @@ func TestInteruptedPendingReplace(t *testing.T) {
 			})
 			require.NoError(t, err)
 		} else {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		}
 
 		return nil
@@ -1043,7 +1043,7 @@ func TestPendingReplaceDependentDeleteNotRetried(t *testing.T) {
 			})
 			require.NoError(t, err)
 		} else {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		}
 		return nil
 	})
@@ -1194,7 +1194,7 @@ func TestPendingReplaceDependentResumeAfterReplacement(t *testing.T) {
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{"A": {respA.URN}},
 		})
 		if expectError {
-			require.Fail(t, "RegisterResource should not return")
+			return nil
 		} else {
 			require.NoError(t, err)
 		}

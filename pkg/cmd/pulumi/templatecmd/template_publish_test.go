@@ -268,6 +268,7 @@ runtime: nodejs
 				},
 				LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 					url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+					_ ...cmdBackend.LoginOption,
 				) (backend.Backend, error) {
 					return mockBackend, nil
 				},
@@ -311,6 +312,7 @@ func TestTemplatePublishCmd_BackendErrors(t *testing.T) {
 					},
 					LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 						url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+						_ ...cmdBackend.LoginOption,
 					) (backend.Backend, error) {
 						return mockBackend, nil
 					},
@@ -430,6 +432,7 @@ func TestTemplatePublishCmd_RelativePathBug(t *testing.T) {
 		},
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 			url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+			_ ...cmdBackend.LoginOption,
 		) (backend.Backend, error) {
 			return mockBackend, nil
 		},
@@ -572,6 +575,7 @@ dist/
 				},
 				LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
 					url string, project *workspace.Project, setCurrent bool, insecure bool, color colors.Colorization,
+					_ ...cmdBackend.LoginOption,
 				) (backend.Backend, error) {
 					return mockBackend, nil
 				},

@@ -1,0 +1,3 @@
+name: java-smoke
+runtime: java
+description: A minimal Java program with no resources, used to smoke test that the engine downloads and runs the pulumi-language-java runtime.

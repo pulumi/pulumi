@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type SyncProvider struct {
@@ -113,7 +114,7 @@ func (p *SyncProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: resource.PropertyMap{},
+		Properties: property.Map{},
 		Status:     resource.StatusOK,
 	}, nil
 }

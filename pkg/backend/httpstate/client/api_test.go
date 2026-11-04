@@ -19,8 +19,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"os"
+	"os/exec"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -29,8 +34,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -134,7 +141,7 @@ func TestHTTPClientUserAgent(t *testing.T) {
 
 	var inReq *http.Request
 	client := &defaultHTTPClient{
-		&http.Client{
+		client: &http.Client{
 			Transport: &errorTransport{
 				roundTripFunc: func(req *http.Request) (*http.Response, error) {
 					inReq = req
@@ -203,7 +210,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 			Message: "Unauthorized",
 		})
 		httpClient := &defaultHTTPClient{
-			&http.Client{
+			client: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -247,7 +254,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 				},
 			})
 			httpClient := &defaultHTTPClient{
-				&http.Client{
+				client: &http.Client{
 					Transport: &errorTransport{
 						roundTripFunc: func(req *http.Request) (*http.Response, error) {
 							return &http.Response{
@@ -279,7 +286,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 		t.Parallel()
 
 		httpClient := &defaultHTTPClient{
-			&http.Client{
+			client: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -315,7 +322,7 @@ func TestCall_RefreshOn401(t *testing.T) {
 	newRESTClient := func(rt func(req *http.Request) (*http.Response, error)) *defaultRESTClient {
 		return &defaultRESTClient{
 			client: &defaultHTTPClient{
-				&http.Client{Transport: &errorTransport{roundTripFunc: rt}},
+				client: &http.Client{Transport: &errorTransport{roundTripFunc: rt}},
 			},
 		}
 	}
@@ -524,7 +531,7 @@ func TestDoCreatesPerAttemptSpans(t *testing.T) {
 		})
 
 		client := &defaultHTTPClient{
-			&http.Client{
+			client: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
 						return &http.Response{
@@ -565,7 +572,7 @@ func TestDoCreatesPerAttemptSpans(t *testing.T) {
 
 		var callCount atomic.Int32
 		client := &defaultHTTPClient{
-			&http.Client{
+			client: &http.Client{
 				Transport: &errorTransport{
 					roundTripFunc: func(req *http.Request) (*http.Response, error) {
 						n := callCount.Add(1)
@@ -608,6 +615,105 @@ func TestDoCreatesPerAttemptSpans(t *testing.T) {
 		assertSpanAttribute(t, attemptSpans[1], "http.status_code", int64(500))
 		assertSpanAttribute(t, attemptSpans[2], "http.status_code", int64(200))
 	})
+
+	t.Run("propagates each attempt span to the API", func(t *testing.T) {
+		recorder := tracetest.NewSpanRecorder()
+		tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder))
+		prevProvider := otel.GetTracerProvider()
+		prevPropagator := otel.GetTextMapPropagator()
+		otel.SetTracerProvider(tp)
+		otel.SetTextMapPropagator(propagation.TraceContext{})
+		t.Cleanup(func() {
+			otel.SetTracerProvider(prevProvider)
+			otel.SetTextMapPropagator(prevPropagator)
+		})
+
+		var mu sync.Mutex
+		var traceparents []string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			defer mu.Unlock()
+			traceparents = append(traceparents, r.Header.Get("traceparent"))
+			if len(traceparents) == 1 {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		}))
+		t.Cleanup(server.Close)
+
+		pc := NewClient(server.URL, "", false, nil)
+		require.NoError(t, pc.restCall(t.Context(), "GET", "/api/test", nil, nil, nil))
+
+		require.NoError(t, tp.ForceFlush(t.Context()))
+		attemptSpans := filterSpansByName(recorder.Ended(), "HTTP attempt")
+		require.Len(t, attemptSpans, 2)
+		expected := make([]string, 0, len(attemptSpans))
+		for _, span := range attemptSpans {
+			sc := span.SpanContext()
+			expected = append(expected, fmt.Sprintf("00-%s-%s-01", sc.TraceID(), sc.SpanID()))
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		assert.Equal(t, expected, traceparents)
+	})
+
+	t.Run("does not propagate to other hosts", func(t *testing.T) {
+		prevProvider := otel.GetTracerProvider()
+		prevPropagator := otel.GetTextMapPropagator()
+		otel.SetTracerProvider(sdktrace.NewTracerProvider())
+		otel.SetTextMapPropagator(propagation.TraceContext{})
+		t.Cleanup(func() {
+			otel.SetTracerProvider(prevProvider)
+			otel.SetTextMapPropagator(prevPropagator)
+		})
+
+		var header http.Header
+		other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			header = r.Header.Clone()
+		}))
+		t.Cleanup(other.Close)
+
+		pc := NewClient("https://api.example.com", "", false, nil)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, other.URL, nil)
+		require.NoError(t, err)
+		resp, err := pc.restClient.HTTPClient().Do(req, retryNone)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+
+		assert.Empty(t, header.Get("traceparent"))
+	})
+}
+
+// TestNoTraceparentWithoutOTel checks that the CLI sends no trace context when OTel is not set up.
+// A call to otel.SetTextMapPropagator changes the default global propagator for the rest of the
+// process, so the check runs in a new test process.
+func TestNoTraceparentWithoutOTel(t *testing.T) {
+	t.Parallel()
+
+	if os.Getenv("PULUMI_TEST_NO_OTEL") == "" {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestNoTraceparentWithoutOTel$", "-test.count=1", "-test.v")
+		cmd.Env = append(os.Environ(), "PULUMI_TEST_NO_OTEL=1")
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, string(out))
+		require.Contains(t, string(out), "--- PASS: TestNoTraceparentWithoutOTel")
+		return
+	}
+
+	var header http.Header
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header = r.Header.Clone()
+	}))
+	t.Cleanup(server.Close)
+
+	// A valid parent span context shows that the propagator, not a missing span, suppresses the header.
+	ctx := trace.ContextWithRemoteSpanContext(t.Context(), trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    trace.TraceID{1},
+		SpanID:     trace.SpanID{1},
+		TraceFlags: trace.FlagsSampled,
+	}))
+	pc := NewClient(server.URL, "", false, nil)
+	require.NoError(t, pc.restCall(ctx, "GET", "/api/test", nil, nil, nil))
+
+	assert.Empty(t, header.Get("traceparent"))
 }
 
 func filterSpansByName(spans []sdktrace.ReadOnlySpan, name string) []sdktrace.ReadOnlySpan {

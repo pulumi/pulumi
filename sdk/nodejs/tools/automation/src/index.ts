@@ -31,7 +31,7 @@ import {
 import type { Argument, Arguments, Command, Flag, PresetValue, Structure } from "./types";
 
 // Known collisions between the Pulumi CLI and the TypeScript keywords or globals.
-const reservedWords: string[] = ["options", "package"];
+const reservedWords: string[] = ["options", "package", "any", "boolean", "number", "string", "undefined"];
 
 /**
  * Strip omit/preset fields from a flag so that override information doesn't

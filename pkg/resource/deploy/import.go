@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -87,15 +88,15 @@ type Import struct {
 	// ProviderInputs holds the full inputs for this resource's explicit provider when it is not
 	// yet in state, as supplied by the import file's deprecated providerInputs section. Imports
 	// of providers themselves carry their configuration in Inputs instead.
-	ProviderInputs resource.PropertyMap
+	ProviderInputs property.Map
 
 	// Inputs holds input properties supplied for the resource, if any. When the provider's Read cannot
 	// return a property supplied here (e.g. a write-only attribute), the supplied value is used instead.
 	// For an import of a provider, Inputs is its configuration.
-	Inputs resource.PropertyMap
+	Inputs property.Map
 	// Outputs holds the full output state supplied for the resource, if any. When set, the resource is
 	// imported from these values directly and the provider's Read is skipped entirely.
-	Outputs resource.PropertyMap
+	Outputs property.Map
 
 	// True if this import should create an empty component resource. ID must not be set if this is used.
 	Component bool
@@ -189,10 +190,10 @@ func (noopEvent) StateMigrations() []StateMigrationFunction { return nil }
 
 type noopOutputsEvent resource.URN
 
-func (noopOutputsEvent) event()                        {}
-func (e noopOutputsEvent) URN() resource.URN           { return resource.URN(e) }
-func (noopOutputsEvent) Outputs() resource.PropertyMap { return resource.PropertyMap{} }
-func (noopOutputsEvent) Done()                         {}
+func (noopOutputsEvent) event()                {}
+func (e noopOutputsEvent) URN() resource.URN   { return resource.URN(e) }
+func (noopOutputsEvent) Outputs() property.Map { return property.Map{} }
+func (noopOutputsEvent) Done()                 {}
 
 type importer struct {
 	deployment *Deployment
@@ -510,12 +511,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 
 		// Use the full provider inputs from the import file instead of ambient config.
 		// Some providers (e.g. random) don't need any config, so Inputs may be nil.
-		var inputs resource.PropertyMap
-		if imp.Inputs != nil {
-			inputs = imp.Inputs.Copy()
-		} else {
-			inputs = resource.PropertyMap{}
-		}
+		inputs := resource.ToResourcePropertyMap(imp.Inputs)
 
 		// Overlay version/URL/checksums/parameterization from the Import if present and not already
 		// in inputs.
@@ -625,6 +621,7 @@ func (i *importer) importProviderURN(imp Import) (resource.URN, error) {
 // step is recorded in the snapshot's Extensions map, and dedupes so a provider is only parameterized
 // once per distinct extension even when multiple resources share it.
 func (i *importer) parameterizeExtensions(ctx context.Context, urnToReference map[resource.URN]string) error {
+	seen := map[extensionStepKey]bool{}
 	for _, imp := range i.deployment.imports {
 		if imp.Extension == nil {
 			continue
@@ -642,17 +639,20 @@ func (i *importer) parameterizeExtensions(ctx context.Context, urnToReference ma
 		if err != nil {
 			return fmt.Errorf("invalid provider reference %v: %w", providerRefStr, err)
 		}
-		provider, ok := i.deployment.providers.GetProvider(providerRef)
-		if !ok {
+		if _, ok := i.deployment.providers.GetProvider(providerRef); !ok {
 			return fmt.Errorf("provider %v not found for extension parameterization", providerRef)
 		}
 
 		extRef := apitype.ExtensionRef(hashExtension(*imp.Extension))
-		if _, created := i.deployment.LookupOrRegisterExtension(providerRef, extRef); created != nil {
-			if !i.executeSerial(ctx,
-				NewExtensionParameterizeStep(i.deployment, provider, extRef, *imp.Extension, created)) {
-				return i.executor.Errored()
-			}
+		key := extensionStepKey{providerRef, extRef}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		step := NewExtensionParameterizeStep(
+			i.deployment, providerRef, extRef, *imp.Extension, &promise.CompletionSource[struct{}]{})
+		if !i.executeSerial(ctx, step) {
+			return i.executor.Errored()
 		}
 	}
 	return nil
@@ -737,10 +737,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			contract.Assertf(ok, "provider reference for URN %v not found", providerURN)
 		}
 
-		inputs := imp.Inputs
-		if inputs == nil {
-			inputs = resource.PropertyMap{}
-		}
+		inputs := resource.ToResourcePropertyMap(imp.Inputs)
 
 		// Create the new desired state. Note that the resource is protected. Provider might be "" at this point.
 		new := pkgresource.NewState{
@@ -750,7 +747,7 @@ func (i *importer) importResources(ctx context.Context) error {
 			Delete:                  false,
 			ID:                      "",
 			Inputs:                  inputs,
-			Outputs:                 imp.Outputs,
+			Outputs:                 resource.ToResourcePropertyMap(imp.Outputs),
 			Parent:                  parent,
 			Protect:                 imp.Protect,
 			Taint:                   false,

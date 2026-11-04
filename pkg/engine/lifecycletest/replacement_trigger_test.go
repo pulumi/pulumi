@@ -262,7 +262,9 @@ func TestReplacementTriggerWithOutput(t *testing.T) {
 			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
 			ReplacementTrigger: value,
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 
@@ -360,7 +362,9 @@ func TestReplacementTriggerWithComputed(t *testing.T) {
 			Inputs:             resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
 			ReplacementTrigger: value,
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 

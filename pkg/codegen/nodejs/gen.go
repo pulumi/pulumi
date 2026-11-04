@@ -50,9 +50,9 @@ import (
 
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
-	MinimumValidSDKVersion string = "^3.142.0"
+	MinimumValidSDKVersion string = "^3.269.0"
 	// The minimum version of @pulumi/pulumi that supports parameterization.
-	MinimumValidParameterizationSDKVersion string = "^3.238.0"
+	MinimumValidParameterizationSDKVersion string = "^3.269.0"
 	MinimumTypescriptVersion               string = "^4.7.0"
 	MinimumNodeTypesVersion                string = "^20"
 )
@@ -392,6 +392,10 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 			base = tokenToName(ref.Function.Token) + "Result"
 		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
 			base = tokenToName(ref.Type.String())
+		case schema.DocRefKindProvider, schema.DocRefKindProviderProperty:
+			base = "Provider"
+		case schema.DocRefKindProviderInputProperty:
+			base = "ProviderArgs"
 		case schema.DocRefKindUnknown:
 			return "", false
 		}
@@ -402,9 +406,9 @@ func (mod *modContext) docRefResolver(selfRef schema.DocRef) func(schema.DocRef)
 
 		var property string
 		switch ref.Kind {
-		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType:
+		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType, schema.DocRefKindProvider:
 			return base, true
-		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty:
+		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty, schema.DocRefKindProviderProperty, schema.DocRefKindProviderInputProperty:
 			property = cgstrings.Camel(ref.Property)
 		}
 
@@ -702,6 +706,40 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, escape(r.DeprecationMessage))
 		}
 		fmt.Fprintf(w, "        return new %s(name, %s{ ...opts, id: id });\n", name, stateRef)
+		fmt.Fprintf(w, "    }\n")
+		fmt.Fprintf(w, "\n")
+	}
+
+	// Emit a static method to check if a resource exists unless this is a provider resource or ComponentResource.
+	if !r.IsProvider && !r.IsComponent {
+		fmt.Fprintf(w, "    /**\n")
+		fmt.Fprintf(w, "     * Check whether an existing %s resource with the given ID exists.\n", name)
+		fmt.Fprintf(w, "     *\n")
+		fmt.Fprintf(w, "     * @param id The _unique_ provider ID of the resource to check.\n")
+		if r.StateInputs != nil {
+			fmt.Fprintf(w, "     * @param state Any extra arguments used during the lookup.\n")
+		}
+		fmt.Fprintf(w, "     * @param opts Optional settings to control the behavior of the CustomResource.\n")
+		fmt.Fprintf(w, "     */\n")
+
+		stateParam, stateRef := "", "{}"
+		if r.StateInputs != nil {
+			stateParam, stateRef = fmt.Sprintf("state?: %s, ", stateType), "<any>state || {}"
+		}
+
+		def, err := r.PackageReference.Definition()
+		if err != nil {
+			return resourceFileInfo{}, err
+		}
+		existsPackageRef := "undefined"
+		if def.Parameterization != nil {
+			existsPackageRef = "utilities.getPackage()"
+		}
+
+		fmt.Fprintf(w, "    public static exists(id: pulumi.Input<string>, %sopts?: pulumi.%s): pulumi.Output<boolean> {\n",
+			stateParam, optionsType)
+		fmt.Fprintf(w, "        return pulumi.runtime.existsResource(\"%s\", id, %s, { ...opts }, %s);\n",
+			r.Token, stateRef, existsPackageRef)
 		fmt.Fprintf(w, "    }\n")
 		fmt.Fprintf(w, "\n")
 	}

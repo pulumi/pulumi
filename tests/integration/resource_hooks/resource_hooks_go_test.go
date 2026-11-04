@@ -42,7 +42,7 @@ func TestGoResourceHooks(t *testing.T) {
 		},
 		EditDirs: []integration.EditDir{{
 			Additive: true,
-			Dir:      filepath.Join("go", "step-2"),
+			Dir:      filepath.Join("go", "_step-2"),
 			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 				testutil.RequirePrinted(t, stack, "info", "beforeDelete was called with length = 10")
 			},

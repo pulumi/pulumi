@@ -121,6 +121,8 @@ type cloudStack struct {
 	tags map[apitype.StackTagName]string
 	// escConfigEnv caches if we expect this stack to have its config stored in an ESC environment.
 	escConfigEnv *string
+
+	managedEnv string
 }
 
 func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
@@ -137,6 +139,11 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 		escConfigEnv = &apistack.Config.Environment
 	}
 
+	var managedEnv string
+	if apistack.ManagedEnvironment != nil {
+		managedEnv = *apistack.ManagedEnvironment
+	}
+
 	// Now assemble all the pieces into a stack structure.
 	return &cloudStack{
 		ref: cloudBackendReference{
@@ -151,15 +158,17 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 		tags:             apistack.Tags,
 		b:                b,
 		escConfigEnv:     escConfigEnv,
+		managedEnv:       managedEnv,
 	}, nil
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
 
-// ConfigLocation returns the ESC environment of the stack config if applicable.
+// ConfigLocation reports the stack's remote-config and managed ESC environments, if any.
 func (s *cloudStack) ConfigLocation() backend.StackConfigLocation {
 	return backend.StackConfigLocation{
-		IsRemote: s.escConfigEnv != nil,
-		EscEnv:   s.escConfigEnv,
+		IsRemote:           s.escConfigEnv != nil,
+		EscEnv:             s.escConfigEnv,
+		ManagedEnvironment: s.managedEnv,
 	}
 }
 
@@ -288,8 +297,7 @@ func (css cloudStackSummary) LastUpdate() *time.Time {
 	if css.summary.LastUpdate == nil {
 		return nil
 	}
-	t := time.Unix(*css.summary.LastUpdate, 0)
-	return &t
+	return new(time.Unix(*css.summary.LastUpdate, 0))
 }
 
 func (css cloudStackSummary) ResourceCount() *int {

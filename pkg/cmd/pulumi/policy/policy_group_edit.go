@@ -19,15 +19,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"slices"
 	"strconv"
 	"strings"
 
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -37,12 +40,10 @@ import (
 )
 
 // policyGroupEditClient is the narrow subset of cloud-API operations the edit
-// command needs. UpdatePolicyGroup carries a single mutation per call; the
-// command issues one call per add/remove and one final GetPolicyGroup to
-// render the result.
+// command needs.
 type policyGroupEditClient interface {
-	UpdatePolicyGroup(
-		ctx context.Context, orgName, policyGroup string, req apitype.UpdatePolicyGroupRequest,
+	BatchUpdatePolicyGroup(
+		ctx context.Context, orgName, policyGroup string, reqs []cloudapitype.UpdatePolicyGroupRequest,
 	) error
 	GetPolicyGroup(
 		ctx context.Context, orgName, policyGroup string,
@@ -70,11 +71,11 @@ type policyGroupEditArgs struct {
 	removePolicyPack      []string
 	addInsightsAccount    []string
 	removeInsightsAccount []string
+	stackRule             string
+	accountRule           string
 
 	// changed records which of the mutation flags were set by the user.
-	// Keys are the flag names: "name", "add-stack", "remove-stack",
-	// "add-policy-pack", "remove-policy-pack", "add-insights-account",
-	// "remove-insights-account".
+	// Keys are the names in mutationFlagNames.
 	changed map[string]bool
 }
 
@@ -96,16 +97,24 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 		Long: "[EXPERIMENTAL] Update a Policy Group's configuration.\n" +
 			"\n" +
 			"Renames a Policy Group, adds or removes stacks, applies or detaches\n" +
-			"Policy Packs, and adds or removes Insights accounts. At least one\n" +
-			"mutation flag must be provided.\n" +
+			"Policy Packs, adds or removes Insights accounts, and sets or removes\n" +
+			"match rules. At least one mutation flag must be provided.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
-			"full response as JSON.",
+			"full response as JSON.\n" +
+			"\n" +
+			matchRuleHelp,
 		Example: "  # Rename a Policy Group\n" +
 			"  pulumi policy group edit prod-policies --name production\n\n" +
 			"  # Add a stack and a Policy Pack to a group\n" +
 			"  pulumi policy group edit prod-policies " +
-			"--add-stack web/prod --add-policy-pack aws-guardrails@3",
+			"--add-stack web/prod --add-policy-pack aws-guardrails@3\n\n" +
+			"  # Replace the stack rule: stacks tagged env=prod, or any stack with a team tag\n" +
+			"  pulumi policy group edit prod-policies --stack-rule 'env=prod OR team'\n\n" +
+			"  # Set an account rule from a JSON file on an audit group\n" +
+			"  pulumi policy group edit compliance --account-rule \"$(cat account-rule.json)\"\n\n" +
+			"  # Remove the stack rule\n" +
+			"  pulumi policy group edit prod-policies --stack-rule ''",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			args.changed = changedFlagSet(cmd, mutationFlagNames)
 			return runPolicyGroupEdit(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
@@ -134,6 +143,12 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 		"Add an Insights account to the Policy Group (repeatable)")
 	cmd.Flags().StringArrayVar(&args.removeInsightsAccount, "remove-insights-account", nil,
 		"Remove an Insights account from the Policy Group (repeatable)")
+	cmd.Flags().StringVar(&args.stackRule, "stack-rule", "",
+		"Replace the stack match rule: tag conditions such as 'env=prod,team!=web OR owner', "+
+			"or a JSON expression. '' removes the rule")
+	cmd.Flags().StringVar(&args.accountRule, "account-rule", "",
+		"Replace the Insights account match rule, in the same syntax as --stack-rule. "+
+			"Audit groups only. '' removes the rule")
 
 	return cmd
 }
@@ -145,7 +160,13 @@ var mutationFlagNames = []string{
 	"add-stack", "remove-stack",
 	"add-policy-pack", "remove-policy-pack",
 	"add-insights-account", "remove-insights-account",
+	"stack-rule", "account-rule",
 }
+
+var errNoPolicyGroupChanges = errors.New(
+	"no changes specified; pass at least one of --name, --add-stack, --remove-stack, " +
+		"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account, " +
+		"--stack-rule, --account-rule")
 
 // changedFlagSet snapshots which of the named flags were set on the command
 // line. Cobra resets `.Changed` after parsing, so we capture it inside RunE.
@@ -203,21 +224,12 @@ func defaultPolicyGroupEditClientFactory(
 
 // runPolicyGroupEdit is the cobra-decoupled command body so tests can drive it
 // directly without spinning up the flag parser.
-//
-// The command issues a single batched PATCH. For each list field that the
-// user mutated (stacks, policy packs, insights accounts) we GET the current
-// group, apply the requested adds and removes, and send the resulting full
-// list in the PATCH body — the service interprets a list value in a PATCH
-// as a complete replacement of the prior list, so we cannot send isolated
-// "add this one" deltas for those fields without losing the others.
 func runPolicyGroupEdit(
 	ctx context.Context, w io.Writer,
 	factory policyGroupEditClientFactory, name string, args policyGroupEditArgs,
 ) error {
 	if !anyMutationRequested(args) {
-		return errors.New(
-			"no changes specified; pass at least one of --name, --add-stack, --remove-stack, " +
-				"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account")
+		return errNoPolicyGroupChanges
 	}
 
 	addStacks, removeStacks, err := parseStackReferences(args.addStack, args.removeStack)
@@ -228,49 +240,38 @@ func runPolicyGroupEdit(
 	if err != nil {
 		return err
 	}
+	stackRule, err := parseMatchRuleFlag(stackMatchRule, args.stackRule, args.changed)
+	if err != nil {
+		return err
+	}
+	accountRule, err := parseMatchRuleFlag(accountMatchRule, args.accountRule, args.changed)
+	if err != nil {
+		return err
+	}
+
+	updates := policyGroupUpdates(args, addStacks, removeStacks, addPacks, removePacks)
+	updates = append(updates, matchRuleUpdates(args, stackRule, accountRule)...)
+	if len(updates) == 0 {
+		return errNoPolicyGroupChanges
+	}
 
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
 	}
 
-	mutatesLists := args.changed["add-stack"] || args.changed["remove-stack"] ||
-		args.changed["add-policy-pack"] || args.changed["remove-policy-pack"] ||
-		args.changed["add-insights-account"] || args.changed["remove-insights-account"]
-
-	patch := apitype.UpdatePolicyGroupRequest{}
-	if args.changed["name"] {
-		nn := args.rename
-		patch.NewName = &nn
-	}
-
-	if mutatesLists {
-		// Read the current group so we can compute the post-edit lists.
-		current, err := c.GetPolicyGroup(ctx, org, name)
-		if err != nil {
-			return fmt.Errorf("reading policy group before edit: %w", err)
+	if err := c.BatchUpdatePolicyGroup(ctx, org, name, updates); err != nil {
+		// The service validates the whole batch, including that an account rule
+		// targets an audit group, before applying any of it.
+		if apiErr, ok := errors.AsType[*apitype.ErrorResponse](err); ok && apiErr.Code == http.StatusBadRequest {
+			return cmdCmd.ConfigurationError{Message: err.Error()}
 		}
-		if args.changed["add-stack"] || args.changed["remove-stack"] {
-			next := mergeStackList(current.Stacks, addStacks, removeStacks)
-			patch.Stacks = &next
-		}
-		if args.changed["add-policy-pack"] || args.changed["remove-policy-pack"] {
-			next := mergePolicyPackList(current.AppliedPolicyPacks, addPacks, removePacks)
-			patch.PolicyPacks = &next
-		}
-		if args.changed["add-insights-account"] || args.changed["remove-insights-account"] {
-			next := mergeStringList(current.Accounts, args.addInsightsAccount, args.removeInsightsAccount)
-			patch.InsightsAccounts = &next
-		}
-	}
-
-	if err := c.UpdatePolicyGroup(ctx, org, name, patch); err != nil {
 		return err
 	}
 
 	finalName := name
-	if patch.NewName != nil {
-		finalName = *patch.NewName
+	if args.changed["name"] {
+		finalName = args.rename
 	}
 	resp, err := c.GetPolicyGroup(ctx, org, finalName)
 	if err != nil {
@@ -278,6 +279,66 @@ func runPolicyGroupEdit(
 	}
 
 	return args.outputFormat.Get()(w, resp)
+}
+
+// policyGroupUpdates converts the requested edits into one update per
+// mutation, because the service reads only the singular fields of an update.
+func policyGroupUpdates(
+	args policyGroupEditArgs,
+	addStacks, removeStacks []apitype.PulumiStackReference,
+	addPacks, removePacks []apitype.PolicyPackMetadata,
+) []cloudapitype.UpdatePolicyGroupRequest {
+	var updates []cloudapitype.UpdatePolicyGroupRequest
+
+	if args.changed["name"] {
+		updates = append(updates, policyGroupUpdate(apitype.UpdatePolicyGroupRequest{NewName: &args.rename}))
+	}
+	for _, s := range addStacks {
+		updates = append(updates, policyGroupUpdate(apitype.UpdatePolicyGroupRequest{AddStack: &s}))
+	}
+	for _, s := range removeStacks {
+		updates = append(updates, policyGroupUpdate(apitype.UpdatePolicyGroupRequest{RemoveStack: &s}))
+	}
+	for _, a := range args.addInsightsAccount {
+		updates = append(updates, policyGroupUpdate(apitype.UpdatePolicyGroupRequest{
+			AddInsightsAccount: &apitype.InsightsAccountReference{Name: a},
+		}))
+	}
+	for _, a := range args.removeInsightsAccount {
+		updates = append(updates, policyGroupUpdate(apitype.UpdatePolicyGroupRequest{
+			RemoveInsightsAccount: &apitype.InsightsAccountReference{Name: a},
+		}))
+	}
+	for _, p := range addPacks {
+		updates = append(updates, policyGroupUpdate(apitype.UpdatePolicyGroupRequest{AddPolicyPack: &p}))
+	}
+	for _, p := range removePacks {
+		updates = append(updates, policyGroupUpdate(apitype.UpdatePolicyGroupRequest{RemovePolicyPack: &p}))
+	}
+	return updates
+}
+
+// matchRuleUpdates converts the rule flags into one update per rule change. A
+// rule flag passed with an empty value removes the rule.
+func matchRuleUpdates(
+	args policyGroupEditArgs, stackRule, accountRule cloudapitype.PermissionBooleanExpression,
+) []cloudapitype.UpdatePolicyGroupRequest {
+	var updates []cloudapitype.UpdatePolicyGroupRequest
+	if stackRule != nil {
+		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{StackMatchRule: stackRule})
+	} else if args.changed["stack-rule"] {
+		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{RemoveStackMatchRule: true})
+	}
+	if accountRule != nil {
+		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{AccountMatchRule: accountRule})
+	} else if args.changed["account-rule"] {
+		updates = append(updates, cloudapitype.UpdatePolicyGroupRequest{RemoveAccountMatchRule: true})
+	}
+	return updates
+}
+
+func policyGroupUpdate(u apitype.UpdatePolicyGroupRequest) cloudapitype.UpdatePolicyGroupRequest {
+	return cloudapitype.UpdatePolicyGroupRequest{AppUpdatePolicyGroupRequest: u}
 }
 
 // anyMutationRequested returns true when at least one of the mutation flags
@@ -327,62 +388,6 @@ func parsePolicyPackRefs(adds, removes []string) ([]apitype.PolicyPackMetadata, 
 		parsedRemoves = append(parsedRemoves, meta)
 	}
 	return parsedAdds, parsedRemoves, nil
-}
-
-// mergeStackList returns the current stacks plus adds, minus any that match a
-// removal. Equality is by RoutingProject + Name.
-func mergeStackList(
-	current []apitype.PulumiStackReference,
-	adds, removes []apitype.PulumiStackReference,
-) []apitype.PulumiStackReference {
-	stackEq := func(a, b apitype.PulumiStackReference) bool {
-		return a.Name == b.Name && a.RoutingProject == b.RoutingProject
-	}
-	out := slices.Clone(current)
-	for _, r := range removes {
-		out = slices.DeleteFunc(out, func(s apitype.PulumiStackReference) bool { return stackEq(s, r) })
-	}
-	for _, a := range adds {
-		if !slices.ContainsFunc(out, func(s apitype.PulumiStackReference) bool { return stackEq(s, a) }) {
-			out = append(out, a)
-		}
-	}
-	return out
-}
-
-// mergePolicyPackList returns the current applied packs plus adds, minus any
-// that match a removal. Equality is by Name and version (Version + VersionTag).
-func mergePolicyPackList(
-	current []apitype.PolicyPackMetadata,
-	adds, removes []apitype.PolicyPackMetadata,
-) []apitype.PolicyPackMetadata {
-	packEq := func(a, b apitype.PolicyPackMetadata) bool {
-		return a.Name == b.Name && a.Version == b.Version && a.VersionTag == b.VersionTag
-	}
-	out := slices.Clone(current)
-	for _, r := range removes {
-		out = slices.DeleteFunc(out, func(p apitype.PolicyPackMetadata) bool { return packEq(p, r) })
-	}
-	for _, a := range adds {
-		if !slices.ContainsFunc(out, func(p apitype.PolicyPackMetadata) bool { return packEq(p, a) }) {
-			out = append(out, a)
-		}
-	}
-	return out
-}
-
-// mergeStringList returns current plus adds, minus any in removes.
-func mergeStringList(current, adds, removes []string) []string {
-	out := slices.Clone(current)
-	for _, r := range removes {
-		out = slices.DeleteFunc(out, func(s string) bool { return s == r })
-	}
-	for _, a := range adds {
-		if !slices.Contains(out, a) {
-			out = append(out, a)
-		}
-	}
-	return out
 }
 
 // parseStackReference splits "project/stack" into a PulumiStackReference. A

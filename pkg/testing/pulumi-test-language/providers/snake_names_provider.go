@@ -256,6 +256,7 @@ func (p *SnakeNamesProvider) Check(
 func (p *SnakeNamesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	id := "id"
 	if req.Preview {
 		id = ""
@@ -263,34 +264,34 @@ func (p *SnakeNamesProvider) Create(
 
 	switch typ := req.URN.Type(); typ {
 	case "snake_names:cool_module:some_resource":
-		nested, ok := req.Properties["nested"]
+		nested, ok := properties["nested"]
 		if !ok {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("missing nested property")
 		}
 		nestedValue := nested.ObjectValue()["nested_value"].StringValue()
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
-				"the_output": resource.NewProperty(resource.PropertyMap{
-					"someKey": resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty(resource.PropertyMap{
-							"nested_output": resource.NewProperty(nestedValue),
-						}),
+			Properties: property.NewMap(map[string]property.Value{
+				"the_output": property.New(property.NewMap(map[string]property.Value{
+					"someKey": property.New([]property.Value{
+						property.New(property.NewMap(map[string]property.Value{
+							"nested_output": property.New(nestedValue),
+						})),
 					}),
-				}),
-			},
+				})),
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	case "snake_names:cool_module:another_resource":
-		theInput, ok := req.Properties["the_input"]
+		theInput, ok := properties["the_input"]
 		if !ok {
 			return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("missing the_input property")
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.PropertyMap{
-				"the_input": theInput,
-			},
+			Properties: property.NewMap(map[string]property.Value{
+				"the_input": resource.FromResourcePropertyValue(theInput),
+			}),
 			Status: resource.StatusOK,
 		}, nil
 	case tokens.RootStackType:

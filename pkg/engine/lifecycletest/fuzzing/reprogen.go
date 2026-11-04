@@ -90,6 +90,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
 )
@@ -546,7 +547,7 @@ func writeSnapshotStatements(t require.TestingT, snapSpec *SnapshotSpec) func(g 
 
 					g.writeLinef("ID:                 \"%s\",", r.ID)
 
-					if r.Protect {
+					if r.Protect != nil && *r.Protect {
 						g.writeLine("Protect:            true,")
 					}
 
@@ -771,8 +772,8 @@ func writeResourceRegistrationStatements(t require.TestingT, rs []*ResourceSpec)
 						g.writeLine("// PendingReplacement: true,")
 					}
 
-					if r.Protect {
-						g.writeLine("Protect: new(true),")
+					if r.Protect != nil {
+						g.writeLinef("Protect: new(%v),", *r.Protect)
 					}
 					if r.RetainOnDelete {
 						g.writeLine("RetainOnDelete: new(true),")
@@ -984,7 +985,7 @@ func writeReadFStatements(provSpec *ProviderSpec) func(g *generator) {
 		g.writeBlock(
 			"return plugin.ReadResponse{",
 			func(g *generator) {
-				g.writeLine("ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},")
+				g.writeLine("ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},")
 				g.writeLine("Status: resource.StatusOK,")
 			},
 			"}, nil",

@@ -19,6 +19,7 @@ import (
 	"errors"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
@@ -62,6 +63,7 @@ type languageRuntime struct {
 	program          ProgramFunc
 	closed           bool
 	shutdown         func()
+	running          sync.WaitGroup
 }
 
 func (p *languageRuntime) Close() error {
@@ -84,6 +86,8 @@ func (p *languageRuntime) Run(
 	if p.closed {
 		return "", false, ErrLanguageRuntimeIsClosed
 	}
+	p.running.Add(1)
+	defer p.running.Done()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	monitor, err := dialMonitor(ctx, info.MonitorAddress)
@@ -189,7 +193,7 @@ func (p *languageRuntime) RunPlugin(ctx context.Context, info plugin.RunPluginIn
 }
 
 func (p *languageRuntime) GenerateProject(context.Context, string, string, string,
-	bool, string, map[string]string,
+	bool, string, string, map[string]string,
 ) (hcl.Diagnostics, error) {
 	return nil, errors.New("GenerateProject is not supported")
 }
@@ -201,7 +205,7 @@ func (p *languageRuntime) GeneratePackage(context.Context,
 }
 
 func (p *languageRuntime) GenerateProgram(
-	context.Context, map[string]string, string, bool,
+	context.Context, map[string]string, string, string, bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
 	return nil, nil, errors.New("GenerateProgram is not supported")
 }

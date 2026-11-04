@@ -41,9 +41,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("callResult", callEchoMap.ApplyT(func(call component.ComponentCallableEchoMapResult) (map[string]string, error) {
-			return call.StringMap, nil
-		}).(pulumi.StringMapOutput))
+		ctx.Export("callResult", callEchoMap.StringMap())
 		return nil
 	})
 }

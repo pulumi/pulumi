@@ -150,6 +150,7 @@ func (p *NamespacedProvider) Check(
 func (p *NamespacedProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "namespaced:index:Resource"
 	if req.URN.Type() != "namespaced:index:Resource" {
 		return plugin.CreateResponse{
@@ -164,7 +165,7 @@ func (p *NamespacedProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

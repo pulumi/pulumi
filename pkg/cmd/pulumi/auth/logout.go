@@ -21,6 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -96,6 +97,9 @@ func NewLogoutCmd(ws pkgWorkspace.Context) *cobra.Command {
 				fmt.Fprintln(cmd.OutOrStdout(), "Logged out of everything")
 			} else {
 				if cloudURL == "" {
+					if err := credentialhelper.ClearConfiguration(); err != nil && !workspace.IsUndecryptableCredentials(err) {
+						return err
+					}
 					cwd, err := os.Getwd()
 					if err != nil {
 						return fmt.Errorf("getting current working directory: %w", err)
@@ -185,9 +189,6 @@ func deleteAccount(cloudURL string) error {
 
 func credentialsContainAccount(creds workspace.Credentials, cloudURL string) bool {
 	if creds.Current == cloudURL {
-		return true
-	}
-	if _, ok := creds.AccessTokens[cloudURL]; ok {
 		return true
 	}
 	_, ok := creds.Accounts[cloudURL]

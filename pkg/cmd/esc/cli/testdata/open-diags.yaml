@@ -1,0 +1,14 @@
+run: esc env open default/test
+error: exit status 1
+environments:
+  test-user/default/test:
+    values:
+      foo: ${bar}
+
+---
+> esc env open default/test
+
+---
+> esc env open default/test
+test:2:12: unknown property "bar"
+Error: opening environment: too many errors

@@ -1255,8 +1255,9 @@ func appendLines(name string, lines []string) error {
 	return writer.Flush()
 }
 
-//nolint:paralleltest // mutates environment
 func TestPackageAddGo(t *testing.T) {
+	t.Parallel()
+
 	// xx move this
 	e := ptesting.NewEnvironment(t)
 
@@ -1294,9 +1295,9 @@ func TestPackageAddGo(t *testing.T) {
 // TestSourcePositionGo checks the source position that the Go SDK reports for a resource created
 // through a generated SDK. The position must be the line of user code that calls the generated
 // constructor or getter, not the line inside the generated function that calls the SDK.
-//
-//nolint:paralleltest // mutates environment
 func TestSourcePositionGo(t *testing.T) {
+	t.Parallel()
+
 	// `go build -trimpath` records a program's files relative to its module. That path has no
 	// volume, so the engine rejects it as not absolute and records no position on windows.
 	if runtime.GOOS == "windows" {
@@ -1391,8 +1392,9 @@ func getPluginVersion(e *ptesting.Environment, pluginName string) string {
 	return ""
 }
 
-//nolint:paralleltest // mutates environment
 func TestPackageAddGoParameterized(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 
 	var err error
@@ -1448,9 +1450,9 @@ func TestPackageAddGoParameterized(t *testing.T) {
 
 // Regression test for https://github.com/pulumi/pulumi/issues/21950: when an inline program runs more than once in the
 // same Go process, each run must register the parameterized package against its own engine.
-//
-//nolint:paralleltest // mutates environment
 func TestStaleParameterizedPackageRefGo(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("go", "stale-parameterized-packageref"))
@@ -1469,8 +1471,9 @@ func TestStaleParameterizedPackageRefGo(t *testing.T) {
 	assert.Contains(t, stdout, "Second preview succeeded")
 }
 
-//nolint:paralleltest // mutates environment
 func TestConvertTerraformProviderGo(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 
 	var err error
@@ -1502,8 +1505,9 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	assert.True(t, containsRename)
 }
 
-//nolint:paralleltest // mutates environment
 func TestConvertMultipleTerraformProviderGo(t *testing.T) {
+	t.Parallel()
+
 	e := ptesting.NewEnvironment(t)
 
 	var err error

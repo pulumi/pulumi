@@ -8,14 +8,9 @@
                 "non-interactive": { "omit": true },
                 "yes": { "omit": true, "preset": true },
                 "cwd": { "omit": true },
-                "emoji": { "omit": true }
+                "emoji": { "omit": true },
+                "coherence-window": { "omit": true }
             }
-        },
-        {
-            "path": ["env"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
         },
         {
             "path": ["neo"],
@@ -26,15 +21,15 @@
         {
             "path": ["about"],
             "propagate": false,
-            "exclude": true,
             "flags": {
-                "color": { "preset": "never", "omit": false }
+                "color": { "preset": "never", "omit": false },
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
             }
         },
         {
             "path": ["up"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -42,7 +37,6 @@
         {
             "path": ["refresh"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -97,7 +91,6 @@
         {
             "path": ["config"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "json": { "omit": true, "preset": true }
             }
@@ -105,31 +98,35 @@
         {
             "path": ["config", "get"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "env", "list"],
+            "propagate": false,
+            "flags": {
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
+            }
+        },
+        {
+            "path": ["config", "set"],
+            "propagate": false,
+            "flags": {
+                "override-import": { "omit": true }
             }
         },
         {
             "path": ["config", "set-all"],
             "propagate": false,
-            "exclude": true,
             "flags": {
-                "json": { "omit": true, "preset": true }
-            }
-        },
-        {
-            "path": ["config", "env", "ls"],
-            "propagate": false,
-            "exclude": true,
-            "flags": {
-                "json": { "omit": true, "preset": true }
+                "override-import": { "omit": true }
             }
         },
         {
             "path": ["config", "refresh"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "force": { "omit": true, "preset": true }
             }
@@ -137,7 +134,6 @@
         {
             "path": ["whoami"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "json": { "omit": true, "preset": true }
             }
@@ -151,31 +147,7 @@
             }
         },
         {
-            "path": ["ai"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["api"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["cloud"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["console"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["convert"],
             "propagate": true,
             "exclude": true,
             "flags": {}
@@ -235,12 +207,6 @@
             "flags": {}
         },
         {
-            "path": ["install"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["login"],
             "propagate": true,
             "exclude": true,
@@ -254,42 +220,20 @@
         },
         {
             "path": ["logs"],
-            "propagate": true,
+            "propagate": false,
             "exclude": true,
             "flags": {}
         },
         {
             "path": ["new"],
             "propagate": true,
-            "flags": {}
+            "flags": {
+                "esc-config": { "omit": true }
+            }
         },
         {
             "path": ["org"],
             "propagate": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "audit-log"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "member"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "role"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "usage"],
-            "propagate": true,
-            "exclude": true,
             "flags": {}
         },
         {
@@ -335,19 +279,7 @@
             "flags": {}
         },
         {
-            "path": ["schema"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["stack"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["state"],
             "propagate": true,
             "exclude": true,
             "flags": {}
@@ -359,19 +291,7 @@
             "flags": {}
         },
         {
-            "path": ["version"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["view-trace"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["watch"],
             "propagate": true,
             "exclude": true,
             "flags": {}

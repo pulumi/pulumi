@@ -29,11 +29,15 @@ import (
 var archiveType = reflect.TypeOf((*Archive)(nil)).Elem()
 
 // ArchiveInput is an input type that accepts Archive and ArchiveOutput values.
+// ArchiveInput values also satisfy AssetOrArchiveInput.
 type ArchiveInput interface {
 	Input
 
 	ToArchiveOutput() ArchiveOutput
 	ToArchiveOutputWithContext(ctx context.Context) ArchiveOutput
+
+	ToAssetOrArchiveOutput() AssetOrArchiveOutput
+	ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput
 }
 
 // ElementType returns the element type of this Input (Archive).
@@ -1197,11 +1201,15 @@ func ToArchiveMapMapMapOutput(in map[string]ArchiveMapMapOutput) ArchiveMapMapMa
 var assetType = reflect.TypeOf((*Asset)(nil)).Elem()
 
 // AssetInput is an input type that accepts Asset and AssetOutput values.
+// AssetInput values also satisfy AssetOrArchiveInput.
 type AssetInput interface {
 	Input
 
 	ToAssetOutput() AssetOutput
 	ToAssetOutputWithContext(ctx context.Context) AssetOutput
+
+	ToAssetOrArchiveOutput() AssetOrArchiveOutput
+	ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput
 }
 
 // ElementType returns the element type of this Input (Asset).
@@ -5796,6 +5804,7 @@ func ToFloat64MapMapMapOutput(in map[string]Float64MapMapOutput) Float64MapMapMa
 var idType = reflect.TypeOf((*ID)(nil)).Elem()
 
 // IDInput is an input type that accepts ID and IDOutput values.
+// IDInput values also satisfy StringInput.
 type IDInput interface {
 	Input
 
@@ -5804,6 +5813,12 @@ type IDInput interface {
 
 	ToIDPtrOutput() IDPtrOutput
 	ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput
+
+	ToStringOutput() StringOutput
+	ToStringOutputWithContext(ctx context.Context) StringOutput
+
+	ToStringPtrOutput() StringPtrOutput
+	ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput
 }
 
 // ElementType returns the element type of this Input (ID).
@@ -5831,6 +5846,14 @@ func (in ID) ToStringOutput() StringOutput {
 
 func (in ID) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return in.ToIDOutputWithContext(ctx).ToStringOutputWithContext(ctx)
+}
+
+func (in ID) ToStringPtrOutput() StringPtrOutput {
+	return in.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (in ID) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return in.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
 func (in ID) ToIDPtrOutput() IDPtrOutput {
@@ -5875,6 +5898,14 @@ func (o IDOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v ID) string {
 		return (string)(v)
 	}).(StringOutput)
+}
+
+func (o IDOutput) ToStringPtrOutput() StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o IDOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
 func (o IDOutput) ToIDPtrOutput() IDPtrOutput {
@@ -10668,6 +10699,7 @@ func ToStringMapMapMapOutput(in map[string]StringMapMapOutput) StringMapMapMapOu
 var urnType = reflect.TypeOf((*URN)(nil)).Elem()
 
 // URNInput is an input type that accepts URN and URNOutput values.
+// URNInput values also satisfy StringInput.
 type URNInput interface {
 	Input
 
@@ -10676,6 +10708,12 @@ type URNInput interface {
 
 	ToURNPtrOutput() URNPtrOutput
 	ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput
+
+	ToStringOutput() StringOutput
+	ToStringOutputWithContext(ctx context.Context) StringOutput
+
+	ToStringPtrOutput() StringPtrOutput
+	ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput
 }
 
 // ElementType returns the element type of this Input (URN).
@@ -10703,6 +10741,14 @@ func (in URN) ToStringOutput() StringOutput {
 
 func (in URN) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return in.ToURNOutputWithContext(ctx).ToStringOutputWithContext(ctx)
+}
+
+func (in URN) ToStringPtrOutput() StringPtrOutput {
+	return in.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (in URN) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return in.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
 func (in URN) ToURNPtrOutput() URNPtrOutput {
@@ -10747,6 +10793,14 @@ func (o URNOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v URN) string {
 		return (string)(v)
 	}).(StringOutput)
+}
+
+func (o URNOutput) ToStringPtrOutput() StringPtrOutput {
+	return o.ToStringPtrOutputWithContext(context.Background())
+}
+
+func (o URNOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
+	return o.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
 func (o URNOutput) ToURNPtrOutput() URNPtrOutput {

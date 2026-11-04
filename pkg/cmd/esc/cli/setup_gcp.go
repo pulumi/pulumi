@@ -145,7 +145,7 @@ func createGCPEnvironment(
 	if err := ensureProviderEnv(ctx, setup.env, ref, true); err != nil {
 		return err
 	}
-	return applyProviderUpdate(ctx, setup.env, ref, "", path, node, gcpLoginEnvVars(propertyPathRef(path)))
+	return applyProviderUpdate(ctx, setup.env, ref, "", "", path, node, gcpLoginEnvVars(propertyPathRef(path)))
 }
 
 func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
@@ -293,7 +293,10 @@ func newSetupGCPCmd(setup *setupCommand) *cobra.Command {
 			"roles/viewer (required for Discovery), or any other role; prompted for when omitted")
 	cmd.Flags().StringArrayVar(&projectIDs, "project-id", nil,
 		"a GCP `project` to set up (repeatable; prompted for when omitted)")
+	cmd.Flags().StringVarP(&orgName, "organization", "o", "", "the Pulumi organization to configure OIDC for")
+	// Deprecated: use -o/--organization
 	cmd.Flags().StringVar(&orgName, "org", "", "the Pulumi organization to configure OIDC for")
+	_ = cmd.Flags().MarkHidden("org")
 	cmd.Flags().BoolVar(&yes, "yes", false, "skip all confirmation prompts")
 	cmd.Flags().StringVar(&projectName, "project", "gcp-login",
 		"the ESC project that per-project environments are created in")

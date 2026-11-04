@@ -17,11 +17,16 @@ package policy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -29,7 +34,7 @@ import (
 // mockPolicyIssueGetClient stubs policyIssueGetClient. It returns a fixed
 // response (or error) and records the arguments it was called with.
 type mockPolicyIssueGetClient struct {
-	resp       apitype.PolicyIssue
+	resp       apitype.GetPolicyIssueResponse
 	err        error
 	gotOrg     string
 	gotIssueID string
@@ -37,11 +42,11 @@ type mockPolicyIssueGetClient struct {
 
 func (m *mockPolicyIssueGetClient) GetPolicyIssue(
 	_ context.Context, org, issueID string,
-) (apitype.PolicyIssue, error) {
+) (apitype.GetPolicyIssueResponse, error) {
 	m.gotOrg = org
 	m.gotIssueID = issueID
 	if m.err != nil {
-		return apitype.PolicyIssue{}, m.err
+		return apitype.GetPolicyIssueResponse{}, m.err
 	}
 	return m.resp, nil
 }
@@ -71,7 +76,7 @@ func samplePolicyIssue() apitype.PolicyIssue {
 		EntityID:      "prod",
 		EntityProject: "web",
 		Message:       "S3 bucket must not allow public access",
-		ObservedAt:    "2026-05-01T12:00:00Z",
+		ObservedAt:    new(time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)),
 	}
 }
 
@@ -79,7 +84,7 @@ func TestPolicyIssueGet_DefaultOutput(t *testing.T) {
 	t.Parallel()
 
 	buf := &bytes.Buffer{}
-	c := &mockPolicyIssueGetClient{resp: samplePolicyIssue()}
+	c := &mockPolicyIssueGetClient{resp: apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssue()}}
 	err := runPolicyIssueGet(t.Context(), buf,
 		stubPolicyIssueGetFactory(c, "acme"), "issue-1",
 		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
@@ -104,7 +109,7 @@ func TestPolicyIssueGet_JSONOutput(t *testing.T) {
 	t.Parallel()
 
 	buf := &bytes.Buffer{}
-	c := &mockPolicyIssueGetClient{resp: samplePolicyIssue()}
+	c := &mockPolicyIssueGetClient{resp: apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssue()}}
 	args := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
 	require.NoError(t, args.outputFormat.Set("json"))
 	err := runPolicyIssueGet(t.Context(), buf,
@@ -112,19 +117,27 @@ func TestPolicyIssueGet_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
-		"id": "issue-1",
-		"policyName": "no-public-buckets",
-		"policyPack": "aws-guardrails",
-		"policyPackTag": "1.2.0",
-		"level": "mandatory",
-		"severity": "high",
-		"resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
-		"resourceType": "aws:s3/bucket:Bucket",
-		"entityId": "prod",
-		"entityProject": "web",
-		"message": "S3 bucket must not allow public access",
-		"observedAt": "2026-05-01T12:00:00Z"
-	}`, buf.String())
+  "policyIssue": {
+    "id": "issue-1",
+    "entityType": "",
+    "entityProject": "web",
+    "entityId": "prod",
+    "policyPack": "aws-guardrails",
+    "policyPackTag": "1.2.0",
+    "policyName": "no-public-buckets",
+    "resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
+    "resourceProvider": "",
+    "resourceType": "aws:s3/bucket:Bucket",
+    "resourceName": "",
+    "message": "S3 bucket must not allow public access",
+    "observedAt": "2026-05-01T12:00:00Z",
+    "level": "mandatory",
+    "severity": "high",
+    "status": "",
+    "kind": "",
+    "priority": ""
+  }
+}`, buf.String())
 }
 
 func TestPolicyIssueGet_ClientError(t *testing.T) {
@@ -136,7 +149,7 @@ func TestPolicyIssueGet_ClientError(t *testing.T) {
 		stubPolicyIssueGetFactory(c, "acme"), "missing",
 		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
 	require.Error(t, err)
-	assert.Equal(t, "getting policy issue: not found", err.Error())
+	assert.Equal(t, "not found", err.Error())
 }
 
 func TestPolicyIssueGet_FactoryError(t *testing.T) {
@@ -148,4 +161,363 @@ func TestPolicyIssueGet_FactoryError(t *testing.T) {
 		"issue-1", policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
+}
+
+func TestPolicyIssueGet_NilTimestamps(t *testing.T) {
+	t.Parallel()
+
+	issue := samplePolicyIssue()
+	issue.ObservedAt = nil
+	issue.LastModified = nil
+
+	client := &mockPolicyIssueGetClient{resp: apitype.GetPolicyIssueResponse{PolicyIssue: issue}}
+	factory := stubPolicyIssueGetFactory(client, "acme")
+
+	var text bytes.Buffer
+	err := runPolicyIssueGet(t.Context(), &text, factory, "issue-1",
+		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
+	require.NoError(t, err)
+	assert.NotContains(t, text.String(), "Observed at")
+
+	var jsonOut bytes.Buffer
+	args := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
+	err = runPolicyIssueGet(t.Context(), &jsonOut, factory, "issue-1", args)
+	require.NoError(t, err)
+	assert.Contains(t, jsonOut.String(), `"observedAt": null`)
+	assert.NotContains(t, jsonOut.String(), "lastModified")
+}
+
+func runPolicyIssueGetAgainstServer(t *testing.T, issueJSON string, args policyIssueGetArgs) string {
+	t.Helper()
+	c := newPolicyIssueServerClient(t, func(*http.Request) string {
+		return `{"policyIssue": ` + issueJSON + `}`
+	})
+	buf := &bytes.Buffer{}
+	require.NoError(t, runPolicyIssueGet(t.Context(), buf, stubPolicyIssueGetFactory(c, "acme"), "issue-1", args))
+	return buf.String()
+}
+
+func TestPolicyIssueGet_UnknownEnumValues(t *testing.T) {
+	t.Parallel()
+
+	jsonArgs := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
+	require.NoError(t, jsonArgs.outputFormat.Set("json"))
+	var got struct {
+		PolicyIssue map[string]any `json:"policyIssue"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(runPolicyIssueGetAgainstServer(t, unknownEnumIssueJSON, jsonArgs)), &got))
+	assert.Equal(t, "future_status", got.PolicyIssue["status"])
+	assert.Equal(t, "future", got.PolicyIssue["severity"])
+
+	text := runPolicyIssueGetAgainstServer(t, unknownEnumIssueJSON,
+		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
+	assert.Contains(t, text, "Severity:            future\n")
+	assert.Contains(t, text, "Status:              future_status\n")
+}
+
+func TestPolicyIssueGet_Timestamps(t *testing.T) {
+	t.Parallel()
+
+	jsonArgs := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
+	require.NoError(t, jsonArgs.outputFormat.Set("json"))
+	out := runPolicyIssueGetAgainstServer(t, fractionalTimestampIssueJSON, jsonArgs)
+	assert.Contains(t, out, `"observedAt": "2026-10-01T12:34:56.789123Z"`)
+	assert.NotContains(t, out, "lastModified")
+
+	text := runPolicyIssueGetAgainstServer(t, fractionalTimestampIssueJSON,
+		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
+	assert.Equal(t, `ID:                  issue-1
+Policy pack:         aws-guardrails@3.1.0
+Policy:              s3-no-public
+Enforcement level:   mandatory
+Severity:            critical
+Status:              open
+Priority:            P1
+Kind:                audit
+Stack:               web/prod
+Resource URN:        urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets
+Resource type:       aws:s3/bucket:Bucket
+Observed at:         2026-10-01T12:34:56.789123Z
+Message:             Bucket must not allow public access & <must> be "private".
+`, text)
+}
+
+func TestPolicyIssueGet_JSON_Full(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	resp := apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssueFull()}
+	require.NoError(t, renderPolicyIssueGetJSON(&buf, resp))
+	got := buf.String()
+	assert.JSONEq(t, `{
+  "policyIssue": {
+    "id": "issue-1",
+    "entityType": "stack",
+    "entityProject": "web",
+    "entityId": "prod",
+    "policyPack": "aws-guardrails",
+    "policyPackTag": "3.1.0",
+    "policyName": "s3-no-public",
+    "resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets",
+    "resourceProvider": "aws",
+    "resourceType": "aws:s3/bucket:Bucket",
+    "resourceName": "assets",
+    "message": "Bucket must not allow public access & <must> be \"private\".",
+    "observedAt": "2026-03-04T05:06:07.123456Z",
+    "lastModified": "2026-03-05T06:07:08.5Z",
+    "level": "mandatory",
+    "severity": "critical",
+    "status": "open",
+    "kind": "audit",
+    "priority": "P1"
+  }
+}
+`, got)
+}
+
+func TestPolicyIssueGet_JSON_Minimal(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	resp := apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssueMinimal()}
+	require.NoError(t, renderPolicyIssueGetJSON(&buf, resp))
+	got := buf.String()
+	assert.JSONEq(t, `{
+  "policyIssue": {
+    "id": "issue-2",
+    "entityType": "",
+    "entityProject": "",
+    "entityId": "",
+    "policyPack": "tagging",
+    "policyPackTag": "",
+    "policyName": "require-owner",
+    "resourceURN": "",
+    "resourceProvider": "",
+    "resourceType": "",
+    "resourceName": "",
+    "observedAt": null,
+    "level": "advisory",
+    "severity": "",
+    "status": "",
+    "kind": "",
+    "priority": ""
+  }
+}
+`, got)
+}
+
+func TestPolicyIssueGet_Table(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	resp := apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssueFull()}
+	require.NoError(t, renderPolicyIssueGetText(&buf, resp))
+	got := buf.String()
+	assert.Equal(t, `ID:                  issue-1
+Policy pack:         aws-guardrails@3.1.0
+Policy:              s3-no-public
+Enforcement level:   mandatory
+Severity:            critical
+Status:              open
+Priority:            P1
+Kind:                audit
+Stack:               web/prod
+Resource URN:        urn:pulumi:prod::web::aws:s3/bucket:Bucket::assets
+Resource type:       aws:s3/bucket:Bucket
+Observed at:         2026-03-04T05:06:07.123456Z
+Message:             Bucket must not allow public access & <must> be "private".
+`, got)
+}
+
+func sampleFullPolicyIssueResponse() apitype.GetPolicyIssueResponse {
+	issue := samplePolicyIssue()
+	issue.Status = cloudapitype.PolicyIssueStatusOpen
+	issue.Kind = cloudapitype.PolicyIssueKindAudit
+	issue.Priority = cloudapitype.PolicyIssuePriorityP1
+	issue.AssignedTo = &apitype.UserInfo{GitHubLogin: "alice", Name: "Alice"}
+	issue.PolicyGroupName = new("prod")
+	issue.PolicyGroupType = new(apitype.PolicyGroupModeAudit)
+	return apitype.GetPolicyIssueResponse{
+		PolicyIssue: issue,
+		Policy: &apitype.Policy{
+			Name:             "no-public-buckets",
+			DisplayName:      "No public buckets",
+			Description:      "d",
+			RemediationSteps: "r",
+			URL:              "https://example.com/no-public-buckets",
+			Tags:             []string{"s3", "security"},
+			Framework: &apitype.PolicyComplianceFramework{
+				Name: "CIS", Version: "1.4", Reference: "2.1.5",
+			},
+		},
+	}
+}
+
+func renderPolicyIssueGetWith(t *testing.T, resp apitype.GetPolicyIssueResponse, format string) string {
+	t.Helper()
+	args := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
+	if format != "" {
+		require.NoError(t, args.outputFormat.Set(format))
+	}
+	buf := &bytes.Buffer{}
+	require.NoError(t, runPolicyIssueGet(t.Context(), buf,
+		stubPolicyIssueGetFactory(&mockPolicyIssueGetClient{resp: resp}, "acme"), "issue-1", args))
+	return buf.String()
+}
+
+func TestPolicyIssueGet_JSONFullDetails(t *testing.T) {
+	t.Parallel()
+
+	out := renderPolicyIssueGetWith(t, sampleFullPolicyIssueResponse(), "json")
+
+	var got struct {
+		PolicyIssue map[string]json.RawMessage `json:"policyIssue"`
+		Policy      json.RawMessage            `json:"policy"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(out), &got))
+	assert.JSONEq(t, `"open"`, string(got.PolicyIssue["status"]))
+	assert.JSONEq(t, `"p1"`, string(got.PolicyIssue["priority"]))
+	assert.JSONEq(t, `"audit"`, string(got.PolicyIssue["kind"]))
+	assert.JSONEq(t, `{"name": "Alice", "githubLogin": "alice", "avatarUrl": ""}`, string(got.PolicyIssue["assignedTo"]))
+	assert.JSONEq(t, `"prod"`, string(got.PolicyIssue["policyGroupName"]))
+	assert.JSONEq(t, `"audit"`, string(got.PolicyIssue["policyGroupType"]))
+	assert.JSONEq(t, `{
+		"name": "no-public-buckets",
+		"displayName": "No public buckets",
+		"description": "d",
+		"enforcementLevel": "",
+		"message": "",
+		"remediationSteps": "r",
+		"url": "https://example.com/no-public-buckets",
+		"tags": ["s3", "security"],
+		"framework": {"name": "CIS", "version": "1.4", "reference": "2.1.5"}
+	}`, string(got.Policy))
+}
+
+func TestPolicyIssueGet_TextFullDetails(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, `ID:                  issue-1
+Policy pack:         aws-guardrails@1.2.0
+Policy:              no-public-buckets
+Enforcement level:   mandatory
+Severity:            high
+Status:              open
+Priority:            p1
+Assignee:            alice
+Policy group:        prod (audit)
+Kind:                audit
+Stack:               web/prod
+Resource URN:        urn:pulumi:prod::web::aws:s3/bucket:Bucket::data
+Resource type:       aws:s3/bucket:Bucket
+Observed at:         2026-05-01T12:00:00Z
+Message:             S3 bucket must not allow public access
+Description:         d
+Remediation:         r
+Framework:           CIS 1.4 — 2.1.5
+More info:           https://example.com/no-public-buckets
+`, renderPolicyIssueGetWith(t, sampleFullPolicyIssueResponse(), ""))
+}
+
+func TestPolicyIssueGet_NullPolicy(t *testing.T) {
+	t.Parallel()
+
+	resp := apitype.GetPolicyIssueResponse{PolicyIssue: samplePolicyIssue()}
+
+	var got map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(renderPolicyIssueGetWith(t, resp, "json")), &got))
+	assert.NotContains(t, got, "policy")
+	var issue map[string]any
+	require.NoError(t, json.Unmarshal(got["policyIssue"], &issue))
+	assert.Equal(t, "no-public-buckets", issue["policyName"])
+
+	text := renderPolicyIssueGetWith(t, resp, "")
+	assert.NotContains(t, text, "Description:")
+	assert.NotContains(t, text, "Remediation:")
+	assert.NotContains(t, text, "Framework:")
+	assert.NotContains(t, text, "More info:")
+}
+
+func TestPolicyIssueGet_Unassigned(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name       string
+		assignedTo *apitype.UserInfo
+	}{
+		{"nil", nil},
+		{"empty login", &apitype.UserInfo{}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			resp := sampleFullPolicyIssueResponse()
+			resp.PolicyIssue.AssignedTo = tt.assignedTo
+
+			assert.NotContains(t, renderPolicyIssueGetWith(t, resp, ""), "Assignee:")
+		})
+	}
+}
+
+func TestPolicyIssueGet_MultilineRemediationIndented(t *testing.T) {
+	t.Parallel()
+
+	resp := sampleFullPolicyIssueResponse()
+	resp.Policy.RemediationSteps = "1. Open the bucket\n2. Block public access"
+	text := renderPolicyIssueGetWith(t, resp, "")
+	assert.Contains(t, text, "Remediation:         1. Open the bucket\n                     2. Block public access\n")
+}
+
+func TestPolicyIssueGet_MultilineTrimsSurroundingWhitespace(t *testing.T) {
+	t.Parallel()
+
+	resp := sampleFullPolicyIssueResponse()
+	resp.Policy.RemediationSteps = "\r\n1. Open the bucket\r\n2. Block public access\r\n"
+	text := renderPolicyIssueGetWith(t, resp, "")
+	assert.Contains(t, text, "Remediation:         1. Open the bucket\n                     2. Block public access\n")
+	assert.NotContains(t, text, "\r")
+	assert.NotContains(t, text, "Remediation:         \n")
+}
+
+func TestPolicyIssueGet_WhitespaceOnlyMultilineOmitted(t *testing.T) {
+	t.Parallel()
+
+	resp := sampleFullPolicyIssueResponse()
+	resp.PolicyIssue.Message = " \r\n "
+	resp.Policy.Description = "\n"
+	resp.Policy.RemediationSteps = "  "
+	text := renderPolicyIssueGetWith(t, resp, "")
+	assert.NotContains(t, text, "Message:")
+	assert.NotContains(t, text, "Description:")
+	assert.NotContains(t, text, "Remediation:")
+}
+
+func TestPolicyIssueGet_MultilineMessageIndented(t *testing.T) {
+	t.Parallel()
+
+	resp := sampleFullPolicyIssueResponse()
+	resp.PolicyIssue.Message = "Random strings must be at least 20 characters long.\r\n" +
+		"Short strings are easy to guess.\r\nRandomString length 8 is shorter than 20.\n"
+	text := renderPolicyIssueGetWith(t, resp, "")
+	assert.Contains(t, text, "Message:             Random strings must be at least 20 characters long.\n"+
+		"                     Short strings are easy to guess.\n"+
+		"                     RandomString length 8 is shorter than 20.\n"+
+		"Description:")
+	assert.NotContains(t, text, "\r")
+}
+
+func TestFormatPolicyFramework(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		framework apitype.PolicyComplianceFramework
+		want      string
+	}{
+		{apitype.PolicyComplianceFramework{Name: "CIS", Version: "1.4", Reference: "2.1.5"}, "CIS 1.4 — 2.1.5"},
+		{apitype.PolicyComplianceFramework{Name: "CIS", Version: "1.4"}, "CIS 1.4"},
+		{apitype.PolicyComplianceFramework{Name: "CIS", Reference: "2.1.5"}, "CIS — 2.1.5"},
+		{apitype.PolicyComplianceFramework{Reference: "2.1.5"}, "2.1.5"},
+		{apitype.PolicyComplianceFramework{}, ""},
+	} {
+		assert.Equal(t, tt.want, formatPolicyFramework(&tt.framework))
+	}
+	assert.Empty(t, formatPolicyFramework(nil))
 }

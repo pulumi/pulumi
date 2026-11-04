@@ -15,6 +15,7 @@
 package runtime
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -24,12 +25,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // evaluateLocals binds a program of local variables and evaluates each one with no
 // resources, invokes, or environment.
-func evaluateLocals(t *testing.T, source string) map[string]resource.PropertyValue {
+func evaluateLocals(t *testing.T, source string) map[string]property.Value {
 	parser := syntax.NewParser()
 	require.NoError(t, parser.ParseFile(strings.NewReader(source), "main.pp"))
 	require.False(t, parser.Diagnostics.HasErrors(), parser.Diagnostics.Error())
@@ -37,8 +39,8 @@ func evaluateLocals(t *testing.T, source string) map[string]resource.PropertyVal
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), diags.Error())
 
-	ectx := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil)
-	values := map[string]resource.PropertyValue{}
+	ectx := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil, nil)
+	values := map[string]property.Value{}
 	for _, node := range program.Nodes {
 		local := node.(*pcl.LocalVariable)
 		value, poison, diags := ectx.Evaluate(local.Definition.Value)
@@ -58,29 +60,102 @@ tuple = length([1, 2, 3])
 object = length({"a" = 1, "b" = 2})
 emptyObject = length({})
 map = length({for k, v in {"a" = 1, "b" = 2, "c" = 3} : k => v})
+optionalList = length(false ? null : [1])
 `)
-	assert.Equal(t, map[string]resource.PropertyValue{
-		"string":      resource.NewProperty(3.0),
-		"tuple":       resource.NewProperty(3.0),
-		"object":      resource.NewProperty(2.0),
-		"emptyObject": resource.NewProperty(0.0),
-		"map":         resource.NewProperty(3.0),
+	assert.Equal(t, map[string]property.Value{
+		"string":       property.New(3.0),
+		"tuple":        property.New(3.0),
+		"object":       property.New(2.0),
+		"emptyObject":  property.New(0.0),
+		"map":          property.New(3.0),
+		"optionalList": property.New(1.0),
+	}, values)
+}
+
+func TestEntries(t *testing.T) {
+	t.Parallel()
+
+	entry := func(key string, value property.Value) property.Value {
+		return property.New(map[string]property.Value{"key": property.New(key), "value": value})
+	}
+	indexedEntry := func(key float64, value property.Value) property.Value {
+		return property.New(map[string]property.Value{"key": property.New(key), "value": value})
+	}
+	list := func(entries ...property.Value) property.Value {
+		return property.New(append([]property.Value{}, entries...))
+	}
+	values := evaluateLocals(t, `
+uniform = entries({"a" = 1, "b" = 2})
+mixed = entries({"a" = [true], "b" = [true, false]})
+empty = entries({})
+tuple = entries([1, 2, 3])
+mixedTuple = entries([true, "hello"])
+emptyTuple = entries([])
+list = entries(range(3))
+emptyList = entries(range(0))
+`)
+	assert.Equal(t, map[string]property.Value{
+		"uniform": list(entry("a", property.New(1.0)), entry("b", property.New(2.0))),
+		"mixed": list(
+			entry("a", property.New([]property.Value{property.New(true)})),
+			entry("b", property.New([]property.Value{property.New(true), property.New(false)})),
+		),
+		"empty": list(),
+		"tuple": list(
+			indexedEntry(0, property.New(1.0)),
+			indexedEntry(1, property.New(2.0)),
+			indexedEntry(2, property.New(3.0)),
+		),
+		"mixedTuple": list(indexedEntry(0, property.New(true)), indexedEntry(1, property.New("hello"))),
+		"emptyTuple": list(),
+		"list": list(
+			indexedEntry(0, property.New(0.0)),
+			indexedEntry(1, property.New(1.0)),
+			indexedEntry(2, property.New(2.0)),
+		),
+		"emptyList": list(),
+	}, values)
+}
+
+// TestLookup checks that lookup returns the default unchanged when the key is absent. The conditional
+// evaluates to a cty map whose element type the default does not convert to.
+func TestLookup(t *testing.T) {
+	t.Parallel()
+
+	bools := func(bs ...bool) property.Value {
+		values := make([]property.Value, len(bs))
+		for i, b := range bs {
+			values[i] = property.New(b)
+		}
+		return property.New(values)
+	}
+	values := evaluateLocals(t, `
+present = lookup((true
+  ? {for k, v in {"a" = [false, false]} : k => v}
+  : {for i, x in [false] : "k${i}" => [false] if false}), "a", [true])
+absent = lookup((true
+  ? {for k, v in {"a" = [false, false]} : k => v}
+  : {for i, x in [false] : "k${i}" => [false] if false}), "b", [true])
+objectPresent = lookup({"a" = 1}, "a", "x")
+objectAbsent = lookup({"a" = 1}, "b", "x")
+`)
+	assert.Equal(t, map[string]property.Value{
+		"present":       bools(false, false),
+		"absent":        bools(true),
+		"objectPresent": property.New(1.0),
+		"objectAbsent":  property.New("x"),
 	}, values)
 }
 
 func TestRange(t *testing.T) {
 	t.Parallel()
 
-	// An empty cty list converts to a nil slice, so the empty case is built without make.
-	list := func(ns ...float64) resource.PropertyValue {
-		if len(ns) == 0 {
-			return resource.NewProperty([]resource.PropertyValue(nil))
-		}
-		values := make([]resource.PropertyValue, len(ns))
+	list := func(ns ...float64) property.Value {
+		values := make([]property.Value, len(ns))
 		for i, n := range ns {
-			values[i] = resource.NewProperty(n)
+			values[i] = property.New(n)
 		}
-		return resource.NewProperty(values)
+		return property.New(values)
 	}
 	values := evaluateLocals(t, `
 to = range(3)
@@ -89,11 +164,57 @@ empty = range(0)
 empty2 = range(3, 3)
 reversed = range(5, 2)
 `)
-	assert.Equal(t, map[string]resource.PropertyValue{
+	assert.Equal(t, map[string]property.Value{
 		"to":       list(0, 1, 2),
 		"fromTo":   list(2, 3, 4),
 		"empty":    list(),
 		"empty2":   list(),
 		"reversed": list(5, 4, 3),
 	}, values)
+}
+
+func TestResourceExists(t *testing.T) {
+	t.Parallel()
+
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(strings.NewReader(`
+exists = resourceExists("pkg:index:Resource", "existing")
+withState = resourceExists("pkg:index:Resource", "missing", { value = false })
+unknown = resourceExists("pkg:index:Resource", "unknowable")
+`), "main.pp"))
+	program, diags, err := pcl.BindProgram(parser.Files, schema.NewNullLoader())
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), diags.Error())
+
+	requests := map[string]*pulumirpc.ExistsResourceRequest{}
+	existsResource := func(
+		_ context.Context, req *pulumirpc.ExistsResourceRequest,
+	) (*pulumirpc.ExistsResourceResponse, error) {
+		requests[req.GetId()] = req
+		switch req.GetId() {
+		case "existing":
+			return &pulumirpc.ExistsResourceResponse{Exists: true}, nil
+		case "unknowable":
+			return &pulumirpc.ExistsResourceResponse{Unknown: true}, nil
+		default:
+			return &pulumirpc.ExistsResourceResponse{}, nil
+		}
+	}
+	ectx := NewEvalContext("", "", "", "", "", nil, nil, nil, nil, nil, existsResource)
+
+	values := map[string]property.Value{}
+	for _, node := range program.Nodes {
+		local := node.(*pcl.LocalVariable)
+		value, _, diags := ectx.Evaluate(local.Definition.Value)
+		require.False(t, diags.HasErrors(), "%s: %s", local.Name(), diags.Error())
+		values[local.Name()] = value
+	}
+
+	assert.Equal(t, property.New(true), values["exists"])
+	assert.Equal(t, property.New(false), values["withState"])
+	assert.True(t, values["unknown"].IsComputed())
+
+	assert.Equal(t, "pkg:index:Resource", requests["missing"].GetType())
+	assert.Equal(t, map[string]any{"value": false}, requests["missing"].GetProperties().AsMap())
+	assert.Empty(t, requests["existing"].GetProperties().AsMap())
 }

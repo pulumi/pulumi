@@ -554,6 +554,25 @@ config:
 	assert.Nil(t, secretString.Items)
 }
 
+func TestProjectLoadsConfigKeyNamedSecret(t *testing.T) {
+	t.Parallel()
+	projectContent := `
+name: test
+runtime: dotnet
+config:
+  secret:
+    type: string
+    secret: true
+  `
+
+	project, err := loadProjectFromText(t, projectContent)
+	require.NoError(t, err, "A config key named 'secret' should load like any other key")
+	secretKey, ok := project.Config["secret"]
+	require.True(t, ok, "should be able to read secret")
+	assert.Equal(t, "string", secretKey.TypeName())
+	assert.True(t, secretKey.Secret)
+}
+
 func TestNamespacedProjectConfigShouldNotBeExplicitlyTyped(t *testing.T) {
 	t.Parallel()
 	projectYaml := `
@@ -1884,4 +1903,62 @@ func TestPackageSpecLogValueRedactsCredentials(t *testing.T) {
 	require.NotContains(t, out, "sourcesecret")
 	require.NotContains(t, out, "downloadsecret")
 	require.Contains(t, out, "1.2.3", "non-secret fields should still be logged")
+}
+
+func TestEnvironmentDefinitionNode(t *testing.T) {
+	t.Parallel()
+
+	project, err := loadProjectFromText(t, "name: test\nruntime: yaml")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		contents        string
+		marshaler       encoding.Marshaler
+		wantErr         error
+		wantEnvironment string
+	}{
+		{name: "nil", contents: "{}", marshaler: encoding.YAML, wantErr: ErrNoManagedDefinition},
+		{name: "list", contents: "environment: [a, b]", marshaler: encoding.YAML, wantErr: ErrNoManagedDefinition},
+		{name: "empty list", contents: "environment: []", marshaler: encoding.YAML, wantErr: ErrNoManagedDefinition},
+		{name: "empty mapping", contents: "environment: {}", marshaler: encoding.YAML, wantErr: ErrNoManagedDefinition},
+		{name: "scalar", contents: "environment: a", marshaler: encoding.YAML, wantErr: ErrNoManagedDefinition},
+		{
+			name:      "JSON",
+			contents:  `{"environment": {"values": {"pulumiConfig": {"a": "b"}}}}`,
+			marshaler: encoding.JSON,
+			wantErr:   ErrJSONManagedDefinition,
+		},
+		{
+			name:            "mapping",
+			contents:        "environment:\n  imports: [a]\n  values:\n    pulumiConfig:\n      a: b\n",
+			marshaler:       encoding.YAML,
+			wantEnvironment: "imports:\n    - a\nvalues:\n    pulumiConfig:\n        a: b\n",
+		},
+		{
+			name:            "stack init placeholder",
+			contents:        "environment:\n  values:\n    pulumiConfig: {}\n",
+			marshaler:       encoding.YAML,
+			wantEnvironment: "values:\n    pulumiConfig: {}\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ps, err := LoadProjectStackBytes(diagtest.LogSink(t),
+				project, []byte(tt.contents), "Pulumi.dev.yaml", tt.marshaler)
+			require.NoError(t, err)
+
+			node, err := ps.Environment.DefinitionNode()
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, node)
+				return
+			}
+			require.NoError(t, err)
+			assert.Same(t, ps.Environment.node, node)
+			assert.Equal(t, tt.wantEnvironment, string(ps.EnvironmentBytes()))
+		})
+	}
 }

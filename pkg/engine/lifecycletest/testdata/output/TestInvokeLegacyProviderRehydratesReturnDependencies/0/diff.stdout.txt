@@ -1,0 +1,8 @@
+<{%fg 2%}>+ pkgA:m:A: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:A::a]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:B: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:B::b]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

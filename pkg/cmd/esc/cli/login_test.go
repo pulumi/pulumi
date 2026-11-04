@@ -17,6 +17,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	pulumi_workspace "github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,10 +70,12 @@ func (noCredsLoginManager) LoginWithOIDCToken(
 	return nil, errors.New("unauthorized")
 }
 
-func TestNoCreds(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
+func TestNoCreds(t *testing.T) {
+	t.Parallel()
 	esc := &escCommand{
-		ws:    mockWorkspace(pulumi_workspace.Credentials{}),
-		login: noCredsLoginManager(0),
+		stderr: io.Discard,
+		ws:     mockWorkspace(pulumi_workspace.Credentials{}),
+		login:  noCredsLoginManager(0),
 	}
 	err := esc.getCachedClient(t.Context())
 	assert.ErrorContains(t, err, "could not determine current cloud")
@@ -117,8 +121,10 @@ func (invalidatedCredsLoginManager) LoginWithOIDCToken(
 }
 
 // Test for https://github.com/pulumi/esc/issues/367
-func TestCurrentAccountButInvalidToken(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
+func TestCurrentAccountButInvalidToken(t *testing.T) {
+	t.Parallel()
 	esc := &escCommand{
+		stderr:  io.Discard,
 		command: "esc",
 		ws: mockWorkspace(pulumi_workspace.Credentials{
 			Current: "bobm",
@@ -194,6 +200,7 @@ func TestAgentModeUsesPulumiAPIAndLoginManagerWhenPulumiCredentialsUnreadable(t 
 
 	login := &provisioningLoginManager{}
 	esc := &escCommand{
+		stderr:  io.Discard,
 		command: "esc",
 		login:   login,
 		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
@@ -225,6 +232,7 @@ func TestPulumiBackendURLEnvOverridesPulumiAPI(t *testing.T) {
 
 	login := &provisioningLoginManager{}
 	esc := &escCommand{
+		stderr:  io.Discard,
 		command: "esc",
 		login:   login,
 		newClient: func(userAgent, backendURL, accessToken string, insecure bool) client.Client {
@@ -245,8 +253,38 @@ func TestPulumiBackendURLEnvOverridesPulumiAPI(t *testing.T) {
 	assert.Contains(t, login.accounts, "http://localhost:8081")
 }
 
-func TestInvalidSelfHostedBackend(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
-	esc := &escCommand{ws: mockWorkspace(pulumi_workspace.Credentials{
+func TestBackendEnvironmentDoesNotChangeCurrent(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+	const backendURL = "https://api.example.com/"
+	t.Setenv("PULUMI_BACKEND_URL", backendURL)
+	account := pulumi_workspace.Account{Username: "user", AccessToken: "token"}
+	creds := pulumi_workspace.Credentials{
+		Current: "https://saved.example.com",
+		Accounts: map[string]pulumi_workspace.Account{
+			"https://saved.example.com": account,
+			backendURL:                  account,
+		},
+	}
+	require.NoError(t, pulumi_workspace.StoreCredentials(creds))
+	esc := &escCommand{
+		stderr:  io.Discard,
+		command: "esc",
+		ws:      pkgWorkspace.Instance,
+		login:   &provisioningLoginManager{accounts: creds.Accounts},
+		newClient: func(string, string, string, bool) client.Client {
+			return &testPulumiClient{defaultOrg: "org"}
+		},
+	}
+	require.NoError(t, esc.getCachedClient(t.Context()))
+	assert.Equal(t, backendURL, esc.account.BackendURL)
+	after, err := pulumi_workspace.GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, creds.Current, after.Current)
+}
+
+func TestInvalidSelfHostedBackend(t *testing.T) {
+	t.Parallel()
+	esc := &escCommand{stderr: io.Discard, ws: mockWorkspace(pulumi_workspace.Credentials{
 		Current: "http://pulumi.com",
 		Accounts: map[string]pulumi_workspace.Account{
 			"http://pulumi.com": {},
@@ -260,8 +298,9 @@ func TestInvalidSelfHostedBackend(t *testing.T) { //nolint:paralleltest // non-t
 	assert.ErrorContains(t, err, "pulumi login")
 }
 
-func TestFilestateBackend(t *testing.T) { //nolint:paralleltest // non-thread-safe shared state
-	esc := &escCommand{ws: mockWorkspace(pulumi_workspace.Credentials{
+func TestFilestateBackend(t *testing.T) {
+	t.Parallel()
+	esc := &escCommand{stderr: io.Discard, ws: mockWorkspace(pulumi_workspace.Credentials{
 		Current: "gs://foo",
 		Accounts: map[string]pulumi_workspace.Account{
 			"gs://foo": {},
@@ -270,6 +309,21 @@ func TestFilestateBackend(t *testing.T) { //nolint:paralleltest // non-thread-sa
 	err := esc.getCachedClient(t.Context())
 	assert.ErrorContains(t, err, "does not support Pulumi ESC")
 	assert.ErrorContains(t, err, "log into the Pulumi Cloud backend")
+}
+
+func TestFilestateBackendWithoutStoredCredentials(t *testing.T) {
+	t.Setenv("PULUMI_BACKEND_URL", "file:///tmp/state")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	esc := &escCommand{
+		stderr:  io.Discard,
+		command: "pulumi",
+		login:   noCredsLoginManager(0),
+		ws:      mockWorkspace(pulumi_workspace.Credentials{}),
+	}
+	err := esc.getCachedClient(t.Context())
+	assert.ErrorContains(t, err, "does not support Pulumi ESC")
+	assert.ErrorContains(t, err, "use `pulumi login`")
 }
 
 func TestEnvVarOverridesAccounts(t *testing.T) {
@@ -295,6 +349,7 @@ func TestEnvVarOverridesAccounts(t *testing.T) {
 	}
 
 	esc := &escCommand{
+		stderr:  io.Discard,
 		command: "esc",
 		login:   &testLoginManager{creds: creds},
 		ws:      mockWorkspace(creds),
@@ -345,6 +400,7 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 
 		testClient := testPulumiClient{}
 		esc := &escCommand{
+			stderr:  io.Discard,
 			command: "esc",
 			login:   &testLoginManager{creds: creds},
 			ws:      mockWorkspace(creds),
@@ -369,6 +425,7 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 
 		testClient := testPulumiClient{}
 		esc := &escCommand{
+			stderr:  io.Discard,
 			command: "esc",
 			login:   &testLoginManager{creds: creds},
 			ws:      mockWorkspace(creds),
@@ -398,6 +455,7 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 		}
 
 		esc := &escCommand{
+			stderr:  io.Discard,
 			command: "esc",
 			login:   &testLoginManager{creds: creds},
 			ws:      mockWorkspace(creds),
@@ -424,6 +482,7 @@ func TestDefaultOrgConfiguration(t *testing.T) {
 		testClient := testPulumiClient{defaultOrg: ""}
 
 		esc := &escCommand{
+			stderr:  io.Discard,
 			command: "esc",
 			login:   &testLoginManager{creds: creds},
 			ws:      mockWorkspace(creds),

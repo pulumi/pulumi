@@ -182,10 +182,11 @@ func (p *DiscriminatedUnionProvider) Check(
 func (p *DiscriminatedUnionProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if string(req.URN.Type()) == fmt.Sprintf("%s:index:Example", p.pkg()) {
 		return plugin.CreateResponse{
 			ID:         resource.ID("new-resource-id"),
-			Properties: req.Properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	}

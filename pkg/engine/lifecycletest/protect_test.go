@@ -449,7 +449,9 @@ func TestIgnoreProtectReplace(t *testing.T) {
 			Inputs:  inputsA,
 			Protect: new(true),
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -528,7 +530,9 @@ func TestIgnoreProtectDBRChain(t *testing.T) {
 		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
 			Inputs: inputsA,
 		})
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 
 		inputDepsB := map[resource.PropertyKey][]resource.URN{"A": {respA.URN}}
 		_, err = monitor.RegisterResource(resType, "resB", true, deploytest.ResourceOptions{

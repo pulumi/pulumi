@@ -88,6 +88,7 @@ type BaseResource interface {
 	GetToken() (string, hcl.Range)
 	GetSchema() *schema.Resource
 	GetInputType() model.Type
+	GetOutputType() model.Type
 }
 
 // Resource represents a resource instantiation inside of a program or component.
@@ -174,7 +175,7 @@ func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Dia
 	return traversable, diags
 }
 
-// Deprecated: Name returns the variable or declaration name of the resource.
+// Name returns the variable or declaration name of the resource.
 func (r *Resource) Name() string {
 	return r.Definition.Labels[0]
 }
@@ -195,6 +196,11 @@ func (r *Resource) GetSchema() *schema.Resource {
 
 func (r *Resource) GetInputType() model.Type {
 	return r.InputType
+}
+
+// GetOutputType returns the resource's output type.
+func (r *Resource) GetOutputType() model.Type {
+	return r.OutputType
 }
 
 // ReadResource represents a read resource instantiation inside of a program or component.
@@ -271,7 +277,7 @@ func (r *ReadResource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl
 	return traversable, diags
 }
 
-// Deprecated: Name returns the variable or declaration name of the resource.
+// Name returns the variable or declaration name of the resource.
 func (r *ReadResource) Name() string {
 	return r.Definition.Labels[0]
 }
@@ -302,6 +308,11 @@ func (r *ReadResource) GetSchema() *schema.Resource {
 
 func (r *ReadResource) GetInputType() model.Type {
 	return r.InputType
+}
+
+// GetOutputType returns the resource's output type.
+func (r *ReadResource) GetOutputType() model.Type {
+	return r.OutputType
 }
 
 // ResourceProperty represents a resource property.

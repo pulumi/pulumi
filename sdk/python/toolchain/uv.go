@@ -160,6 +160,14 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 	}
 }
 
+func (u *uv) InstallPackage(ctx context.Context, cwd string, useLanguageVersionTools,
+	showOutput bool, infoWriter, errorWriter io.Writer,
+) error {
+	// InstallDependencies runs `uv sync`. If the project defines a build system, `uv sync` builds the project and
+	// installs it into the virtual environment, so there is nothing to do here.
+	return nil
+}
+
 // PrepareProject prepares a project for use with uv. It will create a suitable pyproject.toml project file. If a
 // requirements.txt file exists, its dependencies will be added to pyproject.toml. If a pyproject.toml exists but
 // has no [project] section and a colocated requirements.txt is present, [project] is appended and the deps from
@@ -307,7 +315,17 @@ packages = json.load(sys.stdin)
 result = []
 for package in packages:
     if package["marker"]:
-        from packaging.markers import Marker
+        try:
+            from packaging.markers import Marker
+        except ModuleNotFoundError as error:
+            if error.name != "packaging":
+                raise
+            sys.exit(
+                "The Python package 'packaging' is required to discover uv dependencies "
+                "but is not installed in the project's Python environment. "
+                "Upgrade the Pulumi Python SDK to version 3.224.0 or later, "
+                "or run 'uv add packaging' in the project directory."
+            )
         if not Marker(package["marker"]).evaluate():
             continue
     result.append({

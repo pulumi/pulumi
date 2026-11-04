@@ -19,12 +19,14 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -33,11 +35,15 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
+	"github.com/pulumi/pulumi-cloud-sdk/go/apitype/jsonvalue"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -2106,6 +2112,43 @@ func TestRefreshableAPIAccessToken(t *testing.T) {
 	})
 }
 
+func TestGetPulumiAccountDetailsConcurrent(t *testing.T) {
+	t.Parallel()
+
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/user", r.URL.Path)
+		requests.Add(1)
+		_, _ = w.Write([]byte(`{"githubLogin":"alice","organizations":[{"githubLogin":"org"}],` +
+			`"tokenInfo":{"name":"token","organization":"org","team":"team"}}`))
+	}))
+	t.Cleanup(server.Close)
+	c := NewClient(server.URL, "token", false, nil)
+	start := make(chan struct{})
+	errs := make(chan error, 16)
+	var wg sync.WaitGroup
+	for range 16 {
+		wg.Go(func() {
+			<-start
+			user, orgs, info, err := c.GetPulumiAccountDetails(t.Context())
+			errs <- err
+			if err != nil {
+				return
+			}
+			assert.Equal(t, "alice", user)
+			assert.Equal(t, []string{"org"}, orgs)
+			assert.Equal(t, &workspace.TokenInformation{Name: "token", Organization: "org", Team: "team"}, info)
+		})
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	assert.Equal(t, int32(1), requests.Load())
+}
+
 func TestClient_WithRefresh(t *testing.T) {
 	t.Parallel()
 
@@ -2201,46 +2244,46 @@ func TestClientInsecure(t *testing.T) {
 	assert.False(t, NewClient("https://api.example.com", "tok", false, nil).Insecure())
 }
 
-//nolint:paralleltest // overrides the package-level newClient hook
 func TestDownloadTemplateForeignURLInheritsInsecure(t *testing.T) {
+	t.Parallel()
+
 	// A template download URL that isn't the configured api endpoint makes DownloadTemplate
 	// build a fresh client for that host. That client has to carry the caller's TLS setting,
 	// otherwise `pulumi new <template>` accepts any certificate for the foreign host even when
 	// the user never opted into insecure transport.
-	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+	//
+	// The certificate of the server is self-signed, so only a client that does not verify
+	// certificates can download from it.
+	server := httptest.NewTLSServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
 		rw.WriteHeader(http.StatusOK)
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
-	// A secure caller (insecure == false).
-	pc := NewClient("https://api.example.com", "tok", false, nil)
+	t.Run("secure", func(t *testing.T) {
+		t.Parallel()
 
-	// Capture the insecure flag the fresh client is constructed with. Installed after pc is built
-	// so it only observes the client made inside DownloadTemplate.
-	origNewClient := newClient
-	defer func() { newClient = origNewClient }()
-	var captured, capturedInsecure bool
-	newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Client {
-		captured, capturedInsecure = true, insecure
-		return origNewClient(apiURL, apiToken, insecure, d)
-	}
+		pc := NewClient("https://api.example.com", "tok", false, nil)
+		_, err := pc.DownloadTemplate(t.Context(), server.URL+"/template.tar")
+		var certErr *tls.CertificateVerificationError
+		require.ErrorAs(t, err, &certErr)
+	})
 
-	body, err := pc.DownloadTemplate(t.Context(), server.URL+"/template.tar")
-	require.NoError(t, err)
-	if body != nil {
+	t.Run("insecure", func(t *testing.T) {
+		t.Parallel()
+
+		pc := NewClient("https://api.example.com", "tok", true, nil)
+		body, err := pc.DownloadTemplate(t.Context(), server.URL+"/template.tar")
+		require.NoError(t, err)
 		require.NoError(t, body.Close())
-	}
-
-	require.True(t, captured, "a foreign template URL should build a fresh client")
-	assert.False(t, capturedInsecure, "the fresh client must inherit the caller's TLS verification setting")
+	})
 }
 
 func TestGetStackOutputs(t *testing.T) {
 	t.Parallel()
 
-	var gotPath string
+	var gotPath, gotQuery string
 	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
-		gotPath = req.URL.Path
+		gotPath, gotQuery = req.URL.Path, req.URL.RawQuery
 		return `{"outputs":{"foo":"bar"},"secretsProviders":{"type":"b64"}}`
 	})
 	defer server.Close()
@@ -2249,11 +2292,740 @@ func TestGetStackOutputs(t *testing.T) {
 		Owner:   "owner",
 		Project: "project",
 		Stack:   tokens.MustParseStackName("stack"),
-	})
+	}, "")
 	require.NoError(t, err)
 	assert.Equal(t, "/api/stacks/owner/project/stack/outputs", gotPath)
+	assert.Empty(t, gotQuery, "a read outside an update must not name a reading update")
 	assert.Equal(t, apitype.StackOutputsResponse{
 		Outputs:          map[string]any{"foo": "bar"},
 		SecretsProviders: &apitype.SecretsProvidersV1{Type: "b64"},
 	}, resp)
+}
+
+func TestCreateUpdateSendsCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	var gotBody apitype.UpdateProgramRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		return `{"updateID":"update-id"}`
+	})
+	defer server.Close()
+
+	stackID := StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")}
+	proj := &workspace.Project{Name: "project", Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil)}
+
+	update, _, err := newMockClient(server).CreateUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+		config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, true, /* dryRun */
+		"d333a711-4aa0-402f-be6d-72af9665fc37", UpdateRequestOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, "update-id", update.UpdateID)
+	assert.Equal(t, "d333a711-4aa0-402f-be6d-72af9665fc37", gotBody.CoherenceWindow)
+}
+
+func TestUpdateRequestsSendManagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")}
+	proj := &workspace.Project{Name: "project", Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil)}
+
+	cases := []struct {
+		name string
+		env  *apitype.UpdateProgramEnvironment
+		want string
+	}{
+		{
+			name: "draft revision zero with a change request",
+			env:  &apitype.UpdateProgramEnvironment{BaseRevision: 7, ChangeRequestID: "cr-1"},
+			want: `{"baseRevision":7,"changeRequestID":"cr-1","draftRevision":0}`,
+		},
+		{
+			name: "open revision",
+			env:  &apitype.UpdateProgramEnvironment{BaseRevision: 7},
+			want: `{"baseRevision":7,"draftRevision":0}`,
+		},
+		{name: "unmanaged"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var createBody map[string]json.RawMessage
+			createServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+				require.NoError(t, json.NewDecoder(req.Body).Decode(&createBody))
+				return `{"updateID":"update-id"}`
+			})
+			defer createServer.Close()
+			_, _, err := newMockClient(createServer).CreateUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+				config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, true, "",
+				UpdateRequestOptions{Environment: tc.env})
+			require.NoError(t, err)
+
+			var beginBody struct {
+				Program map[string]json.RawMessage `json:"program"`
+			}
+			beginServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+				require.NoError(t, json.NewDecoder(req.Body).Decode(&beginBody))
+				return `{"updateID":"update-id"}`
+			})
+			defer beginServer.Close()
+			_, err = newMockClient(beginServer).BeginUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+				config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, nil, true, "",
+				UpdateRequestOptions{Environment: tc.env})
+			require.NoError(t, err)
+
+			for _, body := range []map[string]json.RawMessage{createBody, beginBody.Program} {
+				got, present := body["environment"]
+				if tc.env == nil {
+					assert.False(t, present)
+					continue
+				}
+				assert.JSONEq(t, tc.want, string(got))
+			}
+		})
+	}
+}
+
+func TestBeginUpdateSendsCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	var gotBody apitype.BeginUpdateRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		return `{"updateID":"update-id"}`
+	})
+	defer server.Close()
+
+	stackID := StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")}
+	proj := &workspace.Project{Name: "project", Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil)}
+
+	resp, err := newMockClient(server).BeginUpdate(t.Context(), apitype.PreviewUpdate, stackID, proj,
+		config.Map{}, apitype.UpdateMetadata{}, engine.UpdateOptions{}, nil, true, /* dryRun */
+		"d333a711-4aa0-402f-be6d-72af9665fc37", UpdateRequestOptions{})
+	require.NoError(t, err)
+	assert.Equal(t, "update-id", resp.UpdateID)
+	assert.Equal(t, "d333a711-4aa0-402f-be6d-72af9665fc37", gotBody.Program.CoherenceWindow)
+}
+
+func TestCompleteUpdateSendsOutputs(t *testing.T) {
+	t.Parallel()
+
+	var gotBody apitype.CompleteUpdateRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		return ""
+	})
+	defer server.Close()
+
+	update := UpdateIdentifier{
+		StackIdentifier: StackIdentifier{Owner: "owner", Project: "project", Stack: tokens.MustParseStackName("stack")},
+		UpdateKind:      apitype.PreviewUpdate,
+		UpdateID:        "update-id",
+	}
+	outputs := &apitype.StackOutputsResponse{
+		Outputs:          map[string]any{"foo": "bar"},
+		SecretsProviders: &apitype.SecretsProvidersV1{Type: "b64"},
+	}
+
+	err := newMockClient(server).CompleteUpdate(
+		t.Context(), update, apitype.UpdateStatusSucceeded, updateTokenStaticSource("update-token"), outputs)
+	require.NoError(t, err)
+	assert.Equal(t, apitype.UpdateStatusSucceeded, gotBody.Status)
+	assert.Equal(t, map[string]any{"foo": "bar"}, gotBody.Outputs)
+	assert.Equal(t, &apitype.SecretsProvidersV1{Type: "b64"}, gotBody.SecretsProviders)
+}
+
+func TestGetStackOutputsInCoherenceWindow(t *testing.T) {
+	t.Parallel()
+
+	var gotQuery string
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		gotQuery = req.URL.RawQuery
+		return `{"outputs":{"foo":"bar"}}`
+	})
+	defer server.Close()
+
+	_, err := newMockClient(server).GetStackOutputs(t.Context(), StackIdentifier{
+		Owner:   "owner",
+		Project: "project",
+		Stack:   tokens.MustParseStackName("stack"),
+	}, "d333a711-4aa0-402f-be6d-72af9665fc37")
+	require.NoError(t, err)
+	assert.Equal(t, "readingUpdateID=d333a711-4aa0-402f-be6d-72af9665fc37", gotQuery)
+}
+
+func TestCreatePolicyGroup(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).CreatePolicyGroup(t.Context(), "acme", apitype.CreatePolicyGroupRequest{
+		Name:        "prod-policies",
+		EntityType:  new(cloudapitype.PolicyGroupEntityTypeStacks), //nolint:staticcheck
+		Mode:        new(apitype.PolicyGroupModePreventative),
+		AgentPoolID: jsonvalue.NotNull("pool-123"),
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups", path)
+	assert.JSONEq(t, `{
+		"name": "prod-policies",
+		"entityType": "stacks",
+		"mode": "preventative",
+		"agentPoolId": "pool-123"
+	}`, body)
+}
+
+func TestBatchUpdatePolicyGroup(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).BatchUpdatePolicyGroup(t.Context(), "acme", "prod-policies",
+		[]cloudapitype.UpdatePolicyGroupRequest{
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{NewName: new("renamed")}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddStack: &apitype.PulumiStackReference{Name: "prod", RoutingProject: "web"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddStack: &apitype.PulumiStackReference{Name: "standalone"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				RemoveStack: &apitype.PulumiStackReference{Name: "old", RoutingProject: "api"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddPolicyPack: &apitype.PolicyPackMetadata{
+					Name:       "aws-pack",
+					VersionTag: "1.2.3",
+					Config: map[string]*json.RawMessage{
+						"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory","tags":["a","b"]}`)),
+					},
+				},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "tagging", VersionTag: "1.0.0"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				AddInsightsAccount: &apitype.InsightsAccountReference{Name: "prod-aws"},
+			}},
+			{AppUpdatePolicyGroupRequest: apitype.UpdatePolicyGroupRequest{
+				RemoveInsightsAccount: &apitype.InsightsAccountReference{Name: "stale-gcp"},
+			}},
+			{RemoveStackMatchRule: true},
+		})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPatch, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies/batch", path)
+	assert.JSONEq(t, `[
+		{"newName": "renamed"},
+		{"addStack": {"name": "prod", "routingProject": "web"}},
+		{"addStack": {"name": "standalone", "routingProject": ""}},
+		{"removeStack": {"name": "old", "routingProject": "api"}},
+		{"addPolicyPack": {
+			"name": "aws-pack",
+			"displayName": "",
+			"version": 0,
+			"versionTag": "1.2.3",
+			"config": {"s3-no-public": {"enforcementLevel": "mandatory", "tags": ["a", "b"]}}
+		}},
+		{"removePolicyPack": {"name": "tagging", "displayName": "", "version": 0, "versionTag": "1.0.0"}},
+		{"addInsightsAccount": {"name": "prod-aws"}},
+		{"removeInsightsAccount": {"name": "stale-gcp"}},
+		{"removeStackMatchRule": true}
+	]`, body)
+}
+
+func TestAuditLogsQueryParams(t *testing.T) {
+	t.Parallel()
+
+	var gotURLs []string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		gotURLs = append(gotURLs, req.URL.String())
+		return "{}"
+	})
+	defer server.Close()
+
+	client := NewClient(server.URL, "token", true, nil)
+	ctx := t.Context()
+
+	_, err := client.ListAuditLogs(ctx, "org", ListAuditLogsOptions{
+		EventType: "stack.create", User: "alice", StartTime: "1", EndTime: "2",
+	})
+	require.NoError(t, err)
+
+	body, err := client.ExportAuditLogs(ctx, "org", ExportAuditLogsOptions{
+		EventType: "stack.create", User: "alice", StartTime: "1", EndTime: "2",
+	})
+	require.NoError(t, err)
+	require.NoError(t, body.Close())
+
+	assert.Equal(t, []string{
+		"/api/orgs/org/auditlogs/v2?endTime=2&eventFilter=stack.create&startTime=1&userFilter=alice",
+		"/api/orgs/org/auditlogs/v2/export?endTime=2&eventFilter=stack.create&format=csv&startTime=1&userFilter=alice",
+	}, gotURLs)
+}
+
+func TestApplyPolicyPack(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).ApplyPolicyPack(t.Context(), "acme", "prod-policies", "aws-pack", "1.2.3",
+		map[string]*json.RawMessage{
+			"s3-no-public": new(json.RawMessage(`{"enforcementLevel":"mandatory"}`)),
+		}, []string{"policies/aws-creds@3"})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPatch, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies", path)
+	assert.JSONEq(t, `{"addPolicyPack": {
+		"name": "aws-pack",
+		"displayName": "",
+		"version": 0,
+		"versionTag": "1.2.3",
+		"config": {"s3-no-public": {"enforcementLevel": "mandatory"}},
+		"environments": ["policies/aws-creds@3"]
+	}}`, body)
+}
+
+func TestDisablePolicyPack(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusNoContent, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return ""
+	})
+	defer server.Close()
+
+	err := newMockClient(server).DisablePolicyPack(t.Context(), "acme", "prod-policies", "aws-pack", "")
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPatch, method)
+	assert.Equal(t, "/api/orgs/acme/policygroups/prod-policies", path)
+	assert.JSONEq(t, `{"removePolicyPack": {"name": "aws-pack", "displayName": "", "version": 0, "versionTag": ""}}`, body)
+}
+
+func TestListPolicyIssues(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return "{}"
+	})
+	defer server.Close()
+
+	_, err := newMockClient(server).ListPolicyIssues(t.Context(), "acme", ListPolicyIssuesOptions{
+		StartRow: 100,
+		EndRow:   200,
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, method)
+	assert.Equal(t, "/api/orgs/acme/policyresults/issues", path)
+	assert.JSONEq(t, `{
+		"startRow": 100, "endRow": 200, "sortModel": null,
+		"rowGroupCols": null, "valueCols": null, "groupKeys": null, "filterModel": null}`, body)
+}
+
+func TestGetPolicyComplianceResults(t *testing.T) {
+	t.Parallel()
+
+	var method, path, body string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return "{}"
+	})
+	defer server.Close()
+
+	size := 50
+	token := "next-page-token"
+	_, err := newMockClient(server).GetPolicyComplianceResults(t.Context(), "acme",
+		apitype.GetPolicyComplianceResultsRequest{
+			Entity:            "stack",
+			Size:              &size,
+			ContinuationToken: &token,
+		})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, method)
+	assert.Equal(t, "/api/orgs/acme/policyresults/compliance", path)
+	assert.JSONEq(t, `{"entity": "stack", "size": 50, "continuationToken": "next-page-token"}`, body)
+}
+
+func TestGetPolicyPack(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		assert.Equal(t, http.MethodGet, req.Method)
+		assert.Equal(t, "/api/orgs/acme/policypacks/aws-guardrails/versions/1.2.0", req.URL.Path)
+		return `{"name":"aws-guardrails","displayName":"AWS Guardrails","version":3,"versionTag":"1.2.0","applied":true,` +
+			`"policies":[{"name":"s3-no-public","enforcementLevel":"mandatory","severity":"high","description":"d"}]}`
+	})
+	defer server.Close()
+
+	resp, err := newMockClient(server).GetPolicyPack(t.Context(), "acme", "aws-guardrails", "1.2.0")
+	require.NoError(t, err)
+
+	assert.Equal(t, 3, resp.Version)
+	require.Len(t, resp.Policies, 1)
+	assert.Equal(t, apitype.Mandatory, resp.Policies[0].EnforcementLevel)
+}
+
+func TestCreateStackManagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	var request apitype.CreateStackRequest
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "/api/stacks/acme/proj", req.URL.Path)
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&request))
+		return `{"managedEnvironment": "proj/renamed"}`
+	})
+	t.Cleanup(server.Close)
+
+	stack, _, err := newMockClient(server).CreateStack(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "proj",
+		Stack:   tokens.MustParseStackName("dev"),
+	}, nil, nil, nil, nil, true)
+	require.NoError(t, err)
+
+	assert.True(t, request.CreateManagedEnvironment)
+	assert.Equal(t, new("proj/renamed"), stack.ManagedEnvironment)
+}
+
+func TestCreateStackUnmanagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	server := newMockServerRequestProcessor(200, func(*http.Request) string { return `{}` })
+	t.Cleanup(server.Close)
+
+	stack, _, err := newMockClient(server).CreateStack(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "proj",
+		Stack:   tokens.MustParseStackName("dev"),
+	}, nil, nil, nil, nil, false)
+	require.NoError(t, err)
+
+	assert.Nil(t, stack.ManagedEnvironment)
+}
+
+func TestListPolicyIssues_FilterAndSortModel(t *testing.T) {
+	t.Parallel()
+
+	var body string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		b, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		body = string(b)
+		return "{}"
+	})
+	defer server.Close()
+
+	_, err := newMockClient(server).ListPolicyIssues(t.Context(), "acme", ListPolicyIssuesOptions{
+		EndRow:      100,
+		FilterModel: &cloudapitype.AngularGridAdvancedFilterModel{Type: "AND"},
+		SortModel:   []apitype.PolicyIssueSortModel{{ColID: "observedAt", Sort: "desc"}},
+	})
+	require.NoError(t, err)
+
+	var fields map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(body), &fields))
+	assert.JSONEq(t, `[{"colId": "observedAt", "sort": "desc"}]`, string(fields["sortModel"]))
+	assert.Contains(t, string(fields["filterModel"]), `"AND"`)
+}
+
+func TestListPolicyIssues_ClosedQuery(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		closed   bool
+		rawQuery string
+	}{
+		{"active", false, ""},
+		{"closed", true, "closed=true"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var rawQuery string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				rawQuery = r.URL.RawQuery
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte("{}"))
+			}))
+			defer server.Close()
+
+			c := newMockClient(server)
+			_, err := c.ListPolicyIssues(t.Context(), "acme", ListPolicyIssuesOptions{EndRow: 100, Closed: tt.closed})
+			require.NoError(t, err)
+			assert.Equal(t, tt.rawQuery, rawQuery)
+		})
+	}
+}
+
+func getPolicyIssueFromServer(t *testing.T, body string) apitype.GetPolicyIssueResponse {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/orgs/acme/policyresults/issues/i1", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(server.Close)
+
+	resp, err := newMockClient(server).GetPolicyIssue(t.Context(), "acme", "i1")
+	require.NoError(t, err)
+	return resp
+}
+
+func TestGetPolicyIssue_FullResponse(t *testing.T) {
+	t.Parallel()
+
+	resp := getPolicyIssueFromServer(t, `{
+		"policyIssue": {
+			"id": "i1",
+			"kind": "audit",
+			"priority": "p1",
+			"assignedTo": {"githubLogin": "alice", "name": "Alice"},
+			"policyGroupName": "prod",
+			"policyGroupType": "audit"
+		},
+		"policy": {
+			"name": "s3-no-public",
+			"description": "d",
+			"remediationSteps": "r",
+			"framework": {"name": "CIS", "version": "1.4", "reference": "2.1.5"}
+		}
+	}`)
+
+	require.NotNil(t, resp.Policy)
+	assert.Equal(t, "r", resp.Policy.RemediationSteps)
+	require.NotNil(t, resp.PolicyIssue.AssignedTo)
+	assert.Equal(t, "alice", resp.PolicyIssue.AssignedTo.GitHubLogin)
+}
+
+func TestGetStackPolicyGroups(t *testing.T) {
+	t.Parallel()
+
+	var method, path string
+	server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+		method, path = req.Method, req.URL.Path
+		return `{"policyGroups": [{"name": "prod-policies", "isOrgDefault": false, "numStacks": 3,
+			"numAccounts": 0, "entityType": "stacks", "mode": "preventative", "numEnabledPolicyPacks": 2}]}`
+	})
+	defer server.Close()
+
+	resp, err := newMockClient(server).GetStackPolicyGroups(t.Context(), StackIdentifier{
+		Owner:   "acme",
+		Project: "web",
+		Stack:   tokens.MustParseStackName("prod"),
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodGet, method)
+	assert.Equal(t, "/api/stacks/acme/web/prod/policygroups", path)
+	assert.Equal(t, apitype.ListPolicyGroupsResponse{PolicyGroups: []apitype.PolicyGroupSummary{{
+		Name:                  "prod-policies",
+		NumStacks:             3,
+		EntityType:            apitype.Stacks,
+		Mode:                  apitype.PolicyGroupModePreventative,
+		NumEnabledPolicyPacks: 2,
+	}}}, resp)
+}
+
+func TestGetStackPolicyPacks(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name    string
+		mode    apitype.PolicyGroupMode
+		wantURL string
+	}{
+		{"all modes", "", "/api/stacks/acme/web/prod/policypacks"},
+		{"audit", apitype.PolicyGroupModeAudit, "/api/stacks/acme/web/prod/policypacks?mode=audit"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var method, url string
+			server := newMockServerRequestProcessor(http.StatusOK, func(req *http.Request) string {
+				method, url = req.Method, req.URL.String()
+				return `{"requiredPolicies": [{"name": "aws-guardrails", "version": 3, "versionTag": "1.2.0",
+					"displayName": "AWS Guardrails", "packLocation": "https://example.com/pack.tgz"}]}`
+			})
+			defer server.Close()
+
+			resp, err := newMockClient(server).GetStackPolicyPacks(t.Context(), StackIdentifier{
+				Owner:   "acme",
+				Project: "web",
+				Stack:   tokens.MustParseStackName("prod"),
+			}, tt.mode)
+			require.NoError(t, err)
+
+			assert.Equal(t, http.MethodGet, method)
+			assert.Equal(t, tt.wantURL, url)
+			assert.Equal(t, apitype.GetStackPolicyPacksResponse{RequiredPolicies: []apitype.RequiredPolicy{{
+				Name:         "aws-guardrails",
+				Version:      3,
+				VersionTag:   "1.2.0",
+				DisplayName:  "AWS Guardrails",
+				PackLocation: "https://example.com/pack.tgz",
+			}}}, resp)
+		})
+	}
+}
+
+func TestExportPolicyIssues(t *testing.T) {
+	t.Parallel()
+
+	var method, path, gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("reading request body: %v", err)
+		}
+		method, path, gotBody = r.Method, r.URL.EscapedPath(), string(body)
+		w.Header().Set("Content-Type", "text/csv")
+		_, _ = w.Write([]byte("id,policyName\ni1,p\n"))
+	}))
+	defer server.Close()
+
+	stream, err := newMockClient(server).ExportPolicyIssues(
+		t.Context(), "acme", apitype.ListPolicyIssuesRequest{}, false)
+	require.NoError(t, err)
+	defer stream.Close()
+	data, err := io.ReadAll(stream)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, method)
+	assert.Equal(t, "/api/orgs/acme/policyresults/issues/export", path)
+	var body map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(gotBody), &body))
+	assert.NotContains(t, body, "startRow")
+	assert.NotContains(t, body, "endRow")
+	assert.Equal(t, "id,policyName\ni1,p\n", string(data))
+}
+
+func TestExportPolicyIssues_ClosedQuery(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		closed   bool
+		rawQuery string
+	}{
+		{"active", false, ""},
+		{"closed", true, "closed=true"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var rawQuery string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				rawQuery = r.URL.RawQuery
+				_, _ = w.Write([]byte("id\n"))
+			}))
+			defer server.Close()
+
+			stream, err := newMockClient(server).ExportPolicyIssues(
+				t.Context(), "acme", apitype.ListPolicyIssuesRequest{}, tt.closed)
+			require.NoError(t, err)
+			require.NoError(t, stream.Close())
+			assert.Equal(t, tt.rawQuery, rawQuery)
+		})
+	}
+}
+
+func updatePolicyIssueAgainstServer(
+	t *testing.T, issueID string, req cloudapitype.UpdatePolicyIssueRequest, respBody string,
+) (cloudapitype.GetPolicyIssueResponse, string) {
+	t.Helper()
+	var gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPatch, r.Method)
+		assert.Equal(t, "/api/orgs/acme/policyresults/issues/"+url.PathEscape(issueID), r.URL.EscapedPath())
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("reading request body: %v", err)
+			return
+		}
+		gotBody = string(b)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(respBody))
+	}))
+	t.Cleanup(server.Close)
+
+	resp, err := newMockClient(server).UpdatePolicyIssue(t.Context(), "acme", issueID, req)
+	require.NoError(t, err)
+	return resp, gotBody
+}
+
+func TestUpdatePolicyIssue(t *testing.T) {
+	t.Parallel()
+
+	status := cloudapitype.PolicyIssueStatusInProgress
+	resp, _ := updatePolicyIssueAgainstServer(t, "i/1",
+		cloudapitype.UpdatePolicyIssueRequest{Status: &status},
+		`{"policyIssue":{"id":"i/1","status":"in_progress","kind":"audit"}}`)
+
+	assert.Equal(t, cloudapitype.PolicyIssueStatusInProgress, resp.PolicyIssue.Status)
+	assert.Equal(t, cloudapitype.PolicyIssueKindAudit, resp.PolicyIssue.Kind)
+}
+
+func TestUpdatePolicyIssue_OnlySetFieldsSent(t *testing.T) {
+	t.Parallel()
+
+	p1 := cloudapitype.PolicyIssuePriorityP1
+	_, body := updatePolicyIssueAgainstServer(t, "i1",
+		cloudapitype.UpdatePolicyIssueRequest{Priority: &p1},
+		`{"policyIssue":{"id":"i1"}}`)
+
+	assert.JSONEq(t, `{"priority":"p1"}`, body)
+}
+
+func TestUpdatePolicyIssue_UnassignSendsEmptyString(t *testing.T) {
+	t.Parallel()
+
+	_, body := updatePolicyIssueAgainstServer(t, "i1",
+		cloudapitype.UpdatePolicyIssueRequest{AssignedTo: new("")},
+		`{"policyIssue":{"id":"i1"}}`)
+
+	assert.JSONEq(t, `{"assignedTo":""}`, body)
 }

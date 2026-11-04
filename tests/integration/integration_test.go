@@ -1344,6 +1344,21 @@ func TestPolicyPackInstallDependencies(t *testing.T) {
 	require.True(t, e.PathExists("venv"))
 }
 
+// Regression test for https://github.com/pulumi/pulumi/issues/24949
+//
+// A virtual environment that uv creates does not contain pip, so the install must not run pip.
+func TestPolicyPackInstallDependenciesUvBuildSystem(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("policy/python_policy_pack_build_system")
+	require.False(t, e.PathExists(".venv"))
+	// RunCommand fails the test if `pulumi install` exits with a non-zero status.
+	e.RunCommand("pulumi", "install")
+	require.True(t, e.PathExists(".venv"))
+}
+
 func TestProjectInstallDependencies(t *testing.T) {
 	t.Parallel()
 

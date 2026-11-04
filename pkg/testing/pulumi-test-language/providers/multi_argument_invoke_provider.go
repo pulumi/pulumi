@@ -223,9 +223,9 @@ func (p *MultiArgumentInvokeProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
-		Properties: resource.PropertyMap{
-			"text": resource.NewProperty("Goodbye"),
-		},
+		Properties: property.NewMap(map[string]property.Value{
+			"text": property.New("Goodbye"),
+		}),
 		Status: resource.StatusOK,
 	}, nil
 }

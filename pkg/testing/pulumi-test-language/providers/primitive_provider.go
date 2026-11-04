@@ -255,6 +255,7 @@ func (p *PrimitiveProvider) Check(
 func (p *PrimitiveProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	// URN should be of the form "primitive:index:Resource"
 	if req.URN.Type() != "primitive:index:Resource" {
 		return plugin.CreateResponse{
@@ -278,7 +279,7 @@ func (p *PrimitiveProvider) Create(
 		}
 		return v
 	}
-	str := unsecret(req.Properties["string"])
+	str := unsecret(properties["string"])
 	var id string
 	if str.IsString() {
 		id = str.StringValue()
@@ -292,7 +293,7 @@ func (p *PrimitiveProvider) Create(
 
 	return plugin.CreateResponse{
 		ID:         resource.ID(id),
-		Properties: req.Properties,
+		Properties: resource.FromResourcePropertyMap(properties),
 		Status:     resource.StatusOK,
 	}, nil
 }

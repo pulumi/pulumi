@@ -228,7 +228,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
     @_abort_with_traceback
     def Read(self, request, context):
         id_ = request.id
+        # On refresh the engine passes prior outputs in `properties`; on a user-driven Get it passes nil
+        # (only `inputs` is populated). Fall back to inputs so the serialized provider can still be found.
         props = rpc.deserialize_properties(request.properties)
+        if not props and request.inputs is not None:
+            props = rpc.deserialize_properties(request.inputs)
         provider = get_provider(props, self._config)
         result = provider.read(id_, props)
         outs = result.outs

@@ -27,11 +27,13 @@ import (
 
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
+	"github.com/go-git/go-git/v6/plumbing/transport"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
@@ -294,11 +296,30 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 		return fmt.Errorf("getting template repo remotes: %w", err)
 	}
 	// If the repo exists and it doesn't have exactly one remote that matches our URL, wipe the templates directory.
-	if len(remotes) != 1 || remotes[0] == nil || !strings.Contains(remotes[0].String(), url) {
+	if len(remotes) != 1 || remotes[0] == nil || !remoteMatchesURL(remotes[0], url) {
 		return os.RemoveAll(templateDir)
 	}
 
 	return nil
+}
+
+func remoteMatchesURL(remote *git.Remote, url string) bool {
+	urls := remote.Config().URLs
+	return len(urls) == 1 && normalizeTemplateRepoURL(urls[0]) == normalizeTemplateRepoURL(url)
+}
+
+func normalizeTemplateRepoURL(rawurl string) string {
+	u, err := transport.ParseURL(rawurl)
+	if err != nil {
+		return rawurl
+	}
+	if u.Scheme == "file" {
+		if abs, err := filepath.Abs(u.Path); err == nil {
+			return abs
+		}
+	}
+	u.User = nil
+	return u.String()
 }
 
 // IsGitRepoTemplateURL returns true if templateNamePathOrURL is a git repository URL (https:// or ssh://).
@@ -384,14 +405,26 @@ func retrieveFileTemplates(path string) (TemplateRepository, error) {
 func retrievePulumiTemplates(
 	ctx context.Context, offline bool, templateKind TemplateKind,
 ) (TemplateRepository, error) {
-	// Cleanup the template directory.
-	if err := cleanupLegacyTemplateDir(templateKind); err != nil {
-		return TemplateRepository{}, err
-	}
-
 	// Get the template directory.
 	templateDir, err := GetTemplateDir(templateKind)
 	if err != nil {
+		return TemplateRepository{}, err
+	}
+
+	// Concurrent pulumi processes share this directory, and the cleanup below would delete a clone in progress.
+	lockPath := filepath.Clean(templateDir) + ".lock"
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o700); err != nil {
+		return TemplateRepository{}, err
+	}
+	mutex := fsutil.NewFileMutex(lockPath)
+	if err := mutex.Lock(); err != nil {
+		slog.Debug("Could not lock the template directory", "path", lockPath, "err", err)
+	} else {
+		defer func() { _ = mutex.Unlock() }()
+	}
+
+	// Cleanup the template directory.
+	if err := cleanupLegacyTemplateDir(templateKind); err != nil {
 		return TemplateRepository{}, err
 	}
 

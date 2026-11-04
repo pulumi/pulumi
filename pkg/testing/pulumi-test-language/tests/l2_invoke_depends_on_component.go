@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func init() {
@@ -49,15 +50,16 @@ func init() {
 						}
 					}
 					require.True(l, foundStackEvent, "expected stack outputs event")
-					assert.True(l, stackEvent.Metadata.New.Outputs["echoed"].IsComputed(),
+					stackOutputs := resource.FromResourcePropertyMap(stackEvent.Metadata.New.Outputs)
+					assert.True(l, stackOutputs.Get("echoed").IsComputed(),
 						"the invoke depends on the component, whose child is pending creation:"+
-							" its result must be unknown, got %v", stackEvent.Metadata.New.Outputs)
+							" its result must be unknown, got %v", stackOutputs)
 				},
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 
 					stack := RequireSingleResource(l, res.Snap.Resources, resource.RootStackType)
-					AssertPropertyMapMember(l, stack.Outputs, "echoed", resource.NewProperty("reachable"))
+					AssertPropertyMapMember(l, resource.FromResourcePropertyMap(stack.Outputs), "echoed", property.New("reachable"))
 				},
 			},
 		},

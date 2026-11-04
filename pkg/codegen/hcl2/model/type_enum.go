@@ -116,7 +116,7 @@ func (t *EnumType) Equals(other Type) bool {
 	return t.equals(other, nil)
 }
 
-func (t *EnumType) equals(other Type, seen map[Type]struct{}) bool {
+func (t *EnumType) equals(other Type, seen comparePairs) bool {
 	if t == other {
 		return true
 	}
@@ -137,7 +137,11 @@ func (t *EnumType) equals(other Type, seen map[Type]struct{}) bool {
 // source type. The whole point of enums is they are a unique type, so we can't
 // convert between them.
 func (t *EnumType) AssignableFrom(src Type) bool {
-	return assignableFrom(t, src, func() bool {
+	return t.assignableFrom(src, nil)
+}
+
+func (t *EnumType) assignableFrom(src Type, seen *cycleSet) bool {
+	return assignableFrom(t, src, seen, func(seen *cycleSet) bool {
 		return false
 	})
 }
@@ -151,7 +155,7 @@ func (t *EnumType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *EnumType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
+func (t *EnumType) conversionFrom(src Type, unifying bool, seen *cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		// A constant converts safely when it is a member of the enum and not at all otherwise.
 		if src, ok := src.(*ConstType); ok {
@@ -192,8 +196,8 @@ func (t *EnumType) string(seen map[Type]struct{}) string {
 	return s
 }
 
-func (t *EnumType) unify(other Type) (Type, ConversionKind) {
-	return unify(t, other, func() (Type, ConversionKind) {
+func (t *EnumType) unify(other Type, seen *cycleSet) (Type, ConversionKind) {
+	return unify(t, other, seen, func() (Type, ConversionKind) {
 		return nil, NoConversion
 	})
 }

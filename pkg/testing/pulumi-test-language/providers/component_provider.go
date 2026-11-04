@@ -395,15 +395,16 @@ func (p *ComponentProvider) Create(
 	_ context.Context,
 	req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
+	properties := resource.ToResourcePropertyMap(req.Properties)
 	if req.URN.Type() == "component:index:Custom" {
-		id := "id-" + req.Properties["value"].StringValue()
+		id := "id-" + properties["value"].StringValue()
 		if req.Preview {
 			id = ""
 		}
 
 		return plugin.CreateResponse{
 			ID:         resource.ID(id),
-			Properties: req.Properties,
+			Properties: resource.FromResourcePropertyMap(properties),
 			Status:     resource.StatusOK,
 		}, nil
 	}
