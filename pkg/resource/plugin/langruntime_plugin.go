@@ -533,8 +533,8 @@ func (h *langhost) InstallDependencies(ctx context.Context, request InstallDepen
 					h.runtime, request, rpcError,
 				)
 
-				contract.IgnoreError(outw.CloseWithError(rpcError))
-				contract.IgnoreError(errw.CloseWithError(rpcError))
+				contract.IgnoreClose(outw)
+				contract.IgnoreClose(errw)
 
 				done <- rpcError
 				break
