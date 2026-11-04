@@ -84,14 +84,6 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 			equals:  "mybucket-1234\n",
 		},
 		{
-			// Should not show the secret even if requested
-			// if --show-secrets is not set.
-			desc:    "single hidden property",
-			outputs: outputsWithSecret,
-			args:    []string{"password"},
-			equals:  "[secret]\n",
-		},
-		{
 			desc:        "single property with show-secrets",
 			outputs:     outputsWithSecret,
 			showSecrets: true,
@@ -193,14 +185,6 @@ func TestStackOutputCmd_json(t *testing.T) {
 			outputs: outputsWithSecret,
 			args:    []string{"bucketName"},
 			want:    "mybucket-1234",
-		},
-		{
-			// Should not show the secret even if requested
-			// if --show-secrets is not set.
-			desc:    "single hidden property",
-			outputs: outputsWithSecret,
-			args:    []string{"password"},
-			want:    "[secret]",
 		},
 		{
 			desc:        "single property with show-secrets",
@@ -307,14 +291,6 @@ func TestStackOutputCmd_shell(t *testing.T) {
 			want:    []string{"bucketName=mybucket-1234"},
 		},
 		{
-			// Should not show the secret even if requested
-			// if --show-secrets is not set.
-			desc:    "single hidden property",
-			outputs: outputsWithSecret,
-			args:    []string{"password"},
-			want:    []string{`password=\[secret]`},
-		},
-		{
 			desc:        "single property with show-secrets",
 			outputs:     outputsWithSecret,
 			showSecrets: true,
@@ -374,6 +350,62 @@ func TestStackOutputCmd_shell(t *testing.T) {
 			stdout := strings.TrimSuffix(stdoutBuff.String(), "\n")
 			got := strings.Split(stdout, "\n")
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// Requesting a single secret output without --show-secrets
+// is an error rather than printing the [secret] placeholder.
+func TestStackOutputCmd_singleSecretRequiresShowSecrets(t *testing.T) {
+	t.Parallel()
+
+	snap := deploy.Snapshot{
+		Resources: []*pkgresource.State{
+			{
+				Type: resource.RootStackType,
+				Outputs: resource.PropertyMap{
+					"password": resource.NewProperty(&resource.Secret{
+						Element: resource.NewProperty("hunter2"),
+					}),
+				},
+			},
+		},
+	}
+	requireStack := func(context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
+		string, LoadOption, display.Options, string,
+	) (backend.Stack, error) {
+		return &backend.MockStack{
+			SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
+				return &snap, nil
+			},
+		}, nil
+	}
+
+	tests := []struct {
+		desc     string
+		jsonOut  bool
+		shellOut bool
+	}{
+		{desc: "plain"},
+		{desc: "json", jsonOut: true},
+		{desc: "shell", shellOut: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var stdoutBuff bytes.Buffer
+			cmd := stackOutputCmd{
+				requireStack: requireStack,
+				jsonOut:      tt.jsonOut,
+				shellOut:     tt.shellOut,
+				OS:           "linux",
+				Stdout:       &stdoutBuff,
+			}
+			err := cmd.Run(t.Context(), []string{"password"})
+			assert.ErrorContains(t, err, "output property 'password' is a secret; pass --show-secrets to display it")
+			assert.Empty(t, stdoutBuff.String())
 		})
 	}
 }
