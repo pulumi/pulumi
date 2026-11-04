@@ -220,8 +220,8 @@ func (p *printer) write(w io.Writer, b []byte) {
 	}
 }
 
-// isGeneratedComment returns true if the comment was built from its Lines and not parsed from source. Only a parsed
-// comment has a source range.
+// isGeneratedComment returns true if the comment prints from its Lines. syntax.Comment documents that a comment with a
+// zero Range does.
 func isGeneratedComment(c syntax.Comment) bool {
 	return c.Range() == (hcl.Range{}) && len(c.Lines) > 0
 }
