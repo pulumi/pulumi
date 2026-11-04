@@ -11,7 +11,6 @@
     "dependencies": {
         "@grpc/grpc-js": "^1.10.1",
         "@logdna/tail-file": "^2.0.6",
-        "@npmcli/arborist": "^9.0.0",
         "@opentelemetry/api": "~1.9",
         "@opentelemetry/core": "^2.9",
         "@opentelemetry/exporter-trace-otlp-grpc": "^0.220",
