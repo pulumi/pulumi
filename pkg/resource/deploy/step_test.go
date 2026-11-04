@@ -562,11 +562,11 @@ func TestReadStep(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID: "new-id",
-								Inputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
-									"inputs-key": resource.NewProperty("expected-value"),
+								Inputs: new(property.NewMap(map[string]property.Value{
+									"inputs-key": property.New("expected-value"),
 								})),
-								Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
-									"outputs-key": resource.NewProperty("expected-value"),
+								Outputs: new(property.NewMap(map[string]property.Value{
+									"outputs-key": property.New("expected-value"),
 								})),
 							},
 							Status: resource.StatusPartialFailure,
@@ -917,11 +917,11 @@ func TestRefreshStep(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "new-id",
-							Inputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
-								"inputs-key": resource.NewProperty("expected-value"),
+							Inputs: new(property.NewMap(map[string]property.Value{
+								"inputs-key": property.New("expected-value"),
 							})),
-							Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{
-								"outputs-key": resource.NewProperty("expected-value"),
+							Outputs: new(property.NewMap(map[string]property.Value{
+								"outputs-key": property.New("expected-value"),
 							})),
 						},
 						Status: resource.StatusPartialFailure,
