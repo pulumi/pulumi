@@ -101,12 +101,10 @@ func TestPolicyExceptionNew(t *testing.T) {
 		"listing only checks that the organization can have exceptions")
 	assert.Equal(t, []apitype.CreatePolicyExceptionRequest{{
 		PolicyPack: "aws",
-		PolicyException: apitype.PolicyException{
-			Reason: "LOG-31",
-			Match: []apitype.PolicyExceptionMatch{
-				match([]string{"required-tags"}, logsURN),
-				match([]string{"required-tags", "s3-no-public-read"}, cdnLogsURN),
-			},
+		Reason:     "LOG-31",
+		Match: []apitype.PolicyExceptionMatch{
+			match([]string{"required-tags"}, logsURN),
+			match([]string{"required-tags", "s3-no-public-read"}, cdnLogsURN),
 		},
 	}}, c.gotCreated)
 
@@ -381,10 +379,8 @@ func TestPolicyExceptionNew_File(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, []apitype.CreatePolicyExceptionRequest{{
 				PolicyPack: "aws",
-				PolicyException: apitype.PolicyException{
-					Reason: "LOG-31",
-					Match:  []apitype.PolicyExceptionMatch{match([]string{"required-tags"}, logsURN)},
-				},
+				Reason:     "LOG-31",
+				Match:      []apitype.PolicyExceptionMatch{match([]string{"required-tags"}, logsURN)},
 			}}, c.gotCreated)
 			assert.Empty(t, c.gotReads, "a file doesn't read the run")
 		})
@@ -509,10 +505,8 @@ func TestPolicyExceptionNew_RequiresApproval(t *testing.T) {
 	args := policyExceptionNewArgs{policyPack: "aws", reason: "LOG-31", policies: []string{"s3-no-public-read"}}
 	want := apitype.CreatePolicyExceptionRequest{
 		PolicyPack: "aws",
-		PolicyException: apitype.PolicyException{
-			Reason: "LOG-31",
-			Match:  []apitype.PolicyExceptionMatch{match([]string{"s3-no-public-read"}, cdnLogsURN)},
-		},
+		Reason:     "LOG-31",
+		Match:      []apitype.PolicyExceptionMatch{match([]string{"s3-no-public-read"}, cdnLogsURN)},
 	}
 	requested := "Requested policy exception: http://localhost:3000/acme/web/prod?exception=cr-1\n"
 
@@ -646,7 +640,7 @@ func TestPolicyExceptionNew_ExpiresIn(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, c.gotCreated, 1)
-	assert.Equal(t, int64(7*24*3600), c.gotCreated[0].ExpiresInSeconds)
+	assert.Equal(t, new(int64(7*24*3600)), c.gotCreated[0].ExpiresInSeconds)
 	assert.Equal(t, "Created policy exception EXC-7: http://localhost:3000/acme/web/prod?exception=EXC-7\n"+
 		"Expires: 2026-10-08T12:00:00Z\n", stderr)
 
@@ -658,7 +652,7 @@ func TestPolicyExceptionNew_ExpiresIn(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, c.gotDrafts, 1)
-	assert.Equal(t, int64(24*3600), c.gotDrafts[0].ExpiresInSeconds)
+	assert.Equal(t, new(int64(24*3600)), c.gotDrafts[0].ExpiresInSeconds)
 	assert.True(t, strings.HasSuffix(stderr, "approved.\nExpires: 1 day after it's created\n"), stderr)
 
 	c = twoBuckets()

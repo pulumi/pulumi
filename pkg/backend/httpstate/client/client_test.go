@@ -3089,9 +3089,9 @@ func TestPolicyExceptionRequests(t *testing.T) {
 		"GET /api/orgs/org/policy/exceptions",
 		"GET /api/orgs/org/policy/exceptions?continuationToken=next&policy=tags&policyPack=aws" +
 			"&stack=web%2Fprod&status=active&status=removed",
-		`POST /api/orgs/org/policy/exceptions {"reason":"","match":null,"policyPack":"aws"}`,
+		`POST /api/orgs/org/policy/exceptions {"policyPack":"aws","match":null,"reason":""}`,
 		"GET /api/orgs/org/policy/exceptions/EXC-1",
 		"DELETE /api/orgs/org/policy/exceptions/EXC-1",
-		`POST /api/orgs/org/policy/exceptions/drafts {"reason":"","match":null,"policyPack":"aws"}`,
+		`POST /api/orgs/org/policy/exceptions/drafts {"policyPack":"aws","match":null,"reason":""}`,
 	}, gotRequests)
 }

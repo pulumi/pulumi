@@ -16,7 +16,6 @@ package apitype
 
 import (
 	"encoding/json"
-	"time"
 
 	cloudapitype "github.com/pulumi/pulumi-cloud-sdk/go/apitype"
 )
@@ -118,48 +117,16 @@ type PolicyException struct {
 }
 
 // PolicyExceptionMatch matches the violations of any of its policies on any of its targets.
-type PolicyExceptionMatch struct {
-	// The names of policies within the Policy Pack.
-	Policies []string `json:"policies"`
-	// The URNs of the resources the violations are reported against, compared exactly.
-	Targets []string `json:"targets"`
-}
+type PolicyExceptionMatch = cloudapitype.PolicyExceptionMatch
 
-// PolicyExceptionInfo is a policy exception stored in Pulumi Cloud.
-type PolicyExceptionInfo struct {
-	PolicyException
+// PolicyExceptionInfo is the Cloud SDK's PolicyException: a policy exception stored in Pulumi Cloud.
+type PolicyExceptionInfo = cloudapitype.PolicyException
 
-	// The exception's ID, unique within the organization, for example `EXC-42`.
-	ID string `json:"id"`
-	// The name of the Policy Pack the exception applies to.
-	PolicyPack string `json:"policyPack"`
-	// The exception's status: `active` or `removed`.
-	Status string `json:"status"`
-	// The change request that created the exception. Empty when it was created directly.
-	ChangeRequestID string `json:"changeRequestId,omitempty"`
-	// The user who created the exception. Empty when the user no longer exists.
-	CreatedBy UserInfo `json:"createdBy,omitzero"`
-	// When the exception was created.
-	CreatedAt time.Time `json:"createdAt"`
-	// The user who removed the exception. Empty when it's active, or the user no longer exists.
-	RemovedBy UserInfo `json:"removedBy,omitzero"`
-	// When the exception was removed. Zero when it's active.
-	RemovedAt time.Time `json:"removedAt,omitzero"`
-	// When the exception expires, after which it's removed. Zero when it never expires.
-	ExpiresAt time.Time `json:"expiresAt,omitzero"`
-}
+// CreatePolicyExceptionRequest is the Cloud SDK's CreatePolicyExceptionRequest.
+type CreatePolicyExceptionRequest = cloudapitype.CreatePolicyExceptionRequest
 
-// CreatePolicyExceptionRequest creates a policy exception in Pulumi Cloud.
-type CreatePolicyExceptionRequest struct {
-	PolicyException
-
-	// The name of the Policy Pack the exception applies to.
-	PolicyPack string `json:"policyPack"`
-	// How long after it's created the exception expires, in whole hours of seconds. Zero when it never expires.
-	ExpiresInSeconds int64 `json:"expiresInSeconds,omitzero"`
-}
-
-// PolicyExceptionDraft is a policy exception requested in a change request, which creates it once approved.
+// PolicyExceptionDraft is a policy exception requested in a change request, which creates it once approved. The
+// Cloud SDK doesn't have it, because the draft routes aren't public.
 type PolicyExceptionDraft struct {
 	CreatePolicyExceptionRequest
 
@@ -169,13 +136,8 @@ type PolicyExceptionDraft struct {
 	LatestRevisionNumber int `json:"latestRevisionNumber"`
 }
 
-// ListPolicyExceptionsResponse is a page of an organization's policy exceptions.
-type ListPolicyExceptionsResponse struct {
-	// The policy exceptions, most recently created first.
-	Exceptions []PolicyExceptionInfo `json:"exceptions"`
-	// The token to fetch the next page with. Empty on the last page.
-	ContinuationToken string `json:"continuationToken,omitempty"`
-}
+// ListPolicyExceptionsResponse is the Cloud SDK's ListPolicyExceptionsResponse.
+type ListPolicyExceptionsResponse = cloudapitype.ListPolicyExceptionsResponse
 
 // Policy is the Cloud SDK's AppPolicy.
 type Policy = cloudapitype.AppPolicy

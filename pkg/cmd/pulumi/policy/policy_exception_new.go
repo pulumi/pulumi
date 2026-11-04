@@ -121,8 +121,8 @@ type policyExceptionNewResult struct {
 	ChangeRequestStatus string `json:"changeRequestStatus,omitempty"`
 	// Updated is set when Pulumi Cloud returned an existing exception or change request for the same request.
 	Updated bool `json:"updated,omitempty"`
-	// ExpiresAt is when the created exception expires. It's zero when it never expires, or it's still requested.
-	ExpiresAt time.Time `json:"expiresAt,omitzero"`
+	// ExpiresAt is when the created exception expires. It's nil when it never expires, or it's still requested.
+	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
 	// URL is the console page of the exception, or of the change request that requested it.
 	URL    string `json:"url,omitempty"`
 	DryRun bool   `json:"dryRun,omitempty"`
@@ -285,10 +285,11 @@ func runPolicyExceptionNew(
 				Message: "--file can't be used with --stack, --update, --preview, --policy or --target",
 			}
 		}
-		var filePack string
-		if result.Exception.PolicyException, filePack, err = readPolicyExceptionFile(stdin, args.file); err != nil {
+		exception, filePack, err := readPolicyExceptionFile(stdin, args.file)
+		if err != nil {
 			return err
 		}
+		result.Exception.Reason, result.Exception.Match = exception.Reason, exception.Match
 		if pack != "" && filePack != "" && pack != filePack {
 			return cmdCmd.ConfigurationError{
 				Message: fmt.Sprintf("the file's exception is for Policy Pack %q, not %q", filePack, pack),
@@ -367,7 +368,9 @@ func runPolicyExceptionNew(
 	result.OrganizationName = org
 	result.Exception.PolicyPack = pack
 	result.Exception.Reason = cmp.Or(args.reason, result.Exception.Reason)
-	result.Exception.ExpiresInSeconds = int64(expiresIn / time.Second)
+	if expiresIn > 0 {
+		result.Exception.ExpiresInSeconds = new(int64(expiresIn / time.Second))
+	}
 
 	if args.dryRun {
 		result.DryRun = true
@@ -392,7 +395,7 @@ func runPolicyExceptionNew(
 
 	if interactive {
 		fmt.Fprintln(stderr, "\nPolicy Pack exceptions configuration:")
-		if err := ui.FprintJSON(stderr, result.Exception.PolicyException); err != nil {
+		if err := ui.FprintJSON(stderr, policyExceptionConfig(result.Exception)); err != nil {
 			return err
 		}
 		fprintPolicyExceptionExpiry(stderr, result)
@@ -837,23 +840,28 @@ func renderPolicyExceptionNewText(stdout, stderr io.Writer, r policyExceptionNew
 		return nil
 	}
 	fmt.Fprintln(stdout, "\nPolicy Pack exceptions configuration:")
-	if err := ui.FprintJSON(stdout, r.Exception.PolicyException); err != nil {
+	if err := ui.FprintJSON(stdout, policyExceptionConfig(r.Exception)); err != nil {
 		return err
 	}
 	fprintPolicyExceptionExpiry(stdout, r)
 	return nil
 }
 
+// policyExceptionConfig is the exception as it's written in a Policy Pack's configuration.
+func policyExceptionConfig(r apitype.CreatePolicyExceptionRequest) apitype.PolicyException {
+	return apitype.PolicyException{Reason: r.Reason, Match: r.Match}
+}
+
 // fprintPolicyExceptionExpiry prints when a created exception expires, or how long after it's created it will.
 func fprintPolicyExceptionExpiry(w io.Writer, r policyExceptionNewResult) {
-	if !r.ExpiresAt.IsZero() {
+	if r.ExpiresAt != nil {
 		fmt.Fprintf(w, "Expires: %s\n", r.ExpiresAt.UTC().Format(time.RFC3339))
 		return
 	}
-	seconds := r.Exception.ExpiresInSeconds
-	if seconds <= 0 {
+	if r.Exception.ExpiresInSeconds == nil {
 		return
 	}
+	seconds := *r.Exception.ExpiresInSeconds
 	n, unit := seconds/(24*3600), "day"
 	if seconds%(24*3600) != 0 {
 		n, unit = seconds/3600, "hour"

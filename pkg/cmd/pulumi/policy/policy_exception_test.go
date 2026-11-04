@@ -81,9 +81,9 @@ func (m *mockPolicyExceptionClient) CreatePolicyException(
 			&apitype.ErrorResponse{Code: http.StatusConflict, Message: "requires approval"}
 	}
 	created := apitype.PolicyExceptionInfo{ID: "EXC-7"}
-	if req.ExpiresInSeconds != 0 {
+	if req.ExpiresInSeconds != nil {
 		createdAt := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
-		created.ExpiresAt = createdAt.Add(time.Duration(req.ExpiresInSeconds) * time.Second)
+		created.ExpiresAt = new(createdAt.Add(time.Duration(*req.ExpiresInSeconds) * time.Second))
 	}
 	return created, m.existed, cmp.Or(m.createErr, m.err)
 }
@@ -175,18 +175,16 @@ const logsURN = "urn:pulumi:prod::web::aws:s3/bucket:Bucket::logs"
 
 func samplePolicyException(id string) apitype.PolicyExceptionInfo {
 	return apitype.PolicyExceptionInfo{
-		PolicyException: apitype.PolicyException{
-			Reason: "Logs are public by design",
-			Match: []apitype.PolicyExceptionMatch{
-				{Policies: []string{"s3-no-public-read", "required-tags"}, Targets: []string{logsURN}},
-				{Policies: []string{"required-tags"}, Targets: []string{logsURN + "-cdn"}},
-				{Policies: []string{"s3-no-public-read"}, Targets: []string{logsURN + "-cdn"}},
-			},
+		Reason: "Logs are public by design",
+		Match: []apitype.PolicyExceptionMatch{
+			{Policies: []string{"s3-no-public-read", "required-tags"}, Targets: []string{logsURN}},
+			{Policies: []string{"required-tags"}, Targets: []string{logsURN + "-cdn"}},
+			{Policies: []string{"s3-no-public-read"}, Targets: []string{logsURN + "-cdn"}},
 		},
 		ID:         id,
 		PolicyPack: "aws-security",
 		Status:     "active",
-		CreatedBy:  apitype.UserInfo{GitHubLogin: "alice"},
+		CreatedBy:  &apitype.UserInfo{GitHubLogin: "alice"},
 		CreatedAt:  time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC),
 	}
 }
@@ -195,11 +193,11 @@ func TestPolicyExceptionList(t *testing.T) {
 	t.Parallel()
 
 	expiring := samplePolicyException("EXC-2")
-	expiring.ExpiresAt = time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)
+	expiring.ExpiresAt = new(time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC))
 
 	var errBuf bytes.Buffer
 	c := &mockPolicyExceptionClient{pages: []apitype.ListPolicyExceptionsResponse{
-		{Exceptions: []apitype.PolicyExceptionInfo{expiring}, ContinuationToken: "next"},
+		{Exceptions: []apitype.PolicyExceptionInfo{expiring}, ContinuationToken: new("next")},
 		{Exceptions: []apitype.PolicyExceptionInfo{samplePolicyException("EXC-1")}},
 	}}
 	var buf bytes.Buffer
@@ -327,11 +325,11 @@ func TestPolicyExceptionGet(t *testing.T) {
 
 	removed := samplePolicyException("EXC-3")
 	removed.Status = "removed"
-	removed.RemovedBy = apitype.UserInfo{GitHubLogin: "bob"}
-	removed.RemovedAt = time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC)
-	removed.ChangeRequestID = "cr-1"
+	removed.RemovedBy = &apitype.UserInfo{GitHubLogin: "bob"}
+	removed.RemovedAt = new(time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC))
+	removed.ChangeRequestID = new("cr-1")
 	removed.Match = removed.Match[:1]
-	removed.ExpiresAt = time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC)
+	removed.ExpiresAt = new(time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC))
 	c := &mockPolicyExceptionClient{exception: removed}
 	var buf bytes.Buffer
 	err := runPolicyExceptionGet(t.Context(), &buf, stubPolicyExceptionFactory(c, "acme"), "EXC-3",
@@ -364,7 +362,7 @@ Policy Pack exceptions configuration:
 `, buf.String(), "a removed exception shows what it exempted")
 
 	deletedUser := samplePolicyException("EXC-4")
-	deletedUser.CreatedBy = apitype.UserInfo{}
+	deletedUser.CreatedBy = nil
 	c = &mockPolicyExceptionClient{exception: deletedUser}
 	buf.Reset()
 	err = runPolicyExceptionGet(t.Context(), &buf, stubPolicyExceptionFactory(c, "acme"), "EXC-4",
@@ -414,7 +412,7 @@ func TestPolicyExceptionGet_JSONOutput(t *testing.T) {
 
 	removed := samplePolicyException("EXC-3")
 	removed.Status = "removed"
-	removed.RemovedAt = time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC)
+	removed.RemovedAt = new(time.Date(2026, 10, 2, 9, 30, 0, 0, time.UTC))
 	c := &mockPolicyExceptionClient{exception: removed}
 	args := policyExceptionGetArgs{outputFormat: defaultPolicyExceptionGetOutputFormat()}
 	require.NoError(t, args.outputFormat.Set("json"))

@@ -107,27 +107,27 @@ func renderPolicyExceptionGetText(w io.Writer, e apitype.PolicyExceptionInfo) er
 	fmt.Fprintf(w, "%-14s %s\n", "ID:", e.ID)
 	fmt.Fprintf(w, "%-14s %s\n", "Policy pack:", e.PolicyPack)
 	fmt.Fprintf(w, "%-14s %s\n", "Status:", e.Status)
-	if e.ChangeRequestID != "" {
-		fmt.Fprintf(w, "%-14s %s\n", "Requested in:", "change request "+e.ChangeRequestID)
+	if e.ChangeRequestID != nil {
+		fmt.Fprintf(w, "%-14s %s\n", "Requested in:", "change request "+*e.ChangeRequestID)
 	}
 	for _, event := range []struct {
 		label string
-		at    time.Time
-		by    apitype.UserInfo
-	}{{"Created:", e.CreatedAt, e.CreatedBy}, {"Removed:", e.RemovedAt, e.RemovedBy}} {
-		if event.at.IsZero() {
+		at    *time.Time
+		by    *apitype.UserInfo
+	}{{"Created:", &e.CreatedAt, e.CreatedBy}, {"Removed:", e.RemovedAt, e.RemovedBy}} {
+		if event.at == nil {
 			continue
 		}
 		fmt.Fprintf(w, "%-14s %s", event.label, event.at.UTC().Format(time.RFC3339))
-		if event.by.GitHubLogin != "" {
+		if event.by != nil && event.by.GitHubLogin != "" {
 			fmt.Fprintf(w, " by %s", event.by.GitHubLogin)
 		}
 		fmt.Fprintln(w)
 	}
-	if !e.ExpiresAt.IsZero() {
+	if e.ExpiresAt != nil {
 		fmt.Fprintf(w, "%-14s %s\n", "Expires:", e.ExpiresAt.UTC().Format(time.RFC3339))
 	}
 
 	fmt.Fprintln(w, "\nPolicy Pack exceptions configuration:")
-	return ui.FprintJSON(w, e.PolicyException)
+	return ui.FprintJSON(w, apitype.PolicyException{Reason: e.Reason, Match: e.Match})
 }

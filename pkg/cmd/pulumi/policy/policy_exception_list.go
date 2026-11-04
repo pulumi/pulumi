@@ -137,10 +137,10 @@ func runPolicyExceptionList(
 			return err
 		}
 		exceptions = append(exceptions, resp.Exceptions...)
-		if resp.ContinuationToken == "" {
+		if resp.ContinuationToken == nil {
 			break
 		}
-		opts.ContinuationToken = resp.ContinuationToken
+		opts.ContinuationToken = *resp.ContinuationToken
 	}
 
 	return args.outputFormat.Get()(w, stderr, exceptions)
@@ -155,7 +155,7 @@ func renderPolicyExceptionListTable(w, stderr io.Writer, exceptions []apitype.Po
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.SetStyle(table.StyleLight)
-	expires := slices.ContainsFunc(exceptions, func(e apitype.PolicyExceptionInfo) bool { return !e.ExpiresAt.IsZero() })
+	expires := slices.ContainsFunc(exceptions, func(e apitype.PolicyExceptionInfo) bool { return e.ExpiresAt != nil })
 	header := table.Row{"ID", "POLICY PACK", "STATUS", "POLICIES", "TARGETS", "REASON"}
 	if expires {
 		header = append(header, "EXPIRES")
@@ -180,7 +180,7 @@ func renderPolicyExceptionListTable(w, stderr io.Writer, exceptions []apitype.Po
 		}
 		if expires {
 			expiry := ""
-			if !e.ExpiresAt.IsZero() {
+			if e.ExpiresAt != nil {
 				expiry = e.ExpiresAt.UTC().Format(time.DateOnly)
 			}
 			row = append(row, expiry)
