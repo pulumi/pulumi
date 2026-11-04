@@ -171,21 +171,22 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 			"result, with the exception's ID, to stdout. --dry-run --output json prints the run's violations,\n" +
 			"with their URNs, and the exception the command would create, without creating it.\n" +
 			"\n" +
-			"The command doesn't prompt when --yes is passed or the terminal isn't interactive. Then it\n" +
-			"skips violations that an exception exempts already, --reason is required unless --file has\n" +
-			"one, and so is the Policy Pack when the violations are from several.",
+			"For scripts and agents, pass --yes (or run without a terminal) to skip the picker: every\n" +
+			"violation the run didn't already exempt is included. --reason is then required unless --file\n" +
+			"has one, and so is the Policy Pack when the violations are from several. Check first with\n" +
+			"--dry-run --output json, edit the JSON if needed, and create it with --file -.",
 		Example: "  # Pick from the violations of the current stack's latest run\n" +
 			"  pulumi policy exception new aws-security\n\n" +
 			"  # Exempt one policy on every resource that violated it, without prompting\n" +
 			"  pulumi policy exception new aws-security --policy required-tags --reason \"Shared buckets (LOG-31)\" --yes\n\n" +
 			"  # Include advisory violations, from update 12 instead of the latest run\n" +
 			"  pulumi policy exception new aws-security --update=12 --level mandatory --level advisory --dry-run\n\n" +
-			"  # Show the violations and the exception, without creating it\n" +
-			"  pulumi policy exception new aws-security --dry-run --output json | jq '.violations'\n\n" +
-			"  # Create an exception from a file, or from stdin with -\n" +
-			"  pulumi policy exception new aws-security --file exception.yaml\n\n" +
-			"  # Exempt a policy for 30 days\n" +
-			"  pulumi policy exception new aws-security --policy required-tags --reason \"LOG-31\" --expires-in 30d\n\n" +
+			"  # Preview the exception as JSON, then create it from the edited output\n" +
+			"  pulumi policy exception new aws-security -s web/prod --dry-run --output json > exc.json\n" +
+			"  pulumi policy exception new aws-security --file exc.json --yes\n\n" +
+			"  # Expire it after 30 days; with an approval gate this opens a change request instead\n" +
+			"  pulumi policy exception new aws-security -s web/prod --policy s3-no-public-read \\\n" +
+			"      --reason \"LOG-31\" --expires-in 30d --yes --output json\n\n" +
 			"  # Request the exception in a change request, even if no approval is required\n" +
 			"  pulumi policy exception new aws-security --policy required-tags --reason \"LOG-31\" --draft\n\n" +
 			"  # See where violations are recorded, or the findings of a stack\n" +
