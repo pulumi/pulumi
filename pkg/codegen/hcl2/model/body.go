@@ -85,15 +85,33 @@ func (b *Body) Format(f fmt.State, c rune) {
 func (b *Body) print(w io.Writer, p *printer) {
 	// Print the items, separated by newlines.
 	for _, item := range b.Items {
-		p.fprintf(w, "% v", item)
-		if !item.GetTrailingTrivia().EndsOnNewLine() {
-			p.fprintf(w, "\n")
-		}
+		b.printItem(w, p, item)
 	}
 
 	// If the body has an end-of-file token, print it.
 	if b.Tokens.GetEndOfFile() != nil {
 		p.fprintf(w, "%v", b.Tokens.EndOfFile)
+	}
+}
+
+// printItem prints a body item and a newline after it. A multi-line generated comment in the item's trailing trivia
+// prints before the item.
+func (*Body) printItem(w io.Writer, p *printer, item BodyItem) {
+	trailing := item.GetTrailingTrivia()
+	moved := movedComments(trailing)
+
+	var prefix string
+	if !item.HasLeadingTrivia() {
+		prefix = p.indent
+	}
+
+	outerItem, outerMoved := p.item, p.moved
+	p.item, p.moved = &itemLayout{prefix: prefix, moved: moved}, moved
+	defer func() { p.item, p.moved = outerItem, outerMoved }()
+
+	p.fprintf(w, "% v", item)
+	if !withoutComments(trailing, moved).EndsOnNewLine() {
+		p.fprintf(w, "\n")
 	}
 }
 

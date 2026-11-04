@@ -15,9 +15,12 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -38,6 +41,20 @@ type printable interface {
 
 type printer struct {
 	indent string
+
+	// item holds the layout of the body item that is printing until its first token prints.
+	item *itemLayout
+	// moved holds the comments of the body item that is printing that print before the item and not in its
+	// trailing trivia.
+	moved []syntax.Comment
+}
+
+// itemLayout holds the information that the first token of a body item needs to print generated comments.
+type itemLayout struct {
+	// prefix is the text that the printer wrote before the item on the item's first line.
+	prefix string
+	// moved holds the comments to print after the leading trivia of the item.
+	moved []syntax.Comment
 }
 
 type formatter func(f fmt.State, c rune)
@@ -93,10 +110,187 @@ func (p *printer) fprintf(w io.Writer, f string, v ...any) {
 			v[i] = formatter(func(f fmt.State, c rune) {
 				p.format(f, c, printable)
 			})
+			continue
+		}
+		switch e := e.(type) {
+		case syntax.Token:
+			v[i] = formatter(func(f fmt.State, c rune) {
+				p.printToken(f, e)
+			})
+		case *syntax.Token:
+			if e != nil {
+				v[i] = formatter(func(f fmt.State, c rune) {
+					p.printToken(f, *e)
+				})
+			}
+		case syntax.TriviaList:
+			v[i] = formatter(func(f fmt.State, c rune) {
+				p.printTrailingTrivia(f, e)
+			})
 		}
 	}
 
 	if _, err := fmt.Fprintf(w, f, v...); err != nil {
 		panic(err)
 	}
+}
+
+// printToken prints a token like syntax.Token.Format, but lays out the generated comments in its trivia.
+func (p *printer) printToken(f fmt.State, t syntax.Token) {
+	leading, prefix := t.LeadingTrivia, ""
+	if item := p.item; item != nil {
+		p.item = nil
+		prefix = item.prefix
+		if len(item.moved) > 0 {
+			leading = append(append(syntax.TriviaList{}, leading...), commentTrivia(item.moved)...)
+		}
+	}
+
+	if leading != nil {
+		p.printLeadingTrivia(f, leading, prefix)
+	} else if f.Flag(' ') {
+		p.write(f, []byte{' '})
+	}
+	// A token without trivia prints only its text.
+	if _, err := fmt.Fprintf(f, "%v", syntax.Token{Raw: t.Raw}); err != nil {
+		panic(err)
+	}
+	p.printTrailingTrivia(f, t.TrailingTrivia)
+}
+
+// printLeadingTrivia prints trivia that precedes a token. The trivia starts after prefix on its line.
+//
+// A generated comment owns the lines that it prints: each line after the first, and the token after the comment,
+// starts at the column of the comment's first line. If whitespace trivia follows the comment, that trivia sets the
+// position of the token instead.
+func (p *printer) printLeadingTrivia(w io.Writer, trivia syntax.TriviaList, prefix string) {
+	for i, t := range trivia {
+		c, ok := t.(syntax.Comment)
+		if !ok || !isGeneratedComment(c) {
+			p.write(w, t.Bytes())
+			continue
+		}
+
+		indent := p.lineIndent(trivia[:i], prefix)
+		_, nextIsWhitespace := next(trivia, i).(syntax.Whitespace)
+		p.printComment(w, c, indent, !nextIsWhitespace)
+	}
+}
+
+// printTrailingTrivia prints trivia that follows a token. It omits the comments that print before the body item.
+//
+// A generated comment in trailing trivia has nothing to align with, so each line after the first starts at the
+// current indentation.
+func (p *printer) printTrailingTrivia(w io.Writer, trivia syntax.TriviaList) {
+	for _, t := range withoutComments(trivia, p.moved) {
+		if c, ok := t.(syntax.Comment); ok && isGeneratedComment(c) {
+			p.printComment(w, c, p.indent, false)
+		} else {
+			p.write(w, t.Bytes())
+		}
+	}
+}
+
+// printComment prints the lines of a generated comment, which ends with a newline. It writes indent before each line
+// after the first, and after the final newline if indentLast is true.
+func (p *printer) printComment(w io.Writer, c syntax.Comment, indent string, indentLast bool) {
+	lines := bytes.Split(bytes.TrimSuffix(c.Bytes(), []byte{'\n'}), []byte{'\n'})
+	for i, l := range lines {
+		if i > 0 {
+			p.write(w, []byte(indent))
+		}
+		p.write(w, l)
+		p.write(w, []byte{'\n'})
+	}
+	if indentLast {
+		p.write(w, []byte(indent))
+	}
+}
+
+// lineIndent returns the whitespace between the start of the current line and the end of the trivia, which starts
+// after prefix. If the line holds text that is not whitespace, lineIndent returns the current indentation.
+func (p *printer) lineIndent(trivia syntax.TriviaList, prefix string) string {
+	var text []byte
+	for _, t := range trivia {
+		text = append(text, t.Bytes()...)
+	}
+	line := prefix + string(text)
+	if nl := bytes.LastIndexByte(text, '\n'); nl != -1 {
+		line = string(text[nl+1:])
+	}
+	if strings.Trim(line, " \t") != "" {
+		return p.indent
+	}
+	return line
+}
+
+func (p *printer) write(w io.Writer, b []byte) {
+	if _, err := w.Write(b); err != nil {
+		panic(err)
+	}
+}
+
+// isGeneratedComment returns true if the comment was built from its Lines and not parsed from source. Only a parsed
+// comment has a source range.
+func isGeneratedComment(c syntax.Comment) bool {
+	return c.Range() == (hcl.Range{}) && len(c.Lines) > 0
+}
+
+// movedComments returns the generated comments in trivia that span more than one line. A trailing comment of this
+// kind cannot follow its token on the same line, so it prints before the body item.
+func movedComments(trivia syntax.TriviaList) []syntax.Comment {
+	var moved []syntax.Comment
+	for _, t := range trivia {
+		if c, ok := t.(syntax.Comment); ok && isGeneratedComment(c) && bytes.Count(c.Bytes(), []byte{'\n'}) > 1 {
+			moved = append(moved, c)
+		}
+	}
+	return moved
+}
+
+// withoutComments returns trivia without the given comments and without the whitespace directly before each of them.
+func withoutComments(trivia syntax.TriviaList, comments []syntax.Comment) syntax.TriviaList {
+	if len(comments) == 0 {
+		return trivia
+	}
+	result := make(syntax.TriviaList, 0, len(trivia))
+	for _, t := range trivia {
+		if c, ok := t.(syntax.Comment); ok && containsComment(comments, c) {
+			for len(result) > 0 {
+				if _, ok := result[len(result)-1].(syntax.Whitespace); !ok {
+					break
+				}
+				result = result[:len(result)-1]
+			}
+			continue
+		}
+		result = append(result, t)
+	}
+	return result
+}
+
+// containsComment returns true if comments holds c. Two generated comments are the same comment if they share the
+// backing array of their Lines.
+func containsComment(comments []syntax.Comment, c syntax.Comment) bool {
+	for _, other := range comments {
+		if len(c.Lines) > 0 && len(other.Lines) > 0 && &c.Lines[0] == &other.Lines[0] {
+			return true
+		}
+	}
+	return false
+}
+
+func commentTrivia(comments []syntax.Comment) syntax.TriviaList {
+	trivia := make(syntax.TriviaList, len(comments))
+	for i, c := range comments {
+		trivia[i] = c
+	}
+	return trivia
+}
+
+func next(trivia syntax.TriviaList, i int) syntax.Trivia {
+	if i+1 < len(trivia) {
+		return trivia[i+1]
+	}
+	return nil
 }

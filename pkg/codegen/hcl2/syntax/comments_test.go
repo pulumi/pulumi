@@ -249,29 +249,31 @@ func normString(s string) string {
 	return strings.TrimSuffix(s, "\r")
 }
 
-func TestNewCommentRoundTrip(t *testing.T) {
+func TestCommentLinesRoundTrip(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name     string
-		text     string
-		expected string
 		lines    []string
+		expected string
+		parsed   []string
 	}{
-		{"empty", "", "//\n", []string{""}},
-		{"multiline", " a\n\n b", "// a\n//\n// b\n", []string{" a", "", " b"}},
-		{"trailing newline", " a\n", "// a\n//\n", []string{" a", ""}},
-		{"line comment", " // a", "// // a\n", []string{" // a"}},
-		{"hash comment", "# a", "//# a\n", []string{"# a"}},
-		{"block comment", "/* a\n*/ b", "///* a\n//*/ b\n", []string{"/* a", "*/ b"}},
-		{"carriage return", "a\r\nb\r", "//a\r\n//b\r\n", []string{"a\r", "b\r"}},
-		{"invalid utf8", "\xff", "//\xff\n", []string{"\xff"}},
+		{"no lines", nil, "", nil},
+		{"empty line", []string{""}, "//\n", []string{""}},
+		{"multiline", []string{" a", "", " b"}, "// a\n//\n// b\n", []string{" a", "", " b"}},
+		{"newline in line", []string{" a\n b"}, "// a\n// b\n", []string{" a", " b"}},
+		{"trailing newline", []string{" a\n"}, "// a\n//\n", []string{" a", ""}},
+		{"line comment", []string{" // a"}, "// // a\n", []string{" // a"}},
+		{"hash comment", []string{"# a"}, "//# a\n", []string{"# a"}},
+		{"block comment", []string{"/* a", "*/ b"}, "///* a\n//*/ b\n", []string{"/* a", "*/ b"}},
+		{"carriage return", []string{"a\r", "b\r"}, "//a\r\n//b\r\n", []string{"a\r", "b\r"}},
+		{"invalid utf8", []string{"\xff"}, "//\xff\n", []string{"\xff"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			comment := fmt.Sprintf("%v", TriviaList{NewComment(tt.text)})
+			comment := fmt.Sprintf("%v", TriviaList{Comment{Lines: tt.lines}})
 			assert.Equal(t, tt.expected, comment)
 
 			parser := NewParser()
@@ -286,7 +288,17 @@ func TestNewCommentRoundTrip(t *testing.T) {
 					parsed = append(parsed, comment.Lines...)
 				}
 			}
-			assert.Equal(t, tt.lines, parsed)
+			assert.Equal(t, tt.parsed, parsed)
 		})
 	}
+}
+
+func TestTemplateDelimiterBytes(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, []byte("${"), TemplateDelimiter{Type: hclsyntax.TokenTemplateInterp}.Bytes())
+	assert.Equal(t, []byte("%{"), TemplateDelimiter{Type: hclsyntax.TokenTemplateControl}.Bytes())
+	assert.Equal(t, []byte("}"), TemplateDelimiter{Type: hclsyntax.TokenTemplateSeqEnd}.Bytes())
+	assert.Nil(t, TemplateDelimiter{Type: hclsyntax.TokenOBrace}.Bytes())
+	assert.Equal(t, []byte("${"), NewTemplateDelimiter(hclsyntax.TokenTemplateInterp).Bytes())
 }

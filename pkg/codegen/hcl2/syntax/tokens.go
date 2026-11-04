@@ -174,27 +174,27 @@ type Comment struct {
 	bytes []byte
 }
 
-// NewComment returns a new piece of comment trivia that prints each line of text as a `//` line comment. A line comment
-// ends only at a newline, so comment characters in the text need no escaping.
-func NewComment(text string) Comment {
-	lines := strings.Split(text, "\n")
-	var b bytes.Buffer
-	for _, l := range lines {
-		b.WriteString("//")
-		b.WriteString(l)
-		b.WriteByte('\n')
-	}
-	return Comment{Lines: lines, bytes: b.Bytes()}
-}
-
 // Range returns the range of the comment in the source file.
 func (c Comment) Range() hcl.Range {
 	return c.rng
 }
 
-// Bytes returns the raw bytes that comprise the comment.
+// Bytes returns the raw bytes that comprise the comment. A comment that was not parsed from source has no raw bytes,
+// so Bytes renders each of its lines as a `//` line comment. A line comment ends only at a newline, so a newline in a
+// line starts a new line comment, and comment characters in a line need no escaping.
 func (c Comment) Bytes() []byte {
-	return c.bytes
+	if c.bytes != nil {
+		return c.bytes
+	}
+	var b bytes.Buffer
+	for _, l := range c.Lines {
+		for line := range strings.SplitSeq(l, "\n") {
+			b.WriteString("//")
+			b.WriteString(line)
+			b.WriteByte('\n')
+		}
+	}
+	return b.Bytes()
 }
 
 func (Comment) isTrivia() {}
@@ -235,22 +235,15 @@ type TemplateDelimiter struct {
 // NewTemplateDelimiter creates a new TemplateDelimiter value with the given delimiter type. If the token type is not a
 // template delimiter, this function will panic.
 func NewTemplateDelimiter(typ hclsyntax.TokenType) TemplateDelimiter {
-	var s string
-	//nolint:exhaustive // Only some tokens are template delimiters.
-	switch typ {
-	case hclsyntax.TokenTemplateInterp:
-		s = "${"
-	case hclsyntax.TokenTemplateControl:
-		s = "%{"
-	case hclsyntax.TokenTemplateSeqEnd:
-		s = "}"
-	default:
+	if !isTemplateDelimiter(typ) {
 		panic(fmt.Errorf("%v is not a template delimiter", typ))
 	}
-	return TemplateDelimiter{
-		Type:  typ,
-		bytes: []byte(s),
-	}
+	return TemplateDelimiter{Type: typ}
+}
+
+func isTemplateDelimiter(typ hclsyntax.TokenType) bool {
+	return typ == hclsyntax.TokenTemplateInterp || typ == hclsyntax.TokenTemplateControl ||
+		typ == hclsyntax.TokenTemplateSeqEnd
 }
 
 // Range returns the range of the delimiter in the source file.
@@ -258,9 +251,13 @@ func (t TemplateDelimiter) Range() hcl.Range {
 	return t.rng
 }
 
-// Bytes returns the raw bytes that comprise the delimiter.
+// Bytes returns the raw bytes that comprise the delimiter. A delimiter that was not parsed from source has no raw
+// bytes, so Bytes renders the text of its type. If the type is not a template delimiter, Bytes returns nil.
 func (t TemplateDelimiter) Bytes() []byte {
-	return t.bytes
+	if t.bytes != nil || !isTemplateDelimiter(t.Type) {
+		return t.bytes
+	}
+	return []byte(tokenStrings[t.Type])
 }
 
 func (TemplateDelimiter) isTrivia() {}

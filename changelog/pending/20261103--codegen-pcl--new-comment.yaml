@@ -1,4 +1,4 @@
 component: codegen/pcl
 kind: improvement
-body: Add `syntax.NewComment` so tools that build PCL can print comments
+body: Print `syntax.Comment` and `syntax.TemplateDelimiter` trivia that tools build without source text
 time: 2026-11-03T00:00:00Z
