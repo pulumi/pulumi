@@ -13,7 +13,6 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
-from .widget import Widget
 
 __all__ = [
     'WidgetRefArgs',
@@ -23,22 +22,22 @@ __all__ = [
 ]
 
 class WidgetRefArgsDict(TypedDict):
-    widget: NotRequired[pulumi.Input[Optional['Widget']]]
+    widget: NotRequired[pulumi.Input[Optional['_widget.Widget']]]
 
 @pulumi.input_type
 class WidgetRefArgs:
     def __init__(__self__, *,
-                 widget: pulumi.Input[Optional['Widget']] = None):
+                 widget: pulumi.Input[Optional['_widget.Widget']] = None):
         if widget is not None:
             pulumi.set(__self__, "widget", widget)
 
     @_builtins.property
     @pulumi.getter
-    def widget(self) -> pulumi.Input[Optional['Widget']]:
+    def widget(self) -> pulumi.Input[Optional['_widget.Widget']]:
         return pulumi.get(self, "widget")
 
     @widget.setter
-    def widget(self, value: pulumi.Input[Optional['Widget']]):
+    def widget(self, value: pulumi.Input[Optional['_widget.Widget']]):
         pulumi.set(self, "widget", value)
 
 
@@ -62,3 +61,4 @@ class WidgetSettingsArgs:
         pulumi.set(self, "name", value)
 
 
+from . import widget as _widget

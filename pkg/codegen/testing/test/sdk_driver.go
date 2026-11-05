@@ -444,6 +444,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Python SDK where an object type has a resource reference property",
 		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
 	},
+	{
+		Directory:   "python-resource-reference-in-object-type-referenced-first",
+		Description: "Python SDK where the resource that an object type references loads first",
+		Skip:        allLanguages.Difference(mapset.NewSet("python/any")),
+	},
 }
 
 var genSDKOnly bool
