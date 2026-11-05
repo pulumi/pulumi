@@ -1,0 +1,3 @@
+component: cli/new
+kind: fix
+body: Fix guided `pulumi new` failing with "no Pulumi.yaml project file found" after choosing "Change these values" on a DIY backend

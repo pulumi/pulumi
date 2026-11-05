@@ -136,6 +136,11 @@ func askSetupQuestions(
 	return answers, nil
 }
 
+// useProjectForStackNames lets b resolve stack names without a project before the project is saved.
+func useProjectForStackNames(b backend.Backend, projectName string) {
+	b.SetCurrentProject(&workspace.Project{Name: tokens.PackageName(projectName)})
+}
+
 func printPreamble(w io.Writer, opts display.Options) {
 	fmt.Fprintln(w, "This command will walk you through creating a new Pulumi project.")
 	fmt.Fprintln(w)
@@ -257,6 +262,9 @@ func confirmGuidedValues(
 		}
 	}
 	if shows.stack {
+		// This also covers the stack name asked after "Change these values", even if the project is renamed:
+		// a DIY backend only needs some project to accept a stack name without one.
+		useProjectForStackNames(b, c.name)
 		if c.stackName, err = buildStackName(ctx, b, defaultStackName); err != nil {
 			return nil, err
 		}
