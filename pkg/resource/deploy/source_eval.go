@@ -3623,9 +3623,10 @@ func upgradeOutputValues(
 	for k, v := range m.All {
 		if deps, has := propertyDependencies[resource.PropertyKey(k)]; has {
 			current := mapset.NewSet[resource.URN]()
-			current.Append(v.Dependencies()...)
+			addOutputDependencies(current, v)
 			if !current.IsSuperset(deps) {
-				v = v.WithDependencies(current.Union(deps).ToSlice())
+				outer := mapset.NewSet(v.Dependencies()...)
+				v = v.WithDependencies(outer.Union(deps).ToSlice())
 			}
 		}
 		result[k] = v
