@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -32,6 +33,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// resolveContextError converts a ResolveContext failure into an APIError,
+// classifying rejected credentials as ExitAuthenticationError.
+func resolveContextError(err error) *APIError {
+	message := fmt.Sprintf("resolving cloud context: %v", err)
+	if errors.Is(err, httpstate.ErrUnauthorized) || backenderr.IsAuthError(err) {
+		return NewAPIError(cmdutil.ExitAuthenticationError, ErrNotLoggedIn, message).
+			WithSuggestions("run `pulumi login` first")
+	}
+	return NewAPIError(cmdutil.ExitInternalError, ErrToolError, message)
+}
 
 // ResolvedContext carries the resolved Pulumi Cloud context for an API call:
 // a Client (authenticated when LoggedIn is true, anonymous otherwise), the

@@ -238,8 +238,7 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 	// and returns a usable (anonymous) context when the user isn't logged in.
 	resolvedCtx, err := ResolveContext(cmd.Context())
 	if err != nil {
-		return NewAPIError(cmdutil.ExitInternalError, ErrToolError,
-			fmt.Sprintf("resolving cloud context: %v", err))
+		return resolveContextError(err)
 	}
 
 	idx, err := LoadIndex(cmd.Context(), resolvedCtx, cmd.ErrOrStderr(), api.refreshSpec)
