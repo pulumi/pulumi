@@ -1313,8 +1313,9 @@ func installNodeVersion(cwd string, stdout io.Writer) error {
 	// within a shell. Version switching is managed by setting the default
 	// version of nodejs below.
 	if os.Getenv("FNM_MULTISHELL_PATH") == "" {
-		installCmd = exec.Command("bash", "-c", fmt.Sprintf("eval \"$(fnm env --shell bash)\";"+
-			"fnm use '%s' --install-if-missing", version)) // #nosec G204
+		installCmd = exec.Command("bash", "-c",
+			`eval "$(fnm env --shell bash)"; fnm use "$1" --install-if-missing`,
+			"pulumi-fnm", version) // #nosec G204
 	}
 	out, err := installCmd.CombinedOutput()
 	if err != nil {
