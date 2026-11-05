@@ -303,6 +303,16 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
         }
     }
 
+    // The dynamic provider does not implement the dedicated Import/Refresh RPCs; the engine will fall back to
+    // calling `read` when these return UNIMPLEMENTED.
+    async import(call: any, callback: any): Promise<void> {
+        callback({ code: grpc.status.UNIMPLEMENTED, details: "Import is not implemented by the dynamic provider" });
+    }
+
+    async refresh(call: any, callback: any): Promise<void> {
+        callback({ code: grpc.status.UNIMPLEMENTED, details: "Refresh is not implemented by the dynamic provider" });
+    }
+
     list(call: grpc.ServerWritableStream<provproto.ListRequest, provproto.ListResponse>): void {
         call.emit("error", {
             code: grpc.status.UNIMPLEMENTED,
