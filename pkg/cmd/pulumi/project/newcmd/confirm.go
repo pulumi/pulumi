@@ -257,6 +257,10 @@ func confirmGuidedValues(
 		}
 	}
 	if shows.stack {
+		// A DIY backend validates a stack name without a project (e.g. `prod`) against its current
+		// project, which isn't saved yet. Set it before any stack-name prompt: the one below for a taken
+		// default, and the one after "Change these values". Any project name will do, even if renamed.
+		b.SetCurrentProject(&workspace.Project{Name: tokens.PackageName(c.name)})
 		if c.stackName, err = buildStackName(ctx, b, defaultStackName); err != nil {
 			return nil, err
 		}
