@@ -25,7 +25,7 @@ import (
 
 func diffLines(t *testing.T, published, local string) []string {
 	t.Helper()
-	changes, err := DiffDefinitions([]byte(published), []byte(local))
+	changes, err := DiffDefinitions([]byte(local), []byte(published))
 	require.NoError(t, err)
 	var b strings.Builder
 	WriteDefinitionDiff(&b, colors.Never, "org/proj/env", 7, changes)
@@ -148,35 +148,35 @@ func TestDiffDefinitionsNoValueChanges(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, equal)
 
-	changes, err := DiffDefinitions([]byte(published), []byte(local))
+	changes, err := DiffDefinitions([]byte(local), []byte(published))
 	require.NoError(t, err)
 	assert.Empty(t, changes)
 
 	var b strings.Builder
 	WriteDefinitionDiff(&b, colors.Never, "org/proj/env", 7, changes)
-	assert.Equal(t, "Environment org/proj/env: local changes based on revision 7 (no value changes); "+
-		"up, refresh and destroy publish them, preview does not\n", b.String())
+	assert.Equal(t, "Environment org/proj/env has local changes based on revision 7 (no value changes). "+
+		"up, refresh and destroy publish them; preview doesn't.\n", b.String())
 }
 
 func TestDiffDefinitionsErrors(t *testing.T) {
 	t.Parallel()
 
-	_, err := DiffDefinitions([]byte("values: [\n"), []byte("values: {}\n"))
+	_, err := DiffDefinitions([]byte("values: {}\n"), []byte("values: [\n"))
 	assert.ErrorContains(t, err, "published definition: ")
-	_, err = DiffDefinitions([]byte("values: {}\n"), []byte("a: &x 1\nb: *x\n"))
+	_, err = DiffDefinitions([]byte("a: &x 1\nb: *x\n"), []byte("values: {}\n"))
 	assert.ErrorContains(t, err, "local definition: ")
-	_, err = DiffDefinitions([]byte("values: {}\n"), []byte("- 1\n"))
+	_, err = DiffDefinitions([]byte("- 1\n"), []byte("values: {}\n"))
 	assert.EqualError(t, err, "local definition: the top level is [1], not a mapping")
 }
 
 func TestWriteDefinitionDiff(t *testing.T) {
 	t.Parallel()
 
-	changes, err := DiffDefinitions([]byte("values:\n  a: 1\n  b: 2\n"), []byte("values:\n  a: 3\n  c: 4\n"))
+	changes, err := DiffDefinitions([]byte("values:\n  a: 3\n  c: 4\n"), []byte("values:\n  a: 1\n  b: 2\n"))
 	require.NoError(t, err)
 
-	const header = "Environment org/proj/env: local changes based on revision 7; " +
-		"up, refresh and destroy publish them, preview does not\n"
+	const header = "Environment org/proj/env has local changes based on revision 7. " +
+		"up, refresh and destroy publish them; preview doesn't.\n"
 	cases := []struct {
 		color                         colors.Colorization
 		update, delete, create, reset string
@@ -201,10 +201,11 @@ func TestWriteDefinitionDiff(t *testing.T) {
 func TestWriteDefinitionDiffTerminalSafe(t *testing.T) {
 	t.Parallel()
 
-	changes, err := DiffDefinitions([]byte("values: {}\n"),
+	changes, err := DiffDefinitions(
 		[]byte("values:\n  a: \"<{%x%}>\"\n  b: \"<{%\"\n  \"c\\nd\": 1\n  \"e\\ef\\u009b\": 2\n"+
 			"  \"g\\u202eh\": 3\n  \"i\\u2028j\": 4\n  k: \"\\u202e\"\n  l: \"\\u2028\"\n  m: \"\\x7f\\u009b\"\n"+
-			"  \"n\\U000E0001\": 5\n"))
+			"  \"n\\U000E0001\": 5\n"),
+		[]byte("values: {}\n"))
 	require.NoError(t, err)
 
 	var b strings.Builder

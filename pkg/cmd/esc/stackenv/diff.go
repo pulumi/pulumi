@@ -68,10 +68,10 @@ type secretValue struct {
 	argument any
 }
 
-// DiffDefinitions lists the values that differ between the published and local definitions of an environment, sorted
+// DiffDefinitions lists the values that differ between the local and published definitions of an environment, sorted
 // by key within each mapping. Formatting, comments and key order are not compared. Secrets are compared by their
 // ciphertext, so a re-encrypted secret is reported as changed.
-func DiffDefinitions(published, local []byte) ([]DefinitionChange, error) {
+func DiffDefinitions(local, published []byte) ([]DefinitionChange, error) {
 	old, err := decodeDefinition(published)
 	if err != nil {
 		return nil, fmt.Errorf("published definition: %w", err)
@@ -99,7 +99,7 @@ func WriteDefinitionDiff(
 		noChanges = " (no value changes)"
 	}
 	fmt.Fprintf(w,
-		"Environment %s: local changes based on revision %d%s; up, refresh and destroy publish them, preview does not\n",
+		"Environment %s has local changes based on revision %d%s. up, refresh and destroy publish them; preview doesn't.\n",
 		env, baseRevision, noChanges)
 	for _, c := range changes {
 		var spec, text string
