@@ -168,7 +168,24 @@ service ResourceProvider {
     // `Read` reads the current live state associated with a resource identified by the supplied state. The given state
     // must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
     // include other properties.
+    //
+    // Deprecated: prefer [](pulumirpc.ResourceProvider.Import) and [](pulumirpc.ResourceProvider.Refresh), which split
+    // `Read` into the two distinct operations it was previously overloaded to serve. New providers should implement
+    // `Import` and `Refresh`; engines should prefer those methods when the provider advertises support for them.
     rpc Read(ReadRequest) returns (ReadResponse) {}
+
+    // `Import` reads the current live state associated with a resource identified by the supplied ID (and any
+    // additional identifying properties required by the provider), as part of importing an existing resource into
+    // Pulumi management. Unlike [](pulumirpc.ResourceProvider.Refresh), `Import` is not given any prior state or inputs
+    // for the resource -- the resource is not yet known to Pulumi, so the provider must derive the resource's inputs
+    // and outputs purely from the live environment.
+    rpc Import(ImportRequest) returns (ImportResponse) {}
+
+    // `Refresh` reads the current live state associated with a resource that is already known to Pulumi, updating the
+    // engine's view of the resource. Unlike [](pulumirpc.ResourceProvider.Import), `Refresh` is given the resource's
+    // prior state, inputs, and (optionally) views so that the provider can correlate the live state with what Pulumi
+    // previously recorded.
+    rpc Refresh(RefreshRequest) returns (RefreshResponse) {}
 
     // `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
     // emit a continuation token indicating another page is available.
@@ -312,6 +329,12 @@ message ProviderHandshakeRequest {
     // in should set `accepts_outputs_in_check` on `ProviderHandshakeResponse`. Older engines never set this
     // field.
     bool accepts_outputs_in_check = 15;
+
+    // If true the engine will prefer calling [](pulumirpc.ResourceProvider.Import) and
+    // [](pulumirpc.ResourceProvider.Refresh) over the legacy [](pulumirpc.ResourceProvider.Read) method when the
+    // provider advertises support for them via `supports_import_refresh` on `ProviderHandshakeResponse`. Older engines
+    // never set this field, so providers should treat an absent value as false.
+    bool supports_import_refresh = 16;
 }
 
 // `ProviderHandshakeResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Handshake) call.
@@ -951,6 +974,97 @@ message ReadResponse {
     // Output-derived input properties for the resource. These are returned as they would be returned from a
     // [](pulumirpc.ResourceProvider.Check) call with the same values.
     google.protobuf.Struct inputs = 3;
+
+    // Indicates that this resource should always be refreshed prior to updates.
+    bool refresh_before_update = 4;
+}
+
+// `ImportRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Import) call. `Import` is
+// used to bring an existing resource under Pulumi management; as such, the request contains only identifying
+// information for the resource and does not carry any prior outputs or inputs.
+message ImportRequest {
+    // The import ID of the resource to import.
+    string import_id = 1;
+
+    // The URN of the resource being imported.
+    string urn = 2;
+
+    // The name of the resource being imported. This must match the name specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 3;
+
+    // The type of the resource being imported. This must match the type specified by the `urn` field, and is passed so
+    // that providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 4;
+
+    // Any identifying inputs for the resource being imported. These should, together with the ID, be sufficient to
+    // uniquely identify the resource in the live environment. Unlike [](pulumirpc.RefreshRequest.inputs), these are not
+    // the resource's prior inputs -- the resource has not previously been managed by Pulumi.
+    google.protobuf.Struct inputs = 5;
+
+    // A timeout in seconds that the caller is prepared to wait for the operation to complete.
+    double timeout = 6;
+}
+
+// `ImportResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Import) call. An `ImportResponse`
+// contains the ID of the resource being imported, as well as the outputs and inputs that were successfully read from
+// the live environment.
+message ImportResponse {
+    // The ID of the imported resource.
+    string id = 1;
+
+    // Output-derived inputs for the resource. These are returned as they would be returned from a
+    // [](pulumirpc.ResourceProvider.Check) call with the same values.
+    google.protobuf.Struct inputs = 2;
+
+    // The outputs of the resource read from the live environment.
+    google.protobuf.Struct outputs = 3;
+
+    // Indicates that this resource should always be refreshed prior to updates.
+    bool refresh_before_update = 4;
+}
+
+// `RefreshRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Refresh) call. `Refresh` is
+// used to update the engine's view of a resource that is already under Pulumi management; as such, the request carries
+// the resource's prior outputs and inputs.
+message RefreshRequest {
+    // The ID of the resource to refresh.
+    string id = 1;
+
+    // The URN of the resource being refreshed.
+    string urn = 2;
+
+    // The name of the resource being refreshed. This must match the name specified by the `urn` field, and is passed
+    // so that providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 3;
+
+    // The type of the resource being refreshed. This must match the type specified by the `urn` field, and is passed
+    // so that providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 4;
+
+    // The current inputs for the resource being refreshed, as previously recorded by Pulumi.
+    google.protobuf.Struct inputs = 5;
+
+    // The current outputs for the resource being refreshed, as previously recorded by Pulumi.
+    google.protobuf.Struct outputs = 6;
+
+    // A timeout in seconds that the caller is prepared to wait for the operation to complete.
+    double timeout = 7;
+}
+
+// `RefreshResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Refresh) call. A `RefreshResponse`
+// contains the ID of the resource being refreshed, as well as any outputs and inputs that were successfully read from
+// the live environment.
+message RefreshResponse {
+    // The ID of the refreshed resource.
+    string id = 1;
+
+    // Output-derived inputs for the resource. These are returned as they would be returned from a
+    // [](pulumirpc.ResourceProvider.Check) call with the same values.
+    google.protobuf.Struct inputs = 2;
+
+    // The outputs of the resource read from the live environment.
+    google.protobuf.Struct outputs = 3;
 
     // Indicates that this resource should always be refreshed prior to updates.
     bool refresh_before_update = 4;

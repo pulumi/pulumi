@@ -243,6 +243,28 @@ function deserialize_pulumirpc_GetSchemaResponse(buffer_arg) {
   return pulumi_provider_pb.GetSchemaResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ImportRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ImportRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ImportRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ImportRequest(buffer_arg) {
+  return pulumi_provider_pb.ImportRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ImportResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ImportResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ImportResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ImportResponse(buffer_arg) {
+  return pulumi_provider_pb.ImportResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_InvokeRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.InvokeRequest)) {
     throw new Error('Expected argument of type pulumirpc.InvokeRequest');
@@ -373,6 +395,28 @@ function serialize_pulumirpc_ReadResponse(arg) {
 
 function deserialize_pulumirpc_ReadResponse(buffer_arg) {
   return pulumi_provider_pb.ReadResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RefreshRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.RefreshRequest)) {
+    throw new Error('Expected argument of type pulumirpc.RefreshRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RefreshRequest(buffer_arg) {
+  return pulumi_provider_pb.RefreshRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_RefreshResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.RefreshResponse)) {
+    throw new Error('Expected argument of type pulumirpc.RefreshResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_RefreshResponse(buffer_arg) {
+  return pulumi_provider_pb.RefreshResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_UpdateRequest(arg) {
@@ -642,6 +686,10 @@ create: {
   // `Read` reads the current live state associated with a resource identified by the supplied state. The given state
 // must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
 // include other properties.
+//
+// Deprecated: prefer [](pulumirpc.ResourceProvider.Import) and [](pulumirpc.ResourceProvider.Refresh), which split
+// `Read` into the two distinct operations it was previously overloaded to serve. New providers should implement
+// `Import` and `Refresh`; engines should prefer those methods when the provider advertises support for them.
 read: {
     path: '/pulumirpc.ResourceProvider/Read',
     requestStream: false,
@@ -652,6 +700,37 @@ read: {
     requestDeserialize: deserialize_pulumirpc_ReadRequest,
     responseSerialize: serialize_pulumirpc_ReadResponse,
     responseDeserialize: deserialize_pulumirpc_ReadResponse,
+  },
+  // `Import` reads the current live state associated with a resource identified by the supplied ID (and any
+// additional identifying properties required by the provider), as part of importing an existing resource into
+// Pulumi management. Unlike [](pulumirpc.ResourceProvider.Refresh), `Import` is not given any prior state or inputs
+// for the resource -- the resource is not yet known to Pulumi, so the provider must derive the resource's inputs
+// and outputs purely from the live environment.
+import: {
+    path: '/pulumirpc.ResourceProvider/Import',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.ImportRequest,
+    responseType: pulumi_provider_pb.ImportResponse,
+    requestSerialize: serialize_pulumirpc_ImportRequest,
+    requestDeserialize: deserialize_pulumirpc_ImportRequest,
+    responseSerialize: serialize_pulumirpc_ImportResponse,
+    responseDeserialize: deserialize_pulumirpc_ImportResponse,
+  },
+  // `Refresh` reads the current live state associated with a resource that is already known to Pulumi, updating the
+// engine's view of the resource. Unlike [](pulumirpc.ResourceProvider.Import), `Refresh` is given the resource's
+// prior state, inputs, and (optionally) views so that the provider can correlate the live state with what Pulumi
+// previously recorded.
+refresh: {
+    path: '/pulumirpc.ResourceProvider/Refresh',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.RefreshRequest,
+    responseType: pulumi_provider_pb.RefreshResponse,
+    requestSerialize: serialize_pulumirpc_RefreshRequest,
+    requestDeserialize: deserialize_pulumirpc_RefreshRequest,
+    responseSerialize: serialize_pulumirpc_RefreshResponse,
+    responseDeserialize: deserialize_pulumirpc_RefreshResponse,
   },
   // `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
 // emit a continuation token indicating another page is available.

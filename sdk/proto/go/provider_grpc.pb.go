@@ -46,6 +46,8 @@ const (
 	ResourceProvider_Diff_FullMethodName          = "/pulumirpc.ResourceProvider/Diff"
 	ResourceProvider_Create_FullMethodName        = "/pulumirpc.ResourceProvider/Create"
 	ResourceProvider_Read_FullMethodName          = "/pulumirpc.ResourceProvider/Read"
+	ResourceProvider_Import_FullMethodName        = "/pulumirpc.ResourceProvider/Import"
+	ResourceProvider_Refresh_FullMethodName       = "/pulumirpc.ResourceProvider/Refresh"
 	ResourceProvider_List_FullMethodName          = "/pulumirpc.ResourceProvider/List"
 	ResourceProvider_Update_FullMethodName        = "/pulumirpc.ResourceProvider/Update"
 	ResourceProvider_Delete_FullMethodName        = "/pulumirpc.ResourceProvider/Delete"
@@ -195,7 +197,22 @@ type ResourceProviderClient interface {
 	// `Read` reads the current live state associated with a resource identified by the supplied state. The given state
 	// must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
 	// include other properties.
+	//
+	// Deprecated: prefer [](pulumirpc.ResourceProvider.Import) and [](pulumirpc.ResourceProvider.Refresh), which split
+	// `Read` into the two distinct operations it was previously overloaded to serve. New providers should implement
+	// `Import` and `Refresh`; engines should prefer those methods when the provider advertises support for them.
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
+	// `Import` reads the current live state associated with a resource identified by the supplied ID (and any
+	// additional identifying properties required by the provider), as part of importing an existing resource into
+	// Pulumi management. Unlike [](pulumirpc.ResourceProvider.Refresh), `Import` is not given any prior state or inputs
+	// for the resource -- the resource is not yet known to Pulumi, so the provider must derive the resource's inputs
+	// and outputs purely from the live environment.
+	Import(ctx context.Context, in *ImportRequest, opts ...grpc.CallOption) (*ImportResponse, error)
+	// `Refresh` reads the current live state associated with a resource that is already known to Pulumi, updating the
+	// engine's view of the resource. Unlike [](pulumirpc.ResourceProvider.Import), `Refresh` is given the resource's
+	// prior state, inputs, and (optionally) views so that the provider can correlate the live state with what Pulumi
+	// previously recorded.
+	Refresh(ctx context.Context, in *RefreshRequest, opts ...grpc.CallOption) (*RefreshResponse, error)
 	// `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
 	// emit a continuation token indicating another page is available.
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ListResponse], error)
@@ -382,6 +399,26 @@ func (c *resourceProviderClient) Read(ctx context.Context, in *ReadRequest, opts
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ReadResponse)
 	err := c.cc.Invoke(ctx, ResourceProvider_Read_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resourceProviderClient) Import(ctx context.Context, in *ImportRequest, opts ...grpc.CallOption) (*ImportResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ImportResponse)
+	err := c.cc.Invoke(ctx, ResourceProvider_Import_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resourceProviderClient) Refresh(ctx context.Context, in *RefreshRequest, opts ...grpc.CallOption) (*RefreshResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RefreshResponse)
+	err := c.cc.Invoke(ctx, ResourceProvider_Refresh_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -625,7 +662,22 @@ type ResourceProviderServer interface {
 	// `Read` reads the current live state associated with a resource identified by the supplied state. The given state
 	// must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
 	// include other properties.
+	//
+	// Deprecated: prefer [](pulumirpc.ResourceProvider.Import) and [](pulumirpc.ResourceProvider.Refresh), which split
+	// `Read` into the two distinct operations it was previously overloaded to serve. New providers should implement
+	// `Import` and `Refresh`; engines should prefer those methods when the provider advertises support for them.
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
+	// `Import` reads the current live state associated with a resource identified by the supplied ID (and any
+	// additional identifying properties required by the provider), as part of importing an existing resource into
+	// Pulumi management. Unlike [](pulumirpc.ResourceProvider.Refresh), `Import` is not given any prior state or inputs
+	// for the resource -- the resource is not yet known to Pulumi, so the provider must derive the resource's inputs
+	// and outputs purely from the live environment.
+	Import(context.Context, *ImportRequest) (*ImportResponse, error)
+	// `Refresh` reads the current live state associated with a resource that is already known to Pulumi, updating the
+	// engine's view of the resource. Unlike [](pulumirpc.ResourceProvider.Import), `Refresh` is given the resource's
+	// prior state, inputs, and (optionally) views so that the provider can correlate the live state with what Pulumi
+	// previously recorded.
+	Refresh(context.Context, *RefreshRequest) (*RefreshResponse, error)
 	// `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
 	// emit a continuation token indicating another page is available.
 	List(*ListRequest, grpc.ServerStreamingServer[ListResponse]) error
@@ -733,6 +785,12 @@ func (UnimplementedResourceProviderServer) Create(context.Context, *CreateReques
 }
 func (UnimplementedResourceProviderServer) Read(context.Context, *ReadRequest) (*ReadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
+}
+func (UnimplementedResourceProviderServer) Import(context.Context, *ImportRequest) (*ImportResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Import not implemented")
+}
+func (UnimplementedResourceProviderServer) Refresh(context.Context, *RefreshRequest) (*RefreshResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Refresh not implemented")
 }
 func (UnimplementedResourceProviderServer) List(*ListRequest, grpc.ServerStreamingServer[ListResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method List not implemented")
@@ -998,6 +1056,42 @@ func _ResourceProvider_Read_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceProvider_Import_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ImportRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).Import(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResourceProvider_Import_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).Import(ctx, req.(*ImportRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ResourceProvider_Refresh_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RefreshRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).Refresh(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResourceProvider_Refresh_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).Refresh(ctx, req.(*RefreshRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ResourceProvider_List_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(ListRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -1207,6 +1301,14 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Read",
 			Handler:    _ResourceProvider_Read_Handler,
+		},
+		{
+			MethodName: "Import",
+			Handler:    _ResourceProvider_Import_Handler,
+		},
+		{
+			MethodName: "Refresh",
+			Handler:    _ResourceProvider_Refresh_Handler,
 		},
 		{
 			MethodName: "Update",
