@@ -282,11 +282,16 @@ func (r *treeRenderer) frame(locked, done bool) {
 		statusMessageHeight = 1
 	}
 
+	samesHeight := 0
+	if !done && r.sames != 0 {
+		samesHeight = 3
+	}
+
 	// Enable autoscrolling if the display is scrolled to its maximum offset.
 	autoscroll := r.treeTableOffset == r.maxTreeTableOffset
 
 	// Layout the display. The extra '1' accounts for the fact that we terminate each line with a newline.
-	totalHeight := treeTableHeight + systemMessagesHeight + statusMessageHeight + 1
+	totalHeight := treeTableHeight + samesHeight + systemMessagesHeight + statusMessageHeight + 1
 	r.maxTreeTableOffset = 0
 
 	// If this is not the final frame and the terminal is not large enough to show the entire display:
@@ -311,7 +316,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 		// last line of the tree table (where the scroll indicator is displayed).
 		mergeLastLine := systemMessagesHeight == 0 && statusMessageHeight != 0
 
-		treeTableHeight = termHeight - systemMessagesHeight - statusMessageHeight - 1
+		treeTableHeight = termHeight - samesHeight - systemMessagesHeight - statusMessageHeight - 1
 		r.maxTreeTableOffset = max(len(treeTableRows)-treeTableHeight+1, 0)
 		scrollable := r.maxTreeTableOffset != 0
 
@@ -333,7 +338,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 			treeTableRows = treeTableRows[r.treeTableOffset:]
 		}
 
-		totalHeight = treeTableHeight + systemMessagesHeight + statusMessageHeight + 1
+		totalHeight = treeTableHeight + samesHeight + systemMessagesHeight + statusMessageHeight + 1
 
 		footer := ""
 		if scrollable {
@@ -402,7 +407,7 @@ func (r *treeRenderer) frame(locked, done bool) {
 	// Render the count of any unchanged resources if there are any and we aren't
 	// done (at which point we'll have a summary displaying the final count
 	// alongside other statistics).
-	if !done && r.sames != 0 {
+	if samesHeight > 0 {
 		r.overln("")
 		r.overln(r.clampLine(colors.SpecHeadline+"Resources:"+colors.Reset, termWidth))
 		r.overln(r.clampLine(colors.BrightBlack+fmt.Sprintf("    %d unchanged", r.sames)+colors.Reset, termWidth))
