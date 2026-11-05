@@ -144,31 +144,15 @@ func (a *Agent) initialize(req *jsonrpc2.Request) (any, error) {
 			Title:   a.identity.Title,
 			Version: a.version,
 		},
-		AuthMethods: advertisedAuthMethods(a.identity.AuthMethods, params.ClientCapabilities),
+		// Advertised as-is, type included, regardless of the client's auth
+		// capabilities: the spec requires every method to carry its type
+		// discriminator and keeps capabilities.auth orthogonal
+		// (https://agentclientprotocol.com/protocol/v2/authentication). Clients
+		// that don't understand a type ignore the method or display it
+		// generically, falling back to the description or the
+		// pre-stabilization terminal-auth meta (see MetaKeyTerminalAuth).
+		AuthMethods: a.identity.AuthMethods,
 	}, nil
-}
-
-// advertisedAuthMethods tailors the identity's auth methods to the client's
-// capabilities. A terminal-typed method is advertised as-is only when the
-// client declared the auth.terminal capability; otherwise it is degraded to the
-// untyped (agent-default) form — Type/Args/Env cleared, ID/Name/Description
-// kept — so the editor still surfaces the method's description telling the user
-// how to authenticate out of band. IDs are stable across the two forms. Meta is
-// kept even on degrade: clients ignore unrecognized "_meta" keys by spec, and
-// editors that support only the pre-stabilization terminal-auth meta (see
-// MetaKeyTerminalAuth) may not declare the auth.terminal capability.
-func advertisedAuthMethods(methods []AuthMethod, caps ClientCapabilities) []AuthMethod {
-	if caps.Auth.Terminal {
-		return methods
-	}
-	degraded := make([]AuthMethod, len(methods))
-	for i, m := range methods {
-		if m.Type == AuthMethodTypeTerminal {
-			m.Type, m.Args, m.Env = "", nil, nil
-		}
-		degraded[i] = m
-	}
-	return degraded
 }
 
 // authenticate handles the `authenticate` request. Login itself happens outside
@@ -185,8 +169,6 @@ func (a *Agent) authenticate(ctx context.Context, req *jsonrpc2.Request) (any, e
 	if err != nil {
 		return nil, err
 	}
-	// Method IDs survive capability degrading (see advertisedAuthMethods), so
-	// validate against the identity list directly.
 	if !slices.ContainsFunc(a.identity.AuthMethods, func(m AuthMethod) bool { return m.ID == params.MethodID }) {
 		return nil, &jsonrpc2.Error{
 			Code:    jsonrpc2.CodeInvalidParams,
