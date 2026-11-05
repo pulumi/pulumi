@@ -821,6 +821,8 @@ type stubClient struct {
 	GetPluginInfoF func() (*pulumirpc.PluginInfo, error)
 	ListF          func(context.Context, *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error)
 	ReadF          func(*pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error)
+	ImportF        func(*pulumirpc.ImportRequest) (*pulumirpc.ImportResponse, error)
+	RefreshF       func(*pulumirpc.RefreshRequest) (*pulumirpc.RefreshResponse, error)
 	UpdateF        func(*pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error)
 }
 
@@ -922,6 +924,28 @@ func (c *stubClient) Read(
 		return f(req)
 	}
 	return c.ResourceProviderClient.Read(ctx, req, opts...)
+}
+
+func (c *stubClient) Import(
+	ctx context.Context,
+	req *pulumirpc.ImportRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.ImportResponse, error) {
+	if f := c.ImportF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.Import(ctx, req, opts...)
+}
+
+func (c *stubClient) Refresh(
+	ctx context.Context,
+	req *pulumirpc.RefreshRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.RefreshResponse, error) {
+	if f := c.RefreshF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.Refresh(ctx, req, opts...)
 }
 
 // stubListStream is a fake [pulumirpc.ResourceProvider_ListClient] that drains a pre-populated slice of responses.
@@ -1405,8 +1429,17 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 			}
 			return nil, rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
 		},
-		ReadF: func(req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
-			reasons := []string{"read issue"}
+		ImportF: func(req *pulumirpc.ImportRequest) (*pulumirpc.ImportResponse, error) {
+			reasons := []string{"import issue"}
+			detail := pulumirpc.ErrorResourceInitFailed{
+				Id:                  "some-id",
+				Reasons:             reasons,
+				RefreshBeforeUpdate: true,
+			}
+			return nil, rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
+		},
+		RefreshF: func(req *pulumirpc.RefreshRequest) (*pulumirpc.RefreshResponse, error) {
+			reasons := []string{"refresh issue"}
 			detail := pulumirpc.ErrorResourceInitFailed{
 				Id:                  "some-id",
 				Reasons:             reasons,
@@ -1442,17 +1475,27 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 	assert.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"create issue"}, initErr.Reasons)
 
-	readResp, err := p.Read(t.Context(), ReadRequest{
-		URN:    urn,
-		Name:   urn.Name(),
-		Type:   urn.Type(),
-		ID:     "some-id",
-		Inputs: resource.PropertyMap{},
-		State:  resource.PropertyMap{},
+	importResp, err := p.Import(t.Context(), ImportRequest{
+		URN:  urn,
+		Name: urn.Name(),
+		Type: urn.Type(),
+		ID:   "some-id",
 	})
-	assert.True(t, readResp.RefreshBeforeUpdate)
+	assert.True(t, importResp.RefreshBeforeUpdate)
 	assert.ErrorAs(t, err, &initErr, "expected an InitError")
-	assert.Equal(t, []string{"read issue"}, initErr.Reasons)
+	assert.Equal(t, []string{"import issue"}, initErr.Reasons)
+
+	refreshResp, err := p.Refresh(t.Context(), RefreshRequest{
+		URN:     urn,
+		Name:    urn.Name(),
+		Type:    urn.Type(),
+		ID:      "some-id",
+		Inputs:  resource.PropertyMap{},
+		Outputs: resource.PropertyMap{},
+	})
+	assert.True(t, refreshResp.RefreshBeforeUpdate)
+	assert.ErrorAs(t, err, &initErr, "expected an InitError")
+	assert.Equal(t, []string{"refresh issue"}, initErr.Reasons)
 
 	updateResp, err := p.Update(t.Context(), UpdateRequest{
 		URN:        urn,
@@ -1466,4 +1509,136 @@ func TestProvider_PartialFailure_RefreshBeforeUpdate(t *testing.T) {
 	assert.True(t, updateResp.RefreshBeforeUpdate)
 	assert.ErrorAs(t, err, &initErr, "expected an InitError")
 	assert.Equal(t, []string{"update issue"}, initErr.Reasons)
+}
+
+// When the provider returns codes.Unimplemented from Import, the plugin should fall back to the legacy Read RPC.
+// The identifying inputs on the ImportRequest become the `properties` on the ReadRequest, and `inputs` is left nil.
+func TestProvider_Import_fallsBackToRead(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux")
+
+	var gotReadReq *pulumirpc.ReadRequest
+	client := &stubClient{
+		ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{}, nil
+		},
+		ImportF: func(req *pulumirpc.ImportRequest) (*pulumirpc.ImportResponse, error) {
+			return nil, status.Error(codes.Unimplemented, "Import not implemented")
+		},
+		ReadF: func(req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+			gotReadReq = req
+			outputs, err := structpb.NewStruct(map[string]any{"out": "value"})
+			require.NoError(t, err)
+			return &pulumirpc.ReadResponse{
+				Id:         "canonical-id",
+				Properties: outputs,
+			}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+	require.NoError(t, err)
+
+	resp, err := p.Import(t.Context(), ImportRequest{
+		URN:    urn,
+		Name:   urn.Name(),
+		Type:   urn.Type(),
+		ID:     "some-id",
+		Inputs: resource.PropertyMap{"k": resource.NewProperty("v")},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, resource.ID("canonical-id"), resp.ID)
+	assert.Equal(t, resource.PropertyValue{V: "value"}, resp.Outputs["out"])
+
+	require.NotNil(t, gotReadReq, "fallback Read was not invoked")
+	assert.Equal(t, "some-id", gotReadReq.GetId())
+	assert.Equal(t, string(urn), gotReadReq.GetUrn())
+	// Import's identifying inputs become `properties` on the legacy Read request.
+	require.NotNil(t, gotReadReq.GetProperties())
+	// Legacy `inputs` must be nil to signal an import (not a refresh) to the old provider.
+	assert.Nil(t, gotReadReq.GetInputs())
+}
+
+// When the provider returns codes.Unimplemented from Refresh, the plugin should fall back to the legacy Read RPC.
+// The prior outputs/inputs are forwarded as `properties`/`inputs` on the ReadRequest.
+func TestProvider_Refresh_fallsBackToRead(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux")
+
+	var gotReadReq *pulumirpc.ReadRequest
+	client := &stubClient{
+		ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{}, nil
+		},
+		RefreshF: func(req *pulumirpc.RefreshRequest) (*pulumirpc.RefreshResponse, error) {
+			return nil, status.Error(codes.Unimplemented, "Refresh not implemented")
+		},
+		ReadF: func(req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+			gotReadReq = req
+			outputs, err := structpb.NewStruct(map[string]any{"out": "value"})
+			require.NoError(t, err)
+			return &pulumirpc.ReadResponse{
+				Id:         "canonical-id",
+				Properties: outputs,
+			}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+	require.NoError(t, err)
+
+	resp, err := p.Refresh(t.Context(), RefreshRequest{
+		URN:     urn,
+		Name:    urn.Name(),
+		Type:    urn.Type(),
+		ID:      "some-id",
+		Inputs:  resource.PropertyMap{"k": resource.NewProperty("v")},
+		Outputs: resource.PropertyMap{"out": resource.NewProperty("prior")},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, resource.ID("canonical-id"), resp.ID)
+
+	require.NotNil(t, gotReadReq, "fallback Read was not invoked")
+	assert.Equal(t, "some-id", gotReadReq.GetId())
+	// Refresh's prior outputs become `properties`, and prior inputs become `inputs`, on the legacy Read request.
+	require.NotNil(t, gotReadReq.GetProperties())
+	require.NotNil(t, gotReadReq.GetInputs())
+}
+
+// Errors other than Unimplemented from Import must not trigger the Read fallback.
+func TestProvider_Import_doesNotFallBackOnOtherErrors(t *testing.T) {
+	t.Parallel()
+
+	urn := resource.NewURN("org/proj/dev", "foo", "", "bar:baz", "qux")
+
+	readCalled := false
+	client := &stubClient{
+		ConfigureF: func(req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{}, nil
+		},
+		ImportF: func(req *pulumirpc.ImportRequest) (*pulumirpc.ImportResponse, error) {
+			return nil, status.Error(codes.InvalidArgument, "bad request")
+		},
+		ReadF: func(req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+			readCalled = true
+			return &pulumirpc.ReadResponse{}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:test"))})
+	require.NoError(t, err)
+
+	_, err = p.Import(t.Context(), ImportRequest{
+		URN:  urn,
+		Name: urn.Name(),
+		Type: urn.Type(),
+		ID:   "some-id",
+	})
+	require.Error(t, err)
+	assert.False(t, readCalled, "Read must not be called when Import returns a non-Unimplemented error")
 }
