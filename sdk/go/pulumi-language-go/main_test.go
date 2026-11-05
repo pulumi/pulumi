@@ -431,6 +431,7 @@ func TestGetRequiredPackagesWithoutGo(t *testing.T) {
 			name = "binary"
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			options, err := structpb.NewStruct(map[string]any{"binary": binary})
 			require.NoError(t, err)
 			res, err := host.GetRequiredPackages(t.Context(), &pulumirpc.GetRequiredPackagesRequest{
