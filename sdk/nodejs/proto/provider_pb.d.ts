@@ -753,6 +753,10 @@ export class CheckFailure extends jspb.Message {
     setProperty(value: string): CheckFailure;
     getReason(): string;
     setReason(value: string): CheckFailure;
+    clearRemediationsList(): void;
+    getRemediationsList(): Array<CommandRemediation>;
+    setRemediationsList(value: Array<CommandRemediation>): CheckFailure;
+    addRemediations(value?: CommandRemediation, index?: number): CommandRemediation;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckFailure.AsObject;
@@ -768,6 +772,40 @@ export namespace CheckFailure {
     export type AsObject = {
         property: string,
         reason: string,
+        remediationsList: Array<CommandRemediation.AsObject>,
+    }
+}
+
+export class CommandRemediation extends jspb.Message { 
+    getDescription(): string;
+    setDescription(value: string): CommandRemediation;
+    clearCommandList(): void;
+    getCommandList(): Array<string>;
+    setCommandList(value: Array<string>): CommandRemediation;
+    addCommand(value: string, index?: number): string;
+
+    getEnvMap(): jspb.Map<string, string>;
+    clearEnvMap(): void;
+    getInteractive(): boolean;
+    setInteractive(value: boolean): CommandRemediation;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CommandRemediation.AsObject;
+    static toObject(includeInstance: boolean, msg: CommandRemediation): CommandRemediation.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CommandRemediation, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CommandRemediation;
+    static deserializeBinaryFromReader(message: CommandRemediation, reader: jspb.BinaryReader): CommandRemediation;
+}
+
+export namespace CommandRemediation {
+    export type AsObject = {
+        description: string,
+        commandList: Array<string>,
+
+        envMap: Array<[string, string]>,
+        interactive: boolean,
     }
 }
 
