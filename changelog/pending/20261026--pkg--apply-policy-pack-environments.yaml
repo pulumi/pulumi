@@ -1,3 +1,0 @@
-component: pkg
-kind: chore
-body: Add an `environments` parameter to `httpstate/client.Client.ApplyPolicyPack`

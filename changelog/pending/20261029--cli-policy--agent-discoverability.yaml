@@ -1,3 +1,0 @@
-component: cli/policy
-kind: improvement
-body: Describe policy groups and issues in `pulumi policy` help
