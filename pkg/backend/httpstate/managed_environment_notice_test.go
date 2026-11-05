@@ -37,8 +37,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 )
 
-var managedEnvironmentNotice = "Environment p/env: local changes based on revision 7; " +
-	"up, refresh and destroy publish them, preview does not\n" +
+var managedEnvironmentNotice = "Environment p/env has local changes based on revision 7. " +
+	"up, refresh and destroy publish them; preview doesn't.\n" +
 	"    " + colors.SpecCreate + `+ values.pulumiConfig["p:a"]: 1` + colors.Reset + "\n"
 
 type publishedEnvironmentClient struct {

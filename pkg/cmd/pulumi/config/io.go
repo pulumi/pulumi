@@ -268,12 +268,12 @@ func managedEnvironmentNotice(stack backend.Stack, managedEnv *managedEnvironmen
 		return ""
 	}
 	name, revision := stack.ConfigLocation().ManagedEnvironment, managedEnv.update.BaseRevision
-	changes, err := stackenv.DiffDefinitions(managedEnv.published, managedEnv.local)
+	changes, err := stackenv.DiffDefinitions(managedEnv.local, managedEnv.published)
 	if err != nil {
 		slog.Debug("diffing managed environment definitions", "environment", name, "err", err)
 		return fmt.Sprintf(
-			"using local changes to environment %s (based on revision %d); "+
-				"up, refresh and destroy publish them, preview does not\n",
+			"using local changes to environment %s (based on revision %d). "+
+				"up, refresh and destroy publish them; preview doesn't.\n",
 			name, revision)
 	}
 	var notice strings.Builder
