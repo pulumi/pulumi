@@ -745,6 +745,95 @@ func TestRemoteComponentTransforms(t *testing.T) {
 	}, res.Inputs)
 }
 
+func TestRemoteComponentTransformNestedDependencies(t *testing.T) {
+	t.Parallel()
+
+	for _, withTransform := range []bool{false, true} {
+		t.Run(fmt.Sprintf("transform=%t", withTransform), func(t *testing.T) {
+			t.Parallel()
+
+			var inputs resource.PropertyMap
+			var sourceURN resource.URN
+			loaders := []*deploytest.ProviderLoader{
+				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+					return &deploytest.Provider{
+						CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+							return plugin.CreateResponse{
+								ID:         "source-id",
+								Properties: req.Properties,
+								Status:     resource.StatusOK,
+							}, nil
+						},
+						ConstructF: func(_ context.Context, req plugin.ConstructRequest,
+							monitor *deploytest.ResourceMonitor,
+						) (plugin.ConstructResponse, error) {
+							assert.Empty(t, req.Inputs.Get("wrapper").Dependencies())
+							assert.Equal(t, resource.FromResourcePropertyMap(inputs), req.Inputs)
+							assert.Equal(t, []resource.URN{sourceURN}, req.Options.PropertyDependencies["wrapper"])
+
+							resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{})
+							if err != nil {
+								return plugin.ConstructResponse{}, err
+							}
+							return plugin.ConstructResponse{URN: resp.URN}, nil
+						},
+					}, nil
+				}),
+			}
+
+			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+				source, err := monitor.RegisterResource("pkgA:m:Source", "source", true, deploytest.ResourceOptions{
+					Inputs: resource.PropertyMap{"value": resource.NewProperty("source-value")},
+				})
+				require.NoError(t, err)
+				sourceURN = source.URN
+				inputs = resource.PropertyMap{
+					"wrapper": resource.NewProperty(resource.PropertyMap{
+						"value": resource.NewProperty(resource.Output{
+							Element:      source.Outputs["value"],
+							Known:        true,
+							Dependencies: []resource.URN{source.URN},
+						}),
+					}),
+				}
+				callbacks, err := deploytest.NewCallbacksServer()
+				require.NoError(t, err)
+				defer func() { require.NoError(t, callbacks.Close()) }()
+
+				var transforms []*pulumirpc.Callback
+				if withTransform {
+					callback, err := callbacks.Allocate(func(request []byte) (proto.Message, error) {
+						var req pulumirpc.TransformRequest
+						if err := proto.Unmarshal(request, &req); err != nil {
+							return nil, err
+						}
+						return &pulumirpc.TransformResponse{Properties: req.Properties, Options: req.Options}, nil
+					})
+					require.NoError(t, err)
+					transforms = []*pulumirpc.Callback{callback}
+				}
+
+				_, err = monitor.RegisterResource("pkgA:m:Component", "component", false, deploytest.ResourceOptions{
+					Remote:     true,
+					Inputs:     inputs,
+					Transforms: transforms,
+					PropertyDeps: map[resource.PropertyKey][]resource.URN{
+						"wrapper": {source.URN},
+					},
+				})
+				return err
+			})
+			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+			p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+			project := p.GetProject()
+			snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+			require.NoError(t, err)
+			_, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, nil)
+			require.NoError(t, err)
+		})
+	}
+}
+
 func TestTransformsProviderOpt(t *testing.T) {
 	t.Parallel()
 

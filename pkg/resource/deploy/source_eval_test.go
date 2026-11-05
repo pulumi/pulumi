@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -4058,6 +4059,55 @@ func TestValidationFailures(t *testing.T) {
 		assert.ErrorContains(t, err, "resource monitor shut down")
 		assert.Equal(t, c.expectedStderr, stderr.String())
 		assert.Equal(t, "", stdout.String())
+	}
+}
+
+func TestUpgradeOutputValues(t *testing.T) {
+	t.Parallel()
+
+	a := resource.URN("urn:pulumi:stack::project::pkg:mod:Resource::a")
+	b := resource.URN("urn:pulumi:stack::project::pkg:mod:Resource::b")
+	c := resource.URN("urn:pulumi:stack::project::pkg:mod:Resource::c")
+	value := property.New("value").WithDependencies([]resource.URN{a})
+	nested := property.New(map[string]property.Value{"value": value})
+	array := property.New([]property.Value{value})
+	outer := nested.WithDependencies([]resource.URN{b})
+
+	for _, tt := range []struct {
+		name     string
+		input    property.Value
+		deps     []resource.URN
+		expected property.Value
+	}{
+		{"no declared dependencies", nested, nil, nested},
+		{"existing dependency", value, []resource.URN{a}, value},
+		{"nested object dependency", nested, []resource.URN{a}, nested},
+		{"nested array dependency", array, []resource.URN{a}, array},
+		{"outer and nested dependencies", outer, []resource.URN{a, b}, outer},
+		{"missing dependency", property.New("value"), []resource.URN{a}, value},
+		{
+			"missing dependency preserves outer and nested dependencies",
+			outer,
+			[]resource.URN{c},
+			outer.WithDependencies([]resource.URN{b, c}),
+		},
+		{
+			"partially represented dependencies",
+			outer,
+			[]resource.URN{a, c},
+			outer.WithDependencies([]resource.URN{a, b, c}),
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			input := property.NewMap(map[string]property.Value{"wrapper": tt.input})
+			actual := upgradeOutputValues(input, map[resource.PropertyKey]mapset.Set[resource.URN]{
+				"wrapper": mapset.NewSet(tt.deps...),
+			})
+			assert.True(t, tt.expected.Equals(actual.Get("wrapper")),
+				"expected %v, got %v", tt.expected, actual.Get("wrapper"))
+		})
 	}
 }
 
