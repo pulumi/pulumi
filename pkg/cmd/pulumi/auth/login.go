@@ -326,6 +326,15 @@ func (c *loginCmd) newCommand(ws pkgWorkspace.Context, lm backend.LoginManager, 
 				return loginError(cloudURL, urlSource, cwd, err)
 			}
 
+			if userProvidedURL {
+				if absURL, ok := absoluteFileURL(cloudURL); ok {
+					fmt.Fprintf(cmd.ErrOrStderr(),
+						"Warning: '%s' is a relative path, so every command will look for state relative to "+
+							"the directory it runs in. To always use this location, run `pulumi login %s` instead.\n",
+						cloudURL, absURL)
+				}
+			}
+
 			if diy.IsDIYBackendURL(cloudURL) {
 				if defaultOrg != "" {
 					return errors.New("unable to set default org for this type of backend")
@@ -458,6 +467,25 @@ func unwrapBucketOpenError(err error, cloudURL string) error {
 		return pathErr.Err
 	}
 	return cause
+}
+
+func absoluteFileURL(cloudURL string) (string, bool) {
+	if !strings.HasPrefix(cloudURL, diy.FilePathPrefix) {
+		return "", false
+	}
+	path, query, hasQuery := strings.Cut(strings.TrimPrefix(cloudURL, diy.FilePathPrefix), "?")
+	if strings.HasPrefix(path, "~") || strings.HasPrefix(path, "/") || filepath.IsAbs(path) {
+		return "", false
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", false
+	}
+	absURL := diy.FilePathPrefix + filepath.ToSlash(abs)
+	if hasQuery {
+		absURL += "?" + query
+	}
+	return absURL, true
 }
 
 func validateCloudBackendType(typ string) error {
