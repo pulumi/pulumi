@@ -1460,37 +1460,13 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			return resource.StatusOK, nil, err
 		}
 
-		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false, /* persisted */
-		)
-		if err != nil {
-			return resource.StatusOK, nil, err
-		}
-
-		var state property.Map
-		typ := string(urn.Type())
-		if strings.HasPrefix(typ, "pulumi-nodejs:dynamic") || strings.HasPrefix(typ, "pulumi-python:dynamic") {
-			state = resource.FromResourcePropertyMap(s.new.Inputs)
-		}
-
-		result, err := prov.Read(context.TODO(), plugin.ReadRequest{
-			URN:    urn,
-			Name:   urn.Name(),
-			Type:   urn.Type(),
-			ID:     id,
-			Inputs: resource.FromResourcePropertyMap(s.new.Inputs),
-			// N.B. We used to send "inputs" as "state" only, but since 2019 have been filling in both Inputs and State.
-			// This was a back-compat to deal with providers that were only looking at "state" (because originally there
-			// was no "inputs" field). Enough time has passed that we can assume providers have updated to looking at
-			// "inputs" now. This allows providers to tell the difference between a read/import and a refresh because
-			// only refresh will send non-nil state. Caveat that dynamic providers may still expect state to be non-nil,
-			// they were only updated in https://github.com/pulumi/pulumi/pull/24977 October 2026. So for those we
-			// special case and keep sending inputs in state, eventually we can clean that up as well.
-			State:                 state,
-			Timeout:               s.new.CustomTimeouts.Read,
-			ResourceStatusAddress: resourceStatusAddress,
-			ResourceStatusToken:   resourceStatusToken,
+		result, err := prov.Import(context.TODO(), plugin.ImportRequest{
+			URN:     urn,
+			Name:    urn.Name(),
+			Type:    urn.Type(),
+			ID:      id,
+			Inputs:  resource.FromResourcePropertyMap(s.new.Inputs),
+			Timeout: s.new.CustomTimeouts.Read,
 		})
 
 		s.new.Lock.Lock()
@@ -1724,29 +1700,15 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		return resource.StatusOK, nil, err
 	}
 
-	resourceStatusAddress := s.deployment.resourceStatus.Address()
-	resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-		s.URN(), true /*refresh*/, s.Persisted(), /* persisted */
-	)
-	if err != nil {
-		if s.cts != nil {
-			s.cts.MustReject(err)
-		}
-		return resource.StatusOK, nil, err
-	}
-
 	var initErrors []string
-	refreshed, err := prov.Read(context.TODO(), plugin.ReadRequest{
-		URN:                   s.new.URN,
-		Name:                  s.new.URN.Name(),
-		Type:                  s.new.URN.Type(),
-		ID:                    resourceID,
-		Inputs:                resource.FromResourcePropertyMap(s.old.Inputs),
-		State:                 resource.FromResourcePropertyMap(s.old.Outputs),
-		Timeout:               s.old.CustomTimeouts.Read,
-		ResourceStatusAddress: resourceStatusAddress,
-		ResourceStatusToken:   resourceStatusToken,
-		OldViews:              s.oldViews,
+	refreshed, err := prov.Refresh(context.TODO(), plugin.RefreshRequest{
+		URN:     s.new.URN,
+		Name:    s.new.URN.Name(),
+		Type:    s.new.URN.Type(),
+		ID:      resourceID,
+		Inputs:  resource.FromResourcePropertyMap(s.old.Inputs),
+		Outputs: resource.FromResourcePropertyMap(s.old.Outputs),
+		Timeout: s.old.CustomTimeouts.Read,
 	})
 	if err != nil {
 		if refreshed.Status != resource.StatusPartialFailure {
@@ -2173,22 +2135,12 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			return resource.StatusOK, nil, err
 		}
 
-		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false, /* persisted */
-		)
-		if err != nil {
-			return resource.StatusOK, nil, err
-		}
-
-		read, err := prov.Read(context.TODO(), plugin.ReadRequest{
-			URN:                   s.new.URN,
-			Name:                  s.new.URN.Name(),
-			Type:                  s.new.URN.Type(),
-			ID:                    s.new.ImportID,
-			Timeout:               s.new.CustomTimeouts.Read,
-			ResourceStatusAddress: resourceStatusAddress,
-			ResourceStatusToken:   resourceStatusToken,
+		read, err := prov.Import(context.TODO(), plugin.ImportRequest{
+			URN:     s.new.URN,
+			Name:    s.new.URN.Name(),
+			Type:    s.new.URN.Type(),
+			ID:      s.new.ImportID,
+			Timeout: s.new.CustomTimeouts.Read,
 		})
 		rst = read.Status
 

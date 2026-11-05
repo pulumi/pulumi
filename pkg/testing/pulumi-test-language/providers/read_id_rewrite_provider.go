@@ -106,23 +106,49 @@ func (p *ReadIdRewriteProvider) Delete(
 	return plugin.DeleteResponse{}, nil
 }
 
-func (p *ReadIdRewriteProvider) Read(
-	_ context.Context, req plugin.ReadRequest,
-) (plugin.ReadResponse, error) {
+func (p *ReadIdRewriteProvider) Import(
+	_ context.Context, req plugin.ImportRequest,
+) (plugin.ImportResponse, error) {
 	if req.URN.Type() != "read-id-rewrite:index:Resource" {
-		return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+		return plugin.ImportResponse{Status: resource.StatusUnknown}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
 	inputs := resource.ToResourcePropertyMap(req.Inputs)
 	lookup, ok := inputs["lookup"]
 	if !ok || !lookup.IsString() {
-		return plugin.ReadResponse{Status: resource.StatusUnknown},
+		return plugin.ImportResponse{Status: resource.StatusUnknown},
 			errors.New("lookup input is required and must be a string")
 	}
 
 	readInputs := property.NewMap(map[string]property.Value{"lookup": resource.FromResourcePropertyValue(lookup)})
 	readOutputs := property.NewMap(map[string]property.Value{"lookup": resource.FromResourcePropertyValue(lookup)})
-	return plugin.ReadResponse{
+	return plugin.ImportResponse{
+		ReadResult: plugin.ReadResult{
+			ID:      "rewritten-" + req.ID,
+			Inputs:  &readInputs,
+			Outputs: &readOutputs,
+		},
+		Status: resource.StatusOK,
+	}, nil
+}
+
+func (p *ReadIdRewriteProvider) Refresh(
+	_ context.Context, req plugin.RefreshRequest,
+) (plugin.RefreshResponse, error) {
+	if req.URN.Type() != "read-id-rewrite:index:Resource" {
+		return plugin.RefreshResponse{Status: resource.StatusUnknown}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	inputs := resource.ToResourcePropertyMap(req.Inputs)
+	lookup, ok := inputs["lookup"]
+	if !ok || !lookup.IsString() {
+		return plugin.RefreshResponse{Status: resource.StatusUnknown},
+			errors.New("lookup input is required and must be a string")
+	}
+
+	readInputs := property.NewMap(map[string]property.Value{"lookup": resource.FromResourcePropertyValue(lookup)})
+	readOutputs := property.NewMap(map[string]property.Value{"lookup": resource.FromResourcePropertyValue(lookup)})
+	return plugin.RefreshResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      "rewritten-" + req.ID,
 			Inputs:  &readInputs,

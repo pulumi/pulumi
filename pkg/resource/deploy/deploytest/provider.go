@@ -53,7 +53,8 @@ type Provider struct {
 	UpdateF       func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error)
 	DeleteF       func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error)
 	ListF         func(context.Context, plugin.ListRequest) (*plugin.ListStream, error)
-	ReadF         func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error)
+	ImportF       func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error)
+	RefreshF      func(context.Context, plugin.RefreshRequest) (plugin.RefreshResponse, error)
 	ConstructF    func(context.Context, plugin.ConstructRequest, *ResourceMonitor) (plugin.ConstructResponse, error)
 	InvokeF       func(context.Context, plugin.InvokeRequest) (plugin.InvokeResponse, error)
 	CallF         func(context.Context, plugin.CallRequest, *ResourceMonitor) (plugin.CallResponse, error)
@@ -188,21 +189,38 @@ func (prov *Provider) List(ctx context.Context, req plugin.ListRequest) (*plugin
 	return prov.ListF(ctx, req)
 }
 
-func (prov *Provider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-	contract.Assertf(req.URN != "", "Read URN was empty")
-	contract.Assertf(req.ID != "", "Read ID was empty")
-	if prov.ReadF == nil {
-		return plugin.ReadResponse{
+func (prov *Provider) Import(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+	contract.Assertf(req.URN != "", "Import URN was empty")
+	contract.Assertf(req.ID != "", "Import ID was empty")
+	if prov.ImportF == nil {
+		return plugin.ImportResponse{
 			ReadResult: plugin.ReadResult{
 				ID:      req.ID,
-				Outputs: &req.State,
+				Outputs: &req.Inputs,
 				Inputs:  &req.Inputs,
 			},
 			Status: resource.StatusOK,
 		}, nil
 	}
 
-	return prov.ReadF(ctx, req)
+	return prov.ImportF(ctx, req)
+}
+
+func (prov *Provider) Refresh(ctx context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+	contract.Assertf(req.URN != "", "Refresh URN was empty")
+	contract.Assertf(req.ID != "", "Refresh ID was empty")
+	if prov.RefreshF == nil {
+		return plugin.RefreshResponse{
+			ReadResult: plugin.ReadResult{
+				ID:      req.ID,
+				Outputs: &req.Outputs,
+				Inputs:  &req.Inputs,
+			},
+			Status: resource.StatusOK,
+		}, nil
+	}
+
+	return prov.RefreshF(ctx, req)
 }
 
 func (prov *Provider) Construct(ctx context.Context, req plugin.ConstructRequest) (plugin.ConstructResult, error) {

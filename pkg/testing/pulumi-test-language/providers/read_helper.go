@@ -19,12 +19,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
-// coalesceReadOutputs returns the outputs a trivial mock provider should surface from a Read.
-// On refresh the engine passes prior outputs in req.State; on a user-driven Get the engine
-// passes an empty map, so fall back to req.Inputs to emulate a provider that returns the live state.
-func coalesceReadOutputs(req plugin.ReadRequest) *property.Map {
-	if req.State.Len() > 0 {
-		return &req.State
+// coalesceImportOutputs returns the outputs a trivial mock provider should surface from an Import.
+// Import carries no prior state, so this just echoes the identifying inputs as the live state.
+func coalesceImportOutputs(req plugin.ImportRequest) *property.Map {
+	return &req.Inputs
+}
+
+// coalesceRefreshOutputs returns the outputs a trivial mock provider should surface from a Refresh.
+// Refresh carries prior outputs, which a trivial provider echoes back; if they're empty, fall back
+// to the prior inputs.
+func coalesceRefreshOutputs(req plugin.RefreshRequest) *property.Map {
+	if req.Outputs.Len() > 0 {
+		return &req.Outputs
 	}
 	return &req.Inputs
 }
