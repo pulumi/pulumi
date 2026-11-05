@@ -41,6 +41,7 @@ import (
 	"golang.org/x/mod/modfile"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestParseRunParams(t *testing.T) {
@@ -417,6 +418,36 @@ func TestPluginsAndDependencies_subdir(t *testing.T) {
 
 		testPluginsAndDependencies(t, filepath.Join(root, "prog-gowork", "prog"))
 	})
+}
+
+func TestGetRequiredPackagesWithoutGo(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	t.Setenv("GOPATH", t.TempDir())
+	dir := t.TempDir()
+	host := newLanguageHost("", dir, "", "")
+	for _, binary := range []string{"", "infra"} {
+		name := "source"
+		if binary != "" {
+			name = "binary"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			options, err := structpb.NewStruct(map[string]any{"binary": binary})
+			require.NoError(t, err)
+			res, err := host.GetRequiredPackages(t.Context(), &pulumirpc.GetRequiredPackagesRequest{
+				Info: &pulumirpc.ProgramInfo{
+					RootDirectory: dir, ProgramDirectory: dir, EntryPoint: ".", Options: options,
+				},
+			})
+			if binary == "" {
+				require.ErrorContains(t, err, "couldn't find go binary")
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, res)
+				require.Empty(t, res.Packages)
+			}
+		})
+	}
 }
 
 func testPluginsAndDependencies(t *testing.T, progDir string) {

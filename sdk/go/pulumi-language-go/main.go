@@ -781,8 +781,17 @@ func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
 	logging.V(5).Infof("GetRequiredPackages: Determining pulumi packages")
 
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
+		if opts.binary != "" {
+			// A prebuilt program can run without Go. Package discovery is best effort in this case.
+			return &pulumirpc.GetRequiredPackagesResponse{}, nil
+		}
 		return nil, fmt.Errorf("couldn't find go binary: %w", err)
 	}
 
