@@ -736,3 +736,161 @@ func assertSpanAttribute(t *testing.T, span sdktrace.ReadOnlySpan, key string, w
 	}
 	require.Failf(t, "attribute not found", "attribute %q not found on span %q", key, span.Name())
 }
+
+func TestRetryWaitWarner(t *testing.T) {
+	t.Parallel()
+
+	mkRes := func(status int) *http.Response {
+		return &http.Response{StatusCode: status, Header: http.Header{}}
+	}
+
+	t.Run("warns on long maintenance waits", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		w := &retryWaitWarner{diag: sink}
+		w.onRetryWait(45*time.Second, mkRes(http.StatusServiceUnavailable))
+		require.Len(t, sink.Messages[diag.Warning], 1)
+		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "unavailable")
+		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "retrying in 45s")
+	})
+
+	t.Run("warns on long rate-limit waits", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		w := &retryWaitWarner{diag: sink}
+		w.onRetryWait(45*time.Second, mkRes(http.StatusTooManyRequests))
+		require.Len(t, sink.Messages[diag.Warning], 1)
+		assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "rate-limited")
+	})
+
+	t.Run("silent on short waits", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		w := &retryWaitWarner{diag: sink}
+		w.onRetryWait(serverWaitWarningThreshold-time.Second, mkRes(http.StatusServiceUnavailable))
+		assert.Empty(t, sink.Messages)
+	})
+
+	t.Run("warns once Retry-After: 0 waits reach the backoff cap", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		w := &retryWaitWarner{diag: sink}
+		// With Retry-After: 0 the wait is the client backoff, which grows to maxRetryDelay and stays there.
+		w.onRetryWait(maxRetryDelay, mkRes(http.StatusServiceUnavailable))
+		require.Len(t, sink.Messages[diag.Warning], 1)
+	})
+
+	t.Run("repeat warnings are paced", func(t *testing.T) {
+		t.Parallel()
+		sink := &diag.MockSink{}
+		clock := time.Unix(0, 0)
+		w := &retryWaitWarner{diag: sink, now: func() time.Time { return clock }}
+		for range 5 {
+			w.onRetryWait(45*time.Second, mkRes(http.StatusServiceUnavailable))
+		}
+		require.Len(t, sink.Messages[diag.Warning], 1)
+
+		clock = clock.Add(serverWaitRewarnInterval)
+		w.onRetryWait(45*time.Second, mkRes(http.StatusServiceUnavailable))
+		require.Len(t, sink.Messages[diag.Warning], 2)
+	})
+
+	t.Run("nil warner and nil sink are safe", func(t *testing.T) {
+		t.Parallel()
+		var w *retryWaitWarner
+		w.onRetryWait(45*time.Second, mkRes(http.StatusServiceUnavailable))
+		w = &retryWaitWarner{}
+		w.onRetryWait(45*time.Second, mkRes(http.StatusServiceUnavailable))
+	})
+}
+
+func TestDefaultHTTPClientServiceSignalsOnlyForAPIHost(t *testing.T) {
+	t.Parallel()
+
+	newServer := func(maintenanceRounds int) (*httptest.Server, *atomic.Int32) {
+		var tries atomic.Int32
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if int(tries.Add(1)) <= maintenanceRounds {
+				w.Header().Set("Retry-After", "0")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+		}))
+		t.Cleanup(server.Close)
+		return server, &tries
+	}
+
+	t.Run("Pulumi Cloud API waits out maintenance past the retry budget", func(t *testing.T) {
+		t.Parallel()
+
+		server, tries := newServer(6)
+		c := newDefaultHTTPClient(server.Client(), server.URL, nil)
+		c.retryDelay = time.Millisecond
+		req, err := http.NewRequest("GET", server.URL+"/api/user", nil)
+		require.NoError(t, err)
+
+		res, err := c.Do(req, retryAllMethods)
+		require.NoError(t, err)
+		defer res.Body.Close()
+
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		assert.Equal(t, int32(7), tries.Load())
+	})
+
+	t.Run("other hosts keep the bounded retry", func(t *testing.T) {
+		t.Parallel()
+
+		server, tries := newServer(10)
+		c := newDefaultHTTPClient(server.Client(), "https://api.pulumi.example", nil)
+		c.retryDelay = time.Millisecond
+		req, err := http.NewRequest("GET", server.URL+"/template.tar.gz", nil)
+		require.NoError(t, err)
+
+		res, err := c.Do(req, retryAllMethods)
+		require.NoError(t, err)
+		defer res.Body.Close()
+
+		assert.Equal(t, http.StatusServiceUnavailable, res.StatusCode)
+		assert.Equal(t, int32(4), tries.Load())
+	})
+}
+
+func TestForThirdPartyHostDropsAPIHost(t *testing.T) {
+	t.Parallel()
+
+	pc := NewClient("https://github.example/owner/repo/archive.tar.gz", "", false, nil).forThirdPartyHost()
+	hc := pc.restClient.(*defaultRESTClient).client.(*defaultHTTPClient)
+	assert.Empty(t, hc.apiHost, "a template host must not get the Pulumi Cloud retry signals or trace context")
+}
+
+func TestDefaultHTTPClientWarnsWhileWaitingOutMaintenance(t *testing.T) {
+	t.Parallel()
+
+	tries := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tries++
+		if tries == 1 {
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	sink := &diag.MockSink{}
+	client := newDefaultHTTPClient(server.Client(), server.URL, sink)
+	client.warner.threshold = time.Millisecond
+	req, err := http.NewRequest("GET", server.URL, nil)
+	require.NoError(t, err)
+
+	res, err := client.Do(req, retryGetMethod)
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	require.Len(t, sink.Messages[diag.Warning], 1)
+	assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "unavailable")
+	assert.Contains(t, sink.Messages[diag.Warning][0].Diag.Message, "retrying in 1s")
+}

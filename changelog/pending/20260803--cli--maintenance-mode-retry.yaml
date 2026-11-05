@@ -1,0 +1,6 @@
+component: cli
+kind: improvement
+body: Stack operations wait out Pulumi Cloud maintenance windows instead of failing, with a warning while waiting
+time: 2026-08-03T00:00:00+00:00
+custom:
+    PR: "24168"

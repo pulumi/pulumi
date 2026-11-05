@@ -1,0 +1,7 @@
+component: cli
+kind: improvement
+body: Fail updates with a clear expired-lease error instead of retrying indefinitely
+  when the service rejects an update lease token
+time: 2026-08-07T00:00:00+00:00
+custom:
+    PR: "24168"
