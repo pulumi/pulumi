@@ -175,7 +175,8 @@ type MockProvider struct {
 	CheckF              func(context.Context, CheckRequest) (CheckResponse, error)
 	DiffF               func(context.Context, DiffRequest) (DiffResponse, error)
 	CreateF             func(context.Context, CreateRequest) (CreateResponse, error)
-	ReadF               func(context.Context, ReadRequest) (ReadResponse, error)
+	ImportF             func(context.Context, ImportRequest) (ImportResponse, error)
+	RefreshF            func(context.Context, RefreshRequest) (RefreshResponse, error)
 	UpdateF             func(context.Context, UpdateRequest) (UpdateResponse, error)
 	DeleteF             func(context.Context, DeleteRequest) (DeleteResponse, error)
 	ListF               func(context.Context, ListRequest) (*ListStream, error)
@@ -262,11 +263,18 @@ func (m *MockProvider) Create(ctx context.Context, req CreateRequest) (CreateRes
 	return CreateResponse{}, status.Error(codes.Unimplemented, "Create not implemented")
 }
 
-func (m *MockProvider) Read(ctx context.Context, req ReadRequest) (ReadResponse, error) {
-	if m.ReadF != nil {
-		return m.ReadF(ctx, req)
+func (m *MockProvider) Import(ctx context.Context, req ImportRequest) (ImportResponse, error) {
+	if m.ImportF != nil {
+		return m.ImportF(ctx, req)
 	}
-	return ReadResponse{}, status.Error(codes.Unimplemented, "Read not implemented")
+	return ImportResponse{}, status.Error(codes.Unimplemented, "Import not implemented")
+}
+
+func (m *MockProvider) Refresh(ctx context.Context, req RefreshRequest) (RefreshResponse, error) {
+	if m.RefreshF != nil {
+		return m.RefreshF(ctx, req)
+	}
+	return RefreshResponse{}, status.Error(codes.Unimplemented, "Refresh not implemented")
 }
 
 func (m *MockProvider) Update(ctx context.Context, req UpdateRequest) (UpdateResponse, error) {
