@@ -90,9 +90,10 @@ func probe(ctx context.Context, info Info, prov plugin.Provider, news property.M
 	}
 	if err != nil {
 		return &Problem{
-			info:     info,
-			headline: fmt.Sprintf("Could not validate your %s credentials:", info.DisplayName),
-			details:  strings.Split(strings.TrimSpace(errorMessage(err)), "\n"),
+			info:         info,
+			headline:     fmt.Sprintf("Could not validate your %s credentials:", info.DisplayName),
+			details:      strings.Split(strings.TrimSpace(errorMessage(err)), "\n"),
+			remediations: plugin.ConfigureErrorRemediations(err),
 		}
 	}
 	if len(resp.Failures) == 0 {
@@ -108,6 +109,7 @@ func probe(ctx context.Context, info Info, prov plugin.Provider, news property.M
 			reason = string(f.Property) + ": " + reason
 		}
 		p.details = append(p.details, reason)
+		p.remediations = append(p.remediations, f.Remediations...)
 	}
 	return p
 }
@@ -115,9 +117,20 @@ func probe(ctx context.Context, info Info, prov plugin.Provider, news property.M
 // Problem is the error [Check] reports when a provider rejects the configuration or cannot validate
 // the user's credentials.
 type Problem struct {
-	info     Info
-	headline string
-	details  []string
+	info         Info
+	headline     string
+	details      []string
+	remediations []plugin.CommandRemediation
+}
+
+// Info describes the provider that reported the problem.
+func (p *Problem) Info() Info {
+	return p.info
+}
+
+// Remediations returns the commands the provider suggests the user run to resolve the problem.
+func (p *Problem) Remediations() []plugin.CommandRemediation {
+	return p.remediations
 }
 
 func (p *Problem) Error() string {
