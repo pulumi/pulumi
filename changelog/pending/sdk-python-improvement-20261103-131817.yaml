@@ -1,4 +1,0 @@
-component: sdk/python
-kind: improvement
-body: Preserve argument types for functions decorated with pulumi.runtime.test
-time: 2026-11-03T13:18:17.351368+01:00

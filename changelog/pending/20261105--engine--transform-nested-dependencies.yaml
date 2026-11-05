@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Fix resource transforms adding unnecessary Output wrappers to objects with nested dependencies
-time: 2026-11-05T00:00:00Z

@@ -1,4 +1,0 @@
-component: codegen/pcl
-kind: improvement
-body: Print `syntax.Comment` and `syntax.TemplateDelimiter` trivia that tools build without source text
-time: 2026-11-03T00:00:00Z
