@@ -237,9 +237,9 @@ func (p *NamesProvider) Delete(
 	return plugin.DeleteResponse{}, nil
 }
 
-func (p *NamesProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+func (p *NamesProvider) Import(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 	if !slices.Contains(p.Types(), req.URN.Type().String()) {
-		return plugin.ReadResponse{
+		return plugin.ImportResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
@@ -250,7 +250,30 @@ func (p *NamesProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugi
 	readOutputs := property.NewMap(map[string]property.Value{
 		"value": property.New(true),
 	})
-	return plugin.ReadResponse{
+	return plugin.ImportResponse{
+		ReadResult: plugin.ReadResult{
+			ID:      req.ID,
+			Inputs:  &readInputs,
+			Outputs: &readOutputs,
+		},
+		Status: resource.StatusOK,
+	}, nil
+}
+
+func (p *NamesProvider) Refresh(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+	if !slices.Contains(p.Types(), req.URN.Type().String()) {
+		return plugin.RefreshResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	readInputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
+	})
+	readOutputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
+	})
+	return plugin.RefreshResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
 			Inputs:  &readInputs,

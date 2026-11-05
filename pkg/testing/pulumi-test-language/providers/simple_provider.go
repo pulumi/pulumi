@@ -238,9 +238,9 @@ func (p *SimpleProvider) Delete(
 	return plugin.DeleteResponse{}, nil
 }
 
-func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+func (p *SimpleProvider) Import(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 	if req.URN.Type() != "simple:index:Resource" {
-		return plugin.ReadResponse{
+		return plugin.ImportResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
@@ -251,7 +251,30 @@ func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 	outputs := property.NewMap(map[string]property.Value{
 		"value": property.New(true),
 	})
-	return plugin.ReadResponse{
+	return plugin.ImportResponse{
+		ReadResult: plugin.ReadResult{
+			ID:      req.ID,
+			Inputs:  &inputs,
+			Outputs: &outputs,
+		},
+		Status: resource.StatusOK,
+	}, nil
+}
+
+func (p *SimpleProvider) Refresh(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+	if req.URN.Type() != "simple:index:Resource" {
+		return plugin.RefreshResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	inputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
+	})
+	outputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
+	})
+	return plugin.RefreshResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
 			Inputs:  &inputs,

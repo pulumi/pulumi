@@ -1460,27 +1460,13 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			return resource.StatusOK, nil, err
 		}
 
-		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false, /* persisted */
-		)
-		if err != nil {
-			return resource.StatusOK, nil, err
-		}
-
-		// Technically the only data we have at this point is "inputs", but we've been passing that as "state" to
-		// providers since forever and it would probably break things to stop sending that now. Thus this strange double
-		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
-		result, err := prov.Read(context.TODO(), plugin.ReadRequest{
-			URN:                   urn,
-			Name:                  urn.Name(),
-			Type:                  urn.Type(),
-			ID:                    id,
-			Inputs:                resource.FromResourcePropertyMap(s.new.Inputs),
-			State:                 resource.FromResourcePropertyMap(s.new.Inputs),
-			Timeout:               s.new.CustomTimeouts.Read,
-			ResourceStatusAddress: resourceStatusAddress,
-			ResourceStatusToken:   resourceStatusToken,
+		result, err := prov.Import(context.TODO(), plugin.ImportRequest{
+			URN:     urn,
+			Name:    urn.Name(),
+			Type:    urn.Type(),
+			ID:      id,
+			Inputs:  resource.FromResourcePropertyMap(s.new.Inputs),
+			Timeout: s.new.CustomTimeouts.Read,
 		})
 
 		s.new.Lock.Lock()
@@ -1714,29 +1700,15 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		return resource.StatusOK, nil, err
 	}
 
-	resourceStatusAddress := s.deployment.resourceStatus.Address()
-	resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-		s.URN(), true /*refresh*/, s.Persisted(), /* persisted */
-	)
-	if err != nil {
-		if s.cts != nil {
-			s.cts.MustReject(err)
-		}
-		return resource.StatusOK, nil, err
-	}
-
 	var initErrors []string
-	refreshed, err := prov.Read(context.TODO(), plugin.ReadRequest{
-		URN:                   s.new.URN,
-		Name:                  s.new.URN.Name(),
-		Type:                  s.new.URN.Type(),
-		ID:                    resourceID,
-		Inputs:                resource.FromResourcePropertyMap(s.old.Inputs),
-		State:                 resource.FromResourcePropertyMap(s.old.Outputs),
-		Timeout:               s.old.CustomTimeouts.Read,
-		ResourceStatusAddress: resourceStatusAddress,
-		ResourceStatusToken:   resourceStatusToken,
-		OldViews:              s.oldViews,
+	refreshed, err := prov.Refresh(context.TODO(), plugin.RefreshRequest{
+		URN:     s.new.URN,
+		Name:    s.new.URN.Name(),
+		Type:    s.new.URN.Type(),
+		ID:      resourceID,
+		Inputs:  resource.FromResourcePropertyMap(s.old.Inputs),
+		Outputs: resource.FromResourcePropertyMap(s.old.Outputs),
+		Timeout: s.old.CustomTimeouts.Read,
 	})
 	if err != nil {
 		if refreshed.Status != resource.StatusPartialFailure {
@@ -2163,22 +2135,12 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			return resource.StatusOK, nil, err
 		}
 
-		resourceStatusAddress := s.deployment.resourceStatus.Address()
-		resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-			s.URN(), false /*refresh*/, false, /* persisted */
-		)
-		if err != nil {
-			return resource.StatusOK, nil, err
-		}
-
-		read, err := prov.Read(context.TODO(), plugin.ReadRequest{
-			URN:                   s.new.URN,
-			Name:                  s.new.URN.Name(),
-			Type:                  s.new.URN.Type(),
-			ID:                    s.new.ImportID,
-			Timeout:               s.new.CustomTimeouts.Read,
-			ResourceStatusAddress: resourceStatusAddress,
-			ResourceStatusToken:   resourceStatusToken,
+		read, err := prov.Import(context.TODO(), plugin.ImportRequest{
+			URN:     s.new.URN,
+			Name:    s.new.URN.Name(),
+			Type:    s.new.URN.Type(),
+			ID:      s.new.ImportID,
+			Timeout: s.new.CustomTimeouts.Read,
 		})
 		rst = read.Status
 

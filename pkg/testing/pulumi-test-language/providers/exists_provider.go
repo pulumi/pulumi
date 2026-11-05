@@ -188,21 +188,45 @@ func (p *ExistsProvider) Delete(
 	return plugin.DeleteResponse{}, nil
 }
 
-func (p *ExistsProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+func (p *ExistsProvider) Import(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 	if req.URN.Type() != "exists:index:Resource" {
-		return plugin.ReadResponse{
+		return plugin.ImportResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
 	if value, ok := req.Inputs.GetOk("value"); ok && value.IsBool() && !value.AsBool() {
-		return plugin.ReadResponse{Status: resource.StatusOK}, nil
+		return plugin.ImportResponse{Status: resource.StatusOK}, nil
 	}
 
 	outputs := property.NewMap(map[string]property.Value{
 		"value": property.New(true),
 	})
-	return plugin.ReadResponse{
+	return plugin.ImportResponse{
+		ReadResult: plugin.ReadResult{
+			ID:      req.ID,
+			Inputs:  &outputs,
+			Outputs: &outputs,
+		},
+		Status: resource.StatusOK,
+	}, nil
+}
+
+func (p *ExistsProvider) Refresh(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+	if req.URN.Type() != "exists:index:Resource" {
+		return plugin.RefreshResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	if value, ok := req.Inputs.GetOk("value"); ok && value.IsBool() && !value.AsBool() {
+		return plugin.RefreshResponse{Status: resource.StatusOK}, nil
+	}
+
+	outputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
+	})
+	return plugin.RefreshResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
 			Inputs:  &outputs,

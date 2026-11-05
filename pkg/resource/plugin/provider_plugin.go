@@ -1535,37 +1535,36 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	}, resourceError
 }
 
-// read the current live state associated with a resource.  enough state must be include in the inputs to uniquely
-// identify the resource; this is typically just the resource id, but may also include some properties.
-func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, error) {
+// Import reads the current live state for a resource being brought under Pulumi management for the first time.
+// If the provider does not implement the Import RPC (i.e. returns codes.Unimplemented), Import falls back to the
+// legacy Read RPC.
+func (p *provider) Import(ctx context.Context, req ImportRequest) (ImportResponse, error) {
 	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
 	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
 		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
 	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
 
-	contract.Assertf(req.URN != "", "Read URN was empty")
-	contract.Assertf(req.ID != "", "Read ID was empty")
+	contract.Assertf(req.URN != "", "Import URN was empty")
+	contract.Assertf(req.ID != "", "Import ID was empty")
 
-	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), req.ID, req.URN)
-	logging.V(7).Infof("%s executing (#inputs=%v, #state=%v)", label, req.Inputs.Len(), req.State.Len())
+	label := fmt.Sprintf("%s.Import(%s,%s)", p.label(), req.ID, req.URN)
+	logging.V(7).Infof("%s executing (#inputs=%v)", label, req.Inputs.Len())
 
-	// Ensure that the plugin is configured.
 	client := p.clientRaw
 	protocol, pcfg, err := p.getPluginConfig(context.Background())
 	if err != nil {
-		return ReadResponse{Status: resource.StatusUnknown}, err
+		return ImportResponse{Status: resource.StatusUnknown}, err
 	}
 
 	// If the provider is not fully configured, return an empty bag.
 	if !pcfg.known {
-		return ReadResponse{ReadResult{
+		return ImportResponse{ReadResult{
 			Outputs: new(property.Map{}),
 			Inputs:  new(property.Map{}),
 		}, resource.StatusUnknown}, nil
 	}
 
-	// Marshal the resource inputs and state so we can perform the RPC.
 	var minputs *structpb.Struct
 	if req.Inputs.Len() != 0 {
 		filteredInputs, err := FilterProperties(req.Inputs, FilterOptions{
@@ -1575,70 +1574,217 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			RejectNonUTF8Strings: !protocol.acceptsByteString,
 		})
 		if err != nil {
-			return ReadResponse{Status: resource.StatusUnknown}, err
+			return ImportResponse{Status: resource.StatusUnknown}, err
 		}
 		minputs = propertyrpc.Marshal(filteredInputs)
 	}
-	filteredState, err := FilterProperties(req.State, FilterOptions{
+
+	resp, err := client.Import(p.requestContext(), &pulumirpc.ImportRequest{
+		ImportId: string(req.ID),
+		Urn:      string(req.URN),
+		Name:     req.URN.Name(),
+		Type:     req.URN.Type().String(),
+		Inputs:   minputs,
+		Timeout:  req.Timeout,
+	})
+	if err != nil {
+		rpcError, ok := status.FromError(err)
+		if ok && rpcError.Code() == codes.Unimplemented {
+			// Fall back to the legacy Read RPC. For import, the identifying inputs are passed as `properties`
+			// in the legacy ReadRequest, and `inputs` is left nil.
+			logging.V(7).Infof("%s: Import unimplemented; falling back to Read", label)
+			return p.readLegacy(ctx, label, protocol, req.URN, req.ID,
+				property.Map{} /*oldInputs*/, req.Inputs /*oldState*/, req.Timeout, false /*haveOldInputs*/)
+		}
+	}
+
+	return p.finishRead(label, protocol, resp, err, property.Map{} /*oldInputs*/, property.Map{} /*oldOutputs*/)
+}
+
+// Refresh reads the current live state for a resource that is already under Pulumi management, updating the
+// engine's view of the resource. If the provider does not implement the Refresh RPC (i.e. returns
+// codes.Unimplemented), Refresh falls back to the legacy Read RPC.
+func (p *provider) Refresh(ctx context.Context, req RefreshRequest) (RefreshResponse, error) {
+	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
+	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
+		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
+	contract.Assertf(req.Type == "" || req.Type == req.URN.Type(),
+		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
+
+	contract.Assertf(req.URN != "", "Refresh URN was empty")
+	contract.Assertf(req.ID != "", "Refresh ID was empty")
+
+	label := fmt.Sprintf("%s.Refresh(%s,%s)", p.label(), req.ID, req.URN)
+	logging.V(7).Infof("%s executing (#inputs=%v, #outputs=%v)", label, req.Inputs.Len(), req.Outputs.Len())
+
+	client := p.clientRaw
+	protocol, pcfg, err := p.getPluginConfig(context.Background())
+	if err != nil {
+		return RefreshResponse{Status: resource.StatusUnknown}, err
+	}
+
+	if !pcfg.known {
+		return RefreshResponse{ReadResult{
+			Outputs: new(property.Map{}),
+			Inputs:  new(property.Map{}),
+		}, resource.StatusUnknown}, nil
+	}
+
+	filterOpts := FilterOptions{
 		ElideAssetContents:   true,
 		KeepSecrets:          protocol.acceptSecrets,
 		KeepResources:        protocol.acceptResources,
 		RejectNonUTF8Strings: !protocol.acceptsByteString,
+	}
+
+	filteredInputs, err := FilterProperties(req.Inputs, filterOpts)
+	if err != nil {
+		return RefreshResponse{Status: resource.StatusUnknown}, err
+	}
+	minputs := propertyrpc.Marshal(filteredInputs)
+
+	filteredOutputs, err := FilterProperties(req.Outputs, filterOpts)
+	if err != nil {
+		return RefreshResponse{Status: resource.StatusUnknown}, err
+	}
+	moutputs := propertyrpc.Marshal(filteredOutputs)
+
+	resp, err := client.Refresh(p.requestContext(), &pulumirpc.RefreshRequest{
+		Id:      string(req.ID),
+		Urn:     string(req.URN),
+		Name:    req.URN.Name(),
+		Type:    req.URN.Type().String(),
+		Inputs:  minputs,
+		Outputs: moutputs,
+		Timeout: req.Timeout,
 	})
 	if err != nil {
-		return ReadResponse{Status: resource.StatusUnknown}, err
+		rpcError, ok := status.FromError(err)
+		if ok && rpcError.Code() == codes.Unimplemented {
+			logging.V(7).Infof("%s: Refresh unimplemented; falling back to Read", label)
+			legacy, err := p.readLegacy(ctx, label, protocol, req.URN, req.ID,
+				req.Inputs, req.Outputs, req.Timeout, true /*haveOldInputs*/)
+			return RefreshResponse(legacy), err
+		}
 	}
-	mstate := propertyrpc.Marshal(filteredState)
 
-	oldViews, err := marshalViews(req.OldViews, FilterOptions{
+	result, err := p.finishRead(label, protocol, (*pulumirpc.ImportResponse)(nil), err, req.Inputs, req.Outputs,
+		// Use the Refresh RPC response if we have one.
+		refreshResponseAsImport(resp))
+	return RefreshResponse(result), err
+}
+
+// refreshResponseAsImport adapts a RefreshResponse into an ImportResponse so it can share finishRead. It returns
+// a non-nil *ImportResponse only when src is non-nil.
+func refreshResponseAsImport(src *pulumirpc.RefreshResponse) *pulumirpc.ImportResponse {
+	if src == nil {
+		return nil
+	}
+	return &pulumirpc.ImportResponse{
+		Id:                  src.GetId(),
+		Outputs:             src.GetOutputs(),
+		Inputs:              src.GetInputs(),
+		RefreshBeforeUpdate: src.GetRefreshBeforeUpdate(),
+	}
+}
+
+// readLegacy invokes the deprecated Read RPC and returns its result typed as an ImportResponse (which is layout-
+// compatible with RefreshResponse via the embedded ReadResult). Callers in Refresh may type-assert the result back.
+func (p *provider) readLegacy(
+	ctx context.Context,
+	label string,
+	protocol pluginProtocol,
+	urn resource.URN,
+	id resource.ID,
+	oldInputs, oldState property.Map,
+	timeout float64,
+	haveOldInputs bool,
+) (ImportResponse, error) {
+	client := p.clientRaw
+
+	filterOpts := FilterOptions{
+		ElideAssetContents:   true,
 		KeepSecrets:          protocol.acceptSecrets,
 		KeepResources:        protocol.acceptResources,
 		RejectNonUTF8Strings: !protocol.acceptsByteString,
-	})
-	if err != nil {
-		return ReadResponse{Status: resource.StatusUnknown}, err
 	}
 
-	// Now issue the read request over RPC, blocking until it finished.
+	var minputs *structpb.Struct
+	if haveOldInputs {
+		filteredInputs, err := FilterProperties(oldInputs, filterOpts)
+		if err != nil {
+			return ImportResponse{Status: resource.StatusUnknown}, err
+		}
+		minputs = propertyrpc.Marshal(filteredInputs)
+	}
+
+	filteredState, err := FilterProperties(oldState, filterOpts)
+	if err != nil {
+		return ImportResponse{Status: resource.StatusUnknown}, err
+	}
+	mstate := propertyrpc.Marshal(filteredState)
+
+	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
+		Id:         string(id),
+		Urn:        string(urn),
+		Name:       urn.Name(),
+		Type:       urn.Type().String(),
+		Properties: mstate,
+		Inputs:     minputs,
+		Timeout:    timeout,
+	})
+	var adapted *pulumirpc.ImportResponse
+	if resp != nil {
+		adapted = &pulumirpc.ImportResponse{
+			Id:                  resp.GetId(),
+			Outputs:             resp.GetProperties(),
+			Inputs:              resp.GetInputs(),
+			RefreshBeforeUpdate: resp.GetRefreshBeforeUpdate(),
+		}
+	}
+	return p.finishRead(label, protocol, adapted, err, oldInputs, oldState)
+}
+
+// finishRead is the shared post-processing for Import, Refresh, and the legacy Read fallback. It parses errors,
+// unmarshals properties, restores secrets/asset contents, and builds the response.
+func (p *provider) finishRead(
+	label string,
+	protocol pluginProtocol,
+	resp *pulumirpc.ImportResponse,
+	rpcErr error,
+	oldInputs, oldOutputs property.Map,
+	overrides ...*pulumirpc.ImportResponse,
+) (ImportResponse, error) {
+	for _, o := range overrides {
+		if o != nil {
+			resp = o
+		}
+	}
+
 	var readID resource.ID
 	var liveObject *structpb.Struct
 	var liveInputs *structpb.Struct
 	var refreshBeforeUpdate bool
 	var resourceError error
 	resourceStatus := resource.StatusOK
-	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
-		Id:                    string(req.ID),
-		Urn:                   string(req.URN),
-		Name:                  req.URN.Name(),
-		Type:                  req.URN.Type().String(),
-		Properties:            mstate,
-		Inputs:                minputs,
-		Timeout:               req.Timeout,
-		ResourceStatusAddress: req.ResourceStatusAddress,
-		ResourceStatusToken:   req.ResourceStatusToken,
-		OldViews:              oldViews,
-	})
-	if err != nil {
-		resourceStatus, readID, liveObject, liveInputs, refreshBeforeUpdate, resourceError = parseError(err)
-		logging.V(7).Infof("%s failed: %v", label, err)
-
+	if rpcErr != nil {
+		resourceStatus, readID, liveObject, liveInputs, refreshBeforeUpdate, resourceError = parseError(rpcErr)
+		logging.V(7).Infof("%s failed: %v", label, rpcErr)
 		if resourceStatus != resource.StatusPartialFailure {
-			return ReadResponse{Status: resourceStatus}, resourceError
+			return ImportResponse{Status: resourceStatus}, resourceError
 		}
-		// Else it's a `StatusPartialFailure`.
-	} else {
+	} else if resp != nil {
 		readID = resource.ID(resp.GetId())
-		liveObject = resp.GetProperties()
+		liveObject = resp.GetOutputs()
 		liveInputs = resp.GetInputs()
 		refreshBeforeUpdate = resp.GetRefreshBeforeUpdate()
 	}
 
-	// Finally, unmarshal the resulting state properties and return them.
 	var newState *property.Map
 	if liveObject != nil {
 		rawState, err := propertyrpc.Unmarshal(liveObject)
 		if err != nil {
-			return ReadResponse{Status: resourceStatus}, err
+			return ImportResponse{Status: resourceStatus}, err
 		}
 		state, err := FilterProperties(rawState, FilterOptions{
 			RejectUnknowns: true,
@@ -1646,7 +1792,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			KeepResources:  true,
 		})
 		if err != nil {
-			return ReadResponse{Status: resourceStatus}, err
+			return ImportResponse{Status: resourceStatus}, err
 		}
 		newState = &state
 	}
@@ -1655,7 +1801,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	if liveInputs != nil {
 		rawInputs, err := propertyrpc.Unmarshal(liveInputs)
 		if err != nil {
-			return ReadResponse{Status: resourceStatus}, err
+			return ImportResponse{Status: resourceStatus}, err
 		}
 		inputs, err := FilterProperties(rawInputs, FilterOptions{
 			RejectUnknowns: true,
@@ -1663,7 +1809,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 			KeepResources:  true,
 		})
 		if err != nil {
-			return ReadResponse{Status: resourceStatus}, err
+			return ImportResponse{Status: resourceStatus}, err
 		}
 		newInputs = &inputs
 	}
@@ -1678,26 +1824,21 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, mlen(newState), mlen(newInputs))
 
 	if newState != nil {
-		// make sure any echoed properties restore their original asset contents if they have not changed. Assets
-		// may appear in either the old inputs or the old state, and are matched by hash, so check both sources.
-		newState = new(restoreElidedAssetContents(req.Inputs, *newState))
-		newState = new(restoreElidedAssetContents(req.State, *newState))
-		// If we could not pass secrets to the provider, retain the secret bit on any property with the same name. This
-		// allows us to retain metadata about secrets in many cases, even for providers that do not understand secrets
-		// natively.
+		newState = new(restoreElidedAssetContents(oldInputs, *newState))
+		newState = new(restoreElidedAssetContents(oldOutputs, *newState))
 		if !protocol.acceptSecrets {
-			newState = new(annotateSecrets(*newState, req.State))
+			newState = new(annotateSecrets(*newState, oldOutputs))
 		}
 	}
 	if newInputs != nil {
-		newInputs = new(restoreElidedAssetContents(req.Inputs, *newInputs))
-		newInputs = new(restoreElidedAssetContents(req.State, *newInputs))
+		newInputs = new(restoreElidedAssetContents(oldInputs, *newInputs))
+		newInputs = new(restoreElidedAssetContents(oldOutputs, *newInputs))
 		if !protocol.acceptSecrets {
-			newInputs = new(annotateSecrets(*newInputs, req.Inputs))
+			newInputs = new(annotateSecrets(*newInputs, oldInputs))
 		}
 	}
 
-	return ReadResponse{ReadResult{
+	return ImportResponse{ReadResult{
 		ID:                  readID,
 		Outputs:             newState,
 		Inputs:              newInputs,
