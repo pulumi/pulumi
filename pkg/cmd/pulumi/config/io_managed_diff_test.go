@@ -30,7 +30,8 @@ import (
 func TestManagedEnvironmentNotice(t *testing.T) {
 	t.Parallel()
 
-	const header = "Environment p/old has local changes based on revision 7. up, refresh and destroy publish them; preview doesn't.\n"
+	const header = "Environment p/old has local changes based on revision 7. " +
+		"up, refresh and destroy publish them; preview doesn't.\n"
 	cases := []struct {
 		name            string
 		published       string
