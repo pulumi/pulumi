@@ -2355,7 +2355,7 @@ func TestMissingIDRefresh(t *testing.T) {
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
 							Inputs:  &req.Inputs,
-							Outputs: coalesceReadOutputs(req),
+							Outputs: &req.State,
 						},
 					}, nil
 				},

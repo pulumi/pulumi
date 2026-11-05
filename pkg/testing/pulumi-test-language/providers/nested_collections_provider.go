@@ -221,7 +221,7 @@ func (p *NestedCollectionsProvider) Read(
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
 			Inputs:  &req.Inputs,
-			Outputs: coalesceReadOutputs(req),
+			Outputs: &req.State,
 		},
 		Status: resource.StatusOK,
 	}, nil
