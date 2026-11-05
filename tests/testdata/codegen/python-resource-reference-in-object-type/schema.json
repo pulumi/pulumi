@@ -1,0 +1,30 @@
+{
+  "name": "example",
+  "version": "0.0.1",
+  "resources": {
+    "example:index:Widget": {
+      "inputProperties": {
+        "settings": { "$ref": "#/types/example:index:WidgetSettings" }
+      }
+    },
+    "example:index:Gadget": {
+      "inputProperties": {
+        "widgetRef": { "$ref": "#/types/example:index:WidgetRef" }
+      }
+    }
+  },
+  "types": {
+    "example:index:WidgetRef": {
+      "type": "object",
+      "properties": {
+        "widget": { "$ref": "#/resources/example:index:Widget" }
+      }
+    },
+    "example:index:WidgetSettings": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      }
+    }
+  }
+}
