@@ -1,0 +1,4 @@
+component: cli/display
+kind: fix
+body: Avoid flickering when there are unchanged resources
+time: 2026-11-05T14:30:08.745749233+01:00

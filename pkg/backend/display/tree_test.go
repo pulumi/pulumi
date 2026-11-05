@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -309,4 +310,48 @@ func TestTreeRenderDoesntRenderBeforeItHasContent(t *testing.T) {
 		assert.Truef(t, treeRenderer.dirty,
 			"Expecting the renderer to be dirty after headers are initialized, and after a tick has happened")
 	}()
+}
+
+func TestTreeRenderFitsTerminal(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		sames          int
+		systemMessages int
+		statusMessage  string
+	}{
+		{"rows only", 0, 0, ""},
+		{"sames", 5, 0, ""},
+		{"sames and system messages", 5, 3, ""},
+		{"sames and status message", 5, 0, "status"},
+		{"sames, system and status messages", 5, 3, "status"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			const termHeight = 24
+			var buf bytes.Buffer
+			term := terminal.NewMockTerminal(&buf, 80, termHeight, true)
+			treeRenderer, display := createRendererAndDisplay(term, true)
+
+			addManyNormalEvents(display, 100, "message")
+			addManySystemEvents(display, tt.systemMessages, "system")
+			display.sames = make(map[resource.URN]bool)
+			for i := range tt.sames {
+				display.sames[resource.NewURN("stack", "project", "", "typ", fmt.Sprintf("same-%d", i))] = true
+			}
+			if tt.statusMessage != "" {
+				treeRenderer.showStatusMessage(tt.statusMessage, time.Hour)
+			}
+
+			treeRenderer.markDirty()
+			treeRenderer.frame(false, false)
+
+			require.Less(t, treeRenderer.rewind, termHeight)
+			require.Equal(t, treeRenderer.rewind, strings.Count(buf.String(), "\n"))
+		})
+	}
 }
