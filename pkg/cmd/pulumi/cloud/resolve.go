@@ -34,8 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// resolveContextError converts a ResolveContext failure into an APIError,
-// classifying rejected credentials as ExitAuthenticationError.
 func resolveContextError(err error) *APIError {
 	message := fmt.Sprintf("resolving cloud context: %v", err)
 	if errors.Is(err, httpstate.ErrUnauthorized) || backenderr.IsAuthError(err) {
