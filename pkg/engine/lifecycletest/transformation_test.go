@@ -265,6 +265,55 @@ func TestRemoteTransforms(t *testing.T) {
 	}, res.Inputs)
 }
 
+func TestRemoteTransformSecretOutput(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		callback, err := callbacks.Allocate(
+			TransformFunction(func(name, typ string, custom bool, parent string,
+				props resource.PropertyMap, opts *pulumirpc.TransformResourceOptions,
+			) (resource.PropertyMap, *pulumirpc.TransformResourceOptions, error) {
+				// Some SDKs, like .NET, expect secret inputs in transforms to be Output values.
+				value := props["value"]
+				if !value.IsOutput() {
+					return nil, nil, fmt.Errorf("expected a secret Output value, got %s", value.TypeString())
+				}
+				output := value.OutputValue()
+				assert.True(t, output.Known)
+				assert.True(t, output.Secret)
+				assert.Empty(t, output.Dependencies)
+				assert.Equal(t, resource.NewProperty(21.0), output.Element)
+
+				return props, opts, nil
+			}))
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:Resource", "resource", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{
+				"value": resource.MakeSecret(resource.NewProperty(21.0)),
+			},
+			Transforms: []*pulumirpc.Callback{callback},
+		})
+		return err
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 2)
+}
+
 // Test that the engine errors if a transformation function returns an unexpected response.
 func TestRemoteTransformBadResponse(t *testing.T) {
 	t.Parallel()
