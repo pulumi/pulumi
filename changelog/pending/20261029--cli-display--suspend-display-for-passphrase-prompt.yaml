@@ -1,0 +1,4 @@
+component: cli/display
+kind: fix
+body: Fix stack reference passphrase prompts being hidden and losing keystrokes while the interactive display is running
+time: 2026-10-29T12:00:00.000000+00:00
