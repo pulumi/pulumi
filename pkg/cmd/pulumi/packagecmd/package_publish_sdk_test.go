@@ -15,7 +15,13 @@
 package packagecmd
 
 import (
+	"bytes"
 	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strconv"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
@@ -156,6 +162,215 @@ func TestDetermineNPMTagFromCommandResult(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestShouldRunNPMWhoami(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                       string
+		nodeAuthToken              string
+		actionsIDTokenRequestURL   string
+		actionsIDTokenRequestToken string
+		expected                   bool
+	}{
+		{
+			name:     "tokenless non-OIDC path still runs whoami",
+			expected: true,
+		},
+		{
+			name:                       "token path still runs whoami in Actions OIDC",
+			nodeAuthToken:              "npm_token",
+			actionsIDTokenRequestURL:   "https://pipelines.actions.githubusercontent.com/example",
+			actionsIDTokenRequestToken: "request_token",
+			expected:                   true,
+		},
+		{
+			name:                     "tokenless partial Actions OIDC environment runs whoami",
+			actionsIDTokenRequestURL: "https://pipelines.actions.githubusercontent.com/example",
+			expected:                 true,
+		},
+		{
+			name:                       "tokenless Actions OIDC skips whoami",
+			actionsIDTokenRequestURL:   "https://pipelines.actions.githubusercontent.com/example",
+			actionsIDTokenRequestToken: "request_token",
+			expected:                   false,
+		},
+		{
+			name:          "token without Actions OIDC runs whoami",
+			nodeAuthToken: "npm_token",
+			expected:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.expected, shouldRunNPMWhoami(
+				tt.nodeAuthToken,
+				tt.actionsIDTokenRequestURL,
+				tt.actionsIDTokenRequestToken,
+			))
+		})
+	}
+}
+
+func TestPublishToNPMSkipsWhoamiForOIDC(t *testing.T) {
+	tmp := t.TempDir()
+	pkgDir := filepath.Join(tmp, "pkg")
+	require.NoError(t, os.Mkdir(pkgDir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "package.json"), []byte(`{
+		"name": "@pulumi/test-package",
+		"version": "1.0.0-alpha.1"
+	}`), 0o600))
+
+	binDir := filepath.Join(tmp, "bin")
+	require.NoError(t, os.Mkdir(binDir, 0o700))
+	recordFile := filepath.Join(tmp, "npm-calls")
+	writeTestNPM(t, binDir, `
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	arg := ""
+	if len(os.Args) > 1 {
+		arg = os.Args[1]
+	}
+	f, err := os.OpenFile(`+strconv.Quote(recordFile)+`, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	defer f.Close()
+	fmt.Fprintln(f, arg)
+
+	switch arg {
+	case "whoami":
+		fmt.Fprintln(os.Stderr, "whoami should not be called")
+		os.Exit(1)
+	case "info":
+		os.Exit(1)
+	case "publish":
+		os.Exit(0)
+	}
+}
+`)
+	t.Setenv("GOPATH", filepath.Join(tmp, "gopath"))
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("NODE_AUTH_TOKEN", "")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "https://pipelines.actions.githubusercontent.com/example")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "request_token")
+
+	var stdout, stderr bytes.Buffer
+	require.NoError(t, publishToNPM(&stdout, &stderr, pkgDir))
+
+	calls, err := os.ReadFile(recordFile)
+	require.NoError(t, err)
+	assert.NotContains(t, string(calls), "whoami")
+	assert.Contains(t, string(calls), "publish")
+}
+
+func writeTestNPM(t *testing.T, binDir, source string) {
+	t.Helper()
+
+	sourceDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "main.go"), []byte(source), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(sourceDir, "go.mod"), []byte("module test-npm\n\ngo 1.24\n"), 0o600))
+
+	npmName := "npm"
+	if runtime.GOOS == "windows" {
+		npmName += ".exe"
+	}
+	cmd := exec.Command("go", "build", "-o", filepath.Join(binDir, npmName), ".")
+	cmd.Dir = sourceDir
+	output, err := cmd.CombinedOutput()
+	t.Log(string(output))
+	require.NoError(t, err)
+}
+
+func TestPublishToNPMRunsWhoamiWithoutTokenOrOIDC(t *testing.T) {
+	tmp := t.TempDir()
+	pkgDir := filepath.Join(tmp, "pkg")
+	require.NoError(t, os.Mkdir(pkgDir, 0o700))
+
+	binDir := filepath.Join(tmp, "bin")
+	require.NoError(t, os.Mkdir(binDir, 0o700))
+	writeTestNPM(t, binDir, `
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	arg := ""
+	if len(os.Args) > 1 {
+		arg = os.Args[1]
+	}
+	if arg == "whoami" {
+		fmt.Fprintln(os.Stderr, "whoami failed")
+		os.Exit(42)
+	}
+	fmt.Fprintf(os.Stderr, "unexpected npm command: %s\n", arg)
+	os.Exit(1)
+}
+`)
+	t.Setenv("GOPATH", filepath.Join(tmp, "gopath"))
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("NODE_AUTH_TOKEN", "")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "")
+
+	var stdout, stderr bytes.Buffer
+	err := publishToNPM(&stdout, &stderr, pkgDir)
+	require.Error(t, err)
+	assert.Contains(t, stderr.String(), "whoami failed")
+}
+
+func TestPublishToNPMRunsWhoamiWithToken(t *testing.T) {
+	tmp := t.TempDir()
+	pkgDir := filepath.Join(tmp, "pkg")
+	require.NoError(t, os.Mkdir(pkgDir, 0o700))
+
+	binDir := filepath.Join(tmp, "bin")
+	require.NoError(t, os.Mkdir(binDir, 0o700))
+	writeTestNPM(t, binDir, `
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	arg := ""
+	if len(os.Args) > 1 {
+		arg = os.Args[1]
+	}
+	if arg == "whoami" {
+		fmt.Fprintln(os.Stderr, "token auth failed")
+		os.Exit(42)
+	}
+	fmt.Fprintf(os.Stderr, "unexpected npm command: %s\n", arg)
+	os.Exit(1)
+}
+`)
+	t.Setenv("GOPATH", filepath.Join(tmp, "gopath"))
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("NODE_AUTH_TOKEN", "npm_token")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "https://pipelines.actions.githubusercontent.com/example")
+	t.Setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "request_token")
+
+	var stdout, stderr bytes.Buffer
+	err := publishToNPM(&stdout, &stderr, pkgDir)
+	require.Error(t, err)
+	assert.Contains(t, stderr.String(), "token auth failed")
 }
 
 func TestDetermineNPMTagForStableVersion(t *testing.T) {
