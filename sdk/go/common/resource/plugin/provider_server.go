@@ -596,10 +596,12 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	}, nil
 }
 
+// Read is the legacy entrypoint retained for backwards compatibility with older engines. It routes incoming
+// Read calls to either Import or Refresh on the underlying Provider based on whether the engine supplied prior
+// inputs (which indicates a refresh operation).
 func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
 	urn, requestID := resource.URN(req.GetUrn()), resource.ID(req.GetId())
 
-	// To support old engines fill in Name/Type if the engine didn't send them
 	if req.Name == "" {
 		req.Name = urn.Name()
 	}
@@ -623,28 +625,89 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	oldViews, err := unmarshalViews(req.GetOldViews(), p.unmarshalOptions("oldViews", false /* keepOutputValues */))
+	var result ReadResult
+	if req.GetInputs() == nil {
+		// No prior inputs -- treat as Import.
+		resp, err := p.provider.Import(ctx, ImportRequest{
+			URN:     urn,
+			Name:    req.Name,
+			Type:    tokens.Type(req.Type),
+			ID:      requestID,
+			Inputs:  state,
+			Timeout: req.GetTimeout(),
+		})
+		if err != nil {
+			return nil, err
+		}
+		result = resp.ReadResult
+	} else {
+		resp, err := p.provider.Refresh(ctx, RefreshRequest{
+			URN:     urn,
+			Name:    req.Name,
+			Type:    tokens.Type(req.Type),
+			ID:      requestID,
+			Inputs:  inputs,
+			Outputs: state,
+			Timeout: req.GetTimeout(),
+		})
+		if err != nil {
+			return nil, err
+		}
+		result = resp.ReadResult
+	}
+
+	rpcState, err := MarshalProperties(result.Outputs, p.marshalOptions("newState"))
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.provider.Read(ctx, ReadRequest{
-		URN:                   urn,
-		Name:                  req.Name,
-		Type:                  tokens.Type(req.Type),
-		ID:                    requestID,
-		Inputs:                inputs,
-		State:                 state,
-		Timeout:               req.GetTimeout(),
-		ResourceStatusAddress: req.GetResourceStatusAddress(),
-		ResourceStatusToken:   req.GetResourceStatusToken(),
-		OldViews:              oldViews,
+	rpcInputs, err := MarshalProperties(result.Inputs, p.marshalOptions("newInputs"))
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.ReadResponse{
+		Id:                  string(result.ID),
+		Properties:          rpcState,
+		Inputs:              rpcInputs,
+		RefreshBeforeUpdate: result.RefreshBeforeUpdate,
+	}, nil
+}
+
+func (p *providerServer) Import(ctx context.Context, req *pulumirpc.ImportRequest) (*pulumirpc.ImportResponse, error) {
+	urn, requestID := resource.URN(req.GetUrn()), resource.ID(req.GetImportId())
+
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	inputs, err := UnmarshalProperties(req.GetInputs(), p.unmarshalOptions("inputs", false /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.provider.Import(ctx, ImportRequest{
+		URN:     urn,
+		Name:    req.Name,
+		Type:    tokens.Type(req.Type),
+		ID:      requestID,
+		Inputs:  inputs,
+		Timeout: req.GetTimeout(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	rpcState, err := MarshalProperties(resp.Outputs, p.marshalOptions("newState"))
+	rpcOutputs, err := MarshalProperties(resp.Outputs, p.marshalOptions("newOutputs"))
 	if err != nil {
 		return nil, err
 	}
@@ -654,9 +717,66 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		return nil, err
 	}
 
-	return &pulumirpc.ReadResponse{
+	return &pulumirpc.ImportResponse{
 		Id:                  string(resp.ID),
-		Properties:          rpcState,
+		Outputs:             rpcOutputs,
+		Inputs:              rpcInputs,
+		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+	}, nil
+}
+
+func (p *providerServer) Refresh(ctx context.Context, req *pulumirpc.RefreshRequest) (*pulumirpc.RefreshResponse, error) {
+	urn, requestID := resource.URN(req.GetUrn()), resource.ID(req.GetId())
+
+	if req.Name == "" {
+		req.Name = urn.Name()
+	}
+	if req.Name != urn.Name() {
+		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if req.Type == "" {
+		req.Type = string(urn.Type())
+	}
+	if req.Type != string(urn.Type()) {
+		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	outputs, err := UnmarshalProperties(req.GetOutputs(), p.unmarshalOptions("outputs", false /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
+	inputs, err := UnmarshalProperties(req.GetInputs(), p.unmarshalOptions("inputs", false /* keepOutputValues */))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.provider.Refresh(ctx, RefreshRequest{
+		URN:     urn,
+		Name:    req.Name,
+		Type:    tokens.Type(req.Type),
+		ID:      requestID,
+		Inputs:  inputs,
+		Outputs: outputs,
+		Timeout: req.GetTimeout(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	rpcOutputs, err := MarshalProperties(resp.Outputs, p.marshalOptions("newOutputs"))
+	if err != nil {
+		return nil, err
+	}
+
+	rpcInputs, err := MarshalProperties(resp.Inputs, p.marshalOptions("newInputs"))
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.RefreshResponse{
+		Id:                  string(resp.ID),
+		Outputs:             rpcOutputs,
 		Inputs:              rpcInputs,
 		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
 	}, nil
