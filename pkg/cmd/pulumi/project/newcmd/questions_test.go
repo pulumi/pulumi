@@ -17,6 +17,7 @@ package newcmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -26,8 +27,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -186,4 +189,65 @@ func TestNewCancelAtPassphrase(t *testing.T) {
 	assert.Equal(t, []string{"Project name", "Project description", "Stack name"}, asked,
 		"cancelling the passphrase must not ask for another stack name; output:\n%s", out.String())
 	assert.Empty(t, *created, "cancelling the passphrase must not create a stack")
+}
+
+// A DIY backend resolves a stack name without a project against its current project, which
+// `pulumi new` hasn't saved yet when the guided flow asks for a stack name.
+//
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestGuidedNewValidatesStackNameAgainstNewProject(t *testing.T) {
+	cases := []struct {
+		name string
+		// projectName is passed as --name, so the project counts as existing and its stacks are checked.
+		projectName string
+		// takenStacks are the project's existing stacks.
+		takenStacks []string
+		confirm     string
+	}{
+		{name: "after Change these values", confirm: confirmChange},
+		{name: "default stack taken", projectName: "proj", takenStacks: []string{"dev"}, confirm: confirmYes},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			guidedRepoTemplate(t, "aws-python", guidedConfigTemplateYAML)
+			dir := tempProjectDir(t)
+			t.Chdir(dir)
+
+			b, created := guidedNewTestBackend(t)
+			var current *workspace.Project
+			b.SetCurrentProjectF = func(proj *workspace.Project) { current = proj }
+			// As the DIY backend does (see diyBackend.parseStackReference).
+			b.ValidateStackNameF = func(name string) error {
+				if !strings.Contains(name, "/") && current == nil {
+					return errors.New("no Pulumi.yaml project file found")
+				}
+				return nil
+			}
+			b.ListStackNamesF = func(ctx context.Context, filter backend.ListStackNamesFilter,
+				token backend.ContinuationToken,
+			) ([]backend.StackReference, backend.ContinuationToken, error) {
+				refs := make([]backend.StackReference, 0, len(tc.takenStacks))
+				for _, name := range tc.takenStacks {
+					refs = append(refs, &backend.MockStackReference{NameV: tokens.MustParseStackName(name)})
+				}
+				return refs, nil, nil
+			}
+			mockCurrentBackend(t, b)
+
+			selectOne, _ := scriptedSelect(t, "AWS", "Python", tc.confirm)
+			var prompts []string
+			err := runNew(t.Context(), newArgs{
+				interactive:          true,
+				name:                 tc.projectName,
+				prompt:               countingPrompt(map[string]string{"Stack name": "prod"}, &prompts),
+				promptRuntimeOptions: runtimeOptionsNone,
+				languageTemplate:     languageTemplateMock,
+				selectOne:            selectOne,
+				secretsProvider:      "default",
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, []string{"my-org/prod"}, *created)
+		})
+	}
 }
