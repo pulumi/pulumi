@@ -5,6 +5,16 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { FooArgs, FooResourceState } from "./foo";
+export type Foo = import("./foo").Foo;
+export const Foo: typeof import("./foo").Foo = null as any;
+utilities.lazyLoad(exports, ["Foo"], () => require("./foo"));
+
+export { FooStateArgs } from "./fooState";
+export type FooState = import("./fooState").FooState;
+export const FooState: typeof import("./fooState").FooState = null as any;
+utilities.lazyLoad(exports, ["FooState"], () => require("./fooState"));
+
 export { MainComponentArgs } from "./mainComponent";
 export type MainComponent = import("./mainComponent").MainComponent;
 export const MainComponent: typeof import("./mainComponent").MainComponent = null as any;
@@ -42,6 +52,10 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "example::Foo":
+                return new Foo(name, <any>undefined, { urn })
+            case "example::FooState":
+                return new FooState(name, <any>undefined, { urn })
             case "example::MainComponent":
                 return new MainComponent(name, <any>undefined, { urn })
             case "example::Resource":
