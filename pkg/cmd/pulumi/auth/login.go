@@ -327,7 +327,7 @@ func (c *loginCmd) newCommand(ws pkgWorkspace.Context, lm backend.LoginManager, 
 			}
 
 			if userProvidedURL {
-				if absURL, ok := absoluteFileURL(cloudURL); ok {
+				if absURL, wasRelative := resolveRelativeFileURL(cloudURL); wasRelative {
 					fmt.Fprintf(cmd.ErrOrStderr(),
 						"Warning: '%s' is a relative path, so every command will look for state relative to "+
 							"the directory it runs in. To always use this location, run `pulumi login %s` instead.\n",
@@ -469,7 +469,7 @@ func unwrapBucketOpenError(err error, cloudURL string) error {
 	return cause
 }
 
-func absoluteFileURL(cloudURL string) (string, bool) {
+func resolveRelativeFileURL(cloudURL string) (string, bool) {
 	if !strings.HasPrefix(cloudURL, diy.FilePathPrefix) {
 		return "", false
 	}

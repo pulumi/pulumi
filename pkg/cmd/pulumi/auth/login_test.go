@@ -580,7 +580,7 @@ func TestLoginRelativeFileURLWarning(t *testing.T) {
 	}
 }
 
-func TestAbsoluteFileURL(t *testing.T) {
+func TestResolveRelativeFileURL(t *testing.T) {
 	t.Parallel()
 
 	cwd, err := os.Getwd()
@@ -604,8 +604,8 @@ func TestAbsoluteFileURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.url, func(t *testing.T) {
 			t.Parallel()
-			actual, ok := absoluteFileURL(tt.url)
-			require.Equal(t, tt.expected != "", ok)
+			actual, wasRelative := resolveRelativeFileURL(tt.url)
+			require.Equal(t, tt.expected != "", wasRelative)
 			require.Equal(t, tt.expected, actual)
 		})
 	}
