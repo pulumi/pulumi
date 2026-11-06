@@ -98,7 +98,7 @@ func initializeDeploymentSettingsCmd(
 	if !be.SupportsDeployments() {
 		unsupportedBackendMsg := fmt.Sprintf("Backends of type %q do not support managed deployments.\n\n"+
 			"Create a Pulumi Cloud account to get started, learn more about pulumi deployments here: "+
-			"https://www.pulumi.com/docs/pulumi-cloud/deployments/",
+			"https://www.pulumi.com/docs/deployments/concepts/",
 			be.Name())
 
 		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg,
@@ -106,7 +106,7 @@ func initializeDeploymentSettingsCmd(
 			colors.SpecError+colors.Bold)
 		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg, "Pulumi Cloud", colors.BrightCyan+colors.Bold)
 		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg,
-			"https://www.pulumi.com/docs/pulumi-cloud/deployments/", colors.BrightBlue+colors.Underline+colors.Bold)
+			"https://www.pulumi.com/docs/deployments/concepts/", colors.BrightBlue+colors.Underline+colors.Bold)
 
 		fmt.Fprintln(stdout)
 		fmt.Fprintln(stdout, displayOpts.Color.Colorize(unsupportedBackendMsg))
