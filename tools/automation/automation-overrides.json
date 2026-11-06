@@ -269,6 +269,14 @@
             "flags": {}
         },
         {
+            "path": ["project", "list"],
+            "propagate": false,
+            "flags": {
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
+            }
+        },
+        {
             "path": ["replay-events"],
             "propagate": true,
             "exclude": true,

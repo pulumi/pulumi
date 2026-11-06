@@ -7687,6 +7687,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -7731,16 +7733,8 @@ export class API {
             __flags.push("--verbose", "" + options.verbose);
         }
 
-        if (options.json) {
-            __flags.push("--json");
-        }
-
         if (options.organization != null) {
             __flags.push("--organization", "" + options.organization);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -12666,12 +12660,8 @@ export interface PulumiProjectListOptions extends BaseOptions {
     tracingHeader?: string;
     /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
     verbose?: number;
-    /** Emit output as JSON (alias for --output=json) */
-    json?: boolean;
     /** The organization whose projects to list */
     organization?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
 }
 
 /** Options for the `pulumi project new` command. */

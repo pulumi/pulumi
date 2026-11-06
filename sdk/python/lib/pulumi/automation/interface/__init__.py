@@ -8737,9 +8737,7 @@ class API:
         tracing: Optional[str] = None,
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
-        json: bool = False,
         organization: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -8758,9 +8756,7 @@ class API:
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param json: Emit output as JSON (alias for --output=json)
         :param organization: The organization whose projects to list
-        :param output: Output format. Supported values are: default and json
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -8769,6 +8765,7 @@ class API:
         __final.append("project")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -8791,12 +8788,8 @@ class API:
             __flags.extend(["--tracing-header", str(tracing_header)])
         if verbose is not None:
             __flags.extend(["--verbose", str(verbose)])
-        if json:
-            __flags.append("--json")
         if organization is not None:
             __flags.extend(["--organization", str(organization)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:

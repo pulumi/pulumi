@@ -8685,6 +8685,8 @@ func (a *API) ProjectList(
 
 	final := []string{"project", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -8695,10 +8697,6 @@ func (a *API) ProjectList(
 
 	if o.FullyQualifyStackNames {
 		final = append(final, "--fully-qualify-stack-names")
-	}
-
-	if o.Json {
-		final = append(final, "--json")
 	}
 
 	if o.Logflow {
@@ -8719,10 +8717,6 @@ func (a *API) ProjectList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
