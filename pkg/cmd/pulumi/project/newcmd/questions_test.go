@@ -20,6 +20,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -29,12 +30,24 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Ctrl-C is simulated the way the real prompts report it; see isCancelled.
+
+const cancelConfigTemplateYAML = `name: ${PROJECT}
+description: ${DESCRIPTION}
+runtime: yaml
+template:
+  description: A cancellation test template
+  config:
+    aws:region:
+      description: The AWS region to deploy into
+`
 
 // cancellingPrompt answers text prompts with their defaults and cancels the first prompt whose
 // valueType contains cancelAt after skipping skip of them, along with any prompt asked after that.
@@ -59,6 +72,13 @@ func cancellingPrompt(cancelAt string, skip int, asked *[]string) promptForValue
 		}
 		return defaultValue, nil
 	}
+}
+
+func runtimeOptionsInterrupted(ctx *plugin.Context, language plugin.LanguageRuntime,
+	info *workspace.ProjectRuntimeInfo, main string, opts display.Options, yes, interactive bool,
+	prompt promptForValueFunc,
+) (map[string]any, error) {
+	return nil, terminal.InterruptErr
 }
 
 // assertCancelled checks, in separate subtests, that a cancelled `pulumi new` left nothing behind and
@@ -92,6 +112,8 @@ func TestNewCancelLeavesNothingBehind(t *testing.T) {
 		// guided runs `pulumi new` with no template argument; otherwise the template is named.
 		guided   bool
 		template string
+		// stack is passed as --stack.
+		stack string
 		// cancelAt is a substring of the text prompt to cancel at.
 		cancelAt string
 		// selects scripts the guided select prompts, including a terminal.InterruptErr to cancel one.
@@ -117,6 +139,39 @@ func TestNewCancelLeavesNothingBehind(t *testing.T) {
 			selects:        []any{"AWS", "Python", terminal.InterruptErr},
 			runtimeOptions: runtimeOptionsNone,
 		},
+		{
+			name:           "named template/stack name",
+			template:       localTemplateYAML,
+			cancelAt:       "Stack name",
+			runtimeOptions: runtimeOptionsNone,
+		},
+		{
+			name:           "named template/config value",
+			template:       cancelConfigTemplateYAML,
+			cancelAt:       "(aws:region)",
+			runtimeOptions: runtimeOptionsNone,
+		},
+		{
+			name:           "guided with --stack/config value",
+			guided:         true,
+			template:       cancelConfigTemplateYAML,
+			stack:          "dev",
+			cancelAt:       "(aws:region)",
+			selects:        []any{"AWS", "Python", confirmYes},
+			runtimeOptions: runtimeOptionsNone,
+		},
+		{
+			name:           "named template/runtime option",
+			template:       localTemplateYAML,
+			runtimeOptions: runtimeOptionsInterrupted,
+		},
+		{
+			name:           "guided/runtime option",
+			guided:         true,
+			template:       guidedConfigTemplateYAML,
+			selects:        []any{"AWS", "Python", confirmYes},
+			runtimeOptions: runtimeOptionsInterrupted,
+		},
 	}
 
 	for _, tc := range cases {
@@ -139,6 +194,7 @@ func TestNewCancelLeavesNothingBehind(t *testing.T) {
 			err := runNew(t.Context(), newArgs{
 				interactive:          true,
 				templateNameOrURL:    templateArg,
+				stack:                tc.stack,
 				prompt:               cancellingPrompt(tc.cancelAt, 0, nil),
 				promptRuntimeOptions: tc.runtimeOptions,
 				languageTemplate:     languageTemplateMock,
@@ -250,4 +306,78 @@ func TestGuidedNewValidatesStackNameAgainstNewProject(t *testing.T) {
 			assert.Equal(t, []string{"my-org/prod"}, *created)
 		})
 	}
+}
+
+// Config asked before the files are copied must still reach the new stack's config file.
+//
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestNewNamedTemplateSavesConfigAskedUpFront(t *testing.T) {
+	dir := tempProjectDir(t)
+	t.Chdir(dir)
+	templateArg := writeLocalTemplate(t, t.TempDir(), "template", cancelConfigTemplateYAML)
+
+	b, created := guidedNewTestBackend(t)
+	mockCurrentBackend(t, b)
+
+	var prompts []string
+	answers := map[string]string{"The AWS region to deploy into (aws:region)": "us-west-2"}
+	err := runNew(t.Context(), newArgs{
+		interactive:          true,
+		templateNameOrURL:    templateArg,
+		configArray:          []string{"aws:profile=work"},
+		prompt:               countingPrompt(answers, &prompts),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		secretsProvider:      "default",
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"my-org/dev"}, *created)
+
+	proj := loadProject(t, dir)
+	projStack, err := workspace.LoadProjectStack(nil /*sink*/, proj, filepath.Join(dir, "Pulumi.dev.yaml"))
+	require.NoError(t, err)
+	for key, want := range map[string]string{"region": "us-west-2", "profile": "work"} {
+		v, ok := projStack.Config[config.MustMakeKey("aws", key)]
+		require.True(t, ok, "aws:%s must be saved", key)
+		got, err := v.Value(config.NopDecrypter)
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	}
+}
+
+// The guided confirmation doesn't show config when --stack names the stack, so config is asked after it
+// and must still reach the new stack's config file.
+//
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestGuidedNewWithStackSavesConfigAskedUpFront(t *testing.T) {
+	guidedRepoTemplate(t, "aws-python", cancelConfigTemplateYAML)
+	dir := tempProjectDir(t)
+	t.Chdir(dir)
+
+	b, created := guidedNewTestBackend(t)
+	mockCurrentBackend(t, b)
+
+	selectOne, _ := scriptedSelect(t, "AWS", "Python", confirmYes)
+	var prompts []string
+	answers := map[string]string{"The AWS region to deploy into (aws:region)": "us-west-2"}
+	err := runNew(t.Context(), newArgs{
+		interactive:          true,
+		stack:                "dev",
+		prompt:               countingPrompt(answers, &prompts),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		selectOne:            selectOne,
+		secretsProvider:      "default",
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"my-org/dev"}, *created)
+
+	proj := loadProject(t, dir)
+	projStack, err := workspace.LoadProjectStack(nil /*sink*/, proj, filepath.Join(dir, "Pulumi.dev.yaml"))
+	require.NoError(t, err)
+	v, ok := projStack.Config[config.MustMakeKey("aws", "region")]
+	require.True(t, ok, "aws:region must be saved")
+	got, err := v.Value(config.NopDecrypter)
+	require.NoError(t, err)
+	assert.Equal(t, "us-west-2", got)
 }

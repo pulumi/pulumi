@@ -289,7 +289,7 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		args.name = projectName
 	}
 
-	answers, err := askSetupQuestions(ctx, b, orgName, template, args, opts, cwd)
+	answers, err := askSetupQuestions(ctx, ws, b, orgName, s, template, args, opts, cwd)
 	if err != nil {
 		return friendlyInterrupt(err, errNoProjectCreated)
 	}
@@ -332,6 +332,9 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 
 	if err = setRuntimeOptionFlags(&proj.Runtime, args.runtimeOptions); err != nil {
 		return err
+	}
+	for k, v := range answers.runtimeOptions {
+		proj.Runtime.SetOption(k, v)
 	}
 
 	if err = pkgWorkspace.SaveProject(proj); err != nil {
@@ -383,26 +386,6 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 		defer lang.Close()
 
 		programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
-
-		// Query the language runtime for additional options.
-		if args.promptRuntimeOptions != nil {
-			options, err := args.promptRuntimeOptions(pluginCtx, lang, &proj.Runtime, entryPoint, opts,
-				args.yes, args.interactive, args.prompt)
-			if err != nil {
-				return err
-			}
-			if len(options) > 0 {
-				// Save the new options
-				for k, v := range options {
-					proj.Runtime.SetOption(k, v)
-				}
-				if err = pkgWorkspace.SaveProject(proj); err != nil {
-					return fmt.Errorf("saving project: %w", err)
-				}
-				// update programInfo to have the new options
-				programInfo = plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
-			}
-		}
 
 		// Let the language runtime do some templating
 		if err := args.languageTemplate(pluginCtx.Request(), lang, programInfo, proj.Name); err != nil {
