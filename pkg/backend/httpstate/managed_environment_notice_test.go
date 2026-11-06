@@ -114,8 +114,9 @@ func TestRunEngineActionSendsManagedEnvironmentNotice(t *testing.T) {
 	require.Greater(t, len(events), 2)
 	assert.Equal(t, engine.UpdateStartedEvent, events[0].Type)
 	assert.Equal(t, engine.StdoutColorEvent, events[1].Type)
+	// Credentials stored by other tests in this process stay in the global filter.
 	assert.Equal(t,
-		engine.StdoutEventPayload{Message: managedEnvironmentNotice, Color: colors.Never},
+		engine.StdoutEventPayload{Message: logging.FilterString(managedEnvironmentNotice), Color: colors.Never},
 		events[1].Payload())
 	for _, e := range events[2:] {
 		assert.NotEqual(t, engine.StdoutColorEvent, e.Type)
@@ -132,10 +133,10 @@ func TestRunEngineActionFiltersResolvedSecretsFromManagedEnvironmentNotice(t *te
 	const resolved = "managed-notice-resolved-secret"
 	logging.AddGlobalSecretFilter([]string{resolved}, "[secret]")
 
-	events := runDestroyPreview(t, "    + values.token: \""+resolved+"\"\n", false)
+	events := runDestroyPreview(t, "    + values.dbPassword: \""+resolved+"\"\n", false)
 	require.Greater(t, len(events), 1)
 	assert.Equal(t,
-		engine.StdoutEventPayload{Message: "    + values.token: \"[secret]\"\n", Color: colors.Never},
+		engine.StdoutEventPayload{Message: "    + values.dbPassword: \"[secret]\"\n", Color: colors.Never},
 		events[1].Payload())
 }
 
@@ -157,7 +158,7 @@ func TestRunEngineActionManagedEnvironmentNoticeJSON(t *testing.T) {
 	var digest sdkDisplay.PreviewDigest
 	require.NoError(t, json.Unmarshal(out, &digest))
 	assert.Equal(t, []sdkDisplay.PreviewDiagnostic{{
-		Message:  colors.Never.Colorize(managedEnvironmentNotice),
+		Message:  colors.Never.Colorize(logging.FilterString(managedEnvironmentNotice)),
 		Severity: diag.Info,
 	}}, digest.Diagnostics)
 }
