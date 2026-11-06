@@ -1,0 +1,11 @@
+{
+	"name": "l2-resource-ref-in-object-type",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/objectref": "ROOT/artifacts/pulumi-objectref-62.0.0.tgz"
+	}
+}

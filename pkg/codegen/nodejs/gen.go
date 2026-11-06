@@ -1603,12 +1603,17 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 			modName = override
 		}
 		if modName != mod.mod {
-			mp, err := filepath.Rel(mod.mod, modName)
+			// Module directories are written in lower case, see gen.
+			mp, err := filepath.Rel(strings.ToLower(mod.mod), strings.ToLower(modName))
 			contract.AssertNoErrorf(err, "cannot make %q relative to %q", modName, mod.mod)
 			if path.Base(mp) == "." {
 				mp = path.Dir(mp)
 			}
 			modPath = filepath.ToSlash(mp)
+			// A bare path such as "mymodule" is a package name to TypeScript.
+			if !strings.HasPrefix(modPath, ".") {
+				modPath = "./" + modPath
+			}
 		}
 		if imports[modPath] == nil {
 			imports[modPath] = mapset.NewSet[string]()
