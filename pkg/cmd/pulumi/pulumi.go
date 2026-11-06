@@ -1146,7 +1146,7 @@ func declareFlagsAsEnvironmentVariables(cmd *cobra.Command) {
 			for _, v := range csv {
 				_ = f.Value.Set(v)
 			}
-		case "string", "int":
+		case "string", "int", "int32", "int64", "duration", "Delimiter":
 			_ = f.Value.Set(value)
 		default:
 			// Hello! If you're reading this, you've found a new CLI type and we don't
