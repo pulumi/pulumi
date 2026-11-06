@@ -37,54 +37,55 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// `ErrorKind` classifies a failure that a provider reports, either in a [](pulumirpc.CheckFailure) or in an
-// [](pulumirpc.ErrorKindDetail) attached to an error.
-type ErrorKind int32
+// `Hint` names a fix that the engine may suggest to the user for a failure that a provider reports, either in a
+// [](pulumirpc.CheckFailure) or in a [](pulumirpc.HintDetail) attached to an error. The provider says which hint
+// applies, and the engine decides whether and how to show it.
+type Hint int32
 
 const (
-	// The provider did not say what kind of failure this is.
-	ErrorKind_ERROR_KIND_UNSPECIFIED ErrorKind = 0
-	// The provider could not authenticate with its cloud or service, for example because credentials are missing,
-	// invalid or expired.
-	ErrorKind_ERROR_KIND_CREDENTIALS ErrorKind = 1
+	// No hint applies.
+	Hint_HINT_UNSPECIFIED Hint = 0
+	// Short-lived credentials from an identity provider, for example through OIDC, would avoid this failure. Set it for
+	// missing, rejected or expired credentials, not for configuration mistakes such as an unknown profile.
+	Hint_HINT_DYNAMIC_CREDENTIALS Hint = 1
 )
 
-// Enum value maps for ErrorKind.
+// Enum value maps for Hint.
 var (
-	ErrorKind_name = map[int32]string{
-		0: "ERROR_KIND_UNSPECIFIED",
-		1: "ERROR_KIND_CREDENTIALS",
+	Hint_name = map[int32]string{
+		0: "HINT_UNSPECIFIED",
+		1: "HINT_DYNAMIC_CREDENTIALS",
 	}
-	ErrorKind_value = map[string]int32{
-		"ERROR_KIND_UNSPECIFIED": 0,
-		"ERROR_KIND_CREDENTIALS": 1,
+	Hint_value = map[string]int32{
+		"HINT_UNSPECIFIED":         0,
+		"HINT_DYNAMIC_CREDENTIALS": 1,
 	}
 )
 
-func (x ErrorKind) Enum() *ErrorKind {
-	p := new(ErrorKind)
+func (x Hint) Enum() *Hint {
+	p := new(Hint)
 	*p = x
 	return p
 }
 
-func (x ErrorKind) String() string {
+func (x Hint) String() string {
 	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
 }
 
-func (ErrorKind) Descriptor() protoreflect.EnumDescriptor {
+func (Hint) Descriptor() protoreflect.EnumDescriptor {
 	return file_pulumi_provider_proto_enumTypes[0].Descriptor()
 }
 
-func (ErrorKind) Type() protoreflect.EnumType {
+func (Hint) Type() protoreflect.EnumType {
 	return &file_pulumi_provider_proto_enumTypes[0]
 }
 
-func (x ErrorKind) Number() protoreflect.EnumNumber {
+func (x Hint) Number() protoreflect.EnumNumber {
 	return protoreflect.EnumNumber(x)
 }
 
-// Deprecated: Use ErrorKind.Descriptor instead.
-func (ErrorKind) EnumDescriptor() ([]byte, []int) {
+// Deprecated: Use Hint.Descriptor instead.
+func (Hint) EnumDescriptor() ([]byte, []int) {
 	return file_pulumi_provider_proto_rawDescGZIP(), []int{0}
 }
 
@@ -1674,9 +1675,8 @@ type CheckFailure struct {
 	Property string `protobuf:"bytes,1,opt,name=property,proto3" json:"property,omitempty"`
 	// The reason that the named property failed validation.
 	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	// The kind of failure, if the provider knows it. This lets the engine react to a failure, for example by
-	// suggesting a way to configure credentials, without parsing its reason.
-	Kind          ErrorKind `protobuf:"varint,3,opt,name=kind,proto3,enum=pulumirpc.ErrorKind" json:"kind,omitempty"`
+	// A hint the engine may give the user for this failure, if the provider knows one applies.
+	Hint          Hint `protobuf:"varint,3,opt,name=hint,proto3,enum=pulumirpc.Hint" json:"hint,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1725,37 +1725,37 @@ func (x *CheckFailure) GetReason() string {
 	return ""
 }
 
-func (x *CheckFailure) GetKind() ErrorKind {
+func (x *CheckFailure) GetHint() Hint {
 	if x != nil {
-		return x.Kind
+		return x.Hint
 	}
-	return ErrorKind_ERROR_KIND_UNSPECIFIED
+	return Hint_HINT_UNSPECIFIED
 }
 
-// `ErrorKindDetail` is a type of error detail that a provider may attach to an error it returns from any call, such as
-// [](pulumirpc.ResourceProvider.Configure), to say what kind of failure the error describes.
-type ErrorKindDetail struct {
+// `HintDetail` is a type of error detail that a provider may attach to an error it returns from any call, such as
+// [](pulumirpc.ResourceProvider.Configure), to say which hint applies to the failure.
+type HintDetail struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The kind of failure.
-	Kind          ErrorKind `protobuf:"varint,1,opt,name=kind,proto3,enum=pulumirpc.ErrorKind" json:"kind,omitempty"`
+	// The hint.
+	Hint          Hint `protobuf:"varint,1,opt,name=hint,proto3,enum=pulumirpc.Hint" json:"hint,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *ErrorKindDetail) Reset() {
-	*x = ErrorKindDetail{}
+func (x *HintDetail) Reset() {
+	*x = HintDetail{}
 	mi := &file_pulumi_provider_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ErrorKindDetail) String() string {
+func (x *HintDetail) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ErrorKindDetail) ProtoMessage() {}
+func (*HintDetail) ProtoMessage() {}
 
-func (x *ErrorKindDetail) ProtoReflect() protoreflect.Message {
+func (x *HintDetail) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_provider_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1767,16 +1767,16 @@ func (x *ErrorKindDetail) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ErrorKindDetail.ProtoReflect.Descriptor instead.
-func (*ErrorKindDetail) Descriptor() ([]byte, []int) {
+// Deprecated: Use HintDetail.ProtoReflect.Descriptor instead.
+func (*HintDetail) Descriptor() ([]byte, []int) {
 	return file_pulumi_provider_proto_rawDescGZIP(), []int{16}
 }
 
-func (x *ErrorKindDetail) GetKind() ErrorKind {
+func (x *HintDetail) GetHint() Hint {
 	if x != nil {
-		return x.Kind
+		return x.Hint
 	}
-	return ErrorKind_ERROR_KIND_UNSPECIFIED
+	return Hint_HINT_UNSPECIFIED
 }
 
 // `DiffRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.DiffConfig) and
@@ -4685,13 +4685,14 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\aDISABLE\x10\x02J\x04\b\x04\x10\x05R\x0esequenceNumber\"u\n" +
 	"\rCheckResponse\x12/\n" +
 	"\x06inputs\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06inputs\x123\n" +
-	"\bfailures\x18\x02 \x03(\v2\x17.pulumirpc.CheckFailureR\bfailures\"l\n" +
+	"\bfailures\x18\x02 \x03(\v2\x17.pulumirpc.CheckFailureR\bfailures\"g\n" +
 	"\fCheckFailure\x12\x1a\n" +
 	"\bproperty\x18\x01 \x01(\tR\bproperty\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\x12(\n" +
-	"\x04kind\x18\x03 \x01(\x0e2\x14.pulumirpc.ErrorKindR\x04kind\";\n" +
-	"\x0fErrorKindDetail\x12(\n" +
-	"\x04kind\x18\x01 \x01(\x0e2\x14.pulumirpc.ErrorKindR\x04kind\"\x8f\x02\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x12#\n" +
+	"\x04hint\x18\x03 \x01(\x0e2\x0f.pulumirpc.HintR\x04hint\"1\n" +
+	"\n" +
+	"HintDetail\x12#\n" +
+	"\x04hint\x18\x01 \x01(\x0e2\x0f.pulumirpc.HintR\x04hint\"\x8f\x02\n" +
 	"\vDiffRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03urn\x18\x02 \x01(\tR\x03urn\x12+\n" +
@@ -4918,10 +4919,10 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\vparent_name\x18\x04 \x01(\tR\n" +
 	"parentName\x12/\n" +
 	"\x06inputs\x18\x05 \x01(\v2\x17.google.protobuf.StructR\x06inputs\x121\n" +
-	"\aoutputs\x18\x06 \x01(\v2\x17.google.protobuf.StructR\aoutputs*C\n" +
-	"\tErrorKind\x12\x1a\n" +
-	"\x16ERROR_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
-	"\x16ERROR_KIND_CREDENTIALS\x10\x012\xa7\v\n" +
+	"\aoutputs\x18\x06 \x01(\v2\x17.google.protobuf.StructR\aoutputs*:\n" +
+	"\x04Hint\x12\x14\n" +
+	"\x10HINT_UNSPECIFIED\x10\x00\x12\x1c\n" +
+	"\x18HINT_DYNAMIC_CREDENTIALS\x10\x012\xa7\v\n" +
 	"\x10ResourceProvider\x12X\n" +
 	"\tHandshake\x12#.pulumirpc.ProviderHandshakeRequest\x1a$.pulumirpc.ProviderHandshakeResponse\"\x00\x12Q\n" +
 	"\fParameterize\x12\x1e.pulumirpc.ParameterizeRequest\x1a\x1f.pulumirpc.ParameterizeResponse\"\x00\x12H\n" +
@@ -4962,7 +4963,7 @@ func file_pulumi_provider_proto_rawDescGZIP() []byte {
 var file_pulumi_provider_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
 var file_pulumi_provider_proto_msgTypes = make([]protoimpl.MessageInfo, 60)
 var file_pulumi_provider_proto_goTypes = []any{
-	(ErrorKind)(0),                              // 0: pulumirpc.ErrorKind
+	(Hint)(0),                                   // 0: pulumirpc.Hint
 	(CheckRequest_AutonamingOptions_Mode)(0),    // 1: pulumirpc.CheckRequest.AutonamingOptions.Mode
 	(PropertyDiff_Kind)(0),                      // 2: pulumirpc.PropertyDiff.Kind
 	(DiffResponse_DiffChanges)(0),               // 3: pulumirpc.DiffResponse.DiffChanges
@@ -4982,7 +4983,7 @@ var file_pulumi_provider_proto_goTypes = []any{
 	(*CheckRequest)(nil),                        // 17: pulumirpc.CheckRequest
 	(*CheckResponse)(nil),                       // 18: pulumirpc.CheckResponse
 	(*CheckFailure)(nil),                        // 19: pulumirpc.CheckFailure
-	(*ErrorKindDetail)(nil),                     // 20: pulumirpc.ErrorKindDetail
+	(*HintDetail)(nil),                          // 20: pulumirpc.HintDetail
 	(*DiffRequest)(nil),                         // 21: pulumirpc.DiffRequest
 	(*PropertyDiff)(nil),                        // 22: pulumirpc.PropertyDiff
 	(*DiffResponse)(nil),                        // 23: pulumirpc.DiffResponse
@@ -5054,8 +5055,8 @@ var file_pulumi_provider_proto_depIdxs = []int32{
 	64, // 17: pulumirpc.CheckRequest.old_outputs:type_name -> google.protobuf.Struct
 	64, // 18: pulumirpc.CheckResponse.inputs:type_name -> google.protobuf.Struct
 	19, // 19: pulumirpc.CheckResponse.failures:type_name -> pulumirpc.CheckFailure
-	0,  // 20: pulumirpc.CheckFailure.kind:type_name -> pulumirpc.ErrorKind
-	0,  // 21: pulumirpc.ErrorKindDetail.kind:type_name -> pulumirpc.ErrorKind
+	0,  // 20: pulumirpc.CheckFailure.hint:type_name -> pulumirpc.Hint
+	0,  // 21: pulumirpc.HintDetail.hint:type_name -> pulumirpc.Hint
 	64, // 22: pulumirpc.DiffRequest.olds:type_name -> google.protobuf.Struct
 	64, // 23: pulumirpc.DiffRequest.news:type_name -> google.protobuf.Struct
 	64, // 24: pulumirpc.DiffRequest.old_inputs:type_name -> google.protobuf.Struct

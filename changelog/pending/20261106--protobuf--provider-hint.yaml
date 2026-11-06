@@ -1,0 +1,5 @@
+component: protobuf
+kind: feat
+body: Let providers say when dynamic credentials would fix a failure
+custom:
+  PR: "25605"

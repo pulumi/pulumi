@@ -177,33 +177,33 @@ func TestESCHintOnCredentialsFailure(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		record  map[tokens.Package]plugin.ErrorKind
+		record  map[tokens.Package]plugin.Hint
 		isCloud bool
 		want    string
 	}{
 		{
 			"aws on cloud",
-			map[tokens.Package]plugin.ErrorKind{"aws": plugin.ErrorKindCredentials},
+			map[tokens.Package]plugin.Hint{"aws": plugin.HintDynamicCredentials},
 			true,
 			"`pulumi env setup aws`",
 		},
 		{
 			"azure-native on cloud",
-			map[tokens.Package]plugin.ErrorKind{"azure-native": plugin.ErrorKindCredentials},
+			map[tokens.Package]plugin.Hint{"azure-native": plugin.HintDynamicCredentials},
 			true,
 			"`pulumi env setup azure`",
 		},
-		{"aws on diy", map[tokens.Package]plugin.ErrorKind{"aws": plugin.ErrorKindCredentials}, false, ""},
-		{"unsupported package", map[tokens.Package]plugin.ErrorKind{"random": plugin.ErrorKindCredentials}, true, ""},
-		{"unspecified kind", map[tokens.Package]plugin.ErrorKind{"aws": plugin.ErrorKindUnspecified}, true, ""},
+		{"aws on diy", map[tokens.Package]plugin.Hint{"aws": plugin.HintDynamicCredentials}, false, ""},
+		{"unsupported package", map[tokens.Package]plugin.Hint{"random": plugin.HintDynamicCredentials}, true, ""},
+		{"unspecified hint", map[tokens.Package]plugin.Hint{"aws": plugin.HintUnspecified}, true, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			tm := newTestManager(t)
 			tm.recordSuccessfulUpdate()
-			for pkg, kind := range tt.record {
-				tm.RecordErrorKind(pkg, kind)
+			for pkg, hint := range tt.record {
+				tm.RecordHint(pkg, hint)
 			}
 			tm.offerFailureHints(func() bool { return tt.isCloud })
 			out := tm.run()

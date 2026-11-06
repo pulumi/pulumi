@@ -313,7 +313,7 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		rpcFailures[i] = &pulumirpc.CheckFailure{
 			Property: string(f.Property),
 			Reason:   f.Reason,
-			Kind:     f.Kind.rpc(),
+			Hint:     f.Hint.rpc(),
 		}
 	}
 
@@ -497,7 +497,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		rpcFailures[i] = &pulumirpc.CheckFailure{
 			Property: string(f.Property),
 			Reason:   f.Reason,
-			Kind:     f.Kind.rpc(),
+			Hint:     f.Hint.rpc(),
 		}
 	}
 
@@ -1022,7 +1022,7 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 		rpcFailures[i] = &pulumirpc.CheckFailure{
 			Property: string(f.Property),
 			Reason:   f.Reason,
-			Kind:     f.Kind.rpc(),
+			Hint:     f.Hint.rpc(),
 		}
 	}
 
@@ -1099,7 +1099,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		rpcFailures[i] = &pulumirpc.CheckFailure{
 			Property: string(f.Property),
 			Reason:   f.Reason,
-			Kind:     f.Kind.rpc(),
+			Hint:     f.Hint.rpc(),
 		}
 	}
 

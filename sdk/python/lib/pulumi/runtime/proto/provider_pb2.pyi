@@ -34,31 +34,32 @@ else:
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
-class _ErrorKind:
+class _Hint:
     ValueType = typing.NewType("ValueType", builtins.int)
     V: typing_extensions.TypeAlias = ValueType
 
-class _ErrorKindEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_ErrorKind.ValueType], builtins.type):
+class _HintEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_Hint.ValueType], builtins.type):
     DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
-    ERROR_KIND_UNSPECIFIED: _ErrorKind.ValueType  # 0
-    """The provider did not say what kind of failure this is."""
-    ERROR_KIND_CREDENTIALS: _ErrorKind.ValueType  # 1
-    """The provider could not authenticate with its cloud or service, for example because credentials are missing,
-    invalid or expired.
+    HINT_UNSPECIFIED: _Hint.ValueType  # 0
+    """No hint applies."""
+    HINT_DYNAMIC_CREDENTIALS: _Hint.ValueType  # 1
+    """Short-lived credentials from an identity provider, for example through OIDC, would avoid this failure. Set it for
+    missing, rejected or expired credentials, not for configuration mistakes such as an unknown profile.
     """
 
-class ErrorKind(_ErrorKind, metaclass=_ErrorKindEnumTypeWrapper):
-    """`ErrorKind` classifies a failure that a provider reports, either in a [](pulumirpc.CheckFailure) or in an
-    [](pulumirpc.ErrorKindDetail) attached to an error.
+class Hint(_Hint, metaclass=_HintEnumTypeWrapper):
+    """`Hint` names a fix that the engine may suggest to the user for a failure that a provider reports, either in a
+    [](pulumirpc.CheckFailure) or in a [](pulumirpc.HintDetail) attached to an error. The provider says which hint
+    applies, and the engine decides whether and how to show it.
     """
 
-ERROR_KIND_UNSPECIFIED: ErrorKind.ValueType  # 0
-"""The provider did not say what kind of failure this is."""
-ERROR_KIND_CREDENTIALS: ErrorKind.ValueType  # 1
-"""The provider could not authenticate with its cloud or service, for example because credentials are missing,
-invalid or expired.
+HINT_UNSPECIFIED: Hint.ValueType  # 0
+"""No hint applies."""
+HINT_DYNAMIC_CREDENTIALS: Hint.ValueType  # 1
+"""Short-lived credentials from an identity provider, for example through OIDC, would avoid this failure. Set it for
+missing, rejected or expired credentials, not for configuration mistakes such as an unknown profile.
 """
-global___ErrorKind = ErrorKind
+global___Hint = Hint
 
 @typing.final
 class ProviderHandshakeRequest(google.protobuf.message.Message):
@@ -1050,45 +1051,43 @@ class CheckFailure(google.protobuf.message.Message):
 
     PROPERTY_FIELD_NUMBER: builtins.int
     REASON_FIELD_NUMBER: builtins.int
-    KIND_FIELD_NUMBER: builtins.int
+    HINT_FIELD_NUMBER: builtins.int
     property: builtins.str
     """The input property that failed validation."""
     reason: builtins.str
     """The reason that the named property failed validation."""
-    kind: global___ErrorKind.ValueType
-    """The kind of failure, if the provider knows it. This lets the engine react to a failure, for example by
-    suggesting a way to configure credentials, without parsing its reason.
-    """
+    hint: global___Hint.ValueType
+    """A hint the engine may give the user for this failure, if the provider knows one applies."""
     def __init__(
         self,
         *,
         property: builtins.str = ...,
         reason: builtins.str = ...,
-        kind: global___ErrorKind.ValueType = ...,
+        hint: global___Hint.ValueType = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["kind", b"kind", "property", b"property", "reason", b"reason"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["hint", b"hint", "property", b"property", "reason", b"reason"]) -> None: ...
 
 global___CheckFailure = CheckFailure
 
 @typing.final
-class ErrorKindDetail(google.protobuf.message.Message):
-    """`ErrorKindDetail` is a type of error detail that a provider may attach to an error it returns from any call, such as
-    [](pulumirpc.ResourceProvider.Configure), to say what kind of failure the error describes.
+class HintDetail(google.protobuf.message.Message):
+    """`HintDetail` is a type of error detail that a provider may attach to an error it returns from any call, such as
+    [](pulumirpc.ResourceProvider.Configure), to say which hint applies to the failure.
     """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
-    KIND_FIELD_NUMBER: builtins.int
-    kind: global___ErrorKind.ValueType
-    """The kind of failure."""
+    HINT_FIELD_NUMBER: builtins.int
+    hint: global___Hint.ValueType
+    """The hint."""
     def __init__(
         self,
         *,
-        kind: global___ErrorKind.ValueType = ...,
+        hint: global___Hint.ValueType = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["kind", b"kind"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["hint", b"hint"]) -> None: ...
 
-global___ErrorKindDetail = ErrorKindDetail
+global___HintDetail = HintDetail
 
 @typing.final
 class DiffRequest(google.protobuf.message.Message):

@@ -753,8 +753,8 @@ export class CheckFailure extends jspb.Message {
     setProperty(value: string): CheckFailure;
     getReason(): string;
     setReason(value: string): CheckFailure;
-    getKind(): ErrorKind;
-    setKind(value: ErrorKind): CheckFailure;
+    getHint(): Hint;
+    setHint(value: Hint): CheckFailure;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckFailure.AsObject;
@@ -770,27 +770,27 @@ export namespace CheckFailure {
     export type AsObject = {
         property: string,
         reason: string,
-        kind: ErrorKind,
+        hint: Hint,
     }
 }
 
-export class ErrorKindDetail extends jspb.Message { 
-    getKind(): ErrorKind;
-    setKind(value: ErrorKind): ErrorKindDetail;
+export class HintDetail extends jspb.Message { 
+    getHint(): Hint;
+    setHint(value: Hint): HintDetail;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): ErrorKindDetail.AsObject;
-    static toObject(includeInstance: boolean, msg: ErrorKindDetail): ErrorKindDetail.AsObject;
+    toObject(includeInstance?: boolean): HintDetail.AsObject;
+    static toObject(includeInstance: boolean, msg: HintDetail): HintDetail.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: ErrorKindDetail, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): ErrorKindDetail;
-    static deserializeBinaryFromReader(message: ErrorKindDetail, reader: jspb.BinaryReader): ErrorKindDetail;
+    static serializeBinaryToWriter(message: HintDetail, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): HintDetail;
+    static deserializeBinaryFromReader(message: HintDetail, reader: jspb.BinaryReader): HintDetail;
 }
 
-export namespace ErrorKindDetail {
+export namespace HintDetail {
     export type AsObject = {
-        kind: ErrorKind,
+        hint: Hint,
     }
 }
 
@@ -1880,7 +1880,7 @@ export namespace View {
     }
 }
 
-export enum ErrorKind {
-    ERROR_KIND_UNSPECIFIED = 0,
-    ERROR_KIND_CREDENTIALS = 1,
+export enum Hint {
+    HINT_UNSPECIFIED = 0,
+    HINT_DYNAMIC_CREDENTIALS = 1,
 }

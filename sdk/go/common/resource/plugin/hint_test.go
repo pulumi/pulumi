@@ -24,12 +24,12 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func TestProviderServerSendsCheckFailureKind(t *testing.T) {
+func TestProviderServerSendsCheckFailureHint(t *testing.T) {
 	t.Parallel()
 
 	server := NewProviderServer(&MockProvider{
 		CheckConfigF: func(context.Context, CheckConfigRequest) (CheckConfigResponse, error) {
-			return CheckConfigResponse{Failures: []CheckFailure{{Reason: "no credentials", Kind: ErrorKindCredentials}}}, nil
+			return CheckConfigResponse{Failures: []CheckFailure{{Reason: "no credentials", Hint: HintDynamicCredentials}}}, nil
 		},
 	})
 	resp, err := server.CheckConfig(t.Context(), &pulumirpc.CheckRequest{
@@ -37,14 +37,14 @@ func TestProviderServerSendsCheckFailureKind(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, resp.GetFailures(), 1)
-	assert.Equal(t, pulumirpc.ErrorKind_ERROR_KIND_CREDENTIALS, resp.GetFailures()[0].GetKind())
+	assert.Equal(t, pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS, resp.GetFailures()[0].GetHint())
 }
 
-func TestErrorKindRoundTrip(t *testing.T) {
+func TestHintRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	for _, k := range []ErrorKind{ErrorKindUnspecified, ErrorKindCredentials} {
-		assert.Equal(t, k, errorKindFromRPC(k.rpc()))
+	for _, h := range []Hint{HintUnspecified, HintDynamicCredentials} {
+		assert.Equal(t, h, hintFromRPC(h.rpc()))
 	}
-	assert.Equal(t, ErrorKindUnspecified, errorKindFromRPC(pulumirpc.ErrorKind(99)))
+	assert.Equal(t, HintUnspecified, hintFromRPC(pulumirpc.Hint(99)))
 }

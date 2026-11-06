@@ -1,5 +1,0 @@
-component: protobuf
-kind: feat
-body: Let providers mark check failures and errors as credentials errors with a new `ErrorKind`
-custom:
-  PR: "25605"

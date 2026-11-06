@@ -743,7 +743,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		failures = append(failures, CheckFailure{
 			Property: resource.PropertyKey(failure.Property),
 			Reason:   failure.Reason,
-			Kind:     errorKindFromRPC(failure.GetKind()),
+			Hint:     hintFromRPC(failure.GetHint()),
 		})
 	}
 
@@ -1275,7 +1275,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		failures = append(failures, CheckFailure{
 			Property: resource.PropertyKey(failure.Property),
 			Reason:   failure.Reason,
-			Kind:     errorKindFromRPC(failure.GetKind()),
+			Hint:     hintFromRPC(failure.GetHint()),
 		})
 	}
 
@@ -2282,7 +2282,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		failures = append(failures, CheckFailure{
 			Property: resource.PropertyKey(failure.Property),
 			Reason:   failure.Reason,
-			Kind:     errorKindFromRPC(failure.GetKind()),
+			Hint:     hintFromRPC(failure.GetHint()),
 		})
 	}
 
@@ -2399,7 +2399,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		failures = append(failures, CheckFailure{
 			Property: resource.PropertyKey(failure.Property),
 			Reason:   failure.Reason,
-			Kind:     errorKindFromRPC(failure.GetKind()),
+			Hint:     hintFromRPC(failure.GetHint()),
 		})
 	}
 

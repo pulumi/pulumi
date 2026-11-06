@@ -28,31 +28,31 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// WithFailureRecorder returns a context whose provider calls report classified failures, such as credentials
-// errors, to this process's hints.
+// WithFailureRecorder returns a context whose provider calls report the hints for their failures, such as dynamic
+// credentials, to this process's hints.
 func WithFailureRecorder(ctx context.Context) context.Context {
-	return plugin.WithErrorKindRecorder(ctx, defaultManager)
+	return plugin.WithHintRecorder(ctx, defaultManager)
 }
 
-// OfferFailureHints offers hints for the classified failures that providers reported during this command. It is
+// OfferFailureHints offers hints for the failures that providers reported during this command. It is
 // called when the command fails.
 func OfferFailureHints() { defaultManager.offerFailureHints(isCloudBackend) }
 
-// RecordErrorKind implements plugin.ErrorKindRecorder.
-func (m *manager) RecordErrorKind(pkg tokens.Package, kind plugin.ErrorKind) {
-	if kind != plugin.ErrorKindCredentials {
+// RecordHint implements plugin.HintRecorder.
+func (m *manager) RecordHint(pkg tokens.Package, hint plugin.Hint) {
+	if hint != plugin.HintDynamicCredentials {
 		return
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if !slices.Contains(m.credentialFailures, pkg) {
-		m.credentialFailures = append(m.credentialFailures, pkg)
+	if !slices.Contains(m.dynamicCredentialsHints, pkg) {
+		m.dynamicCredentialsHints = append(m.dynamicCredentialsHints, pkg)
 	}
 }
 
 func (m *manager) offerFailureHints(isCloud func() bool) {
 	m.mu.Lock()
-	failures := slices.Clone(m.credentialFailures)
+	failures := slices.Clone(m.dynamicCredentialsHints)
 	m.mu.Unlock()
 
 	for _, pkg := range failures {

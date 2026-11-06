@@ -36,68 +36,68 @@ import (
 
 type testRecorder struct {
 	mu   sync.Mutex
-	seen map[tokens.Package]ErrorKind
+	seen map[tokens.Package]Hint
 }
 
-func (r *testRecorder) RecordErrorKind(pkg tokens.Package, kind ErrorKind) {
+func (r *testRecorder) RecordHint(pkg tokens.Package, hint Hint) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.seen == nil {
-		r.seen = map[tokens.Package]ErrorKind{}
+		r.seen = map[tokens.Package]Hint{}
 	}
-	r.seen[pkg] = kind
+	r.seen[pkg] = hint
 }
 
-func TestErrorKindOf(t *testing.T) {
+func TestHintOf(t *testing.T) {
 	t.Parallel()
 
-	credsErr := WithErrorKind(rpcerror.New(codes.Unauthenticated, "expired token"), ErrorKindCredentials)
+	credsErr := WithHint(rpcerror.New(codes.Unauthenticated, "expired token"), HintDynamicCredentials)
 
 	tests := []struct {
 		name string
 		err  error
-		want ErrorKind
+		want Hint
 	}{
-		{"nil", nil, ErrorKindUnspecified},
-		{"plain error", errors.New("boom"), ErrorKindUnspecified},
-		{"status without detail", rpcerror.New(codes.Unauthenticated, "boom"), ErrorKindUnspecified},
-		{"status with detail", credsErr, ErrorKindCredentials},
-		{"converted and wrapped", fmt.Errorf("configure: %w", rpcerror.Convert(credsErr)), ErrorKindCredentials},
+		{"nil", nil, HintUnspecified},
+		{"plain error", errors.New("boom"), HintUnspecified},
+		{"status without detail", rpcerror.New(codes.Unauthenticated, "boom"), HintUnspecified},
+		{"status with detail", credsErr, HintDynamicCredentials},
+		{"converted and wrapped", fmt.Errorf("configure: %w", rpcerror.Convert(credsErr)), HintDynamicCredentials},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.want, ErrorKindOf(tt.err))
+			assert.Equal(t, tt.want, HintOf(tt.err))
 		})
 	}
 }
 
-func TestProviderRecordsCredentialsCheckConfigFailure(t *testing.T) {
+func TestProviderRecordsCheckConfigFailureHint(t *testing.T) {
 	t.Parallel()
 
 	client := &stubClient{
 		CheckConfigF: func(*pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 			return &pulumirpc.CheckResponse{Failures: []*pulumirpc.CheckFailure{
 				{Reason: "unrelated"},
-				{Reason: "no credentials", Kind: pulumirpc.ErrorKind_ERROR_KIND_CREDENTIALS},
+				{Reason: "no credentials", Hint: pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS},
 			}}, nil
 		},
 	}
 	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
 
 	rec := &testRecorder{}
-	resp, err := p.CheckConfig(WithErrorKindRecorder(t.Context(), rec), CheckConfigRequest{
+	resp, err := p.CheckConfig(WithHintRecorder(t.Context(), rec), CheckConfigRequest{
 		URN:  resource.NewURN("stack", "proj", "", "pulumi:providers:aws", "default"),
 		News: property.Map{},
 	})
 	require.NoError(t, err)
 	require.Len(t, resp.Failures, 2)
-	assert.Equal(t, ErrorKindUnspecified, resp.Failures[0].Kind)
-	assert.Equal(t, ErrorKindCredentials, resp.Failures[1].Kind)
-	assert.Equal(t, map[tokens.Package]ErrorKind{"aws": ErrorKindCredentials}, rec.seen)
+	assert.Equal(t, HintUnspecified, resp.Failures[0].Hint)
+	assert.Equal(t, HintDynamicCredentials, resp.Failures[1].Hint)
+	assert.Equal(t, map[tokens.Package]Hint{"aws": HintDynamicCredentials}, rec.seen)
 }
 
-func TestProviderRecordsCredentialsConfigureErrorViaPluginContext(t *testing.T) {
+func TestProviderRecordsConfigureErrorHintViaPluginContext(t *testing.T) {
 	t.Parallel()
 
 	// The engine calls providers with detached contexts, so the recorder is found through the plugin context.
@@ -105,29 +105,29 @@ func TestProviderRecordsCredentialsConfigureErrorViaPluginContext(t *testing.T) 
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 	sink := diagtest.LogSink(t)
-	pctx, err := NewContext(WithErrorKindRecorder(t.Context(), rec), sink, sink,
+	pctx, err := NewContext(WithHintRecorder(t.Context(), rec), sink, sink,
 		&MockHost{}, nil /* source */, cwd, nil /* options */, false, nil, nil /* span */)
 	require.NoError(t, err)
 
 	client := &stubClient{
 		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
-			return nil, WithErrorKind(rpcerror.New(codes.Unauthenticated, "expired token"), ErrorKindCredentials)
+			return nil, WithHint(rpcerror.New(codes.Unauthenticated, "expired token"), HintDynamicCredentials)
 		},
 	}
 	p := NewProviderWithClient(pctx, client, false /* disablePreview */)
 
 	_, err = p.Configure(t.Context(), ConfigureRequest{Type: new(tokens.Type("pulumi:providers:gcp"))})
 	require.Error(t, err)
-	assert.Equal(t, ErrorKindCredentials, ErrorKindOf(err))
-	assert.Equal(t, map[tokens.Package]ErrorKind{"gcp": ErrorKindCredentials}, rec.seen)
+	assert.Equal(t, HintDynamicCredentials, HintOf(err))
+	assert.Equal(t, map[tokens.Package]Hint{"gcp": HintDynamicCredentials}, rec.seen)
 }
 
-func TestProviderServerSendsCheckFailureKind(t *testing.T) {
+func TestProviderServerSendsCheckFailureHint(t *testing.T) {
 	t.Parallel()
 
 	server := NewProviderServer(&MockProvider{
 		CheckConfigF: func(context.Context, CheckConfigRequest) (CheckConfigResponse, error) {
-			return CheckConfigResponse{Failures: []CheckFailure{{Reason: "no credentials", Kind: ErrorKindCredentials}}}, nil
+			return CheckConfigResponse{Failures: []CheckFailure{{Reason: "no credentials", Hint: HintDynamicCredentials}}}, nil
 		},
 	})
 	resp, err := server.CheckConfig(t.Context(), &pulumirpc.CheckRequest{
@@ -135,5 +135,5 @@ func TestProviderServerSendsCheckFailureKind(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, resp.GetFailures(), 1)
-	assert.Equal(t, pulumirpc.ErrorKind_ERROR_KIND_CREDENTIALS, resp.GetFailures()[0].GetKind())
+	assert.Equal(t, pulumirpc.Hint_HINT_DYNAMIC_CREDENTIALS, resp.GetFailures()[0].GetHint())
 }
