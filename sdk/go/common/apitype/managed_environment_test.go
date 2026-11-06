@@ -42,6 +42,24 @@ func TestManagedEnvironmentJSON(t *testing.T) {
 			expected: `{"id":"","orgName":"","projectName":"","stackName":"","activeUpdate":"","version":0}`,
 		},
 		{
+			name: "stack with a delivery environment",
+			value: Stack{DeliveryEnvironment: &StackDeliveryEnvironment{
+				Environment: "pulumi-delivery/program-id",
+				Revision:    3,
+			}},
+			expected: `{"id":"","orgName":"","projectName":"","stackName":"","activeUpdate":"",` +
+				`"deliveryEnvironment":{"environment":"pulumi-delivery/program-id","revision":3},"version":0}`,
+		},
+		{
+			name: "delivery environment that overrides the stack's config",
+			value: StackDeliveryEnvironment{
+				Environment:          "pulumi-delivery/program-id",
+				Revision:             3,
+				OverridesStackConfig: true,
+			},
+			expected: `{"environment":"pulumi-delivery/program-id","revision":3,"overridesStackConfig":true}`,
+		},
+		{
 			name:     "create stack request",
 			value:    CreateStackRequest{StackName: "dev", CreateManagedEnvironment: true},
 			expected: `{"stackName":"dev","createManagedEnvironment":true}`,

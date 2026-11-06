@@ -45,6 +45,9 @@ type UpdateProgramRequest struct {
 
 	// Environment pins the managed ESC environment revision the update was evaluated against.
 	Environment *UpdateProgramEnvironment `json:"environment,omitempty"`
+
+	// DeliveryEnvironment is the Pulumi Delivery environment revision the update's config was composed with.
+	DeliveryEnvironment *StackDeliveryEnvironment `json:"deliveryEnvironment,omitempty"`
 }
 
 // UpdateProgramEnvironment identifies the managed ESC environment content an update was evaluated against.
@@ -55,6 +58,18 @@ type UpdateProgramEnvironment struct {
 	ChangeRequestID string `json:"changeRequestID,omitempty"`
 	// DraftRevision is the draft revision that was evaluated. Meaningful only with ChangeRequestID; 0 is valid.
 	DraftRevision int `json:"draftRevision"`
+}
+
+// StackDeliveryEnvironment names a revision of the ESC environment that holds the config Pulumi Delivery admitted to a
+// stack.
+type StackDeliveryEnvironment struct {
+	// Environment is "<project>/<name>" of the ESC environment.
+	Environment string `json:"environment"`
+	// Revision is the environment revision to compose.
+	Revision int `json:"revision"`
+	// OverridesStackConfig says that the environment's values replace the stack's own for a key they both set, because
+	// this is Delivery's own work on the stack. Otherwise the stack's own values win.
+	OverridesStackConfig bool `json:"overridesStackConfig,omitempty"`
 }
 
 // UpdateOptions is the set of operations for configuring the output of an update.

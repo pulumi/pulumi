@@ -675,6 +675,11 @@ type Stack struct {
 	// Nil means the stack is not managed. The service keeps returning the name after the environment is deleted.
 	ManagedEnvironment *string `json:"managedEnvironment,omitempty"`
 
+	// DeliveryEnvironment is the revision of the ESC environment holding Pulumi Delivery's config for the stack, which the
+	// caller composes with the stack's own config. Delivery's own work on the stack gets the revision of that work; any
+	// other caller gets the revision that was admitted last. Nil means there is nothing to compose.
+	DeliveryEnvironment *StackDeliveryEnvironment `json:"deliveryEnvironment,omitempty"`
+
 	Version int `json:"version"`
 }
 
