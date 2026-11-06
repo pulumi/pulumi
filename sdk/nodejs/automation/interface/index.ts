@@ -8961,6 +8961,10 @@ export class API {
             __flags.push("--dir", "" + options.dir);
         }
 
+        if (options.escConfig) {
+            __flags.push("--esc-config");
+        }
+
         if (options.force) {
             __flags.push("--force");
         }
@@ -14400,6 +14404,8 @@ export interface PulumiProjectNewOptions extends BaseOptions {
     description?: string;
     /** The location to place the generated project; if not specified, the current directory is used */
     dir?: string;
+    /** [EXPERIMENTAL] Create an ESC environment, managed by the stack, that holds the stack's configuration. ESC encrypts secret config values; --secrets-provider applies only to secrets in the stack's state */
+    escConfig?: boolean;
     /** Forces content to be generated even if it would change existing files */
     force?: boolean;
     /** Generate the project only; do not create a stack, save config, or install dependencies */

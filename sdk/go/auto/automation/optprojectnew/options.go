@@ -44,6 +44,8 @@ type Options struct {
 	Dir string
 	// Disable integrity checking of checkpoint files
 	DisableIntegrityChecking bool
+	// [EXPERIMENTAL] Create an ESC environment, managed by the stack, that holds the stack's configuration. ESC encrypts secret config values; --secrets-provider applies only to secrets in the stack's state
+	EscConfig bool
 	// Forces content to be generated even if it would change existing files
 	Force bool
 	// Show fully-qualified stack names
@@ -149,6 +151,13 @@ func Dir(v string) Option {
 func DisableIntegrityChecking(v bool) Option {
 	return func(o *Options) {
 		o.DisableIntegrityChecking = v
+	}
+}
+
+// EscConfig returns an Option that sets EscConfig.
+func EscConfig(v bool) Option {
+	return func(o *Options) {
+		o.EscConfig = v
 	}
 }
 

@@ -10124,6 +10124,10 @@ func (a *API) ProjectNew(
 		final = append(final, "--disable-integrity-checking")
 	}
 
+	if o.EscConfig {
+		final = append(final, "--esc-config")
+	}
+
 	if o.Force {
 		final = append(final, "--force")
 	}
@@ -11968,7 +11972,7 @@ func (a *API) Version(
 //
 // Displays the username of the currently logged in user.
 //
-// When the current token is a Pulumi Cloud team token or an organization token, the command will return the name of the organization with which the token is associated.
+// When the current token is a Pulumi Cloud organization token, the command returns the name of the organization with which the token is associated. When it is a team token, the command returns the login of the team's service principal, in the form team-account:<team-id>.
 func (a *API) Whoami(
 	ctx context.Context,
 	opts ...optwhoami.Option,

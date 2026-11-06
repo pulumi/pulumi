@@ -10105,6 +10105,7 @@ class API:
         config_path: bool = False,
         description: Optional[str] = None,
         dir: Optional[str] = None,
+        esc_config: bool = False,
         force: bool = False,
         generate_only: bool = False,
         language: Optional[str] = None,
@@ -10139,6 +10140,7 @@ class API:
         :param config_path: Config keys contain a path to a property in a map or list to set
         :param description: The project description; if not specified, a prompt will request it
         :param dir: The location to place the generated project; if not specified, the current directory is used
+        :param esc_config: [EXPERIMENTAL] Create an ESC environment, managed by the stack, that holds the stack's configuration. ESC encrypts secret config values; --secrets-provider applies only to secrets in the stack's state
         :param force: Forces content to be generated even if it would change existing files
         :param generate_only: Generate the project only; do not create a stack, save config, or install dependencies
         :param language: Retired: use 'pulumi neo -p "prompt"' instead.
@@ -10191,6 +10193,8 @@ class API:
             __flags.extend(["--description", str(description)])
         if dir is not None:
             __flags.extend(["--dir", str(dir)])
+        if esc_config:
+            __flags.append("--esc-config")
         if force:
             __flags.append("--force")
         if generate_only:
