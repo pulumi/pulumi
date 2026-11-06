@@ -189,13 +189,18 @@ func ManagedEnvironmentDeletionNotice(s backend.Stack) string {
 }
 
 // ManagedEnvironmentRemovalWarning returns what `destroy --remove` warns before it starts, or "" for an unmanaged
-// stack.
-func ManagedEnvironmentRemovalWarning(s backend.Stack) string {
-	notice := ManagedEnvironmentDeletionNotice(s)
-	if notice == "" {
+// stack. An exclude that matches nothing keeps no resources, so whether excludes stop the removal is only known after
+// the destroy.
+func ManagedEnvironmentRemovalWarning(s backend.Stack, hasExcludes bool) string {
+	managedEnv := managedEnvironmentName(s)
+	if managedEnv == "" {
 		return ""
 	}
-	return "--remove removes this stack after the destroy." + notice
+	if hasExcludes {
+		return fmt.Sprintf("--remove removes this stack, and Pulumi Cloud deletes its ESC environment '%s', "+
+			"if the destroy leaves no resources.", managedEnv)
+	}
+	return "--remove removes this stack after the destroy." + ManagedEnvironmentDeletionNotice(s)
 }
 
 func managedEnvironmentName(s backend.Stack) string {

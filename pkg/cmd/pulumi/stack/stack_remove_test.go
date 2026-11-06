@@ -63,10 +63,15 @@ func TestManagedEnvironmentRemovalWarning(t *testing.T) {
 
 	unmanaged, _ := newRemoveTestStack("")
 	managed, _ := newRemoveTestStack("proj/dev")
-	assert.Empty(t, ManagedEnvironmentRemovalWarning(unmanaged))
+	assert.Empty(t, ManagedEnvironmentRemovalWarning(unmanaged, false))
+	assert.Empty(t, ManagedEnvironmentRemovalWarning(unmanaged, true))
 	assert.Equal(t,
 		"--remove removes this stack after the destroy. Pulumi Cloud deletes the stack's ESC environment 'org/proj/dev'.",
-		ManagedEnvironmentRemovalWarning(managed))
+		ManagedEnvironmentRemovalWarning(managed, false))
+	assert.Equal(t,
+		"--remove removes this stack, and Pulumi Cloud deletes its ESC environment 'org/proj/dev', "+
+			"if the destroy leaves no resources.",
+		ManagedEnvironmentRemovalWarning(managed, true))
 }
 
 //nolint:paralleltest // Replaces cmdBackend.DefaultLoginManager and pkgWorkspace.Instance.

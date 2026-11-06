@@ -371,8 +371,8 @@ func NewDestroyCmd() *cobra.Command {
 				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
 
-			if remove && len(*targets) == 0 {
-				if warning := cmdStack.ManagedEnvironmentRemovalWarning(s); warning != "" {
+			if remove && len(targetUrns) == 0 && protectedCount == 0 {
+				if warning := cmdStack.ManagedEnvironmentRemovalWarning(s, len(excludeUrns) > 0); warning != "" {
 					cmdutil.Diag().Warningf(diag.RawMessage("", warning))
 				}
 			}
