@@ -1,3 +1,5 @@
 component: cli
 kind: feat
 body: Show occasional product hints at the end of commands, which can be turned off with `PULUMI_DISABLE_HINTS`
+custom:
+  PR: "25602"
