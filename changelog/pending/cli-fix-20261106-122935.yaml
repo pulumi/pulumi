@@ -1,4 +1,4 @@
 component: cli
 kind: fix
-body: Reject `pulumi destroy --preview-only --remove`, which removed a stack with no resources instead of only previewing
+body: Make `--preview-only` and `--remove` mutually exclusive flags for `destroy`
 time: 2026-11-06T12:29:35.035934+01:00
