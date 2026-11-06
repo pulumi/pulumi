@@ -267,10 +267,12 @@
             "flags": {}
         },
         {
-            "path": ["project"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
+            "path": ["project", "list"],
+            "propagate": false,
+            "flags": {
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
+            }
         },
         {
             "path": ["replay-events"],
