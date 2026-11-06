@@ -26,15 +26,15 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-// Hint names a fix that the engine may suggest to the user for a failure that a provider reports. The provider says
-// which hint applies, and the engine decides whether and how to show it.
+// Hint names a product hint that is relevant to a failure a provider reports. The provider says which hint is
+// relevant, and the engine decides whether to show it.
 type Hint int
 
 const (
-	// HintUnspecified means that no hint applies.
+	// HintUnspecified means that no product hint is relevant.
 	HintUnspecified Hint = 0
-	// HintDynamicCredentials means that short-lived credentials from an identity provider, for example through OIDC,
-	// would avoid the failure.
+	// HintDynamicCredentials means that the failure comes from missing, rejected or expired credentials, so short-lived
+	// credentials from an identity provider, for example through OIDC, may help.
 	HintDynamicCredentials Hint = 1
 )
 

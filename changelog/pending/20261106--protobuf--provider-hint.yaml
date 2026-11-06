@@ -1,5 +1,5 @@
 component: protobuf
 kind: feat
-body: Let providers say when dynamic credentials would fix a failure
+body: Let providers say which product hint is relevant to a failure, starting with dynamic credentials
 custom:
   PR: "25605"

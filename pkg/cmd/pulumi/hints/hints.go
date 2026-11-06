@@ -71,7 +71,7 @@ type manager struct {
 	pending    []Hint
 	suppressed bool
 
-	// dynamicCredentialsHints lists the provider packages that said dynamic credentials would avoid a failure, in order.
+	// dynamicCredentialsHints lists, in order, the provider packages that sent the dynamic credentials hint.
 	dynamicCredentialsHints []tokens.Package
 
 	now       func() time.Time

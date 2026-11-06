@@ -41,23 +41,24 @@ class _Hint:
 class _HintEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_Hint.ValueType], builtins.type):
     DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
     HINT_UNSPECIFIED: _Hint.ValueType  # 0
-    """No hint applies."""
+    """No product hint is relevant."""
     HINT_DYNAMIC_CREDENTIALS: _Hint.ValueType  # 1
-    """Short-lived credentials from an identity provider, for example through OIDC, would avoid this failure. Set it for
-    missing, rejected or expired credentials, not for configuration mistakes such as an unknown profile.
+    """The failure comes from missing, rejected or expired credentials, so short-lived credentials from an identity
+    provider, for example through OIDC, may help. Don't use it for configuration mistakes such as an unknown profile.
     """
 
 class Hint(_Hint, metaclass=_HintEnumTypeWrapper):
-    """`Hint` names a fix that the engine may suggest to the user for a failure that a provider reports, either in a
-    [](pulumirpc.CheckFailure) or in a [](pulumirpc.HintDetail) attached to an error. The provider says which hint
-    applies, and the engine decides whether and how to show it.
+    """`Hint` names a product hint that is relevant to a failure a provider reports, either in a
+    [](pulumirpc.CheckFailure) or in a [](pulumirpc.HintDetail) attached to an error. A product hint points the user to a
+    Pulumi feature that helps with this kind of failure. The provider says which hint is relevant, and the engine decides
+    whether to show it and what it says.
     """
 
 HINT_UNSPECIFIED: Hint.ValueType  # 0
-"""No hint applies."""
+"""No product hint is relevant."""
 HINT_DYNAMIC_CREDENTIALS: Hint.ValueType  # 1
-"""Short-lived credentials from an identity provider, for example through OIDC, would avoid this failure. Set it for
-missing, rejected or expired credentials, not for configuration mistakes such as an unknown profile.
+"""The failure comes from missing, rejected or expired credentials, so short-lived credentials from an identity
+provider, for example through OIDC, may help. Don't use it for configuration mistakes such as an unknown profile.
 """
 global___Hint = Hint
 
@@ -1057,7 +1058,7 @@ class CheckFailure(google.protobuf.message.Message):
     reason: builtins.str
     """The reason that the named property failed validation."""
     hint: global___Hint.ValueType
-    """A hint the engine may give the user for this failure, if the provider knows one applies."""
+    """A product hint that is relevant to this failure, if any. The engine may show it to the user."""
     def __init__(
         self,
         *,
@@ -1072,14 +1073,14 @@ global___CheckFailure = CheckFailure
 @typing.final
 class HintDetail(google.protobuf.message.Message):
     """`HintDetail` is a type of error detail that a provider may attach to an error it returns from any call, such as
-    [](pulumirpc.ResourceProvider.Configure), to say which hint applies to the failure.
+    [](pulumirpc.ResourceProvider.Configure), to say which product hint is relevant to the failure.
     """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     HINT_FIELD_NUMBER: builtins.int
     hint: global___Hint.ValueType
-    """The hint."""
+    """The product hint."""
     def __init__(
         self,
         *,

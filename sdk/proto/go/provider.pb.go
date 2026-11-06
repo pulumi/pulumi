@@ -37,16 +37,17 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// `Hint` names a fix that the engine may suggest to the user for a failure that a provider reports, either in a
-// [](pulumirpc.CheckFailure) or in a [](pulumirpc.HintDetail) attached to an error. The provider says which hint
-// applies, and the engine decides whether and how to show it.
+// `Hint` names a product hint that is relevant to a failure a provider reports, either in a
+// [](pulumirpc.CheckFailure) or in a [](pulumirpc.HintDetail) attached to an error. A product hint points the user to a
+// Pulumi feature that helps with this kind of failure. The provider says which hint is relevant, and the engine decides
+// whether to show it and what it says.
 type Hint int32
 
 const (
-	// No hint applies.
+	// No product hint is relevant.
 	Hint_HINT_UNSPECIFIED Hint = 0
-	// Short-lived credentials from an identity provider, for example through OIDC, would avoid this failure. Set it for
-	// missing, rejected or expired credentials, not for configuration mistakes such as an unknown profile.
+	// The failure comes from missing, rejected or expired credentials, so short-lived credentials from an identity
+	// provider, for example through OIDC, may help. Don't use it for configuration mistakes such as an unknown profile.
 	Hint_HINT_DYNAMIC_CREDENTIALS Hint = 1
 )
 
@@ -1675,7 +1676,7 @@ type CheckFailure struct {
 	Property string `protobuf:"bytes,1,opt,name=property,proto3" json:"property,omitempty"`
 	// The reason that the named property failed validation.
 	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
-	// A hint the engine may give the user for this failure, if the provider knows one applies.
+	// A product hint that is relevant to this failure, if any. The engine may show it to the user.
 	Hint          Hint `protobuf:"varint,3,opt,name=hint,proto3,enum=pulumirpc.Hint" json:"hint,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1733,10 +1734,10 @@ func (x *CheckFailure) GetHint() Hint {
 }
 
 // `HintDetail` is a type of error detail that a provider may attach to an error it returns from any call, such as
-// [](pulumirpc.ResourceProvider.Configure), to say which hint applies to the failure.
+// [](pulumirpc.ResourceProvider.Configure), to say which product hint is relevant to the failure.
 type HintDetail struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The hint.
+	// The product hint.
 	Hint          Hint `protobuf:"varint,1,opt,name=hint,proto3,enum=pulumirpc.Hint" json:"hint,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
