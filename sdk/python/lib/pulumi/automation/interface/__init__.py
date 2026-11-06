@@ -9628,7 +9628,7 @@ class API:
         :param query: A Pulumi Query to send to Pulumi Cloud for resource search.May be formatted as a single query, or multiple:
                 -q "type:aws:s3/bucketv2:BucketV2 modified:>=2023-09-01"
                 -q "type:aws:s3/bucketv2:BucketV2" -q "modified:>=2023-09-01"
-        See https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for syntax reference.
+        See https://www.pulumi.com/docs/discovery-governance/guides/search-resources/#query-syntax for syntax reference.
         :param web: Open the search results in a web browser.
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.

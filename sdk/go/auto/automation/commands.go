@@ -3681,7 +3681,7 @@ func (a *API) EnvOpenRequest(
 // provisioned separately (e.g. with Pulumi). If a block already exists at the
 // path it is replaced.
 //
-// See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/aws-login/
+// See https://www.pulumi.com/docs/esc/providers/login/aws-login/
 // for the full provider reference.
 func (a *API) EnvProviderAwsLoginOidc(
 	ctx context.Context,
@@ -3791,7 +3791,7 @@ func (a *API) EnvProviderAwsLoginOidc(
 // path under `values`. The secret access key and session token, if any, are
 // wrapped in `fn::secret`. If a block already exists at the path it is replaced.
 //
-// See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/aws-login/
+// See https://www.pulumi.com/docs/esc/providers/login/aws-login/
 // for the full provider reference.
 func (a *API) EnvProviderAwsLoginStatic(
 	ctx context.Context,
@@ -3894,7 +3894,7 @@ func (a *API) EnvProviderAwsLoginStatic(
 // separately (e.g. with Pulumi). If a block already exists at the path it is
 // replaced.
 //
-// See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/azure-login/
+// See https://www.pulumi.com/docs/esc/providers/login/azure-login/
 // for the full provider reference.
 func (a *API) EnvProviderAzureLoginOidc(
 	ctx context.Context,
@@ -3996,7 +3996,7 @@ func (a *API) EnvProviderAzureLoginOidc(
 // The client secret is wrapped in `fn::secret`. If a block already exists at the
 // path it is replaced.
 //
-// See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/azure-login/
+// See https://www.pulumi.com/docs/esc/providers/login/azure-login/
 // for the full provider reference.
 func (a *API) EnvProviderAzureLoginStatic(
 	ctx context.Context,
@@ -4096,7 +4096,7 @@ func (a *API) EnvProviderAzureLoginStatic(
 // service account must be provisioned separately (e.g. with Pulumi). If a block
 // already exists at the path it is replaced.
 //
-// See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/
+// See https://www.pulumi.com/docs/esc/providers/login/gcp-login/
 // for the full provider reference.
 func (a *API) EnvProviderGcpLoginOidc(
 	ctx context.Context,
@@ -4212,7 +4212,7 @@ func (a *API) EnvProviderGcpLoginOidc(
 // access token is wrapped in `fn::secret`. <project-number> must be the numerical
 // GCP project ID. If a block already exists at the path it is replaced.
 //
-// See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/
+// See https://www.pulumi.com/docs/esc/providers/login/gcp-login/
 // for the full provider reference.
 func (a *API) EnvProviderGcpLoginStatic(
 	ctx context.Context,
@@ -7435,7 +7435,7 @@ func (a *API) EnvWebhookRemove(
 //	    ],
 //	}
 //
-// The full import file schema references can be found in the [import documentation](https://www.pulumi.com/docs/iac/adopting-pulumi/import/#bulk-import-operations).
+// The full import file schema references can be found in the [import documentation](https://www.pulumi.com/docs/iac/guides/migration/import/#import-file-schema).
 //
 // The import JSON file can be generated from a Pulumi program by running
 //
@@ -10638,7 +10638,7 @@ func (a *API) StatePromote(
 // all cases. If your program does not also set the 'protect' resource option, Pulumi will
 // unprotect the resource the next time your program runs (e.g. as part of a `pulumi up`).
 //
-// See https://www.pulumi.com/docs/iac/concepts/options/protect/ for more information on
+// See https://www.pulumi.com/docs/iac/concepts/resources/options/protect/ for more information on
 // the 'protect' resource option and how it can be used to protect resources in your program.
 //
 // To unprotect a resource, use `pulumi unprotect`on the resource URN.
