@@ -55,6 +55,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/util/nosleep"
+	"github.com/pulumi/pulumi/pkg/v3/util/terminalstatus"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -2041,6 +2042,10 @@ func (b *cloudBackend) apply(
 	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
+	if op.Opts.Display.IsInteractive && !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
+		clearStatus := terminalstatus.Working(op.Opts.Display.Stderr, actionLabel)
+		defer clearStatus()
+	}
 
 	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric

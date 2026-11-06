@@ -28,6 +28,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/util/terminalstatus"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -106,16 +107,15 @@ func PromptForValue(
 
 			// Read the value.
 			var err error
+			finishPrompt := terminalstatus.NeedsInput(opts.Stderr)
 			if secret {
 				value, err = cmdutil.ReadConsoleNoEcho(prompt)
-				if err != nil {
-					return "", err
-				}
 			} else {
 				value, err = cmdutil.ReadConsole(prompt)
-				if err != nil {
-					return "", err
-				}
+			}
+			finishPrompt()
+			if err != nil {
+				return "", err
 			}
 			value = strings.TrimSpace(value)
 
@@ -261,8 +261,14 @@ func askSelect(
 	return AskOne(sel, response, allSurveyAskOpts...)
 }
 
-// AskOne runs a Survey prompt with the given options.
+// AskOne runs a Survey prompt while reporting that the terminal is waiting for user input.
 func AskOne(prompt survey.Prompt, response any, opts ...survey.AskOpt) error {
+	finishPrompt := func() {}
+	defer func() { finishPrompt() }()
+	opts = append(opts, func(options *survey.AskOptions) error {
+		finishPrompt = terminalstatus.NeedsInput(options.Stdio.Err)
+		return nil
+	})
 	return survey.AskOne(prompt, response, opts...)
 }
 
@@ -312,6 +318,8 @@ func ConfirmPrompt(prompt string, name string, opts display.Options) bool {
 	if in == nil {
 		in = os.Stdin
 	}
+	clearStatus := terminalstatus.NeedsInput(opts.Stderr)
+	defer clearStatus()
 
 	if prompt != "" {
 		fmt.Fprint(out,
