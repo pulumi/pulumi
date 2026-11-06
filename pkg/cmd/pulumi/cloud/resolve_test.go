@@ -16,6 +16,7 @@ package cloud
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,6 +30,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -205,6 +207,41 @@ func TestResolveContextInsecure(t *testing.T) {
 			assert.Equal(t, "api-user", user)
 		})
 	}
+}
+
+func TestResolveContextRejectedToken(t *testing.T) {
+	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			ptesting.IsolateCredentials(t)
+			t.Chdir(t.TempDir())
+			previous := cmdBackend.DefaultLoginManager
+			cmdBackend.DefaultLoginManager = cmdBackend.NewLoginManager(diagtest.LogSink(t), nil)
+			t.Cleanup(func() { cmdBackend.DefaultLoginManager = previous })
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(status)
+			}))
+			defer server.Close()
+			t.Setenv("PULUMI_ACCESS_TOKEN", "pul-rejected")
+			t.Setenv("PULUMI_BACKEND_URL", server.URL)
+
+			_, err := ResolveContext(t.Context())
+			require.Error(t, err)
+
+			apiErr := resolveContextError(err)
+			assert.Equal(t, cmdutil.ExitAuthenticationError, apiErr.ExitCode, "error: %v", err)
+			assert.Equal(t, ErrNotLoggedIn, apiErr.Envelope.Error.Code)
+			assert.Contains(t, apiErr.Envelope.Error.Suggestions, "run `pulumi login` first")
+		})
+	}
+}
+
+func TestResolveContextErrorKeepsOtherFailuresInternal(t *testing.T) {
+	t.Parallel()
+
+	apiErr := resolveContextError(errors.New("reading project: boom"))
+	assert.Equal(t, cmdutil.ExitInternalError, apiErr.ExitCode)
+	assert.Equal(t, ErrToolError, apiErr.Envelope.Error.Code)
 }
 
 func resolveContextHandler(t *testing.T, authorization string) http.Handler {
