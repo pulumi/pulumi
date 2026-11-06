@@ -627,20 +627,21 @@ func TestDefaultProviderPluginsSorting(t *testing.T) {
 	}, result)
 }
 
-func TestDefaultProvidersConflictAcrossDifferentPlugins(t *testing.T) {
+func TestDefaultProvidersPreferPlainOverParameterized(t *testing.T) {
 	t.Parallel()
 
-	// Two distinct plugins both claim to provide the same Pulumi package name
-	// "target": one native plugin named "target" and one bridge plugin
-	// ("parameterize-base") parameterized as "target". The engine must return
-	// a clear error instead of panicking or silently picking a winner.
-	// Regression test for https://github.com/pulumi/pulumi/issues/22678.
-	target := workspace.PackageDescriptor{
-		PluginDescriptor: workspace.PluginDescriptor{
-			Name:    "target",
-			Version: new(semver.MustParse("1.47.0")),
-			Kind:    apitype.ResourcePlugin,
-		},
+	// A plain plugin "target" and a bridge plugin ("parameterize-base") parameterized as "target" share the
+	// package name. Requests that fall back to the default provider map can only come from the plain
+	// plugin's SDK, so the plain plugin is the default, independent of the order the packages are seen in.
+	// Regression test for https://github.com/pulumi/pulumi/issues/24167.
+	plain := func(version string) workspace.PackageDescriptor {
+		return workspace.PackageDescriptor{
+			PluginDescriptor: workspace.PluginDescriptor{
+				Name:    "target",
+				Version: new(semver.MustParse(version)),
+				Kind:    apitype.ResourcePlugin,
+			},
+		}
 	}
 	parameterized := workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
@@ -654,12 +655,84 @@ func TestDefaultProvidersConflictAcrossDifferentPlugins(t *testing.T) {
 		},
 	}
 
-	plugins := NewPackageSet(target, parameterized)
+	otherBridge := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "other-bridge",
+			Version: new(semver.MustParse("1.0.0")),
+			Kind:    apitype.ResourcePlugin,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "target",
+			Version: semver.MustParse("1.0.0"),
+		},
+	}
+
+	tests := []struct {
+		name     string
+		packages []workspace.PackageDescriptor
+		expected workspace.PackageDescriptor
+	}{
+		{"plain seen first", []workspace.PackageDescriptor{plain("1.47.0"), parameterized}, plain("1.47.0")},
+		{"parameterized seen first", []workspace.PackageDescriptor{plain("7.43.0"), parameterized}, plain("7.43.0")},
+		{
+			"newer plain after skipped parameterized",
+			[]workspace.PackageDescriptor{plain("1.47.0"), parameterized, plain("3.0.0")},
+			plain("3.0.0"),
+		},
+		{
+			// Sorted by package version, both bridges are seen before the plain plugin.
+			"two different bridges before the plain plugin",
+			[]workspace.PackageDescriptor{otherBridge, parameterized, plain("7.0.0")},
+			plain("7.0.0"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			plugins := NewPackageSet(tt.packages...)
+			result, err := computeDefaultProviderPackages(plugins, plugins)
+			require.NoError(t, err)
+			assert.Equal(t, map[tokens.Package]workspace.PackageDescriptor{"target": tt.expected}, result)
+		})
+	}
+}
+
+func TestDefaultProvidersConflictAcrossDifferentBridges(t *testing.T) {
+	t.Parallel()
+
+	// Two distinct bridge plugins parameterized as the same package "target", and no plain plugin: the
+	// engine must return a clear error instead of panicking or silently picking a winner.
+	// Regression test for https://github.com/pulumi/pulumi/issues/22678.
+	bridgeA := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "bridge-a",
+			Version: new(semver.MustParse("1.0.0")),
+			Kind:    apitype.ResourcePlugin,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "target",
+			Version: semver.MustParse("2.72.0"),
+		},
+	}
+	bridgeB := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "bridge-b",
+			Version: new(semver.MustParse("1.1.1")),
+			Kind:    apitype.ResourcePlugin,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "target",
+			Version: semver.MustParse("2.73.0"),
+		},
+	}
+
+	plugins := NewPackageSet(bridgeA, bridgeB)
 	_, err := computeDefaultProviderPackages(plugins, plugins)
 
 	var actualErr ambigiousPluginSourceError
 	require.ErrorAs(t, err, &actualErr)
-	assert.Equal(t, ambigiousPluginSourceError{"target", target, parameterized}, actualErr)
+	assert.Equal(t, ambigiousPluginSourceError{"target", bridgeA, bridgeB}, actualErr)
 }
 
 func TestDefaultProvidersSameBridgeDifferentVersions(t *testing.T) {
