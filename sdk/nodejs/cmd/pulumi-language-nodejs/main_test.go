@@ -34,6 +34,20 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
+func TestCancelResetsCancellationContext(t *testing.T) {
+	t.Parallel()
+
+	host := newLanguageHost(t.Context(), "", "nodejs", "", "", false, "").(*nodeLanguageHost)
+	_, err := host.Cancel(t.Context(), nil)
+	require.NoError(t, err)
+
+	select {
+	case <-host.cancelCtx.Done():
+		t.Fatal("canceling a run canceled the context for future runs")
+	default:
+	}
+}
+
 func TestArgumentConstruction(t *testing.T) {
 	t.Parallel()
 
