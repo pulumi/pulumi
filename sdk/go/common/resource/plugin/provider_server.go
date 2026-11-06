@@ -310,7 +310,7 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 
 	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
 	for i, f := range resp.Failures {
-		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+		rpcFailures[i] = checkFailureToRPC(f)
 	}
 
 	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
@@ -490,7 +490,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 
 	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
 	for i, f := range resp.Failures {
-		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+		rpcFailures[i] = checkFailureToRPC(f)
 	}
 
 	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
@@ -1011,7 +1011,7 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 
 	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
 	for i, f := range resp.Failures {
-		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+		rpcFailures[i] = checkFailureToRPC(f)
 	}
 
 	return &pulumirpc.InvokeResponse{
@@ -1084,7 +1084,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 
 	rpcFailures := make([]*pulumirpc.CheckFailure, len(result.Failures))
 	for i, f := range result.Failures {
-		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+		rpcFailures[i] = checkFailureToRPC(f)
 	}
 
 	return &pulumirpc.CallResponse{
