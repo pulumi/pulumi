@@ -2323,9 +2323,11 @@ func TestUntargetedSameWithReversedProgramDependency(t *testing.T) {
 }
 
 // TestUntargetedSameWithReversedProgramDependencyTargetingDependent checks the shape b = new
-// B(); a = new A(prop=b.a) with --target a. Untargeted b registers first, and its old-state
-// dependency walk claims a's URN, so a's own registration fails with a duplicate resource URN
-// error. The update bails before touching a, leaving a consistent snapshot.
+// B(); a = new A(prop=b.a) with --target a. Untargeted b registers first and is held back
+// behind its unregistered old-state dependency a. When targeted a registers depending on b,
+// the reversal completes a dependency cycle between the old state and the new program -- a
+// keeps its old edge to b, and b keeps its old edge to a -- which cannot be written to the
+// snapshot, so the update bails at generation time.
 func TestUntargetedSameWithReversedProgramDependencyTargetingDependent(t *testing.T) {
 	t.Parallel()
 
@@ -2392,7 +2394,7 @@ func TestUntargetedSameWithReversedProgramDependencyTargetingDependent(t *testin
 	}
 	finalSnap, err := lt.TestOp(Update).
 		RunStep(project, p.GetTarget(t, origSnap), options, false, p.BackendClient, nil, "1")
-	require.ErrorContains(t, err, "Duplicate resource URN")
+	require.ErrorContains(t, err, "dependency cycle")
 
 	require.NotNil(t, finalSnap)
 	finalA := findResourceByURN(finalSnap.Resources, resAURN)
@@ -2402,6 +2404,137 @@ func TestUntargetedSameWithReversedProgramDependencyTargetingDependent(t *testin
 	require.Equal(t, resource.NewProperty("v1"), finalA.Inputs["p"])
 	require.Less(t, slices.Index(finalSnap.Resources, finalA), slices.Index(finalSnap.Resources, finalB),
 		"resA must precede its dependent resB in the snapshot")
+}
+
+// A targeted resource that depends on an untargeted one whose same step has been held back must
+// still be written after it. See https://github.com/pulumi/pulumi/issues/24303.
+func TestTargetedStepAfterDeferredUntargetedSame(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	oldDependencyURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::old-dependency")
+	deferredURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::deferred")
+	targetedURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::targeted")
+
+	// When set, the program no longer declares the dependency, so old-dependency is free to
+	// register after the resources that used to precede it. deferred's old state still carries
+	// the edge, so deferred may only be written after old-dependency.
+	var dropEdge bool
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		deferredOpts := deploytest.ResourceOptions{}
+		if !dropEdge {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "old-dependency", true)
+			require.NoError(t, err)
+			deferredOpts.Dependencies = []resource.URN{oldDependencyURN}
+		}
+
+		_, err := monitor.RegisterResource("pkgA:m:typA", "deferred", true, deferredOpts)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "targeted", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{deferredURN},
+		})
+		require.NoError(t, err)
+
+		if dropEdge {
+			_, err = monitor.RegisterResource("pkgA:m:typA", "old-dependency", true)
+			require.NoError(t, err)
+		}
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	dropEdge = true
+	targetedOpts := opts
+	targetedOpts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{targetedURN})
+
+	snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil)
+	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
+}
+
+// Holding a same step back must not hold the resource's registration open: the program is free to
+// register the very dependency the step is waiting on, and does so here only after the RPC for the
+// held-back resource has returned. Registering outputs also needs the held-back step to have run.
+// See https://github.com/pulumi/pulumi/issues/24303.
+func TestDeferredUntargetedSameCompletesRegistration(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	oldDependencyURN := resource.URN("urn:pulumi:test::test::pkgA:m:typComponent::old-dependency")
+	targetedURN := resource.URN("urn:pulumi:test::test::pkgA:m:typA::targeted")
+
+	var dropEdge bool
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		deferredOpts := deploytest.ResourceOptions{}
+		if !dropEdge {
+			_, err := monitor.RegisterResource("pkgA:m:typComponent", "old-dependency", false)
+			require.NoError(t, err)
+			deferredOpts.Dependencies = []resource.URN{oldDependencyURN}
+		}
+
+		// Every call below is sequential on this goroutine, so anything the engine waits for
+		// before answering one of them can never arrive.
+		deferred, err := monitor.RegisterResource("pkgA:m:typComponent", "deferred", false, deferredOpts)
+		require.NoError(t, err)
+		require.NoError(t, monitor.RegisterResourceOutputs(deferred.URN, resource.PropertyMap{}))
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "targeted", true)
+		require.NoError(t, err)
+
+		if dropEdge {
+			_, err = monitor.RegisterResource("pkgA:m:typComponent", "old-dependency", false)
+			require.NoError(t, err)
+		}
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, nil, nil, loaders...)
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}
+
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	dropEdge = true
+	targetedOpts := opts
+	targetedOpts.Targets = deploy.NewUrnTargetsFromUrns([]resource.URN{targetedURN})
+
+	// A deadlock here would otherwise surface as the whole package timing out, naming whichever
+	// test happened to be running.
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		snap, err = lt.TestOp(Update).Run(project, p.GetTarget(t, snap), targetedOpts, false, p.BackendClient, nil)
+	}()
+	select {
+	case <-done:
+	case <-time.After(60 * time.Second):
+		t.Fatal("deployment did not terminate")
+	}
+
+	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
 }
 
 // TestReplaceSpecificTargetsPlan checks combinations of --target and --replace for expected behavior.
@@ -5378,7 +5511,6 @@ func TestTargetedOperationSkipsUnrelatedProviderConfiguration(t *testing.T) {
 // run the targeted preview many times to try to catch it. Registrations are performed
 // concurrently from goroutines so they can actually race.
 func TestTargetedPreviewNoDuplicateURN_Issue24303(t *testing.T) {
-	t.Skip("Currently failing")
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{
@@ -5500,7 +5632,6 @@ func TestTargetedPreviewNoDuplicateURN_Issue24303(t *testing.T) {
 // The bare-minimum "just short-circuit" fix would leave the old inputs in place and
 // fail this assertion.
 func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
-	t.Skip("Currently failing")
 	t.Parallel()
 
 	loaders := []*deploytest.ProviderLoader{

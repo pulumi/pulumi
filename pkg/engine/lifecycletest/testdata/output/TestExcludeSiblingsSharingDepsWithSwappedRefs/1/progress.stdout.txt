@@ -1,0 +1,34 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA sharedA <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA sharedB <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typC delta <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA deltaData <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:m:typA deltaData <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typC epsilon <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> pkgA:m:typA epsilonData <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:m:typA epsilonData <{%fg 2%}>created<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typC outer <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typC inner <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA local <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA svc <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typC alpha <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA alphaData <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typC beta <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA betaData <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA task <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA policy <{%bold%}><{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pkgA:m:typC inner <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pkgA:m:typC alpha <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pkgA:m:typC beta <{%reset%}><{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:m:typC delta <{%fg 2%}>created<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> pkgA:m:typC epsilon <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pkgA:m:typC outer <{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+    12 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

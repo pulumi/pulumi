@@ -1,0 +1,28 @@
+<{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::sharedA]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::sharedB]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typC: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typC::alpha]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::alphaData]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typC: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typC::beta]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::betaData]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typC: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typC::outer]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typC: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC::inner]
+<{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>            [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::local]
+<{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>            [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::task]
+<{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>            [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::policy]
+<{%reset%}><{%reset%}>        <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>            [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::svc]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 12 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
