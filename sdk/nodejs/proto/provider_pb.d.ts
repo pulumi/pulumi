@@ -753,6 +753,8 @@ export class CheckFailure extends jspb.Message {
     setProperty(value: string): CheckFailure;
     getReason(): string;
     setReason(value: string): CheckFailure;
+    getKind(): ErrorKind;
+    setKind(value: ErrorKind): CheckFailure;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckFailure.AsObject;
@@ -768,6 +770,27 @@ export namespace CheckFailure {
     export type AsObject = {
         property: string,
         reason: string,
+        kind: ErrorKind,
+    }
+}
+
+export class ErrorKindDetail extends jspb.Message { 
+    getKind(): ErrorKind;
+    setKind(value: ErrorKind): ErrorKindDetail;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ErrorKindDetail.AsObject;
+    static toObject(includeInstance: boolean, msg: ErrorKindDetail): ErrorKindDetail.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ErrorKindDetail, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ErrorKindDetail;
+    static deserializeBinaryFromReader(message: ErrorKindDetail, reader: jspb.BinaryReader): ErrorKindDetail;
+}
+
+export namespace ErrorKindDetail {
+    export type AsObject = {
+        kind: ErrorKind,
     }
 }
 
@@ -1855,4 +1878,9 @@ export namespace View {
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
         outputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
+}
+
+export enum ErrorKind {
+    ERROR_KIND_UNSPECIFIED = 0,
+    ERROR_KIND_CREDENTIALS = 1,
 }

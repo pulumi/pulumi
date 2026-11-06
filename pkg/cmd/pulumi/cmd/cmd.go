@@ -56,6 +56,7 @@ func DisplayErrorMessage(ctx context.Context, err error, stderr io.Writer) {
 	cmdutil.DisplayErrorMessage(err)
 	// cobra doesn't run PersistentPostRun when a command fails, so hints offered by a failing command are
 	// shown here, after the error.
+	hints.OfferFailureHints()
 	hints.Flush(stderr)
 }
 

@@ -34,6 +34,32 @@ else:
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
+class _ErrorKind:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _ErrorKindEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_ErrorKind.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    ERROR_KIND_UNSPECIFIED: _ErrorKind.ValueType  # 0
+    """The provider did not say what kind of failure this is."""
+    ERROR_KIND_CREDENTIALS: _ErrorKind.ValueType  # 1
+    """The provider could not authenticate with its cloud or service, for example because credentials are missing,
+    invalid or expired.
+    """
+
+class ErrorKind(_ErrorKind, metaclass=_ErrorKindEnumTypeWrapper):
+    """`ErrorKind` classifies a failure that a provider reports, either in a [](pulumirpc.CheckFailure) or in an
+    [](pulumirpc.ErrorKindDetail) attached to an error.
+    """
+
+ERROR_KIND_UNSPECIFIED: ErrorKind.ValueType  # 0
+"""The provider did not say what kind of failure this is."""
+ERROR_KIND_CREDENTIALS: ErrorKind.ValueType  # 1
+"""The provider could not authenticate with its cloud or service, for example because credentials are missing,
+invalid or expired.
+"""
+global___ErrorKind = ErrorKind
+
 @typing.final
 class ProviderHandshakeRequest(google.protobuf.message.Message):
     """`ProviderHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Handshake) call."""
@@ -1024,19 +1050,45 @@ class CheckFailure(google.protobuf.message.Message):
 
     PROPERTY_FIELD_NUMBER: builtins.int
     REASON_FIELD_NUMBER: builtins.int
+    KIND_FIELD_NUMBER: builtins.int
     property: builtins.str
     """The input property that failed validation."""
     reason: builtins.str
     """The reason that the named property failed validation."""
+    kind: global___ErrorKind.ValueType
+    """The kind of failure, if the provider knows it. This lets the engine react to a failure, for example by
+    suggesting a way to configure credentials, without parsing its reason.
+    """
     def __init__(
         self,
         *,
         property: builtins.str = ...,
         reason: builtins.str = ...,
+        kind: global___ErrorKind.ValueType = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["property", b"property", "reason", b"reason"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["kind", b"kind", "property", b"property", "reason", b"reason"]) -> None: ...
 
 global___CheckFailure = CheckFailure
+
+@typing.final
+class ErrorKindDetail(google.protobuf.message.Message):
+    """`ErrorKindDetail` is a type of error detail that a provider may attach to an error it returns from any call, such as
+    [](pulumirpc.ResourceProvider.Configure), to say what kind of failure the error describes.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    KIND_FIELD_NUMBER: builtins.int
+    kind: global___ErrorKind.ValueType
+    """The kind of failure."""
+    def __init__(
+        self,
+        *,
+        kind: global___ErrorKind.ValueType = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["kind", b"kind"]) -> None: ...
+
+global___ErrorKindDetail = ErrorKindDetail
 
 @typing.final
 class DiffRequest(google.protobuf.message.Message):

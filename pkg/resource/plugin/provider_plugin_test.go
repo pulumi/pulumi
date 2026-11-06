@@ -846,6 +846,7 @@ func newTestContext(t testing.TB) *Context {
 type stubClient struct {
 	pulumirpc.ResourceProviderClient
 
+	CheckConfigF   func(*pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error)
 	DiffConfigF    func(*pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error)
 	ConstructF     func(*pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error)
 	ConfigureF     func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error)
@@ -878,6 +879,17 @@ func (c *stubClient) Construct(
 		return f(req)
 	}
 	return c.ResourceProviderClient.Construct(ctx, req, opts...)
+}
+
+func (c *stubClient) CheckConfig(
+	ctx context.Context,
+	req *pulumirpc.CheckRequest,
+	opts ...grpc.CallOption,
+) (*pulumirpc.CheckResponse, error) {
+	if f := c.CheckConfigF; f != nil {
+		return f(req)
+	}
+	return c.ResourceProviderClient.CheckConfig(ctx, req, opts...)
 }
 
 func (c *stubClient) Configure(

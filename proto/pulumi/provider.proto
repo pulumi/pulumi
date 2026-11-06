@@ -715,6 +715,28 @@ message CheckFailure {
 
     // The reason that the named property failed validation.
     string reason = 2;
+
+    // The kind of failure, if the provider knows it. This lets the engine react to a failure, for example by
+    // suggesting a way to configure credentials, without parsing its reason.
+    ErrorKind kind = 3;
+}
+
+// `ErrorKind` classifies a failure that a provider reports, either in a [](pulumirpc.CheckFailure) or in an
+// [](pulumirpc.ErrorKindDetail) attached to an error.
+enum ErrorKind {
+    // The provider did not say what kind of failure this is.
+    ERROR_KIND_UNSPECIFIED = 0;
+
+    // The provider could not authenticate with its cloud or service, for example because credentials are missing,
+    // invalid or expired.
+    ERROR_KIND_CREDENTIALS = 1;
+}
+
+// `ErrorKindDetail` is a type of error detail that a provider may attach to an error it returns from any call, such as
+// [](pulumirpc.ResourceProvider.Configure), to say what kind of failure the error describes.
+message ErrorKindDetail {
+    // The kind of failure.
+    ErrorKind kind = 1;
 }
 
 // `DiffRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.DiffConfig) and
