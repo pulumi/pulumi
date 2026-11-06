@@ -2337,7 +2337,10 @@ func (b *cloudBackend) runEngineAction(
 	}
 
 	if notice := op.StackConfiguration.ManagedEnvironmentNotice; notice != "" {
-		engineEvents <- engine.NewEvent(engine.StdoutEventPayload{Message: notice, Color: op.Opts.Display.Color})
+		engineEvents <- engine.NewEvent(engine.StdoutEventPayload{
+			Message: logging.FilterString(notice),
+			Color:   op.Opts.Display.Color,
+		})
 	}
 
 	var plan *deploy.Plan

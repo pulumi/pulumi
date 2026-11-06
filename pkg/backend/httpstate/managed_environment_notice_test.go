@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 var managedEnvironmentNotice = "Environment p/env has local changes based on revision 7. " +
@@ -123,6 +124,19 @@ func TestRunEngineActionSendsManagedEnvironmentNotice(t *testing.T) {
 	for _, e := range runDestroyPreview(t, "", false) {
 		assert.NotEqual(t, engine.StdoutColorEvent, e.Type)
 	}
+}
+
+func TestRunEngineActionFiltersResolvedSecretsFromManagedEnvironmentNotice(t *testing.T) {
+	t.Parallel()
+
+	const resolved = "managed-notice-resolved-secret"
+	logging.AddGlobalSecretFilter([]string{resolved}, "[secret]")
+
+	events := runDestroyPreview(t, "    + values.token: \""+resolved+"\"\n", false)
+	require.Greater(t, len(events), 1)
+	assert.Equal(t,
+		engine.StdoutEventPayload{Message: "    + values.token: \"[secret]\"\n", Color: colors.Never},
+		events[1].Payload())
 }
 
 //nolint:paralleltest // replaces os.Stdout, where the JSON preview digest is printed
