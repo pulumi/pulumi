@@ -275,6 +275,13 @@
             }
         },
         {
+            "path": ["project", "new"],
+            "propagate": false,
+            "flags": {
+                "esc-config": { "omit": true }
+            }
+        },
+        {
             "path": ["replay-events"],
             "propagate": true,
             "exclude": true,
