@@ -196,10 +196,14 @@ func isSecretCall(node *syntax.ObjectNode) bool {
 func diffValues(path resource.PropertyPath, old any, inOld bool, new any, inNew bool, changes *[]DefinitionChange) {
 	switch {
 	case !inOld:
-		*changes = append(*changes, DefinitionChange{Kind: ChangeAdd, Path: path, New: renderTruncated(new), newValue: new})
+		*changes = append(*changes, DefinitionChange{
+			Kind: ChangeAdd, Path: path, New: renderTruncated(new), newValue: new,
+		})
 		return
 	case !inNew:
-		*changes = append(*changes, DefinitionChange{Kind: ChangeRemove, Path: path, Old: renderTruncated(old), oldValue: old})
+		*changes = append(*changes, DefinitionChange{
+			Kind: ChangeRemove, Path: path, Old: renderTruncated(old), oldValue: old,
+		})
 		return
 	case reflect.DeepEqual(old, new):
 		return
