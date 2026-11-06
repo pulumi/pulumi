@@ -1,0 +1,4 @@
+component: cli/neo
+kind: fix
+body: Include the CLI's own messages, such as the cancellation notice, in the logs that Neo's `pulumi preview` and `pulumi up` tools return
+time: 2026-11-03T00:00:00Z
