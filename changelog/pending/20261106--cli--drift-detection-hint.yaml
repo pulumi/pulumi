@@ -1,0 +1,3 @@
+component: cli
+kind: feat
+body: Suggest Pulumi Cloud drift detection when `pulumi refresh` finds drift
