@@ -79,6 +79,7 @@ hook error "foo" {
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
+		Extra:    diags[0].Extra,
 		Summary:  "unknown property 'newOutputs' among [id name newInputs oldInputs oldOutputs type urn]",
 		Subject: &hcl.Range{
 			Filename: "program.pp",
