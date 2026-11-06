@@ -297,6 +297,11 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		SkipCompileCheck: mapset.NewSet(TestNodeJS),
 	},
 	{
+		Directory:   "regress-node-25587",
+		Description: "Regress pulumi/pulumi#25587: resource reference imports use the lower-case module directory",
+		Skip:        allLanguages.Difference(mapset.NewSet("nodejs/any")),
+	},
+	{
 		Directory: "external-go-import-aliases",
 		// The goalias package has its own import aliases, so those should be respected, unless there are local aliases.
 		// The other package doesn't have any import aliases, so none should be used, unless there are local aliases.
