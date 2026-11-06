@@ -21,7 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -738,12 +740,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 				return err
 			}
 
-			var contents []byte
-			for _, v := range files {
-				contents = v
-			}
-
-			if _, err := w.Write(contents); err != nil {
+			if _, err := w.Write(generatedProgramSource(files)); err != nil {
 				return err
 			}
 			return nil
@@ -754,6 +751,16 @@ func generateImportedDefinitions(ctx *plugin.Context,
 	)
 
 	return true, err
+}
+
+func generatedProgramSource(files map[string][]byte) []byte {
+	var contents []byte
+	for _, name := range slices.Sorted(maps.Keys(files)) {
+		if !strings.HasPrefix(name, "sdks/") {
+			contents = append(contents, files[name]...)
+		}
+	}
+	return contents
 }
 
 func NewImportCmd() *cobra.Command {
