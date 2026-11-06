@@ -123,6 +123,8 @@ type cloudStack struct {
 	escConfigEnv *string
 
 	managedEnv string
+	// deliveryEnv is the admitted revision of the stack's Pulumi Delivery environment, if any.
+	deliveryEnv *apitype.StackDeliveryEnvironment
 }
 
 func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Stack, error) {
@@ -159,16 +161,18 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 		b:                b,
 		escConfigEnv:     escConfigEnv,
 		managedEnv:       managedEnv,
+		deliveryEnv:      apistack.DeliveryEnvironment,
 	}, nil
 }
 func (s *cloudStack) Ref() backend.StackReference { return s.ref }
 
-// ConfigLocation reports the stack's remote-config and managed ESC environments, if any.
+// ConfigLocation reports the stack's remote-config, managed and Pulumi Delivery ESC environments, if any.
 func (s *cloudStack) ConfigLocation() backend.StackConfigLocation {
 	return backend.StackConfigLocation{
-		IsRemote:           s.escConfigEnv != nil,
-		EscEnv:             s.escConfigEnv,
-		ManagedEnvironment: s.managedEnv,
+		IsRemote:            s.escConfigEnv != nil,
+		EscEnv:              s.escConfigEnv,
+		ManagedEnvironment:  s.managedEnv,
+		DeliveryEnvironment: s.deliveryEnv,
 	}
 }
 

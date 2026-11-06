@@ -120,6 +120,24 @@ func TestCloudBackendReference(t *testing.T) {
 	})
 }
 
+func TestNewStackDeliveryEnvironmentConfigLocation(t *testing.T) {
+	t.Parallel()
+
+	defaultOrg := &promise.CompletionSource[string]{}
+	defaultOrg.MustFulfill("some-org")
+	b := &cloudBackend{defaultOrg: defaultOrg.Promise()}
+
+	delivery := &apitype.StackDeliveryEnvironment{Environment: "pulumi-delivery/program-id", Revision: 4}
+	stack, err := newStack(t.Context(), apitype.Stack{
+		OrgName:             "org",
+		ProjectName:         "proj",
+		StackName:           "dev",
+		DeliveryEnvironment: delivery,
+	}, b)
+	require.NoError(t, err)
+	assert.Equal(t, backend.StackConfigLocation{DeliveryEnvironment: delivery}, stack.ConfigLocation())
+}
+
 func TestNewStackManagedEnvironmentConfigLocation(t *testing.T) {
 	t.Parallel()
 
