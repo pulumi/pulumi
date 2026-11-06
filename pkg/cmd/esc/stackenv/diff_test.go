@@ -25,7 +25,7 @@ import (
 
 func diffLines(t *testing.T, published, local string) []string {
 	t.Helper()
-	changes, err := DiffDefinitions([]byte(local), []byte(published))
+	changes, err := diffDefinitionValues([]byte(local), []byte(published))
 	require.NoError(t, err)
 	var b strings.Builder
 	WriteDefinitionDiff(&b, colors.Never, "org/proj/env", 7, changes)
@@ -139,6 +139,69 @@ func TestDiffDefinitions(t *testing.T) {
 	}
 }
 
+func TestDiffDefinitionsHidesValuesOutsidePulumiConfig(t *testing.T) {
+	t.Parallel()
+
+	const secret = "{fn::secret: {ciphertext: Y2lwaGVyMQ==}}"
+	cases := []struct {
+		name, published, local string
+		want                   []string
+	}{
+		{
+			"pulumiConfig keeps its values", "values:\n  pulumiConfig:\n    app:a: x\n    app:b: {c: 1}\n",
+			"values:\n  pulumiConfig:\n    app:a: y\n    app:b: {c: 2}\n    app:d: z\n",
+			[]string{
+				`~ values.pulumiConfig["app:a"]: "x" -> "y"`,
+				`~ values.pulumiConfig["app:b"].c: 1 -> 2`,
+				`+ values.pulumiConfig["app:d"]: "z"`,
+			},
+		},
+		{
+			"other sections", "values:\n  environmentVariables:\n    KEEP: hunter2\n    OLD: hunter2\n",
+			"values:\n  environmentVariables:\n    KEEP: hunter3\n    NEW: hunter2\n",
+			[]string{
+				`~ values.environmentVariables.KEEP: [plaintext] -> [plaintext]`,
+				`+ values.environmentVariables.NEW: [plaintext]`,
+				`- values.environmentVariables.OLD: [plaintext]`,
+			},
+		},
+		{
+			"provider inputs", "values:\n  aws: {fn::open::aws-login: {static: {accessKeyId: hunter2}}}\n",
+			"values:\n  aws: {fn::open::aws-login: {static: {accessKeyId: hunter3}}}\n",
+			[]string{`~ values.aws["fn::open::aws-login"].static.accessKeyId: [plaintext] -> [plaintext]`},
+		},
+		{
+			"a change above pulumiConfig hides what it holds", "",
+			"values:\n  pulumiConfig:\n    app:a: hunter2\n",
+			[]string{`+ values: [plaintext]`},
+		},
+		{
+			"imports", "imports: [proj/hunter2]\n", "imports: [proj/hunter3]\n",
+			[]string{`~ imports[0]: [plaintext] -> [plaintext]`},
+		},
+		{
+			"secrets keep their label", "values:\n  a: hunter2\n  b: " + secret + "\n",
+			"values:\n  a: " + secret + "\n  c: {d: " + secret + "}\n",
+			[]string{`~ values.a: [plaintext] -> [secret]`, `- values.b: [secret]`, `+ values.c: [secret]`},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			changes, err := DiffDefinitions([]byte(tc.local), []byte(tc.published))
+			require.NoError(t, err)
+			var b strings.Builder
+			WriteDefinitionDiff(&b, colors.Never, "org/proj/env", 7, changes)
+			got := strings.Split(strings.TrimSuffix(b.String(), "\n"), "\n")[1:]
+			for i, line := range got {
+				got[i] = strings.TrimPrefix(line, "    ")
+			}
+			assert.Equal(t, tc.want, got)
+			assert.NotContains(t, b.String(), "hunter")
+		})
+	}
+}
+
 func TestDiffDefinitionsNoValueChanges(t *testing.T) {
 	t.Parallel()
 
@@ -172,7 +235,7 @@ func TestDiffDefinitionsErrors(t *testing.T) {
 func TestWriteDefinitionDiff(t *testing.T) {
 	t.Parallel()
 
-	changes, err := DiffDefinitions([]byte("values:\n  a: 3\n  c: 4\n"), []byte("values:\n  a: 1\n  b: 2\n"))
+	changes, err := diffDefinitionValues([]byte("values:\n  a: 3\n  c: 4\n"), []byte("values:\n  a: 1\n  b: 2\n"))
 	require.NoError(t, err)
 
 	const header = "Environment org/proj/env has local changes based on revision 7. " +
@@ -201,7 +264,7 @@ func TestWriteDefinitionDiff(t *testing.T) {
 func TestWriteDefinitionDiffTerminalSafe(t *testing.T) {
 	t.Parallel()
 
-	changes, err := DiffDefinitions(
+	changes, err := diffDefinitionValues(
 		[]byte("values:\n  a: \"<{%x%}>\"\n  b: \"<{%\"\n  \"c\\nd\": 1\n  \"e\\ef\\u009b\": 2\n"+
 			"  \"g\\u202eh\": 3\n  \"i\\u2028j\": 4\n  k: \"\\u202e\"\n  l: \"\\u2028\"\n  m: \"\\x7f\\u009b\"\n"+
 			"  \"n\\U000E0001\": 5\n"),

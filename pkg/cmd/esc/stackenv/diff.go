@@ -53,9 +53,11 @@ type DefinitionChange struct {
 	// Old and New are the rendered published and local values. Old is empty for ChangeAdd and New is empty for
 	// ChangeRemove. A secret renders as [secret], or as the JSON string "[secret]" inside a list or mapping. An
 	// update that contains a secret on either side prints no values: each side renders as [secret] if it contains a
-	// secret and as [plaintext] otherwise. A rendered value longer than 256 bytes is cut there and followed by its
-	// full length, as in "abc... (1048576 bytes)".
+	// secret and as [plaintext] otherwise. Everything outside values.pulumiConfig prints no values either. A rendered
+	// value longer than 256 bytes is cut there and followed by its full length, as in "abc... (1048576 bytes)".
 	Old, New string
+
+	oldValue, newValue any
 }
 
 const (
@@ -72,6 +74,19 @@ type secretValue struct {
 // by key within each mapping. Formatting, comments and key order are not compared. Secrets are compared by their
 // ciphertext, so a re-encrypted secret is reported as changed.
 func DiffDefinitions(local, published []byte) ([]DefinitionChange, error) {
+	changes, err := diffDefinitionValues(local, published)
+	if err != nil {
+		return nil, err
+	}
+	for i := range changes {
+		if !inPulumiConfig(changes[i].Path) {
+			changes[i].hideValues()
+		}
+	}
+	return changes, nil
+}
+
+func diffDefinitionValues(local, published []byte) ([]DefinitionChange, error) {
 	old, err := decodeDefinition(published)
 	if err != nil {
 		return nil, fmt.Errorf("published definition: %w", err)
@@ -83,6 +98,21 @@ func DiffDefinitions(local, published []byte) ([]DefinitionChange, error) {
 	var changes []DefinitionChange
 	diffValues(nil, old, true, new, true, &changes)
 	return changes, nil
+}
+
+// The diff is saved with the update's events, and reading those takes stack read, which doesn't grant env read. The
+// stack's program already consumes values.pulumiConfig.
+func inPulumiConfig(path resource.PropertyPath) bool {
+	return len(path) >= 2 && path[0] == "values" && path[1] == "pulumiConfig"
+}
+
+func (c *DefinitionChange) hideValues() {
+	if c.Kind != ChangeAdd {
+		c.Old = redactedLabel(c.oldValue)
+	}
+	if c.Kind != ChangeRemove {
+		c.New = redactedLabel(c.newValue)
+	}
 }
 
 // WriteDefinitionDiff writes a header naming env and the revision the local changes are based on, followed by one
@@ -166,10 +196,10 @@ func isSecretCall(node *syntax.ObjectNode) bool {
 func diffValues(path resource.PropertyPath, old any, inOld bool, new any, inNew bool, changes *[]DefinitionChange) {
 	switch {
 	case !inOld:
-		*changes = append(*changes, DefinitionChange{Kind: ChangeAdd, Path: path, New: renderTruncated(new)})
+		*changes = append(*changes, DefinitionChange{Kind: ChangeAdd, Path: path, New: renderTruncated(new), newValue: new})
 		return
 	case !inNew:
-		*changes = append(*changes, DefinitionChange{Kind: ChangeRemove, Path: path, Old: renderTruncated(old)})
+		*changes = append(*changes, DefinitionChange{Kind: ChangeRemove, Path: path, Old: renderTruncated(old), oldValue: old})
 		return
 	case reflect.DeepEqual(old, new):
 		return
@@ -199,7 +229,11 @@ func diffValues(path resource.PropertyPath, old any, inOld bool, new any, inNew 
 		return
 	}
 
-	change := DefinitionChange{Kind: ChangeUpdate, Path: path, Old: renderTruncated(old), New: renderTruncated(new)}
+	change := DefinitionChange{
+		Kind: ChangeUpdate, Path: path,
+		Old: renderTruncated(old), New: renderTruncated(new),
+		oldValue: old, newValue: new,
+	}
 	if containsSecret(old) || containsSecret(new) {
 		change.Old, change.New = redactedLabel(old), redactedLabel(new)
 	}
