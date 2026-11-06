@@ -42,6 +42,15 @@ func TestManagedEnvironmentJSON(t *testing.T) {
 			expected: `{"id":"","orgName":"","projectName":"","stackName":"","activeUpdate":"","version":0}`,
 		},
 		{
+			name: "stack with a delivery environment",
+			value: Stack{DeliveryEnvironment: &StackDeliveryEnvironment{
+				Environment: "pulumi-delivery/program-id",
+				Revision:    3,
+			}},
+			expected: `{"id":"","orgName":"","projectName":"","stackName":"","activeUpdate":"",` +
+				`"deliveryEnvironment":{"environment":"pulumi-delivery/program-id","revision":3},"version":0}`,
+		},
+		{
 			name:     "create stack request",
 			value:    CreateStackRequest{StackName: "dev", CreateManagedEnvironment: true},
 			expected: `{"stackName":"dev","createManagedEnvironment":true}`,
@@ -91,6 +100,7 @@ func TestUpdateProgramRequestEnvironmentJSON(t *testing.T) {
 			ChangeRequestID: "cr-1",
 			DraftRevision:   0,
 		},
+		DeliveryEnvironment: &StackDeliveryEnvironment{Environment: "pulumi-delivery/program-id", Revision: 4},
 	}
 	actual, err := json.Marshal(request)
 	require.NoError(t, err)
@@ -103,4 +113,5 @@ func TestUpdateProgramRequestEnvironmentJSON(t *testing.T) {
 	var unmanagedFields map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(unmanaged, &unmanagedFields))
 	assert.NotContains(t, unmanagedFields, "environment")
+	assert.NotContains(t, unmanagedFields, "deliveryEnvironment")
 }

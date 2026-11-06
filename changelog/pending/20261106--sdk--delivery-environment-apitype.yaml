@@ -1,0 +1,3 @@
+component: sdk
+kind: chore
+body: Add the Pulumi Delivery environment to the stack and update API types
