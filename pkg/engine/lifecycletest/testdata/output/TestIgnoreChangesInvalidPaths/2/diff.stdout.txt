@@ -1,3 +1,5 @@
+<{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[0]"<{%reset%}>
+<{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[0]"<{%reset%}>
 <{%fg 3%}>~ pkgA:m:typA: (update)
 <{%reset%}>    [id=3]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::resA]
