@@ -83,7 +83,7 @@ func TestManagedEnvironmentNotice(t *testing.T) {
 			})
 
 			cfg, err := getStackConfigurationFromProjectStack(t.Context(), stack, &workspace.Project{Name: "otherproj"},
-				nil, loadTestProjectStack(t, managedStackYAML), nil)
+				nil, loadTestProjectStack(t, managedStackYAML), nil, true)
 			require.NoError(t, err)
 			assert.Equal(t, c.expected, cfg.ManagedEnvironmentNotice)
 			assert.Equal(t, c.changeRequestID, cfg.ManagedEnvironment.ChangeRequestID)

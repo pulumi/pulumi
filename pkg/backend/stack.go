@@ -42,6 +42,9 @@ type StackConfigLocation struct {
 	// ManagedEnvironment is "<project>/<name>" of the ESC environment the stack publishes its config to on
 	// update. Empty means the stack is not managed.
 	ManagedEnvironment string
+	// DeliveryEnvironment is the revision of the stack's Pulumi Delivery environment that the stack composes with its
+	// own config. Nil means there is none to compose.
+	DeliveryEnvironment *apitype.StackDeliveryEnvironment
 }
 
 // ManagedEnvironmentRef returns the managed environment's project and name, which can differ from the stack's after

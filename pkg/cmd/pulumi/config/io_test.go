@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -498,6 +499,7 @@ func TestStackEnvConfig(t *testing.T) {
 		mockSecretsManager,
 		&projectStack,
 		nil,
+		true,
 	)
 	require.NoError(t, err)
 
@@ -921,7 +923,7 @@ func TestOpenStackEnvManaged(t *testing.T) {
 
 	project := workspace.Project{Name: "otherproj"}
 	cfg, err := getStackConfigurationFromProjectStack(
-		t.Context(), stack, &project, nil, loadTestProjectStack(t, managedStackYAML), nil)
+		t.Context(), stack, &project, nil, loadTestProjectStack(t, managedStackYAML), nil, true)
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{"acme/p/old"}, evaluated)
@@ -950,7 +952,7 @@ func TestGetStackConfigurationManagedEnvironmentImports(t *testing.T) {
       otherproj:key: env
 `)
 	project := workspace.Project{Name: "otherproj"}
-	cfg, err := getStackConfigurationFromProjectStack(t.Context(), stack, &project, nil, workspaceStack, nil)
+	cfg, err := getStackConfigurationFromProjectStack(t.Context(), stack, &project, nil, workspaceStack, nil, true)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"proj/a"}, cfg.EnvironmentImports)
 }
@@ -988,7 +990,7 @@ func TestOpenStackEnvManagedErrors(t *testing.T) {
 			s, _ := newManagedStack(t, nil)
 			ps := loadTestProjectStack(t, c.stackYAML)
 
-			_, _, managedEnv, err := openStackEnvWithManaged(t.Context(), s, ps, c.envOverrides)
+			_, _, managedEnv, _, err := openStackEnvWithManaged(t.Context(), s, ps, c.envOverrides, true)
 			assert.ErrorContains(t, err, c.expected)
 			assert.Nil(t, managedEnv)
 
@@ -1009,12 +1011,13 @@ func TestOpenStackEnvManagedEvaluateError(t *testing.T) {
 		return nil, nil, errors.New("environment p/old not found")
 	})
 
-	_, _, managedEnv, err := openStackEnvWithManaged(t.Context(), s, loadTestProjectStack(t, managedStackYAML), nil)
+	_, _, managedEnv, _, err := openStackEnvWithManaged(
+		t.Context(), s, loadTestProjectStack(t, managedStackYAML), nil, true)
 	assert.ErrorContains(t, err, "environment p/old not found")
 	assert.Nil(t, managedEnv)
 
 	_, err = getStackConfigurationFromProjectStack(
-		t.Context(), s, &workspace.Project{Name: "otherproj"}, nil, loadTestProjectStack(t, managedStackYAML), nil)
+		t.Context(), s, &workspace.Project{Name: "otherproj"}, nil, loadTestProjectStack(t, managedStackYAML), nil, true)
 	assert.ErrorContains(t, err, "environment p/old not found")
 }
 
@@ -1044,4 +1047,446 @@ func TestGetStackConfigurationOrLatestManaged(t *testing.T) {
 	s, _ := newManagedStack(t, nil)
 	_, _, err := GetStackConfigurationOrLatest(t.Context(), nil, stack.SecretsManagerLoader{}, s, nil, "", nil)
 	assert.ErrorIs(t, err, errDestroyManagedOutsideProject)
+}
+
+// publishedDeliveryEnv builds a Delivery environment as the service publishes it: provenance and project-qualified
+// config.
+func publishedDeliveryEnv(config map[string]esc.Value) *esc.Environment {
+	properties := map[string]esc.Value{
+		"delivery": esc.NewValue(map[string]esc.Value{"pipeline": esc.NewValue("acme/delivery/prod")}),
+	}
+	if config != nil {
+		properties["pulumiConfig"] = esc.NewValue(config)
+	}
+	return &esc.Environment{Properties: properties}
+}
+
+// newDeliveryStack returns a stack in project "proj" with a Pulumi Delivery environment at revision 4. userEnv is what
+// the stack's own environment opens to.
+func newDeliveryStack(
+	t *testing.T,
+	userEnv *esc.Environment,
+	open func() (*esc.Environment, apitype.EnvironmentDiagnostics, error),
+) *backend.MockStack {
+	t.Helper()
+
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{NameF: func() string { return "test" }},
+		OpenYAMLEnvironmentF: func(
+			context.Context, string, []byte, time.Duration, map[string]string,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			return userEnv, nil, nil
+		},
+		OpenEnvironmentRevisionF: func(
+			_ context.Context, org string, project string, name string, revision int, duration time.Duration,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			assert.Equal(t, "acme", org)
+			assert.Equal(t, "pulumi-delivery", project)
+			assert.Equal(t, "program-id", name)
+			assert.Equal(t, 4, revision)
+			assert.Equal(t, 2*time.Hour, duration)
+			return open()
+		},
+	}
+	return &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "acme/proj/dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				ProjectV:            "proj",
+				FullyQualifiedNameV: tokens.QName("acme/proj/dev"),
+			}
+		},
+		ConfigLocationF: func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{DeliveryEnvironment: &apitype.StackDeliveryEnvironment{
+				Environment: "pulumi-delivery/program-id",
+				Revision:    4,
+			}}
+		},
+		OrgNameF: func() string { return "acme" },
+		BackendF: func() backend.Backend { return be },
+	}
+}
+
+func TestOpenStackEnvDelivery(t *testing.T) {
+	t.Parallel()
+
+	openDelivery := func() (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+		return publishedDeliveryEnv(map[string]esc.Value{"proj:image": esc.NewValue("v2")}), nil, nil
+	}
+
+	t.Run("a stack with no environment takes only Delivery's config", func(t *testing.T) {
+		t.Parallel()
+
+		stack := newDeliveryStack(t, nil, openDelivery)
+		env, diags, err := openStackEnv(t.Context(), stack, &workspace.ProjectStack{}, nil)
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+		assert.Equal(t, map[string]esc.Value{
+			"pulumiConfig": esc.NewValue(map[string]esc.Value{"proj:image": esc.NewValue("v2")}),
+		}, env.Properties)
+	})
+
+	t.Run("the stack's environment keeps everything else", func(t *testing.T) {
+		t.Parallel()
+
+		stack := newDeliveryStack(t, &esc.Environment{Properties: map[string]esc.Value{
+			"pulumiConfig":         esc.NewValue(map[string]esc.Value{"aws:region": esc.NewValue("us-west-2")}),
+			"environmentVariables": esc.NewValue(map[string]esc.Value{"TOKEN": esc.NewValue("t")}),
+		}}, openDelivery)
+		ps := loadTestProjectStack(t, "environment:\n  - shared\n")
+		env, _, err := openStackEnv(t.Context(), stack, ps, nil)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]esc.Value{
+			"pulumiConfig": esc.NewValue(map[string]esc.Value{
+				"aws:region": esc.NewValue("us-west-2"),
+				"proj:image": esc.NewValue("v2"),
+			}),
+			"environmentVariables": esc.NewValue(map[string]esc.Value{"TOKEN": esc.NewValue("t")}),
+		}, env.Properties)
+	})
+
+	t.Run("a revision with no config adds nothing", func(t *testing.T) {
+		t.Parallel()
+
+		stack := newDeliveryStack(t, nil, func() (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			return publishedDeliveryEnv(nil), nil, nil
+		})
+		env, diags, err := openStackEnv(t.Context(), stack, &workspace.ProjectStack{}, nil)
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+		assert.Nil(t, env)
+	})
+
+	t.Run("an open error names the stack", func(t *testing.T) {
+		t.Parallel()
+
+		stack := newDeliveryStack(t, nil, func() (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			return nil, nil, errors.New("forbidden")
+		})
+		_, _, err := openStackEnv(t.Context(), stack, &workspace.ProjectStack{}, nil)
+		assert.ErrorContains(t, err, "acme/proj/dev")
+		assert.ErrorContains(t, err, "forbidden")
+	})
+
+	t.Run("diagnostics are returned", func(t *testing.T) {
+		t.Parallel()
+
+		diags := apitype.EnvironmentDiagnostics{{Summary: "bad"}}
+		stack := newDeliveryStack(t, nil, func() (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			return nil, diags, nil
+		})
+		env, got, err := openStackEnv(t.Context(), stack, &workspace.ProjectStack{}, nil)
+		require.NoError(t, err)
+		assert.Nil(t, env)
+		assert.Equal(t, []apitype.EnvironmentDiagnostic(diags), got)
+	})
+}
+
+func TestDeliveryConfigPrecedence(t *testing.T) {
+	t.Parallel()
+
+	openDelivery := func() (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+		return publishedDeliveryEnv(map[string]esc.Value{
+			"proj:image": esc.NewValue("delivery"),
+			"proj:other": esc.NewValue("x"),
+		}), nil, nil
+	}
+	userEnv := func(key string) *esc.Environment {
+		return &esc.Environment{Properties: map[string]esc.Value{
+			"pulumiConfig": esc.NewValue(map[string]esc.Value{key: esc.NewValue("local")}),
+		}}
+	}
+	envStack := func(t *testing.T) *workspace.ProjectStack {
+		return loadTestProjectStack(t, "environment:\n  - shared\n")
+	}
+	fileKey := config.MustMakeKey("proj", "image")
+	fileStack := func(*testing.T) *workspace.ProjectStack {
+		return &workspace.ProjectStack{Config: config.Map{fileKey: config.NewValue("local")}}
+	}
+	withDelivery := map[string]esc.Value{"proj:image": esc.NewValue("delivery"), "proj:other": esc.NewValue("x")}
+
+	for _, tc := range []struct {
+		name     string
+		env      *esc.Environment
+		ps       func(*testing.T) *workspace.ProjectStack
+		expected map[string]esc.Value
+		config   bool
+	}{
+		{
+			name:     "Delivery replaces a qualified key of the stack's environment",
+			env:      userEnv("proj:image"),
+			ps:       envStack,
+			expected: withDelivery,
+		},
+		{
+			name:     "Delivery replaces a bare key of the stack's environment",
+			env:      userEnv("image"),
+			ps:       envStack,
+			expected: withDelivery,
+		},
+		{
+			name:     "the stack's file keeps its key",
+			ps:       fileStack,
+			expected: withDelivery,
+			config:   true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			stack := newDeliveryStack(t, tc.env, openDelivery)
+			ps := tc.ps(t)
+			project := workspace.Project{Name: "proj"}
+			cfg, err := getStackConfigurationFromProjectStack(t.Context(), stack, &project, nil, ps, nil, true)
+			require.NoError(t, err)
+			assert.Equal(t, esc.NewValue(tc.expected), cfg.Environment)
+
+			_, inConfig := cfg.Config[fileKey]
+			assert.Equal(t, tc.config, inConfig)
+			assert.Equal(t, tc.ps(t).Config, ps.Config, "composing never changes the stack's file")
+		})
+	}
+
+	t.Run("the same name in another namespace is not the same key", func(t *testing.T) {
+		t.Parallel()
+
+		stack := newDeliveryStack(t, nil, openDelivery)
+		otherKey := config.MustMakeKey("aws", "image")
+		ps := &workspace.ProjectStack{Config: config.Map{otherKey: config.NewValue("local")}}
+		env, _, err := openStackEnv(t.Context(), stack, ps, nil)
+		require.NoError(t, err)
+		assert.Equal(t, esc.NewValue(withDelivery), env.Properties["pulumiConfig"])
+	})
+}
+
+func TestDeliveryConfigPrecedenceManaged(t *testing.T) {
+	t.Parallel()
+
+	stack, be := newManagedStack(t, func(
+		string, string, string, []byte,
+	) (*backend.ManagedEnvironmentEvaluation, apitype.EnvironmentDiagnostics, error) {
+		return &backend.ManagedEnvironmentEvaluation{
+			Environment: &esc.Environment{Properties: map[string]esc.Value{
+				"pulumiConfig": esc.NewValue(map[string]esc.Value{"otherproj:key": esc.NewValue("env")}),
+			}},
+			BaseRevision: 7,
+		}, nil, nil
+	})
+	be.OpenEnvironmentRevisionF = func(
+		context.Context, string, string, string, int, time.Duration,
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+		return publishedDeliveryEnv(map[string]esc.Value{
+			"otherproj:key":   esc.NewValue("delivery"),
+			"otherproj:other": esc.NewValue("x"),
+		}), nil, nil
+	}
+	location := stack.ConfigLocationF()
+	location.DeliveryEnvironment = &apitype.StackDeliveryEnvironment{
+		Environment: "pulumi-delivery/program-id",
+		Revision:    4,
+	}
+	stack.ConfigLocationF = func() backend.StackConfigLocation { return location }
+
+	project := workspace.Project{Name: "otherproj"}
+	cfg, err := getStackConfigurationFromProjectStack(
+		t.Context(), stack, &project, nil, loadTestProjectStack(t, managedStackYAML), nil, true)
+	require.NoError(t, err)
+	assert.Equal(t, esc.NewValue(map[string]esc.Value{
+		"otherproj:key":   esc.NewValue("env"),
+		"otherproj:other": esc.NewValue("x"),
+	}), cfg.Environment, "the managed environment is the stack's own config, so its key wins")
+}
+
+func TestFormatDeliveryNotice(t *testing.T) {
+	t.Parallel()
+
+	notice := func(keys []config.Key) string {
+		return formatDeliveryNotice(publishedDeliveryEnv(nil), &apitype.StackDeliveryEnvironment{
+			Environment: "pulumi-delivery/program-id",
+			Revision:    4,
+		}, keys)
+	}
+
+	assert.Equal(t, "using config from Pulumi Delivery (pipeline acme/delivery/prod), revision 4\n", notice(nil))
+
+	warning := notice([]config.Key{config.MustMakeKey("proj", "image")})
+	assert.Contains(t, warning, colors.SpecWarning+
+		"warning: this stack sets config that Pulumi Delivery (pipeline acme/delivery/prod) also sets: proj:image")
+	assert.Contains(t, warning, "The stack's values win over the pipeline's, in Delivery runs too.")
+}
+
+func TestComposeDeliveryEnvironment(t *testing.T) {
+	t.Parallel()
+
+	openDelivery := func(config map[string]esc.Value) func() (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+		return func() (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			return publishedDeliveryEnv(config), nil, nil
+		}
+	}
+	image := map[string]esc.Value{"proj:image": esc.NewValue("delivery")}
+	fileStack := &workspace.ProjectStack{
+		Config: config.Map{config.MustMakeKey("proj", "image"): config.NewValue("local")},
+	}
+
+	t.Run("a key the stack's own config sets warns", func(t *testing.T) {
+		t.Parallel()
+
+		_, notice, _, err := composeDeliveryEnvironment(
+			t.Context(), newDeliveryStack(t, nil, openDelivery(image)), fileStack, nil, true)
+		require.NoError(t, err)
+		assert.Contains(t, notice, "using config from Pulumi Delivery")
+		assert.Contains(t, notice, "warning: this stack sets config")
+		assert.Contains(t, notice, "proj:image")
+	})
+
+	t.Run("config copied from the latest update doesn't warn", func(t *testing.T) {
+		t.Parallel()
+
+		_, notice, _, err := composeDeliveryEnvironment(
+			t.Context(), newDeliveryStack(t, nil, openDelivery(image)), fileStack, nil, false)
+		require.NoError(t, err)
+		assert.Contains(t, notice, "using config from Pulumi Delivery")
+		assert.NotContains(t, notice, "warning")
+	})
+
+	t.Run("a revision with no config has no notice", func(t *testing.T) {
+		t.Parallel()
+
+		_, notice, _, err := composeDeliveryEnvironment(
+			t.Context(), newDeliveryStack(t, nil, openDelivery(nil)), fileStack, nil, true)
+		require.NoError(t, err)
+		assert.Empty(t, notice)
+	})
+
+	t.Run("the environment of a stack with remote config is its own", func(t *testing.T) {
+		t.Parallel()
+
+		stack := newDeliveryStack(t, nil, openDelivery(image))
+		location := stack.ConfigLocationF()
+		location.IsRemote = true
+		stack.ConfigLocationF = func() backend.StackConfigLocation { return location }
+		remoteEnv := &esc.Environment{Properties: map[string]esc.Value{
+			"pulumiConfig": esc.NewValue(map[string]esc.Value{"image": esc.NewValue("remote")}),
+		}}
+		env, notice, _, err := composeDeliveryEnvironment(
+			t.Context(), stack, &workspace.ProjectStack{Config: config.Map{}}, remoteEnv, true)
+		require.NoError(t, err)
+		assert.Equal(t, esc.NewValue(map[string]esc.Value{"proj:image": esc.NewValue("remote")}),
+			env.Properties["pulumiConfig"])
+		assert.Contains(t, notice, "also sets: proj:image")
+	})
+
+	t.Run("an environment with no properties gets the config", func(t *testing.T) {
+		t.Parallel()
+
+		env, _, _, err := composeDeliveryEnvironment(t.Context(),
+			newDeliveryStack(t, nil, openDelivery(image)), &workspace.ProjectStack{}, &esc.Environment{}, true)
+		require.NoError(t, err)
+		assert.Equal(t, esc.NewValue(image), env.Properties["pulumiConfig"])
+	})
+
+	t.Run("an environment name without a project is an error", func(t *testing.T) {
+		t.Parallel()
+
+		stack := newDeliveryStack(t, nil, openDelivery(image))
+		stack.ConfigLocationF = func() backend.StackConfigLocation {
+			return backend.StackConfigLocation{
+				DeliveryEnvironment: &apitype.StackDeliveryEnvironment{Environment: "program-id", Revision: 4},
+			}
+		}
+		_, _, _, err := composeDeliveryEnvironment(t.Context(), stack, &workspace.ProjectStack{}, nil, true)
+		assert.ErrorContains(t, err, `invalid Pulumi Delivery environment "program-id"`)
+	})
+
+	t.Run("a key Delivery holds that doesn't parse is an error", func(t *testing.T) {
+		t.Parallel()
+
+		stack := newDeliveryStack(t, nil, openDelivery(map[string]esc.Value{"a:b:c": esc.NewValue("x")}))
+		_, _, _, err := composeDeliveryEnvironment(t.Context(), stack, &workspace.ProjectStack{}, nil, true)
+		assert.ErrorContains(t, err, `invalid config key "a:b:c"`)
+	})
+}
+
+func TestDeliveryConfigMergesObjects(t *testing.T) {
+	t.Parallel()
+
+	object := func(fields map[string]string) esc.Value {
+		values := make(map[string]esc.Value, len(fields))
+		for k, v := range fields {
+			values[k] = esc.NewValue(v)
+		}
+		return esc.NewValue(values)
+	}
+	imported := &esc.Environment{Properties: map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"proj:obj": object(map[string]string{"a": "import", "b": "import", "c": "import"}),
+		}),
+	}}
+	stack := newDeliveryStack(t, imported, func() (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+		return publishedDeliveryEnv(map[string]esc.Value{
+			"proj:obj": object(map[string]string{"a": "delivery", "b": "delivery"}),
+		}), nil, nil
+	})
+	ps := loadTestProjectStack(t, "environment:\n  - shared\n")
+	ps.Config = config.Map{config.MustMakeKey("proj", "obj"): config.NewObjectValue(`{"a":"file"}`)}
+
+	project := workspace.Project{Name: "proj"}
+	cfg, err := getStackConfigurationFromProjectStack(t.Context(), stack, &project, nil, ps, nil, true)
+	require.NoError(t, err)
+	assert.Contains(t, cfg.DeliveryEnvironmentNotice, "also sets: proj:obj")
+
+	err = pkgWorkspace.ApplyProjectConfig(
+		t.Context(), "dev", &project, cfg.Environment, cfg.Config, config.NopEncrypter, config.NopDecrypter)
+	require.NoError(t, err)
+	merged, err := cfg.Config[config.MustMakeKey("proj", "obj")].ToObject()
+	require.NoError(t, err)
+	assert.Equal(t, map[string]any{"a": "file", "b": "delivery", "c": "import"}, merged,
+		"each field comes from the highest layer that sets it: imports < Delivery < the stack's own config")
+}
+
+func TestGetStackConfigurationDelivery(t *testing.T) {
+	t.Parallel()
+
+	openDelivery := func() (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+		return publishedDeliveryEnv(map[string]esc.Value{"proj:image": esc.NewValue("v2")}), nil, nil
+	}
+	expected := &apitype.StackDeliveryEnvironment{Environment: "pulumi-delivery/program-id", Revision: 4}
+
+	t.Run("the configuration says which revision it composed", func(t *testing.T) {
+		t.Parallel()
+
+		project := workspace.Project{Name: "proj"}
+		cfg, err := getStackConfigurationFromProjectStack(
+			t.Context(), newDeliveryStack(t, nil, openDelivery), &project, nil, &workspace.ProjectStack{}, nil, true)
+		require.NoError(t, err)
+		assert.Equal(t, expected, cfg.DeliveryEnvironment)
+		assert.Equal(t, "using config from Pulumi Delivery (pipeline acme/delivery/prod), revision 4\n",
+			cfg.DeliveryEnvironmentNotice)
+		assert.Equal(t, esc.NewValue(map[string]esc.Value{"proj:image": esc.NewValue("v2")}), cfg.Environment)
+		assert.Empty(t, cfg.EnvironmentImports)
+	})
+
+	t.Run("no Delivery environment sends nothing", func(t *testing.T) {
+		t.Parallel()
+
+		stack := getMockStackWithEnv(t, nil)
+		stack.RefF = func() backend.StackReference { return &backend.MockStackReference{} }
+		project := workspace.Project{Name: "proj"}
+		cfg, err := getStackConfigurationFromProjectStack(
+			t.Context(), stack, &project, nil, &workspace.ProjectStack{}, nil, true)
+		require.NoError(t, err)
+		assert.Nil(t, cfg.DeliveryEnvironment)
+	})
+
+	t.Run("config copied from the latest update loads", func(t *testing.T) {
+		t.Parallel()
+
+		ps := &workspace.ProjectStack{Config: config.Map{config.MustMakeKey("proj", "image"): config.NewValue("v1")}}
+		project := workspace.Project{Name: "proj"}
+		cfg, err := getStackConfigurationFromProjectStack(
+			t.Context(), newDeliveryStack(t, nil, openDelivery), &project, nil, ps, nil, false)
+		require.NoError(t, err)
+		assert.Equal(t, expected, cfg.DeliveryEnvironment)
+	})
 }
