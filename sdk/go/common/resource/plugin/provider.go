@@ -610,6 +610,7 @@ type GrpcProvider interface {
 type CheckFailure struct {
 	Property resource.PropertyKey // the property that failed checking.
 	Reason   string               // the reason the property failed to check.
+	Kind     ErrorKind            // the kind of failure, if the provider knows it.
 }
 
 // ErrNotYetImplemented may be returned from a provider for optional methods that are not yet implemented.
