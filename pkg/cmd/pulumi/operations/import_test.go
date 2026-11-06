@@ -1021,3 +1021,38 @@ func TestImportCmd_TerraformConverterRejectedInHclProject(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pulumi import --from hcl")
 }
+
+func TestGeneratedProgramSource(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		files map[string][]byte
+		want  string
+	}{
+		{"single file", map[string][]byte{"index.ts": []byte("code")}, "code"},
+		{
+			"skips local SDK metadata",
+			map[string][]byte{"main.tf": []byte("code"), "sdks/random/hcl.sdk.json": []byte("{}")},
+			"code",
+		},
+		{
+			"keeps a nested program file",
+			map[string][]byte{"src/main/java/myproject/App.java": []byte("code")},
+			"code",
+		},
+		{
+			"joins files in a stable order",
+			map[string][]byte{"b.tf": []byte("b"), "a.tf": []byte("a")},
+			"ab",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, string(generatedProgramSource(tt.files)))
+		})
+	}
+}
