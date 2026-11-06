@@ -496,6 +496,7 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&previewOnly, "preview-only", false,
 		"Only show a preview of the destroy, but don't perform the destroy itself")
+	cmd.MarkFlagsMutuallyExclusive("preview-only", "remove")
 	cmd.PersistentFlags().StringVarP(
 		&refresh, "refresh", "r", "",
 		"Refresh the state of the stack's resources before this update")
