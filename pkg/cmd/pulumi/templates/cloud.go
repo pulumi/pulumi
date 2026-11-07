@@ -148,6 +148,7 @@ func (f *fetch) listRegistryMatching(
 	ctx context.Context, r registry.Registry, opts registry.ListTemplatesOptions,
 	matches func(TemplateMatchable) bool, c *cleanup,
 ) {
+	var suggestions []string
 	for page, err := range r.ListTemplates(ctx, opts) {
 		if err != nil {
 			f.addError(fmt.Errorf("could not get template: %w", err))
@@ -164,12 +165,16 @@ func (f *fetch) listRegistryMatching(
 			}
 
 			t := registryTemplate{template, r, c}
+			suggestions = append(suggestions, t.Name())
 			if !matches(t) {
 				continue
 			}
 
 			f.addTemplate(t)
 		}
+	}
+	if len(suggestions) > 0 {
+		f.addSuggestions(suggestions...)
 	}
 }
 
