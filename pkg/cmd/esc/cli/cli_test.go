@@ -268,6 +268,7 @@ type testChangeRequest struct {
 	client.ChangeRequest
 	orgName      string
 	baseRevision int
+	openRequest  *client.EnvironmentOpenRequest
 	approvers    []client.ChangeRequestUser
 	events       []client.ChangeRequestEvent
 }
@@ -939,6 +940,10 @@ func (c *testPulumiClient) ApplyChangeRequest(
 	}
 	if cr.Status != "ready" {
 		return nil, errors.New("change request is not approved")
+	}
+	if cr.Action == "open" {
+		c.setChangeRequestStatus(cr, "applied", "applied successfully", "")
+		return &client.ChangeRequestApplyResult{EntityURL: "https://app.fake.pulumi.com/" + orgName}, nil
 	}
 	yaml, _, err := c.GetEnvironmentDraft(ctx, orgName, cr.Entity.Project, cr.Entity.Name, changeRequestID)
 	if err != nil {
@@ -1834,18 +1839,56 @@ func (c *testPulumiClient) CreateEnvironmentOpenRequest(
 		return nil, errors.New("environment not found")
 	}
 
-	// Mock implementation for testing
+	id := "test-request-id-12345"
+	if c.changeRequests == nil {
+		c.changeRequests = map[string]*testChangeRequest{}
+	}
+	c.changeRequests[id] = &testChangeRequest{
+		ChangeRequest: client.ChangeRequest{
+			ID:                   id,
+			Status:               "draft",
+			Action:               "open",
+			CreatedBy:            client.ChangeRequestUser{Name: "Test User", GithubLogin: c.user},
+			LatestRevisionNumber: 1,
+			Entity:               client.ChangeRequestEntity{EntityType: "environment", Project: projectName, Name: envName},
+		},
+		orgName: orgName,
+		openRequest: &client.EnvironmentOpenRequest{
+			GrantExpirationSeconds: grantExpirationSeconds,
+			AccessDurationSeconds:  accessDurationSeconds,
+		},
+	}
+	c.addChangeRequestEvent(c.changeRequests[id], client.ChangeRequestEvent{
+		EventType: "status_changed",
+		NewStatus: "draft",
+		Reason:    "change_request_created",
+	})
+
 	return &client.CreateEnvironmentOpenRequestResponse{
 		ChangeRequests: []client.EnvironmentOpenRequestChangeRequest{
 			{
 				ProjectName:          projectName,
 				EnvironmentName:      envName,
-				ChangeRequestID:      "test-request-id-12345",
+				ChangeRequestID:      id,
 				LatestRevisionNumber: 0,
 				ETag:                 "test-etag/0",
 			},
 		},
 	}, nil
+}
+
+func (c *testPulumiClient) GetEnvironmentOpenRequest(
+	ctx context.Context,
+	orgName string,
+	projectName string,
+	envName string,
+	changeRequestID string,
+) (*client.EnvironmentOpenRequest, error) {
+	cr, err := c.getChangeRequest(orgName, changeRequestID)
+	if err != nil || cr.openRequest == nil {
+		return nil, errors.New("not found")
+	}
+	return cr.openRequest, nil
 }
 
 func (c *testPulumiClient) GetEnvironmentSettings(
@@ -2507,9 +2550,13 @@ func TestEnvChangeRequestRejectsNonEnvironment(t *testing.T) {
 	id := "00000000-0000-0000-0000-000000000000"
 	testcase.exec.client.changeRequests[id].Entity.EntityType = "policy_exceptions"
 
-	for _, cmd := range []string{"get", "diff", "rebase"} {
+	for cmd, msg := range map[string]string{
+		"get":    "is not an environment change request",
+		"diff":   "diff is only supported for environment drafts",
+		"rebase": "rebase is only supported for environment drafts",
+	} {
 		stderr, err := run("esc env change-request " + cmd + " " + id + "\n")
 		assert.Error(t, err, cmd)
-		assert.Contains(t, stderr, "is not an environment draft", cmd)
+		assert.Contains(t, stderr, msg, cmd)
 	}
 }
