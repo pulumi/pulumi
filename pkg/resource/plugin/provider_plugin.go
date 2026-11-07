@@ -770,7 +770,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	// And now any properties that failed verification.
 	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
-		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+		failures = append(failures, checkFailureFromRPC(failure))
 	}
 
 	// Copy over any secret annotations, since we could not pass any to the provider, and return.
@@ -1294,7 +1294,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	// And now any properties that failed verification.
 	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
-		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+		failures = append(failures, checkFailureFromRPC(failure))
 	}
 
 	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, inputs.Len(), len(failures))
@@ -2340,7 +2340,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	// And now any properties that failed verification.
 	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
-		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+		failures = append(failures, checkFailureFromRPC(failure))
 	}
 
 	result := ret.AsMap()
@@ -2483,7 +2483,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	// And now any properties that failed verification.
 	failures := slice.Prealloc[CheckFailure](len(resp.GetFailures()))
 	for _, failure := range resp.GetFailures() {
-		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+		failures = append(failures, checkFailureFromRPC(failure))
 	}
 
 	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, ret.Len(), len(failures))

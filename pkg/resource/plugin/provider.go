@@ -647,6 +647,9 @@ type GrpcProvider interface {
 type CheckFailure struct {
 	Property resource.PropertyKey // the property that failed checking.
 	Reason   string               // the reason the property failed to check.
+
+	// Remediations are commands the user can run to resolve the failure.
+	Remediations []CommandRemediation
 }
 
 // ErrNotYetImplemented may be returned from a provider for optional methods that are not yet implemented.

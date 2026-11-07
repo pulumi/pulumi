@@ -1,0 +1,3 @@
+component: engine
+kind: feat
+body: Let providers suggest commands that fix a `CheckConfig` failure or `Configure` error
