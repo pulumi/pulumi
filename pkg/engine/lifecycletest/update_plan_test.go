@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestPlannedUpdate(t *testing.T) {
@@ -52,7 +53,7 @@ func TestPlannedUpdate(t *testing.T) {
 		}),
 	}
 
-	var ins resource.PropertyMap
+	var ins property.Map
 	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -78,17 +79,17 @@ func TestPlannedUpdate(t *testing.T) {
 	project := p.GetProject()
 
 	// Generate a plan.
-	computed := any(resource.Computed{Element: resource.NewProperty("")})
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"baz": map[string]any{
-			"a": 42,
+	computed := property.New(property.Computed)
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"baz": property.New(map[string]property.Value{
+			"a": property.New(42.0),
 			"b": computed,
-		},
-		"qux": []any{
+		}),
+		"qux": property.New([]property.Value{
 			computed,
-			24,
-		},
+			property.New(24.0),
+		}),
 		"zed": computed,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
@@ -96,11 +97,11 @@ func TestPlannedUpdate(t *testing.T) {
 
 	// Attempt to run an update using the plan.
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"qux": []any{
-			"alpha",
-			24,
-		},
+	ins = property.NewMap(map[string]property.Value{
+		"qux": property.New([]property.Value{
+			property.New("alpha"),
+			property.New(24.0),
+		}),
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
@@ -118,17 +119,17 @@ func TestPlannedUpdate(t *testing.T) {
 
 	// Attempt to run an update using the plan.
 	expectError = false
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"baz": map[string]any{
-			"a": 42,
-			"b": "alpha",
-		},
-		"qux": []any{
-			"beta",
-			24,
-		},
-		"zed": "grr",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"baz": property.New(map[string]property.Value{
+			"a": property.New(42.0),
+			"b": property.New("alpha"),
+		}),
+		"qux": property.New([]property.Value{
+			property.New("beta"),
+			property.New(24.0),
+		}),
+		"zed": property.New("grr"),
 	})
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -170,9 +171,9 @@ func TestPlanViolationSecrets(t *testing.T) {
 	}
 
 	violate := func(t *testing.T, showSecrets bool, expected string) {
-		ins := resource.PropertyMap{
-			"password": resource.MakeSecret(resource.NewProperty("planned-secret")),
-		}
+		ins := property.NewMap(map[string]property.Value{
+			"password": property.New("planned-secret").WithSecret(true),
+		})
 		expectError := false
 		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -205,9 +206,9 @@ func TestPlanViolationSecrets(t *testing.T) {
 		require.NoError(t, err)
 
 		expectError = true
-		ins = resource.PropertyMap{
-			"password": resource.MakeSecret(resource.NewProperty("actual-secret")),
-		}
+		ins = property.NewMap(map[string]property.Value{
+			"password": property.New("actual-secret").WithSecret(true),
+		})
 		p.Options.Plan = plan.Clone()
 		validate := ExpectDiagMessage(t, regexp.QuoteMeta(expected))
 		_, err = lt.TestOp(Update).RunStep(
@@ -245,8 +246,8 @@ func TestUnplannedCreate(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 	createResource := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -307,8 +308,8 @@ func TestUnplannedDelete(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 	createAllResources := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -380,8 +381,8 @@ func TestExpectedDelete(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 	createAllResources := true
 	expectError := false
@@ -460,8 +461,8 @@ func TestExpectedCreate(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 	createAllResources := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -534,9 +535,9 @@ func TestPropertySetChange(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "baz",
+	ins := property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New("baz"),
 	})
 	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -569,8 +570,8 @@ func TestPropertySetChange(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now change the runtime to not return property "frob", this should error
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 	expectError = true
 	p.Options.Plan = plan.Clone()
@@ -599,8 +600,8 @@ func TestExpectedUnneededCreate(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -662,8 +663,8 @@ func TestExpectedUnneededDelete(t *testing.T) {
 		}),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 	createResource := true
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -733,7 +734,7 @@ func TestResoucesWithSames(t *testing.T) {
 		}),
 	}
 
-	var ins resource.PropertyMap
+	var ins property.Map
 	createA := false
 	createB := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -746,8 +747,8 @@ func TestResoucesWithSames(t *testing.T) {
 
 		if createB {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-				Inputs: resource.NewPropertyMapFromMap(map[string]any{
-					"X": "Y",
+				Inputs: property.NewMap(map[string]property.Value{
+					"X": property.New("Y"),
 				}),
 			})
 			require.NoError(t, err)
@@ -769,9 +770,9 @@ func TestResoucesWithSames(t *testing.T) {
 	// Generate a plan to create A
 	createA = true
 	createB = false
-	computed := any(resource.Computed{Element: resource.NewProperty("")})
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	computed := property.New(property.Computed)
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 		"zed": computed,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
@@ -794,9 +795,9 @@ func TestResoucesWithSames(t *testing.T) {
 	// Attempt to run an update with the plan on the stack that creates A and sames B
 	createA = true
 	createB = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": 24,
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"zed": property.New(24.0),
 	})
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -836,7 +837,7 @@ func TestPlannedPreviews(t *testing.T) {
 		}),
 	}
 
-	var ins resource.PropertyMap
+	var ins property.Map
 	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -862,17 +863,17 @@ func TestPlannedPreviews(t *testing.T) {
 	project := p.GetProject()
 
 	// Generate a plan.
-	computed := any(resource.Computed{Element: resource.NewProperty("")})
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"baz": map[string]any{
-			"a": 42,
+	computed := property.New(property.Computed)
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"baz": property.New(map[string]property.Value{
+			"a": property.New(42.0),
 			"b": computed,
-		},
-		"qux": []any{
+		}),
+		"qux": property.New([]property.Value{
 			computed,
-			24,
-		},
+			property.New(24.0),
+		}),
 		"zed": computed,
 	})
 	plan, err := lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "0")
@@ -880,11 +881,11 @@ func TestPlannedPreviews(t *testing.T) {
 
 	// Attempt to run a new preview using the plan, given we've changed the property set this should fail
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"qux": []any{
-			"alpha",
-			24,
-		},
+	ins = property.NewMap(map[string]property.Value{
+		"qux": property.New([]property.Value{
+			property.New("alpha"),
+			property.New(24.0),
+		}),
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
@@ -895,17 +896,17 @@ func TestPlannedPreviews(t *testing.T) {
 
 	// Attempt to run an preview using the plan, such that the property set is now valid
 	expectError = false
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"baz": map[string]any{
-			"a": 42,
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"baz": property.New(map[string]property.Value{
+			"a": property.New(42.0),
 			"b": computed,
-		},
-		"qux": []any{
-			"beta",
-			24,
-		},
-		"zed": "grr",
+		}),
+		"qux": property.New([]property.Value{
+			property.New("beta"),
+			property.New(24.0),
+		}),
+		"zed": property.New("grr"),
 	})
 	p.Options.Plan = plan.Clone()
 	_, err = lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "1")
@@ -931,7 +932,7 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 		}),
 	}
 
-	var ins resource.PropertyMap
+	var ins property.Map
 	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -957,34 +958,34 @@ func TestPlannedUpdateChangedStack(t *testing.T) {
 	project := p.GetProject()
 
 	// Set initial data for foo and zed
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": 24,
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"zed": property.New(float64(24)),
 	})
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
 	// Generate a plan that we want to change foo
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
-		"zed": 24,
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
+		"zed": property.New(float64(24)),
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
 	require.NoError(t, err)
 
 	// Change zed in the stack
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": 26,
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"zed": property.New(float64(26)),
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 
 	// Attempt to run an update using the plan but where we haven't updated our program for the change of zed
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
-		"zed": 24,
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
+		"zed": property.New(float64(24)),
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
@@ -1020,9 +1021,9 @@ func TestPlannedOutputChanges(t *testing.T) {
 		}),
 	}
 
-	outs := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "baz",
+	outs := property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New("baz"),
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
@@ -1050,8 +1051,8 @@ func TestPlannedOutputChanges(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now change the runtime to not return property "frob", this should error
-	outs = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	outs = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
@@ -1066,15 +1067,15 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 
 	// This tests that plans are working on the program inputs, not the provider outputs
 
-	createOutputs := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "baz",
-		"baz":  24,
+	createOutputs := property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New("baz"),
+		"baz":  property.New(float64(24)),
 	})
-	updateOutputs := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "newBazzer",
-		"baz":  24,
+	updateOutputs := property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New("newBazzer"),
+		"baz":  property.New(float64(24)),
 	})
 
 	loaders := []*deploytest.ProviderLoader{
@@ -1083,13 +1084,13 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
 						ID:         resource.ID("created-id-" + req.URN.Name()),
-						Properties: resource.FromResourcePropertyMap(createOutputs),
+						Properties: createOutputs,
 						Status:     resource.StatusOK,
 					}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{
-						Properties: resource.FromResourcePropertyMap(updateOutputs),
+						Properties: updateOutputs,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1097,9 +1098,9 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 		}),
 	}
 
-	inputs := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "baz",
+	inputs := property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New("baz"),
 	})
 	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -1138,9 +1139,9 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 	require.NoError(t, err)
 
 	// Make a plan to change resA
-	inputs = resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "newBazzer",
+	inputs = property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New("newBazzer"),
 	})
 	p.Options.Plan = nil
 	plan, err = lt.TestOp(Update).Plan(project, p.GetTarget(t, snap), p.Options, p.BackendClient, nil)
@@ -1149,9 +1150,9 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 
 	// Test the plan fails if we don't pass newBazzer
 	expectError = true
-	inputs = resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "differentBazzer",
+	inputs = property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New("differentBazzer"),
 	})
 	p.Options.Plan = plan.Clone()
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
@@ -1163,9 +1164,9 @@ func TestPlannedInputOutputDifferences(t *testing.T) {
 
 	// Check the plan succeeds if we do pass newBazzer
 	expectError = false
-	inputs = resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "newBazzer",
+	inputs = property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New("newBazzer"),
 	})
 	p.Options.Plan = plan.Clone()
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
@@ -1194,9 +1195,9 @@ func TestAliasWithPlans(t *testing.T) {
 
 	resourceName := "resA"
 	var aliases []resource.URN
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo":  "bar",
-		"frob": "baz",
+	ins := property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New("baz"),
 	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", resourceName, true, deploytest.ResourceOptions{
@@ -1259,7 +1260,7 @@ func TestComputedCanBeDropped(t *testing.T) {
 		}),
 	}
 
-	var resourceInputs resource.PropertyMap
+	var resourceInputs property.Map
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
 		require.NoError(t, err)
@@ -1288,40 +1289,41 @@ func TestComputedCanBeDropped(t *testing.T) {
 	project := p.GetProject()
 
 	// The three property sets we'll use in this test
-	computed := any(resource.Computed{Element: resource.NewProperty("")})
-	computedPropertySet := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"baz": map[string]any{
-			"a": 42,
+	computed := property.New(property.Computed)
+	computedPropertySet := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"baz": property.New(map[string]property.Value{
+			"a": property.New(42.0),
 			"b": computed,
-		},
-		"qux": []any{
+		}),
+		"qux": property.New([]property.Value{
 			computed,
-			24,
-		},
+			property.New(24.0),
+		}),
 		"zed": computed,
 	})
-	fullPropertySet := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"baz": map[string]any{
-			"a": 42,
-			"b": "alpha",
-		},
-		"qux": []any{
-			"beta",
-			24,
-		},
-		"zed": "grr",
+	fullPropertySet := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"baz": property.New(map[string]property.Value{
+			"a": property.New(42.0),
+			"b": property.New("alpha"),
+		}),
+		"qux": property.New([]property.Value{
+			property.New("beta"),
+			property.New(24.0),
+		}),
+		"zed": property.New("grr"),
 	})
-	partialPropertySet := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"baz": map[string]any{
-			"a": 42,
-		},
-		"qux": []any{
-			nil, // computed values that resolve to undef don't get dropped from arrays, they just become null
-			24,
-		},
+	partialPropertySet := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"baz": property.New(map[string]property.Value{
+			"a": property.New(42.0),
+		}),
+		"qux": property.New([]property.Value{
+			// Computed values that resolve to undef don't get dropped from arrays, they just become null.
+			property.New(property.Null),
+			property.New(24.0),
+		}),
 	})
 
 	// Generate a plan.
@@ -1338,8 +1340,8 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 3)
 
-	assert.Equal(t, partialPropertySet, snap.Resources[1].Outputs)
-	assert.Equal(t, partialPropertySet, snap.Resources[2].Outputs)
+	assert.Equal(t, partialPropertySet, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, partialPropertySet, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Now run an update to set the values of the computed properties...
 	resourceInputs = fullPropertySet
@@ -1350,8 +1352,8 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 3)
 
-	assert.Equal(t, fullPropertySet, snap.Resources[1].Outputs)
-	assert.Equal(t, fullPropertySet, snap.Resources[2].Outputs)
+	assert.Equal(t, fullPropertySet, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, fullPropertySet, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// ...and then build a new plan where they're computed updates (vs above where its computed creates)
 	resourceInputs = computedPropertySet
@@ -1367,8 +1369,8 @@ func TestComputedCanBeDropped(t *testing.T) {
 	// Check the resource's state.
 	require.Len(t, snap.Resources, 3)
 
-	assert.Equal(t, partialPropertySet, snap.Resources[1].Outputs)
-	assert.Equal(t, partialPropertySet, snap.Resources[2].Outputs)
+	assert.Equal(t, partialPropertySet, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, partialPropertySet, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
 }
 
 func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
@@ -1393,23 +1395,19 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 						return plugin.CheckResponse{Properties: req.NewInputs}, nil
 					}
 					if name, has := req.OldInputs.GetOk("name"); has {
-						result := resource.ToResourcePropertyMap(req.NewInputs)
-						result["name"] = resource.ToResourcePropertyValue(name)
-						return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(result)}, nil
+						return plugin.CheckResponse{Properties: req.NewInputs.Set("name", name)}, nil
 					}
 
 					name, err := resource.NewUniqueHex(req.URN.Name(), 8, 512)
 					require.NoError(t, err)
 
-					result := resource.ToResourcePropertyMap(req.NewInputs)
-					result["name"] = resource.NewProperty(name)
-					return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(result)}, nil
+					return plugin.CheckResponse{Properties: req.NewInputs.Set("name", property.New(name))}, nil
 				},
 			}, nil
 		}),
 	}
 
-	var ins resource.PropertyMap
+	var ins property.Map
 	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1418,8 +1416,8 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 
 		if err == nil {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-				Inputs: resource.NewPropertyMapFromMap(map[string]any{
-					"other": resp.Outputs["name"].StringValue(),
+				Inputs: property.NewMap(map[string]property.Value{
+					"other": property.New(resp.Outputs.Get("name").AsString()),
 				}),
 			})
 			if expectError {
@@ -1444,9 +1442,9 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 	project := p.GetProject()
 
 	// Generate a plan.
-	computed := any(resource.Computed{Element: resource.NewProperty("")})
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	computed := property.New(property.Computed)
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 		"zed": computed,
 	})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
@@ -1455,9 +1453,9 @@ func TestPlannedUpdateWithNondeterministicCheck(t *testing.T) {
 	// Attempt to run an update using the plan.
 	// This should fail because of the non-determinism
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"zed": property.New("baz"),
 	})
 	p.Options.Plan = plan.Clone()
 
@@ -1504,7 +1502,7 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 		}),
 	}
 
-	var ins resource.PropertyMap
+	var ins property.Map
 	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1531,8 +1529,8 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 
 	// Generate a plan with bad inputs
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bad",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bad"),
 	})
 	validate := ExpectDiagMessage(t, regexp.QuoteMeta(
 		"<{%reset%}>pkgA:m:typA resource 'resA': property foo value {bad} has a problem: Bad foo<{%reset%}>\n"))
@@ -1542,8 +1540,8 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 
 	// Generate a plan with good inputs
 	expectError = false
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "good",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("good"),
 	})
 	plan, err = lt.TestOp(Update).PlanStep(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil, "1")
 	require.NotNil(t, plan)
@@ -1552,8 +1550,8 @@ func TestPlannedUpdateWithCheckFailure(t *testing.T) {
 
 	// Try and run against the plan with inputs that will fail Check
 	expectError = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bad",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bad"),
 	})
 	p.Options.Plan = plan.Clone()
 	validate = ExpectDiagMessage(t, regexp.QuoteMeta(
@@ -1605,7 +1603,7 @@ func TestPluginsAreDownloaded(t *testing.T) {
 func TestProviderDeterministicPreview(t *testing.T) {
 	t.Parallel()
 
-	var generatedName resource.PropertyValue
+	var generatedName property.Value
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1616,16 +1614,16 @@ func TestProviderDeterministicPreview(t *testing.T) {
 				) (plugin.CheckResponse, error) {
 					// make a deterministic autoname
 					if _, has := req.NewInputs.GetOk("name"); !has {
-						result := resource.ToResourcePropertyMap(req.NewInputs)
+						var nameValue property.Value
 						if name, has := req.OldInputs.GetOk("name"); has {
-							result["name"] = resource.ToResourcePropertyValue(name)
+							nameValue = name
 						} else {
 							name, err := resource.NewUniqueName(req.RandomSeed, req.URN.Name(), -1, -1, nil)
 							require.NoError(t, err)
-							generatedName = resource.NewProperty(name)
-							result["name"] = generatedName
+							generatedName = property.New(name)
+							nameValue = generatedName
 						}
-						return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(result)}, nil
+						return plugin.CheckResponse{Properties: req.NewInputs.Set("name", nameValue)}, nil
 					}
 
 					return plugin.CheckResponse{Properties: req.NewInputs}, nil
@@ -1651,8 +1649,8 @@ func TestProviderDeterministicPreview(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -1678,8 +1676,8 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	require.NoError(t, err)
 	assert.True(t, generatedName.IsString())
-	assert.NotEqual(t, "", generatedName.StringValue())
-	expectedName := generatedName
+	assert.NotEqual(t, "", generatedName.AsString())
+	expectedName := resource.ToResourcePropertyValue(generatedName)
 
 	// Run an update, we should get the same name as we saw in preview
 	p.Options.Plan = plan
@@ -1691,8 +1689,8 @@ func TestProviderDeterministicPreview(t *testing.T) {
 	assert.Equal(t, expectedName, snap.Resources[1].Outputs["name"])
 
 	// Run a new update which will cause a replace and check we get a new name
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	p.Options.Plan = nil
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -1735,7 +1733,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 		}),
 	}
 
-	var ins resource.PropertyMap
+	var ins property.Map
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: ins,
@@ -1759,18 +1757,18 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 	project := p.GetProject()
 
 	// Create an initial ResA and resB
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
-		"zed": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+		"zed": property.New("baz"),
 	})
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NotNil(t, snap)
 	require.NoError(t, err)
 
 	// Update the input and mark it as a replace, check that both A and B are marked as replacements
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "frob",
-		"zed": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("frob"),
+		"zed": property.New("baz"),
 	})
 	diffResult = &plugin.DiffResult{
 		Changes:     plugin.DiffSome,
@@ -1813,9 +1811,9 @@ func TestResourcesTargeted(t *testing.T) {
 	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 		})
 		if expectError {
 			return nil
@@ -1824,9 +1822,9 @@ func TestResourcesTargeted(t *testing.T) {
 		}
 
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 		})
 
 		return nil
@@ -1905,9 +1903,9 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 
 		require.NoError(t, err)
 
-		err = monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{
-			"foo": resource.NewProperty("bar"),
-		})
+		err = monitor.RegisterResourceOutputs(resp.URN, property.NewMap(map[string]property.Value{
+			"foo": property.New("bar"),
+		}))
 
 		require.NoError(t, err)
 
@@ -1954,14 +1952,12 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 func TestPlannedUpdateWithInternalKeys(t *testing.T) {
 	t.Parallel()
 
-	var defaultsValue resource.PropertyValue
+	var defaultsValue property.Value
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
 				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
-					news := resource.ToResourcePropertyMap(req.NewInputs)
-					news["__defaults"] = defaultsValue
-					return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
+					return plugin.CheckResponse{Properties: req.NewInputs.Set("__defaults", defaultsValue)}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
@@ -1976,7 +1972,7 @@ func TestPlannedUpdateWithInternalKeys(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"}),
+			Inputs: property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 		})
 		require.NoError(t, err)
 		return nil
@@ -1993,7 +1989,7 @@ func TestPlannedUpdateWithInternalKeys(t *testing.T) {
 	project := p.GetProject()
 
 	// Generate a plan with one shape of __defaults.
-	defaultsValue = resource.NewProperty([]resource.PropertyValue{resource.NewProperty("a")})
+	defaultsValue = property.New([]property.Value{property.New("a")})
 	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
 	require.NoError(t, err)
 
@@ -2007,7 +2003,7 @@ func TestPlannedUpdateWithInternalKeys(t *testing.T) {
 
 	// Run the update with a different __defaults value. This must not be considered a plan
 	// violation because internal ("__"-prefixed) keys should be ignored by plan checks.
-	defaultsValue = resource.NewProperty([]resource.PropertyValue{resource.NewProperty("b")})
+	defaultsValue = property.New([]property.Value{property.New("b")})
 	p.Options.Plan = plan.Clone()
 	snap, err := lt.TestOp(Update).RunStep(
 		project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")

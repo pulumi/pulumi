@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Tests that a delete-before-replace operation:
@@ -1028,7 +1029,7 @@ func TestPendingReplaceDependentDeleteNotRetried(t *testing.T) {
 		}, nil
 	}
 
-	inputsA := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+	inputsA := property.NewMap(map[string]property.Value{"A": property.New("foo")})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		dbr := true
 		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1037,7 +1038,7 @@ func TestPendingReplaceDependentDeleteNotRetried(t *testing.T) {
 		})
 		if err == nil {
 			_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-				Inputs:       resource.NewPropertyMapFromMap(map[string]any{"A": "value"}),
+				Inputs:       property.NewMap(map[string]property.Value{"A": property.New("value")}),
 				Dependencies: []resource.URN{respA.URN},
 				PropertyDeps: map[resource.PropertyKey][]resource.URN{"A": {respA.URN}},
 			})
@@ -1065,7 +1066,7 @@ func TestPendingReplaceDependentDeleteNotRetried(t *testing.T) {
 
 	// Operation 2 -- change resA so that both it and its dependent resB are replaced, and interrupt the
 	// operation by failing resA's delete after resB's delete has succeeded.
-	inputsA["A"] = resource.NewProperty("bar")
+	inputsA = inputsA.Set("A", property.New("bar"))
 
 	replaceLoaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1179,7 +1180,7 @@ func TestPendingReplaceDependentResumeAfterReplacement(t *testing.T) {
 		}, nil
 	}
 
-	inputsA := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+	inputsA := property.NewMap(map[string]property.Value{"A": property.New("foo")})
 	expectError := false
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		dbr := true
@@ -1189,7 +1190,7 @@ func TestPendingReplaceDependentResumeAfterReplacement(t *testing.T) {
 		})
 		require.NoError(t, err)
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs:       resource.NewPropertyMapFromMap(map[string]any{"A": "value"}),
+			Inputs:       property.NewMap(map[string]property.Value{"A": property.New("value")}),
 			Dependencies: []resource.URN{respA.URN},
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{"A": {respA.URN}},
 		})
@@ -1218,7 +1219,7 @@ func TestPendingReplaceDependentResumeAfterReplacement(t *testing.T) {
 
 	// Operation 2 -- change resA so that both it and its dependent resB are replaced, and interrupt the
 	// operation by failing resB's create after resA's replacement has completed.
-	inputsA["A"] = resource.NewProperty("bar")
+	inputsA = inputsA.Set("A", property.New("bar"))
 	expectError = true
 
 	replaceLoaders := []*deploytest.ProviderLoader{
