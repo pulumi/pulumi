@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Reject empty values for path parameters in `pulumi api` instead of building a malformed URL
+time: 2026-11-07T21:00:00.000000+01:00
