@@ -52,6 +52,21 @@ func TestManagedEnvironmentJSON(t *testing.T) {
 			expected: `{"stackName":"dev"}`,
 		},
 		{
+			name:     "create stack request following the org default",
+			value:    CreateStackRequest{StackName: "dev", ConfigMode: new(CreateStackConfigModeDefault)},
+			expected: `{"stackName":"dev","configMode":"default"}`,
+		},
+		{
+			name:     "ESC create stack request",
+			value:    CreateStackRequest{StackName: "dev", ConfigMode: new(CreateStackConfigModeESC)},
+			expected: `{"stackName":"dev","configMode":"esc"}`,
+		},
+		{
+			name:     "static create stack request",
+			value:    CreateStackRequest{StackName: "dev", ConfigMode: new(CreateStackConfigModeStatic)},
+			expected: `{"stackName":"dev","configMode":"static"}`,
+		},
+		{
 			name:     "create stack response",
 			value:    CreateStackResponse{ManagedEnvironment: "proj/env"},
 			expected: `{"managedEnvironment":"proj/env"}`,
