@@ -36,7 +36,7 @@ import (
 
 const (
 	possibleSecretsProviderChoices = "The type of the provider that should be used to encrypt and decrypt secrets\n" +
-		"(possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)"
+		"(possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault, ocikms)"
 )
 
 func newStackNewCmd() *cobra.Command {

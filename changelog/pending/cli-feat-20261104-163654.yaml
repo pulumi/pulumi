@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Add OCI Key Management as a stack secrets provider
+time: 2026-11-04T16:36:54.867206016-03:00
