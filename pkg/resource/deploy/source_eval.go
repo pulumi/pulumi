@@ -37,7 +37,6 @@ import (
 	slicesfx "github.com/pgavlin/fx/v2/slices"
 	"go.opentelemetry.io/otel"
 	oteltrace "go.opentelemetry.io/otel/trace"
-	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"google.golang.org/grpc"
@@ -49,6 +48,7 @@ import (
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/resourcetracker"
+	"github.com/pulumi/pulumi/pkg/v3/resource/monitor"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -400,11 +400,9 @@ type pendingStateMigration struct {
 	aliases   []*pulumirpc.Alias
 }
 
-// resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
+// resmon implements the monitor.Server interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	pulumirpc.UnsafeResourceMonitorServer
-
 	pendingTransforms     map[string][]TransformFunction // pending transformation functions for a constructed resource
 	pendingTransformsLock sync.Mutex
 
@@ -474,6 +472,8 @@ type resmon struct {
 	componentAliases     map[resource.URN][]resource.URN
 	componentAliasesLock sync.Mutex
 }
+
+var _ monitor.Server = (*resmon)(nil)
 
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(
@@ -545,7 +545,7 @@ func newResourceMonitor(
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: resmon.cancel,
 		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterResourceMonitorServer(srv, resmon)
+			pulumirpc.RegisterResourceMonitorServer(srv, monitor.AsGRPC(resmon))
 			return nil
 		},
 		Options: sourceEvalServeOptions(src.plugctx, tracingSpan, otelParent, env.DebugGRPC.Value()),
@@ -977,9 +977,7 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 	return features
 }
 
-func (rm *resmon) GetDeploymentInfo(_ context.Context,
-	_ *emptypb.Empty,
-) (*pulumirpc.DeploymentInfo, error) {
+func (rm *resmon) GetDeploymentInfo(context.Context) (*pulumirpc.DeploymentInfo, error) {
 	config := make(map[string]string, len(rm.constructInfo.Config))
 	for k, v := range rm.constructInfo.Config {
 		config[k.String()] = v
@@ -1871,38 +1869,38 @@ func (rm *resmon) wrapInvokeTransformCallback(cb *pulumirpc.Callback) (Transform
 	}, nil
 }
 
-func (rm *resmon) RegisterStackTransform(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
+func (rm *resmon) RegisterStackTransform(ctx context.Context, cb *pulumirpc.Callback) error {
 	rm.stackTransformsLock.Lock()
 	defer rm.stackTransformsLock.Unlock()
 
 	if cb.Target == "" {
-		return nil, errors.New("target must be specified")
+		return errors.New("target must be specified")
 	}
 
 	wrapped, err := rm.wrapTransformCallback(cb)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	rm.stackTransforms = append(rm.stackTransforms, wrapped)
-	return &emptypb.Empty{}, nil
+	return nil
 }
 
-func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirpc.Callback) (*emptypb.Empty, error) {
+func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirpc.Callback) error {
 	rm.stackInvokeTransformsLock.Lock()
 	defer rm.stackInvokeTransformsLock.Unlock()
 
 	if cb.Target == "" {
-		return nil, errors.New("target must be specified")
+		return errors.New("target must be specified")
 	}
 
 	wrapped, err := rm.wrapInvokeTransformCallback(cb)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	rm.stackInvokeTransforms = append(rm.stackInvokeTransforms, wrapped)
-	return &emptypb.Empty{}, nil
+	return nil
 }
 
 // SignalAndWaitForShutdown lets the resource monitor know that no more events
@@ -1911,16 +1909,16 @@ func (rm *resmon) RegisterStackInvokeTransform(ctx context.Context, cb *pulumirp
 // runtime to stay running and handle callback requests, even after the user
 // program has completed. Runtime SDKs should call this after executing the
 // user's program. This can only be called once.
-func (rm *resmon) SignalAndWaitForShutdown(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+func (rm *resmon) SignalAndWaitForShutdown(ctx context.Context) error {
 	logging.V(6).Infof("SignalAndWaitForShutdown waiting ...")
 	if rm.hasWaiter.CompareAndSwap(false, true) {
 		rm.signalFin(nil)        // Let the source iterator know there will be no more events ...
 		<-rm.waitForShutdownChan // and then wait for the resource monitor to tell us it's done.
 	} else {
-		return &emptypb.Empty{}, errors.New("Already waiting for shutdown")
+		return errors.New("Already waiting for shutdown")
 	}
 	logging.V(6).Infof("SignalAndWaitForShutdown completed")
-	return &emptypb.Empty{}, nil
+	return nil
 }
 
 // Wrap the resource hook callback so the engine can call the callback server in
@@ -2010,13 +2008,11 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 	}, nil
 }
 
-func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.RegisterResourceHookRequest) (
-	*emptypb.Empty, error,
-) {
+func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.RegisterResourceHookRequest) error {
 	logging.V(6).Infof("RegisterResourceHook %q", req.Name)
 	wrapped, err := rm.wrapResourceHookCallback(req.Name, req.Callback)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	hook := ResourceHook{
 		Name:         req.Name,
@@ -2025,7 +2021,7 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 		IgnoreErrors: req.IgnoreErrors,
 	}
 	err = rm.resourceHooks.RegisterResourceHook(hook)
-	return nil, err
+	return err
 }
 
 func (rm *resmon) wrapErrorHookCallback(
@@ -2110,18 +2106,18 @@ func (rm *resmon) wrapErrorHookCallback(
 
 func (rm *resmon) RegisterErrorHook(
 	ctx context.Context, req *pulumirpc.RegisterErrorHookRequest,
-) (*emptypb.Empty, error) {
+) error {
 	logging.V(6).Infof("RegisterErrorHook %q", req.Name)
 	wrapped, err := rm.wrapErrorHookCallback(req.Name, req.Callback)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	hook := ErrorHook{
 		Name:     req.Name,
 		Callback: wrapped,
 	}
 	err = rm.resourceHooks.RegisterErrorHook(hook)
-	return nil, err
+	return err
 }
 
 // inheritFromParent returns a new goal that inherits from the given parent goal.
@@ -3407,16 +3403,16 @@ func (rm *resmon) checkComponentOption(urn resource.URN, optName string, check f
 // provisioning.  These will make their way into the eventual checkpoint state file for that resource.
 func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	req *pulumirpc.RegisterResourceOutputsRequest,
-) (*emptypb.Empty, error) {
+) error {
 	// Obtain and validate the message's inputs (a URN plus the output property map).
 	urn, err := resource.ParseURN(req.Urn)
 	if err != nil {
-		return nil, fmt.Errorf("invalid resource URN: %w", err)
+		return fmt.Errorf("invalid resource URN: %w", err)
 	}
 
 	rawOuts, err := propertyrpc.Unmarshal(req.GetOutputs())
 	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal output properties: %w", err)
+		return fmt.Errorf("cannot unmarshal output properties: %w", err)
 	}
 	outs, err := plugin.FilterProperties(rawOuts, plugin.FilterOptions{
 		KeepUnknowns:     true,
@@ -3425,7 +3421,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 		WorkingDirectory: rm.workingDirectory,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal output properties: %w", err)
+		return fmt.Errorf("cannot unmarshal output properties: %w", err)
 	}
 	logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs received: urn=%v, #outs=%v", urn, outs.Len())
 
@@ -3440,7 +3436,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	case rm.regOutChan <- step:
 	case <-rm.cancel:
 		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource outputs")
+		return rpcerror.New(codes.Unavailable, "resource monitor shut down while sending resource outputs")
 	}
 
 	// Now block waiting for the operation to finish.
@@ -3448,7 +3444,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	case <-step.done:
 	case <-rm.cancel:
 		logging.V(5).Infof("ResourceMonitor.RegisterResourceOutputs operation canceled, urn=%s", urn)
-		return nil, rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on output step's done channel")
+		return rpcerror.New(codes.Unavailable, "resource monitor shut down while waiting on output step's done channel")
 	}
 
 	// Publish the component's outputs on the registration observer now that they're final. Custom resources
@@ -3469,7 +3465,7 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResourceOutputs operation finished: urn=%v, #outs=%v", urn, outs.Len(),
 	)
-	return &emptypb.Empty{}, nil
+	return nil
 }
 
 type registerResourceEvent struct {
