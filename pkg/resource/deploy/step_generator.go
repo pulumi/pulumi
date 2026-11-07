@@ -1404,8 +1404,6 @@ func (sg *stepGenerator) continueStepsFromImport(
 
 	// Ensure the provider is okay with this resource and fetch the inputs to pass to subsequent methods.
 	if prov != nil {
-		var resp plugin.CheckResponse
-
 		checkInputs := prov.Check
 		if !isTargeted {
 			// If not targeted, stub out the provider check and use the old inputs directly.
@@ -1418,16 +1416,17 @@ func (sg *stepGenerator) continueStepsFromImport(
 		// invalid (they got deleted) so don't consider them. Similarly, if the old resource was External,
 		// don't consider those inputs since Pulumi does not own them. Finally, if the resource has been
 		// targeted for replacement, ignore its old state.
+		var req plugin.CheckRequest
 		if recreating || wasExternal || sg.isTargetedReplace(urn, old) || old == nil {
-			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
+			req = plugin.CheckRequest{
 				URN:           urn,
 				NewInputs:     goal.Properties,
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
-			})
+			}
 		} else {
-			resp, err = checkInputs(context.TODO(), plugin.CheckRequest{
+			req = plugin.CheckRequest{
 				URN:           urn,
 				OldInputs:     resource.FromResourcePropertyMap(oldInputs),
 				NewInputs:     resource.FromResourcePropertyMap(inputs),
@@ -1435,13 +1434,19 @@ func (sg *stepGenerator) continueStepsFromImport(
 				AllowUnknowns: allowUnknowns,
 				RandomSeed:    randomSeed,
 				Autonaming:    autonaming,
-			})
+			}
 		}
-		inputs = resource.ToResourcePropertyMap(resp.Properties)
+		var newPropertyDependencies map[resource.PropertyKey][]resource.URN
+		var failures []plugin.CheckFailure
+		inputs, newPropertyDependencies, failures, err = runCheck(
+			context.TODO(), checkInputs, req)
+		if newPropertyDependencies != nil {
+			new.PropertyDependencies = newPropertyDependencies
+		}
 
 		if err != nil {
 			return nil, false, err
-		} else if issueCheckErrors(sg.deployment, new, urn, resp.Failures) {
+		} else if issueCheckErrors(sg.deployment, new, urn, failures) {
 			invalid = true
 		}
 		new.Inputs = inputs
@@ -2104,19 +2109,20 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			//
 			// Note that if we're performing a targeted replace, we already have the correct inputs.
 			if prov != nil && !sg.isTargetedReplace(urn, old) {
-				resp, err := prov.Check(context.TODO(), plugin.CheckRequest{
+				inputs, newPropertyDependencies, failures, err := runCheck(context.TODO(), prov.Check, plugin.CheckRequest{
 					URN:           urn,
 					NewInputs:     goal.Properties,
 					AllowUnknowns: allowUnknowns,
 					RandomSeed:    randomSeed,
 					Autonaming:    autonaming,
 				})
-				failures := resp.Failures
-				inputs := resource.ToResourcePropertyMap(resp.Properties)
 				if err != nil {
 					return nil, err
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
 					return nil, result.BailErrorf("resource %v has check errors: %v", urn, failures)
+				}
+				if newPropertyDependencies != nil {
+					new.PropertyDependencies = newPropertyDependencies
 				}
 				new.Inputs = inputs
 			}
@@ -3863,4 +3869,65 @@ func unwrapSecretsAndOutputs(value property.Value) property.Value {
 	}
 
 	return value
+}
+
+// runCheck calls the provider's Check with `req`. `req.NewInputs` is expected to already carry any
+// dependency information as OutputValues (source_eval preserves them end-to-end). On the way back it
+// rebuilds a per-property dependency map from any OutputValues the provider returned -- because the
+// response is the authoritative post-Check view, if the provider renames, drops, or adds keys the
+// dependency map follows. A nil map is returned when the response carried no dependency info, signalling
+// the caller to leave its current PropertyDependencies in place (needed for compatibility with providers
+// -- including the in-process deploytest default -- that do not round-trip OutputValues). The returned
+// inputs are downgraded back to plain values so downstream engine code sees plain inputs with deps
+// carried in the per-property dependency map.
+func runCheck(
+	ctx context.Context,
+	checkFn func(context.Context, plugin.CheckRequest) (plugin.CheckResponse, error),
+	req plugin.CheckRequest,
+) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN, []plugin.CheckFailure, error) {
+	resp, err := checkFn(ctx, req)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	var newPropertyDependencies map[resource.PropertyKey][]resource.URN
+	for k, v := range resp.Properties.All {
+		if deps := extendOutputDependencies(nil, v); len(deps) > 0 {
+			if newPropertyDependencies == nil {
+				newPropertyDependencies = map[resource.PropertyKey][]resource.URN{}
+			}
+			newPropertyDependencies[resource.PropertyKey(k)] = deps
+		}
+	}
+	inputs := resource.ToResourcePropertyMap(downgradeOutputValues(resp.Properties))
+	return inputs, newPropertyDependencies, resp.Failures, nil
+}
+
+// downgradeOutputValues recursively strips dependency information from a [property.Map].
+func downgradeOutputValues(m property.Map) property.Map {
+	result := map[string]property.Value{}
+	for k, v := range m.All {
+		result[k] = downgradeOutputPropertyValue(v)
+	}
+	return property.NewMap(result)
+}
+
+func downgradeOutputPropertyValue(v property.Value) property.Value {
+	v = v.WithDependencies(nil)
+	switch {
+	case v.IsMap():
+		v = property.WithGoValue(v, downgradeOutputValues(v.AsMap()))
+	case v.IsArray():
+		arr := v.AsArray().AsSlice()
+		newArr := make([]property.Value, len(arr))
+		for i, elem := range arr {
+			newArr[i] = downgradeOutputPropertyValue(elem)
+		}
+		v = property.WithGoValue(v, property.NewArray(newArr))
+	case v.IsResourceReference():
+		ref := v.AsResourceReference()
+		ref.ID = downgradeOutputPropertyValue(ref.ID)
+		v = property.WithGoValue(v, ref)
+	}
+	return v
 }
