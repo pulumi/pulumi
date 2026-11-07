@@ -509,6 +509,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				genMaybeOutputConversion(func(v string) {
 					g.Fgenf(w, "Number(%s)", v)
 				})
+			// A list of optional primitives is (T | undefined)[] in TypeScript, which is
+			// not assignable to Input<T>[]. The non-null assertion matches the Go
+			// generator, which projects the same splat to []T.
+			case plainOptionalPrimitiveList(fromType, to):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, "%s.map(item => item!)", v)
+				})
 			default:
 				g.Fgenf(w, "%v", from)
 			}
@@ -1097,6 +1104,23 @@ func (g *generator) GenTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 		})
 		g.Fgen(w, "\n", g.Indent, "]")
 	}
+}
+
+// plainOptionalPrimitiveList reports whether from is a list of optional
+// primitives and to is a list of that same primitive.
+func plainOptionalPrimitiveList(from, to model.Type) bool {
+	fromList, ok := from.(*model.ListType)
+	if !ok || !model.IsOptionalType(fromList.ElementType) {
+		return false
+	}
+	elem := pcl.UnwrapOption(model.ResolveOutputs(fromList.ElementType))
+	switch elem {
+	case model.StringType, model.NumberType, model.IntType, model.BoolType:
+	default:
+		return false
+	}
+	toList, ok := to.(*model.ListType)
+	return ok && toList.ElementType.Equals(elem)
 }
 
 func (g *generator) GenUnaryOpExpression(w io.Writer, expr *model.UnaryOpExpression) {

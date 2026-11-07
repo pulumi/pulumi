@@ -92,7 +92,17 @@ func (g *generator) genForTemp(w io.Writer, t *forTemp) {
 	f := t.Value
 	suffix := strings.TrimPrefix(t.Name, "forResult")
 
-	valueArgTyp := g.argumentTypeName(f.Value.Type(), false)
+	valueType := f.Value.Type()
+	deref := false
+	// List results of optional primitives use []T, matching argumentTypeName.
+	// Map results stay map[string]*T; there is still no typed pointer map output.
+	if f.Key == nil {
+		if _, ok := g.optionalPrimitivePointerGoType(valueType); ok {
+			valueType = pcl.UnwrapOption(model.ResolveOutputs(valueType))
+			deref = true
+		}
+	}
+	valueArgTyp := g.argumentTypeName(valueType, false)
 	isPulumiTyp := strings.Contains(valueArgTyp, ".")
 	switch {
 	case f.Key != nil && isPulumiTyp:
@@ -155,6 +165,8 @@ func (g *generator) genForTemp(w io.Writer, t *forTemp) {
 	}
 	if f.Key != nil {
 		g.Fgenf(w, "%s[%.v] = %.v\n", t.Name, f.Key, f.Value)
+	} else if deref {
+		g.Fgenf(w, "%s = append(%s, *%.v)\n", t.Name, t.Name, f.Value)
 	} else {
 		g.Fgenf(w, "%s = append(%s, %.v)\n", t.Name, t.Name, f.Value)
 	}

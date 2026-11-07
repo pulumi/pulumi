@@ -1952,7 +1952,14 @@ func deferredOutputCastTypeParameter(outputType model.Type) string {
 	default:
 		switch exprType := unwrapped.(type) {
 		case *model.ListType:
-			switch exprType.ElementType {
+			elem := exprType.ElementType
+			// Optional primitives have no pointer-element array output. The closure
+			// returns the plain slice, so the cast follows the element, not ArrayOutput.
+			// Optional lists stay unwrapped here (pulumi/pulumi#25387).
+			if optionalPrimitive(model.ResolveOutputs(elem)) {
+				elem = pcl.UnwrapOption(model.ResolveOutputs(elem))
+			}
+			switch elem {
 			case model.IntType:
 				return "pulumi.IntArrayOutput"
 			case model.BoolType:
@@ -2329,14 +2336,25 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 			g.Fgenf(w, "%s := string(%s)\n", t.Variable.Name, bytesVar)
 			g.isErrAssigned = true
 		case *splatTemp:
-			argTyp := g.argumentTypeName(t.Value.Each.Type(), false)
+			elemType := t.Value.Each.Type()
+			deref := false
+			if _, ok := g.optionalPrimitivePointerGoType(elemType); ok {
+				elemType = pcl.UnwrapOption(model.ResolveOutputs(elemType))
+				deref = true
+			}
+			argTyp := g.argumentTypeName(elemType, false)
 			if strings.Contains(argTyp, ".") {
 				g.Fgenf(w, "var %s %sArray\n", t.Name, argTyp)
 			} else {
 				g.Fgenf(w, "var %s []%s\n", t.Name, argTyp)
 			}
 			g.Fgenf(w, "for _, val0 := range %.v {\n", t.Value.Source)
-			g.Fgenf(w, "%s = append(%s, %.v)\n", t.Name, t.Name, t.Value.Each)
+			if deref {
+				// The field is *T. The slice is []T so ApplyT can return a typed array output.
+				g.Fgenf(w, "%s = append(%s, *%.v)\n", t.Name, t.Name, t.Value.Each)
+			} else {
+				g.Fgenf(w, "%s = append(%s, %.v)\n", t.Name, t.Name, t.Value.Each)
+			}
 			g.Fgenf(w, "}\n")
 		case *forTemp:
 			g.genForTemp(w, t)
