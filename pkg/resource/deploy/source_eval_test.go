@@ -3528,6 +3528,30 @@ func TestReadResource(t *testing.T) {
 
 func TestRegisterResource(t *testing.T) {
 	t.Parallel()
+	t.Run("rejects invalid custom type token with a parent", func(t *testing.T) {
+		t.Parallel()
+
+		parent := resource.URN("urn:pulumi:stack::project::pkg:index:Parent::parent")
+		rm := &resmon{
+			resGoals: map[resource.URN]pkgresource.Goal{
+				parent: {
+					Type:     "pkg:index:Parent",
+					Name:     "parent",
+					Custom:   true,
+					Provider: "urn:pulumi:stack::project::pulumi:providers:pkg::default::00000000-0000-0000-0000-000000000000",
+				},
+			},
+		}
+		_, err := rm.RegisterResource(t.Context(), &pulumirpc.RegisterResourceRequest{
+			Type:   "foo:bar",
+			Name:   "child",
+			Custom: true,
+			Parent: string(parent),
+		})
+		require.Error(t, err)
+		assert.Equal(t, codes.InvalidArgument, status.Code(err))
+		assert.ErrorContains(t, err, "is not a valid type token")
+	})
 	t.Run("rejects state migrations when unsupported", func(t *testing.T) {
 		t.Parallel()
 
