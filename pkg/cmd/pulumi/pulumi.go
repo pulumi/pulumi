@@ -63,6 +63,7 @@ import (
 	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
 	cmdEnv "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/insights"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
@@ -296,6 +297,11 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			// (--color, --cwd, --tracing, --otel-traces, ...) are still at their defaults
 			// when this PersistentPreRunE runs, so all the flag-dependent init below is
 			// skipped. Parse what we can ourselves before continuing.
+			// Hints are human-facing, so don't mix them into machine-readable output.
+			if isMachineReadableOutput(cmd) {
+				hints.Suppress()
+			}
+
 			if cmd.DisableFlagParsing {
 				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
 			}
@@ -444,6 +450,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 					// The version didn't make it in time, so don't block the user
 				}
 			}
+
+			hints.Flush(cmd.ErrOrStderr())
 		},
 	}
 
@@ -643,6 +651,15 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 		return false
 	}
 	return devCommits > curCommits
+}
+
+// isMachineReadableOutput reports whether cmd was asked to write JSON, through `--json` or `--output json`.
+func isMachineReadableOutput(cmd *cobra.Command) bool {
+	if f := cmd.Flag("json"); f != nil && f.Value.String() == "true" {
+		return true
+	}
+	f := cmd.Flag("output")
+	return f != nil && f.Value.String() == "json"
 }
 
 type updateCheckResult struct {
