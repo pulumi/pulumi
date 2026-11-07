@@ -1,0 +1,4 @@
+component: cli/new
+kind: fix
+body: Strip terminal control characters from template names, descriptions, and publishers before showing them in the `pulumi new` template listing
+time: 2026-10-14T12:00:00.000000+05:30
