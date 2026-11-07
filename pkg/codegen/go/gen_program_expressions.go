@@ -2190,6 +2190,36 @@ func (g *generator) genNYI(w io.Writer, reason string, vs ...any) {
 	g.Fgenf(w, "\"TODO: %s\"", fmt.Sprintf(reason, vs...))
 }
 
+// outputTypeName returns the name of the Go SDK output type that holds values of type t, such as
+// pulumi.StringOutput for a string or pulumi.StringPtrOutput for an optional string.
+func (g *generator) outputTypeName(t model.Type) string {
+	retType := g.argumentTypeName(t, false /*isInput*/)
+	// TODO account for outputs in other namespaces like aws
+	// TODO[pulumi/pulumi#8453] incomplete pattern code below.
+	switch retType {
+	case "interface{}":
+		return "pulumi.AnyOutput"
+	case "[]string":
+		return "pulumi.StringArrayOutput"
+	}
+	// For map and list types the string form (e.g. "map[string]bool", "[]float64") cannot
+	// be turned into a valid pulumi output type via simple string manipulation, so use
+	// deferredOutputCastTypeParameter which already knows the correct names.
+	unwrapped := pcl.UnwrapOption(t)
+	_, isMap := unwrapped.(*model.MapType)
+	_, isList := unwrapped.(*model.ListType)
+	if isMap || isList {
+		return deferredOutputCastTypeParameter(t)
+	}
+	if after, ok := strings.CutPrefix(retType, "*"); ok {
+		retType = Title(after) + "Ptr"
+	}
+	if !strings.Contains(retType, ".") {
+		return fmt.Sprintf("pulumi.%sOutput", Title(retType))
+	}
+	return retType + "Output"
+}
+
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
 	applyArgs, then := pcl.ParseApplyCall(expr)
@@ -2197,35 +2227,7 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 		g.Fgenf(w, "%.v.%s()", source, accessor)
 		return
 	}
-	isInput := false
-	retType := g.argumentTypeName(then.Signature.ReturnType, isInput)
-	// TODO account for outputs in other namespaces like aws
-	// TODO[pulumi/pulumi#8453] incomplete pattern code below.
-	var typeAssertion string
-	switch retType {
-	case "interface{}":
-		typeAssertion = ".(pulumi.AnyOutput)"
-	case "[]string":
-		typeAssertion = ".(pulumi.StringArrayOutput)"
-	default:
-		// For map and list types the string form (e.g. "map[string]bool", "[]float64") cannot
-		// be turned into a valid pulumi output type via simple string manipulation, so use
-		// deferredOutputCastTypeParameter which already knows the correct names.
-		unwrappedRet := pcl.UnwrapOption(then.Signature.ReturnType)
-		_, isMap := unwrappedRet.(*model.MapType)
-		_, isList := unwrappedRet.(*model.ListType)
-		if isMap || isList {
-			typeAssertion = ".(" + deferredOutputCastTypeParameter(then.Signature.ReturnType) + ")"
-		} else {
-			if after, ok := strings.CutPrefix(retType, "*"); ok {
-				retType = Title(after) + "Ptr"
-			}
-			typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
-			if !strings.Contains(retType, ".") {
-				typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
-			}
-		}
-	}
+	typeAssertion := ".(" + g.outputTypeName(then.Signature.ReturnType) + ")"
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.Apply`

@@ -43,6 +43,7 @@ export const tupleOfOptional = [
     setRes.data.string,
     unsetRes.data.string,
 ];
+export const forOverTuple = [setRes.data].map(v => (v.string));
 const optionalLists = [
     setRes.data.numberArray,
     unsetRes.data.numberArray,
