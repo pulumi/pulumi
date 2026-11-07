@@ -476,16 +476,17 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 
 		ssm.manager.markOperationComplete(step.New())
 		if successful {
-			ssm.manager.markDone(step.Old())
-
 			// In the case of a 'resource create' in a program that wasn't specified by the user in the
 			// --target list, we *never* want to write this to the checkpoint.  We treat it as if it
 			// doesn't exist at all.  That way when the program runs the next time, we'll actually
 			// create it.
-			if isSameStep && sameStep.IsSkippedCreate() {
+			// Untargeted same steps that preserve their old state must also skip markDone, leaving
+			// that state in the base snapshot at its original position.
+			if isSameStep && !sameStep.ShouldPersist() {
 				return false
 			}
 
+			ssm.manager.markDone(step.Old())
 			ssm.manager.markNew(step.New())
 
 			// Note that "Same" steps only consider input and provider diffs, so it is possible to see a same step for a
