@@ -1,0 +1,4 @@
+component: engine
+kind: fix
+body: Allow a plain provider plugin and a parameterized package of the same name in one program or state, instead of failing with "provided by more than one plugin"
+time: 2026-11-06T00:00:00Z
