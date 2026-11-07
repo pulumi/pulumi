@@ -835,6 +835,18 @@ func (pc *Client) GetDefaultOrg(ctx context.Context) (apitype.GetDefaultOrganiza
 	return resp, nil
 }
 
+// GetDefaultStackConfigMode returns the organization's default stack config mode, or "" when the service reports none:
+// the setting is not in effect for the organization, or the service predates it.
+func (pc *Client) GetDefaultStackConfigMode(ctx context.Context, orgName string) (apitype.StackConfigMode, error) {
+	var resp struct {
+		DefaultStackConfigMode apitype.StackConfigMode `json:"defaultStackConfigMode"`
+	}
+	if err := pc.restCall(ctx, "GET", "/api/orgs/"+url.PathEscape(orgName)+"/metadata", nil, nil, &resp); err != nil {
+		return "", err
+	}
+	return resp.DefaultStackConfigMode, nil
+}
+
 // ListStacksFilter describes optional filters when listing stacks.
 type ListStacksFilter struct {
 	Project      *string
@@ -1311,6 +1323,7 @@ func (pc *Client) CreateStack(
 	state *apitype.UntypedDeployment,
 	config *apitype.StackConfig,
 	managedEnvironment bool,
+	configMode apitype.CreateStackConfigMode,
 ) (apitype.Stack, CreateStackDetails, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackTags(tags); err != nil {
@@ -1323,6 +1336,10 @@ func (pc *Client) CreateStack(
 		OrgName:     stackID.Owner,
 		Tags:        tags,
 	}
+	var configModeField *apitype.CreateStackConfigMode
+	if configMode != "" {
+		configModeField = &configMode
+	}
 	createStackReq := apitype.CreateStackRequest{
 		StackName:                stackID.Stack.String(),
 		Tags:                     tags,
@@ -1330,6 +1347,7 @@ func (pc *Client) CreateStack(
 		State:                    state,
 		Config:                   config,
 		CreateManagedEnvironment: managedEnvironment,
+		ConfigMode:               configModeField,
 	}
 
 	var createStackResp apitype.CreateStackResponse
