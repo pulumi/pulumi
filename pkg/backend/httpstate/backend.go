@@ -1887,7 +1887,10 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
 	}
 
-	reqOpts := client.UpdateRequestOptions{Environment: op.StackConfiguration.ManagedEnvironment}
+	reqOpts := client.UpdateRequestOptions{
+		Environment:         op.StackConfiguration.ManagedEnvironment,
+		DeliveryEnvironment: op.StackConfiguration.DeliveryEnvironment,
+	}
 
 	var update client.UpdateIdentifier
 	var version int

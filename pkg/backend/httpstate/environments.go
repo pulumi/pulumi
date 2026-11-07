@@ -16,6 +16,7 @@ package httpstate
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -81,6 +82,22 @@ func (b *cloudBackend) OpenYAMLEnvironment(
 		return nil, convertESCDiags(diags), err
 	}
 	env, err := b.escClient.GetAnonymousOpenEnvironment(ctx, org, id)
+	return env, nil, err
+}
+
+func (b *cloudBackend) OpenEnvironmentRevision(
+	ctx context.Context,
+	org string,
+	project string,
+	name string,
+	revision int,
+	duration time.Duration,
+) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+	id, diags, err := b.escClient.OpenEnvironment(ctx, org, project, name, strconv.Itoa(revision), duration)
+	if err != nil || len(diags) != 0 {
+		return nil, convertESCDiags(diags), err
+	}
+	env, err := b.escClient.GetOpenEnvironment(ctx, org, project, name, id)
 	return env, nil, err
 }
 

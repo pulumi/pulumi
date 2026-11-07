@@ -311,6 +311,16 @@ type EnvironmentsBackend interface {
 		duration time.Duration,
 		environmentOverrides map[string]string,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+
+	// OpenEnvironmentRevision opens a revision of the environment project/name.
+	OpenEnvironmentRevision(
+		ctx context.Context,
+		org string,
+		project string,
+		name string,
+		revision int,
+		duration time.Duration,
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
 // ManagedEnvironmentEvaluation is the result of evaluating a stack's managed environment definition.
@@ -395,6 +405,10 @@ type StackConfiguration struct {
 	// ManagedEnvironment is the revision or draft of the stack's managed ESC environment that Environment came from;
 	// nil for unmanaged stacks.
 	ManagedEnvironment *apitype.UpdateProgramEnvironment
+
+	// DeliveryEnvironment is the revision of the stack's Pulumi Delivery environment that was composed into Environment;
+	// nil if there was none.
+	DeliveryEnvironment *apitype.StackDeliveryEnvironment
 }
 
 // LatestConfiguration holds the configuration retrieved from the most recent deployment.

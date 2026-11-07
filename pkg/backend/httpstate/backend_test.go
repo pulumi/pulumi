@@ -1708,6 +1708,7 @@ func TestCreateAndStartUpdateSendsManagedEnvironment(t *testing.T) {
 	t.Parallel()
 
 	managed := &apitype.UpdateProgramEnvironment{BaseRevision: 7, ChangeRequestID: "cr-1"}
+	delivery := &apitype.StackDeliveryEnvironment{Environment: "pulumi-delivery/program-id", Revision: 4}
 	for _, tc := range []struct {
 		name        string
 		beginUpdate bool
@@ -1741,6 +1742,7 @@ func TestCreateAndStartUpdateSendsManagedEnvironment(t *testing.T) {
 			})
 			fx.op.M = &backend.UpdateMetadata{}
 			fx.op.StackConfiguration.ManagedEnvironment = managed
+			fx.op.StackConfiguration.DeliveryEnvironment = delivery
 
 			stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
 			_, _, err := fx.backend.createAndStartUpdate(t.Context(), apitype.PreviewUpdate, stk, &fx.op, true)
@@ -1750,16 +1752,20 @@ func TestCreateAndStartUpdateSendsManagedEnvironment(t *testing.T) {
 			defer mu.Unlock()
 			require.NotEmpty(t, body)
 			var sent struct {
-				Environment *apitype.UpdateProgramEnvironment `json:"environment"`
-				Program     struct {
-					Environment *apitype.UpdateProgramEnvironment `json:"environment"`
+				Environment         *apitype.UpdateProgramEnvironment `json:"environment"`
+				DeliveryEnvironment *apitype.StackDeliveryEnvironment `json:"deliveryEnvironment"`
+				Program             struct {
+					Environment         *apitype.UpdateProgramEnvironment `json:"environment"`
+					DeliveryEnvironment *apitype.StackDeliveryEnvironment `json:"deliveryEnvironment"`
 				} `json:"program"`
 			}
 			require.NoError(t, json.Unmarshal(body, &sent))
 			if tc.beginUpdate {
 				assert.Equal(t, managed, sent.Program.Environment)
+				assert.Equal(t, delivery, sent.Program.DeliveryEnvironment)
 			} else {
 				assert.Equal(t, managed, sent.Environment)
+				assert.Equal(t, delivery, sent.DeliveryEnvironment)
 			}
 		})
 	}
