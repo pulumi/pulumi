@@ -16,8 +16,11 @@ package display
 
 import (
 	"bytes"
+	"encoding/json"
+	"math/rand"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -522,6 +525,191 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 				tt.truncateOutput, /* truncateOutput */
 			)
 			require.Equal(t, tt.expected, s)
+		})
+	}
+}
+
+// randomText returns lines newline-separated lines of width pseudo-random lowercase characters.
+func randomText(seed int64, width int, lines int) string {
+	r := rand.New(rand.NewSource(seed)) //nolint:gosec // Deterministic test data.
+	var sb strings.Builder
+	for l := range lines {
+		if l > 0 {
+			sb.WriteByte('\n')
+		}
+		for range width {
+			sb.WriteByte(byte('a' + r.Intn(26)))
+		}
+	}
+	return sb.String()
+}
+
+// renderStringDiff renders a diff of a changed string property, failing the test if it takes too long.
+func renderStringDiff(t *testing.T, old, new string, truncateOutput bool) string {
+	t.Helper()
+
+	diff := resource.NewPropertyMapFromMap(map[string]any{"value": old}).
+		Diff(resource.NewPropertyMapFromMap(map[string]any{"value": new}))
+	require.NotNil(t, diff)
+
+	done := make(chan string, 1)
+	go func() {
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, *diff, nil, false, 1, false, truncateOutput, false, false, nil)
+		done <- buf.String()
+	}()
+	select {
+	case out := <-done:
+		return out
+	case <-time.After(30 * time.Second):
+		t.Fatal("timed out rendering a text diff")
+		return ""
+	}
+}
+
+// A formatting-only change deep inside a large JSON value must stay visible in the diff.
+func TestTextDiffReformattedJSONShowsChange(t *testing.T) {
+	t.Parallel()
+
+	values := make([]int, 2000)
+	for i := range values {
+		values[i] = i
+	}
+	b, err := json.MarshalIndent(values, "", "  ")
+	require.NoError(t, err)
+	old := string(b)
+	new := strings.Replace(old, "  1000,", "  1000, ", 1)
+
+	for _, truncateOutput := range []bool{true, false} {
+		out := renderStringDiff(t, old, new, truncateOutput)
+		assert.Contains(t, out, `1000,<{%reset%}><{%fg 2%}> <{%reset%}>`, "truncateOutput=%v", truncateOutput)
+	}
+}
+
+func TestTextDiffLimits(t *testing.T) {
+	t.Parallel()
+
+	const marker = "detailed diff omitted"
+
+	bigOld := randomText(1, 1<<20, 1)
+	bigNew := randomText(2, 1<<20, 1)
+	smallEdit := bigOld[:1<<19] + "!" + bigOld[1<<19+1:]
+	linesOld := randomText(1, 20, 10_000)
+	linesNew := randomText(2, 20, 10_000)
+	scattered := strings.Split(linesOld, "\n")
+	for i := 0; i < len(scattered); i += 200 {
+		scattered[i] = "changed-" + scattered[i]
+	}
+	values := make([]int, 20_000)
+	for i := range values {
+		values[i] = i
+	}
+	minified, err := json.Marshal(values)
+	require.NoError(t, err)
+	indented, err := json.MarshalIndent(values, "", "  ")
+	require.NoError(t, err)
+	repeatedLines := strings.Repeat("same\n", 50_000)
+
+	tests := []struct {
+		name        string
+		old, new    string
+		untruncated bool
+		contains    []string
+		notContains []string
+		minLen      int // Set for values that are still diffed, which prints them in full.
+		maxLen      int // Set for values that are replaced or whose printed lines are truncated.
+	}{
+		{
+			name: "different single lines are replaced", old: bigOld, new: bigNew,
+			contains: []string{bigOld[:150] + "...", bigNew[:150] + "...", marker, "spans 1048576 characters"},
+			maxLen:   4096,
+		},
+		{
+			name: "different single lines are replaced in full", old: bigOld, new: bigNew, untruncated: true,
+			contains: []string{bigOld, bigNew, marker}, maxLen: 4 * (len(bigOld) + len(bigNew)),
+		},
+		{
+			name: "small edit in a large single line is diffed", old: bigOld, new: smallEdit,
+			contains: []string{"<{%fg 2%}>!"}, notContains: []string{marker}, minLen: len(bigOld),
+		},
+		{
+			name: "scattered edits in a large multi-line value are diffed", old: linesOld,
+			new:      strings.Join(scattered, "\n"),
+			contains: []string{"changed-" + scattered[0][len("changed-"):]}, notContains: []string{marker}, maxLen: 32768,
+		},
+		{
+			name: "rewritten multi-line value is replaced", old: linesOld, new: linesNew,
+			contains: []string{marker, "spans 10000 lines", " => "}, maxLen: 4096,
+		},
+		{
+			name: "rewritten multi-line value is shown as a line diff", old: linesOld, new: linesNew, untruncated: true,
+			contains: []string{
+				"- " + strings.SplitN(linesOld, "\n", 2)[0], "+ " + strings.SplitN(linesNew, "\n", 2)[0],
+				marker, "spans 10000 lines",
+			},
+			notContains: []string{" => "}, minLen: len(linesOld) + len(linesNew),
+		},
+		{
+			name: "lines appended after a final newline are diffed", old: "header\n",
+			new: "header\n" + strings.Repeat("new\n", 10_000) + "last", notContains: []string{marker},
+		},
+		{
+			name: "lines removed after a final newline are diffed", old: "header\n" + strings.Repeat("new\n", 10_000) + "last",
+			new: "header\n", notContains: []string{marker},
+		},
+		{
+			// The values decode to the same JSON, so the text is replaced and must be quoted only once.
+			name: "reformatted JSON is replaced", old: string(minified), new: string(indented),
+			contains: []string{`"[0,1,2,3`, marker}, notContains: []string{`\"[`}, maxLen: 4096,
+		},
+		{
+			name: "repeated characters with different ends", old: "X" + strings.Repeat("A", 200_000) + "Y",
+			new: "Z" + strings.Repeat("A", 200_000) + "W", untruncated: true,
+		},
+		{
+			name: "repeated lines with different ends", old: "x\n" + repeatedLines + "y",
+			new: "z\n" + repeatedLines + "w", untruncated: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			out := renderStringDiff(t, tt.old, tt.new, !tt.untruncated)
+			for _, s := range tt.contains {
+				assert.Contains(t, out, s)
+			}
+			for _, s := range tt.notContains {
+				assert.NotContains(t, out, s)
+			}
+			if tt.minLen > 0 {
+				assert.Greater(t, len(out), tt.minLen)
+			}
+			if tt.maxLen > 0 {
+				assert.Less(t, len(out), tt.maxLen)
+			}
+		})
+	}
+}
+
+func TestEditDistanceWithin(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		a, b     string
+		expected bool
+	}{
+		{"equal", "hello", "hello", true},
+		{"empty", "", "hello", true},
+		{"insert", "hello", "helllo", true},
+		{"substitute", "hello", "jello", true},
+		{"unrelated", randomText(1, 100_000, 1), randomText(2, 100_000, 1), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.expected, editDistanceWithin([]rune(tt.a), []rune(tt.b)))
 		})
 	}
 }
