@@ -36,12 +36,12 @@ const (
 func AddConfigModeFlags(cmd *cobra.Command, escConfig, staticConfig *bool, exclusiveWith ...string) {
 	cmd.PersistentFlags().BoolVar(
 		escConfig, escConfigFlag, false,
-		"[EXPERIMENTAL] Create an ESC environment, managed by the stack, that holds the stack's configuration. "+
+		"Create an ESC environment, managed by the stack, that holds the stack's configuration. "+
 			"ESC encrypts secret config values; --secrets-provider applies only to secrets in the stack's state",
 	)
 	cmd.PersistentFlags().BoolVar(
 		staticConfig, staticConfigFlag, false,
-		"[EXPERIMENTAL] Keep the stack's configuration in its stack file, "+
+		"Keep the stack's configuration in its stack file, "+
 			"even if the organization defaults to an ESC environment",
 	)
 	cmd.MarkFlagsMutuallyExclusive(escConfigFlag, staticConfigFlag)
@@ -56,7 +56,7 @@ func AddConfigModeFlags(cmd *cobra.Command, escConfig, staticConfig *bool, exclu
 }
 
 func configModeFlagsVisible() bool {
-	return env.Experimental.Value()
+	return true
 }
 
 func followsOrgConfigDefault() bool {
