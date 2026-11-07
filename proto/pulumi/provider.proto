@@ -715,6 +715,29 @@ message CheckFailure {
 
     // The reason that the named property failed validation.
     string reason = 2;
+
+    // A product hint that is relevant to this failure, if any. The engine may show it to the user.
+    Hint hint = 3;
+}
+
+// `Hint` names a product hint that is relevant to a failure a provider reports, either in a
+// [](pulumirpc.CheckFailure) or in a [](pulumirpc.HintDetail) attached to an error. A product hint points the user to a
+// Pulumi feature that helps with this kind of failure. The provider says which hint is relevant, and the engine decides
+// whether to show it and what it says.
+enum Hint {
+    // No product hint is relevant.
+    HINT_UNSPECIFIED = 0;
+
+    // The failure comes from missing, rejected or expired credentials, so short-lived credentials from an identity
+    // provider, for example through OIDC, may help. Don't use it for configuration mistakes such as an unknown profile.
+    HINT_DYNAMIC_CREDENTIALS = 1;
+}
+
+// `HintDetail` is a type of error detail that a provider may attach to an error it returns from any call, such as
+// [](pulumirpc.ResourceProvider.Configure), to say which product hint is relevant to the failure.
+message HintDetail {
+    // The product hint.
+    Hint hint = 1;
 }
 
 // `DiffRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.DiffConfig) and

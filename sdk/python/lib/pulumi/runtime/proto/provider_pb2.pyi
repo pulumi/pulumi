@@ -34,6 +34,34 @@ else:
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
+class _Hint:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _HintEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_Hint.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    HINT_UNSPECIFIED: _Hint.ValueType  # 0
+    """No product hint is relevant."""
+    HINT_DYNAMIC_CREDENTIALS: _Hint.ValueType  # 1
+    """The failure comes from missing, rejected or expired credentials, so short-lived credentials from an identity
+    provider, for example through OIDC, may help. Don't use it for configuration mistakes such as an unknown profile.
+    """
+
+class Hint(_Hint, metaclass=_HintEnumTypeWrapper):
+    """`Hint` names a product hint that is relevant to a failure a provider reports, either in a
+    [](pulumirpc.CheckFailure) or in a [](pulumirpc.HintDetail) attached to an error. A product hint points the user to a
+    Pulumi feature that helps with this kind of failure. The provider says which hint is relevant, and the engine decides
+    whether to show it and what it says.
+    """
+
+HINT_UNSPECIFIED: Hint.ValueType  # 0
+"""No product hint is relevant."""
+HINT_DYNAMIC_CREDENTIALS: Hint.ValueType  # 1
+"""The failure comes from missing, rejected or expired credentials, so short-lived credentials from an identity
+provider, for example through OIDC, may help. Don't use it for configuration mistakes such as an unknown profile.
+"""
+global___Hint = Hint
+
 @typing.final
 class ProviderHandshakeRequest(google.protobuf.message.Message):
     """`ProviderHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Handshake) call."""
@@ -1024,19 +1052,43 @@ class CheckFailure(google.protobuf.message.Message):
 
     PROPERTY_FIELD_NUMBER: builtins.int
     REASON_FIELD_NUMBER: builtins.int
+    HINT_FIELD_NUMBER: builtins.int
     property: builtins.str
     """The input property that failed validation."""
     reason: builtins.str
     """The reason that the named property failed validation."""
+    hint: global___Hint.ValueType
+    """A product hint that is relevant to this failure, if any. The engine may show it to the user."""
     def __init__(
         self,
         *,
         property: builtins.str = ...,
         reason: builtins.str = ...,
+        hint: global___Hint.ValueType = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["property", b"property", "reason", b"reason"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["hint", b"hint", "property", b"property", "reason", b"reason"]) -> None: ...
 
 global___CheckFailure = CheckFailure
+
+@typing.final
+class HintDetail(google.protobuf.message.Message):
+    """`HintDetail` is a type of error detail that a provider may attach to an error it returns from any call, such as
+    [](pulumirpc.ResourceProvider.Configure), to say which product hint is relevant to the failure.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    HINT_FIELD_NUMBER: builtins.int
+    hint: global___Hint.ValueType
+    """The product hint."""
+    def __init__(
+        self,
+        *,
+        hint: global___Hint.ValueType = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["hint", b"hint"]) -> None: ...
+
+global___HintDetail = HintDetail
 
 @typing.final
 class DiffRequest(google.protobuf.message.Message):

@@ -753,6 +753,8 @@ export class CheckFailure extends jspb.Message {
     setProperty(value: string): CheckFailure;
     getReason(): string;
     setReason(value: string): CheckFailure;
+    getHint(): Hint;
+    setHint(value: Hint): CheckFailure;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckFailure.AsObject;
@@ -768,6 +770,27 @@ export namespace CheckFailure {
     export type AsObject = {
         property: string,
         reason: string,
+        hint: Hint,
+    }
+}
+
+export class HintDetail extends jspb.Message { 
+    getHint(): Hint;
+    setHint(value: Hint): HintDetail;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): HintDetail.AsObject;
+    static toObject(includeInstance: boolean, msg: HintDetail): HintDetail.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: HintDetail, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): HintDetail;
+    static deserializeBinaryFromReader(message: HintDetail, reader: jspb.BinaryReader): HintDetail;
+}
+
+export namespace HintDetail {
+    export type AsObject = {
+        hint: Hint,
     }
 }
 
@@ -1855,4 +1878,9 @@ export namespace View {
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
         outputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
+}
+
+export enum Hint {
+    HINT_UNSPECIFIED = 0,
+    HINT_DYNAMIC_CREDENTIALS = 1,
 }

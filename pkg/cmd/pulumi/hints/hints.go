@@ -32,6 +32,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -69,6 +70,9 @@ type manager struct {
 	mu         sync.Mutex
 	pending    []Hint
 	suppressed bool
+
+	// dynamicCredentialsHints lists, in order, the provider packages that sent the dynamic credentials hint.
+	dynamicCredentialsHints []tokens.Package
 
 	now       func() time.Time
 	statePath func() (string, error)

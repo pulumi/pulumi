@@ -23,6 +23,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 var (
@@ -167,4 +170,48 @@ func TestUnreadableStateShowsNothing(t *testing.T) {
 	// Make the state path a directory, so it can neither be read nor replaced.
 	tm.path = t.TempDir()
 	assert.Empty(t, tm.run(hintA))
+}
+
+func TestESCHintOnCredentialsFailure(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		record  map[tokens.Package]plugin.Hint
+		isCloud bool
+		want    string
+	}{
+		{
+			"aws on cloud",
+			map[tokens.Package]plugin.Hint{"aws": plugin.HintDynamicCredentials},
+			true,
+			"`pulumi env setup aws`",
+		},
+		{
+			"azure-native on cloud",
+			map[tokens.Package]plugin.Hint{"azure-native": plugin.HintDynamicCredentials},
+			true,
+			"`pulumi env setup azure`",
+		},
+		{"aws on diy", map[tokens.Package]plugin.Hint{"aws": plugin.HintDynamicCredentials}, false, ""},
+		{"unsupported package", map[tokens.Package]plugin.Hint{"random": plugin.HintDynamicCredentials}, true, ""},
+		{"unspecified hint", map[tokens.Package]plugin.Hint{"aws": plugin.HintUnspecified}, true, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tm := newTestManager(t)
+			tm.recordSuccessfulUpdate()
+			for pkg, hint := range tt.record {
+				tm.RecordHint(pkg, hint)
+			}
+			tm.offerFailureHints(func() bool { return tt.isCloud })
+			out := tm.run()
+			if tt.want == "" {
+				assert.Empty(t, out)
+			} else {
+				assert.Contains(t, out, tt.want)
+			}
+		})
+	}
 }
