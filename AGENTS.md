@@ -70,6 +70,7 @@ All commands assume you're at the repo root.
 ## Escalate immediately if
 
 - A change touches the public SDK surface (exported types/functions in `sdk/go/`, `sdk/nodejs/`, `sdk/python/`).
+- A change deprecates or replaces types in `sdk/go/common/apitype` with Cloud SDK types (see `sdk/go/common/apitype/AGENTS.md`).
 - A change touches the public CLI interface (`pkg/cmd/pulumi/`, built with `github.com/spf13/cobra`).
 - Requirements are ambiguous or conflicting.
 - Tests fail after two debugging attempts.
