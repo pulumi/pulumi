@@ -949,6 +949,111 @@ func TestRefreshProgramUpdateReplacedComponentProvider(t *testing.T) {
 	}
 }
 
+// TestUpdateCascadeReplacedProviderOfComponent covers the cascade form of
+// TestUpdateDeleteBeforeReplaceProviderOfComponent: the provider a component
+// refers to is deleted with a custom resource, and that resource is replaced
+// with delete-before-replace, so the provider is replaced with it.
+func TestUpdateCascadeReplacedProviderOfComponent(t *testing.T) {
+	t.Parallel()
+
+	// TODO[https://github.com/pulumi/pulumi/issues/24788]: In the cascade form the provider has
+	// already been deleted, and marked pending replacement, by the time its replacement is created,
+	// and both the snapshot manager and the journal drop a pending-replacement resource as soon as
+	// its replacement is created. Keeping it until the component is registered again needs changes
+	// there too.
+	t.Skip("Skipping: a cascade-replaced provider is removed from the state while a component still refers to it")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+
+	defProv := &pkgresource.State{
+		Type:   "pulumi:providers:pkgA",
+		URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::default",
+		Custom: true,
+		ID:     "id-default",
+	}
+	defRef, err := providers.NewReference(defProv.URN, defProv.ID)
+	require.NoError(t, err)
+	resT := &pkgresource.State{
+		Type:     "pkgA:m:typA",
+		URN:      "urn:pulumi:test-stack::test-project::pkgA:m:typA::resT",
+		Custom:   true,
+		ID:       "id-resT",
+		Provider: defRef.String(),
+		Inputs:   resource.PropertyMap{"foo": resource.NewProperty("bar")},
+		Outputs:  resource.PropertyMap{"foo": resource.NewProperty("bar")},
+	}
+	prov := &pkgresource.State{
+		Type:        "pulumi:providers:pkgA",
+		URN:         "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov",
+		Custom:      true,
+		ID:          "id-prov",
+		DeletedWith: resT.URN,
+	}
+	provRef, err := providers.NewReference(prov.URN, prov.ID)
+	require.NoError(t, err)
+	comp := &pkgresource.State{
+		Type:     "pkgA:m:TypeComp",
+		URN:      "urn:pulumi:test-stack::test-project::pkgA:m:TypeComp::comp",
+		Custom:   false,
+		Provider: provRef.String(),
+	}
+	snap := &deploy.Snapshot{Resources: []*pkgresource.State{defProv, resT, prov, comp}}
+	require.NoError(t, snap.VerifyIntegrity())
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs.Get("foo").Equals(req.NewInputs.Get("foo")) {
+						return plugin.DiffResult{
+							Changes:             plugin.DiffSome,
+							ReplaceKeys:         []resource.PropertyKey{"foo"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// Replacing resT cascades to the provider deleted with it.
+		newT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{"foo": resource.NewProperty("baz")},
+		})
+		require.NoError(t, err)
+		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
+			DeletedWith: newT.URN,
+		})
+		require.NoError(t, err)
+		ref, err := providers.NewReference(resp.URN, resp.ID)
+		require.NoError(t, err)
+		_, err = monitor.RegisterResource("pkgA:m:TypeComp", "comp", false, deploytest.ResourceOptions{
+			Provider: ref.String(),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+	snap, err = lt.TestOp(engine.Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), lt.TestUpdateOptions{
+			T:                t,
+			HostF:            hostF,
+			SkipDisplayTests: true,
+		},
+		false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
+	for _, res := range snap.Resources {
+		require.False(t, res.Delete, "%v is still pending deletion", res.URN)
+		require.False(t, res.PendingReplacement, "%v is still pending replacement", res.URN)
+		require.NotEqual(t, provRef.String(), res.Provider, "%v still refers to the old provider", res.URN)
+	}
+}
+
 // TestUpdateDeleteBeforeReplaceProviderOfComponent covers an update that
 // delete-before-replaces a provider that a component resource refers to. The
 // engine removes the old provider from the state as soon as the replacement is
@@ -957,9 +1062,6 @@ func TestRefreshProgramUpdateReplacedComponentProvider(t *testing.T) {
 // dependent replacements of the provider, but it never does that for components.
 func TestUpdateDeleteBeforeReplaceProviderOfComponent(t *testing.T) {
 	t.Parallel()
-
-	// TODO[https://github.com/pulumi/pulumi/issues/24788]: Fix the underlying issue and re-enable this test.
-	t.Skip("Skipping: delete-before-replace of a provider removes it from the state while a component still refers to it")
 
 	p := &lt.TestPlan{
 		Project: "test-project",
@@ -1007,7 +1109,7 @@ func TestUpdateDeleteBeforeReplaceProviderOfComponent(t *testing.T) {
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
-	_, err = lt.TestOp(engine.Update).RunStep(
+	snap, err = lt.TestOp(engine.Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), lt.TestUpdateOptions{
 			T:                t,
 			HostF:            hostF,
@@ -1015,4 +1117,15 @@ func TestUpdateDeleteBeforeReplaceProviderOfComponent(t *testing.T) {
 		},
 		false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
+	require.NoError(t, snap.VerifyIntegrity())
+
+	// The old provider is gone once the update finishes, and the component no
+	// longer refers to it.
+	require.Len(t, snap.Resources, 2)
+	newProv, newComp := snap.Resources[0], snap.Resources[1]
+	require.Equal(t, prov.URN, newProv.URN)
+	require.False(t, newProv.Delete)
+	require.NotEqual(t, prov.ID, newProv.ID)
+	require.Equal(t, comp.URN, newComp.URN)
+	require.NotEqual(t, provRef.String(), newComp.Provider)
 }

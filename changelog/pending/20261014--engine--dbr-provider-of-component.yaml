@@ -1,0 +1,3 @@
+component: engine
+kind: bug-fix
+body: Fix a snapshot integrity error when a provider that a component refers to is replaced with delete-before-replace
