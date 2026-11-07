@@ -81,7 +81,7 @@ a backing project runtime.`,
 			if err != nil {
 				return fmt.Errorf("load stack: %w", err)
 			}
-			snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
+			snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(lm))
 			if err != nil {
 				return fmt.Errorf("load stack snapshot: %w", err)
 			}
