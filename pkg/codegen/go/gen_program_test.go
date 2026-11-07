@@ -577,6 +577,60 @@ func main() {
 `, string(files["main.go"]))
 }
 
+// A for expression over an output collection is rewritten into an apply. The loop reads the
+// apply's parameter, so it must be generated inside the callback, not before the apply.
+func TestForExpressionOverOutputIsGeneratedInsideApply(t *testing.T) {
+	t.Parallel()
+
+	source := `
+resource "shuffle" "random:index/randomShuffle:RandomShuffle" {
+	inputs = ["a", "b"]
+}
+output "shouted" {
+	value = [for v in shuffle.results : "${v}!"]
+}`
+
+	program, diags, err := parseAndBindProgram(t, source, "for_over_output.pp")
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	files, diags, err := GenerateProgram(program)
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	assert.Equal(t, `package main
+
+import (
+	"fmt"
+
+	"github.com/pulumi/pulumi-random/sdk/v4/go/random"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
+
+func main() {
+	pulumi.Run(func(ctx *pulumi.Context) error {
+		shuffle, err := random.NewRandomShuffle(ctx, "shuffle", &random.RandomShuffleArgs{
+			Inputs: pulumi.StringArray{
+				pulumi.String("a"),
+				pulumi.String("b"),
+			},
+		})
+		if err != nil {
+			return err
+		}
+		ctx.Export("shouted", shuffle.Results.ApplyT(func(results []string) ([]string, error) {
+			var forResult0 []string
+			for _, v := range results {
+				forResult0 = append(forResult0, fmt.Sprintf("%v!", v))
+			}
+			return forResult0, nil
+		}).(pulumi.StringArrayOutput))
+		return nil
+	})
+}
+`, string(files["main.go"]))
+}
+
 func TestGenerateProjectDoesNotPanicWhenMissingVersion(t *testing.T) {
 	t.Parallel()
 
