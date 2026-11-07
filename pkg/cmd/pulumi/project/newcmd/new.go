@@ -97,6 +97,7 @@ type newArgs struct {
 	runtimeOptions       []string
 	remoteStackConfig    bool
 	escConfig            bool
+	staticConfig         bool
 	stdout               io.Writer
 	stderr               io.Writer
 }
@@ -694,7 +695,7 @@ func NewNewCmd() *cobra.Command {
 		"Store stack configuration remotely",
 	)
 	_ = cmd.PersistentFlags().MarkHidden("remote-stack-config")
-	cmdStack.AddESCConfigFlag(cmd, &args.escConfig, "remote-stack-config", "generate-only")
+	cmdStack.AddConfigModeFlags(cmd, &args.escConfig, &args.staticConfig, "remote-stack-config", "generate-only")
 
 	return cmd
 }

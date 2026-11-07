@@ -80,6 +80,7 @@ func (c *setupAnswers) createStack(
 		SecretsProvider:    args.secretsProvider,
 		UseRemoteConfig:    args.remoteStackConfig,
 		ManagedEnvironment: args.escConfig,
+		ConfigMode:         cmdStack.NewStackConfigMode(args.escConfig, args.staticConfig),
 		// The confirmation already showed the stack name, and the summary repeats it and names any
 		// managed environment.
 		Quiet: c.guided && c.stackName != "",
