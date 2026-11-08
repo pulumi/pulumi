@@ -174,6 +174,41 @@ func TestGenerateSelfReferencingResource(t *testing.T) {
 	}
 }
 
+func TestGenerateEnumInUpperCaseModule(t *testing.T) {
+	t.Parallel()
+
+	pkg, err := schema.ImportSpec(schema.PackageSpec{
+		Name: "example",
+		Resources: map[string]schema.ResourceSpec{
+			"example:myModule:Widget": {
+				InputProperties: map[string]schema.PropertySpec{
+					"color": {TypeSpec: schema.TypeSpec{Ref: "#/types/example:myModule:Color"}},
+				},
+			},
+		},
+		Types: map[string]schema.ComplexTypeSpec{
+			"example:myModule:Color": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{Type: "string"},
+				Enum:           []schema.EnumValueSpec{{Value: "red"}, {Value: "blue"}},
+			},
+		},
+	}, nil, schema.NewNullLoader(), schema.ValidationOptions{})
+	require.NoError(t, err)
+
+	files, err := GeneratePackage("test", pkg, nil, nil, false, nil)
+	require.NoError(t, err)
+
+	// Enum modules are generated in lower-cased directories, so the references to
+	// them from the surrounding module and from the enum type name must be
+	// lower-cased as well.
+	widget := string(files["mymodule/widget.ts"])
+	require.Contains(t, widget, "enums.mymodule.Color")
+	require.NotContains(t, widget, "enums.myModule.Color")
+
+	index := string(files["mymodule/index.ts"])
+	require.Contains(t, index, `export * from "../types/enums/mymodule";`)
+}
+
 func TestPascalCases(t *testing.T) {
 	t.Parallel()
 
