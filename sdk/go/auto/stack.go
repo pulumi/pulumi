@@ -363,7 +363,8 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	t.Close()
 	<-eventsDone
 
-	if len(summaryEvents) == 0 {
+	// Remote operations do not stream engine events, so no summary event is expected.
+	if len(summaryEvents) == 0 && !s.isRemote() {
 		return res, newAutoError(errors.New("failed to get preview summary"), stdout, stderr, code)
 	}
 	if len(summaryEvents) > 1 {
@@ -372,7 +373,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	res.StdOut = stdout
 	res.StdErr = stderr
-	res.ChangeSummary = summaryEvents[0].ResourceChanges
+	if len(summaryEvents) == 1 {
+		res.ChangeSummary = summaryEvents[0].ResourceChanges
+	}
 
 	return res, nil
 }
@@ -1504,8 +1507,11 @@ type PropertyDiff struct {
 
 // PreviewResult is the output of Stack.Preview() describing the expected set of changes from the next Stack.Up()
 type PreviewResult struct {
-	StdOut        string
-	StdErr        string
+	StdOut string
+	StdErr string
+	// ChangeSummary counts the planned changes by operation type. It is nil for remote
+	// previews, which do not stream engine events, so callers must not treat a nil
+	// ChangeSummary as "no changes"; inspect StdOut instead.
 	ChangeSummary map[apitype.OpType]int
 }
 
