@@ -1,0 +1,4 @@
+component: backend/diy
+kind: chore
+body: Remove support for non-project mode stores
+time: 2026-11-08T13:43:27.892239Z
