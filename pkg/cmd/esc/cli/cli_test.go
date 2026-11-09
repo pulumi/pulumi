@@ -2555,7 +2555,7 @@ func TestEnvChangeRequestRejectsNonEnvironment(t *testing.T) {
 		"diff":   "diff is only supported for environment drafts",
 		"rebase": "rebase is only supported for environment drafts",
 	} {
-		stderr, err := run("esc env change-request " + cmd + " " + id + "\n")
+		stderr, err := run("esc env approvals " + cmd + " " + id + "\n")
 		assert.Error(t, err, cmd) //nolint:forbidigo // pre-existing
 		assert.Contains(t, stderr, msg, cmd)
 	}

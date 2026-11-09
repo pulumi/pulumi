@@ -43,9 +43,9 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 	cr := &changeRequestCommand{env: env}
 
 	cmd := &cobra.Command{
-		Use:   "change-request",
-		Short: "[EXPERIMENTAL] Manage change requests",
-		Long: "[EXPERIMENTAL] Manage change requests\n" +
+		Use:   "approvals",
+		Short: "[EXPERIMENTAL] Manage approval requests",
+		Long: "[EXPERIMENTAL] Manage approval requests\n" +
 			"\n" +
 			"When an environment is protected by approval rules, changes to it go through a change request\n" +
 			"that must be approved before it is applied. Change requests are created by commands that accept\n" +
@@ -57,10 +57,10 @@ func newEnvChangeRequestCmd(env *envCommand) *cobra.Command {
 			"rebasing, and showing the events of change requests.",
 		Example: fmt.Sprintf("  # Propose a change, then review and apply it\n"+
 			"  %[1]s env set my-project/prod app.replicas 3 --draft\n"+
-			"  %[1]s env change-request list --env my-project/prod\n"+
-			"  %[1]s env change-request get <change-request-id>\n"+
-			"  %[1]s env change-request approve <change-request-id> -m \"Looks good\"\n"+
-			"  %[1]s env change-request apply <change-request-id>", env.esc.command),
+			"  %[1]s env approvals list --env my-project/prod\n"+
+			"  %[1]s env approvals get <change-request-id>\n"+
+			"  %[1]s env approvals approve <change-request-id> -m \"Looks good\"\n"+
+			"  %[1]s env approvals apply <change-request-id>", env.esc.command),
 		Args: cobra.NoArgs,
 	}
 
@@ -194,11 +194,11 @@ func newEnvChangeRequestLsCmd(cr *changeRequestCommand) *cobra.Command {
 			"This command lists the open change requests in an organization, optionally filtered to a single environment.\n" +
 			"Use --status to list change requests with a different status.\n",
 		Example: fmt.Sprintf("  # List open change requests in your default organization\n"+
-			"  %[1]s env change-request list\n\n"+
+			"  %[1]s env approvals list\n\n"+
 			"  # List open change requests for one environment\n"+
-			"  %[1]s env change-request list --env my-project/prod\n\n"+
+			"  %[1]s env approvals list --env my-project/prod\n\n"+
 			"  # List change requests with any status in another organization, as JSON\n"+
-			"  %[1]s env change-request list --organization my-org --status all --output json", cr.env.esc.command),
+			"  %[1]s env approvals list --organization my-org --status all --output json", cr.env.esc.command),
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
@@ -324,11 +324,11 @@ func newEnvChangeRequestGetCmd(cr *changeRequestCommand) *cobra.Command {
 			"\n" +
 			"This command shows a change request's status, description, and approvals, and the environment\n" +
 			"revision the draft is based on. If the environment has changed since then, use\n" +
-			"`env change-request rebase` to bring the draft up to date.\n",
+			"`env approvals rebase` to bring the draft up to date.\n",
 		Example: fmt.Sprintf("  # Show a change request\n"+
-			"  %[1]s env change-request get <change-request-id>\n\n"+
+			"  %[1]s env approvals get <change-request-id>\n\n"+
 			"  # Show a change request as JSON\n"+
-			"  %[1]s env change-request get <change-request-id> --output json", cr.env.esc.command),
+			"  %[1]s env approvals get <change-request-id> --output json", cr.env.esc.command),
 		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -450,14 +450,14 @@ func newEnvChangeRequestApproveCmd(cr *changeRequestCommand) *cobra.Command {
 		Long: "[EXPERIMENTAL] Approve a change request\n" +
 			"\n" +
 			"This command shows the change that the change request proposes and asks for confirmation,\n" +
-			"then approves its latest revision. Use `env change-request get` to see how many approvals\n" +
+			"then approves its latest revision. Use `env approvals get` to see how many approvals\n" +
 			"are still required.\n",
 		Example: fmt.Sprintf("  # Approve a change request\n"+
-			"  %[1]s env change-request approve <change-request-id>\n\n"+
+			"  %[1]s env approvals approve <change-request-id>\n\n"+
 			"  # Approve with a comment\n"+
-			"  %[1]s env change-request approve <change-request-id> -m \"Looks good\"\n\n"+
+			"  %[1]s env approvals approve <change-request-id> -m \"Looks good\"\n\n"+
 			"  # Show the proposed change without approving it\n"+
-			"  %[1]s env change-request approve <change-request-id> --dry-run", cr.env.esc.command),
+			"  %[1]s env approvals approve <change-request-id> --dry-run", cr.env.esc.command),
 		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -499,8 +499,8 @@ func newEnvChangeRequestUnapproveCmd(cr *changeRequestCommand) *cobra.Command {
 		Long: "[EXPERIMENTAL] Remove your approval from a change request\n" +
 			"\n" +
 			"This command withdraws an approval you gave earlier, for example if you approved by mistake.\n" +
-			"To reject a change request outright, use `env change-request close`.\n",
-		Example: fmt.Sprintf("  %[1]s env change-request unapprove <change-request-id>", cr.env.esc.command),
+			"To reject a change request outright, use `env approvals close`.\n",
+		Example: fmt.Sprintf("  %[1]s env approvals unapprove <change-request-id>", cr.env.esc.command),
 		Args:    cmdutil.SpecificArgs([]string{"change-request-id"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -532,11 +532,11 @@ func newEnvChangeRequestApplyCmd(cr *changeRequestCommand) *cobra.Command {
 			"This command shows the change that the change request proposes and asks for confirmation,\n" +
 			"then applies it to the environment. The change request must have all required approvals.\n",
 		Example: fmt.Sprintf("  # Apply a change request\n"+
-			"  %[1]s env change-request apply <change-request-id>\n\n"+
+			"  %[1]s env approvals apply <change-request-id>\n\n"+
 			"  # Apply without a confirmation prompt\n"+
-			"  %[1]s env change-request apply <change-request-id> --yes\n\n"+
+			"  %[1]s env approvals apply <change-request-id> --yes\n\n"+
 			"  # Show the proposed change without applying it\n"+
-			"  %[1]s env change-request apply <change-request-id> --dry-run", cr.env.esc.command),
+			"  %[1]s env approvals apply <change-request-id> --dry-run", cr.env.esc.command),
 		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -610,9 +610,9 @@ func newEnvChangeRequestCloseCmd(cr *changeRequestCommand) *cobra.Command {
 			"This command closes a change request without applying it. A closed change request cannot be\n" +
 			"reopened.\n",
 		Example: fmt.Sprintf("  # Close a change request\n"+
-			"  %[1]s env change-request close <change-request-id>\n\n"+
+			"  %[1]s env approvals close <change-request-id>\n\n"+
 			"  # Close with a comment explaining why\n"+
-			"  %[1]s env change-request close <change-request-id> -m \"Superseded by another change\"",
+			"  %[1]s env approvals close <change-request-id> -m \"Superseded by another change\"",
 			cr.env.esc.command),
 		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -655,8 +655,8 @@ func newEnvChangeRequestCommentCmd(cr *changeRequestCommand) *cobra.Command {
 		Long: "[EXPERIMENTAL] Comment on a change request\n" +
 			"\n" +
 			"This command adds a comment to a change request. To comment while approving or closing,\n" +
-			"use -m on `env change-request approve` or `env change-request close`.\n",
-		Example: fmt.Sprintf("  %[1]s env change-request comment <change-request-id> -m \"Can we lower the TTL?\"",
+			"use -m on `env approvals approve` or `env approvals close`.\n",
+		Example: fmt.Sprintf("  %[1]s env approvals comment <change-request-id> -m \"Can we lower the TTL?\"",
 			cr.env.esc.command),
 		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -690,7 +690,7 @@ func newEnvChangeRequestDiffCmd(cr *changeRequestCommand) *cobra.Command {
 			"\n" +
 			"This command shows the difference between the environment revision the draft is based on and\n" +
 			"the draft.\n",
-		Example: fmt.Sprintf("  %[1]s env change-request diff <change-request-id>", cr.env.esc.command),
+		Example: fmt.Sprintf("  %[1]s env approvals diff <change-request-id>", cr.env.esc.command),
 		Args:    cmdutil.SpecificArgs([]string{"change-request-id"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -731,9 +731,9 @@ func newEnvChangeRequestLogCmd(cr *changeRequestCommand) *cobra.Command {
 			"This command shows a change request's events, such as new revisions, approvals, comments, and\n" +
 			"status changes.\n",
 		Example: fmt.Sprintf("  # Show a change request's events\n"+
-			"  %[1]s env change-request log <change-request-id>\n\n"+
+			"  %[1]s env approvals log <change-request-id>\n\n"+
 			"  # Show a change request's events as JSON\n"+
-			"  %[1]s env change-request log <change-request-id> --output json", cr.env.esc.command),
+			"  %[1]s env approvals log <change-request-id> --output json", cr.env.esc.command),
 		Args: cmdutil.SpecificArgs([]string{"change-request-id"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -843,7 +843,7 @@ func newEnvChangeRequestRebaseCmd(cr *changeRequestCommand) *cobra.Command {
 			"If the draft conflicts with the current revision, the draft is left unchanged and\n" +
 			"each conflict is shown in the revision the draft is based on, the draft, and the current\n" +
 			"revision.\n",
-		Example: fmt.Sprintf("  %[1]s env change-request rebase <change-request-id>", cr.env.esc.command),
+		Example: fmt.Sprintf("  %[1]s env approvals rebase <change-request-id>", cr.env.esc.command),
 		Args:    cmdutil.SpecificArgs([]string{"change-request-id"}),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
