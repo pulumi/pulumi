@@ -1,4 +1,4 @@
 component: engine
 kind: fix
-body: Fix `up --plan` failing without an error when a stack output is a whole resource, and report plan violations found while finalizing stack outputs
+body: Report plan violations found while finalizing stack outputs instead of failing the update silently
 time: 2026-11-09T12:00:00.000000+00:00

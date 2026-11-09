@@ -176,47 +176,6 @@ func isInternalPlanKey(key resource.PropertyKey) bool {
 	return strings.HasPrefix(string(key), "_")
 }
 
-// previewResourceMarkerKey is added by the Node.js SDK to stack output objects that were derived from a resource. It is
-// only added during previews, so it must not be recorded as part of a plan's output constraints, otherwise the update
-// that executes the plan will never match it.
-const previewResourceMarkerKey resource.PropertyKey = "@isPulumiResource"
-
-// removePreviewResourceMarkers returns a copy of the given property map with any preview-only resource markers removed
-// from nested objects.
-func removePreviewResourceMarkers(props resource.PropertyMap) resource.PropertyMap {
-	if props == nil {
-		return nil
-	}
-	result := make(resource.PropertyMap, len(props))
-	for k, v := range props {
-		result[k] = removePreviewResourceMarkersFromValue(v)
-	}
-	return result
-}
-
-func removePreviewResourceMarkersFromValue(v resource.PropertyValue) resource.PropertyValue {
-	switch {
-	case v.IsObject():
-		obj := removePreviewResourceMarkers(v.ObjectValue())
-		delete(obj, previewResourceMarkerKey)
-		return resource.NewProperty(obj)
-	case v.IsArray():
-		arr := make([]resource.PropertyValue, len(v.ArrayValue()))
-		for i, elem := range v.ArrayValue() {
-			arr[i] = removePreviewResourceMarkersFromValue(elem)
-		}
-		return resource.NewProperty(arr)
-	case v.IsSecret():
-		return resource.MakeSecret(removePreviewResourceMarkersFromValue(v.SecretValue().Element))
-	case v.IsOutput():
-		out := v.OutputValue()
-		out.Element = removePreviewResourceMarkersFromValue(out.Element)
-		return resource.NewProperty(out)
-	default:
-		return v
-	}
-}
-
 func NewPlanDiff(inputDiff *resource.ObjectDiff) PlanDiff {
 	var diff PlanDiff
 	if inputDiff != nil {
