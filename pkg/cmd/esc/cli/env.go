@@ -98,6 +98,15 @@ func newEnvCmd(esc *escCommand) *cobra.Command {
 	cmd.AddCommand(newEnvScheduleCmd(env))
 	cmd.AddCommand(newEnvChangeRequestCmd(env))
 
+	changeRequest := newEnvChangeRequestCmd(env)
+	changeRequest.Use = "change-request"
+	changeRequest.Hidden = true
+	changeRequest.Deprecated = "use `env approvals` instead"
+	for _, c := range changeRequest.Commands() {
+		c.Deprecated = fmt.Sprintf("use `env approvals %v` instead", c.Name())
+	}
+	cmd.AddCommand(changeRequest)
+
 	return cmd
 }
 
