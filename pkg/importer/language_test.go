@@ -546,8 +546,8 @@ func TestSanitizeName(t *testing.T) {
 		{"m[0].inner", "m_0__inner"},
 		{`m["us-east"].inner`, "m__us-east___inner"},
 		{`m["a b"].inner`, "m__a_b___inner"},
-		{"default/nginx", "default/nginx"},
-		{"imported resource", "imported resource"},
+		{"default/nginx", "default_nginx"},
+		{"imported resource", "imported_resource"},
 	}
 
 	for _, tt := range tests {
