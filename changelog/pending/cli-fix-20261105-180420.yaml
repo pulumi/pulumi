@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Fix a panic when `PULUMI_OPTION_*` environment variables set `int32`, `int64`, `duration`, or delimiter flags, such as `PULUMI_OPTION_PARALLEL`
+time: 2026-11-05T18:04:20.831994-08:00

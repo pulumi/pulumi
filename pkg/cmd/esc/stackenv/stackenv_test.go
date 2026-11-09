@@ -150,6 +150,7 @@ func TestEvaluateUnchanged(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, diags)
 	assert.Equal(t, 7, got.BaseRevision)
+	assert.Equal(t, []byte(publishedDefinition), got.PublishedDefinition)
 	assert.Empty(t, got.ChangeRequestID)
 	assert.Equal(t, "open-published", openedID(t, got))
 	assert.Equal(t, []string{
@@ -169,6 +170,7 @@ func TestEvaluateChanged(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, diags)
 	assert.Equal(t, 7, got.BaseRevision)
+	assert.Equal(t, []byte(publishedDefinition), got.PublishedDefinition)
 	assert.Equal(t, "cr-1", got.ChangeRequestID)
 	assert.Equal(t, 0, got.DraftRevision)
 	assert.Equal(t, "open-draft", openedID(t, got))
@@ -253,15 +255,23 @@ func TestEvaluateErrors(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, apiErr.Code)
 	})
 
-	t.Run("draft create fails", func(t *testing.T) {
+	t.Run("draft create forbidden", func(t *testing.T) {
 		t.Parallel()
 		svc := &fakeService{createStatus: http.StatusForbidden}
+		c := svc.newClient(t)
+		_, _, err := Evaluate(t.Context(), c, "org", "proj", "env", []byte("values:\n  a: 2\n"), time.Hour)
+		require.EqualError(t, err, "you need write access to environment proj/env to evaluate local changes to it")
+	})
+
+	t.Run("draft create fails", func(t *testing.T) {
+		t.Parallel()
+		svc := &fakeService{createStatus: http.StatusConflict}
 		c := svc.newClient(t)
 		_, _, err := Evaluate(t.Context(), c, "org", "proj", "env", []byte("values:\n  a: 2\n"), time.Hour)
 		require.ErrorContains(t, err, "creating a draft of managed environment proj/env: ")
 		var apiErr *client.EnvironmentErrorResponse
 		require.ErrorAs(t, err, &apiErr)
-		assert.Equal(t, http.StatusForbidden, apiErr.Code)
+		assert.Equal(t, http.StatusConflict, apiErr.Code)
 	})
 }
 

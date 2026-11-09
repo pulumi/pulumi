@@ -201,12 +201,7 @@ func (r *treeRenderer) render(termWidth int) {
 			return true
 		})
 	}
-	if len(r.systemMessages) == 0 && len(keys) > 0 {
-		// If we don't have system messages, but we do have progress events, show
-		// the progress. For the most part, we shouldn't have both at the same time,
-		// since the most common system messages refer to cancellation/SIGINT
-		// handling, at which point the program will be terminating. That said, if
-		// we do, we'll give the system messages priority.
+	if len(keys) > 0 {
 		slices.Sort(keys)
 
 		for _, key := range keys {
