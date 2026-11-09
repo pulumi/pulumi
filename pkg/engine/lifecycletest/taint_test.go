@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TestTaintReplacement tests that a tainted resource is replaced on update.
@@ -63,9 +64,9 @@ func TestTaintReplacement(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// Register the resource
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 		})
 		return err
 	})
@@ -145,9 +146,9 @@ func TestTaintMultipleResources(t *testing.T) {
 		// Register three resources
 		for _, name := range []string{"resA", "resB", "resC"} {
 			_, err := monitor.RegisterResource("pkgA:m:typA", name, true, deploytest.ResourceOptions{
-				Inputs: resource.PropertyMap{
-					"name": resource.NewProperty(name),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"name": property.New(name),
+				}),
 			})
 			if err != nil {
 				return err
@@ -223,9 +224,9 @@ func TestTaintWithPendingDelete(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// Register the current resource
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 		})
 		return err
 	})
@@ -331,9 +332,9 @@ func TestTaintNoChanges(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// Register the same resource with same properties
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 		})
 		return err
 	})
