@@ -151,7 +151,7 @@ You must have publish permissions for the package to delete it.`,
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
-			{Name: "package", Usage: "<source>/<publisher>/<name>@<version>"},
+			{Name: "package", Usage: "[[<source>/]<publisher>/]<name>[@<version>]"},
 		},
 		Required: 1,
 	})
