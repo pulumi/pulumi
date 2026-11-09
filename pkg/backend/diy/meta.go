@@ -89,11 +89,6 @@ func ensurePulumiMeta(ctx context.Context, b Bucket, e env.Env) (*pulumiMeta, er
 	}
 
 	useLegacy := len(refs) > 0
-	if !useLegacy {
-		// Allow opting into legacy mode for new states
-		// by setting the environment variable.
-		useLegacy = e.GetBool(env.DIYBackendLegacyLayout)
-	}
 
 	if useLegacy {
 		meta = &pulumiMeta{Version: 0}
