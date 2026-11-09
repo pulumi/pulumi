@@ -172,7 +172,7 @@ func TestOrgRoleList_InvalidOutput(t *testing.T) {
 	cmd := newOrgRoleListCmdWith(stubRoleFactory(&mockOrgRoleClient{roles: sampleRoles()}, "my-org"))
 	cmd.SetArgs([]string{"--output", "xml"})
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `output "xml" not supported`)
 }
 
@@ -182,7 +182,7 @@ func TestOrgRoleList_ClientError(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockOrgRoleClient{listErr: errors.New("server error")}
 	err := runOrgRoleList(t.Context(), &buf, stubRoleFactory(c, "my-org"), "", "", renderRoleListTable)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "listing organization roles")
 	assert.Contains(t, err.Error(), "server error")
 }
@@ -193,6 +193,6 @@ func TestOrgRoleList_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgRoleList(t.Context(), &buf,
 		failingRoleFactory(errors.New("not logged in")), "", "", renderRoleListTable)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }

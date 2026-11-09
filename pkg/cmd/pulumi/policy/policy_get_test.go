@@ -61,7 +61,7 @@ func TestParseOrgPolicyPackName(t *testing.T) {
 			t.Parallel()
 			org, name, err := parseOrgPolicyPackName(tt.in)
 			if tt.wantErr {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				return
 			}
 			require.NoError(t, err)
@@ -324,7 +324,7 @@ func TestPolicyGet_TooManyArgs(t *testing.T) {
 	t.Parallel()
 
 	_, err := executePolicyGetErr(t, samplePolicyGetClient(), "acme/aws-guardrails", "1.2.0", "extra")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestPolicyGet_NoPolicies_JSONEmptyArray(t *testing.T) {

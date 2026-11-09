@@ -175,7 +175,7 @@ func TestSelectLogsToRemoveByFilter(t *testing.T) {
 	t.Run("--before with bad value errors", func(t *testing.T) {
 		t.Parallel()
 		_, err := selectLogsToRemove(dir, "", "not-a-time", false)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("non-matching filter returns empty without erroring", func(t *testing.T) {

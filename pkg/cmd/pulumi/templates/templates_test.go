@@ -937,7 +937,7 @@ func TestRegistryTemplateResolution(t *testing.T) {
 					assert.Equal(t, tc.description, templates[0].Description())
 				}
 			} else {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				if tc.expectSpecificError != "" {
 					assert.Contains(t, err.Error(), tc.expectSpecificError)
 				} else {
@@ -1087,7 +1087,7 @@ func TestVersionedTemplateResolution(t *testing.T) {
 					assert.Equal(t, tc.description, templates[0].Description())
 				}
 			} else {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				if tc.expectSpecificError != "" {
 					assert.Contains(t, err.Error(), tc.expectSpecificError)
 				}
@@ -1128,7 +1128,7 @@ func TestVCSBackedTemplateRejectsVersion(t *testing.T) {
 		}))
 
 	_, err := source.Templates()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "VCS-backed")
 	assert.Contains(t, err.Error(), "does not support specific versions")
 }

@@ -130,7 +130,7 @@ func TestEnvVarMappingsOnNonProviderFails(t *testing.T) {
 
 	_, err := lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "envVarMappings can only be used with provider resources")
 }
 

@@ -200,7 +200,7 @@ func TestPluginInstallCancellation(t *testing.T) {
 
 		assertCorrectFailureMode := func(err error) {
 			if canceled {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 			}

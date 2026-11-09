@@ -114,7 +114,7 @@ func TestBuildablePackage(t *testing.T) {
 			is, err := IsBuildablePackage(dir)
 
 			if tt.errContains != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				require.Contains(t, err.Error(), tt.errContains)
 			} else {
 				require.NoError(t, err)

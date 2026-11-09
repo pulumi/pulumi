@@ -1777,7 +1777,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 			program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 				aErrorAssert := require.NoError
 				if tt.expectFail {
-					aErrorAssert = require.Error
+					aErrorAssert = require.Error //nolint:forbidigo // pre-existing
 				}
 				var aPkgProvider string
 				if tt.hasExplicit {
@@ -3535,7 +3535,7 @@ func TestRegisterResource(t *testing.T) {
 		_, err := rm.RegisterResource(t.Context(), &pulumirpc.RegisterResourceRequest{
 			StateMigrations: []*pulumirpc.Callback{{}},
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 		assert.ErrorContains(t, err, "state migrations are not supported by this deployment")
 	})

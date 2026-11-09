@@ -1865,7 +1865,7 @@ func TestResourcesTargeted(t *testing.T) {
 			Experimental: true,
 		},
 	}, false, p.BackendClient, nil, "0")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	// Check that running an update with the same Targets as the Plan succeeds.
 	expectError = false

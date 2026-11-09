@@ -205,7 +205,7 @@ func TestPolicyGroupEdit_NoFlagsChanged(t *testing.T) {
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
 			changed:      map[string]bool{},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t,
 		"no changes specified; pass at least one of --name, --add-stack, --remove-stack, "+
 			"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account, "+
@@ -225,7 +225,7 @@ func TestPolicyGroupEdit_UpdateError(t *testing.T) {
 			rename:       "production",
 			changed:      map[string]bool{"name": true},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "conflict", err.Error())
 	// The post-edit render is skipped on PATCH failure.
 	assert.Equal(t, 0, c.getCalls)
@@ -242,7 +242,7 @@ func TestPolicyGroupEdit_GetAfterEditError(t *testing.T) {
 			rename:       "production",
 			changed:      map[string]bool{"name": true},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "reading policy group after edit: boom", err.Error())
 }
 
@@ -257,7 +257,7 @@ func TestPolicyGroupEdit_FactoryError(t *testing.T) {
 			rename:       "production",
 			changed:      map[string]bool{"name": true},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "not logged in", err.Error())
 }
 
@@ -272,7 +272,7 @@ func TestPolicyGroupEdit_InvalidPolicyPackRef(t *testing.T) {
 			addPolicyPack: []string{"@1"},
 			changed:       map[string]bool{"add-policy-pack": true},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, `policy pack reference "@1" is missing a name`, err.Error())
 	assert.Empty(t, c.updates)
 }
@@ -366,7 +366,7 @@ func TestPolicyGroupEdit_ServiceErrorIsNotAConfigurationError(t *testing.T) {
 			accountRule:  "env=prod",
 			changed:      map[string]bool{"account-rule": true},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.NotErrorAs(t, err, &cmdCmd.ConfigurationError{})
 	assert.Equal(t, "[404] not found", err.Error())
 }
@@ -381,7 +381,7 @@ func TestPolicyGroupEdit_InvalidRule(t *testing.T) {
 			stackRule:    `{"__type": "PermissionExpressionStack"}`,
 			changed:      map[string]bool{"stack-rule": true},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.IsType(t, cmdCmd.ConfigurationError{}, err)
 	assert.Equal(t,
 		"invalid --stack-rule: invalid JSON expression: type 'PermissionExpressionStack' not recognized",

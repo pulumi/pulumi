@@ -253,6 +253,6 @@ func TestDefaultPrepareProjectUnknownRuntime(t *testing.T) {
 		},
 	}
 	err := pt.defaultPrepareProject(projinfo)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "unrecognized project runtime")
 }

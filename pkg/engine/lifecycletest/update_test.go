@@ -413,7 +413,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 	}
 
 	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
-	require.Error(t, err) // TODO: Change this to require.ErrorContains with the correct error message
+	require.Error(t, err) //nolint:forbidigo // TODO: Change this to require.ErrorContains with the correct error message
 }
 
 func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {

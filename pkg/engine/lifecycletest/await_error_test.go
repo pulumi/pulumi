@@ -73,7 +73,7 @@ func TestAwaitErrorCreate(t *testing.T) {
 	project := p.GetProject()
 
 	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	require.Error(t, err, "await failure should surface as an overall deployment error")
+	require.Error(t, err, "await failure should surface as an overall deployment error") //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 
 	var haveAwaiting, haveAfter bool
@@ -143,7 +143,7 @@ func TestAwaitErrorUpdate(t *testing.T) {
 	project := p.GetProject()
 
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, old), p.Options, false, p.BackendClient, nil, "0")
-	require.Error(t, err, "await failure should surface as an overall deployment error")
+	require.Error(t, err, "await failure should surface as an overall deployment error") //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 
 	var found *pkgresource.State

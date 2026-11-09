@@ -1268,7 +1268,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 						makeSpecAlias("resA", "", "", ""),
 					},
 				})
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 		case 2:
 			// Second test case, try and create a new B that aliases to A. First make the B with an alias...
@@ -1289,7 +1289,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 				"resA",
 				true,
 				deploytest.ResourceOptions{})
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 		}
 		return nil
 	})
@@ -1311,7 +1311,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	// Set mode to try and create A then a B that aliases to it, this should fail
 	mode = 1
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), snap.Resources[1].URN)
@@ -1319,7 +1319,7 @@ func TestDuplicatesDueToAliases(t *testing.T) {
 	// Set mode to try and create B first then a A, this should fail
 	mode = 2
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
 	// Because we made the B first that's what should end up in the state file
@@ -1808,7 +1808,7 @@ func TestSplitUpdateComponentAliases(t *testing.T) {
 	// registered.
 	mode = 1
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	require.Len(t, snap.Resources, 4)
@@ -1942,7 +1942,7 @@ func TestFailDeleteDuplicateAliases(t *testing.T) {
 	// resAX at this point because we're not being sent aliases.
 	mode = 2
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "3")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	assert.Nil(t, snap.VerifyIntegrity())
 	require.Len(t, snap.Resources, 3)

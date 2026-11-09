@@ -111,7 +111,7 @@ func ExpectDiagMessage(t *testing.T, messagePattern string) lt.ValidateFunc {
 		entries JournalEntries, events []Event,
 		err error,
 	) error {
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 		for i := range events {
 			if events[i].Type == "diag" {
@@ -283,7 +283,7 @@ func TestCheckFailureRecord(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return err
 	})
 
@@ -339,7 +339,7 @@ func TestCheckFailureInvalidPropertyRecord(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return err
 	})
 
@@ -447,7 +447,7 @@ func TestInvalidInputDiagnosticsRedactSecrets(t *testing.T) {
 					Remote: c.remote,
 					Inputs: inputs,
 				})
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				return err
 			})
 			hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -508,7 +508,7 @@ func TestLanguageHostDiagnostics(t *testing.T) {
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, err error,
 			) error {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				sawExitCode := false
 				for _, evt := range evts {
 					if evt.Type == DiagEvent {
@@ -571,7 +571,7 @@ func TestBrokenDecrypter(t *testing.T) {
 			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 				evts []Event, err error,
 			) error {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				decryptErr := err.(DecryptError)
 				assert.Equal(t, key, decryptErr.Key)
 				assert.ErrorContains(t, decryptErr.Err, msg)
@@ -594,7 +594,7 @@ func TestBadResourceType(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, mon *deploytest.ResourceMonitor) error {
 		_, err := mon.RegisterResource("very:bad", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		rpcerr, ok := rpcerror.FromError(err)
 		assert.True(t, ok)
 		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
@@ -613,7 +613,7 @@ func TestBadResourceType(t *testing.T) {
 			"",
 			"",
 		)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		rpcerr, ok = rpcerror.FromError(err)
 		assert.True(t, ok)
 		assert.Equal(t, codes.InvalidArgument, rpcerr.Code())
@@ -717,7 +717,7 @@ func TestProviderCancellation(t *testing.T) {
 	project, target := p.GetProject(), p.GetTarget(t, nil)
 
 	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	// Wait for the program to finish.
 	<-done
@@ -755,7 +755,7 @@ func TestLanguageRuntimeCancellation(t *testing.T) {
 	op := lt.TestOp(Update)
 	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
 
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "BAIL: canceled", err.Error())
 	assert.True(t, gracefulShutdown)
 }
@@ -1094,7 +1094,7 @@ func TestUpdatePartialFailure(t *testing.T) {
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
 			evts []Event, err error,
 		) error {
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 			for _, entry := range entries {
 				switch urn := entry.Step.URN(); urn {
 				case resURN:
@@ -1228,7 +1228,7 @@ func TestStackReference(t *testing.T) {
 			resource.NewPropertyMapFromMap(map[string]any{
 				"name": "rehto",
 			}), "", "", "", nil, "", "")
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return err
 	})
 	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
@@ -1246,7 +1246,7 @@ func TestStackReference(t *testing.T) {
 				"name": "other",
 				"foo":  "bar",
 			}), "", "", "", nil, "", "")
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return err
 	})
 	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
@@ -1384,7 +1384,7 @@ func TestStackReferenceRegister(t *testing.T) {
 				"name": "rehto",
 			}),
 		})
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return err
 	})
 	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
@@ -1403,7 +1403,7 @@ func TestStackReferenceRegister(t *testing.T) {
 				"foo":  "bar",
 			}),
 		})
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return err
 	})
 	p.Options = lt.TestUpdateOptions{T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)}
@@ -1492,7 +1492,7 @@ func TestLoadFailureShutdown(t *testing.T) {
 	project, target := p.GetProject(), p.GetTarget(t, nil)
 
 	_, err := op.Run(project, target, options, true, nil, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	close(sinkWriter.channel)
 	close(release)
@@ -2214,7 +2214,7 @@ func TestMissingRead(t *testing.T) {
 			"",
 			"",
 		)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -2933,7 +2933,7 @@ func TestProtect(t *testing.T) {
 	// Contrary to the preview, the error is a bail, so no resources are created.
 	expectError = true
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "2")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
@@ -2946,7 +2946,7 @@ func TestProtect(t *testing.T) {
 		"`pulumi state unprotect 'urn:pulumi:test::test::pkgA:m:typA::resA'`<{%reset%}>\n"
 	createResource = false
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "3")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 2)
 	assert.Equal(t, "created-id-0", snap.Resources[1].ID.String())
@@ -3306,7 +3306,7 @@ func TestInvalidGetIDReportsUserError(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", "", "", resource.PropertyMap{}, "", "", "", nil, "", "")
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -3704,7 +3704,7 @@ func TestPendingDeleteOrder(t *testing.T) {
 	})
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	// Assert that this fails, we should have two copies of A now, one new one and one old one pending delete
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
@@ -3862,7 +3862,7 @@ func TestPendingDeleteReplacement(t *testing.T) {
 	inB = "inactive"
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	// Assert that this fails, we should have two B's one marked to delete
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, snap)
 	require.Len(t, snap.Resources, 4)
 	assert.Equal(t, snap.Resources[1].Type, tokens.Type("pkgA:m:typA"))
@@ -5012,8 +5012,8 @@ func TestConstructHangsAfterRegisterResourceFailure(t *testing.T) {
 					_, err := monitor.RegisterResource("pkgA:m:typB", req.Name+"-child", true, deploytest.ResourceOptions{
 						Parent: req.Parent,
 					})
-					require.Error(t, err)
-					<-done // Simulate the construct call not returning.
+					require.Error(t, err) //nolint:forbidigo // pre-existing
+					<-done                // Simulate the construct call not returning.
 					return plugin.ConstructResponse{}, err
 				},
 			}, nil
@@ -5090,7 +5090,7 @@ func TestProgramError(t *testing.T) {
 	snap, err = lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NotNil(t, snap)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "program error")
 	require.Len(t, snap.Resources, 3)

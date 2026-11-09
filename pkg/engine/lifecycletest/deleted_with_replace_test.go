@@ -542,7 +542,7 @@ func TestDeletedWithProtectedDependentBlocksReplace(t *testing.T) {
 
 	ins["foo"] = resource.NewProperty("baz")
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.ErrorContains(t, err, "marked for protection")
 }
 

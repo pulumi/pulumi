@@ -50,11 +50,11 @@ func TestDuplicateURN(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 		// Reads use the same URN namespace as register so make sure this also errors
 		_, _, err = monitor.ReadResource("pkgA:m:typA", "resA", "id", "", resource.PropertyMap{}, "", "", "", nil, "", "")
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 		return nil
 	})
@@ -66,7 +66,7 @@ func TestDuplicateURN(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestDuplicateAlias tests that multiple new resources may not claim to be aliases for the same old resource.
@@ -108,12 +108,12 @@ func TestDuplicateAlias(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			AliasURNs: []resource.URN{resURN},
 		})
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		return nil
 	}
 
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestSecretMasked(t *testing.T) {

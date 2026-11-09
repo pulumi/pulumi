@@ -203,7 +203,7 @@ func TestOpenStackEnvUnsupportedBackend(t *testing.T) {
 	require.NoError(t, err)
 
 	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func getMockStackWithEnv(t *testing.T, env map[string]esc.Value) *backend.MockStack {
@@ -660,7 +660,7 @@ func TestOpenStackEnvError(t *testing.T) {
 	require.NoError(t, err)
 
 	_, _, err = openStackEnv(t.Context(), stack, &projectStack, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestParseConfigKey(t *testing.T) {
@@ -802,7 +802,7 @@ func TestParseConfigKey(t *testing.T) {
 			t.Parallel()
 			got, err := ParseConfigKey(ws, tt.input, tt.path)
 			if tt.wantErr != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.wantErr)
 				return
 			}

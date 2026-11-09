@@ -321,7 +321,7 @@ func TestErrorHooks_OldAndNewOptionsAreSentOnUpdate(t *testing.T) {
 	// Update fails; error hook should run and receive both old and new options.
 	isUpdate = true
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.True(t, hookCalled)
 }
 
@@ -548,7 +548,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Create_NoRetryWhenNoHook
 	}
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 0, hookCalls)
 }
 
@@ -700,7 +700,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Update_NoRetryWhenNoHook
 	// Update
 	isUpdate = true
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 0, hookCalls)
 }
 
@@ -836,7 +836,7 @@ func TestErrorHooks_RetrySemanticsAndNoRetryWhenNoHooks_Delete_NoRetryWhenNoHook
 	// Delete
 	programCreate = false
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 0, hookCalls)
 }
 
@@ -897,7 +897,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Create(t *testing.T) {
 	}
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 1, hookCalls)
 }
 
@@ -976,7 +976,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Update(t *testing.T) {
 	// Update should fail (no retry because hook returns false)
 	isUpdate = true
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 1, hookCalls)
 }
 
@@ -1040,7 +1040,7 @@ func TestErrorHooks_NoRetryIfAllHooksReturnFalse_Delete(t *testing.T) {
 	// Delete should fail (no retry because hook returns false)
 	programCreate = false
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 1, hookCalls)
 }
 
@@ -1251,7 +1251,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 	}
 
 	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.ErrorContains(t, err, "maximum number of error hook retries reached")
 
 		// The provider is invoked 100 times, but the hook is invoked 99 times because we stop once the max retry count
@@ -1283,7 +1283,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Create(t *testing.T) {
 
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validateWarn, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // The hook only gets tried up to 100 times.
@@ -1351,7 +1351,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
 	}
 	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.ErrorContains(t, err, "maximum number of error hook retries reached")
 
 		// The provider is invoked 100 times, but the hook is invoked 99 times because we stop once the max retry count
@@ -1395,7 +1395,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Update(t *testing.T) {
 		validateWarn,
 		"1",
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // The hook only gets tried up to 100 times.
@@ -1459,7 +1459,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 		return nil
 	}
 	validateWarn := func(_ workspace.Project, _ deploy.Target, _ JournalEntries, evts []Event, err error) error {
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.ErrorContains(t, err, "maximum number of error hook retries reached")
 
 		// The provider is invoked 100 times, but the hook is invoked 99 times because we stop once the max retry count
@@ -1502,7 +1502,7 @@ func TestErrorHooks_RetryLimitWarningAt100_Delete(t *testing.T) {
 		validateWarn,
 		"1",
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // Retrying and then failing still fails.
@@ -1571,7 +1571,7 @@ func TestErrorHooks_RetryThenNoRetry_OperationFails_Create(t *testing.T) {
 	}
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 2, hookCalls)
 }
 
@@ -2114,7 +2114,7 @@ func TestErrorHooks_PlainCreateErrorRunsOnErrorHook(t *testing.T) {
 	}
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, 1, hookCalls)
 }
 
