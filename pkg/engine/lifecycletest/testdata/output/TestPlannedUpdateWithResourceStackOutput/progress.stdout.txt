@@ -1,0 +1,16 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test-test running 
+ <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA resA <{%bold%}><{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack test-test <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Outputs:<{%reset%}>
+<{%fg 3%}>  ~ res: <{%reset%}><{%fg 3%}>{
+<{%reset%}><{%fg 2%}>      + @isPulumiResource: <{%reset%}><{%fg 2%}>true<{%reset%}><{%fg 2%}>
+<{%reset%}><{%reset%}>        id               : <{%reset%}><{%reset%}>"90a0b531-e052-47bd-97f2-7db1b878c755"<{%reset%}><{%reset%}>
+<{%reset%}><{%reset%}>        urn              : <{%reset%}><{%reset%}>"urn:pulumi:test::test::pkgA:m:typA::resA"<{%reset%}><{%reset%}>
+<{%reset%}><{%fg 3%}>    }
+<{%reset%}>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    2 unchanged
+

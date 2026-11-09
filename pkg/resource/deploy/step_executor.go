@@ -296,7 +296,11 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 	// If we're generating plans save these new outputs to the plan
 	if se.deployment.opts.GeneratePlan {
 		if resourcePlan, ok := se.deployment.newPlans.get(urn); ok {
-			resourcePlan.Goal.OutputDiff = NewPlanDiff(oldOuts.Diff(outs))
+			planOuts := outs
+			if urn.QualifiedType() == resource.RootStackType {
+				planOuts = removePreviewResourceMarkers(outs)
+			}
+			resourcePlan.Goal.OutputDiff = NewPlanDiff(oldOuts.Diff(planOuts))
 			resourcePlan.Outputs = outs
 		} else {
 			return fmt.Errorf(

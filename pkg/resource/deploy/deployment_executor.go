@@ -419,6 +419,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 			ex.deployment.PostStepError() != nil
 		finalizingStackOutputs := true
 		if err := ex.stepExec.executeRegisterResourceOutputs(e, errored, finalizingStackOutputs); err != nil {
+			if !result.IsBail(err) {
+				logging.V(4).Infof("deploymentExecutor.Execute(...): error finalizing stack outputs: %v", err)
+				ex.reportError(e.URN(), err)
+			}
 			return nil, result.BailError(err)
 		}
 	}
