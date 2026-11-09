@@ -124,10 +124,7 @@ func createPathedValue(
 var invalidNameCharacters = regexp.MustCompile(`[^\p{L}\p{N}_-]`)
 
 func sanitizeName(name string) string {
-	if strings.Contains(name, "[") {
-		return invalidNameCharacters.ReplaceAllString(name, "_")
-	}
-	return strings.ReplaceAll(name, ".", "_")
+return invalidNameCharacters.ReplaceAllString(name, "_")
 }
 
 func createImportState(states []*pkgresource.State, snapshot []*pkgresource.State, names NameTable) ImportState {
