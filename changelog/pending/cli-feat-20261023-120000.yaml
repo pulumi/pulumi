@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Add `pulumi auth check <provider>` to validate a cloud provider's credentials without running `pulumi up`
+time: 2026-10-23T12:00:00Z
