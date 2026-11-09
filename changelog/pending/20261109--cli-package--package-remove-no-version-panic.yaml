@@ -1,0 +1,3 @@
+component: cli/package
+kind: fix
+body: Fix a panic in `pulumi package remove` when no version is given
