@@ -11872,7 +11872,6 @@ class API:
         verbose: Optional[int] = None,
         name: Optional[str] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         search: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -11894,7 +11893,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param name: Filter to templates whose name matches the given value
         :param org: Filter to templates owned by the given organization
-        :param output: Output format. Supported values are: default and json
         :param search: Free-text search across name, display name, description, metadata values, and runtime
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -11904,6 +11902,7 @@ class API:
         __final.append("template")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -11930,8 +11929,6 @@ class API:
             __flags.extend(["--name", str(name)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if search is not None:
             __flags.extend(["--search", str(search)])
         __final.extend(__flags)

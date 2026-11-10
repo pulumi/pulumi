@@ -11970,6 +11970,8 @@ func (a *API) TemplateList(
 
 	final := []string{"template", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -12004,10 +12006,6 @@ func (a *API) TemplateList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {

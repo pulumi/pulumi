@@ -132,6 +132,13 @@
             }
         },
         {
+            "path": ["template", "list"],
+            "propagate": false,
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
+        },
+        {
             "path": ["whoami"],
             "propagate": false,
             "flags": {

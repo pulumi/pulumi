@@ -10501,6 +10501,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -10551,10 +10553,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.search != null) {
@@ -15477,8 +15475,6 @@ export interface PulumiTemplateListOptions extends BaseOptions {
     name?: string;
     /** Filter to templates owned by the given organization */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** Free-text search across name, display name, description, metadata values, and runtime */
     search?: string;
 }
