@@ -16,8 +16,8 @@
 //
 // Commands [Offer] hints while they run, and the root command calls [Flush] when it exits. Flush shows
 // at most one hint per command. A hint is shown only if hints are enabled, the user hasn't turned that
-// hint off, the user has completed at least one successful update, no hint of any kind was shown in the
-// last [GlobalCooldown], and the hint's own [Hint.Cooldown] has passed.
+// hint off, the user has completed at least one successful update, and the hint's own [Hint.Cooldown] has
+// passed.
 //
 // Users turn all hints off with PULUMI_DISABLE_HINTS or `hints.disabled` in the Pulumi config file, and
 // turn individual hints off by [Hint.ID] with PULUMI_SKIP_HINTS or `hints.skip`.
@@ -42,9 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// GlobalCooldown is the minimum time between any two hints.
-const GlobalCooldown = 24 * time.Hour
-
 // stateFileName is the name of the file under the Pulumi home directory that records when hints were shown.
 const stateFileName = "hints.json"
 
@@ -64,8 +61,6 @@ type state struct {
 	SuccessfulUpdate bool `json:"successfulUpdate,omitempty"`
 	// LastShown records when each hint was last shown, by hint ID.
 	LastShown map[string]time.Time `json:"lastShown,omitempty"`
-	// LastAnyShown records when any hint was last shown.
-	LastAnyShown time.Time `json:"lastAnyShown,omitzero"`
 }
 
 // manager holds the hints offered during this CLI process.
@@ -188,9 +183,6 @@ func (m *manager) flush(w io.Writer) {
 		return
 	}
 	now := m.now()
-	if now.Sub(st.LastAnyShown) < GlobalCooldown {
-		return
-	}
 	for _, h := range pending {
 		if settings.skip[h.ID] {
 			continue
@@ -205,7 +197,6 @@ func (m *manager) flush(w io.Writer) {
 			st.LastShown = map[string]time.Time{}
 		}
 		st.LastShown[h.ID] = now
-		st.LastAnyShown = now
 		if err := save(path, st); err != nil {
 			slog.Info("could not write hints state", "err", err)
 			return
