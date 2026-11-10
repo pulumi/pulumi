@@ -57,7 +57,9 @@ func TestAskConfirmationRendersBlock(t *testing.T) {
 		{"Project name", "my-project"},
 		{"Description", "A minimal AWS TypeScript Pulumi program"},
 		{"Stack name", "my-org/dev"},
-	}, []string{"aws:region = us-east-1", "aws:profile = default"})
+		{"Config", "aws:region = us-east-1"},
+		{"", "aws:profile = default"},
+	})
 	require.NoError(t, err)
 	assert.True(t, ok)
 
@@ -76,17 +78,19 @@ func TestAskConfirmationRendersBlock(t *testing.T) {
 	assert.Equal(t, []string{confirmYes, confirmChange}, (*offered)[0])
 }
 
-func TestAskConfirmationOmitsEmptyConfig(t *testing.T) {
+func TestConfigRowsLabelsOnlyTheFirstRow(t *testing.T) {
 	t.Parallel()
 
-	var out bytes.Buffer
-	opts := display.Options{Color: colors.Never, Stdout: &out}
-	sel, _ := scriptedSelect(t, confirmChange)
+	assert.Empty(t, (&setupAnswers{name: "p"}).configRows())
 
-	ok, err := askConfirmation(&out, opts, sel, []field{{"Project name", "p"}}, nil)
-	require.NoError(t, err)
-	assert.False(t, ok)
-	assert.NotContains(t, out.String(), "Config")
+	c := &setupAnswers{name: "p", config: &askedConfig{values: []templateConfigValue{
+		{key: config.MustMakeKey("aws", "region"), value: "us-east-1"},
+		{key: config.MustMakeKey("p", "token"), value: "hunter2", secret: true},
+	}}}
+	assert.Equal(t, []field{
+		{"Config", "aws:region = us-east-1"},
+		{"", "token = [secret]"},
+	}, c.configRows())
 }
 
 // runtimeOptionsNone is a promptRuntimeOptions that reports no additional runtime options,

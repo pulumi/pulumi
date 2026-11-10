@@ -351,7 +351,9 @@ func confirmGuidedValues(
 		rows = append(rows, field{"Stack name", c.stackName})
 	}
 
-	accepted, err := askConfirmation(args.stdout, opts, args.selectOne, rows, c.configLines())
+	rows = append(rows, c.configRows()...)
+
+	accepted, err := askConfirmation(args.stdout, opts, args.selectOne, rows)
 	if err != nil {
 		return nil, err
 	}
@@ -507,42 +509,41 @@ func (c *setupAnswers) repromptConfig(
 	return nil
 }
 
-// configLines renders each config value as `key = value`, hiding secrets.
-func (c *setupAnswers) configLines() []string {
+// configRows lists each config value as `key = value`, hiding secrets. Only the first row is
+// labelled, so the values read as one "Config" entry.
+func (c *setupAnswers) configRows() []field {
 	if c.config == nil {
 		return nil
 	}
-	lines := make([]string, 0, len(c.config.values))
-	for _, v := range c.config.values {
+	rows := make([]field, 0, len(c.config.values))
+	for i, v := range c.config.values {
 		value := v.value
 		if v.secret {
 			value = "[secret]"
 		}
-		lines = append(lines, cmdConfig.PrettyKeyForProject(v.key, tokens.PackageName(c.name))+" = "+value)
+		label := ""
+		if i == 0 {
+			label = "Config"
+		}
+		key := cmdConfig.PrettyKeyForProject(v.key, tokens.PackageName(c.name))
+		rows = append(rows, field{label, key + " = " + value})
 	}
-	return lines
+	return rows
 }
 
-func askConfirmation(
-	w io.Writer, opts display.Options, sel selectFunc, rows []field, configLines []string,
-) (bool, error) {
+func askConfirmation(w io.Writer, opts display.Options, sel selectFunc, rows []field) (bool, error) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, opts.Color.Colorize(colors.SpecSubHeadline+"Review your new project:"+colors.Reset))
 	fmt.Fprintln(w)
-	if len(configLines) > 0 {
-		rows = append(slices.Clip(rows), field{"Config", strings.Join(configLines, "\n")})
-	}
 	printFields(w, opts.Color, "  ", rows)
 	fmt.Fprintln(w)
 	i, err := sel("Create the project with these settings?", []string{confirmYes, confirmChange}, opts)
 	return i == 0, err
 }
 
-// field is a labelled value. A value with several lines lists one item per line.
 type field struct{ label, value string }
 
-// printFields prints fields as a table of plain labels and bold values, aligning every line of
-// each value in one column.
+// printFields prints fields as a table of plain labels and bold values.
 func printFields(w io.Writer, color colors.Colorization, indent string, fields []field) {
 	width := 0
 	for _, f := range fields {
@@ -550,11 +551,6 @@ func printFields(w io.Writer, color colors.Colorization, indent string, fields [
 	}
 	for _, f := range fields {
 		label := f.label + strings.Repeat(" ", width-len(f.label))
-		for i, line := range strings.Split(f.value, "\n") {
-			if i > 0 {
-				label = strings.Repeat(" ", width)
-			}
-			fmt.Fprintln(w, indent+label+"   "+color.Colorize(colors.SpecSubHeadline+line+colors.Reset))
-		}
+		fmt.Fprintln(w, indent+label+"   "+color.Colorize(colors.SpecSubHeadline+f.value+colors.Reset))
 	}
 }
