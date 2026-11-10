@@ -23,6 +23,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 var (
@@ -34,6 +36,7 @@ type testManager struct {
 	*manager
 	now      time.Time
 	disabled bool
+	skip     []string
 	ci       bool
 	path     string
 }
@@ -46,8 +49,14 @@ func newTestManager(t *testing.T) *testManager {
 	tm.manager = &manager{
 		now:       func() time.Time { return tm.now },
 		statePath: func() (string, error) { return tm.path, nil },
-		disabled:  func() bool { return tm.disabled },
-		isCI:      func() bool { return tm.ci },
+		settings: func() settings {
+			s := settings{disabled: tm.disabled, skip: map[string]bool{}}
+			for _, id := range tm.skip {
+				s.skip[id] = true
+			}
+			return s
+		},
+		isCI: func() bool { return tm.ci },
 	}
 	return tm
 }
@@ -111,6 +120,20 @@ func TestPerHintCooldown(t *testing.T) {
 	assert.Contains(t, tm.run(hintA), "hint a")
 }
 
+func TestSkippedHint(t *testing.T) {
+	t.Parallel()
+	tm := newTestManager(t)
+	tm.recordSuccessfulUpdate()
+	tm.skip = []string{"a"}
+
+	out := tm.run(hintA, hintB)
+	assert.NotContains(t, out, "hint a")
+	assert.Contains(t, out, "hint b")
+
+	tm.now = tm.now.Add(30 * 24 * time.Hour)
+	assert.Empty(t, tm.run(hintA))
+}
+
 func TestSuppressedDisabledAndCI(t *testing.T) {
 	t.Parallel()
 
@@ -167,4 +190,21 @@ func TestUnreadableStateShowsNothing(t *testing.T) {
 	// Make the state path a directory, so it can neither be read nor replaced.
 	tm.path = t.TempDir()
 	assert.Empty(t, tm.run(hintA))
+}
+
+// TestLoadSettings sets environment variables, so it can't run in parallel.
+func TestLoadSettings(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, dir)
+	t.Setenv("PULUMI_DISABLE_HINTS", "")
+	t.Setenv("PULUMI_SKIP_HINTS", " a, ,b ")
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "config.json"),
+		[]byte(`{"hints": {"skip": ["c"]}}`), 0o600))
+
+	s := loadSettings()
+	assert.False(t, s.disabled)
+	assert.Equal(t, map[string]bool{"a": true, "b": true, "c": true}, s.skip)
+
+	t.Setenv("PULUMI_DISABLE_HINTS", "true")
+	assert.True(t, loadSettings().disabled)
 }
