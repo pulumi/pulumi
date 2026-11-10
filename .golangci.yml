@@ -157,6 +157,10 @@ linters:
       forbid:
         - pattern: ^assert.NoError$
           msg: Use require.NoError instead
+        - pattern: ^assert\.Error$
+          msg: "assert.Error matches any error; use assert.ErrorIs, assert.ErrorContains, or assert.EqualError to assert the specific error"
+        - pattern: ^require\.Error$
+          msg: "require.Error matches any error; use require.ErrorIs, require.ErrorContains, or require.EqualError to assert the specific error"
         - pattern: ^assert.NotNil$
           msg: Use require.NotNil instead
         - pattern: ^assert.Len$
@@ -243,6 +247,7 @@ linters:
         text: '^(atomictypes|slicesbackward):'
     paths:
       - Godeps$
+      - sdk/go/tools/automation/boilerplate/
       - builtin$
       - node_modules
       - testdata$

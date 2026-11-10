@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Exit with code 3 from `pulumi api` commands when the access token is rejected
+time: 2026-11-05T13:46:42.720024-08:00

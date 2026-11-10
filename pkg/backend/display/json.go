@@ -47,6 +47,12 @@ func byteStringDisplay(s string) string {
 // not true any secret values are replaced with "[secret]". Strings containing bytes that are not valid UTF-8 are
 // replaced with their b"<base64>" rendering.
 func massagePropertyValue(v property.Value, showSecrets bool) property.Value {
+	if v.Secret() {
+		if !showSecrets {
+			return property.New("[secret]")
+		}
+		v = v.WithSecret(false)
+	}
 	switch {
 	case v.IsString() && !utf8.ValidString(v.AsString()):
 		return property.New(byteStringDisplay(v.AsString()))
@@ -64,10 +70,6 @@ func massagePropertyValue(v property.Value, showSecrets bool) property.Value {
 			new[k] = massagePropertyValue(e, showSecrets)
 		}
 		return property.New(new)
-	case v.Secret() && showSecrets:
-		return massagePropertyValue(v.WithSecret(false), showSecrets)
-	case v.Secret():
-		return property.New("[secret]")
 	default:
 		return v
 	}

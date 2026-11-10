@@ -501,7 +501,7 @@ export function readResource(
  */
 export function existsResource(
     type: string,
-    id: Input<ID>,
+    id: Input<string>,
     props?: Inputs,
     opts?: CustomResourceOptions,
     packageRef?: Promise<string | undefined>,
@@ -1430,7 +1430,9 @@ async function resolveOutputs(
     // outputs.  If the same property exists in the inputs and outputs states, the output wins.
     const allProps: Record<string, any> = {};
     if (outputs) {
-        Object.assign(allProps, deserializeProperties(outputs, keepUnknowns));
+        // Unknown outputs from the engine are always unknown, even during an update: a resource's outputs may
+        // depend on resources that failed or are awaiting.
+        Object.assign(allProps, deserializeProperties(outputs, true));
     }
 
     const label = `resource:${name}[${t}]#...`;

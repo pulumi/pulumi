@@ -485,6 +485,7 @@ func TestImporterParameterizedProvider(t *testing.T) {
 			ctx: ctx,
 		},
 		deployment: &Deployment{
+			opts:  &Options{},
 			goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 			target: &Target{
@@ -556,6 +557,7 @@ func TestImporterParameterizedExplicitProvider(t *testing.T) {
 			ctx: ctx,
 		},
 		deployment: &Deployment{
+			opts:  &Options{},
 			goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 			target: &Target{
@@ -626,6 +628,7 @@ func TestImporterParameterizedDeclaredProvider(t *testing.T) {
 			ctx: ctx,
 		},
 		deployment: &Deployment{
+			opts:  &Options{},
 			goals: &gsync.Map[urn.URN, *pkgresource.Goal]{},
 			ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
 			target: &Target{

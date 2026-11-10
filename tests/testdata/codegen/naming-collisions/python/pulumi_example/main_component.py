@@ -95,3 +95,9 @@ class MainComponent(pulumi.CustomResource):
 
         return MainComponent(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'example::MainComponent', id, __props__, opts or pulumi.ResourceOptions())
+

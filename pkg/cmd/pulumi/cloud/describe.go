@@ -85,8 +85,7 @@ func runDescribe(
 
 	resolved, err := ResolveContext(ctx)
 	if err != nil {
-		return NewAPIError(cmdutil.ExitInternalError, ErrToolError,
-			fmt.Sprintf("resolving cloud context: %v", err))
+		return resolveContextError(err)
 	}
 
 	idx, err := LoadIndex(ctx, resolved, warnW, refresh)

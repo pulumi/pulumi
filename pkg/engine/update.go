@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -208,6 +209,9 @@ type RequiredPolicy interface {
 	// ResolveEnvironments opens any referenced ESC environments and returns
 	// resolved config and environment variables. Returns nil, nil if no environments are referenced.
 	ResolveEnvironments(ctx context.Context) (*ResolvedPolicyEnvironment, error)
+	// Exceptions returns the PolicyPack's active policy exceptions, keyed by exception ID.
+	// Each value should be an apitype.PolicyException.
+	Exceptions() map[string]json.RawMessage
 }
 
 // LocalPolicyPack represents a set of local Policy Packs to apply during an update.
@@ -293,18 +297,20 @@ func LoadLocalPolicyPackAnalyzers(
 		if err != nil {
 			return nil, err
 		}
+		var configFromFile map[string]plugin.AnalyzerPolicyConfig
+		if pack.Config != "" {
+			file, err := resourceanalyzer.LoadPolicyPackConfigFile(pack.Config)
+			if err != nil {
+				return nil, err
+			}
+			configFromFile = file.Config
+		}
+		// Exceptions apply to every pack, but other config needs the pack's support.
 		if !info.SupportsConfig {
-			if pack.Config != "" {
+			if len(configFromFile) > 0 {
 				return nil, fmt.Errorf("policy pack %q at %q does not support config", info.Name, pack.Path)
 			}
 		} else {
-			var configFromFile map[string]plugin.AnalyzerPolicyConfig
-			if pack.Config != "" {
-				configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
-				if err != nil {
-					return nil, err
-				}
-			}
 			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
 				info.Policies, info.InitialConfig, configFromFile)
 			if err != nil {
@@ -324,6 +330,36 @@ func LoadLocalPolicyPackAnalyzers(
 	return analyzers, nil
 }
 
+// LocalPolicyPackExceptions reads the policy exceptions from the local policy packs' config files, keyed by their
+// analyzers, and warns about exceptions that name policies the pack doesn't have. analyzers[i] must be the analyzer of
+// packs[i], as LoadLocalPolicyPackAnalyzers returns them.
+func LocalPolicyPackExceptions(
+	ctx context.Context,
+	sink diag.Sink,
+	packs []LocalPolicyPack,
+	analyzers []plugin.Analyzer,
+) (map[plugin.Analyzer]resourceanalyzer.PolicyExceptions, error) {
+	result := map[plugin.Analyzer]resourceanalyzer.PolicyExceptions{}
+	for i, pack := range packs {
+		if pack.Config == "" {
+			continue
+		}
+		file, err := resourceanalyzer.LoadPolicyPackConfigFile(pack.Config)
+		if err != nil {
+			return nil, err
+		}
+		info, err := analyzers[i].GetAnalyzerInfo(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, w := range file.Exceptions.UnknownPolicyWarnings(info.Name, info.Policies) {
+			sink.Warningf(diag.Message("", "%s"), w)
+		}
+		result[analyzers[i]] = file.Exceptions
+	}
+	return result, nil
+}
+
 // HostFactory constructs the plugin host for a deployment.
 type HostFactory func(
 	ctx context.Context, d, statusD diag.Sink, debug plugin.DebugContext,
@@ -336,6 +372,8 @@ type HostFactory func(
 //
 //nolint:structcheck
 type UpdateOptions struct {
+	// CloudCredentialEnv overrides the Pulumi backend credentials passed to plugins.
+	CloudCredentialEnv map[string]string
 	// true if the step generator should calculate diffs in parallel via DiffSteps.
 	ParallelDiff bool
 
@@ -408,6 +446,11 @@ type UpdateOptions struct {
 	// feature list before opting in will fall back to the legacy union-of-arg-deps behaviour on Call. Test-only
 	// knob for exercising the fallback path against providers that do advertise `accepts_outputs_in_call`.
 	DisableCallOutputValues bool
+
+	// true if the engine should not advertise the REGISTER_RESOURCE_OUTPUT_VALUES monitor feature. SDKs that
+	// check the feature list before opting in will fall back to sending propertyDependencies maps instead of
+	// OutputValues on RegisterResource inputs. Test-only knob for exercising the legacy path.
+	DisableRegisterResourceOutputValues bool
 
 	// HostFactory builds the plugin host for this operation.
 	HostFactory HostFactory
@@ -807,7 +850,7 @@ func loadPolicyAnalyzer(
 		plugctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromContext)
+	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromContext, plugctx.CloudCredentialEnv)
 	if installErr != nil {
 		return nil, fmt.Errorf("failed to automatically install analyzer plugin %q: %w: %w",
 			string(name), installErr, me)
@@ -846,9 +889,10 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 	}
 
 	var (
-		wg              sync.WaitGroup
-		analyzersMu     sync.Mutex
-		loadedAnalyzers []plugin.Analyzer
+		wg               sync.WaitGroup
+		analyzersMu      sync.Mutex
+		loadedAnalyzers  []plugin.Analyzer
+		policyExceptions = map[plugin.Analyzer]resourceanalyzer.PolicyExceptions{}
 	)
 	addAnalyzer := func(a plugin.Analyzer) {
 		analyzersMu.Lock()
@@ -902,6 +946,15 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
+			// Invalid exceptions from the service are skipped, so the violations they match still fail the run.
+			exceptions, parseErrs := resourceanalyzer.ParsePolicyExceptions(policy.Exceptions())
+			for _, err := range parseErrs {
+				plugctx.Diag.Warningf(diag.Message("", "policy pack %q: %v; ignoring it"), analyzerInfo.Name, err)
+			}
+			analyzersMu.Lock()
+			policyExceptions[analyzer] = exceptions
+			analyzersMu.Unlock()
+
 			// Merge ESC policyConfig under API config (API config wins on conflict).
 			var escConfig map[string]*json.RawMessage
 			if resolved != nil {
@@ -949,16 +1002,17 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			// Load config and ESC environment references from the config file.
+			// Load config, ESC environment references and exceptions from the config file.
 			var configFromFile map[string]plugin.AnalyzerPolicyConfig
 			var environments []string
+			var exceptions resourceanalyzer.PolicyExceptions
 			if pack.Config != "" {
-				var loadErr error
-				configFromFile, environments, loadErr = resourceanalyzer.LoadPolicyPackConfigAndEnvironmentsFromFile(pack.Config)
+				file, loadErr := resourceanalyzer.LoadPolicyPackConfigFile(pack.Config)
 				if loadErr != nil {
 					errs <- loadErr
 					return
 				}
+				configFromFile, environments, exceptions = file.Config, file.Environments, file.Exceptions
 			}
 
 			// Resolve ESC environments if present.
@@ -1008,9 +1062,17 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			deployOpts.LocalPolicyPacks[i].Name = analyzerInfo.Name
 			deployOpts.LocalPolicyPacks[i].Version = analyzerInfo.Version
 
-			// Load config, reconcile & validate it, and pass it to the policy pack.
+			for _, w := range exceptions.UnknownPolicyWarnings(analyzerInfo.Name, analyzerInfo.Policies) {
+				plugctx.Diag.Warningf(diag.Message("", "%s"), w)
+			}
+			analyzersMu.Lock()
+			policyExceptions[analyzer] = exceptions
+			analyzersMu.Unlock()
+
+			// Load config, reconcile & validate it, and pass it to the policy pack. Exceptions apply to every
+			// pack, but other config needs the pack's support.
 			if !analyzerInfo.SupportsConfig {
-				if pack.Config != "" {
+				if len(configFromFile) > 0 {
 					errs <- fmt.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
 					return
 				}
@@ -1066,6 +1128,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 	}
 
 	deployOpts.LoadedAnalyzers = loadedAnalyzers
+	deployOpts.PolicyExceptions = policyExceptions
 	return nil
 }
 
@@ -1146,14 +1209,16 @@ func newUpdateSource(ctx context.Context,
 	}
 
 	evalOpts := deploy.EvalSourceOptions{
-		DryRun:                    opts.DryRun,
-		Parallel:                  opts.Parallel,
-		DisableResourceReferences: opts.DisableResourceReferences,
-		DisableOutputValues:       opts.DisableOutputValues,
-		DisableInvokeOutputValues: opts.DisableInvokeOutputValues,
-		DisableCallOutputValues:   opts.DisableCallOutputValues,
-		AttachDebugger:            opts.AttachDebugger,
-		SupportsStateMigrations:   opts.supportsStateMigrations,
+		DryRun:                              opts.DryRun,
+		Parallel:                            opts.Parallel,
+		DisableResourceReferences:           opts.DisableResourceReferences,
+		DisableOutputValues:                 opts.DisableOutputValues,
+		DisableInvokeOutputValues:           opts.DisableInvokeOutputValues,
+		DisableCallOutputValues:             opts.DisableCallOutputValues,
+		DisableRegisterResourceOutputValues: opts.DisableRegisterResourceOutputValues,
+		AttachDebugger:                      opts.AttachDebugger,
+		SupportsStateMigrations:             opts.supportsStateMigrations,
+		ShowSecrets:                         opts.ShowSecrets,
 	}
 
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
@@ -1182,7 +1247,7 @@ func newUpdateSource(ctx context.Context,
 			}
 			for _, r := range target.Snapshot.Resources {
 				if r != nil && !r.Delete && !slices.Contains(opts.TargetSnippets, r.SnippetID) {
-					observer.Resolve(r.URN, r.ID, r.Outputs)
+					observer.Resolve(r.URN, r.ID, resource.FromResourcePropertyMap(r.Outputs))
 				}
 			}
 		}
@@ -1359,10 +1424,17 @@ func (acts *updateActions) OnResourceStepPost(
 			errorURN = step.URN()
 		}
 
-		// Issue a true, bonafide error.
-		acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
+		// Issue a diagnostic. Await failures surface as warnings (the provider merely couldn't
+		// wait for the operation, and the CLI will report a distinct exit code); all other
+		// failures are true bonafide errors.
+		_, awaited := errors.AsType[*plugin.AwaitError](err)
+		if awaited {
+			acts.Opts.Diag.Warningf(diag.GetResourceOperationFailedError(errorURN), err)
+		} else {
+			acts.Opts.Diag.Errorf(diag.GetResourceOperationFailedError(errorURN), err)
+		}
 		steps := atomic.LoadInt32(&acts.Steps)
-		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, acts.Opts.Debug, acts.Opts.ShowSecrets)
+		acts.Opts.Events.resourceOperationFailedEvent(step, status, steps, awaited, acts.Opts.Debug, acts.Opts.ShowSecrets)
 	} else {
 		if t := acts.Opts.snippetDeletions; t != nil {
 			t.recordStep(step)
@@ -1462,8 +1534,10 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 	return acts.Context.SnapshotManager.RegisterResourceOutputs(step)
 }
 
-func (acts *updateActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
-	acts.Opts.Events.policyViolationEvent(urn, d)
+func (acts *updateActions) OnPolicyViolation(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
+	acts.Opts.Events.policyViolationEvent(urn, d, exceptions)
 }
 
 func (acts *updateActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,
@@ -1560,6 +1634,13 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (any, error) {
 		acts.Opts.ShowSecrets,
 	)
 
+	// If a SnapshotManager is wired up (e.g. by the backend for preview/dry-run), mutate it so
+	// the in-memory snapshot reflects what would have happened. Nothing is persisted — the
+	// backend installs a discarding persister for dry-run — but callers like `pulumi import
+	// --preview-only` need the resulting snapshot to drive codegen.
+	if acts.Context.SnapshotManager != nil {
+		return acts.Context.SnapshotManager.BeginMutation(step)
+	}
 	return nil, nil
 }
 
@@ -1616,6 +1697,11 @@ func (acts *previewActions) OnResourceStepPost(ctx any,
 		)
 	}
 
+	// Commit the step to the in-memory snapshot if a SnapshotManager is wired up. See
+	// OnResourceStepPre for the rationale.
+	if mutation, ok := ctx.(SnapshotMutation); ok && mutation != nil {
+		return mutation.End(step, err == nil)
+	}
 	return nil
 }
 
@@ -1637,8 +1723,10 @@ func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
 	return nil
 }
 
-func (acts *previewActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
-	acts.Opts.Events.policyViolationEvent(urn, d)
+func (acts *previewActions) OnPolicyViolation(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
+	acts.Opts.Events.policyViolationEvent(urn, d, exceptions)
 }
 
 func (acts *previewActions) OnPolicyRemediation(urn resource.URN, t plugin.Remediation,

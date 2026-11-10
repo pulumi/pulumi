@@ -16,6 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,35 +34,35 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					assert.Equal(l, resource.PropertyMap{
-						"empty": resource.NewProperty(resource.PropertyMap{}),
-						"strings": resource.NewProperty(resource.PropertyMap{
-							"greeting": resource.NewProperty("Hello, world!"),
-							"farewell": resource.NewProperty("Goodbye, world!"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"empty": property.New(property.Map{}),
+						"strings": property.New(map[string]property.Value{
+							"greeting": property.New("Hello, world!"),
+							"farewell": property.New("Goodbye, world!"),
 						}),
-						"numbers": resource.NewProperty(resource.PropertyMap{
-							"1": resource.NewProperty(1.0),
-							"2": resource.NewProperty(2.0),
+						"numbers": property.New(map[string]property.Value{
+							"1": property.New(1.0),
+							"2": property.New(2.0),
 						}),
-						"keys": resource.NewProperty(resource.PropertyMap{
-							"my.key": resource.NewProperty(1.0),
-							"my-key": resource.NewProperty(2.0),
-							"my_key": resource.NewProperty(3.0),
-							"MY_KEY": resource.NewProperty(4.0),
-							"mykey":  resource.NewProperty(5.0),
-							"MYKEY":  resource.NewProperty(6.0),
+						"keys": property.New(map[string]property.Value{
+							"my.key": property.New(1.0),
+							"my-key": property.New(2.0),
+							"my_key": property.New(3.0),
+							"MY_KEY": property.New(4.0),
+							"mykey":  property.New(5.0),
+							"MYKEY":  property.New(6.0),
 						}),
-						"adversarialStrings": resource.NewProperty(resource.PropertyMap{
-							"__type":       resource.NewProperty("dunder type"),
-							"__internal":   resource.NewProperty("dunder internal"),
-							"__provider":   resource.NewProperty("dunder provider"),
-							"__version":    resource.NewProperty("dunder version"),
-							"":             resource.NewProperty("empty key"),
-							"empty value":  resource.NewProperty(""),
-							"dunder value": resource.NewProperty("__dunder"),
-							escapeString:   resource.NewProperty(escapeString),
+						"adversarialStrings": property.New(map[string]property.Value{
+							"__type":       property.New("dunder type"),
+							"__internal":   property.New("dunder internal"),
+							"__provider":   property.New("dunder provider"),
+							"__version":    property.New("dunder version"),
+							"":             property.New("empty key"),
+							"empty value":  property.New(""),
+							"dunder value": property.New("__dunder"),
+							escapeString:   property.New(escapeString),
 						}),
-					}, stack.Outputs)
+					}), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

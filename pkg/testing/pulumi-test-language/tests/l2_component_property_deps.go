@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,28 +36,28 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					assertOutput := func(outputs resource.PropertyMap, key resource.PropertyKey) {
-						require.Len(l, outputs, 1)
-						require.Contains(l, outputs, key)
-						deps := outputs[key]
-						require.NotNil(l, deps)
-						require.True(l, deps.IsObject())
-						for _, key := range []resource.PropertyKey{
+					assertOutput := func(outputs property.Map, key string) {
+						require.Equal(l, 1, outputs.Len())
+						deps, ok := outputs.GetOk(key)
+						require.True(l, ok)
+						require.True(l, deps.IsMap())
+						for _, k := range []string{
 							"resource",
 							"resourceList",
 							"resourceMap",
 						} {
-							v := deps.ObjectValue()[key]
+							v, ok := deps.AsMap().GetOk(k)
+							require.True(l, ok)
 							require.True(l, v.IsArray())
-							require.Empty(l, v.ArrayValue())
+							require.Empty(l, v.AsArray().AsSlice())
 						}
 					}
 
 					component1 := RequireSingleNamedResource(l, snap.Resources, "component1")
-					assertOutput(component1.Outputs, "propertyDeps")
+					assertOutput(resource.FromResourcePropertyMap(component1.Outputs), "propertyDeps")
 
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					assertOutput(stack.Outputs, "propertyDepsFromCall")
+					assertOutput(resource.FromResourcePropertyMap(stack.Outputs), "propertyDepsFromCall")
 				},
 			},
 		},

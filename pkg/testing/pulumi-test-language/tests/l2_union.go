@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,60 +32,62 @@ func init() {
 				err, snapshot, changes := res.Err, res.Snap, res.Changes
 				RequireStackResource(l, err, changes)
 				stack := RequireSingleResource(l, snapshot.Resources, "pulumi:pulumi:Stack")
+				stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
 
 				l.Logf("# Checking Map[Map[Union]]")
 
 				mmu := RequireSingleNamedResource(l, snapshot.Resources, "mapMapUnionExample")
+				mmuOutputs := resource.FromResourcePropertyMap(mmu.Outputs)
 
-				expected := resource.NewProperty(resource.PropertyMap{
-					"key1": resource.NewProperty(resource.PropertyMap{
-						"key1a": resource.NewProperty("value1a"),
+				expected := property.New(map[string]property.Value{
+					"key1": property.New(map[string]property.Value{
+						"key1a": property.New("value1a"),
 					}),
 				})
 
-				require.Equal(l, expected, mmu.Outputs["mapMapUnionProperty"])
-				require.Equal(l, expected, stack.Outputs["mapMapUnionOutput"])
+				require.Equal(l, expected, mmuOutputs.Get("mapMapUnionProperty"))
+				require.Equal(l, expected, stackOutputs.Get("mapMapUnionOutput"))
 
 				l.Logf("# Checking Union[String,Int]")
 
 				si1 := RequireSingleNamedResource(l, snapshot.Resources, "stringOrIntegerExample1")
 				si2 := RequireSingleNamedResource(l, snapshot.Resources, "stringOrIntegerExample2")
 
-				require.Equal(l, resource.NewProperty(42.0),
-					si1.Outputs["stringOrIntegerProperty"])
+				require.Equal(l, property.New(42.0),
+					resource.FromResourcePropertyMap(si1.Outputs).Get("stringOrIntegerProperty"))
 
-				require.Equal(l, resource.NewProperty("forty two"),
-					si2.Outputs["stringOrIntegerProperty"])
+				require.Equal(l, property.New("forty two"),
+					resource.FromResourcePropertyMap(si2.Outputs).Get("stringOrIntegerProperty"))
 
 				l.Logf("# Checking List<Union<String, Enum>>")
 
 				seul := RequireSingleNamedResource(l, snapshot.Resources, "stringEnumUnionListExample")
 				require.Equal(l,
-					resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty("Listen"),
-						resource.NewProperty("Send"),
-						resource.NewProperty("NotAnEnumValue"),
+					property.New([]property.Value{
+						property.New("Listen"),
+						property.New("Send"),
+						property.New("NotAnEnumValue"),
 					}),
-					seul.Outputs["stringEnumUnionListProperty"])
+					resource.FromResourcePropertyMap(seul.Outputs).Get("stringEnumUnionListProperty"))
 
 				l.Logf("# Checking typed enum (safe)")
 
 				safeEnum := RequireSingleNamedResource(l, snapshot.Resources, "safeEnumExample")
 				require.Equal(l,
-					resource.NewProperty("Block"),
-					safeEnum.Outputs["typedEnumProperty"])
+					property.New("Block"),
+					resource.FromResourcePropertyMap(safeEnum.Outputs).Get("typedEnumProperty"))
 
 				l.Logf("# Checking typed enum (output)")
 
 				enumOutputExample := RequireSingleNamedResource(l, snapshot.Resources, "enumOutputExample")
 				require.Equal(l,
-					resource.NewProperty("Block"),
-					enumOutputExample.Outputs["type"])
+					property.New("Block"),
+					resource.FromResourcePropertyMap(enumOutputExample.Outputs).Get("type"))
 
 				outputEnum := RequireSingleNamedResource(l, snapshot.Resources, "outputEnumExample")
 				require.Equal(l,
-					resource.NewProperty("Block"),
-					outputEnum.Outputs["typedEnumProperty"])
+					property.New("Block"),
+					resource.FromResourcePropertyMap(outputEnum.Outputs).Get("typedEnumProperty"))
 			},
 		}},
 	}

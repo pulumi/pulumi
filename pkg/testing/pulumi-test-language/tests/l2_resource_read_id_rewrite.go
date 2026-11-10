@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -85,14 +86,15 @@ func init() {
 						"expected provider-rewritten id surfaced after src is created")
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "resourceId",
-						resource.NewProperty("rewritten-existing-id"))
-					AssertPropertyMapMember(l, stack.Outputs, "lookup",
-						resource.NewProperty("existing-key"))
-					AssertPropertyMapMember(l, stack.Outputs, "unknownResourceId",
-						resource.NewProperty("rewritten-id"))
-					AssertPropertyMapMember(l, stack.Outputs, "unknownLookup",
-						resource.NewProperty("another-key"))
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, stackOutputs, "resourceId",
+						property.New("rewritten-existing-id"))
+					AssertPropertyMapMember(l, stackOutputs, "lookup",
+						property.New("existing-key"))
+					AssertPropertyMapMember(l, stackOutputs, "unknownResourceId",
+						property.New("rewritten-id"))
+					AssertPropertyMapMember(l, stackOutputs, "unknownLookup",
+						property.New("another-key"))
 				},
 			},
 		},

@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type ReadProvider struct {
@@ -142,12 +143,12 @@ func (p *ReadProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.R
 		}, errors.New("failed read")
 	}
 
-	readInputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"lookup": lookup,
+	readInputs := property.NewMap(map[string]property.Value{
+		"lookup": resource.FromResourcePropertyValue(lookup),
 	})
-	readOutputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"lookup": lookup,
-		"value":  resource.NewProperty(true),
+	readOutputs := property.NewMap(map[string]property.Value{
+		"lookup": resource.FromResourcePropertyValue(lookup),
+		"value":  property.New(true),
 	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{

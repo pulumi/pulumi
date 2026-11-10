@@ -271,7 +271,7 @@ func TestParsePipVersion(t *testing.T) {
 			version, err := ParsePipVersion(test.versionString)
 
 			if test.expectError {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 				expected := semver.MustParse(test.expectedSemver)

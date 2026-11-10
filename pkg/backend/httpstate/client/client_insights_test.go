@@ -98,7 +98,7 @@ func TestGetInsightsResource(t *testing.T) {
 		client := newMockClient(server)
 		_, err := client.GetInsightsResource(t.Context(),
 			"acme", "prod-aws", "aws:s3/bucket:Bucket::missing")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -205,7 +205,7 @@ func TestScanInsightsAccount(t *testing.T) {
 		client := newMockClient(server)
 		_, err := client.ScanInsightsAccount(t.Context(),
 			"acme", "missing", apitype.InsightsScanRequest{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("returns zero value on 204 No Content", func(t *testing.T) {
@@ -427,7 +427,7 @@ func TestSearchInsightsResources(t *testing.T) {
 		client := newMockClient(server)
 		_, err := client.SearchInsightsResources(t.Context(), "acme",
 			apitype.InsightsResourceSearchParams{Properties: true})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		// The 402 status code and the server's body message both make it
 		// through the apitype.ErrorResponse formatter ("[code] message").
 		assert.Contains(t, err.Error(), "402")
@@ -545,7 +545,7 @@ func TestListInsightsAccounts(t *testing.T) {
 		client := newMockClient(server)
 		_, err := client.ListInsightsAccounts(t.Context(), "acme",
 			apitype.ListInsightsAccountsParams{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -731,7 +731,7 @@ func TestGetInsightsScanLogs(t *testing.T) {
 		client := newMockClient(server)
 		_, err := client.GetInsightsScanLogs(t.Context(),
 			"acme", "prod-aws", "missing-scan", apitype.InsightsScanLogsParams{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -836,7 +836,7 @@ func TestCreateInsightsAccount(t *testing.T) {
 		client := newMockClient(server)
 		err := client.CreateInsightsAccount(t.Context(), "nonexistent", "prod-aws",
 			apitype.CreateInsightsAccountRequest{Provider: "aws", Environment: "infra/creds"})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -919,6 +919,6 @@ func TestGetInsightsAccount(t *testing.T) {
 
 		client := newMockClient(server)
 		_, err := client.GetInsightsAccount(t.Context(), "acme", "missing")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }

@@ -647,7 +647,7 @@ func TestRunNeoIntegration_NonInteractiveRequiresPrompt(t *testing.T) {
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
 	err := runNeoTest(t.Context(), "" /*prompt*/, t.TempDir())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "prompt argument is required")
 
 	// The guard fires before any HTTP call — server must be untouched.
@@ -689,7 +689,7 @@ func TestRunNeoIntegration_RequiresCloudBackend(t *testing.T) {
 	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
 
 	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "Pulumi Cloud backend",
 		"non-cloud backends must surface a clear error rather than panic on the type assertion")
 }
@@ -742,7 +742,7 @@ func TestRunNeoIntegration_RejectsNonexistentCwd(t *testing.T) {
 
 	missing := t.TempDir() + "/does-not-exist"
 	err := runNeoTest(t.Context(), "do a thing", missing)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	// The exact wrapping is internal to tools.NewFilesystem, but the missing
 	// path should be referenced so the user can see what went wrong.
 	assert.Contains(t, err.Error(), "does-not-exist")
@@ -770,7 +770,7 @@ func TestRunNeoIntegration_PropagatesReadProjectError(t *testing.T) {
 	}
 
 	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "synthetic ReadProject failure")
 	assert.Empty(t, srv.recordedPosts(),
 		"no API calls should be made when project resolution fails")
@@ -829,7 +829,7 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	t.Cleanup(func() { isInteractive = prevInteractive })
 
 	err := runNeoTest(t.Context(), "do a thing", t.TempDir())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "creating Neo task")
 }
 
@@ -922,7 +922,7 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 	case err := <-done:
 		// CreateNeoTask's wrapped error must surface to the caller; the TUI
 		// tear-down path should not swallow it.
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "creating Neo task",
 			"CreateNeoTask error must propagate, not be replaced by tear-down state")
 	case <-time.After(testWaitTimeout):

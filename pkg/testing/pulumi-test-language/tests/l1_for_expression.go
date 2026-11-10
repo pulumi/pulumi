@@ -16,6 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,34 +32,34 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					assert.Equal(l, resource.PropertyMap{
-						"prefixed": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("prefix-alpha"),
-							resource.NewProperty("prefix-beta"),
-							resource.NewProperty("prefix-gamma"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"prefixed": property.New([]property.Value{
+							property.New("prefix-alpha"),
+							property.New("prefix-beta"),
+							property.New("prefix-gamma"),
 						}),
-						"filtered": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("alpha"),
-							resource.NewProperty("gamma"),
+						"filtered": property.New([]property.Value{
+							property.New("alpha"),
+							property.New("gamma"),
 						}),
-						"indexed": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("0:alpha"),
-							resource.NewProperty("1:beta"),
-							resource.NewProperty("2:gamma"),
+						"indexed": property.New([]property.Value{
+							property.New("0:alpha"),
+							property.New("1:beta"),
+							property.New("2:gamma"),
 						}),
-						"tagList": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("Environment=production"),
-							resource.NewProperty("Team=infra"),
+						"tagList": property.New([]property.Value{
+							property.New("Environment=production"),
+							property.New("Team=infra"),
 						}),
-						"prefixedMap": resource.NewProperty(resource.PropertyMap{
-							"alpha": resource.NewProperty("prefix-alpha"),
-							"beta":  resource.NewProperty("prefix-beta"),
-							"gamma": resource.NewProperty("prefix-gamma"),
+						"prefixedMap": property.New(map[string]property.Value{
+							"alpha": property.New("prefix-alpha"),
+							"beta":  property.New("prefix-beta"),
+							"gamma": property.New("prefix-gamma"),
 						}),
-						"filteredTags": resource.NewProperty(resource.PropertyMap{
-							"Environment": resource.NewProperty("production"),
+						"filteredTags": property.New(map[string]property.Value{
+							"Environment": property.New("production"),
 						}),
-					}, stack.Outputs)
+					}), resource.FromResourcePropertyMap(stack.Outputs))
 				},
 			},
 		},

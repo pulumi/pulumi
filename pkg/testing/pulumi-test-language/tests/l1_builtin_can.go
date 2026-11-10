@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,29 +38,29 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 10, "expected 10 outputs")
-					AssertPropertyMapMember(l, outputs, "plainTrySuccess", resource.NewProperty(true))
-					AssertPropertyMapMember(l, outputs, "plainTryFailure", resource.NewProperty(false))
+					require.Equal(l, 10, outputs.Len(), "expected 10 outputs")
+					AssertPropertyMapMember(l, outputs, "plainTrySuccess", property.New(true))
+					AssertPropertyMapMember(l, outputs, "plainTryFailure", property.New(false))
 
 					// The output failure variants may or may not be secret, depending on the language. We allow either.
 					assertPropertyMapMember := func(
-						props resource.PropertyMap,
+						props property.Map,
 						key string,
-						want resource.PropertyValue,
+						want property.Value,
 					) (ok bool) {
 						l.Helper()
 
-						got, ok := props[resource.PropertyKey(key)]
+						got, ok := props.GetOk(key)
 						if !assert.True(l, ok, "expected property %q", key) {
 							return false
 						}
 
-						if got.DeepEquals(want) {
+						if got.Equals(want) {
 							return true
 						}
-						if got.DeepEquals(resource.MakeSecret(want)) {
+						if got.Equals(want.WithSecret(true)) {
 							return true
 						}
 
@@ -67,19 +68,19 @@ func init() {
 					}
 
 					AssertPropertyMapMember(l, outputs, "outputTrySuccess",
-						resource.MakeSecret(resource.NewProperty(true)))
+						property.New(true).WithSecret(true))
 					assertPropertyMapMember(outputs, "outputTryFailure",
-						resource.NewProperty(false))
+						property.New(false))
 					AssertPropertyMapMember(l, outputs, "dynamicTrySuccess",
-						resource.NewProperty(true))
+						property.New(true))
 					assertPropertyMapMember(outputs, "dynamicTryFailure",
-						resource.NewProperty(false))
+						property.New(false))
 					AssertPropertyMapMember(l, outputs, "outputDynamicTrySuccess",
-						resource.MakeSecret(resource.NewProperty(true)))
+						property.New(true).WithSecret(true))
 					assertPropertyMapMember(outputs, "outputDynamicTryFailure",
-						resource.NewProperty(false))
-					AssertPropertyMapMember(l, outputs, "plainTryNull", resource.NewProperty(true))
-					assertPropertyMapMember(outputs, "outputTryNull", resource.NewProperty(true))
+						property.New(false))
+					AssertPropertyMapMember(l, outputs, "plainTryNull", property.New(true))
+					assertPropertyMapMember(outputs, "outputTryNull", property.New(true))
 				},
 			},
 		},

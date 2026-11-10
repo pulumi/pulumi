@@ -58,6 +58,6 @@ func TestReadProjectNoProject(t *testing.T) {
 	// An empty directory (outside any Pulumi project) yields ErrProjectNotFound,
 	// matching Instance's sentinel so callers' errors.Is checks behave the same.
 	_, _, err := Instance.ReadProject(t.TempDir())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.True(t, errors.Is(err, workspace.ErrProjectNotFound))
 }

@@ -90,7 +90,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		}
 
 		_, err := ResolvePackageFromName(ctx, mockReg, "aws/pulumi/awsx", &semver.Version{Major: 999})
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, ErrNotFound))
 	})
 
@@ -105,7 +105,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		}
 
 		_, err := ResolvePackageFromName(ctx, mockReg, "nonexistent/pub/pkg", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, ErrNotFound))
 	})
 
@@ -132,7 +132,7 @@ func TestResolvePackageFromName(t *testing.T) {
 				}
 
 				_, err := ResolvePackageFromName(ctx, mockReg, "aws/pulumi/awsx", nil)
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.True(t, errors.Is(err, tc.err))
 			})
 		}
@@ -203,7 +203,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		}
 
 		_, err := ResolvePackageFromName(ctx, mockReg, "nonexistent/pkg", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, ErrNotFound))
 		assert.Contains(t, err.Error(), "could not resolve nonexistent/pkg")
 	})
@@ -256,7 +256,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		}
 
 		_, err := ResolvePackageFromName(ctx, mockReg, "myorg/mypkg", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "unable to check on private/myorg/mypkg")
 		assert.True(t, errors.Is(err, networkErr))
 	})
@@ -279,7 +279,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		}
 
 		_, err := ResolvePackageFromName(ctx, mockReg, "pulumi/aws", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "unable to check on pulumi/pulumi/aws")
 		assert.True(t, errors.Is(err, networkErr))
 	})
@@ -394,7 +394,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		}
 
 		_, err := ResolvePackageFromName(ctx, mockReg, "aws", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, ErrNotFound))
 		assert.Contains(t, err.Error(), "aws does not match a registry package")
 
@@ -462,7 +462,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		}
 
 		_, err := ResolvePackageFromName(ctx, mockReg, "aws", &desiredVersion)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "pulumi/pulumi/aws exists, but version 999.0.0 was not found")
 
 		// Should have suggestions
@@ -483,7 +483,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		}
 
 		_, err := ResolvePackageFromName(ctx, mockReg, "aws", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, searchErr))
 	})
 
@@ -517,7 +517,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		}
 
 		_, err := ResolvePackageFromName(ctx, mockReg, "aws", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, ErrNotFound))
 
 		suggestions := GetSuggestedPackages(err)
@@ -634,7 +634,7 @@ func TestResolvePackageFromName(t *testing.T) {
 		}
 
 		_, err := ResolvePackageFromName(ctx, mockReg, "", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, ErrNotFound))
 		assert.Contains(t, err.Error(), " does not match a registry package")
 	})
@@ -652,7 +652,7 @@ func TestResolvePackageFromName(t *testing.T) {
 			t.Run(tc, func(t *testing.T) {
 				t.Parallel()
 				_, err := ResolvePackageFromName(ctx, mockReg, tc, nil)
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				_, ok := errors.AsType[InvalidIdentifierError](err)
 				assert.True(t, ok)
 				assert.Contains(t, err.Error(), tc)
@@ -764,7 +764,7 @@ func TestResolveTemplateFromName(t *testing.T) {
 		}
 
 		_, err := ResolveTemplateFromName(ctx, mockReg, "private/my-org/nonexistent", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, ErrNotFound))
 	})
 
@@ -828,7 +828,7 @@ func TestResolveTemplateFromName(t *testing.T) {
 		}
 
 		_, err := ResolveTemplateFromName(ctx, mockReg, "my-org/nonexistent", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, ErrNotFound))
 	})
 
@@ -920,7 +920,7 @@ func TestResolveTemplateFromName(t *testing.T) {
 		}
 
 		_, err := ResolveTemplateFromName(ctx, mockReg, "my-template", &desiredVersion)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, ErrNotFound))
 		assert.Contains(t, err.Error(), "version 99.0.0 was not found")
 	})
@@ -934,7 +934,7 @@ func TestResolveTemplateFromName(t *testing.T) {
 		}
 
 		_, err := ResolveTemplateFromName(ctx, mockReg, "nonexistent", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, ErrNotFound))
 	})
 
@@ -944,7 +944,7 @@ func TestResolveTemplateFromName(t *testing.T) {
 		mockReg := mockRegistry{}
 
 		_, err := ResolveTemplateFromName(ctx, mockReg, "a/b/c/d", nil)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		_, ok := errors.AsType[InvalidIdentifierError](err)
 		assert.True(t, ok)
 	})

@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type SimpleProvider struct {
@@ -129,7 +130,6 @@ func (p *SimpleProvider) CheckConfig(
 func (p *SimpleProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
-	news := resource.ToResourcePropertyMap(req.NewInputs)
 	// URN should be of the form "simple:index:Resource"
 	if req.URN.Type() != "simple:index:Resource" {
 		return plugin.CheckResponse{
@@ -138,24 +138,25 @@ func (p *SimpleProvider) Check(
 	}
 
 	// Expect just the boolean value
-	value, ok := news["value"]
+	value, ok := req.NewInputs.GetOk("value")
 	if !ok {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "missing value"),
 		}, nil
 	}
+
 	if !value.IsBool() && !value.IsComputed() {
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("value", "value is not a boolean"),
 		}, nil
 	}
-	if len(news) != 1 {
+	if req.NewInputs.Len() != 1 {
 		return plugin.CheckResponse{
-			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", news)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.NewInputs)),
 		}, nil
 	}
 
-	return plugin.CheckResponse{Properties: resource.FromResourcePropertyMap(news)}, nil
+	return plugin.CheckResponse{Properties: req.NewInputs}, nil
 }
 
 func (p *SimpleProvider) Create(
@@ -244,11 +245,11 @@ func (p *SimpleProvider) Read(ctx context.Context, req plugin.ReadRequest) (plug
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	inputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"value": resource.NewProperty(true),
+	inputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
 	})
-	outputs := resource.FromResourcePropertyMap(resource.PropertyMap{
-		"value": resource.NewProperty(true),
+	outputs := property.NewMap(map[string]property.Value{
+		"value": property.New(true),
 	})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{

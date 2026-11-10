@@ -402,7 +402,9 @@ func (i *Interpreter) invoke(
 	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
 ) (*pulumirpc.ResourceInvokeResponse, error) {
 	req.PackageRef = i.getPackageRefFromToken(req.Tok)
-	req.Parent = i.stackURN
+	if req.Parent == "" {
+		req.Parent = i.stackURN
+	}
 	resp, err := i.monitor.Invoke(ctx, req)
 	return resp, err
 }
@@ -413,6 +415,13 @@ func (i *Interpreter) call(
 	req.PackageRef = i.getPackageRefFromToken(req.Tok)
 	resp, err := i.monitor.Call(ctx, req)
 	return resp, err
+}
+
+func (i *Interpreter) existsResource(
+	ctx context.Context, req *pulumirpc.ExistsResourceRequest,
+) (*pulumirpc.ExistsResourceResponse, error) {
+	req.PackageRef = i.getPackageRefFromToken(req.Type)
+	return i.monitor.ExistsResource(ctx, req)
 }
 
 func (i *Interpreter) getResource(ctx context.Context, ref property.ResourceReference) (property.Map, error) {
@@ -497,6 +506,7 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		i.getResource,
 		i.invoke,
 		i.call,
+		i.existsResource,
 	)
 
 	// Probe the monitor for the INVOKE_OUTPUT_VALUES and CALL_OUTPUT_VALUES capabilities. Older monitors don't
@@ -579,6 +589,7 @@ func (i *Interpreter) RunEmbedded(
 		i.getResource,
 		i.invoke,
 		i.call,
+		i.existsResource,
 	)
 	for name, val := range scopeVars {
 		ctyVal, err := propertyValueToCty(ctx, i.getResource, val)
@@ -1110,10 +1121,11 @@ func collapseResourceReferences(value property.Value) property.Value {
 		id, hasID := collapsed["id"]
 		typ, hasType := collapsed["__type"]
 		if hasURN && hasID && hasType && urn.IsString() && typ.IsString() {
-			ref := property.ResourceReference{
-				URN: resource.URN(urn.AsString()),
-				ID:  id,
-			}
+			ref := property.NewResourceReference(
+				resource.URN(urn.AsString()),
+				id,
+				"",
+			)
 			// A dependency on only the referenced resource adds nothing to the reference itself.
 			if d := value.Dependencies(); len(d) == 1 && d[0] == ref.URN {
 				value = value.WithDependencies(nil)
@@ -1317,6 +1329,7 @@ func (i *Interpreter) registerResourceWith(
 		AcceptResources:         true,
 		AcceptsByteString:       true,
 		SupportsResultReporting: true,
+		SupportsPartialValues:   true,
 		SnippetId:               i.snippetID,
 	}
 	request.PackageRef = i.getPackageRefFromToken(token)
@@ -1900,6 +1913,17 @@ func (i *Interpreter) registerResourceWith(
 		Set("__name", property.New(request.Name)).
 		Set("__type", property.New(request.Type))
 
+	// An output can depend on other resources, such as a remote component's outputs on its children.
+	for key, deps := range resp.GetPropertyDependencies() {
+		if v, ok := outputs.GetOk(key); ok {
+			urns := v.Dependencies()
+			for _, u := range deps.GetUrns() {
+				urns = append(urns, resource.URN(u))
+			}
+			outputs = outputs.Set(key, v.WithDependencies(urns))
+		}
+	}
+
 	// Ensure every schema-declared output property is present, recursing into nested object
 	// types so that programs which traverse into an optional inner field see a typed null
 	// rather than triggering an HCL "unsupported attribute" error.
@@ -2187,6 +2211,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		i.getResource,
 		componentInterpreter.invoke,
 		componentInterpreter.call,
+		componentInterpreter.existsResource,
 	)
 
 	for k, v := range inputs.All {

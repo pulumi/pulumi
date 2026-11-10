@@ -14,3 +14,4 @@ All commands run from `sdk/python/`. Prefix with `mise exec --` if mise is not a
 ## If you change...
 
 - Python files → `mise exec -- make lint && mise exec -- make test_fast`
+- When changing `requires-python` in `pyproject.toml`, update the Python installation guidance in `toolchain/pip.go` to match.

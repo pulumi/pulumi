@@ -15,7 +15,7 @@
 import * as fs from "fs";
 import { glob } from "fs/promises";
 import normalize from "normalize-package-data";
-import * as arborist from "@npmcli/arborist";
+import { createRequire } from "module";
 import * as upath from "upath";
 import { log } from "../..";
 import * as asset from "../../asset";
@@ -287,19 +287,6 @@ async function allFoldersForPackages(
         }
     }
 
-    // Find the workspace root, fallback to current working directory if we are not in a workspaces setup.
-    let workspaceRoot = (await findWorkspaceRoot(workingDir)) || workingDir;
-    // Ensure workingDir is a relative path so we get relative paths in the
-    // output. If we have absolute paths, AWS lambda might not find the
-    // dependencies.
-    workspaceRoot = upath.relative(upath.resolve("."), workspaceRoot);
-
-    // Read package tree from the workspace root to ensure we can find all
-    // packages in the workspace.  We then call addPackageAndDependenciesToSet
-    // to recursively add all the dependencies of the referenced packages.
-    const arb = new arborist.Arborist({ path: workspaceRoot });
-    const root = await arb.loadActual();
-
     // package.json files can contain circularities.  For example es6-iterator depends
     // on es5-ext, which depends on es6-iterator, which depends on es5-ext:
     // https://github.com/medikoo/es6-iterator/blob/0eac672d3f4bb3ccc986bbd5b7ffc718a0822b74/package.json#L20
@@ -317,7 +304,7 @@ async function allFoldersForPackages(
         if (excludedPackages.has(pkg) || pkg.startsWith("@pulumi")) {
             continue;
         }
-        const child = findDependency(root, pkg);
+        const child = findDependency(workingDir, pkg);
         if (!child || child.package.pulumi) {
             continue;
         }
@@ -329,7 +316,7 @@ async function allFoldersForPackages(
 
     for (const pkg of referencedPackages) {
         addPackageAndDependenciesToMap(
-            root,
+            workingDir,
             pkg,
             seenPaths,
             packagePaths,
@@ -388,7 +375,7 @@ function computeDependenciesDirectlyFromPackageFile(path: string, logResource: R
  * Computes the path at which a package is included in the archive, and the
  * on-disk path its contents are read from.
  */
-function packageArchiveEntry(child: arborist.Node | arborist.Link): { archivePath: string; sourcePath: string } {
+function packageArchiveEntry(child: PackageInfo): { archivePath: string; sourcePath: string } {
     const nominalPath = upath.relative(upath.resolve("."), upath.resolve(child.path));
     const sourcePath = upath.relative(upath.resolve("."), upath.resolve(child.realpath));
     return { archivePath: packageArchivePath(nominalPath, child.name), sourcePath };
@@ -413,7 +400,7 @@ export function packageArchivePath(nominalPath: string, packageName: string): st
  * package.
  */
 function addPackageAndDependenciesToMap(
-    root: arborist.Node,
+    directory: string,
     pkg: string,
     seenPaths: Set<string>,
     packagePaths: Map<string, string>,
@@ -425,9 +412,9 @@ function addPackageAndDependenciesToMap(
         return;
     }
 
-    const child = findDependency(root, pkg);
+    const child = findDependency(directory, pkg);
     if (!child) {
-        console.warn(`Could not include required dependency '${pkg}' in '${upath.resolve(root.path)}'.`);
+        console.warn(`Could not include required dependency '${pkg}' in '${directory}'.`);
         return;
     }
 
@@ -486,14 +473,8 @@ function addPackageAndDependenciesToMap(
     function recurse(dependencies: any, parentArchivePath: string | undefined) {
         if (dependencies) {
             for (const dep of Object.keys(dependencies)) {
-                let next: arborist.Node;
-                if (child?.isLink) {
-                    next = child.target;
-                } else {
-                    next = child!;
-                }
                 addPackageAndDependenciesToMap(
-                    next!,
+                    child!.realpath,
                     dep,
                     seenPaths,
                     packagePaths,
@@ -505,31 +486,28 @@ function addPackageAndDependenciesToMap(
     }
 }
 
-/**
- * Searches the package tree starting at a root node (possibly a child) for a
- * match for the given name. It is assumed that the tree was correctly
- * constructed such that dependencies are resolved to compatible versions in the
- * closest available match starting at the provided root and walking up to the
- * head of the tree.
- */
-function findDependency(
-    root: arborist.Node | undefined | null,
-    name: string,
-): arborist.Node | arborist.Link | undefined {
-    while (root) {
-        for (const [childName, child] of root.children) {
-            if (childName === name) {
-                return child;
-            }
-        }
-        if (root.parent) {
-            root = root.parent;
-        } else if (root.root !== root) {
-            root = root.root; // jump up to the workspace root
-        } else {
-            break;
+interface PackageInfo {
+    name: string;
+    path: string;
+    realpath: string;
+    package: any;
+}
+
+function findDependency(directory: string, name: string): PackageInfo | undefined {
+    // Consider module.findPackageJSON once it is stable
+    // https://nodejs.org/api/module.html#modulefindpackagejsonspecifier-base
+    const require = createRequire(upath.join(directory, "package.json"));
+    for (const searchPath of require.resolve.paths(name) || []) {
+        const packagePath = upath.join(searchPath, name);
+        const manifestPath = upath.join(packagePath, "package.json");
+        if (fs.existsSync(manifestPath)) {
+            return {
+                name,
+                path: packagePath,
+                realpath: fs.realpathSync(packagePath),
+                package: JSON.parse(fs.readFileSync(manifestPath, "utf8")),
+            };
         }
     }
-
     return undefined;
 }

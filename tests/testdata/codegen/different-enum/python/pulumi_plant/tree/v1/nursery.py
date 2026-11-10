@@ -137,3 +137,9 @@ class Nursery(pulumi.CustomResource):
 
         return Nursery(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'plant:tree/v1:Nursery', id, __props__, opts or pulumi.ResourceOptions())
+

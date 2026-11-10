@@ -42,8 +42,14 @@ type ApplierOptions struct {
 }
 
 // Applier applies the changes specified by this update operation against the target stack.
+//
+// The returned snapshot is the final in-memory snapshot produced by the engine. It is populated
+// even on dry-runs (preview and preview-only operations), where it reflects what the snapshot
+// would have been had the run been applied. Callers may use it, for example, to drive import
+// codegen without re-reading persisted state. The snapshot may be nil if the operation failed
+// before any snapshot could be constructed.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, error)
+	opts ApplierOptions, events chan<- engine.Event) (*deploy.Plan, sdkDisplay.ResourceChanges, *deploy.Snapshot, error)
 
 // Explainer provides a contract for explaining changes that will be made to the stack.
 // For Pulumi Cloud, this is a Neo explainer.
@@ -89,7 +95,7 @@ const (
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
 	op UpdateOperation, apply Applier, explainer Explainer,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -118,10 +124,10 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		ShowLink: true,
 	}
 
-	plan, changes, err := apply(ctx, kind, stack, op, opts, eventsChannel)
+	plan, changes, snap, err := apply(ctx, kind, stack, op, opts, eventsChannel)
 	if err != nil {
 		close(eventsChannel)
-		return plan, changes, err
+		return plan, changes, snap, err
 	}
 
 	if op.Opts.Display.ShowDiff {
@@ -138,7 +144,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		if !op.Opts.Engine.Strict {
 			plan = nil
 		}
-		return plan, changes, nil
+		return plan, changes, snap, nil
 	}
 
 	stats := computeUpdateStats(events)
@@ -167,7 +173,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// Otherwise, ensure the user wants to proceed.
 	plan, err = confirmBeforeUpdating(ctx, kind, stack.Ref(), op, events, plan, explainer)
 	close(eventsChannel)
-	return plan, changes, err
+	return plan, changes, snap, err
 }
 
 func printDiff(events []engine.Event, displayOpts display.Options) error {
@@ -281,7 +287,52 @@ func Preview(ctx context.Context, stack Stack, op UpdateOperation, apply Applier
 		DryRun:   true,
 		ShowLink: true,
 	}
-	return apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	plan, changes, _, err := apply(ctx, apitype.PreviewUpdate, stack, op, opts, events)
+	return plan, changes, err
+}
+
+// PreviewThenPromptThenExecuteImport is a variant of PreviewThenPromptThenExecute for resource
+// imports. It returns the final in-memory snapshot alongside the resource changes so callers (e.g.
+// `pulumi import`) can drive codegen without re-reading persisted state.
+func PreviewThenPromptThenExecuteImport(ctx context.Context, stack Stack,
+	op UpdateOperation, apply Applier, explainer Explainer,
+) (sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
+	kind := apitype.UpdateKind(apitype.ResourceImportUpdate)
+	// Preview the operation to the user and ask them if they want to proceed.
+	if !op.Opts.SkipPreview {
+		var originalPlan *deploy.Plan
+		if op.Opts.Engine.Plan != nil {
+			originalPlan = op.Opts.Engine.Plan.Clone()
+		}
+
+		plan, changes, snap, err := PreviewThenPrompt(ctx, kind, stack, op, apply, explainer)
+		if err != nil {
+			return changes, snap, err
+		}
+
+		if originalPlan != nil {
+			op.Opts.Engine.Plan = originalPlan
+		} else if plan != nil {
+			op.Opts.Engine.Plan = plan
+		} else {
+			op.Opts.Engine.Plan = nil
+		}
+	}
+
+	opts := ApplierOptions{
+		DryRun:   false,
+		ShowLink: true,
+	}
+	op.Opts.Engine.GeneratePlan = false
+
+	var changes sdkDisplay.ResourceChanges
+	var snap *deploy.Snapshot
+	err := RunCollectingDiff(op.Opts.Display, nil, func(ev chan<- engine.Event) error {
+		var res error
+		_, changes, snap, res = apply(ctx, kind, stack, op, opts, ev)
+		return res
+	})
+	return changes, snap, err
 }
 
 func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, stack Stack,
@@ -298,7 +349,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 			originalPlan = op.Opts.Engine.Plan.Clone()
 		}
 
-		plan, changes, err := PreviewThenPrompt(ctx, kind, stack, op, apply, explainer)
+		plan, changes, _, err := PreviewThenPrompt(ctx, kind, stack, op, apply, explainer)
 		if err != nil || kind == apitype.PreviewUpdate {
 			return changes, err
 		}
@@ -327,7 +378,7 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	var changes sdkDisplay.ResourceChanges
 	err := RunCollectingDiff(op.Opts.Display, events, func(ev chan<- engine.Event) error {
 		var res error
-		_, changes, res = apply(ctx, kind, stack, op, opts, ev)
+		_, changes, _, res = apply(ctx, kind, stack, op, opts, ev)
 		return res
 	})
 	return changes, err

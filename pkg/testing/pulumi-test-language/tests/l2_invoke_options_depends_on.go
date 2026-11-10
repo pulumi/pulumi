@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,8 +41,8 @@ func init() {
 					stack := snap.Resources[0]
 					require.Equal(l, resource.RootStackType, stack.Type)
 
-					outputs := stack.Outputs
-					AssertPropertyMapMember(l, outputs, "hello", resource.NewProperty("hello world"))
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, outputs, "hello", property.New("hello world"))
 
 					var first *pkgresource.State
 					var second *pkgresource.State

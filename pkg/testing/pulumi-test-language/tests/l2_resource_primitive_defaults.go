@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,23 +41,25 @@ func init() {
 					require.Equal(l, "primitive-defaults:index:Resource", string(explicit.Type))
 					require.Equal(l, "primitive-defaults:index:Resource", string(defaulted.Type))
 
-					wantExplicit := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean": true,
-						"float":   3.14,
-						"integer": 42,
-						"string":  "hello",
+					wantExplicit := property.NewMap(map[string]property.Value{
+						"boolean": property.New(true),
+						"float":   property.New(3.14),
+						"integer": property.New(42.0),
+						"string":  property.New("hello"),
 					})
-					wantDefaulted := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean": false,
-						"float":   0.5,
-						"integer": 1,
-						"string":  "default",
+					wantDefaulted := property.NewMap(map[string]property.Value{
+						"boolean": property.New(false),
+						"float":   property.New(0.5),
+						"integer": property.New(1.0),
+						"string":  property.New("default"),
 					})
 
-					assert.Equal(l, wantExplicit, explicit.Inputs, "expected explicit inputs to be %v", wantExplicit)
+					assert.Equal(l, wantExplicit, resource.FromResourcePropertyMap(explicit.Inputs),
+						"expected explicit inputs to be %v", wantExplicit)
 					assert.Equal(l, explicit.Inputs, explicit.Outputs, "expected explicit inputs and outputs to match")
 
-					assert.Equal(l, wantDefaulted, defaulted.Inputs, "expected defaulted inputs to be %v", wantDefaulted)
+					assert.Equal(l, wantDefaulted, resource.FromResourcePropertyMap(defaulted.Inputs),
+						"expected defaulted inputs to be %v", wantDefaulted)
 					assert.Equal(l, defaulted.Inputs, defaulted.Outputs, "expected defaulted inputs and outputs to match")
 				},
 			},

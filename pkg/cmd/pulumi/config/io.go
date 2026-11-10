@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"slices"
 	"strings"
@@ -25,11 +26,13 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/stackenv"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -37,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // OverrideEnvFlag registers the --override-env flag on cmd, binding it to overrides.
@@ -59,6 +63,9 @@ func GetStackConfiguration(
 	return getStackConfigurationWithFallback(ctx, sink, ssml, stack, project, nil, configFile, envOverrides)
 }
 
+var errDestroyManagedOutsideProject = cmdStack.ManagedEnvironmentNotSupportedError(
+	"`pulumi destroy` outside the project directory")
+
 // GetStackConfigurationOrLatest attempts to load a current stack configuration
 // using getStackConfiguration. If that fails due to not being run within a
 // valid project, the latest configuration from the backend is returned. This is
@@ -78,6 +85,9 @@ func GetStackConfigurationOrLatest(
 		ctx, sink, ssml, stack, project,
 		func(err error) (config.Map, error) {
 			if errors.Is(err, workspace.ErrProjectNotFound) {
+				if stack.ConfigLocation().ManagedEnvironment != "" {
+					return nil, errDestroyManagedOutsideProject
+				}
 				// This error indicates that we're not being run in a project directory.
 				// We should fallback on the backend.
 				latest, err := backend.GetLatestConfiguration(ctx, stack)
@@ -135,7 +145,7 @@ func getStackConfigurationFromProjectStack(
 	workspaceStack *workspace.ProjectStack,
 	envOverrides []string,
 ) (backend.StackConfiguration, error) {
-	env, diags, err := openStackEnv(ctx, stack, workspaceStack, envOverrides)
+	env, diags, managedEnv, err := openStackEnvWithManaged(ctx, stack, workspaceStack, envOverrides)
 	if err != nil {
 		return backend.StackConfiguration{}, fmt.Errorf("opening environment: %w", err)
 	}
@@ -144,6 +154,12 @@ func getStackConfigurationFromProjectStack(
 		// to thread through here. Writes go to the process streams directly.
 		printESCDiagnostics(os.Stderr, diags) //nolint:forbidigo
 		return backend.StackConfiguration{}, errors.New("opening environment: too many errors")
+	}
+	var managedRevision *apitype.UpdateProgramEnvironment
+	var managedNotice string
+	if managedEnv != nil {
+		managedRevision = managedEnv.update
+		managedNotice = managedEnvironmentNotice(stack, managedEnv)
 	}
 
 	var pulumiEnv esc.Value
@@ -169,25 +185,31 @@ func getStackConfigurationFromProjectStack(
 		}
 	}
 
+	imports := stackEnvironmentImports(workspaceStack, managedEnv != nil)
+
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
 	// the correct decrypter for the diy backend would involve prompting for a passphrase)
 	if !needsCrypter(workspaceStack.Config, pulumiEnv) {
 		return backend.StackConfiguration{
-			EnvironmentImports: workspaceStack.Environment.Imports(),
-			Environment:        pulumiEnv,
-			Config:             workspaceStack.Config,
-			Decrypter:          config.NewPanicCrypter(),
+			EnvironmentImports:       imports,
+			Environment:              pulumiEnv,
+			Config:                   workspaceStack.Config,
+			Decrypter:                config.NewPanicCrypter(),
+			ManagedEnvironment:       managedRevision,
+			ManagedEnvironmentNotice: managedNotice,
 		}, nil
 	}
 
 	crypter := sm.Decrypter()
 
 	return backend.StackConfiguration{
-		EnvironmentImports: workspaceStack.Environment.Imports(),
-		Environment:        pulumiEnv,
-		Config:             workspaceStack.Config,
-		Decrypter:          crypter,
+		EnvironmentImports:       imports,
+		Environment:              pulumiEnv,
+		Config:                   workspaceStack.Config,
+		Decrypter:                crypter,
+		ManagedEnvironment:       managedRevision,
+		ManagedEnvironmentNotice: managedNotice,
 	}, nil
 }
 
@@ -235,7 +257,99 @@ func needsCrypter(cfg config.Map, env esc.Value) bool {
 	return cfg.HasSecureValue() || hasSecrets(env)
 }
 
+type managedEnvironment struct {
+	update    *apitype.UpdateProgramEnvironment
+	local     []byte
+	published []byte
+}
+
+func managedEnvironmentNotice(stack backend.Stack, managedEnv *managedEnvironment) string {
+	if managedEnv.update.ChangeRequestID == "" {
+		return ""
+	}
+	name, revision := stack.ConfigLocation().ManagedEnvironment, managedEnv.update.BaseRevision
+	changes, err := stackenv.DiffDefinitions(managedEnv.local, managedEnv.published)
+	if err != nil {
+		slog.Debug("diffing managed environment definitions", "environment", name, "err", err)
+		return fmt.Sprintf(
+			"using local changes to environment %s (based on revision %d). "+
+				"up, refresh and destroy publish them; preview doesn't.\n",
+			name, revision)
+	}
+	var notice strings.Builder
+	stackenv.WriteDefinitionDiff(&notice, colors.Raw, name, revision, changes)
+	return notice.String()
+}
+
 func openStackEnv(
+	ctx context.Context,
+	stack backend.Stack,
+	workspaceStack *workspace.ProjectStack,
+	envOverrides []string,
+) (*esc.Environment, []apitype.EnvironmentDiagnostic, error) {
+	env, diags, _, err := openStackEnvWithManaged(ctx, stack, workspaceStack, envOverrides)
+	return env, diags, err
+}
+
+func openStackEnvWithManaged(
+	ctx context.Context,
+	stack backend.Stack,
+	workspaceStack *workspace.ProjectStack,
+	envOverrides []string,
+) (*esc.Environment, []apitype.EnvironmentDiagnostic, *managedEnvironment, error) {
+	loc := stack.ConfigLocation()
+	if loc.ManagedEnvironment == "" {
+		env, diags, err := openUnmanagedStackEnv(ctx, stack, workspaceStack, envOverrides)
+		return env, diags, nil, err
+	}
+
+	org, definition, err := managedEnvironmentDefinition(stack, workspaceStack)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if len(envOverrides) != 0 {
+		return nil, nil, nil, cmdStack.ManagedEnvironmentNotSupportedError("--override-env")
+	}
+	project, name := loc.ManagedEnvironmentRef()
+
+	managed, err := backend.AsManagedEnvironmentsBackend(stack.Backend())
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	evaluation, diags, err := managed.EvaluateManagedEnvironment(ctx, org, project, name, definition)
+	if err != nil || len(diags) != 0 {
+		return nil, diags, nil, err
+	}
+	return evaluation.Environment, nil, &managedEnvironment{
+		update: &apitype.UpdateProgramEnvironment{
+			BaseRevision:    evaluation.BaseRevision,
+			ChangeRequestID: evaluation.ChangeRequestID,
+			DraftRevision:   evaluation.DraftRevision,
+		},
+		local:     definition,
+		published: evaluation.PublishedDefinition,
+	}, nil
+}
+
+func managedEnvironmentDefinition(
+	stack backend.Stack,
+	workspaceStack *workspace.ProjectStack,
+) (string, []byte, error) {
+	orgNamer, ok := stack.(interface{ OrgName() string })
+	if !ok {
+		return "", nil, fmt.Errorf("cannot determine organization for stack %v", stack.Ref())
+	}
+	org := orgNamer.OrgName()
+	node, err := cmdStack.ManagedEnvironmentDefinition(
+		stack.ConfigLocation(), workspaceStack, org, stack.Ref().Name().String(), "")
+	if err != nil {
+		return "", nil, err
+	}
+	definition, err := yaml.Marshal(node)
+	return org, definition, err
+}
+
+func openUnmanagedStackEnv(
 	ctx context.Context,
 	stack backend.Stack,
 	workspaceStack *workspace.ProjectStack,
@@ -433,4 +547,14 @@ func PrettyKeyForProject(k config.Key, projectName tokens.PackageName) string {
 	}
 
 	return fmt.Sprintf("%s:%s", k.Namespace(), k.Name())
+}
+
+// Environment.Imports names the inline values "yaml". On a managed stack they are the managed environment itself, and
+// the console would link "yaml" to a default/yaml environment that does not exist.
+func stackEnvironmentImports(ps *workspace.ProjectStack, managed bool) []string {
+	imports := ps.Environment.Imports()
+	if managed && len(imports) > 0 && imports[len(imports)-1] == "yaml" {
+		return imports[:len(imports)-1]
+	}
+	return imports
 }

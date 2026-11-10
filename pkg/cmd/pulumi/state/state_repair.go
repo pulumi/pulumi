@@ -26,7 +26,6 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -141,7 +140,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 		return err
 	}
 
-	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)
+	snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return err
 	} else if snap == nil {
