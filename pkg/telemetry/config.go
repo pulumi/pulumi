@@ -84,6 +84,43 @@ type config struct {
 	Notified bool `json:"notified,omitempty"`
 }
 
+// Status returns the effective telemetry settings for the given $PULUMI_HOME and environment.
+func Status(homeDir string, e declared.Env) (Settings, error) {
+	cfg, _, err := readConfig(filepath.Join(homeDir, configFile))
+	if err != nil {
+		return Settings{}, err
+	}
+	return cfg.settings(homeDir, e), nil
+}
+
+// SetEnabled saves whether telemetry is enabled to the config in homeDir.
+func SetEnabled(homeDir string, enabled bool) error {
+	return updateConfig(homeDir, func(cfg *config) {
+		cfg.Telemetry = &enabled
+		cfg.Notified = true
+	})
+}
+
+// SetLog saves whether telemetry events are logged to the config in homeDir.
+func SetLog(homeDir string, log bool) error {
+	return updateConfig(homeDir, func(cfg *config) { cfg.Log = log })
+}
+
+func updateConfig(homeDir string, update func(*config)) error {
+	if err := os.MkdirAll(homeDir, 0o700); err != nil {
+		return err
+	}
+	path := filepath.Join(homeDir, configFile)
+	return lockedfile.Transform(path, func(old []byte) ([]byte, error) {
+		cfg, err := parseConfig(path, old)
+		if err != nil {
+			return nil, err
+		}
+		update(&cfg)
+		return marshalConfig(cfg)
+	})
+}
+
 func newTelemetry(args InitArgs) *telemetry {
 	enabled, enabledSet := lookupBool(args.Env, env.Telemetry)
 	logging := args.Env.GetBool(env.TelemetryLog)
