@@ -84,17 +84,17 @@ type ResourceProviderClient interface {
 	//
 	// `Parameterize` supports two types of parameterization:
 	//
-	//   - *Replacement parameterization*, whereby a `Parameterize` call results in a schema that completely replaces the
-	//     original provider schema. Bridging a Terraform provider dynamically might be an example of this -- following
-	//     the call to `Parameterize`, the provider's schema will become that of the Terraform provider that was bridged.
-	//     Providers that implement replacement parameterization expect a *single* call to `Parameterize`.
+	// * *Replacement parameterization*, whereby a `Parameterize` call results in a schema that completely replaces the
+	//   original provider schema. Bridging a Terraform provider dynamically might be an example of this -- following
+	//   the call to `Parameterize`, the provider's schema will become that of the Terraform provider that was bridged.
+	//   Providers that implement replacement parameterization expect a *single* call to `Parameterize`.
 	//
-	//   - *Extension parameterization*, in which a `Parameterize` call results in a schema that is a superset of the
-	//     original. This is useful in cases where a provider can be extended with additional resources or functions, such
-	//     as a Kubernetes provider that can be extended with resources representing custom resource definitions.
-	//     Providers that implement extension parameterization should accept multiple calls to `Parameterize`. Extension
-	//     packages may even be called multiple times with the same package name, but with different versions. The CRUD
-	//     operations of extension resources must include the version of which sub-package they correspond to.
+	// * *Extension parameterization*, in which a `Parameterize` call results in a schema that is a superset of the
+	//   original. This is useful in cases where a provider can be extended with additional resources or functions, such
+	//   as a Kubernetes provider that can be extended with resources representing custom resource definitions.
+	//   Providers that implement extension parameterization should accept multiple calls to `Parameterize`. Extension
+	//   packages may even be called multiple times with the same package name, but with different versions. The CRUD
+	//   operations of extension resources must include the version of which sub-package they correspond to.
 	//
 	// `Parameterize` should work the same whether it is provided with `ParametersArgs` or `ParametersValue` input. In
 	// each case it should return the sub-package name and version (which when a `ParametersValue` is supplied should
@@ -136,9 +136,9 @@ type ResourceProviderClient interface {
 	DiffConfig(ctx context.Context, in *DiffRequest, opts ...grpc.CallOption) (*DiffResponse, error)
 	// `Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 	//
-	//   - Provider-specific configuration, which is the set of inputs that have been validated by a previous
-	//     [](pulumirpc.ResourceProvider.CheckConfig) call.
-	//   - Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+	// * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+	//   [](pulumirpc.ResourceProvider.CheckConfig) call.
+	// * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
 	//
 	// The provider is expected to return its own set of protocol configuration, indicating which features it supports
 	// in turn so that the caller and the provider can interact appropriately.
@@ -152,13 +152,12 @@ type ResourceProviderClient interface {
 	// [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
 	// compatibility between older engines and providers:
 	//
-	//   - Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
-	//     set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
-	//     must support them. See [](pulumirpc.ConfigureRequest) for more information.
-	//   - Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
-	//     indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
-	//     [](pulumirpc.ConfigureResponse) for more information.
-	//
+	// * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+	//   set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+	//   must support them. See [](pulumirpc.ConfigureRequest) for more information.
+	// * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+	//   indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+	//   [](pulumirpc.ConfigureResponse) for more information.
 	// :::
 	Configure(ctx context.Context, in *ConfigureRequest, opts ...grpc.CallOption) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
@@ -213,13 +212,13 @@ type ResourceProviderClient interface {
 	// `Construct` is effectively a subprogram whose resources will be persisted in the caller's state. It is
 	// consequently passed enough information to manage fully these resources. At a high level, this comprises:
 	//
-	//   - A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
-	//     custom or component resources that belong to the component.
+	// * A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
+	//   custom or component resources that belong to the component.
 	//
 	// * A set of input properties.
 	//
-	//   - A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
-	//     propagate to resources it registers against the supplied resource monitor.
+	// * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
+	//   propagate to resources it registers against the supplied resource monitor.
 	Construct(ctx context.Context, in *ConstructRequest, opts ...grpc.CallOption) (*ConstructResponse, error)
 	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
 	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
@@ -515,17 +514,17 @@ type ResourceProviderServer interface {
 	//
 	// `Parameterize` supports two types of parameterization:
 	//
-	//   - *Replacement parameterization*, whereby a `Parameterize` call results in a schema that completely replaces the
-	//     original provider schema. Bridging a Terraform provider dynamically might be an example of this -- following
-	//     the call to `Parameterize`, the provider's schema will become that of the Terraform provider that was bridged.
-	//     Providers that implement replacement parameterization expect a *single* call to `Parameterize`.
+	// * *Replacement parameterization*, whereby a `Parameterize` call results in a schema that completely replaces the
+	//   original provider schema. Bridging a Terraform provider dynamically might be an example of this -- following
+	//   the call to `Parameterize`, the provider's schema will become that of the Terraform provider that was bridged.
+	//   Providers that implement replacement parameterization expect a *single* call to `Parameterize`.
 	//
-	//   - *Extension parameterization*, in which a `Parameterize` call results in a schema that is a superset of the
-	//     original. This is useful in cases where a provider can be extended with additional resources or functions, such
-	//     as a Kubernetes provider that can be extended with resources representing custom resource definitions.
-	//     Providers that implement extension parameterization should accept multiple calls to `Parameterize`. Extension
-	//     packages may even be called multiple times with the same package name, but with different versions. The CRUD
-	//     operations of extension resources must include the version of which sub-package they correspond to.
+	// * *Extension parameterization*, in which a `Parameterize` call results in a schema that is a superset of the
+	//   original. This is useful in cases where a provider can be extended with additional resources or functions, such
+	//   as a Kubernetes provider that can be extended with resources representing custom resource definitions.
+	//   Providers that implement extension parameterization should accept multiple calls to `Parameterize`. Extension
+	//   packages may even be called multiple times with the same package name, but with different versions. The CRUD
+	//   operations of extension resources must include the version of which sub-package they correspond to.
 	//
 	// `Parameterize` should work the same whether it is provided with `ParametersArgs` or `ParametersValue` input. In
 	// each case it should return the sub-package name and version (which when a `ParametersValue` is supplied should
@@ -567,9 +566,9 @@ type ResourceProviderServer interface {
 	DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error)
 	// `Configure` is the final stage in configuring a provider instance. Callers may supply two sets of data:
 	//
-	//   - Provider-specific configuration, which is the set of inputs that have been validated by a previous
-	//     [](pulumirpc.ResourceProvider.CheckConfig) call.
-	//   - Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
+	// * Provider-specific configuration, which is the set of inputs that have been validated by a previous
+	//   [](pulumirpc.ResourceProvider.CheckConfig) call.
+	// * Provider-agnostic ("protocol") configuration, such as whether or not the caller supports secrets.
 	//
 	// The provider is expected to return its own set of protocol configuration, indicating which features it supports
 	// in turn so that the caller and the provider can interact appropriately.
@@ -583,13 +582,12 @@ type ResourceProviderServer interface {
 	// [](pulumirpc.ResourceProvider.Handshake) method, which should be implemented by newer providers. To enable
 	// compatibility between older engines and providers:
 	//
-	//   - Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
-	//     set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
-	//     must support them. See [](pulumirpc.ConfigureRequest) for more information.
-	//   - Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
-	//     indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
-	//     [](pulumirpc.ConfigureResponse) for more information.
-	//
+	// * Callers which call `Handshake` *must* call `Configure` with flags such as `acceptSecrets` and `acceptResources`
+	//   set to `true`, since these features predate the introduction of `Handshake` and thus `Handshake`-aware callers
+	//   must support them. See [](pulumirpc.ConfigureRequest) for more information.
+	// * Providers which implement `Handshake` *must* support flags such as `acceptSecrets` and `acceptResources`, and
+	//   indicate as such by always returning `true` for these fields in [](pulumirpc.ConfigureResponse). See
+	//   [](pulumirpc.ConfigureResponse) for more information.
 	// :::
 	Configure(context.Context, *ConfigureRequest) (*ConfigureResponse, error)
 	// Invoke dynamically executes a built-in function in the provider.
@@ -644,13 +642,13 @@ type ResourceProviderServer interface {
 	// `Construct` is effectively a subprogram whose resources will be persisted in the caller's state. It is
 	// consequently passed enough information to manage fully these resources. At a high level, this comprises:
 	//
-	//   - A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
-	//     custom or component resources that belong to the component.
+	// * A [](pulumirpc.ResourceMonitor) endpoint which the provider can use to [register](resource-registration) nested
+	//   custom or component resources that belong to the component.
 	//
 	// * A set of input properties.
 	//
-	//   - A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
-	//     propagate to resources it registers against the supplied resource monitor.
+	// * A full set of [resource options](https://www.pulumi.com/docs/iac/concepts/options/) that the component should
+	//   propagate to resources it registers against the supplied resource monitor.
 	Construct(context.Context, *ConstructRequest) (*ConstructResponse, error)
 	// Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
 	// Operations aborted in this way will return an error (e.g., `Update` and `Create` will either return a
