@@ -1,0 +1,4 @@
+component: cli/display
+kind: fix
+body: Hide the cursor during the tree view render on terminals without terminfo
+time: 2026-11-10T19:15:39.308494000Z
