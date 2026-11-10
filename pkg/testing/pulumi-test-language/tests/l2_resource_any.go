@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,24 +38,25 @@ func init() {
 					asset, err := resource.NewTextAsset("the asset contents")
 					require.NoError(l, err)
 
-					assertValue := func(name string, want resource.PropertyValue) {
+					assertValue := func(name string, want property.Value) {
 						r := RequireSingleNamedResource(l, res.Snap.Resources, name)
-						require.Equal(l, want, r.Inputs["value"], name)
+						inputs := resource.FromResourcePropertyMap(r.Inputs)
+						require.Equal(l, want, inputs.Get("value"), name)
 					}
 
-					assertValue("aString", resource.NewProperty("a string"))
-					assertValue("aBoolean", resource.NewProperty(true))
-					assertValue("aNumber", resource.NewProperty(42.0))
-					assertValue("aList", resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty(1.0),
-						resource.NewProperty(true),
-						resource.NewProperty("three"),
+					assertValue("aString", property.New("a string"))
+					assertValue("aBoolean", property.New(true))
+					assertValue("aNumber", property.New(42.0))
+					assertValue("aList", property.New([]property.Value{
+						property.New(1.0),
+						property.New(true),
+						property.New("three"),
 					}))
-					assertValue("anObject", resource.NewProperty(resource.PropertyMap{
-						"key":    resource.NewProperty("value"),
-						"nested": resource.NewProperty(resource.PropertyMap{"count": resource.NewProperty(1.0)}),
+					assertValue("anObject", property.New(map[string]property.Value{
+						"key":    property.New("value"),
+						"nested": property.New(map[string]property.Value{"count": property.New(1.0)}),
 					}))
-					assertValue("anAsset", resource.NewProperty(asset))
+					assertValue("anAsset", property.New(asset))
 				},
 			},
 		},

@@ -1,3 +1,0 @@
-component: engine
-kind: feat
-body: Add an `id` field to `ReadResourceResponse` so providers can return a resolved id that differs from the one supplied on the request; SDKs now surface this id via `.id` and resolve it as unknown when empty during preview

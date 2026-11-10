@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,20 +47,20 @@ func init() {
 					source := RequireSingleResource(l, res.Snap.Resources, "bytesource:index:Resource")
 					sink := RequireSingleResource(l, res.Snap.Resources, "bytesink:index:Resource")
 
-					assert.Equal(l, resource.PropertyMap{
-						"base64": resource.NewProperty(rawBytesBase64),
-					}, source.Inputs)
-					assert.Equal(l, resource.PropertyMap{
-						"base64": resource.NewProperty(rawBytesBase64),
-						"bytes":  resource.NewProperty(rawBytes),
-					}, source.Outputs)
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"base64": property.New(rawBytesBase64),
+					}), resource.FromResourcePropertyMap(source.Inputs))
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"base64": property.New(rawBytesBase64),
+						"bytes":  property.New(rawBytes),
+					}), resource.FromResourcePropertyMap(source.Outputs))
 
-					wantSink := resource.PropertyMap{
-						"bytes":        resource.NewProperty(rawBytes),
-						"expectBase64": resource.NewProperty(rawBytesBase64),
-					}
-					assert.Equal(l, wantSink, sink.Inputs)
-					assert.Equal(l, wantSink, sink.Outputs)
+					wantSink := property.NewMap(map[string]property.Value{
+						"bytes":        property.New(rawBytes),
+						"expectBase64": property.New(rawBytesBase64),
+					})
+					assert.Equal(l, wantSink, resource.FromResourcePropertyMap(sink.Inputs))
+					assert.Equal(l, wantSink, resource.FromResourcePropertyMap(sink.Outputs))
 				},
 			},
 		},

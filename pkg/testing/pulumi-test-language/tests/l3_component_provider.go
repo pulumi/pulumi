@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,10 +57,11 @@ func init() {
 					assert.Equal(l, string(provider.URN)+"::"+string(provider.ID), configRes.Provider,
 						"expected config resource to use the explicit provider")
 
-					want := resource.NewPropertyMapFromMap(map[string]any{"text": "hello"})
-					assert.Equal(l, want, configRes.Inputs, "expected inputs to be %v", want)
-					wantOut := resource.NewPropertyMapFromMap(map[string]any{"text": ": hello"})
-					assert.Equal(l, wantOut, configRes.Outputs, "expected outputs to be %v", wantOut)
+					want := property.NewMap(map[string]property.Value{"text": property.New("hello")})
+					assert.Equal(l, want, resource.FromResourcePropertyMap(configRes.Inputs), "expected inputs to be %v", want)
+					wantOut := property.NewMap(map[string]property.Value{"text": property.New(": hello")})
+					assert.Equal(l, wantOut, resource.FromResourcePropertyMap(configRes.Outputs),
+						"expected outputs to be %v", wantOut)
 				},
 			},
 		},

@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,32 +38,33 @@ func init() {
 					first := RequireSingleNamedResource(l, res.Snap.Resources, "first")
 					second := RequireSingleNamedResource(l, res.Snap.Resources, "second")
 
-					assert.Equal(l, resource.PropertyMap{
-						"the-input": resource.NewProperty(true),
-						"nested": resource.NewProperty(resource.PropertyMap{
-							"nested-value": resource.NewProperty("nested"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"the-input": property.New(true),
+						"nested": property.New(map[string]property.Value{
+							"nested-value": property.New("nested"),
 						}),
-					}, first.Inputs)
+					}), resource.FromResourcePropertyMap(first.Inputs))
 
-					assert.Equal(l, resource.PropertyMap{
-						"the-output": resource.NewProperty(resource.PropertyMap{
-							"nested-output": resource.NewProperty("nested"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"the-output": property.New(map[string]property.Value{
+							"nested-output": property.New("nested"),
 						}),
-					}, first.Outputs)
+					}), resource.FromResourcePropertyMap(first.Outputs))
 
-					assert.Equal(l, resource.PropertyMap{
-						"the-input": resource.NewProperty("nested"),
-					}, second.Inputs)
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"the-input": property.New("nested"),
+					}), resource.FromResourcePropertyMap(second.Inputs))
 
-					assert.Equal(l, resource.PropertyMap{
-						"the-input": resource.NewProperty("nested"),
-					}, second.Outputs)
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"the-input": property.New("nested"),
+					}), resource.FromResourcePropertyMap(second.Outputs))
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "theOutput", resource.NewProperty(resource.PropertyMap{
-						"nested-output": resource.NewProperty("nested"),
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, stackOutputs, "theOutput", property.New(map[string]property.Value{
+						"nested-output": property.New("nested"),
 					}))
-					AssertPropertyMapMember(l, stack.Outputs, "invoked", resource.NewProperty("hello nested"))
+					AssertPropertyMapMember(l, stackOutputs, "invoked", property.New("hello nested"))
 				},
 			},
 		},

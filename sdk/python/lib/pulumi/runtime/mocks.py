@@ -19,7 +19,8 @@ Mocks for testing.
 import functools
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, NamedTuple, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, ParamSpec
 
 from google.protobuf import empty_pb2
 
@@ -46,14 +47,17 @@ if TYPE_CHECKING:
     from ..resource import ResourceTransform
 
 
-def test(fn):
+P = ParamSpec("P")
+
+
+def test(fn: Callable[P, Any]) -> Callable[P, None]:
     """
     Decorates a test function to make sure that a returned Future
     or Output is awaited as part of the test.
     """
 
     @functools.wraps(fn)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
         from .. import Output
 
         SETTINGS.rpc_manager.clear()

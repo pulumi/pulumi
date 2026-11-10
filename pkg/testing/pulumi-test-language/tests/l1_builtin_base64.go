@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,12 +37,12 @@ func init() {
 			Assert: func(l *L, res AssertArgs) {
 				require.NoError(l, res.Err)
 				stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-				want := resource.PropertyMap{
-					"data":      resource.NewProperty(string(bytes)),
-					"roundtrip": resource.NewProperty(input),
-				}
+				want := property.NewMap(map[string]property.Value{
+					"data":      property.New(string(bytes)),
+					"roundtrip": property.New(input),
+				})
 
-				assert.Equal(l, want, stack.Outputs, "expected stack outputs to be %v", want)
+				assert.Equal(l, want, resource.FromResourcePropertyMap(stack.Outputs), "expected stack outputs to be %v", want)
 			},
 		}
 	}

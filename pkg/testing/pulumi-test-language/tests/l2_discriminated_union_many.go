@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,83 +37,83 @@ func init() {
 
 				expected := []struct {
 					name string
-					m    resource.PropertyMap
+					m    map[string]property.Value
 				}{
-					{"example1", resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant1"),
-						"payload":          resource.NewProperty("p1"),
-						"extra":            resource.NewProperty("e1"),
+					{"example1", map[string]property.Value{
+						"discriminantKind": property.New("variant1"),
+						"payload":          property.New("p1"),
+						"extra":            property.New("e1"),
 					}},
-					{"example2", resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant2"),
-						"payload":          resource.NewProperty("p2"),
-						"extra":            resource.NewProperty("e2"),
+					{"example2", map[string]property.Value{
+						"discriminantKind": property.New("variant2"),
+						"payload":          property.New("p2"),
+						"extra":            property.New("e2"),
 					}},
-					{"example3", resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant3"),
-						"payload":          resource.NewProperty("p3"),
-						"count":            resource.NewProperty(3.0),
+					{"example3", map[string]property.Value{
+						"discriminantKind": property.New("variant3"),
+						"payload":          property.New("p3"),
+						"count":            property.New(3.0),
 					}},
-					{"example4", resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant4"),
-						"payload":          resource.NewProperty("p4"),
-						"enabled":          resource.NewProperty(true),
+					{"example4", map[string]property.Value{
+						"discriminantKind": property.New("variant4"),
+						"payload":          property.New("p4"),
+						"enabled":          property.New(true),
 					}},
-					{"example5", resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant5"),
-						"payload":          resource.NewProperty("p5"),
-						"label":            resource.NewProperty("l5"),
+					{"example5", map[string]property.Value{
+						"discriminantKind": property.New("variant5"),
+						"payload":          property.New("p5"),
+						"label":            property.New("l5"),
 					}},
-					{"example6", resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant6"),
-						"payload":          resource.NewProperty("p6"),
-						"code":             resource.NewProperty(6.0),
+					{"example6", map[string]property.Value{
+						"discriminantKind": property.New("variant6"),
+						"payload":          property.New("p6"),
+						"code":             property.New(6.0),
 					}},
-					{"example7", resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant7"),
-						"payload":          resource.NewProperty("p7"),
-						"message":          resource.NewProperty("m7"),
+					{"example7", map[string]property.Value{
+						"discriminantKind": property.New("variant7"),
+						"payload":          property.New("p7"),
+						"message":          property.New("m7"),
 					}},
-					{"example8", resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant8"),
-						"payload":          resource.NewProperty("p8"),
-						"size":             resource.NewProperty(8.0),
+					{"example8", map[string]property.Value{
+						"discriminantKind": property.New("variant8"),
+						"payload":          property.New("p8"),
+						"size":             property.New(8.0),
 					}},
-					{"example9", resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant9"),
-						"payload":          resource.NewProperty("p9"),
-						"flag":             resource.NewProperty(false),
+					{"example9", map[string]property.Value{
+						"discriminantKind": property.New("variant9"),
+						"payload":          property.New("p9"),
+						"flag":             property.New(false),
 					}},
-					{"example10", resource.PropertyMap{
-						"discriminantKind": resource.NewProperty("variant10"),
-						"payload":          resource.NewProperty("p10"),
-						"note":             resource.NewProperty("n10"),
+					{"example10", map[string]property.Value{
+						"discriminantKind": property.New("variant10"),
+						"payload":          property.New("p10"),
+						"note":             property.New("n10"),
 					}},
 				}
 
 				for _, e := range expected {
 					r := RequireSingleNamedResource(l, snapshot.Resources, e.name)
-					require.Equal(l, resource.PropertyMap{
-						"unionOf": resource.NewProperty(e.m),
-					}, r.Outputs, "resource %s", e.name)
+					require.Equal(l, property.NewMap(map[string]property.Value{
+						"unionOf": property.New(e.m),
+					}), resource.FromResourcePropertyMap(r.Outputs), "resource %s", e.name)
 				}
 
 				// Sub-union assignment: subset1's output (a 3-variant union) is
 				// passed through to example11's input (the full 10-variant union).
-				subsetPayload := resource.PropertyMap{
-					"discriminantKind": resource.NewProperty("variant3"),
-					"payload":          resource.NewProperty("sp"),
-					"count":            resource.NewProperty(33.0),
+				subsetPayload := map[string]property.Value{
+					"discriminantKind": property.New("variant3"),
+					"payload":          property.New("sp"),
+					"count":            property.New(33.0),
 				}
 				subset1 := RequireSingleNamedResource(l, snapshot.Resources, "subset1")
-				require.Equal(l, resource.PropertyMap{
-					"unionOf": resource.NewProperty(subsetPayload),
-				}, subset1.Outputs)
+				require.Equal(l, property.NewMap(map[string]property.Value{
+					"unionOf": property.New(subsetPayload),
+				}), resource.FromResourcePropertyMap(subset1.Outputs))
 
 				example11 := RequireSingleNamedResource(l, snapshot.Resources, "example11")
-				require.Equal(l, resource.PropertyMap{
-					"unionOf": resource.NewProperty(subsetPayload),
-				}, example11.Outputs)
+				require.Equal(l, property.NewMap(map[string]property.Value{
+					"unionOf": property.New(subsetPayload),
+				}), resource.FromResourcePropertyMap(example11.Outputs))
 			},
 		}},
 	}

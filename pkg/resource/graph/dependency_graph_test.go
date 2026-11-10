@@ -908,6 +908,74 @@ func TestDependencyGraph(t *testing.T) {
 	t.Run("TransitiveDependenciesOf", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("duplicate pending deletes", func(t *testing.T) {
+			t.Parallel()
+
+			dependency := &pkgresource.State{URN: "dependency"}
+			first := &pkgresource.State{URN: "parent", Delete: true, Dependencies: []resource.URN{dependency.URN}}
+			child := &pkgresource.State{URN: "child", Parent: first.URN}
+			second := &pkgresource.State{URN: first.URN, Delete: true, Dependencies: []resource.URN{child.URN}}
+			graph := NewDependencyGraph([]*pkgresource.State{dependency, first, child, second})
+
+			assertSameSets(t, mapset.NewSet(dependency, first), graph.TransitiveDependenciesOf(child))
+			assertSameSets(t, mapset.NewSet(dependency), graph.TransitiveDependenciesOf(first))
+			assertSameSets(t, mapset.NewSet(dependency, first, child), graph.TransitiveDependenciesOf(second))
+		})
+
+		t.Run("duplicate pending deletes after a transitive dependency", func(t *testing.T) {
+			t.Parallel()
+
+			first := &pkgresource.State{URN: "parent", Delete: true}
+			dependency := &pkgresource.State{URN: "dependency", Delete: true, Parent: first.URN}
+			second := &pkgresource.State{URN: first.URN, Delete: true}
+			child := &pkgresource.State{URN: "child", Delete: true, Dependencies: []resource.URN{dependency.URN}}
+			graph := NewDependencyGraph([]*pkgresource.State{first, dependency, second, child})
+
+			assertSameSets(t, mapset.NewSet(first, dependency), graph.TransitiveDependenciesOf(child))
+		})
+
+		// The only old copy of "dependency" comes after its old dependent, but a new copy precedes it. Snapshot integrity
+		// accepts this, so the result must keep the new copy.
+		t.Run("old dependent with only a new dependency before it", func(t *testing.T) {
+			t.Parallel()
+
+			newDependency := &pkgresource.State{URN: "dependency"}
+			oldDependent := &pkgresource.State{
+				URN: "dependent", Delete: true, Dependencies: []resource.URN{newDependency.URN},
+			}
+			oldDependency := &pkgresource.State{URN: newDependency.URN, Delete: true}
+			r := &pkgresource.State{URN: "r", Delete: true, Dependencies: []resource.URN{oldDependent.URN}}
+			graph := NewDependencyGraph([]*pkgresource.State{newDependency, oldDependent, oldDependency, r})
+
+			assertSameSets(t, mapset.NewSet(newDependency, oldDependent), graph.TransitiveDependenciesOf(r))
+		})
+
+		// The only new copy of "dependency" comes after its new dependent, but an old copy precedes it. Snapshot
+		// integrity accepts this, so the result must keep the old copy.
+		t.Run("new dependent with only an old dependency before it", func(t *testing.T) {
+			t.Parallel()
+
+			oldDependency := &pkgresource.State{URN: "dependency", Delete: true}
+			newDependent := &pkgresource.State{URN: "dependent", Dependencies: []resource.URN{oldDependency.URN}}
+			newDependency := &pkgresource.State{URN: oldDependency.URN}
+			r := &pkgresource.State{URN: "r", Dependencies: []resource.URN{newDependent.URN}}
+			graph := NewDependencyGraph([]*pkgresource.State{oldDependency, newDependent, newDependency, r})
+
+			assertSameSets(t, mapset.NewSet(oldDependency, newDependent), graph.TransitiveDependenciesOf(r))
+		})
+
+		// A malformed snapshot can hold more than one new copy of a URN.
+		t.Run("duplicate new resources", func(t *testing.T) {
+			t.Parallel()
+
+			first := &pkgresource.State{URN: "dependency"}
+			second := &pkgresource.State{URN: first.URN}
+			r := &pkgresource.State{URN: "r", Dependencies: []resource.URN{first.URN}}
+			graph := NewDependencyGraph([]*pkgresource.State{first, second, r})
+
+			assertSameSets(t, mapset.NewSet(first, second), graph.TransitiveDependenciesOf(r))
+		})
+
 		t.Run("providerA", func(t *testing.T) {
 			t.Parallel()
 

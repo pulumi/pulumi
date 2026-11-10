@@ -247,7 +247,7 @@ func TestRetrieveZIPTemplates_RequestOptions(t *testing.T) {
 	_, err := RetrieveZIPTemplates(server.URL, func(req *http.Request) {
 		req.Header.Set("Authorization", "token 123")
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // Returns a new test HTTP server that responds to requests according to the supplied map. Keys in the map correspond to

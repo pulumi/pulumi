@@ -20,14 +20,16 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	esc_client "github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 type MockHTTPBackend struct {
 	backend.MockBackend
-	FClient   func() *client.Client
-	FCloudURL func() string
-	FSearch   func(ctx context.Context,
+	FClient    func() *client.Client
+	FESCClient func() esc_client.Client
+	FCloudURL  func() string
+	FSearch    func(ctx context.Context,
 		orgName string,
 		queryParams *apitype.PulumiQueryRequest,
 	) (*apitype.ResourceSearchResponse, error)
@@ -47,6 +49,10 @@ type MockHTTPBackend struct {
 
 func (b *MockHTTPBackend) Client() *client.Client {
 	return b.FClient()
+}
+
+func (b *MockHTTPBackend) ESCClient() esc_client.Client {
+	return b.FESCClient()
 }
 
 func (b *MockHTTPBackend) CloudURL() string {

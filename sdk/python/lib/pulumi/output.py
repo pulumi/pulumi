@@ -22,6 +22,7 @@ from typing import (
     Any,
     Generic,
     Optional,
+    Protocol,
     TypeVar,
     Union,
     cast,
@@ -50,10 +51,16 @@ T2 = TypeVar("T2")
 T3 = TypeVar("T3")
 T_co = TypeVar("T_co", covariant=True)
 U = TypeVar("U")
+K = TypeVar("K")
+K_contra = TypeVar("K_contra", contravariant=True)
 
 Input = Union[T, Awaitable[T], "Output[T]"]
 Inputs = Mapping[str, Input[Any]]
 InputType = Union[T, Mapping[str, Any]]
+
+
+class _SupportsGetItem(Protocol[K_contra, T_co]):
+    def __getitem__(self, key: K_contra, /) -> T_co: ...
 
 
 @dataclasses.dataclass
@@ -413,13 +420,21 @@ class Output(Generic[T_co]):
 
         return self.apply(lift, True)
 
+    @overload
+    def __getitem__(
+        self: "Output[_SupportsGetItem[slice, U]]", key: slice
+    ) -> "Output[U]": ...
+
+    @overload
+    def __getitem__(self: "Output[_SupportsGetItem[K, U]]", key: K) -> "Output[U]": ...
+
     def __getitem__(self, key: Any) -> "Output[Any]":
         """
         Syntactic sugar for looking up attributes dynamically off of outputs.
 
         :param Any key: Key for the attribute dictionary.
-        :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
-        :rtype: Output[Any]
+        :return: An Output containing the indexed value.
+        :rtype: Output[U]
         """
 
         def lift(v: Any) -> Any:

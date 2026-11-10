@@ -162,7 +162,9 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 			if len(diags) != 0 {
-				return envcmd.writePropertyEnvironmentDiagnostics(envcmd.esc.stderr, diags)
+				err = envcmd.writePropertyEnvironmentDiagnostics(envcmd.esc.stderr, diags)
+				contract.IgnoreError(err)
+				return errors.New("opening environment: too many errors")
 			}
 
 			files, environ, secrets, _, err := envcmd.prepareEnvironment(env, PrepareOptions{})

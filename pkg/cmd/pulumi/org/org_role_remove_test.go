@@ -62,7 +62,7 @@ func TestOrgRoleRemove_NonInteractiveWithoutYes(t *testing.T) {
 	cmd.SetArgs([]string{"role-1"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, backenderr.ErrNonInteractiveRequiresYes)
 	assert.Empty(t, c.deleteID, "client must not be called without confirmation")
 }
@@ -92,7 +92,7 @@ func TestOrgRoleRemove_InvalidOutput(t *testing.T) {
 	cmd.SetArgs([]string{"role-1", "--yes", "--output", "xml"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `output "xml" not supported`)
 }
 
@@ -104,7 +104,7 @@ func TestOrgRoleRemove_DeleteError(t *testing.T) {
 	cmd.SetArgs([]string{"role-1", "--yes"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "conflict")
 }
 
@@ -114,7 +114,7 @@ func TestOrgRoleRemove_FactoryError(t *testing.T) {
 	cmd := newOrgRoleRemoveCmdWith(failingRoleFactory(errors.New("not logged in")))
 	cmd.SetArgs([]string{"role-1", "--yes"})
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 

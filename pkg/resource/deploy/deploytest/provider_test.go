@@ -41,7 +41,7 @@ func TestProvider(t *testing.T) {
 					return errors.New("expected error")
 				},
 			}
-			assert.Error(t, prov.SignalCancellation(t.Context()))
+			assert.Error(t, prov.SignalCancellation(t.Context())) //nolint:forbidigo // pre-existing
 			assert.True(t, called)
 		})
 		t.Run("no CancelF", func(t *testing.T) {

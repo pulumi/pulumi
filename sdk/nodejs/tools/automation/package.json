@@ -15,12 +15,12 @@
         "test": "nyc --no-clean --temp-dir ../../.nyc_output mocha 'bin/tests/**/*.spec.js'"
     },
     "devDependencies": {
-        "nyc": "18.0.0",
         "@types/mocha": "^10.0.0",
         "@types/node": "14.18.63",
         "@types/pascalcase": "^1.0.3",
         "@types/to-camel-case": "^1.0.2",
-        "mocha": "11.7.5",
+        "mocha": "12.0.3",
+        "nyc": "18.0.0",
         "pascalcase": "^2.0.0",
         "to-camel-case": "^1.0.0",
         "ts-morph": "^24.0.0",

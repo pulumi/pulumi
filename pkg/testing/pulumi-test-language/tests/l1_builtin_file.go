@@ -16,6 +16,7 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,17 +28,17 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
-					require.Len(l, outputs, 3, "expected 3 outputs")
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					require.Equal(l, 3, outputs.Len(), "expected 3 outputs")
 
 					AssertPropertyMapMember(l, outputs, "fileContent",
-						resource.NewProperty("The quick brown fox jumps over the lazy dog"))
+						property.New("The quick brown fox jumps over the lazy dog"))
 
 					AssertPropertyMapMember(l, outputs, "fileB64",
-						resource.NewProperty("VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw=="))
+						property.New("VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw=="))
 
 					AssertPropertyMapMember(l, outputs, "fileSha",
-						resource.NewProperty("16j7swfXgJRpypq8sAguT41WUeRtPNt2LQLQvzfJ5ZI="))
+						property.New("16j7swfXgJRpypq8sAguT41WUeRtPNt2LQLQvzfJ5ZI="))
 				},
 			},
 		},

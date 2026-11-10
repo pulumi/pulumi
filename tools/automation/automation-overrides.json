@@ -13,12 +13,6 @@
             }
         },
         {
-            "path": ["env"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["neo"],
             "propagate": true,
             "exclude": true,
@@ -36,7 +30,6 @@
         {
             "path": ["up"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -118,6 +111,20 @@
             }
         },
         {
+            "path": ["config", "set"],
+            "propagate": false,
+            "flags": {
+                "override-import": { "omit": true }
+            }
+        },
+        {
+            "path": ["config", "set-all"],
+            "propagate": false,
+            "flags": {
+                "override-import": { "omit": true }
+            }
+        },
+        {
             "path": ["config", "refresh"],
             "propagate": false,
             "flags": {
@@ -140,24 +147,6 @@
             }
         },
         {
-            "path": ["ai"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["api"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["cloud"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["console"],
             "propagate": true,
             "exclude": true,
@@ -171,12 +160,6 @@
         },
         {
             "path": ["deployment"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["do"],
             "propagate": true,
             "exclude": true,
             "flags": {}
@@ -220,8 +203,9 @@
         {
             "path": ["login"],
             "propagate": true,
-            "exclude": true,
-            "flags": {}
+            "flags": {
+                "interactive": { "omit": true }
+            }
         },
         {
             "path": ["logout"],
@@ -231,42 +215,20 @@
         },
         {
             "path": ["logs"],
-            "propagate": true,
+            "propagate": false,
             "exclude": true,
             "flags": {}
         },
         {
             "path": ["new"],
             "propagate": true,
-            "flags": {}
+            "flags": {
+                "esc-config": { "omit": true }
+            }
         },
         {
             "path": ["org"],
             "propagate": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "audit-log"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "member"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "role"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["org", "usage"],
-            "propagate": true,
-            "exclude": true,
             "flags": {}
         },
         {
@@ -294,17 +256,26 @@
             "flags": {}
         },
         {
-            "path": ["project"],
+            "path": ["preview"],
             "propagate": true,
-            "exclude": true,
-            "flags": {}
+            "flags": {
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
+            }
         },
         {
-            "path": ["preview"],
+            "path": ["project", "list"],
             "propagate": false,
             "flags": {
                 "output": { "omit": true, "preset": "json" },
                 "json": { "omit": true }
+            }
+        },
+        {
+            "path": ["project", "new"],
+            "propagate": false,
+            "flags": {
+                "esc-config": { "omit": true }
             }
         },
         {
@@ -314,19 +285,7 @@
             "flags": {}
         },
         {
-            "path": ["schema"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
             "path": ["stack"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["state"],
             "propagate": true,
             "exclude": true,
             "flags": {}
@@ -339,12 +298,6 @@
         },
         {
             "path": ["view-trace"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["watch"],
             "propagate": true,
             "exclude": true,
             "flags": {}

@@ -32,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -118,6 +117,7 @@ func NewUpCmd() *cobra.Command {
 	var skipConfigValidation bool
 	var showConfig bool
 	var showPolicyRemediations bool
+	var showPolicyExceptions bool
 	var showReplacementSteps bool
 	var showSames bool
 	var showSecrets bool
@@ -168,6 +168,9 @@ func NewUpCmd() *cobra.Command {
 			configFile,
 		)
 		if err != nil {
+			return err
+		}
+		if err := cmdStack.RejectConfigFlagsOnManagedStack(s, configArray, configFile); err != nil {
 			return err
 		}
 
@@ -240,7 +243,12 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("getting autonaming config: %w", err)
 		}
 
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, proj)
+		if err != nil {
+			return err
+		}
 		opts.Engine = engine.UpdateOptions{
+			CloudCredentialEnv:        cloudCredentialEnv,
 			ParallelDiff:              env.ParallelDiff.Value(),
 			LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 			Parallel:                  parallel,
@@ -295,7 +303,7 @@ func NewUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
-			SecretsProvider:    secrets.DefaultProvider,
+			SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 			Scopes:             backend.CancellationScopes,
 			CoherenceWindow:    coherenceWindow,
 		}, nil /* events */)
@@ -386,6 +394,11 @@ func NewUpCmd() *cobra.Command {
 			if s, name, description, err = newcmd.GetStack(ctx, b, stackName, opts.Display); err != nil {
 				return err
 			}
+			if s != nil {
+				if err = cmdStack.RejectManagedStack(s, "`pulumi up <template>`"); err != nil {
+					return err
+				}
+			}
 		}
 
 		// Prompt for the project name, if we don't already have one from an existing stack.
@@ -471,8 +484,13 @@ func NewUpCmd() *cobra.Command {
 			return fmt.Errorf("building plugin host: %w", err)
 		}
 		defer contract.IgnoreClose(pluginHost) // host is owned here, closed after the context
+		cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, proj)
+		if err != nil {
+			return err
+		}
 		_, main, pctx, err := engine.ProjectInfoContext(
 			ctx, projinfo, pluginHost, cmdutil.Diag(), cmdutil.Diag(), false, nil, nil,
+			cloudCredentialEnv,
 		)
 		if err != nil {
 			return fmt.Errorf("building project context: %w", err)
@@ -527,13 +545,14 @@ func NewUpCmd() *cobra.Command {
 			return err
 		}
 		opts.Engine = engine.UpdateOptions{
-			ParallelDiff:     env.ParallelDiff.Value(),
-			LocalPolicyPacks: engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
-			Parallel:         parallel,
-			Debug:            debug,
-			Refresh:          refreshOption,
-			RefreshProgram:   runProgram,
-			ShowSecrets:      showSecrets,
+			CloudCredentialEnv: cloudCredentialEnv,
+			ParallelDiff:       env.ParallelDiff.Value(),
+			LocalPolicyPacks:   engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
+			Parallel:           parallel,
+			Debug:              debug,
+			Refresh:            refreshOption,
+			RefreshProgram:     runProgram,
+			ShowSecrets:        showSecrets,
 			// If the user passed --plan (but no path) then trigger a plan to be generated during the preview phase
 			// which will be constrained to during the update phase.
 			GeneratePlan: env.Experimental.Value() || strict,
@@ -569,7 +588,7 @@ func NewUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
-			SecretsProvider:    secrets.DefaultProvider,
+			SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 			Scopes:             backend.CancellationScopes,
 			CoherenceWindow:    coherenceWindow,
 		}, nil /* events */)
@@ -603,7 +622,7 @@ func NewUpCmd() *cobra.Command {
 			"`--cwd` flag to use a different directory.\n" +
 			"\n" +
 			"Note: An optional template name or URL can be provided to deploy from a template. When used, a temporary\n" +
-			" project is created, deployed, and then deleted, leaving only the stack state.",
+			"project is created, deployed, and then deleted, leaving only the stack state.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
@@ -664,6 +683,7 @@ func NewUpCmd() *cobra.Command {
 				Color:                  cmdutil.GetGlobalColorization(),
 				ShowConfig:             showConfig,
 				ShowPolicyRemediations: showPolicyRemediations,
+				ShowPolicyExceptions:   showPolicyExceptions,
 				ShowReplacementSteps:   showReplacementSteps,
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
@@ -690,9 +710,9 @@ func NewUpCmd() *cobra.Command {
 
 			if remoteArgs.Remote {
 				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
-					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
-					showReads, suppressOutputs, secretsProvider, &targets, &excludes, replaces, targetReplaces,
-					targetDependents, planFilePath, configFile, runProgram, coherenceWindow)
+					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showPolicyExceptions,
+					showReplacementSteps, showSames, showReads, suppressOutputs, secretsProvider, &targets, &excludes,
+					replaces, targetReplaces, targetDependents, planFilePath, configFile, runProgram, coherenceWindow)
 				if err != nil {
 					return err
 				}
@@ -709,7 +729,7 @@ func NewUpCmd() *cobra.Command {
 				return deployment.RunDeployment(ctx, ws, cmd, opts.Display, apitype.Update, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, opts.Display)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ctx, cmdBackend.DefaultLoginManager, ws, opts.Display)
 			if err != nil {
 				return err
 			}
@@ -878,6 +898,10 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showPolicyRemediations, "show-policy-remediations", false,
 		"Show per-resource policy remediation details instead of a summary",
+	)
+	cmd.PersistentFlags().BoolVar(
+		&showPolicyExceptions, "show-policy-exceptions", false,
+		"Show each exempted policy violation instead of a summary",
 	)
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,

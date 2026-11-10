@@ -142,6 +142,10 @@ func (rp *cloudRequiredPolicy) storeKey() (atomicinstall.Store, string, error) {
 
 func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
 
+func (rp *cloudRequiredPolicy) Exceptions() map[string]json.RawMessage {
+	return rp.RequiredPolicy.Exceptions
+}
+
 // ResolveEnvironments opens any referenced ESC environments and returns resolved
 // config (from policyConfig) and environment variables. Returns nil if no environments are referenced.
 func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine.ResolvedPolicyEnvironment, error) {
@@ -414,33 +418,33 @@ func (pack *cloudPolicyPack) Backend() backend.Backend {
 
 func (pack *cloudPolicyPack) Publish(
 	ctx context.Context, op backend.PublishOperation,
-) error {
+) (backend.PublishResult, error) {
 	//
 	// Get PolicyPack metadata from the plugin.
 	//
 
-	fmt.Println("Obtaining policy metadata from policy plugin")
+	fmt.Fprintln(op.Progress, "Obtaining policy metadata from policy plugin")
 
 	abs, err := filepath.Abs(op.PlugCtx.Pwd)
 	if err != nil {
-		return err
+		return backend.PublishResult{}, err
 	}
 
 	analyzer, err := op.PlugCtx.Host.PolicyAnalyzer(op.PlugCtx, tokens.QName(abs), op.PlugCtx.Pwd, nil /*opts*/)
 	if err != nil {
-		return err
+		return backend.PublishResult{}, err
 	}
 
 	analyzerInfo, err := analyzer.GetAnalyzerInfo(ctx)
 	if err != nil {
-		return err
+		return backend.PublishResult{}, err
 	}
 
 	// Update the name and version tag from the metadata.
 	pack.ref.name = tokens.QName(analyzerInfo.Name)
 	pack.ref.versionTag = analyzerInfo.Version
 
-	fmt.Println("Compressing policy pack")
+	fmt.Fprintln(op.Progress, "Compressing policy pack")
 
 	var packTarball []byte
 
@@ -449,7 +453,7 @@ func (pack *cloudPolicyPack) Publish(
 	if strings.EqualFold(runtime, "nodejs") {
 		packTarball, err = npm.Pack(ctx, npm.AutoPackageManager, op.PlugCtx.Pwd, os.Stderr)
 		if err != nil {
-			return fmt.Errorf("could not publish policies because of error running npm pack: %w", err)
+			return backend.PublishResult{}, fmt.Errorf("could not publish policies because of error running npm pack: %w", err)
 		}
 	} else {
 		// npm pack puts all the files in a "package" subdirectory inside the .tgz it produces, so we'll do
@@ -457,7 +461,7 @@ func (pack *cloudPolicyPack) Publish(
 		// package directory to determine the runtime of the policy pack.
 		packTarball, err = archive.TGZ(op.PlugCtx.Pwd, "package", true /*useDefaultExcludes*/)
 		if err != nil {
-			return fmt.Errorf("could not publish policies because of error creating the .tgz: %w", err)
+			return backend.PublishResult{}, fmt.Errorf("could not publish policies because of error creating the .tgz: %w", err)
 		}
 	}
 
@@ -465,25 +469,39 @@ func (pack *cloudPolicyPack) Publish(
 	// Publish.
 	//
 
-	fmt.Println("Uploading policy pack to Pulumi service")
+	fmt.Fprintln(op.Progress, "Uploading policy pack to Pulumi service")
+
+	// Older versions of pulumi/policy don't provide a version tag; the service assigns one.
+	var versionMsg string
+	if analyzerInfo.Version != "" {
+		versionMsg = " - version " + analyzerInfo.Version
+	}
+	fmt.Fprintf(op.Progress, "Publishing %q%s to %q\n", analyzerInfo.Name, versionMsg, pack.ref.orgName)
 
 	publishedVersion, err := pack.cl.PublishPolicyPack(
 		ctx, pack.ref.orgName, runtime, analyzerInfo, bytes.NewReader(packTarball), op.Metadata)
 	if err != nil {
-		return err
+		return backend.PublishResult{}, err
+	}
+	if analyzerInfo.Version == "" {
+		fmt.Fprintf(op.Progress, "Published as version %s\n", publishedVersion)
 	}
 
-	fmt.Printf("\nPermalink: %s/%s\n", pack.ref.CloudConsoleURL(), publishedVersion)
+	fmt.Fprintf(op.Progress, "\nPermalink: %s/%s\n", pack.ref.CloudConsoleURL(), publishedVersion)
 
-	return nil
+	return backend.PublishResult{
+		Name:       string(pack.ref.name),
+		VersionTag: publishedVersion,
+	}, nil
 }
 
 func (pack *cloudPolicyPack) Enable(ctx context.Context, policyGroup string, op backend.PolicyPackOperation) error {
-	if op.VersionTag == nil {
-		return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name),
-			"" /* versionTag */, op.Config)
+	versionTag := ""
+	if op.VersionTag != nil {
+		versionTag = *op.VersionTag
 	}
-	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), *op.VersionTag, op.Config)
+	return pack.cl.ApplyPolicyPack(ctx, pack.ref.orgName, policyGroup, string(pack.ref.name), versionTag,
+		op.Config, op.Environments)
 }
 
 func (pack *cloudPolicyPack) Validate(ctx context.Context, op backend.PolicyPackOperation) error {

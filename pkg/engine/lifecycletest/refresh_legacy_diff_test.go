@@ -108,9 +108,9 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 	}
 
 	emptyMap := property.Map{}
-	in1 := resource.FromResourcePropertyMap(resource.PropertyMap{"foo": resource.NewProperty("bar")})
-	out4 := resource.FromResourcePropertyMap(resource.PropertyMap{"baz": resource.NewProperty("qux")})
-	in4 := resource.FromResourcePropertyMap(resource.PropertyMap{"oof": resource.NewProperty("zab")})
+	in1 := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	out4 := property.NewMap(map[string]property.Value{"baz": property.New("qux")})
+	in4 := property.NewMap(map[string]property.Value{"oof": property.New("zab")})
 	newStates := map[resource.ID]plugin.ReadResult{
 		// A::0 and A::3 will have no changes.
 		"0": {Outputs: &emptyMap, Inputs: &emptyMap},

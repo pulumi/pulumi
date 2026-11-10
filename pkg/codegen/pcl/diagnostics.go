@@ -37,6 +37,12 @@ func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ..
 }
 
 func labelsErrorf(block *hclsyntax.Block, f string, args ...any) *hcl.Diagnostic {
+	if len(block.LabelRanges) == 0 {
+		// A block with no labels (e.g. `config { ... }`) has no label range to point at, so report the
+		// diagnostic against the block header instead.
+		return errorf(block.DefRange(), f, args...)
+	}
+
 	startRange := block.LabelRanges[0]
 
 	diagRange := hcl.Range{

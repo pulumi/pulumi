@@ -262,7 +262,7 @@ func TestOrgAuditLogList_ClientErrorPropagated(t *testing.T) {
 	err := runOrgAuditLogList(t.Context(), &buf,
 		stubOrgAuditLogListFactory(c, "acme"),
 		orgAuditLogListArgs{outputFormat: defaultOrgAuditLogListOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "listing audit logs: boom", err.Error())
 	assert.Equal(t, "", buf.String())
 }
@@ -274,7 +274,7 @@ func TestOrgAuditLogList_FactoryError(t *testing.T) {
 	err := runOrgAuditLogList(t.Context(), &buf,
 		failingOrgAuditLogListFactory(errors.New("not logged in")),
 		orgAuditLogListArgs{outputFormat: defaultOrgAuditLogListOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "not logged in", err.Error())
 	assert.Equal(t, "", buf.String())
 }

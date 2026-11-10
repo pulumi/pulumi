@@ -254,34 +254,6 @@ func TestDestroyStackRef_LocalProject(t *testing.T) {
 	testDestroyStackRef(e, "organization")
 }
 
-func TestDestroyStackRef_LocalNonProject_NewEnv(t *testing.T) {
-	t.Parallel()
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	e.Env = []string{
-		"PULUMI_DIY_BACKEND_LEGACY_LAYOUT=true",
-		"PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=true",
-	}
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	testDestroyStackRef(e, "")
-}
-
-func TestDestroyStackRef_LocalNonProject_OldEnv(t *testing.T) {
-	t.Parallel()
-
-	e := ptesting.NewEnvironment(t)
-	defer e.DeleteIfNotFailed()
-
-	e.Env = []string{
-		"PULUMI_SELF_MANAGED_STATE_LEGACY_LAYOUT=true",
-		"PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=true",
-	}
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	testDestroyStackRef(e, "")
-}
-
 func TestDestroyStackRef_Cloud(t *testing.T) {
 	t.Parallel()
 
@@ -436,7 +408,7 @@ func TestUnprotect(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
-	assert.Error(t, err, "expect error from pulumi destroy")
+	assert.Error(t, err, "expect error from pulumi destroy") //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "exit status 1")
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
@@ -459,14 +431,14 @@ func TestUnprotectProtect(t *testing.T) {
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
-	assert.Error(t, err, "expect error from pulumi destroy")
+	assert.Error(t, err, "expect error from pulumi destroy") //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "exit status 1")
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
 	e.RunCommand("pulumi", "state", "protect", "--all", "--yes")
 
 	_, _, err = e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
-	assert.Error(t, err, "expect error from pulumi destroy")
+	assert.Error(t, err, "expect error from pulumi destroy") //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "exit status 1")
 }
 
@@ -1167,7 +1139,7 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack",
 	)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, stdout, "error: update failed")
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
 }
@@ -1195,7 +1167,7 @@ func TestBunMandatoryPolicyPack(t *testing.T) {
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "bun_mandatory_policy_pack",
 	)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, stdout, "error: update failed")
 	assert.Contains(t, stdout, "❌ bun@v0.0.1 (local: bun_mandatory_policy_pack)")
 }
@@ -1225,7 +1197,7 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	stdout, _, err := e.GetCommandResults("pulumi", "up", "--skip-preview", "--yes",
 		"--policy-pack", "advisory_policy_pack",
 		"--policy-pack", "mandatory_policy_pack")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, stdout, "Failing advisory policy pack for testing\n          foobar")
 	assert.Contains(t, stdout, "error: update failed")
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: advisory_policy_pack; mandatory_policy_pack)")

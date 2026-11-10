@@ -58,6 +58,11 @@ const (
 	refreshMode
 )
 
+type extensionStepKey struct {
+	provider sdkproviders.Reference
+	ref      apitype.ExtensionRef
+}
+
 // stepGenerator is responsible for turning resource events into steps that can be fed to the deployment executor.
 // It does this by consulting the deployment and calculating the appropriate step action based on the requested goal
 // state and the existing state of the world.
@@ -116,6 +121,9 @@ type stepGenerator struct {
 
 	pendingDeletes map[*pkgresource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*pkgresource.State // URN map of providers that we have seen so far.
+
+	// the extension parameterize steps emitted so far, each resolved once its step has applied.
+	extensionSteps map[extensionStepKey]*promise.Promise[struct{}]
 
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
@@ -343,7 +351,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		Custom:                  true,
 		Delete:                  false,
 		ID:                      event.ID(),
-		Inputs:                  event.Properties(),
+		Inputs:                  resource.ToResourcePropertyMap(event.Properties()),
 		Outputs:                 make(resource.PropertyMap),
 		Parent:                  parent,
 		Protect:                 false,
@@ -795,19 +803,20 @@ func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResour
 		if err != nil {
 			return nil, false, fmt.Errorf("could not parse provider reference %s for extension: %w", providerName, err)
 		}
-		provider, ok := sg.deployment.providers.GetProvider(providerRef)
-		if !ok {
+		if _, ok := sg.deployment.providers.GetProvider(providerRef); !ok {
 			return nil, false, fmt.Errorf("provider %s not registered", providerRef)
 		}
-		existing, created := sg.deployment.LookupOrRegisterExtension(providerRef, event.ExtensionRef())
-		// The first caller for a (provider, ref) pair gets the CompletionSource and emits the
-		// parameterize step; later callers get the in-flight promise and emit nothing.
-		parameterized := existing
+		// The first resource for a (provider, ref) pair emits the parameterize step, which also records the
+		// extension blob in the snapshot. Later resources wait for that step and emit nothing.
+		key := extensionStepKey{providerRef, event.ExtensionRef()}
+		parameterized, has := sg.extensionSteps[key]
 		var steps []Step
-		if created != nil {
+		if !has {
+			created := &promise.CompletionSource[struct{}]{}
 			parameterized = created.Promise()
+			sg.extensionSteps[key] = parameterized
 			steps = []Step{NewExtensionParameterizeStep(
-				sg.deployment, provider, event.ExtensionRef(), *event.Extension(), created,
+				sg.deployment, providerRef, event.ExtensionRef(), *event.Extension(), created,
 			)}
 		}
 		// Continue the resource registration once the extension is parameterized.
@@ -1145,7 +1154,10 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 
 	// If this resource depends on a resource (or provider) that failed or was skipped under --continue-on-error, the
 	// executor will skip its step too. Generate that step now, without involving its provider or any analyzers: its
-	// inputs may be missing values that the failed resources would have provided, and its provider may have failed.
+	// inputs may be missing values that the failed resources would have provided, which Check would reject, and its
+	// provider may have failed. It's a same step rather than a create or update, because nothing happens to the
+	// resource: any existing state is kept, and an update plan allows a same step wherever it allows a create or
+	// update. SameStep.Skip reports what the create or update would have produced.
 	if sg.dependsOnSkipped(new) {
 		sg.sames[urn] = true
 		if old != nil {
@@ -1535,7 +1547,7 @@ func (sg *stepGenerator) continueStepsFromImport(
 					Message:           tresult.Diagnostic,
 					EnforcementLevel:  apitype.Advisory,
 					URN:               new.URN,
-				})
+				}, nil)
 			} else {
 				// Emit a nice message so users know what was remediated.
 				sg.deployment.events.OnPolicyRemediation(new.URN, tresult,
@@ -3171,21 +3183,25 @@ func unwrapResourcePropertySecretsAndOutputs(value resource.PropertyValue) resou
 func issueCheckErrors(deployment *Deployment, new *pkgresource.State, urn resource.URN,
 	failures []plugin.CheckFailure,
 ) bool {
-	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures)
+	return issueCheckFailures(deployment.Diag().Errorf, new, urn, failures, deployment.opts.ShowSecrets)
 }
 
-// issueCheckErrors prints any check errors to the given printer function.
+// issueCheckFailures prints any check failures to printf, redacting secret values unless showSecrets is set.
 func issueCheckFailures(printf func(*diag.Diag, ...any), new *pkgresource.State, urn resource.URN,
-	failures []plugin.CheckFailure,
+	failures []plugin.CheckFailure, showSecrets bool,
 ) bool {
 	if len(failures) == 0 {
 		return false
+	}
+	render := resource.PropertyValue.RedactSecrets
+	if showSecrets {
+		render = resource.PropertyValue.String
 	}
 	inputs := new.Inputs
 	for _, failure := range failures {
 		if failure.Property != "" {
 			printf(diag.GetResourcePropertyInvalidValueError(urn),
-				new.Type, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
+				new.Type, urn.Name(), failure.Property, render(inputs[failure.Property]), failure.Reason)
 		} else {
 			printf(
 				diag.GetResourceInvalidError(urn), new.Type, urn.Name(), failure.Reason,
@@ -3608,7 +3624,8 @@ func (sg *stepGenerator) analyzeAll(
 		}
 	}
 
-	invalid, sawError, err := analyzeResource(ctx, analyzers, r, sg.deployment.events, sg.deployment.opts.DryRun)
+	invalid, sawError, err := analyzeResource(
+		ctx, analyzers, sg.deployment.policyExceptions, r, sg.deployment.events, sg.deployment.opts.DryRun)
 	if err != nil {
 		return false, err
 	}
@@ -3731,13 +3748,14 @@ func (sg *stepGenerator) AnalyzeResources(ctx context.Context) error {
 					d.EnforcementLevel = apitype.Mandatory
 				}
 
-				if d.EnforcementLevel == apitype.Mandatory {
-					sawError.Store(true)
-				}
 				urn := resolveStackPolicyViolationURN(d.URN,
 					resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project()),
 					func(u resource.URN) bool { _, ok := sg.deployment.news.Load(u); return ok })
-				sg.deployment.events.OnPolicyViolation(urn, d)
+				exceptions := sg.deployment.policyExceptions[analyzer].Match(d.PolicyName, urn)
+				if d.EnforcementLevel == apitype.Mandatory && len(exceptions) == 0 {
+					sawError.Store(true)
+				}
+				sg.deployment.events.OnPolicyViolation(urn, d, exceptions)
 			}
 
 			summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)
@@ -3776,6 +3794,7 @@ func newStepGenerator(
 		mode:                      mode,
 		refresh:                   refresh,
 		urns:                      make(map[resource.URN]bool),
+		extensionSteps:            make(map[extensionStepKey]*promise.Promise[struct{}]),
 		reads:                     make(map[resource.URN]bool),
 		creates:                   make(map[resource.URN]bool),
 		sames:                     make(map[resource.URN]bool),

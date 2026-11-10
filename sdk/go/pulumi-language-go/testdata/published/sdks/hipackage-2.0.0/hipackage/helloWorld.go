@@ -64,6 +64,18 @@ func (HelloWorldState) ElementType() reflect.Type {
 	return reflect.TypeOf((*helloWorldState)(nil)).Elem()
 }
 
+// HelloWorldExists checks whether an existing HelloWorld resource with the given ID exists.
+func HelloWorldExists(ctx *pulumi.Context,
+	id pulumi.StringInput, state *HelloWorldState, opts ...pulumi.ResourceOption) pulumi.BoolOutput {
+	ref, err := internal.PkgGetPackageRef(ctx)
+	if err != nil {
+		return pulumi.Bool(false).ToBoolOutput().ApplyT(func(bool) (bool, error) {
+			return false, err
+		}).(pulumi.BoolOutput)
+	}
+	return ctx.ExistsResource("hipackage:index:HelloWorld", id, state, ref, opts...)
+}
+
 type helloWorldArgs struct {
 }
 

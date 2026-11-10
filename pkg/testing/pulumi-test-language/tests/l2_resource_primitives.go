@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,15 +43,20 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:primitive")
 					prim := RequireSingleResource(l, snap.Resources, "primitive:index:Resource")
 
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean":     true,
-						"float":       3.14,
-						"integer":     42,
-						"string":      "hello",
-						"numberArray": []any{-1.0, 0.0, 1.0},
-						"booleanMap":  map[string]any{"t": true, "f": false},
+					want := property.NewMap(map[string]property.Value{
+						"boolean": property.New(true),
+						"float":   property.New(3.14),
+						"integer": property.New(42.0),
+						"string":  property.New("hello"),
+						"numberArray": property.New([]property.Value{
+							property.New(-1.0), property.New(0.0), property.New(1.0),
+						}),
+						"booleanMap": property.New(map[string]property.Value{
+							"t": property.New(true), "f": property.New(false),
+						}),
 					})
-					assert.Equal(l, want, prim.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(prim.Inputs),
+						"expected inputs to be %v", want)
 					assert.Equal(l, prim.Inputs, prim.Outputs, "expected inputs and outputs to match")
 				},
 			},

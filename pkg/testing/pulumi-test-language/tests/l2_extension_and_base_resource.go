@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,8 +39,9 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					AssertPropertyMapMember(l, stack.Outputs, "parameterValue", resource.NewProperty("Hello"))
-					AssertPropertyMapMember(l, stack.Outputs, "baseValue", resource.NewProperty("base"))
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					AssertPropertyMapMember(l, stackOutputs, "parameterValue", property.New("Hello"))
+					AssertPropertyMapMember(l, stackOutputs, "baseValue", property.New("base"))
 
 					greeting := RequireSingleResource(l, snap.Resources, "myext:index:Greeting")
 					require.NotEmpty(l, greeting.ExtensionRef,

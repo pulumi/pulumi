@@ -100,6 +100,8 @@ type Options struct {
 	ShowConfig bool
 	// Display full length of inputs & outputs
 	ShowFullOutput bool
+	// Show each exempted policy violation instead of a summary
+	ShowPolicyExceptions bool
 	// Show per-resource policy remediation details instead of a summary
 	ShowPolicyRemediations bool
 	// Show resources that are being read in, alongside those being managed directly in the stack
@@ -404,6 +406,13 @@ func ShowConfig(v bool) Option {
 func ShowFullOutput(v bool) Option {
 	return func(o *Options) {
 		o.ShowFullOutput = v
+	}
+}
+
+// ShowPolicyExceptions returns an Option that sets ShowPolicyExceptions.
+func ShowPolicyExceptions(v bool) Option {
+	return func(o *Options) {
+		o.ShowPolicyExceptions = v
 	}
 }
 

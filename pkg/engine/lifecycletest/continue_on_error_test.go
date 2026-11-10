@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync/atomic"
 	"testing"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -196,7 +197,7 @@ func TestUpContinueOnErrorCreate(t *testing.T) {
 				Dependencies:            []resource.URN{failingResp.URN},
 			})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, respDepOnFailing.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, respDepOnFailing.Result)
 
 		return nil
 	})
@@ -273,8 +274,8 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	// update as opposed to create for the failing resource
@@ -353,8 +354,8 @@ func TestUpContinueOnErrorUpdate(t *testing.T) {
 	require.Len(t, snap.Resources, 3) // 2 resources + 1 provider
 
 	update = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	// Run an update to create the resource
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -411,8 +412,8 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	// update as opposed to create for the failing resource
@@ -480,8 +481,8 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 	require.Len(t, snap.Resources, 2) // 1 resource + 1 provider
 
 	update = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	// Run an update to create the resource
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -585,8 +586,8 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	// update as opposed to create for the failing resource
@@ -649,8 +650,8 @@ func TestUpContinueOnErrorUpdateNoSDKSupport(t *testing.T) {
 	require.Len(t, snap.Resources, 2) // 1 resource + 1 provider
 
 	update = true
-	ins = resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "baz",
+	ins = property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
 	})
 	// Run an update to create the resource
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -750,7 +751,7 @@ func TestContinueOnErrorImport(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs:   resource.PropertyMap{},
+			Inputs:   property.Map{},
 			ImportID: resource.ID("id"),
 		})
 		assert.ErrorContains(t, err, "resource registration failed")
@@ -806,7 +807,7 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 			Parent:                  parent.URN,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, child.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, child.Result)
 
 		deletedWith, err := monitor.RegisterResource("pkgB:m:typB", "deletedWith", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
@@ -819,7 +820,7 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 			DeletedWith:             deletedWith.URN,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, deletedWithDep.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, deletedWithDep.Result)
 
 		propDep, err := monitor.RegisterResource("pkgB:m:typB", "propDep", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
@@ -832,7 +833,7 @@ func TestUpContinueOnErrorFailedDependencies(t *testing.T) {
 			PropertyDeps:            map[resource.PropertyKey][]urn.URN{resource.PropertyKey("foo"): {propDep.URN}},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, propDepChild.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, propDepChild.Result)
 
 		independent, err := monitor.RegisterResource("pkgA:m:typA", "independent", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
@@ -1040,7 +1041,7 @@ func TestUpContinueOnErrorSkippedNoSDKSupport(t *testing.T) {
 func TestUpContinueOnErrorSkippedReadReturnsOldState(t *testing.T) {
 	t.Parallel()
 
-	readOutputs := resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1050,7 +1051,7 @@ func TestUpContinueOnErrorSkippedReadReturnsOldState(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  new(property.Map{}),
-							Outputs: ptrMap(readOutputs),
+							Outputs: &readOutputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1066,7 +1067,7 @@ func TestUpContinueOnErrorSkippedReadReturnsOldState(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})
+	ins := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		// A resource whose update fails on the second run.
@@ -1116,7 +1117,7 @@ func TestUpContinueOnErrorSkippedReadReturnsOldState(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, snap)
 
-	ins = resource.NewPropertyMapFromMap(map[string]any{"foo": "baz"})
+	ins = property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.ErrorContains(t, err, "intentionally failed update")
 }
@@ -1127,6 +1128,7 @@ func TestUpContinueOnErrorSkippedReadReturnsOldState(t *testing.T) {
 func TestUpContinueOnErrorSkippedReadReturnsUnknown(t *testing.T) {
 	t.Parallel()
 
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1135,7 +1137,7 @@ func TestUpContinueOnErrorSkippedReadReturnsUnknown(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  new(property.Map{}),
-							Outputs: ptrMap(resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})),
+							Outputs: &readOutputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1193,6 +1195,7 @@ func TestUpContinueOnErrorSkippedReadReturnsUnknown(t *testing.T) {
 func TestUpContinueOnErrorSkippedImportReturnsUnknown(t *testing.T) {
 	t.Parallel()
 
+	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -1201,7 +1204,7 @@ func TestUpContinueOnErrorSkippedImportReturnsUnknown(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  new(property.Map{}),
-							Outputs: ptrMap(resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})),
+							Outputs: &readOutputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1299,15 +1302,15 @@ func TestUpContinueOnErrorSkipsCheckForFailedDependency(t *testing.T) {
 
 		dependent, err := monitor.RegisterResource("pkgA:m:typA", "dependent", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
-			Inputs:                  resource.PropertyMap{"value": resource.MakeComputed(resource.NewProperty(""))},
+			Inputs:                  property.NewMap(map[string]property.Value{"value": property.New(property.Computed)}),
 			PropertyDeps:            map[resource.PropertyKey][]resource.URN{"value": {failing.URN}},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, dependent.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, dependent.Result)
 
 		independent, err := monitor.RegisterResource("pkgA:m:typA", "independent", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
-			Inputs:                  resource.PropertyMap{"value": resource.NewProperty("hello")},
+			Inputs:                  property.NewMap(map[string]property.Value{"value": property.New("hello")}),
 		})
 		require.NoError(t, err)
 		assert.Equal(t, pulumirpc.Result_SUCCESS, independent.Result)
@@ -1373,18 +1376,20 @@ func TestUpContinueOnErrorSkipsDiffForFailedDependency(t *testing.T) {
 		run++
 		failing, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
-			Inputs:                  resource.PropertyMap{"run": resource.NewProperty(float64(run))},
+			Inputs:                  property.NewMap(map[string]property.Value{"run": property.New(float64(run))}),
 		})
 		require.NoError(t, err)
 
-		value := resource.NewProperty("hello")
+		value := property.New("hello")
 		if failing.Result != pulumirpc.Result_SUCCESS {
-			value = resource.MakeComputed(resource.NewProperty(""))
+			value = property.New(property.Computed)
 		}
 		_, err = monitor.RegisterResource("pkgA:m:typA", "dependent", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
-			Inputs:                  resource.PropertyMap{"value": value},
-			PropertyDeps:            map[resource.PropertyKey][]resource.URN{"value": {failing.URN}},
+			Inputs: property.NewMap(map[string]property.Value{
+				"value": value,
+			}),
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{"value": {failing.URN}},
 		})
 		require.NoError(t, err)
 
@@ -1422,8 +1427,8 @@ func TestUpContinueOnErrorSkipsDiffForFailedDependency(t *testing.T) {
 // TestUpContinueOnErrorExplicitProviderCreateFails verifies the behavior when an explicit
 // provider resource fails its own Configure during Create under ContinueOnError. The provider
 // registration itself returns Result_FAIL to a result-reporting SDK. Downstream resources that
-// reference the failed provider are skipped, and also return Result_FAIL so SDKs resolve their
-// outputs as unknown. Unrelated resources using a different (working) provider
+// reference the failed provider are skipped and returned as SUCCESS + Unknown=true so SDKs can
+// propagate unknowns to dependents. Unrelated resources using a different (working) provider
 // continue to be created normally.
 func TestUpContinueOnErrorExplicitProviderCreateFails(t *testing.T) {
 	t.Parallel()
@@ -1455,14 +1460,14 @@ func TestUpContinueOnErrorExplicitProviderCreateFails(t *testing.T) {
 		provRef, err := providers.NewReference(provResp.URN, provResp.ID)
 		require.NoError(t, err)
 
-		// A resource using the failed explicit provider is skipped, so the SDK resolves its
-		// outputs as unknown.
+		// A resource using the failed explicit provider is skipped: SUCCESS + Unknown so
+		// the SDK can propagate the unknown to its own dependents.
 		depResp, err := monitor.RegisterResource("pkgA:m:typA", "usesExplicit", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 			Provider:                provRef.String(),
 		})
 		require.NoError(t, err)
-		assert.Equal(t, pulumirpc.Result_FAIL, depResp.Result)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, depResp.Result)
 		assert.True(t, depResp.Unknown)
 
 		// An unrelated resource using the default pkgA provider is unaffected and succeeds.
@@ -1542,7 +1547,7 @@ func TestUpContinueOnErrorSkipsPlanCheckForFailedDependency(t *testing.T) {
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "dependent", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
-			Inputs:                  resource.PropertyMap{"value": resource.MakeComputed(resource.NewProperty(""))},
+			Inputs:                  property.NewMap(map[string]property.Value{"value": property.New(property.Computed)}),
 			PropertyDeps:            map[resource.PropertyKey][]resource.URN{"value": {failing.URN}},
 		})
 		require.NoError(t, err)
@@ -1594,7 +1599,7 @@ func TestUpContinueOnErrorExplicitProviderUpdateFailsKeepsDependent(t *testing.T
 		provResp, err := monitor.RegisterResource(
 			providers.MakeProviderType("pkgA"), "explicitProv", true, deploytest.ResourceOptions{
 				SupportsResultReporting: true,
-				Inputs:                  resource.PropertyMap{"run": resource.NewProperty(float64(run))},
+				Inputs:                  property.NewMap(map[string]property.Value{"run": property.New(float64(run))}),
 			})
 		require.NoError(t, err)
 
@@ -1604,7 +1609,7 @@ func TestUpContinueOnErrorExplicitProviderUpdateFailsKeepsDependent(t *testing.T
 		_, err = monitor.RegisterResource("pkgA:m:typA", "usesExplicit", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
 			Provider:                provRef.String(),
-			Inputs:                  resource.PropertyMap{"value": resource.NewProperty("hello")},
+			Inputs:                  property.NewMap(map[string]property.Value{"value": property.New("hello")}),
 		})
 		require.NoError(t, err)
 
@@ -1673,7 +1678,7 @@ func TestUpContinueOnErrorSkippedComponentRegistersOutputs(t *testing.T) {
 		run++
 		failing, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
 			SupportsResultReporting: true,
-			Inputs:                  resource.PropertyMap{"run": resource.NewProperty(float64(run))},
+			Inputs:                  property.NewMap(map[string]property.Value{"run": property.New(float64(run))}),
 		})
 		require.NoError(t, err)
 
@@ -1683,11 +1688,13 @@ func TestUpContinueOnErrorSkippedComponentRegistersOutputs(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		out := resource.NewProperty("known")
+		out := property.New("known")
 		if failing.Result != pulumirpc.Result_SUCCESS {
-			out = resource.MakeComputed(resource.NewProperty(""))
+			out = property.New(property.Computed)
 		}
-		err = monitor.RegisterResourceOutputs(comp.URN, resource.PropertyMap{"out": out})
+		err = monitor.RegisterResourceOutputs(comp.URN, property.NewMap(map[string]property.Value{
+			"out": out,
+		}))
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "independent", true, deploytest.ResourceOptions{
@@ -1736,4 +1743,188 @@ func TestUpContinueOnErrorSkippedComponentRegistersOutputs(t *testing.T) {
 	comp := find(snap, "comp")
 	require.NotNil(t, comp, "expected the existing component to be kept")
 	assert.Equal(t, resource.NewProperty("known"), comp.Outputs["out"])
+}
+
+// TestUpContinueOnErrorSkippedCreatePreviewPropagatesMixedOutputs verifies that when a new
+// resource is skipped because its dependency failed, the engine invokes the provider's
+// Create with Preview=true and forwards the returned per-property mix of known and unknown
+// values back to the SDK, rather than returning an everything-unknown map.
+func TestUpContinueOnErrorSkippedCreatePreviewPropagatesMixedOutputs(t *testing.T) {
+	t.Parallel()
+
+	var previewCalled atomic.Bool
+	previewInputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					// Only the dependent skipped resource should call us with Preview=true, from
+					// CreateStep.Skip. A real (non-preview) Create isn't expected in this test.
+					require.True(t, req.Preview, "expected only preview Create for pkgA")
+					require.True(t, previewInputs.Equals(req.Properties), "expected inputs to be forwarded")
+					previewCalled.Store(true)
+					return plugin.CreateResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"knownOut":   property.New("hello"),
+							"unknownOut": property.New(property.Computed),
+						}),
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{}, errors.New("intentionally failed create")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		failingResp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_FAIL, failingResp.Result)
+
+		depResp, err := monitor.RegisterResource(
+			"pkgA:m:typA", "dependentOnFailing", true, deploytest.ResourceOptions{
+				SupportsResultReporting: true,
+				Dependencies:            []resource.URN{failingResp.URN},
+				Inputs:                  previewInputs,
+			})
+		require.NoError(t, err)
+		assert.Equal(t, pulumirpc.Result_SUCCESS, depResp.Result)
+		assert.True(t, depResp.Unknown, "expected Unknown=true on skipped dependent")
+
+		// The known output should come through as a concrete value; the unknown one should be
+		// preserved as computed so the SDK can propagate it.
+		knownOut, ok := depResp.Outputs.GetOk("knownOut")
+		require.True(t, ok)
+		assert.Equal(t, "hello", knownOut.AsString())
+		unknownOut, ok := depResp.Outputs.GetOk("unknownOut")
+		require.True(t, ok)
+		assert.True(t, unknownOut.IsComputed(),
+			"expected unknownOut to be computed, got %v", unknownOut)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
+	require.ErrorContains(t, err, "intentionally failed create")
+	assert.True(t, previewCalled.Load(), "expected CreateStep.Skip to have called provider Create in preview mode")
+}
+
+// TestUpContinueOnErrorSkippedUpdatePreviewPropagatesMixedOutputs is the Update analogue: on
+// the second run, the pkgB resource's update fails, the pkgA dependent's update is skipped, and
+// the engine should call the provider's Update with Preview=true to populate mixed
+// known/unknown outputs in the response.
+func TestUpContinueOnErrorSkippedUpdatePreviewPropagatesMixedOutputs(t *testing.T) {
+	t.Parallel()
+
+	var previewCalled atomic.Bool
+	firstIns := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
+	secondIns := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+					// Force an update to be scheduled by claiming a diff.
+					return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+				},
+				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					require.True(t, req.Preview, "expected only preview Update for pkgA")
+					require.True(t, secondIns.Equals(req.NewInputs), "expected new inputs to be forwarded")
+					previewCalled.Store(true)
+					return plugin.UpdateResponse{
+						Properties: property.NewMap(map[string]property.Value{
+							"knownOut":   property.New("hello"),
+							"unknownOut": property.New(property.Computed),
+						}),
+					}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+					return plugin.UpdateResponse{Status: resource.StatusOK}, errors.New("intentionally failed update")
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	ins := firstIns
+	update := false
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		failingResp, err := monitor.RegisterResource("pkgB:m:typB", "failing", true, deploytest.ResourceOptions{
+			SupportsResultReporting: true,
+			Inputs:                  ins,
+		})
+		require.NoError(t, err)
+		if update {
+			assert.Equal(t, pulumirpc.Result_FAIL, failingResp.Result)
+		}
+
+		depResp, err := monitor.RegisterResource(
+			"pkgA:m:typA", "dependentOnFailing", true, deploytest.ResourceOptions{
+				SupportsResultReporting: true,
+				Dependencies:            []resource.URN{failingResp.URN},
+				Inputs:                  ins,
+			})
+		require.NoError(t, err)
+		if update {
+			assert.Equal(t, pulumirpc.Result_SUCCESS, depResp.Result)
+			assert.True(t, depResp.Unknown, "expected Unknown=true on skipped dependent update")
+			knownOut, ok := depResp.Outputs.GetOk("knownOut")
+			require.True(t, ok)
+			assert.Equal(t, "hello", knownOut.AsString())
+			unknownOut, ok := depResp.Outputs.GetOk("unknownOut")
+			require.True(t, ok)
+			assert.True(t, unknownOut.IsComputed())
+		}
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
+	}
+
+	project := p.GetProject()
+
+	// First run: create both resources successfully so state exists to update on the next run.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+
+	// Second run: pkgB fails updating, pkgA update is skipped and hits UpdateStep.Skip.
+	update = true
+	ins = secondIns
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.ErrorContains(t, err, "intentionally failed update")
+	assert.True(t, previewCalled.Load(), "expected UpdateStep.Skip to have called provider Update in preview mode")
 }

@@ -116,7 +116,7 @@ func TestClientTerminalRunWaitErrorNotMislabeledAsTimeout(t *testing.T) {
 	ct := &ClientTerminal{Caller: sc, SessionID: "sess_1"}
 
 	res, err := ct.Run(t.Context(), "sh", []string{"-c", "sleep 100"}, "/work", 0)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.False(t, res.TimedOut, "transport error must not be labeled a timeout")
 	assert.Contains(t, sc.methods, "terminal/kill")
 }
@@ -140,7 +140,7 @@ func TestClientTerminalRunPropagatesCreateError(t *testing.T) {
 	rc := &recordingCaller{err: errors.New("no terminal")}
 	ct := &ClientTerminal{Caller: rc, SessionID: "sess_1"}
 	_, err := ct.Run(t.Context(), "sh", []string{"-c", "true"}, "/work", 0)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	// No terminal was created, so there is nothing to kill or release: the
 	// failed create must be the only call issued.
 	assert.Equal(t, 1, rc.calls)

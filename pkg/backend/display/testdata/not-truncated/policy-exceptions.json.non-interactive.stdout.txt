@@ -1,0 +1,24 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>link<{%reset%}>
+
+<{%reset%}>Configuration:<{%reset%}>
+
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack policyproject-dev running 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> aws:s3:Bucket logs-bucket <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> aws:s3:Bucket logs-bucket <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> aws:s3:Bucket logs-bucket <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:Stack policyproject-dev running 
+ <{%fg 2%}>+ <{%reset%}> aws:s3:Bucket logs-bucket <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack policyproject-dev <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Policies:<{%reset%}>
+    ⚠️ <{%fg 5%}>aws-guard@v1.0.0<{%reset%}>
+        - <{%fg 3%}>[advisory]  bucket-versioning<{%reset%}>  (aws:s3:Bucket: logs-bucket)
+          Buckets should enable versioning
+        · <{%fg 8%}>[exempted]  no-public-read  (1 violation)<{%reset%}>
+        · <{%fg 8%}>[exempted]  vpc-flow-logs  (1 violation)<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+
