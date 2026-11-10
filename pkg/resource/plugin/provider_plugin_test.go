@@ -957,6 +957,7 @@ func (c *stubClient) Read(
 	if f := c.ReadF; f != nil {
 		return f(req)
 	}
+	//nolint:staticcheck // test stub exercises deprecated Read fallback
 	return c.ResourceProviderClient.Read(ctx, req, opts...)
 }
 

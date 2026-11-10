@@ -60,9 +60,9 @@ func readDependsOnProviderLoader(record func(string), diffReplace bool) []*deplo
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					record("read:" + req.URN.Name())
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Outputs: new(property.Map{}),

@@ -895,13 +895,13 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 
 					return plugin.CreateResponse{}, fmt.Errorf("should not have called create on %s", req.URN)
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					if req.Name == "resA" {
 						assert.Equal(t, resource.ID("id"), req.ID)
 						assert.Empty(t, req.Inputs)
-						assert.Empty(t, req.State)
+						assert.Empty(t, req.Inputs)
 
-						return plugin.ReadResponse{
+						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
 								Inputs:  &readInputs,
 								Outputs: &readOutputs,
@@ -911,7 +911,7 @@ func TestDestroyWithProgramResourceRead(t *testing.T) {
 						}, nil
 					}
 
-					return plugin.ReadResponse{}, fmt.Errorf("should not have called read on %s", req.URN)
+					return plugin.ImportResponse{}, fmt.Errorf("should not have called read on %s", req.URN)
 				},
 			}, nil
 		}),

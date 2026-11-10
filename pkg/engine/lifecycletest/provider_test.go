@@ -2347,15 +2347,15 @@ func TestMissingIDRefresh(t *testing.T) {
 						Properties: req.Properties,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					assert.Equal(t, expectedID, req.ID)
 					// Return an empty ID to indicate a delete, still return inputs and state because with a missing ID
 					// they should be ignored.
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Outputs,
 						},
 					}, nil
 				},

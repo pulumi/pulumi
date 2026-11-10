@@ -1724,6 +1724,7 @@ func (p *provider) readLegacy(
 	}
 	mstate := propertyrpc.Marshal(filteredState)
 
+	//nolint:staticcheck // fallback for providers that haven't yet implemented Import/Refresh
 	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
 		Id:         string(id),
 		Urn:        string(urn),

@@ -195,8 +195,8 @@ func TestReadReplaceStep(t *testing.T) {
 			// ReadReplace resource.
 			lt.NewTestBuilder(t, snap).
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-						return plugin.ReadResponse{
+					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 							Status:     resource.StatusOK,
 						}, nil
@@ -248,8 +248,8 @@ func TestRelinquishStep(t *testing.T) {
 
 			lt.NewTestBuilder(t, snap).
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-						return plugin.ReadResponse{
+					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 							Status:     resource.StatusOK,
 						}, nil
@@ -277,8 +277,8 @@ func TestTakeOwnershipStep(t *testing.T) {
 
 	lt.NewTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-				return plugin.ReadResponse{
+			ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+				return plugin.ImportResponse{
 					ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 					Status:     resource.StatusOK,
 				}, nil
@@ -441,8 +441,8 @@ func TestReadNilOutputs(t *testing.T) {
 	const resourceID = "my-resource-id"
 	lt.NewTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-				return plugin.ReadResponse{}, nil
+			ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+				return plugin.ImportResponse{}, nil
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -470,8 +470,8 @@ func TestExternalEventMetadata(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
 						Status:     resource.StatusOK,
 					}, nil
@@ -538,11 +538,11 @@ func TestExistsResourceTrue(t *testing.T) {
 
 	lt.NewTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+			ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 				outputs := property.NewMap(map[string]property.Value{
 					"value": property.New(true),
 				})
-				return plugin.ReadResponse{
+				return plugin.ImportResponse{
 					ReadResult: plugin.ReadResult{
 						Outputs: &outputs,
 					},
@@ -576,9 +576,9 @@ func TestExistsResourceFalse(t *testing.T) {
 
 	lt.NewTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+			ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 				// Return nil outputs to indicate the resource does not exist.
-				return plugin.ReadResponse{
+				return plugin.ImportResponse{
 					Status: resource.StatusOK,
 				}, nil
 			},
@@ -606,8 +606,8 @@ func TestExistsResourceProviderError(t *testing.T) {
 
 	lt.NewTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-				return plugin.ReadResponse{}, errors.New("provider error")
+			ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+				return plugin.ImportResponse{}, errors.New("provider error")
 			},
 		}).
 		RunUpdate(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
@@ -630,16 +630,16 @@ func TestExistsResourceWithProperties(t *testing.T) {
 	var readCalled bool
 	lt.NewTestBuilder(t, nil).
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
-			ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+			ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 				readCalled = true
 				// Verify that properties were passed through as inputs, with no state.
 				if foo := req.Inputs.Get("foo"); !foo.IsString() || foo.AsString() != "bar" {
-					return plugin.ReadResponse{}, fmt.Errorf("expected foo=bar, got %v", foo)
+					return plugin.ImportResponse{}, fmt.Errorf("expected foo=bar, got %v", foo)
 				}
-				if req.State.Len() != 0 {
-					return plugin.ReadResponse{}, fmt.Errorf("expected no state, got %v", req.State)
+				if req.Inputs.Len() != 0 {
+					return plugin.ImportResponse{}, fmt.Errorf("expected no state, got %v", req.Inputs)
 				}
-				return plugin.ReadResponse{
+				return plugin.ImportResponse{
 					ReadResult: plugin.ReadResult{
 						Outputs: &req.Inputs,
 					},

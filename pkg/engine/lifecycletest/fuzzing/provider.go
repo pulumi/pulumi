@@ -62,12 +62,12 @@ func (ps *ProviderSpec) AsProviderLoaders() []*deploytest.ProviderLoader {
 	// register for all packages.
 	load := func() (plugin.Provider, error) {
 		return &deploytest.Provider{
-			CreateF: ps.Create.AsCreateF(),
-			DeleteF: ps.Delete.AsDeleteF(),
-			DiffF:   ps.Diff.AsDiffF(),
+			CreateF:  ps.Create.AsCreateF(),
+			DeleteF:  ps.Delete.AsDeleteF(),
+			DiffF:    ps.Diff.AsDiffF(),
 			ImportF:  ps.Read.AsImportF(),
 			RefreshF: ps.Read.AsRefreshF(),
-			UpdateF: ps.Update.AsUpdateF(),
+			UpdateF:  ps.Update.AsUpdateF(),
 		}, nil
 	}
 

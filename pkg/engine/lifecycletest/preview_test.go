@@ -45,12 +45,12 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					if req.Name == "resA" {
 						assert.Equal(t, createOutputs, req.Inputs)
-						assert.Equal(t, createOutputs, req.State)
+						assert.Equal(t, createOutputs, req.Outputs)
 
-						return plugin.ReadResponse{
+						return plugin.RefreshResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
 								Inputs:  &req.Inputs,
@@ -60,7 +60,7 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 						}, nil
 					}
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  new(property.Map{}),

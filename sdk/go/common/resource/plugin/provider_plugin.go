@@ -1705,7 +1705,7 @@ func (p *provider) readLegacy(
 		return ImportResponse{Status: resource.StatusUnknown}, err
 	}
 
-	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
+	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{ //nolint:staticcheck
 		Id:         string(id),
 		Urn:        string(urn),
 		Name:       urn.Name(),

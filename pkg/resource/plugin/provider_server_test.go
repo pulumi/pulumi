@@ -123,7 +123,7 @@ func TestProviderServer_Read_respects_ID(t *testing.T) {
 	}
 	secret := "supersecretpassword"
 	srv := NewProviderServer(&provider)
-	resp, err := srv.Read(ctx, &pulumirpc.ReadRequest{
+	resp, err := srv.Read(ctx, &pulumirpc.ReadRequest{ //nolint:staticcheck // test exercises deprecated Read RPC
 		Urn: "urn:pulumi:v2::re::random:index/randomPassword:RandomPassword::newPassword",
 		Id:  secret,
 	})
@@ -157,7 +157,7 @@ func TestProviderServer_Read_routesToRefresh(t *testing.T) {
 	inputs, err := structpb.NewStruct(map[string]any{"k": "v"})
 	require.NoError(t, err)
 
-	_, err = srv.Read(ctx, &pulumirpc.ReadRequest{
+	_, err = srv.Read(ctx, &pulumirpc.ReadRequest{ //nolint:staticcheck // test exercises deprecated Read RPC
 		Urn:    "urn:pulumi:v2::re::test:index:Thing::name",
 		Id:     "some-id",
 		Inputs: inputs,

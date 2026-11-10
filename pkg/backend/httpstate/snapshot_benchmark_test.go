@@ -131,12 +131,27 @@ func (p *snapshotBenchProvider) Create(ctx context.Context, req plugin.CreateReq
 	}, nil
 }
 
-func (p *snapshotBenchProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+func (p *snapshotBenchProvider) Import(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 	outputs, ok := p.outputs.Load(req.URN)
 	if !ok {
-		return plugin.ReadResponse{}, fmt.Errorf("unknown resource %v", req.URN)
+		return plugin.ImportResponse{}, fmt.Errorf("unknown resource %v", req.URN)
 	}
-	return plugin.ReadResponse{
+	return plugin.ImportResponse{
+		ReadResult: plugin.ReadResult{
+			ID:      "id",
+			Outputs: new(resource.FromResourcePropertyMap(outputs)),
+		},
+	}, nil
+}
+
+func (p *snapshotBenchProvider) Refresh(
+	ctx context.Context, req plugin.RefreshRequest,
+) (plugin.RefreshResponse, error) {
+	outputs, ok := p.outputs.Load(req.URN)
+	if !ok {
+		return plugin.RefreshResponse{}, fmt.Errorf("unknown resource %v", req.URN)
+	}
+	return plugin.RefreshResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      "id",
 			Outputs: new(resource.FromResourcePropertyMap(outputs)),

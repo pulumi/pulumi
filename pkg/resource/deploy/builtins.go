@@ -300,7 +300,7 @@ func (p *builtinProvider) Import(ctx context.Context, req plugin.ImportRequest) 
 			return plugin.ImportResponse{Status: resource.StatusUnknown}, errors.New("stack reference can not be imported")
 		}
 
-		outputs, err := p.readStackReference(ctx, req.State)
+		outputs, err := p.readStackReference(ctx, req.Inputs)
 		if err != nil {
 			return plugin.ImportResponse{Status: resource.StatusUnknown}, err
 		}

@@ -135,11 +135,11 @@ func validateRefreshBasicsWithLegacyDiffCombination(
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					new, hasNewState := newStates[req.ID]
 					assert.True(t, hasNewState)
 					new.ID = req.ID
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: new,
 						Status:     resource.StatusOK,
 					}, nil

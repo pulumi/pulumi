@@ -860,7 +860,9 @@ func (p *providerServer) Import(ctx context.Context, req *pulumirpc.ImportReques
 	}, nil
 }
 
-func (p *providerServer) Refresh(ctx context.Context, req *pulumirpc.RefreshRequest) (*pulumirpc.RefreshResponse, error) {
+func (p *providerServer) Refresh(
+	ctx context.Context, req *pulumirpc.RefreshRequest,
+) (*pulumirpc.RefreshResponse, error) {
 	urn, requestID := resource.URN(req.GetUrn()), resource.ID(req.GetId())
 
 	if req.Name == "" {

@@ -923,7 +923,7 @@ func (c *stubClient) Read(
 	if f := c.ReadF; f != nil {
 		return f(req)
 	}
-	return c.ResourceProviderClient.Read(ctx, req, opts...)
+	return c.ResourceProviderClient.Read(ctx, req, opts...) //nolint:staticcheck
 }
 
 func (c *stubClient) Import(
