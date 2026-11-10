@@ -14,14 +14,12 @@ jobs:
         with:
           go-version: "1.25"
       - uses: ./.github/actions/retry
-        env:
-          MISE_NPM_SHELL_OUT: "true"
         with:
           action: jdx/mise-action@v2
           with: |
-            # Pin mise: the latest advertised version, 2026.9.3, has no release assets.
-            version: 2026.9.2
+            version: 2026.10.3
             experimental: true
+            install_args: --locked
             cache_key_prefix: mise-npm-shell-out-v0
       - name: Build
         shell: bash
@@ -50,7 +48,7 @@ jobs:
         with:
           go-version: "1.26"
 
-      - uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7
+      - uses: pulumi/actions@96c7761824268174e0d2a4e8c7d75671eebd24a7 # v7
         with:
           pulumi-version: dev
 

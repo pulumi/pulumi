@@ -57,6 +57,8 @@ type ResourceRow interface {
 	IsDone() bool
 
 	SetFailed()
+	SetAwaited()
+	Awaited() bool
 
 	DiagInfo() *DiagInfo
 	PolicyPayloads() []engine.PolicyViolationEventPayload
@@ -132,6 +134,10 @@ type resourceRowData struct {
 	// If we failed this operation for any reason.
 	failed bool
 
+	// If the failure was because a provider returned AwaitError (operation had to be awaited). Rendered distinctly from
+	// a regular failure ("awaiting" in amber vs "failed" in red).
+	awaited bool
+
 	diagInfo                  *DiagInfo
 	policyPayloads            []engine.PolicyViolationEventPayload
 	policyRemediationPayloads []engine.PolicyRemediationEventPayload
@@ -187,6 +193,14 @@ func (data *resourceRowData) Failed() bool {
 
 func (data *resourceRowData) SetFailed() {
 	data.failed = true
+}
+
+func (data *resourceRowData) Awaited() bool {
+	return data.awaited
+}
+
+func (data *resourceRowData) SetAwaited() {
+	data.awaited = true
 }
 
 func (data *resourceRowData) DiagInfo() *DiagInfo {
@@ -356,6 +370,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 
 	diagInfo := data.diagInfo
 	failed := data.failed || diagInfo.ErrorCount > 0
+	awaited := data.awaited
 	interrupted := !failed && data.isInterrupted()
 
 	if data.display.opts.ShowURNs {
@@ -364,7 +379,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		columns := make([]string, 4)
 		columns[opColumn] = data.display.getStepOpLabel(step, done)
 		columns[urnColumn] = escapeURN(string(urn))
-		columns[urnStatusColumn] = data.display.getStepStatus(step, done, failed, interrupted)
+		columns[urnStatusColumn] = data.display.getStepStatus(step, done, failed, awaited, interrupted)
 		columns[urnInfoColumn] = data.getInfoColumn()
 		return columns
 	}
@@ -373,7 +388,7 @@ func (data *resourceRowData) ColorizedColumns() []string {
 	columns[opColumn] = data.display.getStepOpLabel(step, done)
 	columns[typeColumn] = urn.Type().DisplayName()
 	columns[nameColumn] = escapeURN(urn.Name())
-	columns[statusColumn] = data.display.getStepStatus(step, done, failed, interrupted)
+	columns[statusColumn] = data.display.getStepStatus(step, done, failed, awaited, interrupted)
 	columns[infoColumn] = data.getInfoColumn()
 	return columns
 }

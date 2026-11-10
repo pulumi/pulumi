@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,34 +62,41 @@ func init() {
 					secret := RequireSingleNamedResource(l, snap.Resources, "secret-res")
 					assert.Equal(l, secretComp.URN, secret.Parent, "expected secret resource to have secret component as parent")
 
-					expectedPlain := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean":     true,
-						"float":       3.5,
-						"integer":     3,
-						"string":      "plain",
-						"numberArray": []any{-1.0, 0.0, 1.0},
-						"booleanMap":  map[string]any{"t": true, "f": false},
+					expectedPlain := property.NewMap(map[string]property.Value{
+						"boolean": property.New(true),
+						"float":   property.New(3.5),
+						"integer": property.New(3.0),
+						"string":  property.New("plain"),
+						"numberArray": property.New([]property.Value{
+							property.New(-1.0),
+							property.New(0.0),
+							property.New(1.0),
+						}),
+						"booleanMap": property.New(map[string]property.Value{
+							"t": property.New(true),
+							"f": property.New(false),
+						}),
 					})
-					require.Equal(l, expectedPlain, plain.Inputs)
-					require.Equal(l, expectedPlain, plain.Outputs)
+					require.Equal(l, expectedPlain, resource.FromResourcePropertyMap(plain.Inputs))
+					require.Equal(l, expectedPlain, resource.FromResourcePropertyMap(plain.Outputs))
 
-					expectedSecret := resource.NewPropertyMapFromMap(map[string]any{
-						"boolean": true,
-						"float":   3.5,
-						"integer": 3,
-						"string":  "plain",
-						"numberArray": resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(-2.0),
-							resource.NewProperty(0.0),
-							resource.NewProperty(2.0),
-						})),
-						"booleanMap": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
-							"t": resource.NewProperty(true),
-							"f": resource.NewProperty(false),
-						})),
+					expectedSecret := property.NewMap(map[string]property.Value{
+						"boolean": property.New(true),
+						"float":   property.New(3.5),
+						"integer": property.New(3.0),
+						"string":  property.New("plain"),
+						"numberArray": property.New([]property.Value{
+							property.New(-2.0),
+							property.New(0.0),
+							property.New(2.0),
+						}).WithSecret(true),
+						"booleanMap": property.New(map[string]property.Value{
+							"t": property.New(true),
+							"f": property.New(false),
+						}).WithSecret(true),
 					})
-					require.Equal(l, expectedSecret, secret.Inputs)
-					require.Equal(l, expectedSecret, secret.Outputs)
+					require.Equal(l, expectedSecret, resource.FromResourcePropertyMap(secret.Inputs))
+					require.Equal(l, expectedSecret, resource.FromResourcePropertyMap(secret.Outputs))
 				},
 			},
 		},

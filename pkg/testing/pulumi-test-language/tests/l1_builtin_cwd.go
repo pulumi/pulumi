@@ -35,11 +35,11 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 1, "expected 1 outputs")
+					require.Equal(l, 1, outputs.Len(), "expected 1 outputs")
 
-					got, ok := outputs[resource.PropertyKey("cwdOutput")]
+					got, ok := outputs.GetOk("cwdOutput")
 					if !assert.True(l, ok, "expected property %q", "cwdOutput") {
 						return
 					}
@@ -47,7 +47,7 @@ func init() {
 
 					expected, err := filepath.EvalSymlinks(projectDirectory)
 					require.NoError(l, err)
-					actual, err := filepath.EvalSymlinks(got.StringValue())
+					actual, err := filepath.EvalSymlinks(got.AsString())
 					require.NoError(l, err)
 					assert.Equal(l, expected, actual)
 				},

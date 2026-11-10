@@ -60,6 +60,12 @@ func newPluginRunCmd() *cobra.Command {
 			}
 			kind := apitype.PluginKind(kind)
 
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+				ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+			if err != nil {
+				return err
+			}
+
 			source := args[0]
 			var pluginPath string
 			if plugin.IsLocalPluginPath(ctx, source) {
@@ -96,7 +102,7 @@ func newPluginRunCmd() *cobra.Command {
 						d.Logf(sev, diag.RawMessage("", msg))
 					}
 
-					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromContext)
+					_, err = pkgWorkspace.InstallPlugin(ctx, pluginSpec, log, schema.NewLoaderServerFromContext, cloudCredentialEnv)
 					if err != nil {
 						return err
 					}
@@ -119,7 +125,7 @@ func newPluginRunCmd() *cobra.Command {
 			}
 			// host is owned here, closed after the context
 			defer contract.IgnoreClose(pluginHost)
-			pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil)
+			pctx, err := plugin.NewContext(ctx, nil, nil, pluginHost, nil, ".", nil, false, nil, cloudCredentialEnv)
 			if err != nil {
 				return fmt.Errorf("could not create plugin context: %w", err)
 			}

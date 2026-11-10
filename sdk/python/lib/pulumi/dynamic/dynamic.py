@@ -285,6 +285,7 @@ def serialize_provider(provider: ResourceProvider) -> str:
 
     # See: https://github.com/uqfoundation/dill/issues/481#issuecomment-1133789848
     unsorted_batch_setitems = pickle.Pickler._batch_setitems
+    unsorted_save_dict = pickle.Pickler.save_dict
 
     def batch_set_items_sorted(self, items, obj):
         unsorted_batch_setitems(self, sorted(items), obj)
@@ -318,8 +319,11 @@ def serialize_provider(provider: ResourceProvider) -> str:
         byts = dill.dumps(provider, protocol=pickle.DEFAULT_PROTOCOL, recurse=True)
         return base64.b64encode(byts).decode("utf-8")
     finally:
-        # Restore the original pickler
+        # Restore the original pickler and the methods patched on the Python pickler, so
+        # that repeated calls do not stack wrappers around them.
         pickle.Pickler = old_pickler
+        pickle._Pickler._batch_setitems = unsorted_batch_setitems
+        pickle._Pickler.save_dict = unsorted_save_dict
 
 
 class Resource(CustomResource):

@@ -106,11 +106,9 @@ func TestProviderServer_Read_respects_ID(t *testing.T) {
 		) (ReadResult, resource.Status, error) {
 			return ReadResult{
 				ID: resource.ID("none"),
-				Outputs: new(resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
-					"result": resource.NewProperty(&resource.Secret{
-						Element: resource.NewProperty(string(id)),
-					}),
-				}))),
+				Outputs: new(property.NewMap(map[string]property.Value{
+					"result": property.New(string(id)).WithSecret(true),
+				})),
 			}, resource.StatusOK, nil
 		},
 	}

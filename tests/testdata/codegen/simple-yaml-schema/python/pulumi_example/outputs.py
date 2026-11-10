@@ -15,7 +15,6 @@ else:
 from . import _utilities
 from . import outputs
 from ._enums import *
-from .resource import Resource
 
 __all__ = [
     'ConfigMap',
@@ -60,7 +59,7 @@ class Object(dict):
     def __init__(__self__, *,
                  bar: Optional[_builtins.str] = None,
                  configs: Optional[Sequence['outputs.ConfigMap']] = None,
-                 foo: Optional['Resource'] = None,
+                 foo: Optional['_resource.Resource'] = None,
                  others: Optional[Sequence[Sequence['outputs.SomeOtherObject']]] = None,
                  still_others: Optional[Mapping[str, Sequence['outputs.SomeOtherObject']]] = None):
         """
@@ -90,7 +89,7 @@ class Object(dict):
 
     @_builtins.property
     @pulumi.getter
-    def foo(self) -> Optional['Resource']:
+    def foo(self) -> Optional['_resource.Resource']:
         return pulumi.get(self, "foo")
 
     @_builtins.property
@@ -156,3 +155,4 @@ class SomeOtherObject(dict):
         return pulumi.get(self, "baz")
 
 
+from . import resource as _resource

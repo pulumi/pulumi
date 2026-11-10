@@ -170,7 +170,7 @@ func TestDriftList_ClientError(t *testing.T) {
 	c := &mockDriftListClient{err: errors.New("server error")}
 	dlcmd, _ := newTestDriftListCmd()
 	err := dlcmd.run(t.Context(), stubDriftListFactory(c))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "listing drift runs")
 }
 
@@ -249,6 +249,6 @@ func TestDriftList_AllAndCountMutuallyExclusive(t *testing.T) {
 	cmd.SetArgs([]string{"--all", "--count", "5"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--all and --count are mutually exclusive")
 }

@@ -30,6 +30,7 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 	pkgauth "github.com/pulumi/pulumi/pkg/v3/auth"
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -46,6 +47,17 @@ import (
 )
 
 func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env) *cobra.Command {
+	return (&loginCmd{}).newCommand(ws, lm, store)
+}
+
+type loginCmd struct {
+	interactive   bool
+	chooseAccount func(map[string]workspace.Account, display.Options) (string, error)
+}
+
+func (c *loginCmd) newCommand(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env) *cobra.Command {
+	var helperPath string
+	var helperArgs []string
 	var cloudURL string
 	var defaultOrg string
 	var localMode bool
@@ -87,9 +99,48 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			"    $ pulumi login azblob://my-pulumi-state-bucket             # Azure Blob Storage\n" +
 			"    $ pulumi login postgres://user:password@host:5432/database # PostgreSQL\n" +
 			"\n" +
-			"`--local` is a shortcut for `file://~`, which stores state under `~/.pulumi`.\n",
+			"`--local` is a shortcut for `file://~`, which stores state under `~/.pulumi`.\n" +
+			"\n" +
+			"[EXPERIMENTAL] A credentials helper can select a backend and supply HTTP authentication\n" +
+			"and cloud credentials. Helper credentials are kept in memory. Pulumi selects a helper\n" +
+			"in the following order:\n" +
+			"\n" +
+			"    1. The --credential-helper flag, with repeatable --credential-helper-arg arguments.\n" +
+			"    2. PULUMI_CREDENTIAL_HELPER, with PULUMI_CREDENTIAL_HELPER_ARGS as a JSON array.\n" +
+			"    3. Saved helper configuration in credentials.json.\n" +
+			"    4. pulumi-credential-helper beside the pulumi executable, after resolving symlinks.\n" +
+			"    5. pulumi-credential-helper on PATH.\n" +
+			"\n" +
+			"On Windows, the discovered executable is named pulumi-credential-helper.exe.\n" +
+			"A successful login with --credential-helper saves the helper path and arguments for\n" +
+			"subsequent commands. Environment configuration applies only to the current process.\n" +
+			"Set PULUMI_CREDENTIAL_HELPER=none to disable saved and automatically discovered helpers.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			isInteractive, choose := c.interactive, c.chooseAccount
+			if choose == nil {
+				isInteractive, choose = cmdutil.Interactive(), chooseAccount
+			}
+			session := lm.CredentialHelperSession()
+
+			if cmd.Flags().Changed("credential-helper-arg") && helperPath == "" {
+				return errors.New("--credential-helper-arg requires --credential-helper")
+			}
+			if helperPath != "" {
+				if err := session.Configure(helperPath, helperArgs); err != nil {
+					return err
+				}
+			}
+			if oidcToken != "" {
+				configured, _, err := session.Configuration()
+				if err != nil {
+					return err
+				}
+				if configured != nil {
+					return errors.New("--oidc-token cannot be used with a credentials helper; " +
+						"set PULUMI_CREDENTIAL_HELPER=none to disable it")
+				}
+			}
 			displayOptions := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
@@ -111,7 +162,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 					"warning: existing stored credentials can no longer be decrypted: %v\n", err)
 				if cmdutil.Interactive() {
 					replace := false
-					if err := survey.AskOne(&survey.Confirm{
+					if err := ui.AskOne(&survey.Confirm{
 						Message: "Replace the stored credentials with the ones from this login?",
 						Default: false,
 					}, &replace, ui.SurveyIcons(displayOptions.Color)); err != nil || !replace {
@@ -166,20 +217,37 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			// to correct it. Stays "none" when the user named the backend themselves.
 			var urlSource pkgWorkspace.CloudURLSource
 
-			isInteractive := cmdutil.Interactive() && interactive
-			if cloudURL == "" && isInteractive {
+			if cloudURL == "" && isInteractive && interactive {
 				creds, err := pkgWorkspace.Instance.GetStoredCredentials()
 				if err != nil {
 					return err
 				}
 				// If there are no accounts, skip this step and continue on with the default behavior below.
 				if len(creds.Accounts) > 0 {
-					act, err := chooseAccount(creds.Accounts, displayOptions)
+					act, err := choose(creds.Accounts, displayOptions)
 					if err != nil {
 						return err
 					}
 					cloudURL = act
 				}
+			}
+			if cloudURL == "" {
+				if u := store.GetString(env.BackendURL); u != "" {
+					cloudURL = u
+					urlSource = pkgWorkspace.CloudURLSourceEnv
+				} else if project != nil && project.Backend != nil && project.Backend.URL != "" {
+					cloudURL = project.Backend.URL
+					urlSource = pkgWorkspace.CloudURLSourceProject
+				}
+			}
+			var helperResult *credentialhelper.Result
+			if oidcToken == "" {
+				var helperErr error
+				helperResult, helperErr = session.Resolve(ctx, cloudURL)
+				if helperErr != nil {
+					return helperErr
+				}
+				cloudURL = helperResult.BackendURL()
 			}
 			if cloudURL == "" {
 				var err error
@@ -200,6 +268,15 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 			} else {
 				// Ensure we have the correct cloudurl type before logging in
 				if err := validateCloudBackendType(cloudURL); err != nil {
+					return err
+				}
+			}
+
+			if helperResult != nil && helperResult.Helper != nil {
+				if cloudURL == "" {
+					cloudURL = httpstate.ValueOrDefaultURL(ws, "")
+				}
+				if err := session.SelectBackend(helperResult, cloudURL); err != nil {
 					return err
 				}
 			}
@@ -249,6 +326,15 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 				return loginError(cloudURL, urlSource, cwd, err)
 			}
 
+			if userProvidedURL {
+				if absURL, wasRelative := resolveRelativeFileURL(cloudURL); wasRelative {
+					fmt.Fprintf(cmd.ErrOrStderr(),
+						"Warning: '%s' is a relative path, so every command will look for state relative to "+
+							"the directory it runs in. To always use this location, run `pulumi login %s` instead.\n",
+						cloudURL, absURL)
+				}
+			}
+
 			if diy.IsDIYBackendURL(cloudURL) {
 				if defaultOrg != "" {
 					return errors.New("unable to set default org for this type of backend")
@@ -260,6 +346,15 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 						return err
 					}
 				}
+			}
+
+			if helperPath != "" {
+				if err := session.SaveConfiguration(); err != nil {
+					return err
+				}
+			}
+			if helperResult != nil && helperResult.Helper != nil && helperResult.Contributed() {
+				fmt.Fprintf(cmd.OutOrStdout(), "Credentials helper: %s\n", helperResult.Helper.Path)
 			}
 
 			if currentUser, _, _, err := be.CurrentUser(); err == nil {
@@ -280,6 +375,10 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 		Required: 0,
 	})
 
+	cmd.PersistentFlags().StringVar(&helperPath, "credential-helper", "",
+		"[EXPERIMENTAL] Command to supply backend credentials")
+	cmd.PersistentFlags().StringArrayVar(&helperArgs, "credential-helper-arg", nil,
+		"[EXPERIMENTAL] Literal argument to pass to the credentials helper (repeatable)")
 	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "",
 		"The URL of the Pulumi Cloud API to log in with (e.g., 'https://api.pulumi.com')")
 	cmd.PersistentFlags().StringVar(&defaultOrg, "default-org", "", "A default org to associate with the login. "+
@@ -299,6 +398,7 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager, store env.Env
 		"The expiration for the cloud backend access token in duration format (e.g. '15m', '24h')",
 	)
 
+	cmd.MarkFlagsMutuallyExclusive("oidc-token", "credential-helper")
 	return cmd
 }
 
@@ -369,6 +469,25 @@ func unwrapBucketOpenError(err error, cloudURL string) error {
 	return cause
 }
 
+func resolveRelativeFileURL(cloudURL string) (string, bool) {
+	if !strings.HasPrefix(cloudURL, diy.FilePathPrefix) {
+		return "", false
+	}
+	path, query, hasQuery := strings.Cut(strings.TrimPrefix(cloudURL, diy.FilePathPrefix), "?")
+	if strings.HasPrefix(path, "~") || strings.HasPrefix(path, "/") || filepath.IsAbs(path) {
+		return "", false
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", false
+	}
+	absURL := diy.FilePathPrefix + filepath.ToSlash(abs)
+	if hasQuery {
+		absURL += "?" + query
+	}
+	return absURL, true
+}
+
 func validateCloudBackendType(typ string) error {
 	kind, _, _ := strings.Cut(typ, ":")
 	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http", "postgres"}
@@ -398,7 +517,7 @@ func chooseAccount(accounts map[string]workspace.Account, opts display.Options) 
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 	var option string
-	if err := survey.AskOne(&survey.Select{
+	if err := ui.AskOne(&survey.Select{
 		Message:  message,
 		Options:  acts,
 		PageSize: pageSize,

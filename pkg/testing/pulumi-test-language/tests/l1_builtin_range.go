@@ -17,20 +17,21 @@ package tests
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func init() {
-	ints := func(ns ...float64) resource.PropertyValue {
-		values := make([]resource.PropertyValue, 0, len(ns))
+	ints := func(ns ...float64) property.Value {
+		values := make([]property.Value, 0, len(ns))
 		for _, n := range ns {
-			values = append(values, resource.NewProperty(n))
+			values = append(values, property.New(n))
 		}
-		return resource.NewProperty(values)
+		return property.New(values)
 	}
 
-	addTest := func(from, to string, expectedTo, expectedFromTo resource.PropertyValue) TestRun {
+	addTest := func(from, to string, expectedTo, expectedFromTo property.Value) TestRun {
 		return TestRun{
 			Config: config.Map{
 				config.MustMakeKey("l1-builtin-range", "from"): config.NewValue(from),
@@ -39,13 +40,13 @@ func init() {
 			Assert: func(l *L, res AssertArgs) {
 				require.NoError(l, res.Err)
 				stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-				assert.Equal(l, resource.PropertyMap{
+				assert.Equal(l, property.NewMap(map[string]property.Value{
 					"rangeTo":       expectedTo,
 					"rangeFromTo":   expectedFromTo,
 					"literalTo":     ints(0, 1, 2),
 					"literalFromTo": ints(2, 3, 4),
 					"literalEmpty":  ints(),
-				}, stack.Outputs)
+				}), resource.FromResourcePropertyMap(stack.Outputs))
 			},
 		}
 	}

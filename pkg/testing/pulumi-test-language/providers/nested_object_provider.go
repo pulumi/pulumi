@@ -328,7 +328,7 @@ func (p *NestedObjectProvider) Read(_ context.Context, req plugin.ReadRequest) (
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
 			Inputs:  &req.Inputs,
-			Outputs: coalesceReadOutputs(req),
+			Outputs: &req.State,
 		},
 		Status: resource.StatusOK,
 	}, nil

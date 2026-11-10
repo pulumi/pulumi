@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,29 +47,32 @@ func init() {
 					component := RequireSingleResource(l, snap.Resources, "components:index:MyComponent")
 					assert.Equal(l, "someComponent", component.URN.Name())
 
-					want := resource.NewPropertyMapFromMap(map[string]any{
-						"input": true,
+					want := property.NewMap(map[string]property.Value{
+						"input": property.New(true),
 					})
-					assert.Equal(l, want, component.Inputs, "expected component inputs to be %v", want)
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"output": true,
+					assert.Equal(l, want, resource.FromResourcePropertyMap(component.Inputs),
+						"expected component inputs to be %v", want)
+					want = property.NewMap(map[string]property.Value{
+						"output": property.New(true),
 					})
-					assert.Equal(l, want, component.Outputs, "expected component outputs to be %v", want)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(component.Outputs),
+						"expected component outputs to be %v", want)
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:simple")
 
 					input := RequireSingleNamedResource(l, snap.Resources, "input")
 					assert.Equal(l, "simple:index:Resource", input.Type.String())
-					want = resource.NewPropertyMapFromMap(map[string]any{
-						"value": true,
+					want = property.NewMap(map[string]property.Value{
+						"value": property.New(true),
 					})
-					assert.Equal(l, want, input.Inputs, "expected input resource inputs to be %v", want)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(input.Inputs),
+						"expected input resource inputs to be %v", want)
 					assert.Equal(l, input.Inputs, input.Outputs, "expected input resource inputs and outputs to match")
 
 					simple := RequireSingleNamedResource(l, snap.Resources, "someComponent-res")
 					assert.Equal(l, "simple:index:Resource", simple.Type.String())
 					assert.Equal(l, component.URN, simple.Parent, "expected simple resource to have component as parent")
-					assert.Equal(l, want, simple.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, want, resource.FromResourcePropertyMap(simple.Inputs), "expected inputs to be %v", want)
 					assert.Equal(l, simple.Inputs, simple.Outputs, "expected inputs and outputs to match")
 
 					// The top-level `input` resource has a literal value, so it has no dependencies.

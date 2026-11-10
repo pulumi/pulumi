@@ -1,0 +1,7 @@
+{
+  "name": "mise-npm-install",
+  "private": true,
+  "dependencies": {
+    "grpc_tools_node_protoc_ts": "5.3.3"
+  }
+}

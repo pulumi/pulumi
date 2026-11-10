@@ -1,0 +1,29 @@
+View in Browser (Ctrl+O): link
+
+     Type                 Name               Status      Info
+     pulumi:pulumi:Stack  policyproject-dev              1 message
+ +   └─ aws:s3:Bucket     logs-bucket        created     
+
+Changes:
+  aws:s3:Bucket (logs-bucket):
+    + aws:s3/bucket:Bucket: (create)
+        [urn=urn:pulumi:dev::policyproject::aws:s3/bucket:Bucket::logs-bucket]
+        acl: "public-read"
+
+Policies:
+    ⚠️ aws-guard@v1.0.0
+        - [advisory]  bucket-versioning  (aws:s3:Bucket: logs-bucket)
+          Buckets should enable versioning
+        · [exempted]  no-public-read  (1 violation)
+        · [exempted]  vpc-flow-logs  (1 violation)
+
+Diagnostics:
+  pulumi:pulumi:Stack (policyproject-dev):
+    Configuration:
+
+Resources:
+    + 1 created
+    1 unchanged
+
+Duration: 1s
+

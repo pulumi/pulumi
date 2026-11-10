@@ -90,7 +90,7 @@ func TestResolvePolicy_NoChoices(t *testing.T) {
 
 	// Omitted with nothing to prompt with is a programming error, not a panic.
 	_, err = s.resolvePolicy("", nil, false)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // With --yes there is nobody to prompt, so an omitted policy is an error rather than a
@@ -100,7 +100,7 @@ func TestResolvePolicy_OmittedWithYes(t *testing.T) {
 
 	s := &setupCommand{}
 	_, err := s.resolvePolicy("", testPolicyChoices, true)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--policy must be set when using --yes")
 	// The message names the presets so the user has something to copy.
 	assert.Contains(t, err.Error(), "AdminPolicy")
@@ -165,14 +165,14 @@ func TestValidateESCProject(t *testing.T) {
 	// A slash is silently mangled by parseRef: `acme/a/b/sandbox-env` becomes environment
 	// `bsandbox-env` in project `a`, after the trust policy was written with `a/b/...`.
 	_, err = validateESCProject("a/b")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	// An apostrophe reaches Azure's Graph $filter unescaped.
 	_, err = validateESCProject("o'brien")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	_, err = validateESCProject("")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	_, err = validateESCProject("has space")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // Two accounts that derive the same environment name have to be caught before setup runs:
@@ -192,13 +192,13 @@ func TestResolveEnvNamesDuplicates(t *testing.T) {
 		{ID: "111111111111", Name: "Sandbox"},
 		{ID: "222222222222", Name: "Sandbox"},
 	}, true)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "111111111111")
 	assert.Contains(t, err.Error(), "222222222222")
 	assert.Contains(t, err.Error(), "aws-login/sandbox-env")
 
 	// Sanitizing collapses different names onto the same environment too.
-	require.Error(t, setup.resolveEnvNames("aws-login", []cloudsetup.CloudAccount{
+	require.Error(t, setup.resolveEnvNames("aws-login", []cloudsetup.CloudAccount{ //nolint:forbidigo // pre-existing
 		{ID: "111111111111", Name: "My Team"},
 		{ID: "222222222222", Name: "My/Team"},
 	}, true))

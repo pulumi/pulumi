@@ -171,7 +171,7 @@ func TestRootIsAStandardGroupCommand(t *testing.T) {
 		root.SetArgs([]string{})
 
 		err := root.Execute()
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.ErrorContains(t, err, `"pulumi" requires a subcommand`)
 		assert.NotEmpty(t, out.String(), "help text should be printed")
 	})
@@ -187,7 +187,7 @@ func TestRootIsAStandardGroupCommand(t *testing.T) {
 		root.SetArgs([]string{"export"})
 
 		err := root.Execute()
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.ErrorContains(t, err, `unknown command "export" for "pulumi"`)
 		assert.ErrorContains(t, err, "pulumi stack export")
 	})
@@ -215,7 +215,7 @@ func TestRunnableParentBlamesArgPastSpec(t *testing.T) {
 
 	root.SetArgs([]string{"thing", "myname", "expor"})
 	err := root.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, `unknown command "expor" for "pulumi thing"`)
 	assert.ErrorContains(t, err, "pulumi thing export")
 	assert.NotContains(t, err.Error(), "myname")

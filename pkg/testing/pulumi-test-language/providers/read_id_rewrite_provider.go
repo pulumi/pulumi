@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // ReadIdRewriteProvider is a provider whose Read method returns a resolved ID that differs from
@@ -119,8 +120,8 @@ func (p *ReadIdRewriteProvider) Read(
 			errors.New("lookup input is required and must be a string")
 	}
 
-	readInputs := resource.FromResourcePropertyMap(resource.PropertyMap{"lookup": lookup})
-	readOutputs := resource.FromResourcePropertyMap(resource.PropertyMap{"lookup": lookup})
+	readInputs := property.NewMap(map[string]property.Value{"lookup": resource.FromResourcePropertyValue(lookup)})
+	readOutputs := property.NewMap(map[string]property.Value{"lookup": resource.FromResourcePropertyValue(lookup)})
 	return plugin.ReadResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      "rewritten-" + req.ID,

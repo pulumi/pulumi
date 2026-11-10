@@ -18,6 +18,7 @@ import (
 	"math"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,15 +34,15 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 6, "expected 6 outputs")
-					AssertPropertyMapMember(l, outputs, "zero", resource.NewProperty(0.0))
-					AssertPropertyMapMember(l, outputs, "one", resource.NewProperty(1.0))
-					AssertPropertyMapMember(l, outputs, "e", resource.NewProperty(2.718))
-					AssertPropertyMapMember(l, outputs, "minInt32", resource.NewProperty(float64(math.MinInt32)))
-					AssertPropertyMapMember(l, outputs, "max", resource.NewProperty(math.MaxFloat64))
-					AssertPropertyMapMember(l, outputs, "min", resource.NewProperty(math.SmallestNonzeroFloat64))
+					require.Equal(l, 6, outputs.Len(), "expected 6 outputs")
+					AssertPropertyMapMember(l, outputs, "zero", property.New(0.0))
+					AssertPropertyMapMember(l, outputs, "one", property.New(1.0))
+					AssertPropertyMapMember(l, outputs, "e", property.New(2.718))
+					AssertPropertyMapMember(l, outputs, "minInt32", property.New(float64(math.MinInt32)))
+					AssertPropertyMapMember(l, outputs, "max", property.New(math.MaxFloat64))
+					AssertPropertyMapMember(l, outputs, "min", property.New(math.SmallestNonzeroFloat64))
 				},
 			},
 		},

@@ -176,6 +176,113 @@ type SubmitChangeRequestRequest struct {
 	Description *string `json:"description,omitempty"`
 }
 
+type ChangeRequestUser struct {
+	Name        string `json:"name"`
+	GithubLogin string `json:"githubLogin"`
+}
+
+type ChangeRequestEntity struct {
+	EntityType string `json:"entityType"`
+	Project    string `json:"project,omitempty"`
+	Name       string `json:"name,omitempty"`
+}
+
+type ChangeRequest struct {
+	ID                   string              `json:"id"`
+	Status               string              `json:"status"`
+	Action               string              `json:"action"`
+	Description          string              `json:"description"`
+	CreatedAt            time.Time           `json:"createdAt"`
+	CreatedBy            ChangeRequestUser   `json:"createdBy"`
+	LatestRevisionNumber int                 `json:"latestRevisionNumber"`
+	Entity               ChangeRequestEntity `json:"entity"`
+}
+
+type ListChangeRequestsResponse struct {
+	ChangeRequests    []ChangeRequest `json:"changeRequests"`
+	ContinuationToken string          `json:"continuationToken"`
+}
+
+type ChangeRequestEvent struct {
+	ID                  string            `json:"id"`
+	EventType           string            `json:"eventType"`
+	ReplacedBy          string            `json:"replacedBy,omitempty"`
+	RevisionNumber      int               `json:"revisionNumber"`
+	CreatedAt           time.Time         `json:"createdAt"`
+	CreatedBy           ChangeRequestUser `json:"createdBy"`
+	Comment             string            `json:"comment,omitempty"`
+	PreviousStatus      string            `json:"previousStatus,omitempty"`
+	NewStatus           string            `json:"newStatus,omitempty"`
+	Reason              string            `json:"reason,omitempty"`
+	PreviousDescription string            `json:"previousDescription,omitempty"`
+	NewDescription      string            `json:"newDescription,omitempty"`
+}
+
+type ListChangeRequestEventsResponse struct {
+	Events            []ChangeRequestEvent `json:"events"`
+	ContinuationToken string               `json:"continuationToken"`
+}
+
+type ChangeGateRuleEvaluation struct {
+	RuleType          string              `json:"ruleType"`
+	RequiredApprovals int                 `json:"requiredApprovals,omitempty"`
+	Approvers         []ChangeRequestUser `json:"approvers,omitempty"`
+}
+
+type ChangeGateEvaluation struct {
+	ID          string                   `json:"id"`
+	Name        string                   `json:"name"`
+	Satisfied   bool                     `json:"satisfied"`
+	RuleDetails ChangeGateRuleEvaluation `json:"ruleDetails"`
+}
+
+type ChangeRequestGateEvaluation struct {
+	Satisfied       bool                   `json:"satisfied"`
+	ApplicableGates []ChangeGateEvaluation `json:"applicableGates"`
+}
+
+type GetChangeRequestResponse struct {
+	ChangeRequest
+	GateEvaluation ChangeRequestGateEvaluation `json:"gateEvaluation"`
+}
+
+type ChangeRequestComment struct {
+	Comment string `json:"comment,omitempty"`
+}
+
+type ApproveChangeRequestRequest struct {
+	RevisionNumber int    `json:"revisionNumber"`
+	Comment        string `json:"comment,omitempty"`
+}
+
+type ChangeRequestApplyResult struct {
+	EntityURL string `json:"entityUrl"`
+	Message   string `json:"message,omitempty"`
+}
+
+type EnvironmentDraftStatus struct {
+	BaseRevision        int `json:"baseRevision"`
+	EnvironmentRevision int `json:"environmentRevision"`
+	DraftRevisionNumber int `json:"draftRevisionNumber"`
+}
+
+// EnvironmentDraftConflict holds 1-based line ranges [start, end) in the revision the draft is based on,
+// the environment's current revision, and the draft. An empty range has end equal to start.
+type EnvironmentDraftConflict struct {
+	StartLine      int `json:"startLine"`
+	EndLine        int `json:"endLine"`
+	HeadStartLine  int `json:"headStartLine"`
+	HeadEndLine    int `json:"headEndLine"`
+	DraftStartLine int `json:"draftStartLine"`
+	DraftEndLine   int `json:"draftEndLine"`
+}
+
+type EnvironmentDraftRebaseResponse struct {
+	ChangeRequestID     string                     `json:"changeRequestId"`
+	DraftRevisionNumber int                        `json:"draftRevisionNumber"`
+	Conflicts           []EnvironmentDraftConflict `json:"conflicts"`
+}
+
 type EnvironmentTag struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`

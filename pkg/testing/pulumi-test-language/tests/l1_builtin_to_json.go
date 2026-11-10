@@ -19,23 +19,24 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // assertJSONOutput asserts that the named output in props is a JSON string whose parsed value equals want.
 // This avoids false failures from equivalent but syntactically different JSON (e.g. key ordering, whitespace).
-func assertJSONOutput(l *L, props resource.PropertyMap, key string, secret bool, want any) {
+func assertJSONOutput(l *L, props property.Map, key string, secret bool, want any) {
 	l.Helper()
-	pv, ok := props[resource.PropertyKey(key)]
+	pv, ok := props.GetOk(key)
 	if !assert.True(l, ok, "expected output %q to be present", key) {
 		return
 	}
-	if assert.Equal(l, secret, pv.IsSecret(), "expected output %q secret to be %v", key, secret) {
+	if assert.Equal(l, secret, pv.Secret(), "expected output %q secret to be %v", key, secret) {
 		return
 	}
-	if pv.IsSecret() {
-		pv = pv.SecretValue().Element
+	if pv.Secret() {
+		pv = pv.WithSecret(false)
 	}
 	if !assert.True(l, pv.IsString(), "expected output %q to be a JSON string, got %v", key, pv) {
 		return
@@ -44,7 +45,7 @@ func assertJSONOutput(l *L, props resource.PropertyMap, key string, secret bool,
 	if !assert.NoError(l, err) { //nolint:forbidigo
 		return
 	}
-	assert.JSONEq(l, string(wantJSON), pv.StringValue(), "output %q: parsed JSON does not match", key)
+	assert.JSONEq(l, string(wantJSON), pv.AsString(), "output %q: parsed JSON does not match", key)
 }
 
 func init() {
@@ -61,9 +62,9 @@ func init() {
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 6, "expected 6 outputs")
+					require.Equal(l, 6, outputs.Len(), "expected 6 outputs")
 
 					// Scalar types
 					assertJSONOutput(l, outputs, "stringOutput", false, "hello")

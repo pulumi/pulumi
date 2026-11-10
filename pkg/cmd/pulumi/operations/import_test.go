@@ -353,7 +353,7 @@ func TestParseImportFile_errors(t *testing.T) {
 			require.NotEmpty(t, tt.wantErrs, "invalid test: wantErrs must not be empty")
 
 			_, _, err := parseImportFile(tt.give, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			for _, wantErr := range tt.wantErrs {
 				assert.ErrorContains(t, err, wantErr)
 			}
@@ -994,7 +994,7 @@ func TestImportCmd_OutputAndJSONMutuallyExclusive(t *testing.T) {
 	cmd.SetErr(io.Discard)
 
 	err := cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "none of the others can be",
 		"expected cobra's mutually-exclusive error, got: %v", err)
 }
@@ -1018,6 +1018,6 @@ func TestImportCmd_TerraformConverterRejectedInHclProject(t *testing.T) {
 	cmd.SetErr(io.Discard)
 
 	err = cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "pulumi import --from hcl")
 }

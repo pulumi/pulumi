@@ -2324,7 +2324,7 @@ func TestEnvFunctions(t *testing.T) {
 	}()
 
 	// Errors when trying to add a non-existent env
-	assert.Error(t, s.AddEnvironments(ctx, "non-existent-env"))
+	assert.Error(t, s.AddEnvironments(ctx, "non-existent-env")) //nolint:forbidigo // pre-existing
 
 	// No error when adding an existing env
 	require.NoError(t, s.AddEnvironments(ctx, "automation-api-test-env", "automation-api-test-env-2"),
@@ -2347,7 +2347,7 @@ func TestEnvFunctions(t *testing.T) {
 
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "new_key")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	v, err := s.GetConfig(ctx, "also")
 	assert.Equal(t, "business", v.Value)
 
@@ -2357,7 +2357,7 @@ func TestEnvFunctions(t *testing.T) {
 	require.Len(t, envs, 0)
 	require.NoError(t, err, "removing environment failed, err: %v", err)
 	_, err = s.GetConfig(ctx, "also")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	require.NoError(t, s.AddEnvironments(ctx, "secrets-test-env-DO-NOT-DELETE"),
 		"adding environments failed, err: %v", err)

@@ -35,6 +35,29 @@ import (
 )
 
 //nolint:paralleltest // isolates credentials with t.Setenv
+func TestCurrentDoesNotSignupAgentAccountByDefault(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/api/agents/signup" {
+			signupCalls++
+		}
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex", nil)
+	require.NoError(t, err)
+	assert.Nil(t, account)
+	assert.Equal(t, 0, signupCalls)
+
+	fromAgent, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.False(t, fromAgent.HasCredential())
+}
+
+//nolint:paralleltest // isolates credentials with t.Setenv
 func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T) {
 	ptesting.IsolateCredentials(t)
 
@@ -160,6 +183,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 
 func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_ENABLE_AUTOMATIC_AGENT_SIGNUP", "true")
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
 
 	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
@@ -234,6 +258,7 @@ func TestCurrentSignupAgentAccountStoresRefreshToken(t *testing.T) {
 	// The refresh token returned by agent signup must land in the stored Account so the
 	// auto-refresh wrapper can use it once the access token expires.
 	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_ENABLE_AUTOMATIC_AGENT_SIGNUP", "true")
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
 
 	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
@@ -290,6 +315,7 @@ func TestCurrentSignupAgentAccountWithoutRefreshTokenLeavesAccountEmpty(t *testi
 	// Back-compat with a server that doesn't (yet) issue refresh tokens at signup: the response
 	// omits refreshToken and the CLI must not error or invent a value.
 	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_ENABLE_AUTOMATIC_AGENT_SIGNUP", "true")
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
 
 	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
@@ -344,6 +370,7 @@ func TestCurrentSignupAgentAccountReplacesExistingRefreshTokenOnResignup(t *test
 	// the server, the CLI falls through to re-signup. The refresh token returned by the new
 	// signup replaces the stale one — the prior value must not survive into the rebuilt Account.
 	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_ENABLE_AUTOMATIC_AGENT_SIGNUP", "true")
 	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
 
 	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
@@ -494,7 +521,6 @@ func TestCurrentAgentAccountRefreshesLocallyExpiredAccessTokenInsteadOfResigning
 	assert.Equal(t, "stored-refresh-token", stored.RefreshToken)
 }
 
-//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
 func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -541,6 +567,7 @@ func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ptesting.IsolateCredentials(t)
+			t.Setenv("PULUMI_ENABLE_AUTOMATIC_AGENT_SIGNUP", "true")
 			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 				assert.Equal(t, "/api/agents/signup", req.URL.Path)
 				switch req.Method {
@@ -568,6 +595,7 @@ func TestCurrentSignupAgentAccountRequiresResponseFields(t *testing.T) {
 
 func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 	ptesting.IsolateCredentials(t)
+	t.Setenv("PULUMI_ENABLE_AUTOMATIC_AGENT_SIGNUP", "true")
 
 	disableInteractive := cmdutil.DisableInteractive
 	cmdutil.DisableInteractive = true
@@ -626,6 +654,33 @@ func TestLoginUsesAgentSignupInNonInteractiveAgentMode(t *testing.T) {
 	assert.True(t, AgentCredentialsUsed(ctx, server.URL))
 }
 
+func TestLoginInNonInteractiveAgentModeRequiresLoginByDefault(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+
+	disableInteractive := cmdutil.DisableInteractive
+	cmdutil.DisableInteractive = true
+	t.Cleanup(func() {
+		cmdutil.DisableInteractive = disableInteractive
+	})
+
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/api/agents/signup" {
+			signupCalls++
+		}
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := NewLoginManager().Login(t.Context(), server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
+		display.Options{})
+	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
+	assert.Nil(t, account)
+	assert.Equal(t, 0, signupCalls)
+}
+
 func TestLoginWithoutAgentSignupDoesNotCreateAgentAccount(t *testing.T) {
 	ptesting.IsolateCredentials(t)
 
@@ -649,7 +704,7 @@ func TestLoginWithoutAgentSignupDoesNotCreateAgentAccount(t *testing.T) {
 	ctx := ContextWithoutAgentSignup(t.Context())
 	account, err := NewLoginManager().Login(ctx, server.URL, false, "pulumi", "Pulumi Cloud", nil, true,
 		display.Options{})
-	require.ErrorAs(t, err, &backenderr.MissingEnvVarForNonInteractiveError{})
+	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
 	assert.Nil(t, account)
 	assert.Equal(t, 0, signupCalls)
 
@@ -659,13 +714,17 @@ func TestLoginWithoutAgentSignupDoesNotCreateAgentAccount(t *testing.T) {
 }
 
 //nolint:paralleltest // isolates credentials with t.Setenv
-func TestCurrentWithoutAgentSignupReusesExistingAgentCredentials(t *testing.T) {
+func TestCurrentWithoutAgentSignupIgnoresValidAgentCredentials(t *testing.T) {
 	ptesting.IsolateCredentials(t)
 
 	signupCalls := 0
+	userCalls := 0
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.URL.Path == "/api/agents/signup" {
+		switch req.URL.Path {
+		case "/api/agents/signup":
 			signupCalls++
+		case "/api/user":
+			userCalls++
 		}
 		rw.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -685,9 +744,14 @@ func TestCurrentWithoutAgentSignupReusesExistingAgentCredentials(t *testing.T) {
 	ctx := ContextWithoutAgentSignup(t.Context())
 	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(ctx, server.URL, false, true, "codex", nil)
 	require.NoError(t, err)
-	require.NotNil(t, account)
-	assert.Equal(t, "valid-agent-token", account.AccessToken)
+	assert.Nil(t, account)
 	assert.Equal(t, 0, signupCalls)
+	assert.Equal(t, 0, userCalls)
+
+	// The agent account is left in place so it can still be claimed.
+	fromAgent, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "valid-agent-token", fromAgent.AccessToken)
 }
 
 //nolint:paralleltest // isolates credentials with t.Setenv

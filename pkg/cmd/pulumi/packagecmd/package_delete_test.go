@@ -84,6 +84,21 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 			},
 		},
 		{
+			name:           "delete without version resolves latest",
+			packageVersion: "private/myorg/my-package",
+			expectedDeleteArg: struct {
+				source    string
+				publisher string
+				name      string
+				version   semver.Version
+			}{
+				source:    "private",
+				publisher: "myorg",
+				name:      "my-package",
+				version:   semver.MustParse("1.0.0"),
+			},
+		},
+		{
 			name:           "delete fails with backend error",
 			packageVersion: "private/myorg/my-package@1.0.0",
 			deleteErr:      errors.New("permission denied"),
@@ -155,7 +170,7 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 			err := cmd.ExecuteContext(t.Context())
 
 			if tt.expectedErr != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
 				require.NoError(t, err)

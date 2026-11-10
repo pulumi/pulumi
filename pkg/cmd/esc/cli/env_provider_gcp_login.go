@@ -34,7 +34,7 @@ func newEnvProviderGCPLoginCmd(env *envCommand) *cobra.Command {
 			"Subcommands select the authentication mode: `static` for static credentials,\n" +
 			"`oidc` for federated identity via OpenID Connect.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/gcp-login/\n" +
 			"for the full provider reference.\n",
 		Args: cobra.NoArgs,
 	}
@@ -64,7 +64,7 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 			"access token is wrapped in `fn::secret`. <project-number> must be the numerical\n" +
 			"GCP project ID. If a block already exists at the path it is replaced.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/gcp-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -133,7 +133,7 @@ func newEnvProviderGCPLoginStaticCmd(env *envCommand) *cobra.Command {
 // serviceAccount and tokenLifetime are omitted when empty.
 //
 // Provider reference:
-// https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/
+// https://www.pulumi.com/docs/esc/providers/login/gcp-login/
 func buildGCPLoginStaticNode(project int64, accessToken, serviceAccount, tokenLifetime string) *yaml.Node {
 	accessTokenContent := []*yaml.Node{
 		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "accessToken"},
@@ -196,7 +196,7 @@ func newEnvProviderGCPLoginOIDCCmd(env *envCommand) *cobra.Command {
 			"service account must be provisioned separately (e.g. with Pulumi). If a block\n" +
 			"already exists at the path it is replaced.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/gcp-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -290,7 +290,7 @@ func gcpLoginEnvVars(pathRef string) []envVar {
 // subjectAttributes are omitted when empty.
 //
 // Provider reference:
-// https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/gcp-login/
+// https://www.pulumi.com/docs/esc/providers/login/gcp-login/
 func buildGCPLoginOIDCNode(
 	project int64,
 	workloadPoolID, providerID, serviceAccount, region, tokenLifetime string,

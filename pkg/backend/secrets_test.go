@@ -79,7 +79,7 @@ func TestErrorCatchingSecretsProvider_OfType_Error(t *testing.T) {
 	manager, err := provider.OfType(t.Context(), "test", nil)
 
 	// Assert
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Nil(t, manager)
 	assert.Equal(t, delegateErr, err)
 	assert.True(t, delegate.ofTypeCalled)
@@ -170,7 +170,7 @@ func TestErrorCatchingSecretsManager_EncryptValue(t *testing.T) {
 		_, err := manager.EncryptValue(t.Context(), "test")
 
 		// Assert
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "does not support encryption")
 	})
 }
@@ -188,7 +188,7 @@ func TestErrorCatchingSecretsManager_BatchEncrypt(t *testing.T) {
 		_, err := manager.BatchEncrypt(t.Context(), []string{"test"})
 
 		// Assert
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "does not support batch encryption")
 	})
 }
@@ -246,7 +246,7 @@ func TestErrorCatchingSecretsManager_DecryptValue_ErrorPropagated(t *testing.T) 
 		_, err := manager.DecryptValue(t.Context(), "encrypted")
 
 		// Assert
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Equal(t, decryptErr, err)
 		assert.True(t, encDecrypter.decryptValueCalled)
 		assert.True(t, onDecryptErrorCalled)
@@ -300,7 +300,7 @@ func TestErrorCatchingSecretsManager_DecryptValue_NilDecrypter(t *testing.T) {
 		_, err := manager.DecryptValue(t.Context(), "encrypted")
 
 		// Assert
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "nil decrypter")
 	})
 }
@@ -389,7 +389,7 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_ErrorPropagated(t *testing.T) 
 		_, err := manager.BatchDecrypt(t.Context(), []string{"encrypted1", "encrypted2"})
 
 		// Assert
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Equal(t, batchDecryptErr, err)
 		assert.True(t, encDecrypter.batchDecryptCalled)
 		assert.True(t, onDecryptErrorCalled)
@@ -425,7 +425,7 @@ func TestErrorCatchingSecretsManager_Batching_ErrorPropagated(t *testing.T) {
 
 	err = completeCrypterBatch(t.Context())
 
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, batchDecryptErr, err)
 	assert.True(t, encDecrypter.batchDecryptCalled)
 	assert.True(t, onDecryptErrorCalled)
@@ -517,7 +517,7 @@ func TestErrorCatchingSecretsManager_BatchDecrypt_NilDecrypter(t *testing.T) {
 		_, err := manager.BatchDecrypt(t.Context(), []string{"encrypted1", "encrypted2"})
 
 		// Assert
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "nil decrypter")
 	})
 }
@@ -544,7 +544,7 @@ func TestErrorCatchingSecretsManager_Batching_NilDecrypter(t *testing.T) {
 
 	err = completeCrypterBatch(t.Context())
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "nil decrypter")
 }
 

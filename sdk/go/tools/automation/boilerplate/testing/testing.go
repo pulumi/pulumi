@@ -38,8 +38,6 @@ func New(_ base.PulumiCommand) *API {
 
 // run returns the rendered `pulumi ...` command line in CommandResult.Stdout.
 // The BaseOptions and ctx parameters are accepted and ignored.
-//
-//nolint:unused // used by generated commands.go in the same package
 func (a *API) run(
 	_ context.Context,
 	_ base.BaseOptions,

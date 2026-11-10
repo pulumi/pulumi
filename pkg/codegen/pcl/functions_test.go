@@ -387,6 +387,8 @@ func TestLengthOfTupleWithOutputs(t *testing.T) {
 		{source: "value = length([false, secret(false)])", typ: model.NewOutputType(model.IntType)},
 		{source: "value = length([[secret(false)]])", typ: model.NewOutputType(model.IntType)},
 		{source: "value = length([false])", typ: model.IntType},
+		{source: "value = length(true ? null : [1])", typ: model.IntType},
+		{source: "value = length(true ? null : [secret(1)])", typ: model.NewOutputType(model.IntType)},
 	}
 	for _, c := range cases {
 		t.Run(c.source, func(t *testing.T) {

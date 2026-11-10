@@ -1,0 +1,32 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      protoc-gen-js:
+        specifier: 3.21.4
+        version: 3.21.4
+
+packages:
+
+  adm-zip@0.5.10:
+    resolution: {integrity: sha512-x0HvcHqVJNTPk/Bw8JbLWlWoo6Wwnsug0fnYYro1HBrjxZ3G7/AZk7Ahv8JwDe1uIcz8eBqvu86FuF1POiG7vQ==}
+    engines: {node: '>=6.0'}
+
+  protoc-gen-js@3.21.4:
+    resolution: {integrity: sha512-GGUkE4fwesiwq8cWkJ+pU6DqJiokXS8nkDGZe7SscxKBSALUnXxNaBwfXODkbi4Cji8E/s+71zNKJoEEza/M7Q==}
+    deprecated: Upgrade to 3.21.4-4
+    hasBin: true
+
+snapshots:
+
+  adm-zip@0.5.10: {}
+
+  protoc-gen-js@3.21.4:
+    dependencies:
+      adm-zip: 0.5.10

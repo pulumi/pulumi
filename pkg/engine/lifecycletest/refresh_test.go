@@ -129,7 +129,7 @@ func TestExternalRefresh(t *testing.T) {
 			"resA",
 			"resA-some-id",
 			"",
-			resource.PropertyMap{},
+			property.Map{},
 			"",
 			"",
 			"",
@@ -206,7 +206,7 @@ func TestExternalRefreshDoesNotCallDiff(t *testing.T) {
 			"resA",
 			"resA-some-id",
 			"",
-			resource.PropertyMap{},
+			property.Map{},
 			"",
 			"",
 			"",
@@ -246,7 +246,7 @@ func TestRefreshInitFailure(t *testing.T) {
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 	res2URN := p.NewURN("pkgA:m:typA", "resB", "")
 
-	res2Outputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	res2Outputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 
 	//
 	// Refresh will persist any initialization errors that are returned by `Read`. This provider
@@ -276,7 +276,7 @@ func TestRefreshInitFailure(t *testing.T) {
 						return plugin.ReadResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
-								Outputs: ptrMap(res2Outputs),
+								Outputs: &res2Outputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -343,7 +343,7 @@ func TestRefreshInitFailure(t *testing.T) {
 			assert.Empty(t, res.InitErrors)
 			assert.Equal(t, resource.ID("0"), res.ID)
 		case res2URN:
-			assert.Equal(t, res2Outputs, res.Outputs)
+			assert.Equal(t, res2Outputs, resource.FromResourcePropertyMap(res.Outputs))
 			assert.Equal(t, resource.ID("1"), res.ID)
 		default:
 			t.Fatalf("unexpected resource %v", urn)
@@ -369,7 +369,7 @@ func TestRefreshInitFailure(t *testing.T) {
 			assert.Equal(t, []string{"Refresh reports continued to fail to initialize"}, res.InitErrors)
 			assert.Equal(t, resource.ID("0"), res.ID)
 		case res2URN:
-			assert.Equal(t, res2Outputs, res.Outputs)
+			assert.Equal(t, res2Outputs, resource.FromResourcePropertyMap(res.Outputs))
 			assert.Equal(t, resource.ID("1"), res.ID)
 		default:
 			t.Fatalf("unexpected resource %v", urn)
@@ -648,7 +648,7 @@ func validateRefreshDeleteCombination(t *testing.T, names []string, targets []st
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
 								Inputs:  &req.Inputs,
-								Outputs: coalesceReadOutputs(req),
+								Outputs: &req.State,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -985,12 +985,12 @@ func TestCanceledRefresh(t *testing.T) {
 		// A::0 will have input and output changes. The changes that impact the inputs will be reported
 		// as a refresh diff.
 		"0": {
-			Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{"foo": resource.NewProperty("bar")})),
-			Inputs:  new(resource.FromResourcePropertyMap(resource.PropertyMap{"oof": resource.NewProperty("rab")})),
+			Outputs: new(property.NewMap(map[string]property.Value{"foo": property.New("bar")})),
+			Inputs:  new(property.NewMap(map[string]property.Value{"oof": property.New("rab")})),
 		},
 		// B::1 will have output changes.
 		"1": {
-			Outputs: new(resource.FromResourcePropertyMap(resource.PropertyMap{"baz": resource.NewProperty("qux")})),
+			Outputs: new(property.NewMap(map[string]property.Value{"baz": property.New("qux")})),
 		},
 		// C::2 will be deleted.
 		"2": {},
@@ -1151,7 +1151,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 	resURN := p.NewURN("pkgA:m:typA", "resA", "")
 	idBefore := resource.ID("myid")
 	idAfter := resource.ID("mynewid")
-	outputs := resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	outputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1161,7 +1161,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      idAfter,
 							Inputs:  new(property.Map{}),
-							Outputs: ptrMap(outputs),
+							Outputs: &outputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1188,7 +1188,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 				Custom:     true,
 				ID:         idBefore,
 				Inputs:     resource.PropertyMap{},
-				Outputs:    outputs,
+				Outputs:    resource.ToResourcePropertyMap(outputs),
 				InitErrors: []string{"Resource failed to initialize"},
 			},
 		},
@@ -1323,15 +1323,15 @@ func TestRefreshWithProgram(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.ToResourcePropertyMap(programInputs),
+			Inputs: programInputs,
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
-			assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, readOutputs, resp.Outputs)
 		}
 
 		return nil
@@ -1406,12 +1406,12 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		programExecutions++
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.ToResourcePropertyMap(programInputs),
+			Inputs: programInputs,
 		})
 		require.NoError(t, err)
 
 		resp, err = monitor.RegisterResource("pulumi:providers:pkgA", "resX", true, deploytest.ResourceOptions{
-			Inputs:       resource.ToResourcePropertyMap(programInputs),
+			Inputs:       programInputs,
 			Dependencies: []resource.URN{resp.URN},
 		})
 		require.NoError(t, err)
@@ -1420,7 +1420,7 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
-			Inputs:   resource.ToResourcePropertyMap(programInputs),
+			Inputs:   programInputs,
 			Provider: ref.String(),
 		})
 		require.NoError(t, err)
@@ -1428,7 +1428,7 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 		var dep map[resource.PropertyKey][]resource.URN
 		if programExecutions > 2 {
 			resp, err = monitor.RegisterResource("pkgA:m:typB", "resC", true, deploytest.ResourceOptions{
-				Inputs: resource.PropertyMap{"foo": resource.NewProperty("baz")},
+				Inputs: property.NewMap(map[string]property.Value{"foo": property.New("baz")}),
 			})
 			require.NoError(t, err)
 			dep = map[resource.PropertyKey][]resource.URN{
@@ -1439,7 +1439,7 @@ func TestRefreshWithProviderThatHasDependencies(t *testing.T) {
 		// First run this doesn't depend on anything, on the second refresh it will try to depend on "resB"
 		// which is skipped.
 		_, err = monitor.RegisterResource("pkgA:m:typC", "resD", true, deploytest.ResourceOptions{
-			Inputs:       resource.PropertyMap{"foo": resource.NewProperty("baz")},
+			Inputs:       property.NewMap(map[string]property.Value{"foo": property.New("baz")}),
 			PropertyDeps: dep,
 		})
 		require.NoError(t, err)
@@ -1482,19 +1482,19 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
-	expectedAuth := resource.NewProperty("upauth")
+	expectedAuth := property.New("upauth")
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			var currentAuth resource.PropertyValue
+			var currentAuth property.Value
 			return &deploytest.Provider{
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					currentAuth = resource.ToResourcePropertyValue(req.Inputs.Get("auth"))
+					currentAuth = req.Inputs.Get("auth")
 
 					return plugin.ConfigureResponse{}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					if !currentAuth.DeepEquals(expectedAuth) {
+					if !currentAuth.Equals(expectedAuth) {
 						return plugin.ReadResponse{}, errors.New("unexpected auth")
 					}
 
@@ -1522,7 +1522,7 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					if !currentAuth.DeepEquals(expectedAuth) {
+					if !currentAuth.Equals(expectedAuth) {
 						return plugin.CreateResponse{}, errors.New("unexpected auth")
 					}
 
@@ -1556,7 +1556,7 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 		programExecutions++
 
 		prov, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"auth": expectedAuth},
+			Inputs: property.NewMap(map[string]property.Value{"auth": expectedAuth}),
 		})
 		require.NoError(t, err)
 
@@ -1565,15 +1565,15 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
-			Inputs:   resource.ToResourcePropertyMap(programInputs),
+			Inputs:   programInputs,
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
-			assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, readOutputs, resp.Outputs)
 		}
 
 		return nil
@@ -1599,7 +1599,7 @@ func TestRefreshWithProgramUpdateExplicitProvider(t *testing.T) {
 	programInputs = programInputs.Set("foo", property.New("qux"))
 	// And update the expected auth required for the provider, if we loaded the provider just from state we
 	// wouldn't pick this up.
-	expectedAuth = resource.NewProperty("refreshauth")
+	expectedAuth = property.New("refreshauth")
 	// Run a refresh
 	snap, err = lt.TestOp(RefreshV2).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
@@ -1620,19 +1620,19 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
-	expectedAuth := resource.NewProperty("upauth")
+	expectedAuth := property.New("upauth")
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			var currentAuth resource.PropertyValue
+			var currentAuth property.Value
 			return &deploytest.Provider{
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					currentAuth = resource.ToResourcePropertyValue(req.Inputs.Get("auth"))
+					currentAuth = req.Inputs.Get("auth")
 
 					return plugin.ConfigureResponse{}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					if !currentAuth.DeepEquals(expectedAuth) {
+					if !currentAuth.Equals(expectedAuth) {
 						return plugin.ReadResponse{}, errors.New("unexpected auth")
 					}
 
@@ -1660,7 +1660,7 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					if !currentAuth.DeepEquals(expectedAuth) {
+					if !currentAuth.Equals(expectedAuth) {
 						return plugin.CreateResponse{}, errors.New("unexpected auth")
 					}
 
@@ -1694,15 +1694,15 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.ToResourcePropertyMap(programInputs),
+			Inputs: programInputs,
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
-			assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, readOutputs, resp.Outputs)
 		}
 
 		return nil
@@ -1731,7 +1731,7 @@ func TestRefreshWithProgramUpdateDefaultProvider(t *testing.T) {
 	programInputs = programInputs.Set("foo", property.New("qux"))
 	// And update the expected auth required for the provider, if we loaded the provider just from state we
 	// wouldn't pick this up.
-	expectedAuth = resource.NewProperty("refreshauth")
+	expectedAuth = property.New("refreshauth")
 	p.Config = config.Map{
 		config.MustParseKey("pkgA:config:auth"): config.NewValue("refreshauth"),
 	}
@@ -1755,19 +1755,19 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 	createOutputs := property.NewMap(map[string]property.Value{"foo": property.New("bar")})
 	readOutputs := property.NewMap(map[string]property.Value{"foo": property.New("baz")})
 
-	expectedAuth := resource.NewProperty("upauth")
+	expectedAuth := property.New("upauth")
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			var currentAuth resource.PropertyValue
+			var currentAuth property.Value
 			return &deploytest.Provider{
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
-					currentAuth = resource.ToResourcePropertyValue(req.Inputs.Get("auth"))
+					currentAuth = req.Inputs.Get("auth")
 
 					return plugin.ConfigureResponse{}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					if !currentAuth.DeepEquals(expectedAuth) {
+					if !currentAuth.Equals(expectedAuth) {
 						return plugin.ReadResponse{}, errors.New("unexpected auth")
 					}
 
@@ -1795,7 +1795,7 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 					}, nil
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
-					if !currentAuth.DeepEquals(expectedAuth) {
+					if !currentAuth.Equals(expectedAuth) {
 						return plugin.CreateResponse{}, errors.New("unexpected auth")
 					}
 
@@ -1832,11 +1832,11 @@ func TestRefreshWithProgramUpdateDefaultProviderWithoutRegistration(t *testing.T
 			// First time we should register the resource and see the create outputs, second time we don't
 			// send a registration.
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs: resource.ToResourcePropertyMap(programInputs),
+				Inputs: programInputs,
 			})
 			require.NoError(t, err)
 
-			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, createOutputs, resp.Outputs)
 		}
 
 		return nil
@@ -1956,29 +1956,29 @@ func TestRefreshWithProgramWithDeletedResource(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.ToResourcePropertyMap(programInputs),
+			Inputs: programInputs,
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time we should see nothing because it will be deleted
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
 			assert.Equal(t, resource.ID(""), resp.ID)
 			assert.Empty(t, resp.Outputs)
 		}
 
 		resp, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
-			Inputs:       resource.ToResourcePropertyMap(programInputs),
+			Inputs:       programInputs,
 			Dependencies: []resource.URN{resp.URN},
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
-			assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, readOutputs, resp.Outputs)
 		}
 
 		return nil
@@ -2082,15 +2082,15 @@ func TestRefreshWithBigProgram(t *testing.T) {
 			resp, err := monitor.RegisterResource(
 				"pkgA:m:typA", "resA"+strconv.FormatInt(int64(i), 10), true,
 				deploytest.ResourceOptions{
-					Inputs: resource.ToResourcePropertyMap(programInputs),
+					Inputs: programInputs,
 				})
 			require.NoError(t, err)
 
 			// First time we should see the create outputs, second time the read outputs
 			if programExecutions == 1 {
-				assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+				assert.Equal(t, createOutputs, resp.Outputs)
 			} else {
-				assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+				assert.Equal(t, readOutputs, resp.Outputs)
 			}
 		}
 
@@ -2200,14 +2200,14 @@ func TestRefreshWithAlias(t *testing.T) {
 		// First time we should see the create outputs, second time the read outputs
 		if programExecutions == 1 {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs: resource.ToResourcePropertyMap(programInputs),
+				Inputs: programInputs,
 			})
 			require.NoError(t, err)
-			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
 			// Register the resource with a different type, but with an alias.
 			resp, err := monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
-				Inputs: resource.ToResourcePropertyMap(programInputs),
+				Inputs: programInputs,
 				Aliases: []*pulumirpc.Alias{{
 					Alias: &pulumirpc.Alias_Spec_{
 						Spec: &pulumirpc.Alias_Spec{
@@ -2217,7 +2217,7 @@ func TestRefreshWithAlias(t *testing.T) {
 				}},
 			})
 			require.NoError(t, err)
-			assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, readOutputs, resp.Outputs)
 		}
 
 		return nil
@@ -2314,10 +2314,10 @@ func TestRefreshRunProgramDeletedResource(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.ToResourcePropertyMap(programInputs),
+			Inputs: programInputs,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+		assert.Equal(t, createOutputs, resp.Outputs)
 
 		return nil
 	})
@@ -2373,7 +2373,7 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
 								Inputs:  &req.Inputs,
-								Outputs: coalesceReadOutputs(req),
+								Outputs: &req.State,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -2430,17 +2430,17 @@ func TestRefreshRunProgramDBRReplacedResource(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.ToResourcePropertyMap(programInputs),
+			Inputs: programInputs,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+		assert.Equal(t, createOutputs, resp.Outputs)
 
 		resp, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs:       resp.Outputs,
 			Dependencies: []resource.URN{resp.URN},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+		assert.Equal(t, createOutputs, resp.Outputs)
 
 		return nil
 	})
@@ -2495,7 +2495,7 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
 								Inputs:  &req.Inputs,
-								Outputs: coalesceReadOutputs(req),
+								Outputs: &req.State,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -2551,10 +2551,10 @@ func TestRefreshRunProgramReplacedResource(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.ToResourcePropertyMap(programInputs),
+			Inputs: programInputs,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, programInputs, resource.FromResourcePropertyMap(resp.Outputs))
+		assert.Equal(t, programInputs, resp.Outputs)
 
 		return nil
 	})
@@ -2997,10 +2997,10 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 	}
 
 	// The Read method will return new outputs but no inputs
-	newOutputsFromRead := resource.PropertyMap{
-		"inputProp":  resource.NewProperty("newInputValue"),
-		"outputProp": resource.NewProperty("newOutputValue"),
-	}
+	newOutputsFromRead := property.NewMap(map[string]property.Value{
+		"inputProp":  property.New("newInputValue"),
+		"outputProp": property.New("newOutputValue"),
+	})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -3020,18 +3020,17 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
-							Outputs: ptrMap(newOutputsFromRead),
+							Outputs: &newOutputsFromRead,
 						},
 						Status: resource.StatusOK,
 					}, nil
 				},
 				UpdateF: func(ctx context.Context, ur plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					newInputs := resource.ToResourcePropertyMap(ur.NewInputs)
+					inputProp := ur.NewInputs.Get("inputProp")
 					return plugin.UpdateResponse{
-						Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-							"inputProp": newInputs["inputProp"],
-							"outputProp": resource.NewProperty(
-								strings.ReplaceAll(newInputs["inputProp"].StringValue(), "Input", "Output")),
+						Properties: property.NewMap(map[string]property.Value{
+							"inputProp":  inputProp,
+							"outputProp": property.New(strings.ReplaceAll(inputProp.AsString(), "Input", "Output")),
 						}),
 					}, nil
 				},
@@ -3039,9 +3038,9 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 		}),
 	}
 
-	updatedInputs := resource.PropertyMap{
-		"inputProp": resource.NewProperty("updatedInputValue"),
-	}
+	updatedInputs := property.NewMap(map[string]property.Value{
+		"inputProp": property.New("updatedInputValue"),
+	})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -3075,7 +3074,7 @@ func TestRefreshPreservesInputsWhenReadReturnsNoInputs(t *testing.T) {
 	require.NotNil(t, finalResource, "resource should exist in final snapshot")
 
 	// Assert that inputs were not updated, but the outputs were in final snapshot
-	assert.Equal(t, updatedInputs, finalResource.Inputs,
+	assert.Equal(t, resource.ToResourcePropertyMap(updatedInputs), finalResource.Inputs,
 		"inputs are not updated in final snapshot when Read returns no inputs")
 }
 

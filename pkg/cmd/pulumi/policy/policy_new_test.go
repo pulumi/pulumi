@@ -84,7 +84,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		}
 
 		err := runNewPolicyPack(t.Context(), args)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assertNotFoundError(t, err)
 	})
 
@@ -99,7 +99,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		}
 
 		err := runNewPolicyPack(t.Context(), args)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assertNotFoundError(t, err)
 	})
 }

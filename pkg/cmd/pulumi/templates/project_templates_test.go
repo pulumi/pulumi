@@ -617,7 +617,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 			require.NoError(t, err)
 			// copy the same files again to test overwriting - expect error
 			err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 		})
 	}
 
@@ -659,7 +659,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		// copy the same files again to test overwriting - expect error
 		err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("Overwrite directory over file: force=true", func(t *testing.T) {
@@ -709,7 +709,7 @@ func TestCopyTemplateFiles(t *testing.T) {
 
 		// copy the same files again to test overwriting - expect error
 		err = CopyTemplateFiles(projectDir, copyDestDir, false, "testProjectName", "testProjectDescription")
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("Overwrite file over empty directory: force=true", func(t *testing.T) {

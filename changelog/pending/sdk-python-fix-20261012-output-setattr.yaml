@@ -1,4 +1,0 @@
-component: sdk/python
-kind: fix
-body: Fix false missing-argument errors from ty on Output.apply and other Output methods
-time: 2026-10-12T00:00:00Z

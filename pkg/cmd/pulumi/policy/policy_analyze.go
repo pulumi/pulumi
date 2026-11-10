@@ -99,6 +99,10 @@ func newPolicyAnalyzeCmd(
 					if err != nil {
 						return nil, nil, fmt.Errorf("getting working directory: %w", err)
 					}
+					cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, lm, nil)
+					if err != nil {
+						return nil, nil, err
+					}
 					reg := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, cmdutil.Diag(), env.Global())
 					pluginHost, err := pkghost.New(context.WithoutCancel(ctx), cmdutil.Diag(), cmdutil.Diag(),
 						nil, pkgWorkspace.EnsureLanguageInstalled,
@@ -108,7 +112,7 @@ func newPolicyAnalyzeCmd(
 						return nil, nil, fmt.Errorf("creating plugin host: %w", err)
 					}
 					pctx, err := plugin.NewContext(ctx, cmdutil.Diag(), cmdutil.Diag(),
-						pluginHost, nil, cwd, nil, true, nil)
+						pluginHost, nil, cwd, nil, true, nil, cloudCredentialEnv)
 					if err != nil {
 						contract.IgnoreClose(pluginHost)
 						return nil, nil, fmt.Errorf("creating plugin context: %w", err)
@@ -195,6 +199,10 @@ func newPolicyAnalyzeCmd(
 				return fmt.Errorf("loading policy packs: %w", err)
 			}
 			defer cleanup()
+			exceptions, err := engine.LocalPolicyPackExceptions(ctx, cmdutil.Diag(), packs, analyzers)
+			if err != nil {
+				return fmt.Errorf("loading policy exceptions: %w", err)
+			}
 
 			// Run analysis against the snapshot.
 			events, finish, err := newAnalyzeEvents(
@@ -204,7 +212,7 @@ func newPolicyAnalyzeCmd(
 			if err != nil {
 				return fmt.Errorf("configuring analysis display: %w", err)
 			}
-			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, events)
+			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, exceptions, events)
 			result := apitype.OperationResultFromError(err)
 			if err == nil && hasMandatory {
 				result = apitype.OperationResultFailed
@@ -350,6 +358,7 @@ func newAnalyzeEvents(
 		Color:                  colorization,
 		Type:                   displayType,
 		ShowPolicyRemediations: true,
+		ShowPolicyExceptions:   true,
 		IsInteractive:          cmdutil.Interactive(),
 		JSONDisplay:            jsonDisplay,
 		Stdout:                 out,
@@ -409,14 +418,16 @@ func (e *analyzeEvents) writeEvent(event engine.Event) {
 		return
 	}
 
-	msg := display.RenderDiffEvent(event, 0, e.seen, e.opts)
+	msg := display.RenderDiffEvent(event, 0, 0, e.seen, e.opts)
 	if msg == "" {
 		return
 	}
 	fmt.Fprint(e.out, msg)
 }
 
-func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+func (e *analyzeEvents) OnPolicyViolation(
+	urn resource.URN, d plugin.AnalyzeDiagnostic, exceptions []apitype.PolicyEventException,
+) {
 	e.outLock.Lock()
 	defer e.outLock.Unlock()
 	e.writeEvent(engine.NewEvent(engine.PolicyViolationEventPayload{
@@ -427,6 +438,7 @@ func (e *analyzeEvents) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiag
 		PolicyPackVersion: d.PolicyPackVersion,
 		EnforcementLevel:  d.EnforcementLevel,
 		Severity:          d.Severity,
+		Exceptions:        exceptions,
 	}))
 }
 

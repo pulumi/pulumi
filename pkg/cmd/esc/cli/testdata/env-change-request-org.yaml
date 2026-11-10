@@ -1,0 +1,43 @@
+run: |
+  esc env init test-org/default/test
+  esc env set test-org/default/test foo bar --draft
+  esc env change-request ls --organization test-org --env default/test
+  esc env change-request ls --organization test-org --env test
+  esc env change-request ls --organization test-org --env test-org/default/test
+  esc env change-request ls --organization test-org --env test-user/default/test || true
+
+---
+> esc env init test-org/default/test
+Environment created: test-org/default/test
+> esc env set test-org/default/test foo bar --draft
+Change request created: 00000000-0000-0000-0000-000000000000
+Change request URL: https://app.fake.pulumi.com/test-org/esc/default/test?version=00000000-0000-0000-0000-000000000000
+Change request submitted
+> esc env change-request ls --organization test-org --env default/test
+┌──────────────────────────────────────┬───────────┐
+│ ID                                   │ AUTHOR    │
+├──────────────────────────────────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ test-user │
+└──────────────────────────────────────┴───────────┘
+> esc env change-request ls --organization test-org --env test
+┌──────────────────────────────────────┬───────────┐
+│ ID                                   │ AUTHOR    │
+├──────────────────────────────────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ test-user │
+└──────────────────────────────────────┴───────────┘
+> esc env change-request ls --organization test-org --env test-org/default/test
+┌──────────────────────────────────────┬───────────┐
+│ ID                                   │ AUTHOR    │
+├──────────────────────────────────────┼───────────┤
+│ 00000000-0000-0000-0000-000000000000 │ test-user │
+└──────────────────────────────────────┴───────────┘
+> esc env change-request ls --organization test-org --env test-user/default/test
+
+---
+> esc env init test-org/default/test
+> esc env set test-org/default/test foo bar --draft
+> esc env change-request ls --organization test-org --env default/test
+> esc env change-request ls --organization test-org --env test
+> esc env change-request ls --organization test-org --env test-org/default/test
+> esc env change-request ls --organization test-org --env test-user/default/test
+Error: environment test-user/default/test is not in organization test-org

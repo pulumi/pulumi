@@ -90,7 +90,7 @@ func TestPolicyGroupRemove_ClientError(t *testing.T) {
 	err := runPolicyGroupRemove(t.Context(), &buf,
 		stubPolicyGroupRemoveFactory(c, "acme"), "default-policy-group",
 		policyGroupRemoveArgs{yes: true, outputFormat: defaultPolicyGroupRemoveOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "removing policy group: cannot delete default group", err.Error())
 	assert.Equal(t, "", buf.String())
 }
@@ -102,6 +102,6 @@ func TestPolicyGroupRemove_FactoryError(t *testing.T) {
 	err := runPolicyGroupRemove(t.Context(), &buf,
 		failingPolicyGroupRemoveFactory(errors.New("not logged in")),
 		"prod-policies", policyGroupRemoveArgs{yes: true, outputFormat: defaultPolicyGroupRemoveOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "not logged in", err.Error())
 }

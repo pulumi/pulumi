@@ -53,9 +53,9 @@ func TestEncodeSealedBlobRejectsOversize(t *testing.T) {
 	t.Parallel()
 	big := make([]byte, 0x10000)
 	_, err := encodeSealedBlob(big, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	_, err = encodeSealedBlob(nil, big)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestDecodeSealedBlobRejectsMalformed(t *testing.T) {
@@ -75,6 +75,6 @@ func TestDecodeSealedBlobRejectsMalformed(t *testing.T) {
 	}
 	for name, blob := range cases {
 		_, _, err := decodeSealedBlob(blob)
-		assert.Error(t, err, name)
+		assert.Error(t, err, name) //nolint:forbidigo // pre-existing
 	}
 }

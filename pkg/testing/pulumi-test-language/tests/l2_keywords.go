@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,25 +45,41 @@ func init() {
 					lambdaModule := RequireSingleNamedResource(l, snap.Resources, "lambdaModuleResource")
 					lambdaResource := RequireSingleNamedResource(l, snap.Resources, "lambdaResource")
 
-					wantInputs := resource.NewPropertyMapFromMap(map[string]any{
-						"builtins": resource.NewProperty("builtins"),
-						"lambda":   resource.NewProperty("lambda"),
-						"property": resource.NewProperty("property"),
+					wantInputs := property.NewMap(map[string]property.Value{
+						"builtins": property.New("builtins"),
+						"lambda":   property.New("lambda"),
+						"property": property.New("property"),
 					})
-					assert.Equal(l, wantInputs, first.Inputs, "expected inputs to be %v", wantInputs)
-					assert.Equal(l, wantInputs, second.Inputs, "expected inputs to be %v", wantInputs)
-					assert.Equal(l, wantInputs, lambdaModule.Inputs, "expected inputs to be %v", wantInputs)
-					assert.Equal(l, wantInputs, lambdaResource.Inputs, "expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs,
+						resource.FromResourcePropertyMap(first.Inputs),
+						"expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs,
+						resource.FromResourcePropertyMap(second.Inputs),
+						"expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs,
+						resource.FromResourcePropertyMap(lambdaModule.Inputs),
+						"expected inputs to be %v", wantInputs)
+					assert.Equal(l, wantInputs,
+						resource.FromResourcePropertyMap(lambdaResource.Inputs),
+						"expected inputs to be %v", wantInputs)
 
-					wantOutputs := resource.NewPropertyMapFromMap(map[string]any{
-						"builtins": resource.NewProperty("builtins"),
-						"lambda":   resource.NewProperty("lambda"),
-						"property": resource.NewProperty("property"),
+					wantOutputs := property.NewMap(map[string]property.Value{
+						"builtins": property.New("builtins"),
+						"lambda":   property.New("lambda"),
+						"property": property.New("property"),
 					})
-					assert.Equal(l, wantOutputs, first.Outputs, "expected outputs to be %v", wantOutputs)
-					assert.Equal(l, wantOutputs, second.Outputs, "expected outputs to be %v", wantOutputs)
-					assert.Equal(l, wantOutputs, lambdaModule.Outputs, "expected outputs to be %v", wantOutputs)
-					assert.Equal(l, wantOutputs, lambdaResource.Outputs, "expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs,
+						resource.FromResourcePropertyMap(first.Outputs),
+						"expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs,
+						resource.FromResourcePropertyMap(second.Outputs),
+						"expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs,
+						resource.FromResourcePropertyMap(lambdaModule.Outputs),
+						"expected outputs to be %v", wantOutputs)
+					assert.Equal(l, wantOutputs,
+						resource.FromResourcePropertyMap(lambdaResource.Outputs),
+						"expected outputs to be %v", wantOutputs)
 				},
 			},
 		},
