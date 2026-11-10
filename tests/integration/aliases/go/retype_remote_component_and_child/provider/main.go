@@ -178,8 +178,8 @@ func (p *Provider) Construct(ctx context.Context,
 
 func (p *Provider) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
-) (*pulumirpc.CheckResponse, error) {
-	return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
+) (*pulumirpc.CheckConfigResponse, error) {
+	return &pulumirpc.CheckConfigResponse{Inputs: req.GetNews()}, nil
 }
 
 func (p *Provider) DiffConfig(ctx context.Context,

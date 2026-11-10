@@ -264,7 +264,7 @@ func (p *providerServer) Cancel(ctx context.Context, req *emptypb.Empty) (*empty
 
 func (p *providerServer) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
-) (*pulumirpc.CheckResponse, error) {
+) (*pulumirpc.CheckConfigResponse, error) {
 	urn := resource.URN(req.GetUrn())
 
 	// To support old engines fill in Name/Type if the engine didn't send them
@@ -308,12 +308,12 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		return nil, err
 	}
 
-	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
+	rpcFailures := make([]*pulumirpc.CheckConfigFailure, len(resp.Failures))
 	for i, f := range resp.Failures {
-		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+		rpcFailures[i] = &pulumirpc.CheckConfigFailure{Property: string(f.Property), Reason: f.Reason}
 	}
 
-	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+	return &pulumirpc.CheckConfigResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
 }
 
 func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {

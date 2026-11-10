@@ -130,8 +130,8 @@ func makeProvider(host *pulumiprovider.HostClient, name, version string) (pulumi
 // CheckConfig validates the configuration for this provider.
 func (p *testproviderProvider) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
-) (*pulumirpc.CheckResponse, error) {
-	return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
+) (*pulumirpc.CheckConfigResponse, error) {
+	return &pulumirpc.CheckConfigResponse{Inputs: req.GetNews()}, nil
 }
 
 // DiffConfig diffs the configuration for this provider.

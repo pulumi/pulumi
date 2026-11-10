@@ -1,0 +1,4 @@
+component: sdk/go
+kind: chore
+body: Return a dedicated `CheckConfigResponse` type from the `CheckConfig` provider method instead of `CheckResponse`
+time: 2026-11-10T20:00:00Z

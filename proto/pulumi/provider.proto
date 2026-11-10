@@ -85,7 +85,7 @@ service ResourceProvider {
     // the properties as present in the program inputs. Though this rule is not required for correctness, violations
     // thereof can negatively impact the end-user experience, as the provider inputs are used for detecting and
     // rendering diffs.
-    rpc CheckConfig(CheckRequest) returns (CheckResponse) {}
+    rpc CheckConfig(CheckRequest) returns (CheckConfigResponse) {}
 
     // `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
     // difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
@@ -688,13 +688,11 @@ message CheckRequest {
     google.protobuf.Struct old_outputs = 9;
 }
 
-// `CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or
-// [](pulumirpc.ResourceProvider.Check) call. A `CheckResponse` may contain either:
+// `CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Check) call. A `CheckResponse` may
+// contain either:
 //
-// * a set of checked, known-valid `inputs`. In the case of [](pulumirpc.ResourceProvider.CheckConfig), these may
-//   subsequently be passed to [](pulumirpc.ResourceProvider.DiffConfig) and/or
-//   [](pulumirpc.ResourceProvider.Configure). In the case of [](pulumirpc.ResourceProvider.Check), these may be passed
-//   to any of the supported lifecycle methods that accept provider inputs.
+// * a set of checked, known-valid `inputs`. These may be passed to any of the supported lifecycle methods that accept
+//   provider inputs.
 // * a set of `failures` detailing invalid inputs.
 //
 // In cases where the supplied set of inputs is valid, a `CheckResponse` may contain default values that should
@@ -707,10 +705,43 @@ message CheckResponse {
     repeated CheckFailure failures = 2;
 }
 
-// A `CheckFailure` describes a single validation error that arose as part of a
-// [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check) call.
+// A `CheckFailure` describes a single validation error that arose as part of a [](pulumirpc.ResourceProvider.Check)
+// call.
 message CheckFailure {
     // The input property that failed validation.
+    string property = 1;
+
+    // The reason that the named property failed validation.
+    string reason = 2;
+}
+
+// `CheckConfigResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) call. A
+// `CheckConfigResponse` may contain either:
+//
+// * a set of checked, known-valid `inputs`. These may subsequently be passed to
+//   [](pulumirpc.ResourceProvider.DiffConfig) and/or [](pulumirpc.ResourceProvider.Configure).
+// * a set of `failures` detailing invalid inputs.
+//
+// In cases where the supplied set of inputs is valid, a `CheckConfigResponse` may contain default values that should
+// persisted to Pulumi state and passed to subsequent calls.
+//
+// `CheckConfigResponse` was forked from `CheckResponse` and must stay wire compatible with it for the fields the two
+// share, since older providers and engines exchange `CheckResponse` messages for `CheckConfig`.
+message CheckConfigResponse {
+    // A valid, checked set of inputs. May contain defaults.
+    google.protobuf.Struct inputs = 1;
+
+    // Any validation failures that occurred.
+    repeated CheckConfigFailure failures = 2;
+}
+
+// A `CheckConfigFailure` describes a single validation error that arose as part of a
+// [](pulumirpc.ResourceProvider.CheckConfig) call.
+//
+// `CheckConfigFailure` was forked from `CheckFailure` and must stay wire compatible with it for the fields the two
+// share.
+message CheckConfigFailure {
+    // The provider configuration property that failed validation.
     string property = 1;
 
     // The reason that the named property failed validation.

@@ -49,7 +49,7 @@ func (p *grpcCapturingProviderServer) logMessage(method RPCMethod, msg proto.Mes
 func (p *grpcCapturingProviderServer) CheckConfig(
 	ctx context.Context,
 	req *pulumirpc.CheckRequest,
-) (*pulumirpc.CheckResponse, error) {
+) (*pulumirpc.CheckConfigResponse, error) {
 	if err := p.logMessage(CheckConfigMethod, req); err != nil {
 		return nil, err
 	}

@@ -56,6 +56,17 @@ function deserialize_pulumirpc_CallResponse(buffer_arg) {
   return pulumi_provider_pb.CallResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_CheckConfigResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.CheckConfigResponse)) {
+    throw new Error('Expected argument of type pulumirpc.CheckConfigResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CheckConfigResponse(buffer_arg) {
+  return pulumi_provider_pb.CheckConfigResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_CheckRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.CheckRequest)) {
     throw new Error('Expected argument of type pulumirpc.CheckRequest');
@@ -492,11 +503,11 @@ checkConfig: {
     requestStream: false,
     responseStream: false,
     requestType: pulumi_provider_pb.CheckRequest,
-    responseType: pulumi_provider_pb.CheckResponse,
+    responseType: pulumi_provider_pb.CheckConfigResponse,
     requestSerialize: serialize_pulumirpc_CheckRequest,
     requestDeserialize: deserialize_pulumirpc_CheckRequest,
-    responseSerialize: serialize_pulumirpc_CheckResponse,
-    responseDeserialize: deserialize_pulumirpc_CheckResponse,
+    responseSerialize: serialize_pulumirpc_CheckConfigResponse,
+    responseDeserialize: deserialize_pulumirpc_CheckConfigResponse,
   },
   // `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
 // difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)

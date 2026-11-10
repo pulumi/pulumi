@@ -69,8 +69,8 @@ func (p *testloggingProvider) GetSchema(_ context.Context,
 
 func (p *testloggingProvider) CheckConfig(_ context.Context,
 	req *pulumirpc.CheckRequest,
-) (*pulumirpc.CheckResponse, error) {
-	return &pulumirpc.CheckResponse{Inputs: req.GetNews()}, nil
+) (*pulumirpc.CheckConfigResponse, error) {
+	return &pulumirpc.CheckConfigResponse{Inputs: req.GetNews()}, nil
 }
 
 func (p *testloggingProvider) Configure(_ context.Context,

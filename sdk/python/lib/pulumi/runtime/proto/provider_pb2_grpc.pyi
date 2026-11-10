@@ -94,7 +94,7 @@ class ResourceProviderStub:
 
     CheckConfig: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.CheckRequest,
-        pulumi.provider_pb2.CheckResponse,
+        pulumi.provider_pb2.CheckConfigResponse,
     ]
     """`CheckConfig` validates a set of configuration inputs that will be passed to this provider instance.
     `CheckConfig` is to provider resources what [](pulumirpc.ResourceProvider.Check) is to individual resources, and
@@ -395,7 +395,7 @@ class ResourceProviderAsyncStub:
 
     CheckConfig: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.CheckRequest,
-        pulumi.provider_pb2.CheckResponse,
+        pulumi.provider_pb2.CheckConfigResponse,
     ]
     """`CheckConfig` validates a set of configuration inputs that will be passed to this provider instance.
     `CheckConfig` is to provider resources what [](pulumirpc.ResourceProvider.Check) is to individual resources, and
@@ -705,7 +705,7 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         self,
         request: pulumi.provider_pb2.CheckRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.provider_pb2.CheckResponse, collections.abc.Awaitable[pulumi.provider_pb2.CheckResponse]]:
+    ) -> typing.Union[pulumi.provider_pb2.CheckConfigResponse, collections.abc.Awaitable[pulumi.provider_pb2.CheckConfigResponse]]:
         """`CheckConfig` validates a set of configuration inputs that will be passed to this provider instance.
         `CheckConfig` is to provider resources what [](pulumirpc.ResourceProvider.Check) is to individual resources, and
         is the first stage in configuring (that is, eventually executing a [](pulumirpc.ResourceProvider.Configure) call)
