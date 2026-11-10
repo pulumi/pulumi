@@ -30,13 +30,31 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
+// State is a state value in the OSC 7501 Program Status Protocol.
+type State string
+
+const (
+	// StateIdle indicates the program is waiting for its next instruction.
+	StateIdle State = "idle"
+	// StateWorking indicates the program is running.
+	StateWorking State = "working"
+	// StateDone indicates the program finished and its result is ready to look at.
+	StateDone State = "done"
+	// StateBlocked indicates the program needs user input to continue.
+	StateBlocked State = "blocked"
+	// StateError indicates the program failed and stopped.
+	StateError State = "error"
+	// StateClear removes the addressed record and its descendants.
+	StateClear State = "clear"
+)
+
 // Working reports an active operation with the given message and returns a function that clears its status.
 // If out is nil, it defaults to stderr.
 func Working(out io.Writer, message string) func() {
 	if out == nil {
 		out = os.Stderr
 	}
-	return start(out, "pulumi/operation", "working", message)
+	return start(out, "pulumi/operation", StateWorking, message)
 }
 
 // NeedsInput reports a prompt and returns a function that clears its status.
@@ -45,10 +63,10 @@ func NeedsInput(out io.Writer) func() {
 	if out == nil {
 		out = os.Stderr
 	}
-	return start(out, "pulumi/prompt", "blocked", "")
+	return start(out, "pulumi/prompt", StateBlocked, "")
 }
 
-func start(out io.Writer, id, state, message string) func() {
+func start(out io.Writer, id string, state State, message string) func() {
 	f, ok := out.(*os.File)
 	if !ok || !cmdutil.Interactive() || !term.IsTerminal(int(f.Fd())) {
 		return func() {}
@@ -61,7 +79,7 @@ func start(out io.Writer, id, state, message string) func() {
 	}
 	fmt.Fprintf(out, "\x1b]7501;state=%s:id=%s:app=pulumi%s\x1b\\", state, id, messageField)
 	return func() {
-		fmt.Fprintf(out, "\x1b]7501;state=clear:id=%s:app=pulumi\x1b\\", id)
+		fmt.Fprintf(out, "\x1b]7501;state=%s:id=%s:app=pulumi\x1b\\", StateClear, id)
 	}
 }
 
