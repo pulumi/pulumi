@@ -290,7 +290,7 @@ func chooseLog(stackName, prompt string) (string, error) {
 	options, optionMap := formatLogChoices(entries)
 
 	var choice string
-	if err := survey.AskOne(&survey.Select{
+	if err := ui.AskOne(&survey.Select{
 		Message:  prompt,
 		Options:  options,
 		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),

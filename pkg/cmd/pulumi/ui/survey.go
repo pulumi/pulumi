@@ -258,7 +258,12 @@ func askSelect(
 	if defaultOption != "" {
 		sel.Default = defaultOption
 	}
-	return survey.AskOne(sel, response, allSurveyAskOpts...)
+	return AskOne(sel, response, allSurveyAskOpts...)
+}
+
+// AskOne runs a Survey prompt with the given options.
+func AskOne(prompt survey.Prompt, response any, opts ...survey.AskOpt) error {
+	return survey.AskOne(prompt, response, opts...)
 }
 
 // PromptUserMultiSkippable wraps over promptUserMulti making it skippable through the "yes" parameter
@@ -287,7 +292,7 @@ func PromptUserMulti(msg string, options []string, defaultOptions []string, colo
 	})
 
 	var response []string
-	if err := survey.AskOne(&survey.MultiSelect{
+	if err := AskOne(&survey.MultiSelect{
 		Message: prompt,
 		Options: options,
 		Default: defaultOptions,
