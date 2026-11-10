@@ -90,6 +90,21 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 						},
 					}, nil
 				},
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					freshInput := property.New(fmt.Sprintf("<FRESH-INPUT-%d>", readToken))
+					inputs := req.Inputs.Set("input", freshInput)
+					freshResult := property.New(fmt.Sprintf("<FRESH-RESULT-%d>", readToken))
+					outputs := inputs.Set("result", freshResult)
+					return plugin.ImportResponse{
+						Status: resource.StatusOK,
+						ReadResult: plugin.ReadResult{
+							ID:                  "new-id",
+							Inputs:              &inputs,
+							Outputs:             &outputs,
+							RefreshBeforeUpdate: true,
+						},
+					}, nil
+				},
 			}, nil
 		}, deploytest.WithHandshake),
 	}
