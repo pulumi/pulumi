@@ -16,17 +16,60 @@ package main
 
 import (
 	"context"
+	"errors"
+	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/telemetry"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+func initTelemetry(ctx context.Context, c *cobra.Command) context.Context {
+	if path := c.CommandPath(); path == "pulumi telemetry" || strings.HasPrefix(path, "pulumi telemetry ") ||
+		strings.HasPrefix(c.Name(), cobra.ShellCompRequestCmd) {
+		return ctx
+	}
+	home, err := workspace.GetPulumiHomeDir()
+	if err != nil {
+		slog.InfoContext(ctx, "telemetry unavailable", "err", err)
+		return ctx
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		slog.InfoContext(ctx, "telemetry unavailable", "err", err)
+		return ctx
+	}
+	project, _, err := pkgWorkspace.Instance.ReadProject(cwd)
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		slog.InfoContext(ctx, "telemetry unavailable", "err", err)
+		return ctx
+	}
+	e := env.NewEnv(env.Global)
+	url, err := pkgWorkspace.GetCurrentCloudURLWithAgentFallback(pkgWorkspace.Instance, e, project)
+	if err != nil || !telemetry.Eligible(url) {
+		return ctx
+	}
+	return telemetry.Init(ctx, telemetry.InitArgs{
+		HomeDir: home,
+		Diags:   cmdutil.Diag(),
+		Env:     e,
+		// Only CI waits for telemetry to be sent before exiting. Interactive and agent-driven runs never block on
+		// the network, so this must stay a CI check rather than a check for a non-interactive session.
+		CI:        ciutil.IsCI(),
+		URL:       client.PulumiCloudURL,
+		UserAgent: client.UserAgent(),
+	})
+}
 
 func invocationTelemetry(c *cobra.Command) []telemetry.KV {
 	return []telemetry.KV{

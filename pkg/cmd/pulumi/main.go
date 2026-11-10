@@ -74,9 +74,11 @@ func main() {
 	telemetry.Emit(ctx, exitTelemetry(ctx, err)...)
 	if err != nil {
 		cmd.DisplayErrorMessage(pulumiCmd.Context(), err, pulumiCmd.ErrOrStderr())
+		telemetry.Shutdown(ctx)
 		cleanup()
 		os.Exit(cmd.ExitCodeFor(err))
 	}
+	telemetry.Shutdown(ctx)
 	*finished = true
 	cleanup()
 }
