@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TestMultipleProtectedDeletes tests that a preview and up can see multiple protect delete errors.
@@ -443,7 +444,9 @@ func TestIgnoreProtectReplace(t *testing.T) {
 		}),
 	}
 
-	inputsA := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+	inputsA := property.NewMap(map[string]property.Value{
+		"A": property.New("foo"),
+	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:  inputsA,
@@ -468,7 +471,7 @@ func TestIgnoreProtectReplace(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 
 	// Change the input to trigger a replace, this should error because of the protect flag.
-	inputsA["A"] = resource.NewProperty("bar")
+	inputsA = inputsA.Set("A", property.New("bar"))
 	_, err = lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "as it is currently marked for protection")
@@ -523,8 +526,8 @@ func TestIgnoreProtectDBRChain(t *testing.T) {
 
 	const resType = "pkgA:index:typ"
 
-	inputsA := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
-	inputsB := resource.NewPropertyMapFromMap(map[string]any{"A": "foo"})
+	inputsA := property.NewMap(map[string]property.Value{"A": property.New("foo")})
+	inputsB := property.NewMap(map[string]property.Value{"A": property.New("foo")})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource(resType, "resA", true, deploytest.ResourceOptions{
@@ -560,7 +563,7 @@ func TestIgnoreProtectDBRChain(t *testing.T) {
 
 	// Update A to trigger a delete-before-replace chain that includes the protected resource B.
 	// This should error because of the protect flag on B.
-	inputsA["A"] = resource.NewProperty("bar")
+	inputsA = inputsA.Set("A", property.New("bar"))
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	assert.ErrorContains(t, err, "as it is currently marked for protection")
 

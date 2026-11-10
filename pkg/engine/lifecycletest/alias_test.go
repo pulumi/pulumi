@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -43,7 +44,7 @@ type Resource struct {
 	t                   tokens.Type
 	name                string
 	children            []Resource
-	props               resource.PropertyMap
+	props               property.Map
 	aliasURNs           []resource.URN
 	aliases             []resource.Alias
 	dependencies        []resource.URN
@@ -338,9 +339,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t4",
 		name: "n2",
-		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewProperty(42.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"x": property.New(42.0),
+		}),
 		aliases: []resource.Alias{
 			{Type: "pkgA:othermod:t3", Name: "n1"},
 		},
@@ -350,9 +351,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t5",
 		name: "n3",
-		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewProperty(1000.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"x": property.New(1000.0),
+		}),
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t4", Name: "n2"},
 		},
@@ -362,9 +363,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t6",
 		name: "n4",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1000.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1000.0),
+		}),
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t5", Name: "n3"},
 		},
@@ -375,9 +376,9 @@ func TestAliases(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t7",
 		name: "n5",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(999.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(999.0),
+		}),
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t6", Name: "n4"},
@@ -388,9 +389,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1.0),
+		}),
 		deleteBeforeReplace: true,
 	}, {
 		t:            "pkgA:index:t2",
@@ -401,9 +402,9 @@ func TestAliases(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(2.0),
+		}),
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t1", Name: "n1"},
@@ -422,9 +423,9 @@ func TestAliases(t *testing.T) {
 	snap = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1.0),
+		}),
 		deleteBeforeReplace: true,
 	}, {
 		t:      "pkgA:index:t2",
@@ -435,9 +436,9 @@ func TestAliases(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(2.0),
+		}),
 		deleteBeforeReplace: true,
 		aliases: []resource.Alias{
 			{Type: "pkgA:index:t1", Name: "n1"},
@@ -878,9 +879,9 @@ func TestAliasURNs(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t4",
 		name: "n2",
-		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewProperty(42.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"x": property.New(42.0),
+		}),
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:othermod:t3::n1",
 		},
@@ -890,9 +891,9 @@ func TestAliasURNs(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t5",
 		name: "n3",
-		props: resource.PropertyMap{
-			resource.PropertyKey("x"): resource.NewProperty(1000.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"x": property.New(1000.0),
+		}),
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t4::n2",
 		},
@@ -902,9 +903,9 @@ func TestAliasURNs(t *testing.T) {
 	snap = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t6",
 		name: "n4",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1000.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1000.0),
+		}),
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t5::n3",
 		},
@@ -915,9 +916,9 @@ func TestAliasURNs(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t7",
 		name: "n5",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(999.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(999.0),
+		}),
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t6::n4",
@@ -928,9 +929,9 @@ func TestAliasURNs(t *testing.T) {
 	snap = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1.0),
+		}),
 		deleteBeforeReplace: true,
 	}, {
 		t:            "pkgA:index:t2",
@@ -941,9 +942,9 @@ func TestAliasURNs(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(2.0),
+		}),
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
@@ -962,9 +963,9 @@ func TestAliasURNs(t *testing.T) {
 	snap = updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
 		name: "n1",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(1.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(1.0),
+		}),
 		deleteBeforeReplace: true,
 	}, {
 		t:      "pkgA:index:t2",
@@ -975,9 +976,9 @@ func TestAliasURNs(t *testing.T) {
 	_ = updateProgramWithResource(snap, []Resource{{
 		t:    "pkgA:index:t1-new",
 		name: "n1-new",
-		props: resource.PropertyMap{
-			resource.PropertyKey("forcesReplacement"): resource.NewProperty(2.0),
-		},
+		props: property.NewMap(map[string]property.Value{
+			"forcesReplacement": property.New(2.0),
+		}),
 		deleteBeforeReplace: true,
 		aliasURNs: []resource.URN{
 			"urn:pulumi:test::test::pkgA:index:t1::n1",
@@ -1457,8 +1458,8 @@ func TestComponentToCustomUpdate(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	insA := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	insA := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 	createA := func(monitor *deploytest.ResourceMonitor) {
 		_, err := monitor.RegisterResource("prog::myType", "resA", false, deploytest.ResourceOptions{

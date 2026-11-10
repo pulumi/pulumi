@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,17 +72,19 @@ func TestDeletedWithDependentReplacedOnDeleteBeforeReplace(t *testing.T) {
 	}
 
 	// Any old value that we can change later to trigger a replace.
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{Inputs: ins})
+		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
 		require.NoError(t, err)
 
 		// resD's own inputs never change, but it must replace whenever resT does.
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
-			Inputs:      resource.NewPropertyMapFromMap(map[string]any{"fixed": "property"}),
+			Inputs:      property.NewMap(map[string]property.Value{"fixed": property.New("property")}),
 			DeletedWith: respT.URN,
 		})
 		require.NoError(t, err)
@@ -108,7 +111,7 @@ func TestDeletedWithDependentReplacedOnDeleteBeforeReplace(t *testing.T) {
 	urnD := snap.Resources[2].URN
 
 	// Change the property on T, which should force D to replace too despite having no diff of its own.
-	ins["foo"] = resource.NewProperty("baz")
+	ins = ins.Set("foo", property.New("baz"))
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
@@ -162,22 +165,24 @@ func TestDeletedWithTransitiveChain(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{Inputs: ins})
+		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
 		require.NoError(t, err)
 
 		respD, err := monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
-			Inputs:      resource.NewPropertyMapFromMap(map[string]any{"fixed": "property"}),
+			Inputs:      property.NewMap(map[string]property.Value{"fixed": property.New("property")}),
 			DeletedWith: respT.URN,
 		})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resD2", true, deploytest.ResourceOptions{
-			Inputs:      resource.NewPropertyMapFromMap(map[string]any{"fixed2": "property"}),
+			Inputs:      property.NewMap(map[string]property.Value{"fixed2": property.New("property")}),
 			DeletedWith: respD.URN,
 		})
 		require.NoError(t, err)
@@ -204,7 +209,7 @@ func TestDeletedWithTransitiveChain(t *testing.T) {
 	urnD := snap.Resources[2].URN
 	urnD2 := snap.Resources[3].URN
 
-	ins["foo"] = resource.NewProperty("baz")
+	ins = ins.Set("foo", property.New("baz"))
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
@@ -260,16 +265,18 @@ func TestDeletedWithDependentReplacedOnCreateBeforeDelete(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{Inputs: ins})
+		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
-			Inputs:      resource.NewPropertyMapFromMap(map[string]any{"fixed": "property"}),
+			Inputs:      property.NewMap(map[string]property.Value{"fixed": property.New("property")}),
 			DeletedWith: respT.URN,
 		})
 		require.NoError(t, err)
@@ -294,7 +301,7 @@ func TestDeletedWithDependentReplacedOnCreateBeforeDelete(t *testing.T) {
 	urnT := snap.Resources[1].URN
 	urnD := snap.Resources[2].URN
 
-	ins["foo"] = resource.NewProperty("baz")
+	ins = ins.Set("foo", property.New("baz"))
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
@@ -349,17 +356,19 @@ func TestDeletedWithAddedSameStepAsReplace(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 	linkD := false
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{Inputs: ins})
+		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
 		require.NoError(t, err)
 
 		opts := deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]any{"fixed": "property"}),
+			Inputs: property.NewMap(map[string]property.Value{"fixed": property.New("property")}),
 		}
 		if linkD {
 			opts.DeletedWith = respT.URN
@@ -389,7 +398,7 @@ func TestDeletedWithAddedSameStepAsReplace(t *testing.T) {
 
 	// Add the DeletedWith link and force-replace T in the same step.
 	linkD = true
-	ins["foo"] = resource.NewProperty("baz")
+	ins = ins.Set("foo", property.New("baz"))
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 	require.NotNil(t, snap)
@@ -509,19 +518,21 @@ func TestDeletedWithProtectedDependentBlocksReplace(t *testing.T) {
 		}, deploytest.WithoutGrpc),
 	}
 
-	ins := resource.NewPropertyMapFromMap(map[string]any{
-		"foo": "bar",
+	ins := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
 	})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{Inputs: ins})
+		respT, err := monitor.RegisterResource("pkgA:m:typA", "resT", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
 		if err != nil {
 			return err
 		}
 
 		protect := true
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resD", true, deploytest.ResourceOptions{
-			Inputs:      resource.NewPropertyMapFromMap(map[string]any{"fixed": "property"}),
+			Inputs:      property.NewMap(map[string]property.Value{"fixed": property.New("property")}),
 			DeletedWith: respT.URN,
 			Protect:     &protect,
 		})
@@ -540,7 +551,7 @@ func TestDeletedWithProtectedDependentBlocksReplace(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 3)
 
-	ins["foo"] = resource.NewProperty("baz")
+	ins = ins.Set("foo", property.New("baz"))
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), options, false, p.BackendClient, nil, "1")
 	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.ErrorContains(t, err, "marked for protection")

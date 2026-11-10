@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -53,29 +54,21 @@ func TestRegisterUsesOutputValues(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource("pkgA:m:typA", "a", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"value": resource.NewProperty("a")},
+			Inputs: property.NewMap(map[string]property.Value{"value": property.New("a")}),
 		})
 		require.NoError(t, err)
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"value": resource.NewProperty("b")},
+			Inputs: property.NewMap(map[string]property.Value{"value": property.New("b")}),
 		})
 		require.NoError(t, err)
 
 		// Register `child` using the uses_output_values wire shape: inputs carry per-leaf OutputValue
 		// deps and PropertyDeps is nil. The engine should derive child.PropertyDependencies from the OVs.
 		_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty(resource.Output{
-					Element:      resource.NewProperty("a"),
-					Known:        true,
-					Dependencies: []resource.URN{respA.URN},
-				}),
-				"bar": resource.NewProperty(resource.Output{
-					Element:      resource.NewProperty("b"),
-					Known:        true,
-					Dependencies: []resource.URN{respB.URN},
-				}),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("a").WithDependencies([]resource.URN{respA.URN}),
+				"bar": property.New("b").WithDependencies([]resource.URN{respB.URN}),
+			}),
 			UsesOutputValues: true,
 		})
 		require.NoError(t, err)
@@ -144,11 +137,11 @@ func TestRegisterUsesOutputValuesTransforms(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource("pkgA:m:typA", "a", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"value": resource.NewProperty("a")},
+			Inputs: property.NewMap(map[string]property.Value{"value": property.New("a")}),
 		})
 		require.NoError(t, err)
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"value": resource.NewProperty("b")},
+			Inputs: property.NewMap(map[string]property.Value{"value": property.New("b")}),
 		})
 		require.NoError(t, err)
 
@@ -185,20 +178,12 @@ func TestRegisterUsesOutputValuesTransforms(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"both": resource.NewProperty(resource.PropertyMap{
-					"x": resource.NewProperty(resource.Output{
-						Element:      resource.NewProperty("a"),
-						Known:        true,
-						Dependencies: []resource.URN{respA.URN},
-					}),
-					"y": resource.NewProperty(resource.Output{
-						Element:      resource.NewProperty("b"),
-						Known:        true,
-						Dependencies: []resource.URN{respB.URN},
-					}),
-				}),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"both": property.New(property.NewMap(map[string]property.Value{
+					"x": property.New("a").WithDependencies([]resource.URN{respA.URN}),
+					"y": property.New("b").WithDependencies([]resource.URN{respB.URN}),
+				})),
+			}),
 			UsesOutputValues: true,
 			Transforms:       []*pulumirpc.Callback{split},
 		})
@@ -266,18 +251,14 @@ func TestRegisterUsesOutputValuesRejectsPropDeps(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		respA, err := monitor.RegisterResource("pkgA:m:typA", "a", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"value": resource.NewProperty("a")},
+			Inputs: property.NewMap(map[string]property.Value{"value": property.New("a")}),
 		})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty(resource.Output{
-					Element:      resource.NewProperty("a"),
-					Known:        true,
-					Dependencies: []resource.URN{respA.URN},
-				}),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("a").WithDependencies([]resource.URN{respA.URN}),
+			}),
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{
 				"foo": {respA.URN},
 			},
@@ -362,22 +343,18 @@ func TestRegisterUsesOutputValuesComponentConstruct(t *testing.T) {
 							// deps we want to attribute to each output are the same per-leaf URNs we pulled
 							// off the inputs — out1 flows from refs.x (depends on a), out2 from refs.y
 							// (depends on b).
-							var outputs resource.PropertyMap
+							var outputs property.Map
 							var outputDeps map[resource.PropertyKey][]resource.URN
 							if variant.returnOutputValues {
-								outputs = resource.PropertyMap{
-									"out1": resource.NewProperty(resource.Output{
-										Element: resource.NewProperty("a-val"), Known: true, Dependencies: xDeps,
-									}),
-									"out2": resource.NewProperty(resource.Output{
-										Element: resource.NewProperty("b-val"), Known: true, Dependencies: yDeps,
-									}),
-								}
+								outputs = property.NewMap(map[string]property.Value{
+									"out1": property.New("a-val").WithDependencies(xDeps),
+									"out2": property.New("b-val").WithDependencies(yDeps),
+								})
 							} else {
-								outputs = resource.PropertyMap{
-									"out1": resource.NewProperty("a-val"),
-									"out2": resource.NewProperty("b-val"),
-								}
+								outputs = property.NewMap(map[string]property.Value{
+									"out1": property.New("a-val"),
+									"out2": property.New("b-val"),
+								})
 							}
 							if variant.returnOutputDepsMap {
 								outputDeps = map[resource.PropertyKey][]resource.URN{
@@ -388,7 +365,7 @@ func TestRegisterUsesOutputValuesComponentConstruct(t *testing.T) {
 
 							return plugin.ConstructResponse{
 								URN:                resp.URN,
-								Outputs:            resource.FromResourcePropertyMap(outputs),
+								Outputs:            outputs,
 								OutputDependencies: outputDeps,
 							}, nil
 						},
@@ -399,28 +376,22 @@ func TestRegisterUsesOutputValuesComponentConstruct(t *testing.T) {
 			var observed *deploytest.RegisterResourceResponse
 			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 				respA, err := monitor.RegisterResource("pkgA:m:typA", "a", true, deploytest.ResourceOptions{
-					Inputs: resource.PropertyMap{"value": resource.NewProperty("a")},
+					Inputs: property.NewMap(map[string]property.Value{"value": property.New("a")}),
 				})
 				require.NoError(t, err)
 				respB, err := monitor.RegisterResource("pkgA:m:typA", "b", true, deploytest.ResourceOptions{
-					Inputs: resource.PropertyMap{"value": resource.NewProperty("b")},
+					Inputs: property.NewMap(map[string]property.Value{"value": property.New("b")}),
 				})
 				require.NoError(t, err)
 
 				observed, err = monitor.RegisterResource("pkgA:m:typC", "comp", false, deploytest.ResourceOptions{
 					Remote: true,
-					Inputs: resource.PropertyMap{
-						"refs": resource.NewProperty(resource.PropertyMap{
-							"x": resource.NewProperty(resource.Output{
-								Element: resource.NewProperty("a-val"), Known: true,
-								Dependencies: []resource.URN{respA.URN},
-							}),
-							"y": resource.NewProperty(resource.Output{
-								Element: resource.NewProperty("b-val"), Known: true,
-								Dependencies: []resource.URN{respB.URN},
-							}),
-						}),
-					},
+					Inputs: property.NewMap(map[string]property.Value{
+						"refs": property.New(property.NewMap(map[string]property.Value{
+							"x": property.New("a-val").WithDependencies([]resource.URN{respA.URN}),
+							"y": property.New("b-val").WithDependencies([]resource.URN{respB.URN}),
+						})),
+					}),
 					UsesOutputValues: true,
 				})
 				require.NoError(t, err)
