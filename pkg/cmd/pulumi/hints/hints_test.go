@@ -83,7 +83,7 @@ func TestNoHintBeforeSuccessfulUpdate(t *testing.T) {
 	assert.Contains(t, tm.run(hintA), "hint a")
 }
 
-func TestOneHintPerCommandAndGlobalBudget(t *testing.T) {
+func TestOneHintPerCommand(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
 	tm.recordSuccessfulUpdate()
@@ -92,11 +92,7 @@ func TestOneHintPerCommandAndGlobalBudget(t *testing.T) {
 	assert.Contains(t, out, "hint a")
 	assert.NotContains(t, out, "hint b")
 
-	// hint b has never been shown, but the global budget allows only one hint a day.
-	tm.now = tm.now.Add(23 * time.Hour)
-	assert.Empty(t, tm.run(hintB))
-
-	tm.now = tm.now.Add(time.Hour)
+	// Each hint has its own cooldown, so hint b can be shown right after hint a.
 	assert.Contains(t, tm.run(hintB), "hint b")
 }
 
@@ -107,7 +103,7 @@ func TestPerHintCooldown(t *testing.T) {
 
 	assert.Contains(t, tm.run(hintA), "hint a")
 
-	// Past the global budget but within hint a's cooldown, so hint b is picked instead.
+	// Within hint a's cooldown, so hint b is picked instead.
 	tm.now = tm.now.Add(2 * 24 * time.Hour)
 	out := tm.run(hintA, hintB)
 	assert.NotContains(t, out, "hint a")
@@ -153,7 +149,7 @@ func TestSuppressedDisabledAndCI(t *testing.T) {
 			tt.setup(tm)
 			assert.Empty(t, tm.run(hintA))
 
-			// A hint that wasn't shown doesn't use up the budget.
+			// A hint that wasn't shown doesn't start its cooldown.
 			st, _, err := tm.load()
 			require.NoError(t, err)
 			assert.Empty(t, st.LastShown)
