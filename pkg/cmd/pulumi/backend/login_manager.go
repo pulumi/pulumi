@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	backendsecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/telemetry"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -156,6 +157,7 @@ func (f *lm) Current(
 	if err != nil {
 		return nil, err
 	}
+	telemetry.UseBackend(ctx, url)
 	if diy.IsDIYBackendURL(url) {
 		be, err := diy.New(ctx, sink, url, project)
 		if err == nil && setCurrent {
@@ -188,6 +190,7 @@ func (f *lm) Login(
 	if err != nil {
 		return nil, err
 	}
+	telemetry.UseBackend(ctx, url)
 	if diy.IsDIYBackendURL(url) {
 		if setCurrent {
 			return diy.Login(ctx, sink, url, project)
@@ -222,6 +225,7 @@ func (f *lm) LoginFromAuthContext(
 	insecure bool,
 	authContext pkgauth.AuthContext,
 ) (backend.Backend, error) {
+	telemetry.UseBackend(ctx, url)
 	if authContext.GrantType == pkgauth.AuthContextGrantTypeTokenExchange {
 		lm := httpstate.NewLoginManager() // OIDC login doesn't use credentials helpers.
 		_, err := lm.LoginWithOIDCToken(
