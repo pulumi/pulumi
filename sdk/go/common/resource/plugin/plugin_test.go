@@ -93,7 +93,7 @@ func TestParsePort(t *testing.T) {
 		"100000",
 	} {
 		_, err := parsePort(port)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	}
 }
 

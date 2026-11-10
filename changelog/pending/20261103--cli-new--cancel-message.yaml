@@ -1,0 +1,3 @@
+component: cli/new
+kind: improvement
+body: Say that no project was created when `pulumi new` is cancelled at the project name or description prompt

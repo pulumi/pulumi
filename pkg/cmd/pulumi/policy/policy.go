@@ -15,7 +15,6 @@
 package policy
 
 import (
-	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -25,25 +24,32 @@ import (
 func NewPolicyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "policy",
-		Short: "Manage resource policies",
+		Short: "Manage policies, including policy packs, groups and issues",
+		Long: "Manage policies, including policy packs, groups and issues.\n" +
+			"\n" +
+			"Policy packs define the policies your resources are checked against. Policy groups control\n" +
+			"which packs are enforced on which stacks and cloud accounts. Policy issues are the violations\n" +
+			"those packs report.",
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newPolicyAnalyzeCmd(
 		pkgWorkspace.Instance, cmdBackend.DefaultLoginManager,
-		backendSecrets.DefaultProvider, nil))
-	cmd.AddCommand(newPolicyDisableCmd())
-	cmd.AddCommand(newPolicyEnableCmd())
+		cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), nil))
+	cmd.AddCommand(newPolicyDisableCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
+	cmd.AddCommand(newPolicyEnableCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
+	cmd.AddCommand(newPolicyGetCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyGroupCmd())
 	cmd.AddCommand(newPolicyInstallCmd())
 	cmd.AddCommand(newPolicyListCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyNewCmd())
-	cmd.AddCommand(newPolicyPublishCmd())
-	cmd.AddCommand(newPolicyRemoveCmd())
-	cmd.AddCommand(newPolicyValidateCmd())
+	cmd.AddCommand(newPolicyPublishCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
+	cmd.AddCommand(newPolicyRemoveCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
+	cmd.AddCommand(newPolicyValidateCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyComplianceCmd())
 	cmd.AddCommand(newPolicyIssueCmd())
+	cmd.AddCommand(newPolicyExceptionCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 
 	return cmd
 }

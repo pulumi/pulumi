@@ -24,7 +24,6 @@ import (
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 
-	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
@@ -34,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -1468,26 +1468,16 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			return resource.StatusOK, nil, err
 		}
 
-		var state property.Map
-		typ := string(urn.Type())
-		if strings.HasPrefix(typ, "pulumi-nodejs:dynamic") || strings.HasPrefix(typ, "pulumi-python:dynamic") {
-			state = resource.FromResourcePropertyMap(s.new.Inputs)
-		}
-
+		// Technically the only data we have at this point is "inputs", but we've been passing that as "state" to
+		// providers since forever and it would probably break things to stop sending that now. Thus this strange double
+		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
 		result, err := prov.Read(context.TODO(), plugin.ReadRequest{
-			URN:    urn,
-			Name:   urn.Name(),
-			Type:   urn.Type(),
-			ID:     id,
-			Inputs: resource.FromResourcePropertyMap(s.new.Inputs),
-			// N.B. We used to send "inputs" as "state" only, but since 2019 have been filling in both Inputs and State.
-			// This was a back-compat to deal with providers that were only looking at "state" (because originally there
-			// was no "inputs" field). Enough time has passed that we can assume providers have updated to looking at
-			// "inputs" now. This allows providers to tell the difference between a read/import and a refresh because
-			// only refresh will send non-nil state. Caveat that dynamic providers may still expect state to be non-nil,
-			// they were only updated in https://github.com/pulumi/pulumi/pull/24977 October 2026. So for those we
-			// special case and keep sending inputs in state, eventually we can clean that up as well.
-			State:                 state,
+			URN:                   urn,
+			Name:                  urn.Name(),
+			Type:                  urn.Type(),
+			ID:                    id,
+			Inputs:                resource.FromResourcePropertyMap(s.new.Inputs),
+			State:                 resource.FromResourcePropertyMap(s.new.Inputs),
 			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
@@ -1904,18 +1894,20 @@ func (s *RefreshStep) Skip() {
 }
 
 // ExtensionParameterizeStep is an internal step that applies an extension
-// parameterization to a provider plugin. The step generator emits it when a
-// register-resource event arrives for an extension-parameterized resource and
-// the target provider has not yet been parameterized with that extension.
+// parameterization to a provider plugin and records the extension blob in the
+// snapshot. The step generator emits it once per (provider, extension) pair
+// that resources use. Apply goes through Deployment.ParameterizeExtension, so
+// the provider is not parameterized again if an invoke, a call or a remote
+// component already parameterized it.
 //
 // Unlike resource steps, ExtensionParameterizeStep does not correspond to any user
 // resource. URN, Type, and the Old/New/Res accessors all return zero values.
 type ExtensionParameterizeStep struct {
-	deployment *Deployment
-	provider   plugin.Provider
-	ref        apitype.ExtensionRef
-	extension  apitype.Extension
-	cts        *promise.CompletionSource[struct{}]
+	deployment  *Deployment
+	providerRef sdkproviders.Reference
+	ref         apitype.ExtensionRef
+	extension   apitype.Extension
+	cts         *promise.CompletionSource[struct{}]
 }
 
 var _ Step = (*ExtensionParameterizeStep)(nil)
@@ -1924,17 +1916,17 @@ var _ Step = (*ExtensionParameterizeStep)(nil)
 // (or rejected) exactly once by Apply().
 func NewExtensionParameterizeStep(
 	deployment *Deployment,
-	provider plugin.Provider,
+	providerRef sdkproviders.Reference,
 	ref apitype.ExtensionRef,
 	extension apitype.Extension,
 	cts *promise.CompletionSource[struct{}],
 ) Step {
 	return &ExtensionParameterizeStep{
-		deployment: deployment,
-		provider:   provider,
-		ref:        ref,
-		extension:  extension,
-		cts:        cts,
+		deployment:  deployment,
+		providerRef: providerRef,
+		ref:         ref,
+		extension:   extension,
+		cts:         cts,
 	}
 }
 
@@ -1946,29 +1938,8 @@ func (s *ExtensionParameterizeStep) Ref() apitype.ExtensionRef { return s.ref }
 func (s *ExtensionParameterizeStep) Extension() apitype.Extension { return s.extension }
 
 func (s *ExtensionParameterizeStep) Apply() (resource.Status, StepCompleteFunc, error) {
-	version, err := semver.Parse(s.extension.Version)
+	err := s.deployment.ParameterizeExtension(context.TODO(), s.providerRef, s.ref, s.extension)
 	if err != nil {
-		s.cts.MustReject(err)
-		return resource.StatusUnknown, nil, fmt.Errorf("could not parse provider version: %w", err)
-	}
-
-	resp, err := s.provider.Parameterize(context.TODO(), plugin.ParameterizeRequest{
-		Parameters: &plugin.ParameterizeValue{
-			Name:    s.extension.Name,
-			Version: version,
-			Value:   s.extension.Value,
-		},
-	})
-	if err != nil {
-		s.cts.MustReject(err)
-		return resource.StatusUnknown, nil, err
-	}
-	if resp.Name != s.extension.Name {
-		err = fmt.Errorf(
-			"parameterize response name %q does not match expected package %q",
-			resp.Name,
-			s.extension.Name,
-		)
 		s.cts.MustReject(err)
 		return resource.StatusUnknown, nil, err
 	}
@@ -2311,10 +2282,14 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
 	if s.planned {
-		// Historically, we would never set ImportID for resources imported via `pulumi import`. This
-		// continues that behavior. When adding support for https://github.com/pulumi/pulumi/issues/8836,
-		// we'll likly need to make this toggleable.
-		s.new.ImportID = ""
+		// Historically, we would never set ImportID for resources imported via `pulumi import`. To support
+		// https://github.com/pulumi/pulumi/issues/8836 we toggle this on in preview. The only observable effect of this
+		// is that the ImportID will be present on the state returned from the preview and passed to codegen.
+		if s.deployment.opts.DryRun {
+			s.new.ImportID = s.old.ImportID
+		} else {
+			s.new.ImportID = ""
+		}
 
 		// Get the import object and see if it had properties set
 		var inputProperties []string

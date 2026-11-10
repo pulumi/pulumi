@@ -108,7 +108,7 @@ func TestSchemaCheckFromStdinInvalid(t *testing.T) {
 	cmd.SetErr(&bytes.Buffer{})
 
 	err := cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Contains(t, err.Error(), "failed to unmarshal schema")
 }
 
@@ -172,7 +172,7 @@ func TestSchemaCheckDanglingRefFails(t *testing.T) {
 	cmd.SetErr(&bytes.Buffer{})
 
 	err = cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Contains(t, err.Error(), "schema validation failed")
 }
 

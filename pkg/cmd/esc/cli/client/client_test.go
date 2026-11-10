@@ -708,6 +708,24 @@ func TestCreateEnvironmentDraft(t *testing.T) {
 	})
 }
 
+func TestListChangeRequests(t *testing.T) {
+	t.Parallel()
+	path := "/api/change-requests/test-org"
+	client := newTestClient(t, http.MethodGet, path, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "environment", r.URL.Query().Get("entityType"))
+		assert.Equal(t, "token", r.URL.Query().Get("continuationToken"))
+		err := json.NewEncoder(w).Encode(ListChangeRequestsResponse{
+			ChangeRequests: []ChangeRequest{{ID: "EXAMPLE"}},
+		})
+		require.NoError(t, err)
+	})
+
+	crs, next, err := client.ListChangeRequests(t.Context(), "test-org", "token")
+	require.NoError(t, err)
+	assert.Equal(t, []ChangeRequest{{ID: "EXAMPLE"}}, crs)
+	assert.Equal(t, "", next)
+}
+
 func TestSubmitChangeRequest(t *testing.T) {
 	t.Parallel()
 	t.Run("OK - nil description", func(t *testing.T) {
@@ -937,6 +955,27 @@ func TestOpenEnvironment(t *testing.T) {
 		assert.Equal(t, expected, diags)
 	})
 
+	t.Run("Diags only", func(t *testing.T) {
+		t.Parallel()
+		expected := []EnvironmentDiagnostic{{Summary: `unknown property "bar"`}}
+
+		client := newTestClient(
+			t,
+			http.MethodPost,
+			"/api/esc/environments/test-org/test-project/test-env/open",
+			func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusBadRequest)
+
+				err := json.NewEncoder(w).Encode(EnvironmentErrorResponse{Diagnostics: expected})
+				require.NoError(t, err)
+			},
+		)
+
+		_, diags, err := client.OpenEnvironment(t.Context(), "test-org", "test-project", "test-env", "", 2*time.Hour)
+		require.NoError(t, err)
+		assert.Equal(t, expected, diags)
+	})
+
 	t.Run("Not found", func(t *testing.T) {
 		t.Parallel()
 		client := newTestClient(
@@ -1046,6 +1085,59 @@ func TestRotateEnvironment(t *testing.T) {
 
 		_, _, err := client.RotateEnvironment(t.Context(), "test-org", "test-project", "test-env", rotationPaths)
 		assert.ErrorContains(t, err, "not found")
+	})
+}
+
+func TestEncryptSecrets(t *testing.T) {
+	t.Parallel()
+	const path = "/api/esc/environments/test-org/test-project/test-env/encrypt-secrets"
+
+	t.Run("OK", func(t *testing.T) {
+		t.Parallel()
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			var body struct {
+				Plaintexts []string `json:"plaintexts"`
+			}
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			assert.Equal(t, []string{
+				base64.StdEncoding.EncodeToString([]byte("first")),
+				base64.StdEncoding.EncodeToString([]byte{0x00, 0xff, 0x10}),
+			}, body.Plaintexts)
+
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"ciphertexts": []string{"ct-first", "ct-second"},
+			}))
+		})
+
+		ciphertexts, err := client.EncryptSecrets(
+			t.Context(), "test-org", "test-project", "test-env", [][]byte{[]byte("first"), {0x00, 0xff, 0x10}})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"ct-first", "ct-second"}, ciphertexts)
+	})
+
+	t.Run("Count mismatch", func(t *testing.T) {
+		t.Parallel()
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"ciphertexts": []string{"ct"}}))
+		})
+
+		_, err := client.EncryptSecrets(
+			t.Context(), "test-org", "test-project", "test-env", [][]byte{[]byte("a"), []byte("b")})
+		assert.ErrorContains(t, err, "expected 2 ciphertexts, got 1")
+	})
+
+	t.Run("Too large", func(t *testing.T) {
+		t.Parallel()
+		client := newTestClient(t, http.MethodPost, path, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusRequestEntityTooLarge)
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ErrorResponse{
+				Code:    http.StatusRequestEntityTooLarge,
+				Message: "request too large",
+			}))
+		})
+
+		_, err := client.EncryptSecrets(t.Context(), "test-org", "test-project", "test-env", [][]byte{[]byte("a")})
+		assert.ErrorContains(t, err, "request too large")
 	})
 }
 
@@ -1948,4 +2040,38 @@ func TestGetDefaultOrg(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, orgName)
 	})
+}
+
+func TestOpenEnvironmentDraftRevision(t *testing.T) {
+	t.Parallel()
+
+	zero := 0
+	cases := []struct {
+		name     string
+		revision *int
+		query    string
+	}{
+		{"nil sends no revision", nil, "duration=1h0m0s"},
+		{"zero is sent", &zero, "duration=1h0m0s&revision=0"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			client := newTestClient(
+				t,
+				http.MethodPost,
+				"/api/esc/environments/test-org/test-project/test-env/drafts/cr-1/open",
+				func(w http.ResponseWriter, r *http.Request) {
+					assert.Equal(t, tc.query, r.URL.RawQuery)
+					require.NoError(t, json.NewEncoder(w).Encode(map[string]string{"id": "open-1"}))
+				},
+			)
+
+			id, diags, err := client.OpenEnvironmentDraft(
+				t.Context(), "test-org", "test-project", "test-env", "cr-1", tc.revision, time.Hour)
+			require.NoError(t, err)
+			require.Empty(t, diags)
+			assert.Equal(t, "open-1", id)
+		})
+	}
 }

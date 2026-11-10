@@ -22,8 +22,49 @@ import (
 
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestCloudCredentialEnvArgument(t *testing.T) {
+	t.Setenv("PULUMI_BACKEND_URL", "https://ambient.example.com")
+	t.Setenv("PULUMI_ACCESS_TOKEN", "ambient-token")
+	constructors := []struct {
+		name       string
+		newContext func(map[string]string) (*Context, error)
+	}{
+		{"NewContext", func(credentials map[string]string) (*Context, error) {
+			return NewContext(t.Context(), nil, nil, &MockHost{}, nil, "", nil, false, nil, credentials)
+		}},
+		{"NewContextWithRoot", func(credentials map[string]string) (*Context, error) {
+			return NewContextWithRoot(t.Context(), nil, nil, &MockHost{}, "", "", nil, false, nil, nil, nil, nil, credentials)
+		}},
+		{"NewContextWithHost", func(credentials map[string]string) (*Context, error) {
+			return NewContextWithHost(t.Context(), nil, nil, &MockHost{}, "", "", nil, credentials)
+		}},
+	}
+	//nolint:paralleltest // Subtests share process credentials configured by the parent.
+	for _, constructor := range constructors {
+		t.Run(constructor.name, func(t *testing.T) {
+			for _, test := range []struct {
+				name        string
+				credentials map[string]string
+			}{
+				{"nil", nil},
+				{"token", map[string]string{"PULUMI_API": "https://helper.example.com", "PULUMI_ACCESS_TOKEN": "helper-token"}},
+				{"header only", map[string]string{"PULUMI_API": "https://helper.example.com", "PULUMI_ACCESS_TOKEN": ""}},
+				{"empty", map[string]string{}},
+			} {
+				t.Run(test.name, func(t *testing.T) {
+					ctx, err := constructor.newContext(test.credentials)
+					require.NoError(t, err)
+					defer ctx.Close()
+					assert.Equal(t, test.credentials, ctx.CloudCredentialEnv)
+				})
+			}
+		})
+	}
+}
 
 func TestContextRequest_race(t *testing.T) {
 	t.Parallel()
@@ -38,6 +79,7 @@ func TestContextRequest_race(t *testing.T) {
 		nil,                 // runtimeOptions
 		false,               // disableProviderPreview
 		mocktracer.New().StartSpan("root"),
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -65,6 +107,7 @@ func TestWithoutProviderDebugging(t *testing.T) {
 		nil,
 		false,
 		mocktracer.New().StartSpan("root"),
+		nil,
 	)
 	require.NoError(t, err)
 
@@ -107,6 +150,7 @@ func TestNewContextRootsAtDetectedProject(t *testing.T) { //nolint:paralleltest 
 		nil,
 		false,
 		mocktracer.New().StartSpan("root"),
+		nil,
 	)
 	require.NoError(t, err)
 	require.Equal(t, projectDir, ctx.Root)

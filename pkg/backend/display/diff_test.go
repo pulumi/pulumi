@@ -311,7 +311,7 @@ func TestCreateDiffRequiresColor(t *testing.T) {
 	t.Parallel()
 
 	_, err := CreateDiff([]engine.Event{}, Options{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "color must be specified")
 }
 

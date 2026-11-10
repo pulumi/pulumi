@@ -271,14 +271,14 @@ func (p *SnakeNamesProvider) Create(
 		nestedValue := nested.ObjectValue()["nested_value"].StringValue()
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-				"the_output": resource.NewProperty(resource.PropertyMap{
-					"someKey": resource.NewProperty([]resource.PropertyValue{
-						resource.NewProperty(resource.PropertyMap{
-							"nested_output": resource.NewProperty(nestedValue),
-						}),
+			Properties: property.NewMap(map[string]property.Value{
+				"the_output": property.New(property.NewMap(map[string]property.Value{
+					"someKey": property.New([]property.Value{
+						property.New(property.NewMap(map[string]property.Value{
+							"nested_output": property.New(nestedValue),
+						})),
 					}),
-				}),
+				})),
 			}),
 			Status: resource.StatusOK,
 		}, nil
@@ -289,8 +289,8 @@ func (p *SnakeNamesProvider) Create(
 		}
 		return plugin.CreateResponse{
 			ID: resource.ID(id),
-			Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-				"the_input": theInput,
+			Properties: property.NewMap(map[string]property.Value{
+				"the_input": resource.FromResourcePropertyValue(theInput),
 			}),
 			Status: resource.StatusOK,
 		}, nil

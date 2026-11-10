@@ -33,7 +33,7 @@ func newEnvProviderAzureLoginCmd(env *envCommand) *cobra.Command {
 			"Subcommands select the authentication mode: `static` for static credentials,\n" +
 			"`oidc` for federated identity via OpenID Connect.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/azure-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/azure-login/\n" +
 			"for the full provider reference.\n",
 		Args: cobra.NoArgs,
 	}
@@ -61,7 +61,7 @@ func newEnvProviderAzureLoginStaticCmd(env *envCommand) *cobra.Command {
 			"The client secret is wrapped in `fn::secret`. If a block already exists at the\n" +
 			"path it is replaced.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/azure-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/azure-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -143,7 +143,7 @@ func azureLoginStaticEnvVars(pathRef string) []envVar {
 // `fn::secret`.
 //
 // Provider reference:
-// https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/azure-login/
+// https://www.pulumi.com/docs/esc/providers/login/azure-login/
 func buildAzureLoginStaticNode(clientID, tenantID, subscriptionID, clientSecret string) *yaml.Node {
 	loginContent := []*yaml.Node{
 		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "clientId"},
@@ -185,7 +185,7 @@ func newEnvProviderAzureLoginOIDCCmd(env *envCommand) *cobra.Command {
 			"separately (e.g. with Pulumi). If a block already exists at the path it is\n" +
 			"replaced.\n" +
 			"\n" +
-			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/azure-login/\n" +
+			"See https://www.pulumi.com/docs/esc/providers/login/azure-login/\n" +
 			"for the full provider reference.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -245,7 +245,7 @@ func newEnvProviderAzureLoginOIDCCmd(env *envCommand) *cobra.Command {
 // when empty. clientSecret is not supported in OIDC mode.
 //
 // Provider reference:
-// https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/azure-login/
+// https://www.pulumi.com/docs/esc/providers/login/azure-login/
 func buildAzureLoginOIDCNode(clientID, tenantID, subscriptionID string, subjectAttributes []string) *yaml.Node {
 	loginContent := []*yaml.Node{
 		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "clientId"},

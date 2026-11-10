@@ -191,7 +191,7 @@ func TestDeliveryList_WebhookNotFound(t *testing.T) {
 	c := &mockDeliveryListClient{getErr: errors.New("[404] Not Found")}
 	dlcmd, _ := newTestDeliveryListCmd(stubDeliveryListFactory(c))
 	err := dlcmd.run(t.Context(), "typo-hook")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `webhook "typo-hook" not found`)
 }
 
@@ -201,7 +201,7 @@ func TestDeliveryList_ClientError(t *testing.T) {
 	c := &mockDeliveryListClient{err: errors.New("not found")}
 	dlcmd, _ := newTestDeliveryListCmd(stubDeliveryListFactory(c))
 	err := dlcmd.run(t.Context(), "hook")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "listing webhook deliveries")
 }
 

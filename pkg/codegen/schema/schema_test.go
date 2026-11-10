@@ -475,7 +475,7 @@ func TestEnums(t *testing.T) {
 				AllowDanglingReferences: true,
 			})
 			if tt.shouldError {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				if err != nil {
 					t.Error(err)
@@ -1026,7 +1026,7 @@ func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagError)
@@ -1092,7 +1092,7 @@ func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Nil(t, pkg)
 }
@@ -1122,7 +1122,7 @@ func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagError)
@@ -1189,7 +1189,7 @@ func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Nil(t, pkg)
 }
@@ -1405,6 +1405,86 @@ func TestBindSpecPrintableNames(t *testing.T) {
 				}
 			}
 			assert.True(t, found, "expected diagnostic containing %q, got %v", tt.wantSummary, diags)
+		})
+	}
+}
+
+func TestBindSpecReducedPropertyNames(t *testing.T) {
+	t.Parallel()
+
+	bindProperties := func(names ...string) (*Package, hcl.Diagnostics) {
+		properties := map[string]PropertySpec{}
+		for _, name := range names {
+			properties[name] = PropertySpec{TypeSpec: TypeSpec{Type: "string"}}
+		}
+		pkg, diags, _ := BindSpec(PackageSpec{
+			Name: "test",
+			Types: map[string]ComplexTypeSpec{
+				"test:index:TestType": {
+					ObjectTypeSpec: ObjectTypeSpec{Type: "object", Properties: properties},
+				},
+			},
+		}, noOpLoader{}, ValidationOptions{AllowDanglingReferences: true})
+		return pkg, diags
+	}
+
+	tests := []struct {
+		name  string
+		props []string
+		want  hcl.Diagnostics
+	}{
+		{
+			name:  "valid",
+			props: []string{"foo", "@bar!", "😃baz", "__qux__", "12quux", "a1", "kebab-case"},
+		},
+		{
+			name:  "no letters",
+			props: []string{"123", "@!"},
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/types/test:index:TestType/properties/123: property name must contain an ASCII letter",
+				},
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/types/test:index:TestType/properties/@%21: property name must contain an ASCII letter",
+				},
+			},
+		},
+		{
+			name:  "conflicts",
+			props: []string{"MyFoo", "my-foo", "my_foo", "bar"},
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/my-foo: property name conflicts with "MyFoo": ` +
+						`both reduce to "myfoo"`,
+				},
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/my_foo: property name conflicts with "MyFoo": ` +
+						`both reduce to "myfoo"`,
+				},
+			},
+		},
+		{
+			name:  "leading digits",
+			props: []string{"1foo", "foo"},
+			want: hcl.Diagnostics{
+				{
+					Severity: hcl.DiagWarning,
+					Summary: `#/types/test:index:TestType/properties/foo: property name conflicts with "1foo": ` +
+						`both reduce to "foo"`,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			pkg, diags := bindProperties(tt.props...)
+			assert.Equal(t, tt.want, diags)
+			assert.Equal(t, tt.want.HasErrors(), pkg == nil)
 		})
 	}
 }
@@ -2286,7 +2366,7 @@ func TestResourceListInputsReservedNames(t *testing.T) {
 		_, diags, err := BindSpec(spec, noOpLoader{}, ValidationOptions{
 			AllowDanglingReferences: true,
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.True(t, diags.HasErrors())
 		assert.Contains(t, diags.Error(), "pulumi is a reserved property name")
 	})
@@ -2673,7 +2753,7 @@ func debugProvidersHelperContext(t *testing.T) *plugin.Context {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, pluginHost.Close()) })
 	pluginCtx, err := plugin.NewContext(
-		t.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil)
+		t.Context(), sink, sink, pluginHost, nil, cwd, nil, true, nil, nil)
 	require.NoError(t, err)
 	return pluginCtx
 }
@@ -2702,7 +2782,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.True(t, diags.HasErrors())
 	assert.Equal(t, diags[0].Summary, "#/config/variables/pulumi: pulumi is a reserved property name")
 
@@ -2724,7 +2804,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	_, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.True(t, diags.HasErrors())
 	assert.Equal(t, diags[0].Summary, "#/provider/inputProperties/pulumi: pulumi is a reserved property name")
 
@@ -2745,7 +2825,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	_, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.True(t, diags.HasErrors())
 	assert.Equal(t, diags[0].Summary, "#/provider/properties/version: version is a reserved provider input property name")
 
@@ -2769,7 +2849,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.True(t, diags.HasErrors())
 	assert.Nil(t, pkg)
 
@@ -2868,7 +2948,7 @@ func TestResourceWithKeynameOverlapType(t *testing.T) {
 	}
 
 	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Contains(t, diags[0].Summary, "pulumi is a reserved name, cannot name type")
 }
@@ -3509,7 +3589,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 		}
 
 		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:thing")
 	})
 
@@ -3529,7 +3609,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 		}
 
 		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1_v2:a")
 	})
 
@@ -3573,7 +3653,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 		}
 
 		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1:a")
 	})
 
@@ -3593,7 +3673,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 		}
 
 		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:a")
 	})
 

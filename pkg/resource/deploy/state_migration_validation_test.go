@@ -49,7 +49,7 @@ func TestStateMigrationSplitValidation(t *testing.T) {
 			t.Parallel()
 			changed := additional
 			tt.change(&changed)
-			require.Error(t, validateStateMigrationManagedIdentity(old.URN,
+			require.Error(t, validateStateMigrationManagedIdentity(old.URN, //nolint:forbidigo // pre-existing
 				[]apitype.ResourceV3{old}, []apitype.ResourceV3{old, changed}, nil))
 		})
 	}

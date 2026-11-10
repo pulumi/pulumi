@@ -82,6 +82,36 @@ func TestNumericEnvironmentVariables(t *testing.T) {
 	require.Equal(t, 2, verbose)
 }
 
+func TestTypedFlagEnvironmentVariables(t *testing.T) {
+	tests := []struct {
+		name  string
+		env   string
+		value string
+		path  []string
+		flag  string
+	}{
+		{"int32", "PULUMI_OPTION_PARALLEL", "3", []string{"up"}, "parallel"},
+		{"int64", "PULUMI_OPTION_LOOKBACK_DAYS", "7", []string{"org", "usage", "get"}, "lookback-days"},
+		{"duration", "PULUMI_OPTION_DELAY", "2s", []string{"replay-events"}, "delay"},
+		{"Delimiter", "PULUMI_OPTION_DELIMITER", ";", []string{"org", "search"}, "delimiter"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(tt.env, tt.value)
+
+			cmd, cleanup := NewPulumiCmd()
+			defer cleanup()
+
+			sub, _, err := cmd.Find(tt.path)
+			require.NoError(t, err)
+
+			flag := sub.Flag(tt.flag)
+			require.NotNil(t, flag)
+			require.Equal(t, tt.value, flag.Value.String())
+		})
+	}
+}
+
 func TestStringArrayEnvironmentVariables(t *testing.T) {
 	t.Setenv("PULUMI_OPTION_TARGET", "foo,bar,baz")
 

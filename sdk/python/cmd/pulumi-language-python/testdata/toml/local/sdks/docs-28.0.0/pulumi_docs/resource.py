@@ -145,6 +145,12 @@ class Resource(pulumi.CustomResource):
         __props__.__dict__["out"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'docs:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def data(self) -> pulumi.Output['outputs.ResourceData']:

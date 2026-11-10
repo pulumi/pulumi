@@ -106,7 +106,7 @@ func TestDecryptInvalidBase64(t *testing.T) {
 `
 
 	_, err := DecryptSecrets(t.Context(), "doc", []byte(doc), rot128{})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 type broken struct{}
@@ -127,7 +127,7 @@ func TestEncryptBroken(t *testing.T) {
 `
 
 	_, err := EncryptSecrets(t.Context(), "doc", []byte(doc), broken{})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestDecryptBroken(t *testing.T) {
@@ -139,7 +139,7 @@ func TestDecryptBroken(t *testing.T) {
 `
 
 	_, err := DecryptSecrets(t.Context(), "doc", []byte(doc), broken{})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestEncryptMalformedSecret(t *testing.T) {
@@ -194,21 +194,21 @@ func TestInvalidEnvelope(t *testing.T) {
 
 	// Short
 	_, err := decodeCiphertext(base64.StdEncoding.EncodeToString([]byte("escx")))
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	// Invalid magic
 	_, err = decodeCiphertext(encode("xcse", envelopeVersion, []byte("foo")))
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	// Invalid version
 	_, err = decodeCiphertext(encode(envelopeMagic, 0, []byte("foo")))
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	// Invalid checksum
 	bin := encodeBin(envelopeMagic, envelopeVersion, []byte("foo"))
 	bin[0] += 128
 	_, err = decodeCiphertext(base64.StdEncoding.EncodeToString(bin))
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestEncryptDecryptSecret(t *testing.T) {

@@ -122,6 +122,22 @@ func main() {
 			}
 			return tmp7, nil
 		}).(pulumi.StringOutput))
+		ctx.Export("tupleOfOptional", pulumi.Array{
+			setRes.Data.String(),
+			unsetRes.Data.String(),
+		})
+		optionalLists := pulumi.Float64ArrayArray{
+			setRes.Data.NumberArray(),
+			unsetRes.Data.NumberArray(),
+		}
+		_, err = optionalprimitiveref.NewResource(ctx, "fromOptionalLists", &optionalprimitiveref.ResourceArgs{
+			Data: &optionalprimitiveref.DataArgs{
+				NumberArray: optionalLists[0],
+			},
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }

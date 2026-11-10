@@ -34,6 +34,7 @@ type MockHost struct {
 	AnalyzerF           func(ctx *Context, nm tokens.QName) (Analyzer, error)
 	PolicyAnalyzerF     func(ctx *Context, name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
 	ProviderF           func(ctx *Context, descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
+	ProviderFromPathF   func(ctx *Context, path string, e env.Env) (Provider, error)
 	LanguageRuntimeF    func(ctx *Context, runtime string) (LanguageRuntime, error)
 	ResolvePluginF      func(ctx *Context, spec workspace.PluginDescriptor) (*workspace.PluginInfo, error)
 	ReleaseContextF     func(ctx *Context) error
@@ -88,6 +89,13 @@ func (m *MockHost) Provider(ctx *Context, descriptor workspace.PluginDescriptor,
 		return m.ProviderF(ctx, descriptor, e)
 	}
 	return nil, status.Error(codes.Unimplemented, "Provider not implemented")
+}
+
+func (m *MockHost) ProviderFromPath(ctx *Context, path string, e env.Env) (Provider, error) {
+	if m.ProviderFromPathF != nil {
+		return m.ProviderFromPathF(ctx, path, e)
+	}
+	return nil, status.Error(codes.Unimplemented, "ProviderFromPath not implemented")
 }
 
 func (m *MockHost) LanguageRuntime(ctx *Context, runtime string) (LanguageRuntime, error) {

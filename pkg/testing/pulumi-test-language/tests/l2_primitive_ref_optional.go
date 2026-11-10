@@ -37,8 +37,8 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					// stack + provider + 3 resources
-					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
+					// stack + provider + 4 resources
+					require.Len(l, snap.Resources, 6, "expected 6 resources in snapshot")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:optional-primitive-ref")
 					setRes := RequireSingleNamedResource(l, snap.Resources, "setRes")
@@ -81,6 +81,20 @@ func init() {
 					assert.Equal(l, fromNestedOptionalWant,
 						resource.FromResourcePropertyMap(fromNestedOptional.Outputs), "fromNestedOptional outputs")
 
+					// A list of optional list outputs keeps the element type of each list.
+					fromOptionalLists := RequireSingleNamedResource(l, snap.Resources, "fromOptionalLists")
+					fromOptionalListsWant := property.NewMap(map[string]property.Value{
+						"data": property.New(map[string]property.Value{
+							"numberArray": property.New([]property.Value{
+								property.New(-1.0), property.New(0.0), property.New(1.0),
+							}),
+						}),
+					})
+					assert.Equal(l, fromOptionalListsWant,
+						resource.FromResourcePropertyMap(fromOptionalLists.Inputs), "fromOptionalLists inputs")
+					assert.Equal(l, fromOptionalListsWant,
+						resource.FromResourcePropertyMap(fromOptionalLists.Outputs), "fromOptionalLists outputs")
+
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
@@ -110,6 +124,12 @@ func init() {
 					// Comparison of an optional object to null yields whether the object is set.
 					AssertPropertyMapMember(l, outputs, "setOptionalData", property.New("not null"))
 					AssertPropertyMapMember(l, outputs, "unsetOptionalData", property.New("null"))
+
+					// A tuple of optional string outputs keeps nulls.
+					AssertPropertyMapMember(l, outputs, "tupleOfOptional", property.New([]property.Value{
+						property.New("hello"),
+						property.New(property.Null),
+					}))
 				},
 			},
 		},

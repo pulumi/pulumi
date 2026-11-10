@@ -101,6 +101,7 @@ jobs:
           with: |
             version: 2026.10.3
             experimental: true
+            install_args: --locked
             cache_key_prefix: mise-npm-shell-out-v1
       - name: Check Protobufs
         run: make check_proto
@@ -207,6 +208,7 @@ jobs:
           with: |
             version: 2026.10.3
             experimental: true
+            install_args: --locked
       - run: make lint_changelog
       - name: Lint changelog message style (advisory)
         if: github.event_name == 'pull_request'

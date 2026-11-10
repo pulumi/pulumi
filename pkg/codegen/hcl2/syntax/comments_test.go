@@ -16,6 +16,7 @@ package syntax
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -246,4 +247,58 @@ func TestComments(t *testing.T) {
 
 func normString(s string) string {
 	return strings.TrimSuffix(s, "\r")
+}
+
+func TestCommentLinesRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		lines    []string
+		expected string
+		parsed   []string
+	}{
+		{"no lines", nil, "", nil},
+		{"empty line", []string{""}, "//\n", []string{""}},
+		{"multiline", []string{" a", "", " b"}, "// a\n//\n// b\n", []string{" a", "", " b"}},
+		{"newline in line", []string{" a\n b"}, "// a\n// b\n", []string{" a", " b"}},
+		{"trailing newline", []string{" a\n"}, "// a\n//\n", []string{" a", ""}},
+		{"line comment", []string{" // a"}, "// // a\n", []string{" // a"}},
+		{"hash comment", []string{"# a"}, "//# a\n", []string{"# a"}},
+		{"block comment", []string{"/* a", "*/ b"}, "///* a\n//*/ b\n", []string{"/* a", "*/ b"}},
+		{"carriage return", []string{"a\r", "b\r"}, "//a\r\n//b\r\n", []string{"a\r", "b\r"}},
+		{"invalid utf8", []string{"\xff"}, "//\xff\n", []string{"\xff"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			comment := fmt.Sprintf("%v", TriviaList{Comment{Lines: tt.lines}})
+			assert.Equal(t, tt.expected, comment)
+
+			parser := NewParser()
+			require.NoError(t, parser.ParseFile(strings.NewReader(comment+"x = 1\n"), "main.pp"))
+			require.False(t, parser.Diagnostics.HasErrors(), parser.Diagnostics.Error())
+
+			file := parser.Files[0]
+			attrTokens := file.Tokens.ForNode(file.Body.Attributes["x"]).(*AttributeTokens)
+			var parsed []string
+			for _, trivia := range attrTokens.Name.LeadingTrivia {
+				if comment, ok := trivia.(Comment); ok {
+					parsed = append(parsed, comment.Lines...)
+				}
+			}
+			assert.Equal(t, tt.parsed, parsed)
+		})
+	}
+}
+
+func TestTemplateDelimiterBytes(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, []byte("${"), TemplateDelimiter{Type: hclsyntax.TokenTemplateInterp}.Bytes())
+	assert.Equal(t, []byte("%{"), TemplateDelimiter{Type: hclsyntax.TokenTemplateControl}.Bytes())
+	assert.Equal(t, []byte("}"), TemplateDelimiter{Type: hclsyntax.TokenTemplateSeqEnd}.Bytes())
+	assert.Nil(t, TemplateDelimiter{Type: hclsyntax.TokenOBrace}.Bytes())
+	assert.Equal(t, []byte("${"), NewTemplateDelimiter(hclsyntax.TokenTemplateInterp).Bytes())
 }

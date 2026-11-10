@@ -11,9 +11,7 @@ permissions:
 on:
   pull_request:
     paths-ignore:
-      - "sdk/.version"
       - "pkg/cmd/pulumi/neo/**"
-      - "changelog/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref }}
@@ -23,9 +21,27 @@ concurrency:
 # commands for running workflows from forks.
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      code: ${{ steps.changes.outputs.code }}
+    steps:
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        id: changes
+        with:
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '!sdk/.version'
+              - '!CHANGELOG.md'
+              - '!changelog/**'
+
   info:
     name: info
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: [changes]
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && needs.changes.outputs.code == 'true' }}
     uses: ./.github/workflows/ci-info.yml
     permissions:
       contents: read
@@ -85,10 +101,13 @@ jobs:
 
   ci-ok:
     name: ci-ok
-    needs: [ci, performance-gate]
+    needs: [changes, ci, performance-gate]
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: File filter failed
+        if: needs.changes.result != 'success'
+        run: exit 1
       # If the PR is a community PR, we don't run the usual checks, but instead
       # require maintainers to run them manually by commenting with
       # /run-acceptance-tests. Since the checks then run outside of the PR,
@@ -96,7 +115,7 @@ jobs:
       # job for community PRs. We detect community contributions by checking if
       # the head repository is different to the base repository.
       - name: CI failed
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && needs.ci.result != 'success' }}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && needs.changes.outputs.code == 'true' && needs.ci.result != 'success' }}
         run: exit 1
       - name: CI succeeded
         run: exit 0

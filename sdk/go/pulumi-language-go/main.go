@@ -26,7 +26,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -782,8 +781,17 @@ func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
 	logging.V(5).Infof("GetRequiredPackages: Determining pulumi packages")
 
+	opts, err := parseOptions(req.Info.RootDirectory, req.Info.Options.AsMap())
+	if err != nil {
+		return nil, err
+	}
+
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
+		if opts.binary != "" {
+			// A prebuilt program can run without Go. Package discovery is best effort in this case.
+			return &pulumirpc.GetRequiredPackagesResponse{}, nil
+		}
 		return nil, fmt.Errorf("couldn't find go binary: %w", err)
 	}
 
@@ -1665,19 +1673,12 @@ func (host *goLanguageHost) Link(
 		if err := pkg.ImportLanguages(map[string]schema.Language{"go": codegen.Importer}); err != nil {
 			return nil, err
 		}
-		var modulePath string
-		if info, ok := pkg.Language["go"]; ok {
-			if info, ok := info.(codegen.GoPackageInfo); ok {
-				modulePath = info.ModulePath
-				if modulePath == "" {
-					if info.ImportBasePath != "" {
-						modulePath = path.Dir(info.ImportBasePath)
-					}
-				}
-			}
-		}
-		if modulePath == "" {
-			modulePath = codegen.ExtractModulePath(pkg.Reference())
+		// Resolve both paths the way the SDK generator does, so that the replace directive
+		// addresses the generated module and the printed import path addresses the package
+		// directory inside it.
+		modulePath, importPath, err := codegen.ModuleAndImportPath(pkg)
+		if err != nil {
+			return nil, err
 		}
 
 		modules[modulePath] = dep.Path
@@ -1690,7 +1691,7 @@ func (host *goLanguageHost) Link(
 		if !strings.HasPrefix(dep.Path, start) {
 			modules[modulePath] = start + dep.Path
 		}
-		fmt.Fprintf(&imports, "    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference()))
+		fmt.Fprintf(&imports, "    \"%s\"\n", importPath)
 	}
 	instructions += imports.String()
 	instructions += "  )\n"

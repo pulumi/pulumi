@@ -68,7 +68,7 @@ func TestStackScheduleRemove_ClientError(t *testing.T) {
 		t.Context(), &buf, removeClientFactory(c),
 		"", "no-such-schedule", true,
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "removing stack schedule")
 	assert.Contains(t, err.Error(), "not found")
 }

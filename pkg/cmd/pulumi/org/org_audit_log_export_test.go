@@ -165,7 +165,7 @@ func TestOrgAuditLogExport_InvalidFormat(t *testing.T) {
 			outputFormat: defaultOrgAuditLogExportOutputFormat(),
 			format:       "xml",
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t,
 		`invalid --format value "xml" (must be 'csv' or 'cef')`,
 		err.Error())
@@ -191,7 +191,7 @@ func TestOrgAuditLogExport_ClientErrorPropagated(t *testing.T) {
 			outputFormat: defaultOrgAuditLogExportOutputFormat(),
 			format:       "csv",
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "exporting audit logs: boom", err.Error())
 	assert.Equal(t, "", buf.String())
 }
@@ -206,7 +206,7 @@ func TestOrgAuditLogExport_FactoryError(t *testing.T) {
 			outputFormat: defaultOrgAuditLogExportOutputFormat(),
 			format:       "csv",
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "not logged in", err.Error())
 	assert.Equal(t, "", buf.String())
 }

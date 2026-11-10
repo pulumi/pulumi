@@ -32,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
@@ -466,7 +465,7 @@ func NewPreviewCmd() *cobra.Command {
 				return deployment.RunDeployment(ctx, ws, cmd, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, displayOpts)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ctx, cmdBackend.DefaultLoginManager, ws, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -499,6 +498,9 @@ func NewPreviewCmd() *cobra.Command {
 				configFile,
 			)
 			if err != nil {
+				return err
+			}
+			if err = cmdStack.RejectConfigFlagsOnManagedStack(s, configArray, configFile); err != nil {
 				return err
 			}
 
@@ -566,8 +568,13 @@ func NewPreviewCmd() *cobra.Command {
 				return fmt.Errorf("getting autonaming config: %w", err)
 			}
 
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			if err != nil {
+				return err
+			}
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
+					CloudCredentialEnv:        cloudCredentialEnv,
 					ParallelDiff:              env.ParallelDiff.Value(),
 					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 					Parallel:                  parallel,
@@ -622,7 +629,7 @@ func NewPreviewCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
+				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
 			}, events)

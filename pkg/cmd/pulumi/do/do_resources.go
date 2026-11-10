@@ -30,7 +30,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -140,7 +139,7 @@ func runShowResources(cmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend
 	if err != nil {
 		return fmt.Errorf("load stack: %w", err)
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}

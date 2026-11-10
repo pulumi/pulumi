@@ -3134,7 +3134,8 @@ envvarmappingsMap: (f = msg.getEnvvarmappingsMap()) ? f.toObject(includeInstance
 snippetid: jspb.Message.getFieldWithDefault(msg, 40, ""),
 acceptsByteString: jspb.Message.getBooleanFieldWithDefault(msg, 42, false),
 stateMigrationsList: jspb.Message.toObjectList(msg.getStateMigrationsList(),
-    pulumi_callback_pb.Callback.toObject, includeInstance)
+    pulumi_callback_pb.Callback.toObject, includeInstance),
+usesOutputValues: jspb.Message.getBooleanFieldWithDefault(msg, 44, false)
   };
 
   if (includeInstance) {
@@ -3359,6 +3360,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       var value = new pulumi_callback_pb.Callback;
       reader.readMessage(value,pulumi_callback_pb.Callback.deserializeBinaryFromReader);
       msg.addStateMigrations(value);
+      break;
+    case 44:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setUsesOutputValues(value);
       break;
     default:
       reader.skipField();
@@ -3685,6 +3690,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       43,
       f,
       pulumi_callback_pb.Callback.serializeBinaryToWriter
+    );
+  }
+  f = message.getUsesOutputValues();
+  if (f) {
+    writer.writeBool(
+      44,
+      f
     );
   }
 };
@@ -5650,6 +5662,24 @@ proto.pulumirpc.RegisterResourceRequest.prototype.addStateMigrations = function(
  */
 proto.pulumirpc.RegisterResourceRequest.prototype.clearStateMigrationsList = function() {
   return this.setStateMigrationsList([]);
+};
+
+
+/**
+ * optional bool uses_output_values = 44;
+ * @return {boolean}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getUsesOutputValues = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 44, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setUsesOutputValues = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 44, value);
 };
 
 
@@ -13995,7 +14025,8 @@ proto.pulumirpc.ResourceMonitorFeature = {
   RESOURCE_MONITOR_FEATURE_INVOKE_PARENT: 15,
   RESOURCE_MONITOR_FEATURE_STATE_MIGRATIONS: 16,
   RESOURCE_MONITOR_FEATURE_INVOKE_OUTPUT_VALUES: 17,
-  RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES: 18
+  RESOURCE_MONITOR_FEATURE_CALL_OUTPUT_VALUES: 18,
+  RESOURCE_MONITOR_FEATURE_REGISTER_RESOURCE_OUTPUT_VALUES: 19
 };
 
 /**

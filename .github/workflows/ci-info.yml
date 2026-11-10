@@ -67,6 +67,7 @@ jobs:
           with: |
             version: 2026.10.3
             experimental: true
+            install_args: --locked
       - name: Backfill PR numbers in pending changelog entries
         run: |
           python3 scripts/changie-pr-lookup.py

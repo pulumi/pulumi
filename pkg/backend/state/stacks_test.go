@@ -269,7 +269,7 @@ func TestCurrentStack(t *testing.T) {
 		}
 
 		_, err := CurrentStack(ctx, ws, be)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "organization name must be 'organization'")
 	})
 
