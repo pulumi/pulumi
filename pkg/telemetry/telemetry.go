@@ -202,6 +202,7 @@ func UseBackend(ctx context.Context, backendURL string) {
 		t.log(logEntry{Discarded: t.invocation})
 		return
 	}
+	Emit(ctx, backendFact(backendURL))
 	if t.queue != nil {
 		t.queue.release()
 	}

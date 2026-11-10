@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/telemetry"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -121,6 +122,7 @@ func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
 	if diy.IsDIYBackendURL(cloudURL) {
 		return nil, errors.New("`pulumi api` requires the Pulumi Cloud backend; run `pulumi login`")
 	}
+	telemetry.UseBackend(ctx, cloudURL)
 	insecure := pkgWorkspace.GetCloudInsecure(ws, cloudURL)
 
 	// Probe credentials non-interactively. (account == nil, err == nil) is
