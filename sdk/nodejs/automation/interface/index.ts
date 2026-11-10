@@ -1623,6 +1623,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -1679,10 +1681,6 @@ export class API {
             __flags.push("--org", "" + options.org);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         if (options.parent != null) {
             __flags.push("--parent", "" + options.parent);
         }
@@ -1711,6 +1709,7 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
         __flags.push("--yes");
 
         if (options.color != null) {
@@ -1769,10 +1768,6 @@ export class API {
             __flags.push("--org", "" + options.org);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         if (options.provider != null) {
             __flags.push("--provider", "" + options.provider);
         }
@@ -1811,6 +1806,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -1869,10 +1866,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.readConcurrency != null) {
@@ -1906,6 +1899,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -1964,10 +1959,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.readConcurrency != null) {
@@ -2012,6 +2003,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -2070,10 +2063,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.readConcurrency != null) {
@@ -2122,6 +2111,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -2180,10 +2171,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.readConcurrency != null) {
@@ -2280,6 +2267,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -2330,10 +2319,6 @@ export class API {
             __flags.push("--org", "" + options.org);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         __final.push(...__flags);
 
         const __arguments: string[] = [];
@@ -2354,6 +2339,8 @@ export class API {
         __final.push("search");
 
         const __flags: string[] = [];
+
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -2413,10 +2400,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.page != null) {
@@ -4239,8 +4222,6 @@ export interface PulumiInsightsAccountListOptions extends BaseOptions {
     count?: number;
     /** Organization to list accounts for (defaults to the current default org) */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** Filter to child accounts of the named parent account */
     parent?: string;
     /** Filter to accounts accessible by the named role */
@@ -4277,8 +4258,6 @@ export interface PulumiInsightsAccountNewOptions extends BaseOptions {
     environment?: string;
     /** Organization that will own the Insights account (defaults to the current default org) */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** Cloud provider for the account. One of: aws, gcp, azure-native, oci, kubernetes */
     provider?: string;
     /** Provider-specific configuration as an inline JSON object (e.g. '{"regions":["us-east-1"]}') */
@@ -4319,8 +4298,6 @@ export interface PulumiInsightsAccountScanOptions extends BaseOptions {
     listConcurrency?: number;
     /** Organization that owns the Insights account (defaults to the current default org) */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** Parallelism for read operations during the scan (server default when 0) */
     readConcurrency?: number;
     /** Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty */
@@ -4359,8 +4336,6 @@ export interface PulumiInsightsAccountScanGetOptions extends BaseOptions {
     listConcurrency?: number;
     /** Organization that owns the Insights account (defaults to the current default org) */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** Parallelism for read operations during the scan (server default when 0) */
     readConcurrency?: number;
     /** Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty */
@@ -4399,8 +4374,6 @@ export interface PulumiInsightsAccountScanListOptions extends BaseOptions {
     listConcurrency?: number;
     /** Organization that owns the Insights account (defaults to the current default org) */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** Parallelism for read operations during the scan (server default when 0) */
     readConcurrency?: number;
     /** Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty */
@@ -4443,8 +4416,6 @@ export interface PulumiInsightsAccountScanLogOptions extends BaseOptions {
     listConcurrency?: number;
     /** Organization that owns the Insights account (defaults to the current default org) */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** Parallelism for read operations during the scan (server default when 0) */
     readConcurrency?: number;
     /** Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty */
@@ -4513,8 +4484,6 @@ export interface PulumiInsightsResourceGetOptions extends BaseOptions {
     account: string;
     /** Organization that owns the Insights account (defaults to the current default org) */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
 }
 
 /** Options for the `pulumi insights resource search` command. */
@@ -4549,8 +4518,6 @@ export interface PulumiInsightsResourceSearchOptions extends BaseOptions {
     cursor?: string;
     /** Organization to search within (defaults to the current default org) */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** 1-based page of results to return (max 10,000 total results) */
     page?: number;
     /** Number of results per page */

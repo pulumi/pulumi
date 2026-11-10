@@ -2042,6 +2042,8 @@ func (a *API) InsightsAccountList(
 
 	final := []string{"insights", "account", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.All {
 		final = append(final, "--all")
 	}
@@ -2080,10 +2082,6 @@ func (a *API) InsightsAccountList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Parent != "" {
@@ -2137,6 +2135,8 @@ func (a *API) InsightsAccountNew(
 
 	final := []string{"insights", "account", "new"}
 
+	final = append(final, "--output", "json")
+
 	final = append(final, "--yes")
 
 	if o.AgentPoolId != "" {
@@ -2177,10 +2177,6 @@ func (a *API) InsightsAccountNew(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -2239,6 +2235,8 @@ func (a *API) InsightsAccountScan(
 
 	final := []string{"insights", "account", "scan"}
 
+	final = append(final, "--output", "json")
+
 	if o.AgentPool != "" {
 		final = append(final, "--agent-pool", fmt.Sprint(o.AgentPool))
 	}
@@ -2281,10 +2279,6 @@ func (a *API) InsightsAccountScan(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -2344,6 +2338,8 @@ func (a *API) InsightsAccountScanGet(
 
 	final := []string{"insights", "account", "scan", "get"}
 
+	final = append(final, "--output", "json")
+
 	if o.AgentPool != "" {
 		final = append(final, "--agent-pool", fmt.Sprint(o.AgentPool))
 	}
@@ -2386,10 +2382,6 @@ func (a *API) InsightsAccountScanGet(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -2456,6 +2448,8 @@ func (a *API) InsightsAccountScanList(
 
 	final := []string{"insights", "account", "scan", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.AgentPool != "" {
 		final = append(final, "--agent-pool", fmt.Sprint(o.AgentPool))
 	}
@@ -2506,10 +2500,6 @@ func (a *API) InsightsAccountScanList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -2575,6 +2565,8 @@ func (a *API) InsightsAccountScanLog(
 
 	final := []string{"insights", "account", "scan", "log"}
 
+	final = append(final, "--output", "json")
+
 	if o.AgentPool != "" {
 		final = append(final, "--agent-pool", fmt.Sprint(o.AgentPool))
 	}
@@ -2629,10 +2621,6 @@ func (a *API) InsightsAccountScanLog(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -2768,6 +2756,8 @@ func (a *API) InsightsResourceGet(
 
 	final := []string{"insights", "resource", "get"}
 
+	final = append(final, "--output", "json")
+
 	final = append(final, "--account", fmt.Sprint(o.Account))
 
 	if o.Color != "" {
@@ -2800,10 +2790,6 @@ func (a *API) InsightsResourceGet(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -2863,6 +2849,8 @@ func (a *API) InsightsResourceSearch(
 
 	final := []string{"insights", "resource", "search"}
 
+	final = append(final, "--output", "json")
+
 	if o.Asc {
 		final = append(final, "--asc")
 	}
@@ -2905,10 +2893,6 @@ func (a *API) InsightsResourceSearch(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Page != 0 {

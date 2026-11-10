@@ -212,6 +212,13 @@
             "flags": {}
         },
         {
+            "path": ["insights"],
+            "propagate": true,
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
+        },
+        {
             "path": ["login"],
             "propagate": true,
             "exclude": true,

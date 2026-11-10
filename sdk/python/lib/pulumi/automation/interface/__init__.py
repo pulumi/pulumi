@@ -1810,7 +1810,6 @@ class API:
         all: bool = False,
         count: Optional[int] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         parent: Optional[str] = None,
         role_id: Optional[str] = None,
         cwd: Optional[str] = None,
@@ -1834,7 +1833,6 @@ class API:
         :param all: Return every matching account
         :param count: Return at most this many accounts (--count 0 is equivalent to --all)
         :param org: Organization to list accounts for (defaults to the current default org)
-        :param output: Output format. Supported values are: default and json
         :param parent: Filter to child accounts of the named parent account
         :param role_id: Filter to accounts accessible by the named role
         :param cwd: Working directory to run the command in.
@@ -1846,6 +1844,7 @@ class API:
         __final.append("account")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -1874,8 +1873,6 @@ class API:
             __flags.extend(["--count", str(count)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if parent is not None:
             __flags.extend(["--parent", str(parent)])
         if role_id is not None:
@@ -1911,7 +1908,6 @@ class API:
         agent_pool_id: Optional[str] = None,
         environment: Optional[str] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         provider: Optional[str] = None,
         provider_config: Optional[str] = None,
         scan_schedule: Optional[str] = None,
@@ -1936,7 +1932,6 @@ class API:
         :param agent_pool_id: ID of the agent pool to run discovery workflows (defaults to the org's default pool)
         :param environment: ESC environment containing provider credentials, in the form project/environment with an optional @version suffix
         :param org: Organization that will own the Insights account (defaults to the current default org)
-        :param output: Output format. Supported values are: default and json
         :param provider: Cloud provider for the account. One of: aws, gcp, azure-native, oci, kubernetes
         :param provider_config: Provider-specific configuration as an inline JSON object (e.g. '{"regions":["us-east-1"]}')
         :param scan_schedule: Automated scan schedule. One of: none, 12h, daily
@@ -1949,6 +1944,7 @@ class API:
         __final.append("account")
         __final.append("new")
         __flags = []
+        __flags.extend(["--output", "json"])
         __flags.append("--yes")
         if color is not None:
             __flags.extend(["--color", str(color)])
@@ -1978,8 +1974,6 @@ class API:
             __flags.extend(["--environment", str(environment)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if provider is not None:
             __flags.extend(["--provider", str(provider)])
         if provider_config is not None:
@@ -2020,7 +2014,6 @@ class API:
         batch_size: Optional[int] = None,
         list_concurrency: Optional[int] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         read_concurrency: Optional[int] = None,
         read_timeout: Optional[str] = None,
         cwd: Optional[str] = None,
@@ -2045,7 +2038,6 @@ class API:
         :param batch_size: Number of resources processed per batch (server default when 0)
         :param list_concurrency: Parallelism for list operations during the scan (server default when 0)
         :param org: Organization that owns the Insights account (defaults to the current default org)
-        :param output: Output format. Supported values are: default and json
         :param read_concurrency: Parallelism for read operations during the scan (server default when 0)
         :param read_timeout: Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty
         :param cwd: Working directory to run the command in.
@@ -2058,6 +2050,7 @@ class API:
         __final.append("scan")
         __final.append("get")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -2088,8 +2081,6 @@ class API:
             __flags.extend(["--list-concurrency", str(list_concurrency)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if read_concurrency is not None:
             __flags.extend(["--read-concurrency", str(read_concurrency)])
         if read_timeout is not None:
@@ -2128,7 +2119,6 @@ class API:
         batch_size: Optional[int] = None,
         list_concurrency: Optional[int] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         read_concurrency: Optional[int] = None,
         read_timeout: Optional[str] = None,
         all: bool = False,
@@ -2155,7 +2145,6 @@ class API:
         :param batch_size: Number of resources processed per batch (server default when 0)
         :param list_concurrency: Parallelism for list operations during the scan (server default when 0)
         :param org: Organization that owns the Insights account (defaults to the current default org)
-        :param output: Output format. Supported values are: default and json
         :param read_concurrency: Parallelism for read operations during the scan (server default when 0)
         :param read_timeout: Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty
         :param all: Return every matching scan
@@ -2170,6 +2159,7 @@ class API:
         __final.append("scan")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -2200,8 +2190,6 @@ class API:
             __flags.extend(["--list-concurrency", str(list_concurrency)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if read_concurrency is not None:
             __flags.extend(["--read-concurrency", str(read_concurrency)])
         if read_timeout is not None:
@@ -2244,7 +2232,6 @@ class API:
         batch_size: Optional[int] = None,
         list_concurrency: Optional[int] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         read_concurrency: Optional[int] = None,
         read_timeout: Optional[str] = None,
         all: bool = False,
@@ -2273,7 +2260,6 @@ class API:
         :param batch_size: Number of resources processed per batch (server default when 0)
         :param list_concurrency: Parallelism for list operations during the scan (server default when 0)
         :param org: Organization that owns the Insights account (defaults to the current default org)
-        :param output: Output format. Supported values are: default and json
         :param read_concurrency: Parallelism for read operations during the scan (server default when 0)
         :param read_timeout: Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty
         :param all: Fetch every entry (mutually exclusive with --count)
@@ -2290,6 +2276,7 @@ class API:
         __final.append("scan")
         __final.append("log")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -2320,8 +2307,6 @@ class API:
             __flags.extend(["--list-concurrency", str(list_concurrency)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if read_concurrency is not None:
             __flags.extend(["--read-concurrency", str(read_concurrency)])
         if read_timeout is not None:
@@ -2367,7 +2352,6 @@ class API:
         batch_size: Optional[int] = None,
         list_concurrency: Optional[int] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         read_concurrency: Optional[int] = None,
         read_timeout: Optional[str] = None,
         cwd: Optional[str] = None,
@@ -2392,7 +2376,6 @@ class API:
         :param batch_size: Number of resources processed per batch (server default when 0)
         :param list_concurrency: Parallelism for list operations during the scan (server default when 0)
         :param org: Organization that owns the Insights account (defaults to the current default org)
-        :param output: Output format. Supported values are: default and json
         :param read_concurrency: Parallelism for read operations during the scan (server default when 0)
         :param read_timeout: Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty
         :param cwd: Working directory to run the command in.
@@ -2404,6 +2387,7 @@ class API:
         __final.append("account")
         __final.append("scan")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -2434,8 +2418,6 @@ class API:
             __flags.extend(["--list-concurrency", str(list_concurrency)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if read_concurrency is not None:
             __flags.extend(["--read-concurrency", str(read_concurrency)])
         if read_timeout is not None:
@@ -2545,7 +2527,6 @@ class API:
         verbose: Optional[int] = None,
         account: str,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -2566,7 +2547,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param account: Insights account containing the resource
         :param org: Organization that owns the Insights account (defaults to the current default org)
-        :param output: Output format. Supported values are: default and json
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -2576,6 +2556,7 @@ class API:
         __final.append("resource")
         __final.append("get")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -2601,8 +2582,6 @@ class API:
         __flags.extend(["--account", str(account)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         __arguments.append(str(resource_type_and_id))
@@ -2635,7 +2614,6 @@ class API:
         collapse: bool = False,
         cursor: Optional[str] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         page: Optional[int] = None,
         page_size: Optional[int] = None,
         properties: bool = False,
@@ -2663,7 +2641,6 @@ class API:
         :param collapse: Consolidate resources that exist in multiple sources into a single result
         :param cursor: Opaque cursor to continue pagination from (Enterprise plans only)
         :param org: Organization to search within (defaults to the current default org)
-        :param output: Output format. Supported values are: default and json
         :param page: 1-based page of results to return (max 10,000 total results)
         :param page_size: Number of results per page
         :param properties: Include resource input/output values (requires a supported subscription)
@@ -2678,6 +2655,7 @@ class API:
         __final.append("resource")
         __final.append("search")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -2708,8 +2686,6 @@ class API:
             __flags.extend(["--cursor", str(cursor)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if page is not None:
             __flags.extend(["--page", str(page)])
         if page_size is not None:

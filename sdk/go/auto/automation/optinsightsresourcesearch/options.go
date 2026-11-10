@@ -52,8 +52,6 @@ type Options struct {
 	Org string
 	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
-	// Output format. Supported values are: default and json
-	Output string
 	// 1-based page of results to return (max 10,000 total results)
 	Page int
 	// Number of results per page
@@ -165,13 +163,6 @@ func Org(v string) Option {
 func OtelTraces(v string) Option {
 	return func(o *Options) {
 		o.OtelTraces = v
-	}
-}
-
-// Output returns an Option that sets Output.
-func Output(v string) Option {
-	return func(o *Options) {
-		o.Output = v
 	}
 }
 
