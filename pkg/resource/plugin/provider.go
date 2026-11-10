@@ -349,6 +349,12 @@ type ImportRequest struct {
 	Inputs property.Map
 	// Timeout is the time, in seconds, that the caller is prepared to wait for the operation to complete.
 	Timeout float64
+	// The gRPC address of the ResourceStatus service which can be used to create or update view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
+	// The old views for the resource being imported.
+	OldViews []View
 }
 
 type ImportResponse struct {
@@ -369,6 +375,12 @@ type RefreshRequest struct {
 	Outputs property.Map
 	// Timeout is the time, in seconds, that the caller is prepared to wait for the operation to complete.
 	Timeout float64
+	// The gRPC address of the ResourceStatus service which can be used to create or update view resources.
+	ResourceStatusAddress string
+	// The ResourceStatus service token to pass when calling methods on the service.
+	ResourceStatusToken string
+	// The old views for the resource being refreshed.
+	OldViews []View
 }
 
 type RefreshResponse struct {

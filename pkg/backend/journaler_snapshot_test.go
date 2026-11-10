@@ -826,7 +826,7 @@ func TestRecordingReadSuccessNoPreviousResourceJournaling(t *testing.T) {
 	resourceA.Custom = true
 	snap := NewSnapshot(nil)
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewReadStep(nil, nil, nil, resourceA, false)
+	step := deploy.NewReadStep(nil, nil, nil, resourceA, nil, false)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -864,7 +864,7 @@ func TestRecordingReadSuccessPreviousResourceJournaling(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew, false)
+	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew, nil, false)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -898,7 +898,7 @@ func TestRecordingReadFailureNoPreviousResourceJournaling(t *testing.T) {
 	resourceA.Custom = true
 	snap := NewSnapshot(nil)
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewReadStep(nil, nil, nil, resourceA, false)
+	step := deploy.NewReadStep(nil, nil, nil, resourceA, nil, false)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -935,7 +935,7 @@ func TestRecordingReadFailurePreviousResourceJournaling(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockJournalSetup(t, snap)
-	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew, false)
+	step := deploy.NewReadStep(nil, nil, resourceA, resourceANew, nil, false)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 

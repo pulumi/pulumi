@@ -1594,7 +1594,8 @@ func (p *provider) Import(ctx context.Context, req ImportRequest) (ImportRespons
 			// in the legacy ReadRequest, and `inputs` is left nil.
 			logging.V(7).Infof("%s: Import unimplemented; falling back to Read", label)
 			return p.readLegacy(ctx, label, protocol, req.URN, req.ID,
-				property.Map{} /*oldInputs*/, req.Inputs /*oldState*/, req.Timeout, false /*haveOldInputs*/)
+				property.Map{} /*oldInputs*/, req.Inputs /*oldState*/, req.Timeout, false, /*haveOldInputs*/
+				req.ResourceStatusAddress, req.ResourceStatusToken, req.OldViews)
 		}
 	}
 
@@ -1663,7 +1664,8 @@ func (p *provider) Refresh(ctx context.Context, req RefreshRequest) (RefreshResp
 		if ok && rpcError.Code() == codes.Unimplemented {
 			logging.V(7).Infof("%s: Refresh unimplemented; falling back to Read", label)
 			legacy, err := p.readLegacy(ctx, label, protocol, req.URN, req.ID,
-				req.Inputs, req.Outputs, req.Timeout, true /*haveOldInputs*/)
+				req.Inputs, req.Outputs, req.Timeout, true, /*haveOldInputs*/
+				req.ResourceStatusAddress, req.ResourceStatusToken, req.OldViews)
 			return RefreshResponse(legacy), err
 		}
 	}
@@ -1699,6 +1701,8 @@ func (p *provider) readLegacy(
 	oldInputs, oldState property.Map,
 	timeout float64,
 	haveOldInputs bool,
+	resourceStatusAddress, resourceStatusToken string,
+	oldViews []View,
 ) (ImportResponse, error) {
 	client := p.clientRaw
 
@@ -1724,15 +1728,23 @@ func (p *provider) readLegacy(
 	}
 	mstate := propertyrpc.Marshal(filteredState)
 
+	marshaledViews, err := marshalViews(oldViews, filterOpts)
+	if err != nil {
+		return ImportResponse{Status: resource.StatusUnknown}, err
+	}
+
 	//nolint:staticcheck // fallback for providers that haven't yet implemented Import/Refresh
 	resp, err := client.Read(p.requestContext(), &pulumirpc.ReadRequest{
-		Id:         string(id),
-		Urn:        string(urn),
-		Name:       urn.Name(),
-		Type:       urn.Type().String(),
-		Properties: mstate,
-		Inputs:     minputs,
-		Timeout:    timeout,
+		Id:                    string(id),
+		Urn:                   string(urn),
+		Name:                  urn.Name(),
+		Type:                  urn.Type().String(),
+		Properties:            mstate,
+		Inputs:                minputs,
+		Timeout:               timeout,
+		ResourceStatusAddress: resourceStatusAddress,
+		ResourceStatusToken:   resourceStatusToken,
+		OldViews:              marshaledViews,
 	})
 	var adapted *pulumirpc.ImportResponse
 	if resp != nil {
