@@ -117,6 +117,14 @@ class Resource(pulumi.CustomResource):
         __props__.__dict__["lookup"] = lookup
         return Resource(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None,
+            lookup: pulumi.Input[Optional[_builtins.str]] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        __props__["lookup"] = lookup
+        return pulumi.runtime.exists_resource(None, 'read-id-rewrite:index:Resource', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter
     def lookup(self) -> pulumi.Output[_builtins.str]:

@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -36,49 +37,49 @@ func init() {
 					RequireSingleResource(l, res.Snap.Resources, "pulumi:providers:nestedobject")
 
 					source := RequireSingleNamedResource(l, res.Snap.Resources, "source")
-					assert.Equal(l, resource.PropertyMap{
-						"inputs": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("a"),
-							resource.NewProperty("b"),
-							resource.NewProperty("c"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"inputs": property.New([]property.Value{
+							property.New("a"),
+							property.New("b"),
+							property.New("c"),
 						}),
-					}, source.Inputs)
+					}), resource.FromResourcePropertyMap(source.Inputs))
 
 					receiver := RequireSingleNamedResource(l, res.Snap.Resources, "receiver")
-					assert.Equal(l, resource.PropertyMap{
-						"details": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("a"),
-								"value": resource.NewProperty("computed-a"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"details": property.New([]property.Value{
+							property.New(map[string]property.Value{
+								"key":   property.New("a"),
+								"value": property.New("computed-a"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("b"),
-								"value": resource.NewProperty("computed-b"),
+							property.New(map[string]property.Value{
+								"key":   property.New("b"),
+								"value": property.New("computed-b"),
 							}),
-							resource.NewProperty(resource.PropertyMap{
-								"key":   resource.NewProperty("c"),
-								"value": resource.NewProperty("computed-c"),
+							property.New(map[string]property.Value{
+								"key":   property.New("c"),
+								"value": property.New("computed-c"),
 							}),
 						}),
-					}, receiver.Inputs)
+					}), resource.FromResourcePropertyMap(receiver.Inputs))
 
 					fromSimple := RequireSingleNamedResource(l, res.Snap.Resources, "fromSimple")
-					assert.Equal(l, resource.PropertyMap{
-						"inputs": resource.NewProperty([]resource.PropertyValue{
-							resource.NewProperty("computed-a"),
-							resource.NewProperty("computed-b"),
-							resource.NewProperty("computed-c"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"inputs": property.New([]property.Value{
+							property.New("computed-a"),
+							property.New("computed-b"),
+							property.New("computed-c"),
 						}),
-					}, fromSimple.Inputs)
+					}), resource.FromResourcePropertyMap(fromSimple.Inputs))
 
 					mapped := RequireSingleNamedResource(l, res.Snap.Resources, "mapped")
-					assert.Equal(l, resource.PropertyMap{
-						"tags": resource.NewProperty(resource.PropertyMap{
-							"a": resource.NewProperty("computed-a"),
-							"b": resource.NewProperty("computed-b"),
-							"c": resource.NewProperty("computed-c"),
+					assert.Equal(l, property.NewMap(map[string]property.Value{
+						"tags": property.New(map[string]property.Value{
+							"a": property.New("computed-a"),
+							"b": property.New("computed-b"),
+							"c": property.New("computed-c"),
 						}),
-					}, mapped.Inputs)
+					}), resource.FromResourcePropertyMap(mapped.Inputs))
 				},
 			},
 		},

@@ -138,6 +138,24 @@ func TestParsePolicyExceptionsUnknownFields(t *testing.T) {
 	assert.Equal(t, []string{"a"}, matchIDs(set, "p", accessLogsURN))
 }
 
+// ParsePolicyExceptions skips invalid exceptions, returning an error for each in ID order, and keeps the valid ones.
+func TestParsePolicyExceptionsSkipsInvalid(t *testing.T) {
+	t.Parallel()
+
+	set, errs := ParsePolicyExceptions(map[string]json.RawMessage{
+		"EXC-10":    json.RawMessage(`{"reason": "r", "match": [{"policies": ["p"], "targets": ["bad"]}]}`),
+		"EXC-2":     json.RawMessage(`{"reason": "r", "tags": ["x"], "match": [` + entry("p", accessLogsURN) + `]}`),
+		"EXC-9":     json.RawMessage(`{"reason": "r", "match": [` + entry("p", cfLogsURN) + `]}`),
+		"no-reason": json.RawMessage(`{"match": [` + entry("p", accessLogsURN) + `]}`),
+	})
+	require.Len(t, errs, 2)
+	assert.ErrorContains(t, errs[0], `policy exception "EXC-10": match[0]: target "bad" is not a valid URN`)
+	assert.EqualError(t, errs[1], `policy exception "no-reason": "reason" is required`)
+	assert.Equal(t, 2, set.len())
+	assert.Equal(t, []string{"EXC-2"}, matchIDs(set, "p", accessLogsURN))
+	assert.Equal(t, []string{"EXC-9"}, matchIDs(set, "p", cfLogsURN))
+}
+
 func TestPolicyExceptionsMatch(t *testing.T) {
 	t.Parallel()
 

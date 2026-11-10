@@ -157,7 +157,7 @@ func TestSecretValueUnmarshalJSONError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			var got SecretValue
-			assert.Error(t, json.Unmarshal([]byte(tc.input), &got))
+			assert.Error(t, json.Unmarshal([]byte(tc.input), &got)) //nolint:forbidigo // pre-existing
 		})
 	}
 }
@@ -179,7 +179,7 @@ func TestSecretValueUnmarshalYAMLError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			var got SecretValue
-			assert.Error(t, yaml.Unmarshal([]byte(tc.input), &got))
+			assert.Error(t, yaml.Unmarshal([]byte(tc.input), &got)) //nolint:forbidigo // pre-existing
 		})
 	}
 }

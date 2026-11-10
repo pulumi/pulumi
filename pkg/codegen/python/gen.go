@@ -123,6 +123,10 @@ type modContext struct {
 	extraSourceFiles []string
 	isConfig         bool
 
+	// typesFile is true while generating _inputs.py or outputs.py. These files import resources
+	// of their own module as modules, at the end of the file, to avoid a circular import.
+	typesFile bool
+
 	// Name overrides set in PackageInfo
 	modNameOverrides map[string]string // Optional overrides for Pulumi module names
 	compatibility    string            // Toggle compatibility mode for a specified target.
@@ -322,7 +326,12 @@ func (mod *modContext) enumType(enum *schema.EnumType) string {
 
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	if r.Resource == nil || codegen.PkgEquals(r.Resource.PackageReference, mod.pkg) {
-		return mod.tokenToResource(r.Token)
+		name := mod.tokenToResource(r.Token)
+		if mod.typesFile && mod.isLocalResource(r) {
+			// importResourceType imports the module of this resource as `_<file>`.
+			return "_" + mod.resourceFileName(r) + "." + name
+		}
+		return name
 	}
 
 	// Is it a provider resource?
@@ -334,6 +343,13 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	pkg := r.Resource.PackageReference
 	modName, name := mod.modNameAndName(pkg, r, false)
 	return fmt.Sprintf("%s.%s%s", PyPack(pkg.Namespace(), pkg.Name()), modName, name)
+}
+
+// isLocalResource returns true for a resource that this module imports from a relative path, as in
+// `from .widget import Widget`, and refers to by its bare class name.
+func (mod *modContext) isLocalResource(r *schema.ResourceType) bool {
+	return (r.Resource == nil || codegen.PkgEquals(r.Resource.PackageReference, mod.pkg)) &&
+		!strings.Contains(mod.tokenToResource(r.Token), ".")
 }
 
 func (mod *modContext) tokenToResource(tok string) string {
@@ -1041,18 +1057,10 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 	if mod.mod == modName || modName == "" {
 		// We want a relative import if we're in the same module: from .some_member import SomeMember
 		importPath := mod.getRelImportFromRoot(modName)
+		name := mod.resourceFileName(r)
 
-		name := PyName(tokenToName(r.Token))
-		if mod.compatibility == kubernetes20 {
-			// To maintain backward compatibility for kubernetes, the file names
-			// need to be CamelCase instead of the standard snake_case.
-			name = tokenToName(r.Token)
-		}
-		if r.Resource != nil && r.Resource.IsProvider {
-			name = "provider"
-		}
-		if mod.conflictsWithChildModule(name) {
-			name = name + "_"
+		if mod.typesFile {
+			return fmt.Sprintf("from %s import %[2]s as _%[2]s", importPath, name)
 		}
 
 		if strings.HasSuffix(importPath, ".") {
@@ -1068,6 +1076,23 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 
 	components := strings.Split(modName, "/")
 	return fmt.Sprintf("from %s import %[2]s as _%[2]s", mod.getRelImportFromRoot(""), components[0])
+}
+
+// resourceFileName returns the name of the file that defines a resource of this package.
+func (mod *modContext) resourceFileName(r *schema.ResourceType) string {
+	name := PyName(tokenToName(r.Token))
+	if mod.compatibility == kubernetes20 {
+		// To maintain backward compatibility for kubernetes, the file names
+		// need to be CamelCase instead of the standard snake_case.
+		name = tokenToName(r.Token)
+	}
+	if r.Resource != nil && r.Resource.IsProvider {
+		name = "provider"
+	}
+	if mod.conflictsWithChildModule(name) {
+		name = name + "_"
+	}
+	return name
 }
 
 // genConfig emits all config variables in the given module, returning the resulting file.
@@ -1197,6 +1222,9 @@ func allTypesAreOverlays(types []*schema.ObjectType) bool {
 }
 
 func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
+	mod.typesFile = true
+	defer func() { mod.typesFile = false }()
+
 	genTypes := func(file string, input bool) error {
 		w := &bytes.Buffer{}
 
@@ -1206,6 +1234,8 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 		}
 
 		imports := newImports()
+		// Resource modules of this module import this file, so these imports go at the end of the file.
+		resourceImports := newImports()
 		var emitted [][]*schema.Property
 		for _, t := range mod.types {
 			if t.IsOverlay {
@@ -1214,6 +1244,11 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 			}
 			if (input && mod.details(t).inputType) || (!input && mod.details(t).outputType) {
 				emitted = append(emitted, t.Properties)
+				codegen.VisitTypeClosure(t.Properties, func(t schema.Type) {
+					if r, ok := t.(*schema.ResourceType); ok && mod.isLocalResource(r) {
+						resourceImports.addResource(mod, r)
+					}
+				})
 			}
 
 			if input && mod.details(t).inputType {
@@ -1238,6 +1273,7 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 		for _, e := range mod.enums {
 			imports.addEnum(mod, e)
 		}
+		imports.Set = imports.Difference(resourceImports.Set)
 
 		mod.genHeader(w, true /*needsSDK*/, imports, literalTyping(emitted...))
 
@@ -1277,6 +1313,9 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 				}
 				hasTypes = true
 			}
+		}
+		for _, imp := range resourceImports.strings() {
+			fmt.Fprintf(w, "%s\n", imp)
 		}
 		if hasTypes {
 			fs.Add(path.Join(dir, file), w.Bytes())
@@ -1729,6 +1768,38 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		}
 
 		fmt.Fprintf(w, "        return %s(resource_name, opts=opts, __props__=__props__)\n\n", name)
+	}
+
+	// Generate the `exists` static method for non-provider, non-component resources.
+	if !res.IsProvider && !res.IsComponent {
+		fmt.Fprintf(w, "    @staticmethod\n")
+		fmt.Fprintf(w, "    def exists(id: pulumi.Input[str],\n")
+		fmt.Fprintf(w, "            opts: Optional[pulumi.ResourceOptions] = None")
+
+		if hasStateInputs {
+			for _, prop := range res.StateInputs.Properties {
+				pname := InitParamName(prop.Name)
+				ty := mod.typeString(codegen.OptionalType(prop), typeStringOpts{input: true, acceptMapping: true})
+				fmt.Fprintf(w, ",\n            %s: %s = None", pname, ty)
+			}
+		}
+		fmt.Fprintf(w, ") -> pulumi.Output[bool]:\n")
+
+		fmt.Fprintf(w, "        __props__: dict = {}\n")
+		if hasStateInputs {
+			for _, prop := range res.StateInputs.Properties {
+				fmt.Fprintf(w, "        __props__[%q] = %s\n", prop.Name, InitParamName(prop.Name))
+			}
+		}
+		fmt.Fprintf(w, "        return pulumi.runtime.exists_resource(None, '%s', id, __props__, opts or pulumi.ResourceOptions()", tok)
+		pkg, err = res.PackageReference.Definition()
+		if err != nil {
+			return "", err
+		}
+		if pkg.Parameterization != nil {
+			fmt.Fprintf(w, ", package_ref=_utilities.get_package()")
+		}
+		fmt.Fprintf(w, ")\n\n")
 	}
 
 	// Write out Python property getters for each of the resource's properties.
@@ -3790,9 +3861,10 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies 
 
 var (
 	// Require the SDK to fall within the same major version.
-	MinimumValidSDKVersion = ">=3.231.0,<4.0.0"
-	// Parameterized packages call `pulumi.runtime.register_package`, which was introduced in 3.247.0
-	MinimumValidParameterizationSDKVersion = ">=3.247.0,<4.0.0"
+	MinimumValidSDKVersion = ">=3.269.0,<4.0.0"
+	// Parameterized packages call `pulumi.runtime.register_package`, which was introduced in 3.247.0, and all packages
+	// call `pulumi.runtime.exists_resource`, which was introduced in 3.269.0.
+	MinimumValidParameterizationSDKVersion = ">=3.269.0,<4.0.0"
 )
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.

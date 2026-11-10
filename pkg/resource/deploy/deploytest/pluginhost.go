@@ -489,6 +489,10 @@ func (host *pluginHost) Provider(
 	return plug.(plugin.Provider), nil
 }
 
+func (host *pluginHost) ProviderFromPath(ctx *plugin.Context, path string, e env.Env) (plugin.Provider, error) {
+	return nil, fmt.Errorf("deploytest cannot load provider from path %q", path)
+}
+
 func (host *pluginHost) LanguageRuntime(ctx *plugin.Context, runtime string) (plugin.LanguageRuntime, error) {
 	if host.isClosed() {
 		return nil, ErrHostIsClosed

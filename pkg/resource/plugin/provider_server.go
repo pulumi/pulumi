@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
@@ -82,6 +83,37 @@ func (p *providerServer) marshalFilterOptions() FilterOptions {
 		KeepSecrets:          p.sendSecrets,
 		KeepResources:        p.sendResources,
 		RejectNonUTF8Strings: !p.sendByteString,
+	}
+}
+
+// jsonValueToProperty converts a value produced by [json.Unmarshal] into a [property.Value]. It handles only the
+// concrete types json.Unmarshal yields when decoding into `any` (nil, bool, float64, string, []any, map[string]any)
+// plus plain string, which Configure's legacy variables path falls back to when a value isn't valid JSON.
+func jsonValueToProperty(v any) property.Value {
+	switch v := v.(type) {
+	case nil:
+		return property.New(property.Null)
+	case bool:
+		return property.New(v)
+	case float64:
+		return property.New(v)
+	case string:
+		return property.New(v)
+	case []any:
+		arr := make([]property.Value, len(v))
+		for i, e := range v {
+			arr[i] = jsonValueToProperty(e)
+		}
+		return property.New(arr)
+	case map[string]any:
+		m := make(map[string]property.Value, len(v))
+		for k, e := range v {
+			m[k] = jsonValueToProperty(e)
+		}
+		return property.New(m)
+	default:
+		contract.Failf("unexpected json.Unmarshal value of type %T", v)
+		return property.Value{}
 	}
 }
 
@@ -418,7 +450,7 @@ func (p *providerServer) Configure(ctx context.Context,
 		}
 		inputs = args
 	} else {
-		legacy := make(resource.PropertyMap)
+		legacy := map[string]property.Value{}
 		for k, v := range req.GetVariables() { //nolint:staticcheck // maintain backwards compatibility
 			key, err := config.ParseKey(k)
 			if err != nil {
@@ -431,9 +463,9 @@ func (p *providerServer) Configure(ctx context.Context,
 				value = v
 			}
 
-			legacy[resource.PropertyKey(key.Name())] = resource.NewPropertyValue(value)
+			legacy[key.Name()] = jsonValueToProperty(value)
 		}
-		inputs = resource.FromResourcePropertyMap(legacy)
+		inputs = property.NewMap(legacy)
 	}
 
 	var urn *resource.URN

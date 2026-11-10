@@ -150,7 +150,7 @@ func TestReconcileWorkloadIdentityProvider(t *testing.T) {
 		fake := &fakeIAMClient{getProvider: &iam.WorkloadIdentityPoolProvider{State: "DELETED"}}
 
 		_, err := reconcile(t, fake)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "scheduled for deletion")
 		assert.Contains(t, err.Error(),
 			"gcloud iam workload-identity-pools providers undelete pulumi-abcd1234 "+
@@ -163,7 +163,7 @@ func TestReconcileWorkloadIdentityProvider(t *testing.T) {
 		fake := &fakeIAMClient{getErr: errors.New("boom")}
 
 		_, err := reconcile(t, fake)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "reading its configuration back failed")
 	})
 
@@ -177,7 +177,7 @@ func TestReconcileWorkloadIdentityProvider(t *testing.T) {
 		}
 
 		_, err := reconcile(t, fake)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), `existing issuer "https://other-backend.tld/oidc"`)
 	})
 }

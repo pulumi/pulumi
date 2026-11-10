@@ -263,7 +263,7 @@ func TestTemplateListCmd_RegistryError(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, defaultTemplateListArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "listing templates")
 	assert.Contains(t, err.Error(), "connection refused")
 }

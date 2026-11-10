@@ -223,6 +223,36 @@ func TestArgumentTypeName(t *testing.T) {
 	mixedTuple := model.NewTupleType(model.NewTupleType(one, two), model.NewTupleType(model.StringType))
 	assert.Equal(t, "pulumi.Array", g.argumentTypeName(mixedTuple, true /*isInput*/))
 
+	// Regression test for https://github.com/pulumi/pulumi/issues/25358:
+	// a tuple of optional string outputs is a pointer output (StringPtrOutput),
+	// which does not implement StringInput, so it cannot be a pulumi.StringArray.
+	optionalString := model.NewOptionalType(model.StringType)
+	optionalStringOutput := model.NewOutputType(optionalString)
+	optionalStringTuple := model.NewTupleType(optionalStringOutput, optionalStringOutput)
+	assert.Equal(t, "pulumi.Array", g.argumentTypeName(optionalStringTuple, true /*isInput*/))
+	assert.Equal(t, "pulumi.Array", g.argumentTypeName(
+		model.NewOutputType(optionalStringTuple), false /*isInput*/))
+	assert.Equal(t, "[]*string", g.argumentTypeName(
+		model.NewTupleType(optionalString, optionalString), false /*isInput*/))
+	nestedOptional := model.NewTupleType(optionalStringTuple, optionalStringTuple)
+	assert.Equal(t, "pulumi.ArrayArray", g.argumentTypeName(nestedOptional, true /*isInput*/))
+
+	// The same pointer-output fallback applies to the other scalar primitives.
+	for _, primitive := range []model.Type{model.NumberType, model.IntType, model.BoolType} {
+		optional := model.NewOutputType(model.NewOptionalType(primitive))
+		tuple := model.NewTupleType(optional, optional)
+		assert.Equal(t, "pulumi.Array", g.argumentTypeName(tuple, true /*isInput*/))
+	}
+
+	// Optional lists are not pointer outputs. A tuple of optional number-list
+	// outputs stays a Float64ArrayArray (pulumi/pulumi#25387).
+	optionalNumberList := model.NewOutputType(model.NewOptionalType(model.NewListType(model.NumberType)))
+	optionalNumberListTuple := model.NewTupleType(optionalNumberList, optionalNumberList)
+	assert.Equal(t, "pulumi.Float64ArrayArray", g.argumentTypeName(optionalNumberListTuple, true /*isInput*/))
+	optionalBoolMap := model.NewOutputType(model.NewOptionalType(model.NewMapType(model.BoolType)))
+	optionalBoolMapTuple := model.NewTupleType(optionalBoolMap, optionalBoolMap)
+	assert.Equal(t, "pulumi.BoolMapArray", g.argumentTypeName(optionalBoolMapTuple, true /*isInput*/))
+
 	// Asset and Archive opaque types must be qualified with the pulumi package, otherwise nested compositions
 	// render bare names like []AssetMap which is invalid Go.
 	assert.Equal(t, "pulumi.AssetOrArchive", g.argumentTypeName(pcl.AssetType, false /*isInput*/))

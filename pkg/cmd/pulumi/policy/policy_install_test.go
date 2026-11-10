@@ -57,6 +57,8 @@ func (m *mockRequiredPolicy) ResolveEnvironments(_ context.Context) (*engine.Res
 	return nil, nil
 }
 
+func (m *mockRequiredPolicy) Exceptions() map[string]json.RawMessage { return nil }
+
 // newMockStack creates a MockStack wired to the given MockBackend.
 func newMockStack(be *backend.MockBackend) *backend.MockStack {
 	return &backend.MockStack{
@@ -138,7 +140,7 @@ func TestPolicyInstallCmd_Run(t *testing.T) {
 		}
 
 		err := cmd.Run(t.Context(), "")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "could not find a Pulumi project")
 		assert.Contains(t, err.Error(), "--stack flag")
 		assert.NotErrorIs(t, err, workspace.ErrProjectNotFound,

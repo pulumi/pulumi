@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,21 +34,21 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := stack.Outputs
+					outputs := resource.FromResourcePropertyMap(stack.Outputs)
 
-					require.Len(l, outputs, 6, "expected 6 outputs")
-					AssertPropertyMapMember(l, outputs, "empty", resource.NewProperty(""))
-					AssertPropertyMapMember(l, outputs, "small", resource.NewProperty("Hello world!"))
-					AssertPropertyMapMember(l, outputs, "emoji", resource.NewProperty("👋 \"Hello \U0001019b!\" 😊"))
-					AssertPropertyMapMember(l, outputs, "escape", resource.NewProperty(
+					require.Equal(l, 6, outputs.Len(), "expected 6 outputs")
+					AssertPropertyMapMember(l, outputs, "empty", property.New(""))
+					AssertPropertyMapMember(l, outputs, "small", property.New("Hello world!"))
+					AssertPropertyMapMember(l, outputs, "emoji", property.New("👋 \"Hello \U0001019b!\" 😊"))
+					AssertPropertyMapMember(l, outputs, "escape", property.New(
 						"Some ${common} \"characters\" 'that' need escaping: "+
 							"\\ (backslash), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"))
-					AssertPropertyMapMember(l, outputs, "escapeNewline", resource.NewProperty(
+					AssertPropertyMapMember(l, outputs, "escapeNewline", property.New(
 						"Some ${common} \"characters\" 'that' need escaping: "+
 							"\\ (backslash), \n (newline), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"))
 
 					large := strings.Repeat(lorem+"\n", 150)
-					AssertPropertyMapMember(l, outputs, "large", resource.NewProperty(large))
+					AssertPropertyMapMember(l, outputs, "large", property.New(large))
 				},
 			},
 		},

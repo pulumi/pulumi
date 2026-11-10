@@ -49,7 +49,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
@@ -360,23 +359,21 @@ func newDIYBackend(
 				"by this version of the Pulumi CLI", meta.Version)
 	}
 
-	// If we're not in project mode and the user hasn't disabled the warning, warn that legacy mode is deprecated and
-	// due to be removed.
-	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationError) {
+	// If we're not in project mode and the user hasn't disabled the warning, error that legacy mode is is no longer
+	// supported.
+	if !projectMode {
 		return nil, errors.New(`
 ================================================================================
-Legacy DIY state is deprecated, please upgrade your state to project mode using:
+Legacy DIY state is no longer supported, please use Pulumi v3.274.1 or earlier
+to upgrade your state to project mode using:
 'pulumi state upgrade'
 
-It is due to be removed in a future release before the end of this year (2026).
-If you have any feedback or concerns, please let us know by commenting on the
-issue at https://github.com/pulumi/pulumi/issues/19566.
-Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR=1 to disable this error.
+See https://github.com/pulumi/pulumi/issues/19566.
 ================================================================================`)
 	}
 
-	// If we're not in project mode, or we've disabled the warning, we're done.
-	if !projectMode || opts.Env.GetBool(env.DIYBackendNoLegacyWarning) {
+	// If we've disabled the warning, we're done.
+	if opts.Env.GetBool(env.DIYBackendNoLegacyWarning) {
 		return backend, nil
 	}
 	// Otherwise, warn about any old stack files.
@@ -871,6 +868,9 @@ func (b *diyBackend) CreateStack(
 	if opts != nil && opts.Config != nil {
 		return nil, backend.ErrConfigNotSupported
 	}
+	if opts != nil && opts.ManagedEnvironment {
+		return nil, fmt.Errorf("%w by the DIY backend", backend.ErrManagedEnvironmentNotSupported)
+	}
 
 	if err := backend.CurrentProjectContradictsWorkspace(b.currentProject.Load(), stackRef); err != nil {
 		return nil, err
@@ -1228,7 +1228,7 @@ func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
 
 func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, error) {
+) (sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	op.Imports = imports
 
 	if op.Opts.PreviewOnly {
@@ -1239,18 +1239,18 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, snap, err := b.apply(
 			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
-		return changes, err
+		return changes, snap, err
 	}
 
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil, nil)
+	return backend.PreviewThenPromptThenExecuteImport(ctx, stack, op, b.apply, nil)
 }
 
 func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1264,7 +1264,7 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, _, err := b.apply(
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
@@ -1289,7 +1289,7 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, _, err := b.apply(
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
@@ -1303,38 +1303,31 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil, nil)
 }
 
-func (b *diyBackend) Watch(ctx context.Context, stk backend.Stack,
-	op backend.UpdateOperation, paths []string,
-) error {
-	return backend.Watch(ctx, b, stk, op, b.apply, paths)
-}
-
 // apply actually performs the provided type of update on a diy hosted stack.
 func (b *diyBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	resetKeepRunning := nosleep.KeepRunning()
 	defer resetKeepRunning()
 	stackRef := stack.Ref()
 	diyStackRef, err := b.getReference(stackRef)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	if err := backend.CurrentProjectContradictsWorkspace(b.currentProject.Load(), stackRef); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	if op.CoherenceWindow != "" {
-		return nil, nil, errors.New("coherence windows are only supported by the Pulumi Cloud backend")
+		return nil, nil, nil, errors.New("coherence windows are only supported by the Pulumi Cloud backend")
 	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&
-		op.Opts.Display.Type != display.DisplayWatch {
+	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
 		// than a logical span, but this is a convenient way to record this information.
 		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
@@ -1350,7 +1343,7 @@ func (b *diyBackend) apply(
 	// Start the update.
 	update, err := b.newUpdate(ctx, op.SecretsProvider, diyStackRef, op)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// Spawn a display loop to show events on the CLI.
@@ -1387,14 +1380,17 @@ func (b *diyBackend) apply(
 			StateMigrations: true,
 		},
 	}
-	// Create the management machinery.
-	// We only need a snapshot manager if we're doing an update.
-	var manager *backend.SnapshotManager
-	if kind != apitype.PreviewUpdate && !opts.DryRun {
-		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot, nil)
-		engineCtx.SnapshotManager = manager
+	// Create the snapshot manager. We always install one (even for preview and dry-run) so that
+	// the engine mutates an in-memory snapshot we can return to callers. For dry-run operations
+	// we substitute a discarding persister so nothing is written to disk.
+	var persister backend.SnapshotPersister
+	if kind == apitype.PreviewUpdate || opts.DryRun {
+		persister = backend.DiscardPersister{}
+	} else {
+		persister = b.newSnapshotPersister(ctx, diyStackRef)
 	}
+	manager := backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot, nil)
+	engineCtx.SnapshotManager = manager
 
 	if op.Opts.Engine.HostFactory == nil {
 		op.Opts.Engine.HostFactory = backend.DefaultHostFactory(b.GetReadOnlyCloudRegistry())
@@ -1435,17 +1431,18 @@ func (b *diyBackend) apply(
 	<-displayDone
 	scope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
-	if manager != nil {
-		err = manager.Close()
-		// If the snapshot manager failed to close, we should return that error.
-		// Even though all the parts of the operation have potentially succeeded, a
-		// snapshotting failure is likely to rear its head on the next
-		// operation/invocation (e.g. an invalid snapshot that fails integrity
-		// checks, or a failure to write that means the snapshot is incomplete).
-		// Reporting now should make debugging and reporting easier.
-		if err != nil {
-			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
-		}
+	// Capture the final in-memory snapshot before closing the manager; Snap() reads the manager's
+	// resource list which is safe to call once the engine has returned.
+	snap := manager.Snap()
+	err = manager.Close()
+	// If the snapshot manager failed to close, we should return that error.
+	// Even though all the parts of the operation have potentially succeeded, a
+	// snapshotting failure is likely to rear its head on the next
+	// operation/invocation (e.g. an invalid snapshot that fails integrity
+	// checks, or a failure to write that means the snapshot is incomplete).
+	// Reporting now should make debugging and reporting easier.
+	if err != nil {
+		return plan, changes, snap, fmt.Errorf("writing snapshot: %w", err)
 	}
 
 	// Make sure the goroutine writing to displayEvents and events has exited before proceeding.
@@ -1480,16 +1477,16 @@ func (b *diyBackend) apply(
 
 	if updateErr != nil {
 		// We swallow saveErr and backupErr as they are less important than the updateErr.
-		return plan, changes, updateErr
+		return plan, changes, snap, updateErr
 	}
 
 	if saveErr != nil {
 		// We swallow backupErr as it is less important than the saveErr.
-		return plan, changes, fmt.Errorf("saving update info: %w", saveErr)
+		return plan, changes, snap, fmt.Errorf("saving update info: %w", saveErr)
 	}
 
 	if backupErr != nil {
-		return plan, changes, fmt.Errorf("saving backup: %w", backupErr)
+		return plan, changes, snap, fmt.Errorf("saving backup: %w", backupErr)
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
@@ -1526,7 +1523,7 @@ func (b *diyBackend) apply(
 		}
 	}
 
-	return plan, changes, nil
+	return plan, changes, snap, nil
 }
 
 func (b *diyBackend) GetHistory(
@@ -1544,48 +1541,6 @@ func (b *diyBackend) GetHistory(
 		return nil, err
 	}
 	return updates, nil
-}
-
-func (b *diyBackend) GetLogs(ctx context.Context,
-	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
-	query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	diyStackRef, err := b.getReference(stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-
-	target, err := b.getTarget(ctx, secretsProvider, diyStackRef, cfg.Config, cfg.Decrypter)
-	if err != nil {
-		return nil, err
-	}
-
-	return GetLogsForTarget(ctx, target, query)
-}
-
-// GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
-func GetLogsForTarget(
-	ctx context.Context, target *deploy.Target, query operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	contract.Requiref(target != nil, "target", "must not be nil")
-
-	if target.Snapshot == nil {
-		// If the stack has not been deployed yet, return no logs.
-		return nil, nil
-	}
-
-	config, err := target.Config.Decrypt(target.Decrypter)
-	if err != nil {
-		return nil, err
-	}
-
-	components := operations.NewResourceTree(target.Snapshot.Resources)
-	ops := components.OperationsProvider(config)
-	logs, err := ops.GetLogs(ctx, query)
-	if logs == nil {
-		return nil, err
-	}
-	return *logs, err
 }
 
 func (b *diyBackend) ExportDeployment(ctx context.Context,

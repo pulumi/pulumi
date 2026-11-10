@@ -1,0 +1,3 @@
+component: cli/new
+kind: fix
+body: Ask for the stack name, template config, and package manager before creating any files in `pulumi new`, so cancelling leaves nothing behind

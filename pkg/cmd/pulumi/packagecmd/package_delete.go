@@ -127,7 +127,7 @@ You must have publish permissions for the package to delete it.`,
 				colors.SpecAttention, formatPkg(pkg), colors.Reset,
 			))
 			if err := ui.ConfirmDeletion(
-				yes, cmdutil.Interactive(), prompt, packageVersion.String(), cmd.ErrOrStderr(), opts,
+				yes, cmdutil.Interactive(), prompt, pkg.Version.String(), cmd.ErrOrStderr(), opts,
 			); err != nil {
 				return err
 			}
@@ -143,7 +143,7 @@ You must have publish permissions for the package to delete it.`,
 
 			fmt.Fprintln(cmd.ErrOrStderr(), opts.Color.Colorize(fmt.Sprintf(
 				"%sPackage version '%s' has been deleted!%s",
-				colors.SpecAttention, packageVersion, colors.Reset,
+				colors.SpecAttention, formatPkg(pkg), colors.Reset,
 			)))
 			return nil
 		},
@@ -151,7 +151,7 @@ You must have publish permissions for the package to delete it.`,
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
-			{Name: "package", Usage: "<source>/<publisher>/<name>@<version>"},
+			{Name: "package", Usage: "[[<source>/]<publisher>/]<name>[@<version>]"},
 		},
 		Required: 1,
 	})

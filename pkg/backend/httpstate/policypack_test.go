@@ -118,7 +118,7 @@ func TestEscValueToConfigMap(t *testing.T) {
 		input := esc.Value{Value: "not a map"}
 
 		_, err := escValueToConfigMap(input)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "expected policyConfig to be a map")
 	})
 
@@ -244,7 +244,7 @@ func TestResolveEnvironments(t *testing.T) {
 		}
 
 		_, err := rp.ResolveEnvironments(t.Context())
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "opening ESC environments")
 		assert.Contains(t, err.Error(), "connection refused")
 	})
@@ -272,7 +272,7 @@ func TestResolveEnvironments(t *testing.T) {
 		}
 
 		_, err := rp.ResolveEnvironments(t.Context())
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "unknown environment")
 	})
 
@@ -636,7 +636,7 @@ func TestLocalPolicyEnvironmentResolver(t *testing.T) {
 
 		resolver := NewLocalPolicyEnvironmentResolver(mock, "org")
 		_, err := resolver.ResolveEnvironments(t.Context(), []string{"env/missing"})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "opening ESC environments")
 		assert.Contains(t, err.Error(), "connection refused")
 	})
@@ -656,7 +656,7 @@ func TestLocalPolicyEnvironmentResolver(t *testing.T) {
 
 		resolver := NewLocalPolicyEnvironmentResolver(mock, "org")
 		_, err := resolver.ResolveEnvironments(t.Context(), []string{"env/missing"})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "unknown environment")
 	})
 

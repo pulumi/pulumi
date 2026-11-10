@@ -499,7 +499,7 @@ func TestAnalyzeSnapshot_AnalyzeErrorPropagated(t *testing.T) {
 	}
 
 	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "failed to run policy")
 }
 
@@ -519,7 +519,7 @@ func TestAnalyzeSnapshot_RemediateErrorPropagated(t *testing.T) {
 	}
 
 	_, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, nil, events)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "failed to run remediation")
 }
 
@@ -601,7 +601,7 @@ func TestAnalyzeSnapshot_ExceptedViolations(t *testing.T) {
 	require.NoError(t, err)
 
 	events := &recordingPolicyEvents{}
-	exceptions := map[string]resourceanalyzer.PolicyExceptions{"test-pack": config.Exceptions}
+	exceptions := map[plugin.Analyzer]resourceanalyzer.PolicyExceptions{analyzer: config.Exceptions}
 	hasMandatory, err := deploy.AnalyzeSnapshot(t.Context(), snap, []plugin.Analyzer{analyzer}, exceptions, events)
 	require.NoError(t, err)
 	assert.False(t, hasMandatory)

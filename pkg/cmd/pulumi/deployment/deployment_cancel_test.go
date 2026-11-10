@@ -146,7 +146,7 @@ func TestNewDeploymentCancelCmd_InvalidOutputRejected(t *testing.T) {
 	cmd.SetErr(&buf)
 	cmd.SetArgs([]string{"--output", "yaml", "--yes", "dep-123"})
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "yaml")
 }
 
@@ -157,7 +157,7 @@ func TestDeploymentCancel_ClientError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"),
 		"dep-123", cancelArgs("", true, ""))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "canceling deployment")
 	assert.Contains(t, err.Error(), "server boom")
 }
@@ -169,7 +169,7 @@ func TestDeploymentCancel_FactoryError(t *testing.T) {
 	err := runDeploymentCancel(t.Context(), &buf,
 		failingCancelFactory(errors.New("not logged in")),
 		"dep-123", cancelArgs("", true, ""))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
@@ -181,7 +181,7 @@ func TestDeploymentCancel_NonInteractiveRequiresYes(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"),
 		"dep-123", cancelArgs("", false, ""))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, backenderr.ErrNonInteractiveRequiresYes)
 	assert.Equal(t, capturedCancelCall{}, captured, "client must not be called when confirmation is refused")
 }

@@ -52,6 +52,7 @@ const clientRuntimeName = "client"
 func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Host,
 	diag, statusDiag diag.Sink, disableProviderPreview bool,
 	tracingSpan opentracing.Span, config map[config.Key]string,
+	cloudCredentialEnv map[string]string,
 ) (string, string, *plugin.Context, error) {
 	contract.Requiref(projinfo != nil, "projinfo", "must not be nil")
 	contract.Requiref(host != nil, "host", "must not be nil")
@@ -70,7 +71,7 @@ func ProjectInfoContext(ctx context.Context, projinfo *Projinfo, host plugin.Hos
 
 	pctx, err := plugin.NewContextWithRoot(pluginCtx, diag, statusDiag, host, pwd, projinfo.Root,
 		projinfo.Proj.Runtime.Options(), disableProviderPreview, tracingSpan, projinfo.Proj.Plugins,
-		projinfo.Proj.GetPackageSpecs(), config)
+		projinfo.Proj.GetPackageSpecs(), config, cloudCredentialEnv)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -190,8 +191,8 @@ type deploymentOptions struct {
 	// and configured. This is the list that the step generator will run for policy checks.
 	LoadedAnalyzers []plugin.Analyzer
 
-	// PolicyExceptions is populated by loadPolicyPlugins with the loaded policy packs' exceptions, keyed by pack name.
-	PolicyExceptions map[string]resourceanalyzer.PolicyExceptions
+	// PolicyExceptions is populated by loadPolicyPlugins with each loaded analyzer's policy exceptions.
+	PolicyExceptions map[plugin.Analyzer]resourceanalyzer.PolicyExceptions
 }
 
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
@@ -260,7 +261,7 @@ func newDeployment(
 	// Create a context for plugins.
 	baseCtx := trace.ContextWithSpan(ctx.Cancel.Base(), info.otelSpan)
 	pwd, main, plugctx, err := ProjectInfoContext(baseCtx, projinfo, opts.host,
-		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan, decryptedConfig)
+		opts.Diag, opts.StatusDiag, opts.DisableProviderPreview, info.TracingSpan, decryptedConfig, opts.CloudCredentialEnv)
 	if err != nil {
 		return nil, err
 	}

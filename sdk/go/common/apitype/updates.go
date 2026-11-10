@@ -42,6 +42,19 @@ type UpdateProgramRequest struct {
 	Metadata UpdateMetadata `json:"metadata"`
 
 	CoherenceWindow string `json:"coherenceWindow,omitempty"`
+
+	// Environment pins the managed ESC environment revision the update was evaluated against.
+	Environment *UpdateProgramEnvironment `json:"environment,omitempty"`
+}
+
+// UpdateProgramEnvironment identifies the managed ESC environment content an update was evaluated against.
+type UpdateProgramEnvironment struct {
+	// BaseRevision is the environment revision the stack's definition was compared with.
+	BaseRevision int `json:"baseRevision"`
+	// ChangeRequestID is the change request of the draft created when the definition differed.
+	ChangeRequestID string `json:"changeRequestID,omitempty"`
+	// DraftRevision is the draft revision that was evaluated. Meaningful only with ChangeRequestID; 0 is valid.
+	DraftRevision int `json:"draftRevision"`
 }
 
 // UpdateOptions is the set of operations for configuring the output of an update.

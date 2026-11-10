@@ -160,7 +160,7 @@ func ShowEvents(
 		return
 	}
 
-	if opts.Type != DisplayProgress && opts.Type != DisplayWatch {
+	if opts.Type != DisplayProgress {
 		printPermalinkNonInteractive(os.Stdout, opts, permalink, "")
 	}
 
@@ -169,8 +169,6 @@ func ShowEvents(
 		ShowDiffEvents(op, rawEvents, done, opts)
 	case DisplayProgress:
 		ShowProgressEvents(op, action, stack, proj, permalink, rawEvents, done, opts, isPreview)
-	case DisplayWatch:
-		ShowWatchEvents(op, permalink, rawEvents, done, opts)
 	default:
 		contract.Failf("Unknown display type %d", opts.Type)
 	}

@@ -32,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
@@ -337,6 +336,7 @@ func NewPreviewCmd() *cobra.Command {
 	var skipConfigValidation bool
 	var showConfig bool
 	var showPolicyRemediations bool
+	var showPolicyExceptions bool
 	var showReplacementSteps bool
 	var showSames bool
 	var showReads bool
@@ -419,6 +419,7 @@ func NewPreviewCmd() *cobra.Command {
 				Color:                  cmdutil.GetGlobalColorization(),
 				ShowConfig:             showConfig,
 				ShowPolicyRemediations: showPolicyRemediations,
+				ShowPolicyExceptions:   showPolicyExceptions,
 				ShowReplacementSteps:   showReplacementSteps,
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
@@ -445,7 +446,7 @@ func NewPreviewCmd() *cobra.Command {
 
 			if remoteArgs.Remote {
 				err := deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, configPath, client, jsonDisplay,
-					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations,
+					policyPackPaths, policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showPolicyExceptions,
 					showReplacementSteps, showSames, showReads, suppressOutputs, "default", &targets, nil, replaces,
 					targetReplaces, targetDependents, planFilePath, configFile, runProgram, coherenceWindow)
 				if err != nil {
@@ -464,7 +465,7 @@ func NewPreviewCmd() *cobra.Command {
 				return deployment.RunDeployment(ctx, ws, cmd, displayOpts, apitype.Preview, stackName, url, remoteArgs)
 			}
 
-			isDIYBackend, err := cmdBackend.IsDIYBackend(ws, displayOpts)
+			isDIYBackend, err := cmdBackend.IsDIYBackend(ctx, cmdBackend.DefaultLoginManager, ws, displayOpts)
 			if err != nil {
 				return err
 			}
@@ -497,6 +498,9 @@ func NewPreviewCmd() *cobra.Command {
 				configFile,
 			)
 			if err != nil {
+				return err
+			}
+			if err = cmdStack.RejectConfigFlagsOnManagedStack(s, configArray, configFile); err != nil {
 				return err
 			}
 
@@ -564,8 +568,13 @@ func NewPreviewCmd() *cobra.Command {
 				return fmt.Errorf("getting autonaming config: %w", err)
 			}
 
+			cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(ctx, ws, cmdBackend.DefaultLoginManager, proj)
+			if err != nil {
+				return err
+			}
 			opts := backend.UpdateOptions{
 				Engine: engine.UpdateOptions{
+					CloudCredentialEnv:        cloudCredentialEnv,
 					ParallelDiff:              env.ParallelDiff.Value(),
 					LocalPolicyPacks:          engine.MakeLocalPolicyPacks(policyPackPaths, policyPackConfigPaths),
 					Parallel:                  parallel,
@@ -620,7 +629,7 @@ func NewPreviewCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    secrets.DefaultProvider,
+				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
 			}, events)
@@ -789,6 +798,9 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showPolicyRemediations, "show-policy-remediations", false,
 		"Show per-resource policy remediation details instead of a summary")
+	cmd.PersistentFlags().BoolVar(
+		&showPolicyExceptions, "show-policy-exceptions", false,
+		"Show each exempted policy violation instead of a summary")
 	cmd.PersistentFlags().BoolVar(
 		&showReplacementSteps, "show-replacement-steps", false,
 		"Show detailed resource replacement creates and deletes instead of a single step")

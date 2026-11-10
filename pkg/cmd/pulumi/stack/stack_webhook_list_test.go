@@ -287,7 +287,7 @@ func TestStackWebhookList_ClientError(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockWebhookClient{err: errors.New("server error")}
 	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", renderWebhookListTable)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "listing stack webhooks")
 	assert.Contains(t, err.Error(), "server error")
 }
@@ -297,7 +297,7 @@ func TestStackWebhookList_FactoryError(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runStackWebhookList(t.Context(), &buf, failingFactory(errors.New("not logged in")), "", renderWebhookListTable)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 

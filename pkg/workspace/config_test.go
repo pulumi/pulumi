@@ -54,7 +54,7 @@ func TestValidateStackConfigValues(t *testing.T) {
 		dec := config.NewErrorCrypter(wantErr)
 
 		err := validateStackConfigValues("stackA", project, stackCfg, dec)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), wantErr)
 	})
 
@@ -102,7 +102,7 @@ func TestValidateStackConfigValues(t *testing.T) {
 		// create a non-secure stack value
 		stackVal := config.NewValue("plain")
 		err := validateStackConfigValue("stack1", projectConfigKey, pct, stackVal, "plain")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), "must be encrypted")
 	})
 
@@ -113,7 +113,7 @@ func TestValidateStackConfigValues(t *testing.T) {
 		stackVal := config.NewObjectValue("not-a-json")
 		pct := workspace.ProjectConfigType{}
 		err := validateStackConfigValue("stackX", projectConfigKey, pct, stackVal, "not-a-json")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		// error should be json unmarshal related
 		require.Contains(t, err.Error(), "invalid character")
 	})
@@ -130,7 +130,7 @@ func TestValidateStackConfigValues(t *testing.T) {
 		stackVal := config.NewValue("not-a-number")
 
 		err := validateStackConfigValue("stackX", projectConfigKey, pct, stackVal, "not-a-number")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Contains(t, err.Error(), "must be of type")
 	})
 }

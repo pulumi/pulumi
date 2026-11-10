@@ -121,7 +121,7 @@ func TestSnapshotConfigFile_ReturnsReadError(t *testing.T) {
 
 	dir := t.TempDir()
 	_, _, _, err := snapshotConfigFile(dir)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestRestoreConfigFile_EmptyPathIsSuccess(t *testing.T) {
@@ -156,7 +156,7 @@ func TestWriteBackupFile_ReturnsCreateTempError(t *testing.T) {
 	path := filepath.Join(dir, "missing", "Pulumi.dev.yaml")
 
 	bakPath, err := writeBackupFile(path, []byte("new-backup"), 0o600)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, bakPath)
 }
 
@@ -164,7 +164,7 @@ func TestStackConfigPath_ReturnsDetectError(t *testing.T) { //nolint: parallelte
 	t.Chdir(t.TempDir())
 
 	path, err := stackConfigPath("dev")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, path)
 	assert.Contains(t, err.Error(), "detecting project stack path")
 }
@@ -245,7 +245,7 @@ func TestLoadProjectStack_ReturnsDetectError(t *testing.T) { //nolint: parallelt
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	_, err := LoadProjectStack(t.Context(), sink, project, stack, "")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "could not detect project stack path")
 }
 
@@ -358,7 +358,7 @@ func TestMigrationLoginManagerRoutesExactURLs(t *testing.T) {
 	require.NoError(t, err)
 	assert.Same(t, targetBE, got)
 	got, err = login(lm, "https://unexpected.example.com")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Nil(t, got)
 	assert.Contains(t, err.Error(), "unexpected backend URL")
 	assert.Equal(t, 1, sourceCalls)
@@ -452,7 +452,7 @@ func TestStackMigrate_RequiresURLArg(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{}
 
 	err := runMigrate(t, ws, lm, []string{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "requires at least 1 arg")
 }
 
@@ -471,7 +471,7 @@ func TestStackMigrate_RejectsInvalidSecretsProvider(t *testing.T) {
 		"some-stack",
 		"--secrets-provider", "totally-bogus-provider",
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "unknown secrets provider")
 }
 
@@ -655,13 +655,42 @@ func TestStackMigrate_EarlyErrorPaths(t *testing.T) {
 			}(),
 			wantSubstr: "checking target backend for existing stack",
 		},
+		{
+			name: "managed source",
+			ws: &pkgWorkspace.MockContext{ReadProjectF: func(string) (*workspace.Project, string, error) {
+				return project, "Pulumi.yaml", nil
+			}},
+			lm: &cmdBackend.MockLoginManager{LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink,
+				url string, project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+				_ ...cmdBackend.LoginOption,
+			) (backend.Backend, error) {
+				sourceBE := newSourceBackend()
+				sourceBE.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return &backend.MockStack{
+						RefF: func() backend.StackReference { return ref },
+						ConfigLocationF: func() backend.StackConfigLocation {
+							return backend.StackConfigLocation{ManagedEnvironment: "proj/renamed"}
+						},
+					}, nil
+				}
+				return sourceBE, nil
+			}},
+			targetBE: func() *backend.MockBackend {
+				be := newTargetBackend()
+				be.GetStackF = func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+					return nil, errors.New("target lookup boom")
+				}
+				return be
+			}(),
+			wantSubstr: "`pulumi stack migrate` is not supported on stacks with an ESC-managed environment yet",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			err := runMigrate(t, tt.ws, withMigrationTarget(sourceURL, tt.lm, tt.targetBE), []string{sourceURL, "dev"})
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tt.wantSubstr)
 		})
 	}
@@ -765,7 +794,7 @@ func TestStackMigrate_RejectsSameBackend(t *testing.T) {
 	}
 
 	err := runMigrate(t, ws, withMigrationTarget(url, lm, be), []string{url, "some-stack"})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "source and target backends are the same")
 }
 
@@ -847,7 +876,7 @@ func TestStackMigrate_RejectsExistingTargetStack(t *testing.T) { //nolint: paral
 		withMigrationTarget("file:///tmp/source", lm, targetBE),
 		[]string{"file:///tmp/source", "dev", "--yes"},
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "already exists")
 }
 
@@ -990,7 +1019,7 @@ func TestStackMigrate_RollsBackOnImportFailure(t *testing.T) { //nolint: paralle
 		withMigrationTarget("file:///tmp/source", lm, targetBE),
 		[]string{"file:///tmp/source", "dev", "--yes"},
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.True(t, tgtCreated, "target stack should have been created before the failure")
 	assert.True(t, tgtRemoved, "rollback should have removed the partially-created target stack")
 
@@ -1131,7 +1160,7 @@ func TestStackMigrate_RollsBackTargetConfigOnImportFailure(t *testing.T) { //nol
 		"--target", "dev-tgt",
 		"--yes",
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 
 	// Source ps untouched.
 	srcAfter, err := os.ReadFile("Pulumi.dev.yaml")
@@ -1256,7 +1285,7 @@ func TestStackMigrate_DoesNotRollbackOnAlreadyExistsRace(t *testing.T) { //nolin
 		withMigrationTarget("file:///tmp/source", lm, targetBE),
 		[]string{"file:///tmp/source", "dev", "--yes"},
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.False(t, removeCalled,
 		"RemoveStack must not be called when CreateStack reports StackAlreadyExistsError")
 }
@@ -1449,7 +1478,7 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 	tgtCrypter := prefixCrypter{prefix: "tgt"}
 
 	// "test-prefix" is a fake secrets-manager type registered with the custom provider below so
-	// DeserializeUntypedDeployment can find a manager for it; the real backend_secrets.DefaultProvider
+	// DeserializeUntypedDeployment can find a manager for it; the standard secrets provider
 	// only knows passphrase / service / cloud.
 	srcSM := &secrets.MockSecretsManager{
 		TypeF:      func() string { return "test-prefix" },
@@ -2106,7 +2135,7 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 			resource.MakeSecret(resource.NewProperty(resource.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"})),
 		}),
 	}
-	replacementTrigger := property.New(property.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"})
+	replacementTrigger := property.New(property.NewResourceReference(siblingURN, property.Value{}, ""))
 
 	snap := &deploy.Snapshot{
 		SecretsManager: srcSM,
@@ -2580,7 +2609,7 @@ func TestStackMigrate_RollsBackOnSaveStackConfigError(t *testing.T) {
 		"--secrets-provider", "passphrase",
 		"--yes",
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "creating target stack")
 	assert.True(t, probedAfter, "recovery probe should have fired after ErrSaveStackConfig")
 	assert.Equal(t, 1, removeCalls, "rollback should call RemoveStack once on the adopted stack")
@@ -2701,7 +2730,7 @@ func TestStackMigrate_WarnsWhenSaveStackConfigCleanupProbeFails(t *testing.T) {
 		"--secrets-provider", "passphrase",
 		"--yes",
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "creating target stack")
 	assert.Contains(t, stdout,
 		"Warning: target stack dev may have been created before stack config setup failed, "+
@@ -2989,7 +3018,7 @@ func TestStackMigrate_RefusesLegacyRenameWithoutProject(t *testing.T) { //nolint
 		withMigrationTarget("file:///tmp/source", lm, targetBE),
 		[]string{"file:///tmp/source", "dev", "--target", "dev-renamed", "--yes"},
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "requires a source project name")
 	assert.Contains(t, err.Error(), "Run this command from a directory containing the source project's Pulumi.yaml")
 	assert.Contains(t, err.Error(), "<project>/<stack> or <org>/<project>/<stack>")

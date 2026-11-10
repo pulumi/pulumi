@@ -90,7 +90,7 @@ func TestListStackSchedules(t *testing.T) {
 
 		c := newMockClient(srv)
 		_, err := c.ListStackSchedules(t.Context(), stackID)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("empty list", func(t *testing.T) {
@@ -160,7 +160,7 @@ func TestGetStackSchedule(t *testing.T) {
 
 		c := newMockClient(srv)
 		_, err := c.GetStackSchedule(t.Context(), stackID, scheduleID)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -232,7 +232,7 @@ func TestCreateStackSchedule(t *testing.T) {
 			ScheduleCron: "0 */4 * * *",
 			Request:      &apitype.CreateDeploymentRequest{Op: apitype.Update, InheritSettings: true},
 		})
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -369,7 +369,7 @@ func TestDeleteStackSchedule(t *testing.T) {
 
 		c := newMockClient(srv)
 		err := c.DeleteStackSchedule(t.Context(), stackID, scheduleID)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 

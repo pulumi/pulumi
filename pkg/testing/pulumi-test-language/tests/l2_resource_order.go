@@ -18,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,10 +41,10 @@ func init() {
 					RequireSingleNamedResource(l, args.Snap.Resources, "res2")
 					stk := RequireSingleResource(l, args.Snap.Resources, resource.RootStackType)
 
-					want := resource.PropertyMap{
-						"out": resource.NewProperty(true),
-					}
-					assert.Equal(l, want, stk.Outputs)
+					want := property.NewMap(map[string]property.Value{
+						"out": property.New(true),
+					})
+					assert.Equal(l, want, resource.FromResourcePropertyMap(stk.Outputs))
 				},
 			},
 		},

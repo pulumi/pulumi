@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +46,7 @@ func TestJournalExtensionParameterize(t *testing.T) {
 
 	ref := apitype.ExtensionRef("ref-1")
 	ext := apitype.Extension{Name: "myext", Version: "1.0.0", Value: []byte("Hello")}
-	step := deploy.NewExtensionParameterizeStep(nil, nil, ref, ext, nil)
+	step := deploy.NewExtensionParameterizeStep(nil, providers.Reference{}, ref, ext, nil)
 
 	mutation, err := sm.BeginMutation(step)
 	require.NoError(t, err)

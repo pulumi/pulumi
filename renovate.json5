@@ -3,6 +3,8 @@
   extends: [
     'github>pulumi/renovate-config//default.json5',
   ],
+  // Let Renovate check all statuses before requesting a merge.
+  platformAutomerge: false,
   enabledManagers: [
     // Go
     'gomod',

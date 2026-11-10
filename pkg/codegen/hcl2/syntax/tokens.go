@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 
@@ -180,7 +181,18 @@ func (c Comment) Range() hcl.Range {
 
 // Bytes returns the raw bytes that comprise the comment.
 func (c Comment) Bytes() []byte {
-	return c.bytes
+	if c.rng != (hcl.Range{}) {
+		return c.bytes
+	}
+	var b bytes.Buffer
+	for _, l := range c.Lines {
+		for line := range strings.SplitSeq(l, "\n") {
+			b.WriteString("//")
+			b.WriteString(line)
+			b.WriteByte('\n')
+		}
+	}
+	return b.Bytes()
 }
 
 func (Comment) isTrivia() {}
@@ -221,22 +233,15 @@ type TemplateDelimiter struct {
 // NewTemplateDelimiter creates a new TemplateDelimiter value with the given delimiter type. If the token type is not a
 // template delimiter, this function will panic.
 func NewTemplateDelimiter(typ hclsyntax.TokenType) TemplateDelimiter {
-	var s string
-	//nolint:exhaustive // Only some tokens are template delimiters.
-	switch typ {
-	case hclsyntax.TokenTemplateInterp:
-		s = "${"
-	case hclsyntax.TokenTemplateControl:
-		s = "%{"
-	case hclsyntax.TokenTemplateSeqEnd:
-		s = "}"
-	default:
+	if !isTemplateDelimiter(typ) {
 		panic(fmt.Errorf("%v is not a template delimiter", typ))
 	}
-	return TemplateDelimiter{
-		Type:  typ,
-		bytes: []byte(s),
-	}
+	return TemplateDelimiter{Type: typ}
+}
+
+func isTemplateDelimiter(typ hclsyntax.TokenType) bool {
+	return typ == hclsyntax.TokenTemplateInterp || typ == hclsyntax.TokenTemplateControl ||
+		typ == hclsyntax.TokenTemplateSeqEnd
 }
 
 // Range returns the range of the delimiter in the source file.
@@ -246,7 +251,10 @@ func (t TemplateDelimiter) Range() hcl.Range {
 
 // Bytes returns the raw bytes that comprise the delimiter.
 func (t TemplateDelimiter) Bytes() []byte {
-	return t.bytes
+	if t.rng != (hcl.Range{}) || !isTemplateDelimiter(t.Type) {
+		return t.bytes
+	}
+	return []byte(tokenStrings[t.Type])
 }
 
 func (TemplateDelimiter) isTrivia() {}

@@ -28,8 +28,8 @@ type IsolatedCredentials struct {
 	AgentDir string
 }
 
-// IsolateCredentials clears inherited authentication and redirects default and agent credentials
-// to separate temporary directories.
+// IsolateCredentials clears inherited authentication, disables credential helper discovery, and redirects
+// default and agent credentials to separate temporary directories.
 func IsolateCredentials(t testing.TB) IsolatedCredentials {
 	t.Helper()
 
@@ -49,6 +49,8 @@ func IsolateCredentials(t testing.TB) IsolatedCredentials {
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
 	t.Setenv("PULUMI_BACKEND_URL", "")
 	t.Setenv("PULUMI_API", "")
+	t.Setenv("PULUMI_CREDENTIAL_HELPER", "none")
+	t.Setenv("PULUMI_CREDENTIAL_HELPER_ARGS", "")
 
 	for _, name := range agentdetect.DetectionEnvVars() {
 		t.Setenv(name, "")

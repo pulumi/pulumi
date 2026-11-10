@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // TestResourceReferences tests that resource references can be marshaled between the engine, language host,
@@ -50,10 +51,14 @@ func TestResourceReferences(t *testing.T) {
 					}
 
 					if req.URN.Name() == "resC" {
-						assert.True(t, resource.ToResourcePropertyMap(req.Properties).DeepEquals(resource.PropertyMap{
-							"resA": resource.MakeComponentResourceReference(urnA, ""),
-							"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
-						}))
+						idBVal := property.New(string(idB))
+						if idB == "" {
+							idBVal = property.New(property.Computed)
+						}
+						assert.True(t, req.Properties.Equals(property.NewMap(map[string]property.Value{
+							"resA": property.New(property.NewResourceReference(urnA, property.Value{}, "")),
+							"resB": property.New(property.NewResourceReference(urnB, idBVal, "")),
+						})))
 					}
 
 					return plugin.CreateResponse{
@@ -67,7 +72,7 @@ func TestResourceReferences(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: coalesceReadOutputs(req),
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -83,25 +88,29 @@ func TestResourceReferences(t *testing.T) {
 		require.NoError(t, err)
 		urnA = respA.URN
 
-		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
+		err = monitor.RegisterResourceOutputs(urnA, property.Map{})
 		require.NoError(t, err)
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		require.NoError(t, err)
 		urnB, idB = respB.URN, respB.ID
 
+		idBVal := property.New(string(idB))
+		if idB == "" {
+			idBVal = property.New(property.Computed)
+		}
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"resA": resource.MakeComponentResourceReference(urnA, ""),
-				"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"resA": property.New(property.NewResourceReference(urnA, property.Value{}, "")),
+				"resB": property.New(property.NewResourceReference(urnB, idBVal, "")),
+			}),
 		})
 		require.NoError(t, err)
 
-		assert.True(t, resp.Outputs.DeepEquals(resource.PropertyMap{
-			"resA": resource.MakeComponentResourceReference(urnA, ""),
-			"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
-		}))
+		assert.True(t, resp.Outputs.Equals(property.NewMap(map[string]property.Value{
+			"resA": property.New(property.NewResourceReference(urnA, property.Value{}, "")),
+			"resB": property.New(property.NewResourceReference(urnB, idBVal, "")),
+		})))
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -132,17 +141,21 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 						id = ""
 					}
 
-					state := resource.PropertyMap{}
+					state := property.Map{}
 					if req.URN.Name() == "resC" {
-						state = resource.PropertyMap{
-							"resA": resource.MakeComponentResourceReference(urnA, ""),
-							"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
+						idBVal := property.New(string(idB))
+						if idB == "" {
+							idBVal = property.New(property.Computed)
 						}
+						state = property.NewMap(map[string]property.Value{
+							"resA": property.New(property.NewResourceReference(urnA, property.Value{}, "")),
+							"resB": property.New(property.NewResourceReference(urnB, idBVal, "")),
+						})
 					}
 
 					return plugin.CreateResponse{
 						ID:         resource.ID(id),
-						Properties: resource.FromResourcePropertyMap(state),
+						Properties: state,
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -151,7 +164,7 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: coalesceReadOutputs(req),
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -168,7 +181,7 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 		require.NoError(t, err)
 		urnA = respA.URN
 
-		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
+		err = monitor.RegisterResourceOutputs(urnA, property.Map{})
 		require.NoError(t, err)
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, opts)
@@ -178,11 +191,11 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 		respC, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, opts)
 		require.NoError(t, err)
 
-		assert.Equal(t, resource.NewProperty(string(urnA)), respC.Outputs["resA"])
+		assert.Equal(t, string(urnA), respC.Outputs.Get("resA").AsString())
 		if idB != "" {
-			assert.Equal(t, resource.NewProperty(string(idB)), respC.Outputs["resB"])
+			assert.Equal(t, string(idB), respC.Outputs.Get("resB").AsString())
 		} else {
-			assert.True(t, respC.Outputs["resB"].IsComputed())
+			assert.True(t, respC.Outputs.Get("resB").IsComputed())
 		}
 		return nil
 	})
@@ -215,9 +228,9 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 
 					// If we have resource references here, the engine has not properly disabled them.
 					if req.URN.Name() == "resC" {
-						props := resource.ToResourcePropertyMap(req.Properties)
-						assert.Equal(t, resource.NewProperty(string(urnA)), props["resA"])
-						assert.Equal(t, refB.ResourceReferenceValue().ID, props["resB"])
+						assert.Equal(t, string(urnA), req.Properties.Get("resA").AsString())
+						assert.Equal(t, refB.ResourceReferenceValue().ID,
+							resource.ToResourcePropertyValue(req.Properties.Get("resB")))
 					}
 
 					return plugin.CreateResponse{
@@ -231,7 +244,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: coalesceReadOutputs(req),
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -247,7 +260,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 		require.NoError(t, err)
 		urnA = respA.URN
 
-		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
+		err = monitor.RegisterResourceOutputs(urnA, property.Map{})
 		require.NoError(t, err)
 
 		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
@@ -255,18 +268,19 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 
 		refB = resource.MakeCustomResourceReference(respB.URN, respB.ID, "")
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"resA": resource.MakeComponentResourceReference(urnA, ""),
-				"resB": refB,
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"resA": property.New(property.NewResourceReference(urnA, property.Value{}, "")),
+				"resB": resource.FromResourcePropertyValue(refB),
+			}),
 		})
 		require.NoError(t, err)
 
-		assert.Equal(t, resource.NewProperty(string(urnA)), resp.Outputs["resA"])
+		assert.Equal(t, string(urnA), resp.Outputs.Get("resA").AsString())
 		if refB.ResourceReferenceValue().ID.IsComputed() {
-			assert.True(t, resp.Outputs["resB"].IsComputed())
+			assert.True(t, resp.Outputs.Get("resB").IsComputed())
 		} else {
-			assert.True(t, refB.ResourceReferenceValue().ID.DeepEquals(resp.Outputs["resB"]))
+			assert.True(t,
+				refB.ResourceReferenceValue().ID.DeepEquals(resource.ToResourcePropertyValue(resp.Outputs.Get("resB"))))
 		}
 		return nil
 	})
@@ -310,7 +324,7 @@ func TestResourceReferences_GetResource(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: coalesceReadOutputs(req),
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -324,26 +338,33 @@ func TestResourceReferences_GetResource(t *testing.T) {
 		childResp, err := monitor.RegisterResource("pkgA:m:typChild", "resChild", true)
 		require.NoError(t, err)
 
-		refChild := resource.MakeCustomResourceReference(childResp.URN, childResp.ID, "")
+		refChild := property.New(property.NewResourceReference(childResp.URN, property.New(string(childResp.ID)), ""))
 		resp, err := monitor.RegisterResource("pkgA:m:typContainer", "resContainer", true,
 			deploytest.ResourceOptions{
-				Inputs: resource.PropertyMap{
+				Inputs: property.NewMap(map[string]property.Value{
 					"child": refChild,
-				},
+				}),
 			})
 		require.NoError(t, err)
 
 		// Expect the `child` property from `resContainer`'s state to come back from 'pulumi:pulumi:getResource'
 		// as a resource reference.
-		result, failures, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
-			"urn": resource.NewProperty(string(resp.URN)),
-		}, "", "", "")
+		result, failures, err := monitor.Invoke("pulumi:pulumi:getResource", property.NewMap(map[string]property.Value{
+			"urn": property.New(string(resp.URN)),
+		}), "", "", "")
 		require.NoError(t, err)
 		assert.Empty(t, failures)
-		assert.Equal(t, resource.NewProperty(string(resp.URN)), result["urn"])
-		assert.Equal(t, resource.NewProperty(string(resp.ID)), result["id"])
-		state := result["state"].ObjectValue()
-		assert.Equal(t, refChild, state["child"])
+		assert.Equal(t, string(resp.URN), result.Get("urn").AsString())
+		assert.Equal(t, string(resp.ID), result.Get("id").AsString())
+		state := result.Get("state").AsMap()
+		// On preview the ID is computed; after creation it's the actual ID.
+		actualRef := state.Get("child").AsResourceReference()
+		assert.Equal(t, childResp.URN, actualRef.URN)
+		if string(childResp.ID) == "" {
+			assert.Equal(t, property.New(property.Computed), actualRef.ID)
+		} else {
+			assert.Equal(t, property.New(string(childResp.ID)), actualRef.ID)
+		}
 
 		return nil
 	})
@@ -397,18 +418,18 @@ func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
 
 					// Echo the reference back while intentionally omitting Name/Type to validate
 					// the engine fills them before they reach the program.
-					outputs := resource.PropertyMap{
-						"echo": resource.NewProperty(resource.ResourceReference{
+					outputs := property.NewMap(map[string]property.Value{
+						"echo": property.New(property.ResourceReference{
 							URN: ref.URN,
-							ID:  resource.ToResourcePropertyValue(ref.ID),
+							ID:  ref.ID,
 						}),
-					}
+					})
 					err = monitor.RegisterResourceOutputs(component.URN, outputs)
 					require.NoError(t, err)
 
 					return plugin.ConstructResponse{
 						URN:     component.URN,
-						Outputs: resource.FromResourcePropertyMap(outputs),
+						Outputs: outputs,
 					}, nil
 				},
 			}, nil
@@ -420,30 +441,30 @@ func TestResourceReferences_NameAndTypeFilledByEngine(t *testing.T) {
 		require.NoError(t, err)
 		sourceURN, sourceID = sourceResp.URN, sourceResp.ID
 
-		refID := resource.NewProperty(string(sourceID))
+		refID := property.New(string(sourceID))
 		if sourceID == "" {
-			refID = resource.MakeComputed(resource.NewProperty(""))
+			refID = property.New(property.Computed)
 		}
-		inputRef := resource.NewProperty(resource.ResourceReference{
+		inputRef := property.ResourceReference{
 			URN: sourceURN,
 			ID:  refID,
-		})
-		assert.Empty(t, inputRef.ResourceReferenceValue().Name)
-		assert.Empty(t, inputRef.ResourceReferenceValue().Type)
+		}
+		assert.Empty(t, inputRef.Name)
+		assert.Empty(t, inputRef.Type)
 
 		componentResp, err := monitor.RegisterResource("pkgA:m:component", "component", false, deploytest.ResourceOptions{
 			Remote: true,
-			Inputs: resource.PropertyMap{
-				"ref": inputRef,
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"ref": property.New(inputRef),
+			}),
 		})
 		require.NoError(t, err)
 
-		echo := componentResp.Outputs["echo"].ResourceReferenceValue()
+		echo := componentResp.Outputs.Get("echo").AsResourceReference()
 		assert.Equal(t, sourceURN, echo.URN)
 		assert.Equal(t, sourceURN.Name(), echo.Name)
 		assert.Equal(t, string(sourceURN.Type()), echo.Type)
-		assert.True(t, echo.ID.DeepEquals(refID))
+		assert.True(t, echo.ID.Equals(refID))
 
 		return nil
 	})

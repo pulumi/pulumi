@@ -160,7 +160,7 @@ func TestLostKeyProducesActionableError(t *testing.T) {
 	require.NoError(t, st.DeleteKey())
 
 	_, err := GetStoredCredentials()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "pulumi login")
 }
 
@@ -373,7 +373,7 @@ func TestStoreAccountRecoversFromUndecryptableFile(t *testing.T) {
 
 	require.NoError(t, st.DeleteKey())
 	_, err := GetStoredCredentials()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.True(t, IsUndecryptableCredentials(err))
 
 	// Storing a fresh account is what login does after authenticating.
@@ -431,7 +431,7 @@ func TestDeleteAllAccountsAndCredentialsKeyKeepsKeyWhenFileRemains(t *testing.T)
 	require.NoError(t, os.Remove(credsFile))
 	require.NoError(t, os.MkdirAll(filepath.Join(credsFile, "undeletable"), 0o700))
 
-	require.Error(t, DeleteAllAccountsAndCredentialsKey())
+	require.Error(t, DeleteAllAccountsAndCredentialsKey()) //nolint:forbidigo // pre-existing
 
 	_, err = st.GetKey()
 	require.NoError(t, err)
@@ -507,6 +507,7 @@ func TestFutureEnvelopeIsNotReadAsLoggedOut(t *testing.T) {
 	require.NoError(t, os.WriteFile(credsFile, futureEnvelope(t), 0o600))
 
 	_, err = GetStoredCredentials()
+	//nolint:forbidigo // pre-existing
 	require.Error(t, err, "a future-version envelope must error, not read as empty credentials")
 	assert.Contains(t, err.Error(), "newer version")
 }
@@ -521,6 +522,7 @@ func TestWriteRefusesToClobberFutureEnvelope(t *testing.T) {
 		require.NoError(t, os.WriteFile(credsFile, future, 0o600))
 
 		err = StoreCredentials(testCreds())
+		//nolint:forbidigo // pre-existing
 		require.Error(t, err, "mode %q must refuse to overwrite a future-version envelope", mode)
 
 		raw, err := os.ReadFile(credsFile)
@@ -535,7 +537,7 @@ func TestDeclinedUnlockNeverWritesPlaintext(t *testing.T) {
 	st.declineErr = securestore.ErrDeclined
 
 	err := StoreCredentials(testCreds())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, securestore.ErrDeclined)
 
 	credsFile, err := getCredsFilePath()
@@ -552,7 +554,7 @@ func TestDeclinedUnlockOnReadIsNotAdviceToReAuthenticate(t *testing.T) {
 
 	st.declineErr = securestore.ErrDeclined
 	_, err := GetStoredCredentials()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, securestore.ErrDeclined)
 	assert.NotContains(t, err.Error(), "re-authenticate")
 	// Not UndecryptableCredentialsError: login reacts by deleting the file.
@@ -567,7 +569,7 @@ func TestUnusableStoreIsNotTreatedAsUnreadableCredentials(t *testing.T) {
 
 	st.absent = true
 	_, err := GetStoredCredentials()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.False(t, IsUndecryptableCredentials(err),
 		"a store that is unusable right now must not authorise replacing the file")
 	assert.Contains(t, err.Error(), "not usable here")
@@ -582,7 +584,7 @@ func TestTransientKeyErrorIsNotTreatedAsUnreadableCredentials(t *testing.T) {
 
 	st.getErr = errors.New("dbus timeout")
 	_, err := GetStoredCredentials()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.False(t, IsUndecryptableCredentials(err))
 	assert.Contains(t, err.Error(), "Retry")
 }
@@ -595,7 +597,7 @@ func TestLostKeyStillAllowsRecovery(t *testing.T) {
 
 	require.NoError(t, st.DeleteKey())
 	_, err := GetStoredCredentials()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.True(t, IsUndecryptableCredentials(err))
 }
 
@@ -612,7 +614,7 @@ func TestDeclinedUnlockOnStickyWriteKeepsTheEnvelope(t *testing.T) {
 	st.declineErr = securestore.ErrDeclined
 
 	err = StoreCredentials(testCreds())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, securestore.ErrDeclined)
 	after, err := os.ReadFile(credsFile)
 	require.NoError(t, err)
@@ -623,7 +625,7 @@ func TestDeclinedUnlockOnStickyWriteKeepsTheEnvelope(t *testing.T) {
 func TestInvalidModeSurfacesOnWrite(t *testing.T) {
 	isolateSecureCredentials(t, "bogus")
 	err := StoreCredentials(testCreds())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "PULUMI_CREDENTIAL_STORE")
 }
 
@@ -631,7 +633,7 @@ func TestInvalidModeSurfacesOnWrite(t *testing.T) {
 func TestInvalidModeSurfacesOnRead(t *testing.T) {
 	isolateSecureCredentials(t, "bogus")
 	_, err := GetStoredCredentials()
-	require.Error(t, err, "read-only commands must reject an invalid mode too")
+	require.Error(t, err, "read-only commands must reject an invalid mode too") //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "PULUMI_CREDENTIAL_STORE")
 }
 
@@ -657,7 +659,7 @@ func TestAgentFallbackSurfacesUndecryptableCredentials(t *testing.T) {
 	require.NoError(t, st.DeleteKey())
 
 	_, _, err := GetAccountWithAgentFallback(cloudURL)
-	require.Error(t, err, "agent fallback must not swallow the undecryptable error")
+	require.Error(t, err, "agent fallback must not swallow the undecryptable error") //nolint:forbidigo // pre-existing
 	assert.True(t, IsUndecryptableCredentials(err))
 }
 
@@ -856,7 +858,7 @@ func TestKeyFailureOnAvailableStoreKeepsTheEnvelope(t *testing.T) {
 	st.createErr = errors.New("keychain hiccup")
 
 	err = StoreCredentials(testCreds())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "keychain hiccup")
 	after, err := os.ReadFile(credsFile)
 	require.NoError(t, err)

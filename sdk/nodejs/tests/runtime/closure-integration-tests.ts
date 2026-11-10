@@ -121,9 +121,11 @@ async function run(
     // Install the codepaths-app fixture used by the computeCodePaths test.
     await install(packageManager, path.join(tmpDir, "codepaths-app"), pnpmVersion);
 
-    await execa("npx", ["--no-install", "tsc"], { cwd: tmpDir });
+    const tsc = require.resolve("typescript/bin/tsc", { paths: [tmpDir] });
+    await execa(process.execPath, [tsc], { cwd: tmpDir });
 
-    await execa("npx", ["--no-install", "mocha", "--timeout", "30000", "test.js"], {
+    const mocha = require.resolve("mocha/bin/mocha.js", { paths: [tmpDir] });
+    await execa(process.execPath, [mocha, "--timeout", "30000", "test.js"], {
         cwd: tmpDir,
         stdio: "inherit",
         env: { CLOSURE_TEST_PACKAGE_MANAGER: packageManager, COREPACK_ENABLE_DOWNLOAD_PROMPT: "0" },

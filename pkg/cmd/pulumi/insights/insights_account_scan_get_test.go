@@ -299,7 +299,7 @@ func TestInsightsAccountScanGetCmd_ClientErrorWrapped(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, "prod-aws", "scan-1", defaultScanGetArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "getting insights scan")
 	assert.ErrorIs(t, err, wantErr)
 }

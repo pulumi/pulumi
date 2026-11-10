@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,18 +57,20 @@ func init() {
 					require.True(l, result.IsBail(res.Err), "expected a bail result on preview")
 					requireFailedCreateDiagnostic(l, res.Events, "Preview failed: failed create")
 
-					var stackOutputs resource.PropertyMap
+					var stackOutputs property.Map
+					var found bool
 					for _, evt := range res.Events {
 						if evt.Type != engine.ResourceOutputsEvent {
 							continue
 						}
 						payload := evt.Payload().(engine.ResourceOutputsEventPayload)
 						if payload.Metadata.URN.Type() == resource.RootStackType && payload.Metadata.New != nil {
-							stackOutputs = payload.Metadata.New.Outputs
+							stackOutputs = resource.FromResourcePropertyMap(payload.Metadata.New.Outputs)
+							found = true
 						}
 					}
-					require.NotNil(l, stackOutputs, "expected a stack ResourceOutputsEvent")
-					fv, ok := stackOutputs["failingValue"]
+					require.True(l, found, "expected a stack ResourceOutputsEvent")
+					fv, ok := stackOutputs.GetOk("failingValue")
 					require.True(l, ok,
 						"expected stack output 'failingValue' to be registered — SDK must not halt on failed dependency, got %v",
 						stackOutputs)
@@ -87,9 +90,11 @@ func init() {
 					}
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					require.Contains(l, stack.Outputs, resource.PropertyKey("failingValue"))
-					assert.True(l, stack.Outputs["failingValue"].IsComputed(),
-						"expected stack output 'failingValue' to be unknown, got %v", stack.Outputs["failingValue"])
+					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					fv, ok := stackOutputs.GetOk("failingValue")
+					require.True(l, ok)
+					assert.True(l, fv.IsComputed(),
+						"expected stack output 'failingValue' to be unknown, got %v", fv)
 				},
 			},
 		},

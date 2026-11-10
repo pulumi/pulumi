@@ -1,0 +1,7 @@
+name: policy-unknowns
+runtime:
+  name: python
+  options:
+    toolchain: uv
+    typechecker: pyright
+    virtualenv: venv

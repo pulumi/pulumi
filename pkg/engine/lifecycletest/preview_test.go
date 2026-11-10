@@ -120,15 +120,15 @@ func TestPreviewRefreshWithProgram(t *testing.T) {
 		programExecutions++
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.ToResourcePropertyMap(programInputs),
+			Inputs: programInputs,
 		})
 		require.NoError(t, err)
 
 		// First time we should see the create outputs, second time the update outputs
 		if programExecutions == 1 {
-			assert.Equal(t, createOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, createOutputs, resp.Outputs)
 		} else {
-			assert.Equal(t, updateOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+			assert.Equal(t, updateOutputs, resp.Outputs)
 		}
 
 		return nil
@@ -183,27 +183,27 @@ func TestPreviewStackOutputs(t *testing.T) {
 		resp, err := monitor.RegisterResource(resource.RootStackType, "test", false)
 		require.NoError(t, err)
 
-		var outputs resource.PropertyMap
+		var outputs property.Map
 
 		switch step {
 		case 0:
-			outputs = resource.PropertyMap{
-				"first":  resource.NewProperty("abc"),
-				"second": resource.NewProperty("def"),
-			}
+			outputs = property.NewMap(map[string]property.Value{
+				"first":  property.New("abc"),
+				"second": property.New("def"),
+			})
 		case 1:
 			// Changes to "first" should be shown in the preview.
 			// Changes to "second" should not be shown in the preview, as it is not changed.
-			outputs = resource.PropertyMap{
-				"first":  resource.NewProperty("step 1"),
-				"second": resource.NewProperty("def"),
-			}
+			outputs = property.NewMap(map[string]property.Value{
+				"first":  property.New("step 1"),
+				"second": property.New("def"),
+			})
 		case 2:
 			// We're changing "first" to an unknown, so it should not be shown in the preview.
-			outputs = resource.PropertyMap{
-				"first":  resource.NewProperty(resource.Computed{}),
-				"second": resource.NewProperty("def"),
-			}
+			outputs = property.NewMap(map[string]property.Value{
+				"first":  property.New(property.Computed),
+				"second": property.New("def"),
+			})
 		}
 
 		err = monitor.RegisterResourceOutputs(resp.URN, outputs)

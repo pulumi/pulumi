@@ -42,7 +42,7 @@ func TestRegisterResourceErrorsOnMissingPendingNew(t *testing.T) {
 		urn: urn,
 	})
 	// Should error, but not panic since the resource is being registered twice.
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 type stepGate struct {
@@ -212,8 +212,8 @@ func (e *mockRegisterResourceOutputsEvent) event() {}
 
 func (e *mockRegisterResourceOutputsEvent) URN() resource.URN { return e.urn }
 
-func (e *mockRegisterResourceOutputsEvent) Outputs() resource.PropertyMap {
-	return resource.PropertyMap{}
+func (e *mockRegisterResourceOutputsEvent) Outputs() property.Map {
+	return property.Map{}
 }
 
 func (e *mockRegisterResourceOutputsEvent) Done() {}

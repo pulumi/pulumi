@@ -182,8 +182,8 @@ func TestRegisterResourceMarshalErrorLogged(t *testing.T) {
 		return ctx.RegisterResource("test:index:res", "test", Map{"badProp": out}, &res)
 	}, logError, WithMocks("project", "stack", mocks))
 
-	require.Error(t, err)
-	require.Error(t, loggedErr)
+	require.Error(t, err)       //nolint:forbidigo // pre-existing
+	require.Error(t, loggedErr) //nolint:forbidigo // pre-existing
 	assert.Contains(t, loggedErr.Error(), "marshaling properties")
 	assert.Contains(t, loggedErr.Error(), "badProp")
 }
@@ -1279,12 +1279,12 @@ func TestExistsResource(t *testing.T) {
 		_, _, _, _, err := await(res.ID())
 		require.NoError(t, err)
 
-		exists, known, _, _, err := await(ctx.ExistsResource("pkg:index:Resource", ID("existing"), nil, ""))
+		exists, known, _, _, err := await(ctx.ExistsResource("pkg:index:Resource", String("existing"), nil, ""))
 		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, true, exists)
 
-		exists, known, _, _, err = await(ctx.ExistsResource("pkg:index:Resource", ID("missing"), nil, ""))
+		exists, known, _, _, err = await(ctx.ExistsResource("pkg:index:Resource", String("missing"), nil, ""))
 		require.NoError(t, err)
 		assert.True(t, known)
 		assert.Equal(t, false, exists)

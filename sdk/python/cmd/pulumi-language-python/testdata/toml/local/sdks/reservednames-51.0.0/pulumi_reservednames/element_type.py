@@ -113,6 +113,12 @@ class ElementType(pulumi.CustomResource):
         __props__.__dict__["element_type"] = None
         return ElementType(resource_name, opts=opts, __props__=__props__)
 
+    @staticmethod
+    def exists(id: pulumi.Input[str],
+            opts: Optional[pulumi.ResourceOptions] = None) -> pulumi.Output[bool]:
+        __props__: dict = {}
+        return pulumi.runtime.exists_resource(None, 'reservednames:index:ElementType', id, __props__, opts or pulumi.ResourceOptions())
+
     @_builtins.property
     @pulumi.getter(name="elementType")
     def element_type(self) -> pulumi.Output['outputs.ElementType']:

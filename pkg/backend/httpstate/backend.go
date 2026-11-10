@@ -39,18 +39,17 @@ import (
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"github.com/pkg/browser"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
-	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	esc_client "github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgLogging "github.com/pulumi/pulumi/pkg/v3/logging"
-	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/registry"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack/snapshot"
@@ -102,8 +101,8 @@ func agentCredentialUseFromContext(ctx context.Context) *agentCredentialUse {
 
 type skipAgentSignupContextKey struct{}
 
-// ContextWithoutAgentSignup returns a context in which agent mode never creates a new agent account,
-// for use by `pulumi login`.
+// ContextWithoutAgentSignup returns a context in which agent mode neither reuses shared agent credentials
+// nor creates a new agent account, for use by `pulumi login`.
 func ContextWithoutAgentSignup(ctx context.Context) context.Context {
 	return context.WithValue(ctx, skipAgentSignupContextKey{}, true)
 }
@@ -193,6 +192,8 @@ type Backend interface {
 
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
 	Client() *client.Client
+	// ESCClient returns a client for the Pulumi ESC API, which also has the change request routes that approvals use.
+	ESCClient() esc_client.Client
 
 	RunDeployment(ctx context.Context, stackRef backend.StackReference, req apitype.CreateDeploymentRequest,
 		opts display.Options, deploymentInitiator string, streamDeploymentLogs bool) error
@@ -227,6 +228,7 @@ type cachedUpdateData struct {
 }
 
 type cloudBackend struct {
+	helper       *credentialhelper.Result
 	d            diag.Sink
 	url          string
 	client       *client.Client
@@ -250,24 +252,20 @@ type cloudBackend struct {
 // Assert we implement the backend.Backend and backend.SpecificDeploymentExporter interfaces.
 var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
-// New creates a new Pulumi backend for the given cloud API URL and token.
+// New creates a Pulumi backend using the command's shared client source.
 func New(ctx context.Context, d diag.Sink,
-	cloudURL string, project *workspace.Project, insecure bool,
+	cloudURL string, project *workspace.Project, insecure bool, clients *ClientSource,
 ) (Backend, error) {
 	contract.Requiref(d != nil, "d", "expected a non-nil diag.Sink")
+	contract.Requiref(clients != nil, "clients", "expected a backend client source")
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
-	account, err := getBackendAccount(ctx, cloudURL)
+	resolved, err := clients.resolve(ctx, cloudURL, insecure)
 	if err != nil {
-		return nil, fmt.Errorf("getting stored credentials: %w", err)
+		return nil, err
 	}
+	account, helper, apiClient := resolved.account, resolved.helper, resolved.client
 	apiToken := account.AccessToken
-
-	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
-	apiClient.WithRefresh(account.RefreshToken, func(at string, expiresAt time.Time, rt string) error {
-		account.SetCredentials(at, expiresAt, rt)
-		return account.Save(cloudURL, false)
-	})
-	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
+	escClient := esc_client.NewWithCredentials(client.UserAgent(), cloudURL, apiToken, insecure, helper)
 
 	org := env.DefaultOrg.Value()
 	if org == "" {
@@ -299,12 +297,13 @@ func New(ctx context.Context, d diag.Sink,
 	}
 
 	return &cloudBackend{
+		helper:         helper,
 		d:              d,
 		url:            cloudURL,
 		client:         apiClient,
 		escClient:      escClient,
 		capabilities:   detectCapabilities(ctx, d, apiClient),
-		userInfo:       detectUserInfo(ctx, d, cloudURL, apiClient),
+		userInfo:       detectUserInfo(ctx, d, apiClient, account),
 		defaultOrg:     defaultOrg,
 		currentProject: project,
 	}, nil
@@ -312,10 +311,10 @@ func New(ctx context.Context, d diag.Sink,
 
 // getBackendAccount returns account credentials for a backend, falling back to
 // the shared agent cache when an agent cannot read the default credentials.
-func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account, error) {
+func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account, bool, error) {
 	account, fromAgent, err := workspace.GetAccountWithAgentFallback(cloudURL)
 	if err != nil {
-		return workspace.Account{}, err
+		return workspace.Account{}, false, err
 	}
 	if fromAgent {
 		logging.V(7).Infof("Using backend account for %q from shared agent credentials", cloudURL)
@@ -325,7 +324,7 @@ func getBackendAccount(ctx context.Context, cloudURL string) (workspace.Account,
 	} else {
 		logging.V(7).Infof("No backend account for %q found", cloudURL)
 	}
-	return account, nil
+	return account, fromAgent, nil
 }
 
 // storeUserAccount stores credentials from a user-controlled source. In agent
@@ -500,7 +499,15 @@ var newLoginManager = func() LoginManager {
 	return defaultLoginManager{}
 }
 
-type defaultLoginManager struct{}
+type defaultLoginManager struct{ helper *credentialhelper.Result }
+
+// NewLoginManagerWithCredentials uses the supplied helper credentials instead of stored tokens.
+func NewLoginManagerWithCredentials(helper *credentialhelper.Result) LoginManager {
+	if !helper.HasHTTP() {
+		return NewLoginManager()
+	}
+	return defaultLoginManager{helper: helper}
+}
 
 // validateStoredAccount checks whether a stored account can still authenticate, refreshing cached
 // user and token metadata when needed. An account that carries a refresh token but a stale (or
@@ -576,6 +583,16 @@ func (m defaultLoginManager) Current(
 	setCurrent bool,
 ) (*workspace.Account, error) {
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
+	if helper := m.helper; helper != nil && helper.HasHTTP() {
+		c := client.NewClientWithCredentials(helper, insecure, cmdutil.Diag())
+		username, orgs, info, err := c.GetPulumiAccountDetails(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return &workspace.Account{
+			AccessToken: helper.Token(), Username: username, Organizations: orgs, TokenInformation: info, Insecure: insecure,
+		}, nil
+	}
 
 	// We intentionally don't accept command-line args for the user's access token. Having it in
 	// .bash_history is not great, and specifying it via flag isn't of much use.
@@ -660,7 +677,8 @@ func (m defaultLoginManager) Current(
 
 // currentOrSignupAgentAccount returns valid credentials from the shared agent
 // cache, reports active claim state when cached credentials cannot
-// authenticate, or creates a new agent account when no usable state remains.
+// authenticate, or, when automatic agent signup is enabled, creates a new
+// agent account when no usable state remains.
 func (m defaultLoginManager) currentOrSignupAgentAccount(
 	ctx context.Context,
 	cloudURL string,
@@ -674,6 +692,16 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		return nil, err
 	} else if deleted {
 		logging.V(7).Infof("Deleted expired shared agent credentials")
+	}
+
+	// `pulumi login` logs the user in as themselves, so it neither reuses nor creates agent credentials.
+	// An existing agent account stays reachable through its claim URL.
+	if skipAgentSignup(ctx) {
+		if workspace.IsUndecryptableCredentials(defaultCredsErr) {
+			return nil, defaultCredsErr
+		}
+		logging.V(7).Infof("Agent signup disabled for this command; ignoring shared agent credentials for %q", cloudURL)
+		return nil, nil
 	}
 
 	agentAccount, err := workspace.GetAgentAccount(cloudURL)
@@ -694,11 +722,6 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 			}
 			MarkAgentCredentialsUsed(ctx, cloudURL)
 			return &agentAccount, nil
-		}
-		// `pulumi login` is how users recover from rejected agent credentials.
-		if skipAgentSignup(ctx) && !workspace.IsUndecryptableCredentials(defaultCredsErr) {
-			logging.V(7).Infof("Shared agent credentials for %q are not valid; ignoring them for this login", cloudURL)
-			return nil, nil
 		}
 		if expiresAt, tokenValid := workspace.AgentAccessTokenExpiresAt(agentAccount, now); tokenValid {
 			logging.V(7).Infof(
@@ -722,9 +745,9 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 				"shared agent credentials for %q are no longer valid; claim the account to regain access: %w",
 				cloudURL, ErrUnauthorized)
 		}
-		logging.V(7).Infof("Shared agent credentials for %q are not valid; creating a new agent account", cloudURL)
+		logging.V(7).Infof("Shared agent credentials for %q are not valid", cloudURL)
 	} else {
-		logging.V(7).Infof("No shared agent credentials found for %q; creating a new agent account", cloudURL)
+		logging.V(7).Infof("No shared agent credentials found for %q", cloudURL)
 	}
 
 	// An undecryptable credentials file must surface its actionable error,
@@ -733,8 +756,8 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		return nil, defaultCredsErr
 	}
 
-	if skipAgentSignup(ctx) {
-		logging.V(7).Infof("Agent signup disabled for this command; not creating a new agent account")
+	if !env.EnableAutomaticAgentSignup.Value() {
+		logging.V(7).Infof("Automatic agent signup is disabled; not creating an agent account for %q", cloudURL)
 		return nil, nil
 	}
 
@@ -810,6 +833,11 @@ func (m defaultLoginManager) Login(
 	// Agents have no terminal to prompt in, but the browser flow needs no console input.
 	if !cmdutil.Interactive() && skipAgentSignup(ctx) && accountLink != "" && agentdetect.Detect(os.Getenv) != "" {
 		return loginWithBrowser(ctx, cloudURL, insecure, command, welcome, setCurrent, opts)
+	}
+
+	// Point agents at `pulumi login`, which they can ask the user to run, rather than at an access token.
+	if !cmdutil.Interactive() && agentdetect.Detect(os.Getenv) != "" {
+		return nil, backenderr.LoginRequiredError{}
 	}
 
 	if !cmdutil.Interactive() {
@@ -900,6 +928,7 @@ func (m defaultLoginManager) LoginWithOIDCToken(
 	expiration time.Duration,
 	setCurrent bool,
 ) (*workspace.Account, error) {
+	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	accessToken, expiresAt, err := exchangeOidcToken(
 		ctx, sink, cloudURL, insecure, oidcTokenSource, organization, scope, expiration)
 	if err != nil {
@@ -970,12 +999,9 @@ func (b *cloudBackend) Name() string {
 	return b.url
 }
 
+// URL returns the root of the Pulumi Cloud console, which opens the user's default organization.
 func (b *cloudBackend) URL() string {
-	user, _, _, err := b.CurrentUser()
-	if err != nil {
-		return client.CloudConsoleURL(b.url)
-	}
-	return client.CloudConsoleURL(b.url, user)
+	return client.CloudConsoleURL(b.url)
 }
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
@@ -1063,7 +1089,7 @@ func (b *cloudBackend) GetStackPolicyPacks(
 		return nil, err
 	}
 
-	resp, err := b.client.GetStackPolicyPacks(ctx, stackID)
+	resp, err := b.client.GetStackPolicyPacks(ctx, stackID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -1384,7 +1410,8 @@ func (b *cloudBackend) CreateStack(
 
 	b.downgradeUntypedDeploymentVersionIfNeeded(ctx, initialState)
 
-	apistack, details, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
+	apistack, details, err := b.client.CreateStack(
+		ctx, stackID, tags, opts.Teams, initialState, opts.Config, opts.ManagedEnvironment)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
@@ -1653,7 +1680,7 @@ func (b *cloudBackend) Explain(
 
 func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
-) (sdkDisplay.ResourceChanges, error) {
+) (sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	op.Imports = imports
 
 	if op.Opts.PreviewOnly {
@@ -1664,12 +1691,12 @@ func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, snap, err := b.apply(
 			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
-		return changes, err
+		return changes, snap, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, b, nil)
+	return backend.PreviewThenPromptThenExecuteImport(ctx, stack, op, b.apply, b)
 }
 
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
@@ -1683,7 +1710,7 @@ func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, _, err := b.apply(
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
@@ -1701,17 +1728,11 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 		}
 
 		op.Opts.Engine.GeneratePlan = false
-		_, changes, err := b.apply(
+		_, changes, _, err := b.apply(
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, b, nil)
-}
-
-func (b *cloudBackend) Watch(ctx context.Context, stk backend.Stack,
-	op backend.UpdateOperation, paths []string,
-) error {
-	return backend.Watch(ctx, b, stk, op, b.apply, paths)
 }
 
 func (b *cloudBackend) Search(
@@ -1866,6 +1887,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		return client.UpdateIdentifier{}, updateMetadata{}, fmt.Errorf("getting stack tags: %w", err)
 	}
 
+	reqOpts := client.UpdateRequestOptions{Environment: op.StackConfiguration.ManagedEnvironment}
+
 	var update client.UpdateIdentifier
 	var version int
 	var token string
@@ -1878,7 +1901,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		logging.V(7).Infof("Using combined begin-update endpoint for %s", stackRef)
 		resp, err := b.client.BeginUpdate(
 			ctx, action, stackID, op.Proj, op.StackConfiguration.Config,
-			metadata, op.Opts.Engine, tags, dryRun, op.CoherenceWindow)
+			metadata, op.Opts.Engine, tags, dryRun, op.CoherenceWindow, reqOpts)
 		if err != nil {
 			if err, ok := err.(*apitype.ErrorResponse); ok && err.Code == 409 {
 				conflict := backenderr.ConflictingUpdateError{Err: err}
@@ -1910,7 +1933,7 @@ func (b *cloudBackend) createAndStartUpdate(
 		var updateDetails client.CreateUpdateDetails
 		update, updateDetails, err = b.client.CreateUpdate(
 			ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun,
-			op.CoherenceWindow)
+			op.CoherenceWindow, reqOpts)
 		if err != nil {
 			return client.UpdateIdentifier{}, updateMetadata{}, err
 		}
@@ -2008,19 +2031,18 @@ func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
 	events chan<- engine.Event,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	resetKeepRunning := nosleep.KeepRunning()
 	defer resetKeepRunning()
 
 	err := backend.CurrentProjectContradictsWorkspace(b.currentProject, stack.Ref())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&
-		op.Opts.Display.Type != display.DisplayWatch {
+	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
 		// than a logical span, but this is a convenient way to record this information.
 		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
@@ -2036,7 +2058,7 @@ func (b *cloudBackend) apply(
 	// Create an update object to persist results.
 	update, updateMeta, err := b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	// BeginUpdate cached the pre-update deployment/tags for the engine's initial reads; it is
 	// stale once this update mutates state, so drop it when apply returns. Otherwise a later
@@ -2147,8 +2169,11 @@ func (b *cloudBackend) runEngineAction(
 	op backend.UpdateOperation, update client.UpdateIdentifier, token, permalink string,
 	updateStartedEvent engine.Event,
 	callerEventsOpt chan<- engine.Event, dryRun bool, journalVersion int64,
-) (*deploy.Plan, sdkDisplay.ResourceChanges, error) {
+) (*deploy.Plan, sdkDisplay.ResourceChanges, *deploy.Snapshot, error) {
 	contract.Assertf(token != "", "persisted actions require a token")
+	if b.helper != nil && b.helper.HasHTTP() {
+		op.Opts.Engine.CloudCredentialEnv = b.helper.PluginEnv()
+	}
 
 	// Send synchronously before anything can fail, so the caller always gets it and the send
 	// can't outlive the caller's channel. Not sent to the display: it would land in the event log.
@@ -2158,7 +2183,7 @@ func (b *cloudBackend) runEngineAction(
 
 	u, tokenSource, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	var outputsRecorder *stackOutputsRecorder
@@ -2220,30 +2245,47 @@ func (b *cloudBackend) runEngineAction(
 			journalManager, err := engine.NewJournalSnapshotManagerWithVersion(
 				snapshotJournaler, u.Target.Snapshot, op.SecretsManager, journalVersion)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
+			// Attach a sidecar legacy SnapshotManager with a DiscardPersister so we can return the
+			// final in-memory snapshot to callers (e.g. `pulumi import` for codegen). All real
+			// persistence happens via the journaler; the sidecar only tracks state in memory.
+			snapshotManager = backend.NewSnapshotManager(
+				backend.DiscardPersister{}, op.SecretsManager, u.Target.Snapshot, nil)
 			combinedManager = &engine.CombinedManager{
-				Managers: []engine.SnapshotManager{journalManager},
+				Managers:          []engine.SnapshotManager{journalManager, snapshotManager},
+				CollectErrorsOnly: []bool{false, true},
 			}
 		} else {
 			persister := b.newSnapshotPersister(ctx, update, tokenSource)
 			snapshotJournaler, err = backend.NewSnapshotJournaler(
-				ctx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot)
+				ctx, journalPersister, op.SecretsManager, op.SecretsProvider, u.Target.Snapshot)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			// The shadow journal is local-only (it validates snapshots against the legacy snapshot manager),
 			// so it always supports the latest journal version.
 			journalManager, err := engine.NewJournalSnapshotManagerWithVersion(
 				snapshotJournaler, u.Target.Snapshot, op.SecretsManager, apitype.LatestJournalVersion)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot, engineEvents)
 			combinedManager = &engine.CombinedManager{
 				Managers:          []engine.SnapshotManager{snapshotManager, journalManager},
 				CollectErrorsOnly: []bool{false, true},
 			}
+		}
+	} else {
+		// For preview and dry-run (preview-only) operations we still want the engine to build an
+		// in-memory snapshot so callers (e.g. `pulumi import --preview-only`) can consume it. Wire
+		// up a plain SnapshotManager with a discarding persister: resources are mutated in memory
+		// as the engine executes steps, but nothing is persisted to the service or the shadow
+		// journal.
+		snapshotManager = backend.NewSnapshotManager(
+			backend.DiscardPersister{}, op.SecretsManager, u.Target.Snapshot, engineEvents)
+		combinedManager = &engine.CombinedManager{
+			Managers: []engine.SnapshotManager{snapshotManager},
 		}
 	}
 
@@ -2259,7 +2301,7 @@ func (b *cloudBackend) runEngineAction(
 			StateMigrations: cloudPersistenceSupportsStateMigrations(journalVersion, journalingDisabled),
 		},
 		FinalizeUpdateFunc: func() {
-			if snapshotManager == nil || journalPersister == nil {
+			if snapshotManager == nil || snapshotJournaler == nil {
 				return
 			}
 			err := errors.Join(validationErrs...)
@@ -2294,6 +2336,13 @@ func (b *cloudBackend) runEngineAction(
 		op.Opts.Engine.HostFactory = backend.DefaultHostFactory(b.GetReadOnlyCloudRegistry())
 	}
 
+	if notice := op.StackConfiguration.ManagedEnvironmentNotice; notice != "" {
+		engineEvents <- engine.NewEvent(engine.StdoutEventPayload{
+			Message: logging.FilterString(notice),
+			Color:   op.Opts.Display.Color,
+		})
+	}
+
 	var plan *deploy.Plan
 	var changes sdkDisplay.ResourceChanges
 	var updateErr error
@@ -2326,6 +2375,12 @@ func (b *cloudBackend) runEngineAction(
 	<-displayDone
 	cancellationScope.Close() // Don't take any cancellations anymore, we're shutting down.
 	close(engineEvents)
+	// Capture the final in-memory snapshot before closing the manager; Snap() is safe to call now
+	// that the engine has returned.
+	var snap *deploy.Snapshot
+	if snapshotManager != nil {
+		snap = snapshotManager.Snap()
+	}
 	if combinedManager != nil && !snapshotManagerClosed {
 		err = combinedManager.Close()
 		// If the snapshot manager failed to close, we should return that error.
@@ -2335,7 +2390,7 @@ func (b *cloudBackend) runEngineAction(
 		// checks, or a failure to write that means the snapshot is incomplete).
 		// Reporting now should make debugging and reporting easier.
 		if err != nil {
-			return plan, changes, fmt.Errorf("writing snapshot: %w", err)
+			return plan, changes, snap, fmt.Errorf("writing snapshot: %w", err)
 		}
 	}
 
@@ -2363,7 +2418,7 @@ func (b *cloudBackend) runEngineAction(
 		updateErr = result.MergeBails(updateErr, fmt.Errorf("failed to complete update: %w", completeErr))
 	}
 
-	return plan, changes, updateErr
+	return plan, changes, snap, updateErr
 }
 
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
@@ -2505,17 +2560,6 @@ func convertConfig(apiConfig map[string]apitype.ConfigValue) (config.Map, error)
 	return c, nil
 }
 
-func (b *cloudBackend) GetLogs(ctx context.Context,
-	secretsProvider secrets.Provider, stack backend.Stack, cfg backend.StackConfiguration,
-	logQuery operations.LogQuery,
-) ([]operations.LogEntry, error) {
-	target, targetErr := b.getTarget(ctx, secretsProvider, stack.Ref(), cfg.Config, cfg.Decrypter)
-	if targetErr != nil {
-		return nil, targetErr
-	}
-	return diy.GetLogsForTarget(ctx, target, logQuery)
-}
-
 // ExportDeployment exports a deployment _from_ the backend service.
 // This will return the stack state that was being stored on the backend service.
 func (b *cloudBackend) ExportDeployment(ctx context.Context,
@@ -2619,6 +2663,10 @@ func (b *cloudBackend) getCloudStackIdentifier(stackRef backend.StackReference) 
 // Client returns a client object that may be used to interact with this backend.
 func (b *cloudBackend) Client() *client.Client {
 	return b.client
+}
+
+func (b *cloudBackend) ESCClient() esc_client.Client {
+	return b.escClient
 }
 
 type DisplayEventType string
@@ -3017,6 +3065,8 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 
 	events := make(chan engine.Event) // Note: unbuffered, but we assume it won't matter in practice.
 	done := make(chan bool)
+	stopHelperDiagnostics := b.routeHelperDiagnostics(events, done, opts)
+	defer stopHelperDiagnostics()
 
 	// Timings do not display correctly when rendering remote events, so suppress showing them.
 	opts.SuppressTimings = true
@@ -3057,6 +3107,7 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 				events <- engine.NewCancelEvent()
 			}
 
+			stopHelperDiagnostics()
 			close(events)
 			<-done
 			switch opResult {
@@ -3146,12 +3197,11 @@ func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Clien
 func detectUserInfo(
 	ctx context.Context,
 	d diag.Sink,
-	cloudURL string,
 	client *client.Client,
+	account workspace.Account,
 ) *promise.Promise[userInfo] {
 	return promise.Run(func() (userInfo, error) {
-		account, err := workspace.GetAccount(cloudURL)
-		if err == nil && account.Username != "" {
+		if account.Username != "" {
 			logging.V(1).Infof("found cached username for access token")
 			return userInfo{
 				username:      account.Username,
