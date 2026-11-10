@@ -40,7 +40,7 @@ import (
 
 const (
 	confirmYes    = "Yes, create the project"
-	confirmChange = "Change these values"
+	confirmChange = "No, change these values"
 )
 
 var errNoProjectCreated = errors.New("no project created; please use `pulumi new` to start again")
@@ -324,7 +324,7 @@ func confirmGuidedValues(
 	if shows.stack {
 		// A DIY backend validates a stack name without a project (e.g. `prod`) against its current
 		// project, which isn't saved yet. Set it before any stack-name prompt: the one below for a taken
-		// default, and the one after "Change these values". Any project name will do, even if renamed.
+		// default, and the one after "No, change these values". Any project name will do, even if renamed.
 		b.SetCurrentProject(&workspace.Project{Name: tokens.PackageName(c.name)})
 		if c.stackName, err = buildStackName(ctx, b, defaultStackName); err != nil {
 			return nil, err
@@ -351,7 +351,7 @@ func confirmGuidedValues(
 		rows = append(rows, field{"Stack name", c.stackName})
 	}
 
-	accepted, err := askConfirmation(args.stdout, opts, args.selectOne, rows, c.configRows())
+	accepted, err := askConfirmation(args.stdout, opts, args.selectOne, rows, c.configLines())
 	if err != nil {
 		return nil, err
 	}
@@ -507,43 +507,54 @@ func (c *setupAnswers) repromptConfig(
 	return nil
 }
 
-func (c *setupAnswers) configRows() []field {
+// configLines renders each config value as `key = value`, hiding secrets.
+func (c *setupAnswers) configLines() []string {
 	if c.config == nil {
 		return nil
 	}
-	rows := make([]field, 0, len(c.config.values))
+	lines := make([]string, 0, len(c.config.values))
 	for _, v := range c.config.values {
 		value := v.value
 		if v.secret {
 			value = "[secret]"
 		}
-		rows = append(rows, field{cmdConfig.PrettyKeyForProject(v.key, tokens.PackageName(c.name)), value})
+		lines = append(lines, cmdConfig.PrettyKeyForProject(v.key, tokens.PackageName(c.name))+" = "+value)
 	}
-	return rows
+	return lines
 }
 
 func askConfirmation(
-	w io.Writer, opts display.Options, sel selectFunc, rows, configRows []field,
+	w io.Writer, opts display.Options, sel selectFunc, rows []field, configLines []string,
 ) (bool, error) {
 	fmt.Fprintln(w)
-	printFields(w, opts.Color, "", rows)
-	if len(configRows) > 0 {
-		fmt.Fprintln(w, opts.Color.Colorize(colors.SpecSubHeadline+"Config:"+colors.Reset))
-		printFields(w, opts.Color, "  ", configRows)
+	fmt.Fprintln(w, opts.Color.Colorize(colors.SpecSubHeadline+"Review your new project:"+colors.Reset))
+	fmt.Fprintln(w)
+	if len(configLines) > 0 {
+		rows = append(slices.Clip(rows), field{"Config", strings.Join(configLines, "\n")})
 	}
-	i, err := sel("Do these look good?", []string{confirmYes, confirmChange}, opts)
+	printFields(w, opts.Color, "  ", rows)
+	fmt.Fprintln(w)
+	i, err := sel("Create the project with these settings?", []string{confirmYes, confirmChange}, opts)
 	return i == 0, err
 }
 
+// field is a labelled value. A value with several lines lists one item per line.
 type field struct{ label, value string }
 
+// printFields prints fields as a table of plain labels and bold values, aligning every line of
+// each value in one column.
 func printFields(w io.Writer, color colors.Colorization, indent string, fields []field) {
 	width := 0
 	for _, f := range fields {
 		width = max(width, len(f.label))
 	}
 	for _, f := range fields {
-		label := f.label + ":" + strings.Repeat(" ", width-len(f.label))
-		fmt.Fprintln(w, indent+color.Colorize(colors.SpecSubHeadline+label+colors.Reset)+"  "+f.value)
+		label := f.label + strings.Repeat(" ", width-len(f.label))
+		for i, line := range strings.Split(f.value, "\n") {
+			if i > 0 {
+				label = strings.Repeat(" ", width)
+			}
+			fmt.Fprintln(w, indent+label+"   "+color.Colorize(colors.SpecSubHeadline+line+colors.Reset))
+		}
 	}
 }
