@@ -162,7 +162,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 				},
 				InvokeF: func(_ context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
 					assert.Equal(t, "pkgExt:index:func", req.Tok.String())
-					assert.Equal(t, resource.NewProperty("in"), resource.ToResourcePropertyValue(req.Args.Get("input")))
+					assert.Equal(t, property.New("in"), req.Args.Get("input"))
 
 					return plugin.InvokeResponse{
 						Properties: property.NewMap(map[string]property.Value{
@@ -181,7 +181,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: coalesceReadOutputs(req),
+							Outputs: &req.State,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -247,9 +247,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t, "mlcA", mlcA.URN.Name())
-		assert.Equal(t, resource.PropertyMap{
-			"output": resource.NewProperty("output"),
-		}, mlcA.Outputs)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"output": property.New("output"),
+		}), mlcA.Outputs)
 		assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 			"output": {"urn:pulumi:stack::m::typA::resB"},
 		}, mlcA.Dependencies)
@@ -275,21 +275,21 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t, "mlcB", mlcB.URN.Name())
-		assert.Equal(t, resource.PropertyMap{
-			"output": resource.NewProperty("output"),
-		}, mlcB.Outputs)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"output": property.New("output"),
+		}), mlcB.Outputs)
 		assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 			"output": {"urn:pulumi:stack::m::typA::resB"},
 		}, mlcB.Dependencies)
 
 		// Test invoking a function on the replacement provider
-		result, _, err := monitor.Invoke("pkgExt:index:func", resource.PropertyMap{
-			"input": resource.NewProperty("in"),
-		}, "", "", extRef)
+		result, _, err := monitor.Invoke("pkgExt:index:func", property.NewMap(map[string]property.Value{
+			"input": property.New("in"),
+		}), "", "", extRef)
 		require.NoError(t, err)
-		assert.Equal(t, resource.PropertyMap{
-			"output": resource.NewProperty("in replacement"),
-		}, result)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"output": property.New("in replacement"),
+		}), result)
 
 		// Test reading a resource on the replacement provider
 		_, _, err = monitor.ReadResource(
@@ -297,7 +297,7 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			"resC",
 			"id",
 			"",
-			resource.PropertyMap{},
+			property.Map{},
 			"",
 			"",
 			"",
@@ -310,9 +310,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 		// Test calling a function on the replacement provider
 		callOuts, callDeps, callFailures, err := monitor.Call(
 			"pkgExt:index:call",
-			resource.PropertyMap{
-				"input": resource.NewProperty("in"),
-			},
+			property.NewMap(map[string]property.Value{
+				"input": property.New("in"),
+			}),
 			map[resource.PropertyKey][]resource.URN{
 				"input": {"urn:pulumi:stack::m::typA::resB"},
 			},
@@ -324,9 +324,9 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 			"",
 		)
 		require.NoError(t, err)
-		assert.Equal(t, resource.PropertyMap{
-			"output": resource.NewProperty("output"),
-		}, callOuts)
+		assert.Equal(t, property.NewMap(map[string]property.Value{
+			"output": property.New("output"),
+		}), callOuts)
 		assert.Equal(t, map[resource.PropertyKey][]resource.URN{
 			"output": {"urn:pulumi:stack::m::typA::resB"},
 		}, callDeps)
@@ -401,20 +401,20 @@ func TestReplacementParameterizedProviderConfig(t *testing.T) {
 			return &deploytest.Provider{
 				ConfigureF: func(_ context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
 					// Ensure that the provider configuration is what we expect.
-					var expected resource.PropertyMap
+					var expected property.Map
 					if param == "replacement" {
-						expected = resource.NewPropertyMapFromMap(map[string]any{
-							"version": "0.5.0",
-							"name":    "testingExt",
+						expected = property.NewMap(map[string]property.Value{
+							"version": property.New("0.5.0"),
+							"name":    property.New("testingExt"),
 						})
 					} else {
-						expected = resource.NewPropertyMapFromMap(map[string]any{
-							"version": "1.0.0",
-							"name":    "testingBase",
+						expected = property.NewMap(map[string]property.Value{
+							"version": property.New("1.0.0"),
+							"name":    property.New("testingBase"),
 						})
 					}
 
-					if !resource.ToResourcePropertyMap(req.Inputs).DeepEquals(expected) {
+					if !req.Inputs.Equals(expected) {
 						return plugin.ConfigureResponse{},
 							fmt.Errorf("expected provider configuration to be %v, got %v", expected, req.Inputs)
 					}
@@ -573,9 +573,9 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			PackageRef: pkgRef,
 			ImportID:   "idA",
-			Inputs: resource.PropertyMap{
-				"input": resource.NewProperty("input"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"input": property.New("input"),
+			}),
 		})
 		require.NoError(t, err)
 
@@ -591,9 +591,9 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resB", true, deploytest.ResourceOptions{
 			PackageRef: extRef,
 			ImportID:   "idB",
-			Inputs: resource.PropertyMap{
-				"input": resource.NewProperty("input"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"input": property.New("input"),
+			}),
 		})
 		require.NoError(t, err)
 
@@ -609,9 +609,9 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgExt:m:typA", "resC", true, deploytest.ResourceOptions{
 			Provider: provRef.String(),
 			ImportID: "idB",
-			Inputs: resource.PropertyMap{
-				"input": resource.NewProperty("input"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"input": property.New("input"),
+			}),
 		})
 		require.NoError(t, err)
 

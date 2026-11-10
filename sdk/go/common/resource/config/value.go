@@ -210,6 +210,16 @@ func (c Value) ToObject() (any, error) {
 	return obj.marshalObjectValue(true), nil
 }
 
+// ToCoercedObject returns the value as Map.Set stores it below the top level of a path: an untyped string that
+// parses as a boolean or an integer becomes that type.
+func (c Value) ToCoercedObject() (any, error) {
+	coerced, err := c.coerceObject()
+	if err != nil {
+		return nil, err
+	}
+	return coerced.marshalObjectValue(false), nil
+}
+
 func (c Value) MarshalJSON() ([]byte, error) {
 	obj, err := c.unmarshalObject()
 	if err != nil {

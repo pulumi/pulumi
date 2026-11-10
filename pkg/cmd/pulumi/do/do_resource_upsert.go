@@ -30,8 +30,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	backendSecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	deployproviders "github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -215,7 +216,7 @@ func (pc *packageCommand) runStatefulSnippetUpdate(cmd *cobra.Command, args stat
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
@@ -346,7 +347,7 @@ func (pc *packageCommand) runStatefulSnippetPatch(
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
@@ -457,7 +458,7 @@ func (pc *packageCommand) runStatefulSnippetDelete(
 	if err != nil {
 		return err
 	}
-	snap, err := stack.Snapshot(ctx, backendSecrets.DefaultProvider)
+	snap, err := stack.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 	if err != nil {
 		return fmt.Errorf("load stack snapshot: %w", err)
 	}
@@ -842,10 +843,16 @@ func DefaultRunStatefulUpdate(
 		uuids = append(uuids, s.UUID)
 	}
 
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, req.Proj)
+	if err != nil {
+		return nil, err
+	}
 	engineOpts := engine.UpdateOptions{
-		Snippets:       snippets,
-		TargetSnippets: targetSnippets,
-		ShowSecrets:    req.ShowSecrets,
+		CloudCredentialEnv: cloudCredentialEnv,
+		Snippets:           snippets,
+		TargetSnippets:     targetSnippets,
+		ShowSecrets:        req.ShowSecrets,
 	}
 
 	op := backend.UpdateOperation{
@@ -855,7 +862,7 @@ func DefaultRunStatefulUpdate(
 		Opts:               backend.UpdateOptions{Engine: engineOpts, Display: displayOpts, AutoApprove: req.Yes},
 		StackConfiguration: cfg,
 		SecretsManager:     sm,
-		SecretsProvider:    backendSecrets.DefaultProvider,
+		SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 		Scopes:             backend.CancellationScopes,
 	}
 

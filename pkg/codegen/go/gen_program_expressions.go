@@ -680,6 +680,22 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "unsecret":
 		outputTypeName := g.secretOutputTypeName(expr)
 		g.Fgenf(w, "pulumi.Unsecret(%v).(%sOutput)", expr.Args[0], outputTypeName)
+	case "resourceExists":
+		g.Fgenf(w, "ctx.ExistsResource(%v, %v, ", expr.Args[0], expr.Args[1])
+		if len(expr.Args) < 3 {
+			g.Fgenf(w, "nil")
+		} else if state, ok := expr.Args[2].(*model.ObjectConsExpression); ok {
+			g.Fgenf(w, "pulumi.Map{\n")
+			for _, item := range state.Items {
+				g.Fgenf(w, "%.v: ", item.Key)
+				g.genInputValue(w, item.Value, model.DynamicType)
+				g.Fgenf(w, ",\n")
+			}
+			g.Fgenf(w, "}")
+		} else {
+			g.genInputValue(w, expr.Args[2], model.DynamicType)
+		}
+		g.Fgenf(w, ", \"\")")
 	case "toBase64":
 		g.Fgenf(w, "base64.StdEncoding.EncodeToString([]byte(%v))", expr.Args[0])
 	case fromBase64Fn:
@@ -1590,6 +1606,20 @@ func isPulumiInterfaceType(typeName string) bool {
 	return false
 }
 
+// optionalPrimitive reports whether t is an optional string, number, int, or bool.
+// Those are the primitives whose Go optional output is a pointer output.
+func optionalPrimitive(t model.Type) bool {
+	if !model.IsOptionalType(t) {
+		return false
+	}
+	switch pcl.UnwrapOption(t) {
+	case model.StringType, model.NumberType, model.IntType, model.BoolType:
+		return true
+	default:
+		return false
+	}
+}
+
 // argumentTypeName computes the go type for the given model type.
 func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result string) {
 	if cns, ok := destType.(*model.ConstType); ok {
@@ -1776,6 +1806,14 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			isResourceTypeName := argTypeName == "pulumi.Resource" || argTypeName == "pulumi.ProviderResource"
 			if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 				if argTypeName == "pulumi.Any" {
+					return "pulumi.Array"
+				}
+				// Optional string, number, int, and bool outputs are pointer outputs
+				// (StringPtrOutput and the other Ptr outputs). They do not implement
+				// the non-pointer input interface, and the SDK has no pointer-element
+				// array type such as StringPtrArray. Optional lists, maps, and objects
+				// are not pointer outputs, so they keep a typed array name.
+				if optionalPrimitive(model.ResolveOutputs(elmType)) {
 					return "pulumi.Array"
 				}
 				return argTypeName + "Array"

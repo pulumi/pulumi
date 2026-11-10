@@ -180,7 +180,7 @@ func resourceSyntaxBody(node Node) *hclsyntax.Body {
 
 // walkResourceBodyForDeps mirrors optionsScopes.GetScopeForAttribute: the
 // property-name attributes resolve identifiers against the resource's own
-// inputs, not the root scope, so the dep walker must skip them or it will
+// properties, not the root scope, so the dep walker must skip them or it will
 // report spurious circular references.
 func walkResourceBodyForDeps(body *hclsyntax.Body, visit hclsyntax.VisitFunc) {
 	for _, attr := range body.Attributes {

@@ -1132,7 +1132,7 @@ func TestDoCmdResourceCreateStatelessTakesNoNameArg(t *testing.T) {
 	cmd, stdout, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
 	cmd.SetArgs([]string{"--stateless", "azure:index:myResource", "create", "myres"})
 	err := cmd.Execute()
-	require.Error(t, err, "stateless create should reject a positional name arg")
+	require.Error(t, err, "stateless create should reject a positional name arg") //nolint:forbidigo // pre-existing
 	_ = stdout
 }
 

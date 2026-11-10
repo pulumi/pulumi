@@ -252,7 +252,7 @@ func TestLoginURLResolution(t *testing.T) {
 			err := cmd.Execute()
 
 			if tt.expectError {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Zero(t, captured.calls)
 				if tt.expectedError != "" {
 					require.ErrorContains(t, err, tt.expectedError)
@@ -472,7 +472,7 @@ func TestExtractOIDCDefaults(t *testing.T) {
 			)
 
 			if tt.wantErr {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				if tt.errContains != "" {
 					require.ErrorContains(t, err, tt.errContains)
 				}
@@ -532,6 +532,83 @@ func TestLoginEnvConflict(t *testing.T) {
 		"Warning: The PULUMI_BACKEND_URL environment variable is set to "+
 			"'https://env-backend.example.com', which conflicts with the login URL "+
 			"'https://example.com'.")
+}
+
+//nolint:paralleltest // IsolateCredentials changes process-wide environment variables.
+func TestLoginRelativeFileURLWarning(t *testing.T) {
+	ptesting.IsolateCredentials(t)
+
+	lm := &backend.MockLoginManager{
+		LoginF: func(
+			ctx context.Context,
+			ws pkgWorkspace.Context,
+			sink diag.Sink,
+			url string,
+			project *workspace.Project,
+			setCurrent bool,
+			insecure bool,
+			color colors.Colorization, _ ...backend.LoginOption,
+		) (pkgBackend.Backend, error) {
+			return &pkgBackend.MockBackend{
+				URLF:  func() string { return url },
+				NameF: func() string { return "test-backend" },
+				CurrentUserF: func() (string, []string, *workspace.TokenInformation, error) {
+					return "test-user", nil, nil, nil
+				},
+			}, nil
+		},
+	}
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	for _, args := range [][]string{{"file://./.state"}, {"file://~"}, {"--local"}, {"https://example.com"}} {
+		cmd := NewLoginCmd(&pkgWorkspace.MockContext{}, lm, env.NewEnv(env.MapStore{}))
+		stderr := &strings.Builder{}
+		cmd.SetOut(io.Discard)
+		cmd.SetErr(stderr)
+		cmd.SetContext(t.Context())
+		cmd.SetArgs(args)
+		require.NoError(t, cmd.Execute())
+		if args[0] == "file://./.state" {
+			require.Contains(t, stderr.String(), "Warning: 'file://./.state' is a relative path")
+			require.Contains(t, stderr.String(),
+				"`pulumi login file://"+filepath.ToSlash(filepath.Join(cwd, ".state"))+"`")
+		} else {
+			require.NotContains(t, stderr.String(), "relative path")
+		}
+	}
+}
+
+func TestResolveRelativeFileURL(t *testing.T) {
+	t.Parallel()
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	abs := func(p string) string { return "file://" + filepath.ToSlash(filepath.Join(cwd, p)) }
+
+	tests := []struct {
+		url      string
+		expected string
+	}{
+		{url: "file://.", expected: abs(".")},
+		{url: "file://./.state", expected: abs(".state")},
+		{url: "file://state", expected: abs("state")},
+		{url: "file://../state?no_tmp_dir=true", expected: abs("../state") + "?no_tmp_dir=true"},
+		{url: "file://~"},
+		{url: "file://~/state"},
+		{url: "file:///srv/state"},
+		{url: "s3://bucket"},
+		{url: "https://api.pulumi.com"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.url, func(t *testing.T) {
+			t.Parallel()
+			actual, wasRelative := resolveRelativeFileURL(tt.url)
+			require.Equal(t, tt.expected != "", wasRelative)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
 }
 
 // TestLoginErrorMessage tests that a failed login names the backend it failed against and,
@@ -649,7 +726,7 @@ func TestLoginErrorMessage(t *testing.T) {
 			cmd.SetArgs(tt.args)
 
 			err := cmd.Execute()
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			for _, want := range tt.contains {
 				require.ErrorContains(t, err, want)
 			}

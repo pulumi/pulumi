@@ -204,8 +204,9 @@ func TestGenerateResourceStepsNormalizesGoalAfterMigration(t *testing.T) {
 	goal := &pkgresource.Goal{
 		Type: consumerURN.Type(),
 		Name: consumerURN.Name(),
-		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-			"reference": resource.MakeCustomResourceReference(predecessorURN, "physical-id", "1.2.3"),
+		Properties: property.NewMap(map[string]property.Value{
+			"reference": property.New(
+				property.NewResourceReference(predecessorURN, property.New("physical-id"), "1.2.3")),
 		}),
 		Parent:       predecessorURN,
 		Dependencies: []resource.URN{predecessorURN},
@@ -215,8 +216,8 @@ func TestGenerateResourceStepsNormalizesGoalAfterMigration(t *testing.T) {
 		},
 		DeletedWith: predecessorURN,
 		ReplaceWith: []resource.URN{predecessorURN},
-		ReplacementTrigger: resource.FromResourcePropertyValue(
-			resource.MakeCustomResourceReference(predecessorURN, "physical-id", "1.2.3")),
+		ReplacementTrigger: property.New(
+			property.NewResourceReference(predecessorURN, property.New("physical-id"), "1.2.3")),
 	}
 
 	steps, async, err := sg.generateResourceSteps(t.Context(), &registerResourceEvent{goal: goal}, consumerURN)
@@ -273,8 +274,8 @@ func TestDeploymentRejectsStateMigrationPredecessorURN(t *testing.T) {
 			[]*pkgresource.State{{URN: cURN}}),
 	}}
 
-	require.Error(t, d.rejectStateMigrationPredecessorURN(aURN))
-	require.Error(t, d.rejectStateMigrationPredecessorURN(bURN))
+	require.Error(t, d.rejectStateMigrationPredecessorURN(aURN)) //nolint:forbidigo // pre-existing
+	require.Error(t, d.rejectStateMigrationPredecessorURN(bURN)) //nolint:forbidigo // pre-existing
 	require.NoError(t, d.rejectStateMigrationPredecessorURN(cURN), "a canonical successor URN remains claimable")
 	require.NoError(t, d.rejectStateMigrationPredecessorURN(unrelated))
 }

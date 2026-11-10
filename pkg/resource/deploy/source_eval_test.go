@@ -28,6 +28,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,6 +47,7 @@ import (
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -54,113 +56,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
-
-//
-// Mock resource monitor.
-//
-
-type mockResmon struct {
-	AddressF func() string
-
-	CancelF func(ctx context.Context) error
-
-	InvokeF func(ctx context.Context,
-		req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
-
-	CallF func(ctx context.Context,
-		req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
-
-	ReadResourceF func(ctx context.Context,
-		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
-
-	ExistsResourceF func(ctx context.Context,
-		req *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error)
-
-	RegisterResourceF func(ctx context.Context,
-		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
-
-	RegisterResourceOutputsF func(ctx context.Context,
-		req *pulumirpc.RegisterResourceOutputsRequest) (*emptypb.Empty, error)
-
-	AbortChanF func() <-chan bool
-}
-
-var _ SourceResourceMonitor = (*mockResmon)(nil)
-
-func (rm *mockResmon) AbortChan() <-chan bool {
-	if rm.AbortChanF != nil {
-		return rm.AbortChanF()
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) Address() string {
-	if rm.AddressF != nil {
-		return rm.AddressF()
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) Cancel(ctx context.Context) error {
-	if rm.CancelF != nil {
-		return rm.CancelF(ctx)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) Invoke(ctx context.Context,
-	req *pulumirpc.ResourceInvokeRequest,
-) (*pulumirpc.ResourceInvokeResponse, error) {
-	if rm.InvokeF != nil {
-		return rm.InvokeF(ctx, req)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) Call(ctx context.Context,
-	req *pulumirpc.ResourceCallRequest,
-) (*pulumirpc.CallResponse, error) {
-	if rm.CallF != nil {
-		return rm.CallF(ctx, req)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) ReadResource(ctx context.Context,
-	req *pulumirpc.ReadResourceRequest,
-) (*pulumirpc.ReadResourceResponse, error) {
-	if rm.ReadResourceF != nil {
-		return rm.ReadResourceF(ctx, req)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) ExistsResource(ctx context.Context,
-	req *pulumirpc.ExistsResourceRequest,
-) (*pulumirpc.ExistsResourceResponse, error) {
-	if rm.ExistsResourceF != nil {
-		return rm.ExistsResourceF(ctx, req)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) RegisterResource(ctx context.Context,
-	req *pulumirpc.RegisterResourceRequest,
-) (*pulumirpc.RegisterResourceResponse, error) {
-	if rm.RegisterResourceF != nil {
-		return rm.RegisterResourceF(ctx, req)
-	}
-	panic("not implemented")
-}
-
-func (rm *mockResmon) RegisterResourceOutputs(ctx context.Context,
-	req *pulumirpc.RegisterResourceOutputsRequest,
-) (*emptypb.Empty, error) {
-	if rm.RegisterResourceOutputsF != nil {
-		return rm.RegisterResourceOutputsF(ctx, req)
-	}
-	panic("not implemented")
-}
 
 type testRegEvent struct {
 	goal         *pkgresource.Goal
@@ -195,7 +90,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 				Protect:      g.Protect,
 				Dependencies: g.Dependencies,
 				Provider:     g.Provider,
-				Inputs:       resource.ToResourcePropertyMap(g.Properties),
+				Inputs:       g.Properties,
 				PropertyDeps: g.PropertyDependencies,
 			})
 			if err != nil {
@@ -213,7 +108,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 					Delete:                  false,
 					ID:                      resp.ID,
 					Inputs:                  resource.ToResourcePropertyMap(g.Properties),
-					Outputs:                 resp.Outputs,
+					Outputs:                 resource.ToResourcePropertyMap(resp.Outputs),
 					Parent:                  g.Parent,
 					Protect:                 protect,
 					Taint:                   false,
@@ -255,7 +150,7 @@ func newTestPluginContext(t testing.TB, program deploytest.ProgramFunc) (*plugin
 	lang := deploytest.NewLanguageRuntime(program)
 	host := deploytest.NewPluginHost(sink, statusSink, lang)
 	return plugin.NewContext(t.Context(), sink, statusSink, host, nil, "", nil, false,
-		nil)
+		nil, nil)
 }
 
 type testProviderSource struct {
@@ -281,6 +176,12 @@ func (s *testProviderSource) GetProvider(ref sdkproviders.Reference) (plugin.Pro
 		return s.defaultProvider, true
 	}
 	return provider, ok
+}
+
+func (s *testProviderSource) ParameterizeExtension(
+	context.Context, sdkproviders.Reference, apitype.ExtensionRef, apitype.Extension,
+) error {
+	return errors.New("testProviderSource does not support extensions")
 }
 
 func newProviderEvent(pkg, name string, inputs resource.PropertyMap, parent resource.URN) RegisterResourceEvent {
@@ -1217,7 +1118,7 @@ func TestRegistrationObserverComponentResolvedAtRegisterResourceOutputs(t *testi
 		if err != nil {
 			return err
 		}
-		return monitor.RegisterResourceOutputs(resp.URN, expectedOutputs)
+		return monitor.RegisterResourceOutputs(resp.URN, resource.FromResourcePropertyMap(expectedOutputs))
 	}
 
 	ctx, err := newTestPluginContext(t, program)
@@ -1431,7 +1332,7 @@ func TestRegistrationObserverComponentAliasesArePublishedAtROC(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		return monitor.RegisterResourceOutputs(resp.URN, expectedOutputs)
+		return monitor.RegisterResourceOutputs(resp.URN, resource.FromResourcePropertyMap(expectedOutputs))
 	}
 
 	ctx, err := newTestPluginContext(t, program)
@@ -1508,18 +1409,21 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with explicit provider references.
-		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String(), "", "", nil, "", "")
+		_, _, perr := resmon.ReadResource(
+			"pkgA:m:typA", "resA", "id1", "", property.Map{}, providerARef.String(), "", "", nil, "", "")
 		require.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", nil, "", "")
+		_, _, perr = resmon.ReadResource(
+			"pkgA:m:typB", "resB", "id1", "", property.Map{}, providerBRef.String(), "", "", nil, "", "")
 		require.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String(), "", "", nil, "", "")
+		_, _, perr = resmon.ReadResource(
+			"pkgC:m:typC", "resC", "id1", "", property.Map{}, providerCRef.String(), "", "", nil, "", "")
 		require.NoError(t, perr)
 
-		_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, providerARef.String(), "", "")
+		_, _, perr = resmon.Invoke("pkgA:m:funcA", property.Map{}, providerARef.String(), "", "")
 		require.NoError(t, perr)
-		_, _, perr = resmon.Invoke("pkgA:m:funcB", nil, providerBRef.String(), "", "")
+		_, _, perr = resmon.Invoke("pkgA:m:funcB", property.Map{}, providerBRef.String(), "", "")
 		require.NoError(t, perr)
-		_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, providerCRef.String(), "", "")
+		_, _, perr = resmon.Invoke("pkgC:m:funcC", property.Map{}, providerCRef.String(), "", "")
 		require.NoError(t, perr)
 
 		return nil
@@ -1624,18 +1528,18 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with default provider references.
-		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "", "", nil, "", "")
+		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", property.Map{}, "", "", "", nil, "", "")
 		require.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "", "", nil, "", "")
+		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", property.Map{}, "", "", "", nil, "", "")
 		require.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", nil, "", "")
+		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", property.Map{}, "", "", "", nil, "", "")
 		require.NoError(t, err)
 
-		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "", "")
+		_, _, err = resmon.Invoke("pkgA:m:funcA", property.Map{}, "", "", "")
 		require.NoError(t, err)
-		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "", "")
+		_, _, err = resmon.Invoke("pkgA:m:funcB", property.Map{}, "", "", "")
 		require.NoError(t, err)
-		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "", "")
+		_, _, err = resmon.Invoke("pkgC:m:funcC", property.Map{}, "", "", "")
 		require.NoError(t, err)
 
 		return nil
@@ -1876,25 +1780,27 @@ func TestDisableDefaultProviders(t *testing.T) {
 			program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 				aErrorAssert := require.NoError
 				if tt.expectFail {
-					aErrorAssert = require.Error
+					aErrorAssert = require.Error //nolint:forbidigo // pre-existing
 				}
 				var aPkgProvider string
 				if tt.hasExplicit {
 					aPkgProvider = providerARef.String()
 				}
 				// Perform some reads and invokes with explicit provider references.
-				_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, aPkgProvider, "", "", nil, "", "")
+				_, _, perr := resmon.ReadResource(
+					"pkgA:m:typA", "resA", "id1", "", property.Map{}, aPkgProvider, "", "", nil, "", "")
 				aErrorAssert(t, perr)
-				_, _, perr = resmon.ReadResource("pkgB:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", nil, "", "")
+				_, _, perr = resmon.ReadResource(
+					"pkgB:m:typB", "resB", "id1", "", property.Map{}, providerBRef.String(), "", "", nil, "", "")
 				require.NoError(t, perr)
-				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", nil, "", "")
+				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", property.Map{}, "", "", "", nil, "", "")
 				require.NoError(t, perr)
 
-				_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, aPkgProvider, "", "")
+				_, _, perr = resmon.Invoke("pkgA:m:funcA", property.Map{}, aPkgProvider, "", "")
 				aErrorAssert(t, perr)
-				_, _, perr = resmon.Invoke("pkgB:m:funcB", nil, providerBRef.String(), "", "")
+				_, _, perr = resmon.Invoke("pkgB:m:funcB", property.Map{}, providerBRef.String(), "", "")
 				require.NoError(t, perr)
-				_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, "", "", "")
+				_, _, perr = resmon.Invoke("pkgC:m:funcC", property.Map{}, "", "", "")
 				require.NoError(t, perr)
 
 				return nil
@@ -2282,22 +2188,22 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 	//  2. Provider pkgC, version 0.18.0
 // 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 // 		// Triggers pkgA, v0.18.0.
-// 		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "0.18.0")
+// 		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
 // 		// Uses pkgA's already-instantiated provider.
-// 		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "0.18.0")
+// 		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
 
 // 		// Triggers pkgC, v0.18.0.
-// 		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "0.18.0")
+// 		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
 
 // 		// Uses pkgA and pkgC's already-instantiated provider.
-// 		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "0.18.0")
+// 		_, _, err = resmon.Invoke("pkgA:m:funcA", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
-// 		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "0.18.0")
+// 		_, _, err = resmon.Invoke("pkgA:m:funcB", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
-// 		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "0.18.0")
+// 		_, _, err = resmon.Invoke("pkgC:m:funcC", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
 
 // 		return nil
@@ -2645,6 +2551,12 @@ func (ps *providerSourceMock) GetProvider(ref sdkproviders.Reference) (plugin.Pr
 	return ps.Provider, ps.Provider != nil
 }
 
+func (ps *providerSourceMock) ParameterizeExtension(
+	context.Context, sdkproviders.Reference, apitype.ExtensionRef, apitype.Extension,
+) error {
+	return errors.New("providerSourceMock does not support extensions")
+}
+
 var _ ProviderSource = (*providerSourceMock)(nil)
 
 type decrypterMock struct {
@@ -2803,7 +2715,7 @@ func TestGetDeploymentInfo(t *testing.T) {
 	plugctx, err := plugin.NewContext(t.Context(),
 		&deploytest.NoopSink{}, &deploytest.NoopSink{},
 		deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-		nil, "", nil, false, nil)
+		nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 
 	plainKey := config.MustMakeKey("test", "region")
@@ -2891,21 +2803,6 @@ func TestSourceEvalServeOptions(t *testing.T) {
 
 func TestEvalSourceIterator(t *testing.T) {
 	t.Parallel()
-	t.Run("Close", func(t *testing.T) {
-		t.Parallel()
-		var called bool
-		iter := &evalSourceIterator{
-			mon: &mockResmon{
-				CancelF: func(context.Context) error {
-					called = true
-					return nil
-				},
-			},
-		}
-		err := iter.Cancel(t.Context())
-		require.NoError(t, err)
-		require.True(t, called)
-	})
 	t.Run("Next", func(t *testing.T) {
 		t.Parallel()
 		t.Run("iter.done", func(t *testing.T) {
@@ -3035,7 +2932,7 @@ func TestInvoke(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3093,7 +2990,7 @@ func TestInvoke(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3172,7 +3069,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3244,7 +3141,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3347,7 +3244,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3413,7 +3310,7 @@ func TestCall(t *testing.T) {
 		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil, nil, nil)(),
-			nil, "", nil, false, nil)
+			nil, "", nil, false, nil, nil)
 		require.NoError(t, err)
 
 		providerRegChan := make(chan *registerResourceEvent, 1)
@@ -3643,7 +3540,7 @@ func TestRegisterResource(t *testing.T) {
 		_, err := rm.RegisterResource(t.Context(), &pulumirpc.RegisterResourceRequest{
 			StateMigrations: []*pulumirpc.Callback{{}},
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 		assert.ErrorContains(t, err, "state migrations are not supported by this deployment")
 	})
@@ -4083,18 +3980,18 @@ func TestValidationFailures(t *testing.T) {
 			name: "bad request",
 			err:  badRequestError,
 			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request\n" +
-				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
-				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n" +
-				"\t\t- property secretproperty with value '{[secret]}' has a problem: invalid\n",
+				"\t\t- property testproperty with value \"testvalue\" has a problem: missing\n" +
+				"\t\t- property nested[0] with value \"nestedvalue\" has a problem: nested property error\n" +
+				"\t\t- property secretproperty with value <secret> has a problem: invalid\n",
 		},
 		{
 			name:        "bad request with --show-secrets",
 			err:         badRequestError,
 			showSecrets: true,
 			expectedStderr: "error: pulumi:providers:some-type resource 'some-name' has a problem: bad request\n" +
-				"\t\t- property testproperty with value '{testvalue}' has a problem: missing\n" +
-				"\t\t- property nested[0] with value '{nestedvalue}' has a problem: nested property error\n" +
-				"\t\t- property secretproperty with value '{&{{secretvalue}}}' has a problem: invalid\n",
+				"\t\t- property testproperty with value \"testvalue\" has a problem: missing\n" +
+				"\t\t- property nested[0] with value \"nestedvalue\" has a problem: nested property error\n" +
+				"\t\t- property secretproperty with value \"secretvalue\" has a problem: invalid\n",
 		},
 	}
 	for _, c := range cases {
@@ -4170,82 +4067,152 @@ func TestValidationFailures(t *testing.T) {
 	}
 }
 
+func TestUpgradeOutputValues(t *testing.T) {
+	t.Parallel()
+
+	a := resource.URN("urn:pulumi:stack::project::pkg:mod:Resource::a")
+	b := resource.URN("urn:pulumi:stack::project::pkg:mod:Resource::b")
+	c := resource.URN("urn:pulumi:stack::project::pkg:mod:Resource::c")
+	value := property.New("value").WithDependencies([]resource.URN{a})
+	nested := property.New(map[string]property.Value{"value": value})
+	array := property.New([]property.Value{value})
+	outer := nested.WithDependencies([]resource.URN{b})
+
+	for _, tt := range []struct {
+		name     string
+		input    property.Value
+		deps     []resource.URN
+		expected property.Value
+	}{
+		{"no declared dependencies", nested, nil, nested},
+		{"existing dependency", value, []resource.URN{a}, value},
+		{"nested object dependency", nested, []resource.URN{a}, nested},
+		{"nested array dependency", array, []resource.URN{a}, array},
+		{"outer and nested dependencies", outer, []resource.URN{a, b}, outer},
+		{"missing dependency", property.New("value"), []resource.URN{a}, value},
+		{
+			"missing dependency preserves outer and nested dependencies",
+			outer,
+			[]resource.URN{c},
+			outer.WithDependencies([]resource.URN{b, c}),
+		},
+		{
+			"partially represented dependencies",
+			outer,
+			[]resource.URN{a, c},
+			outer.WithDependencies([]resource.URN{a, b, c}),
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			input := property.NewMap(map[string]property.Value{"wrapper": tt.input})
+			actual := upgradeOutputValues(input, map[resource.PropertyKey]mapset.Set[resource.URN]{
+				"wrapper": mapset.NewSet(tt.deps...),
+			})
+			assert.True(t, tt.expected.Equals(actual.Get("wrapper")),
+				"expected %v, got %v", tt.expected, actual.Get("wrapper"))
+		})
+	}
+}
+
 func TestDowngradeOutputValues(t *testing.T) {
 	t.Parallel()
 
+	dep := urn.URN("urn:pulumi:stack::project::package:module:resource::dep")
+
 	cases := []struct {
 		name     string
-		input    resource.PropertyMap
-		expected resource.PropertyMap
+		input    property.Map
+		expected property.Map
 	}{
 		{
 			"plain",
-			resource.PropertyMap{
-				"foo": resource.NewProperty("hello"),
-				"bar": resource.NewProperty(42.0),
-			},
-			resource.PropertyMap{
-				"foo": resource.NewProperty("hello"),
-				"bar": resource.NewProperty(42.0),
-			},
+			property.NewMap(map[string]property.Value{
+				"foo": property.New("hello"),
+				"bar": property.New(42.0),
+			}),
+			property.NewMap(map[string]property.Value{
+				"foo": property.New("hello"),
+				"bar": property.New(42.0),
+			}),
 		},
 		{
 			"secret",
-			resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewProperty("hello")),
-			},
-			resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewProperty("hello")),
-			},
+			property.NewMap(map[string]property.Value{
+				"foo": property.New("hello").WithSecret(true),
+			}),
+			property.NewMap(map[string]property.Value{
+				"foo": property.New("hello").WithSecret(true),
+			}),
 		},
 		{
-			"output",
-			resource.PropertyMap{
-				"foo": resource.NewProperty(resource.Output{
-					Element: resource.NewProperty("hello"),
-					Known:   true,
+			"value with dependencies",
+			property.NewMap(map[string]property.Value{
+				"foo": property.New("hello").WithDependencies([]urn.URN{dep}),
+			}),
+			property.NewMap(map[string]property.Value{
+				"foo": property.New("hello"),
+			}),
+		},
+		{
+			"secret value with dependencies",
+			property.NewMap(map[string]property.Value{
+				"foo": property.New("hello").WithSecret(true).WithDependencies([]urn.URN{dep}),
+			}),
+			property.NewMap(map[string]property.Value{
+				"foo": property.New("hello").WithSecret(true),
+			}),
+		},
+		{
+			"computed value with dependencies",
+			property.NewMap(map[string]property.Value{
+				"foo": property.New(property.Computed).WithDependencies([]urn.URN{dep}),
+			}),
+			property.NewMap(map[string]property.Value{
+				"foo": property.New(property.Computed),
+			}),
+		},
+		{
+			"nested array",
+			property.NewMap(map[string]property.Value{
+				"foo": property.New([]property.Value{
+					property.New("hello").WithDependencies([]urn.URN{dep}),
 				}),
-			},
-			resource.PropertyMap{
-				"foo": resource.NewProperty("hello"),
-			},
-		},
-		{
-			"secret output",
-			resource.PropertyMap{
-				"foo": resource.NewProperty(resource.Output{
-					Element: resource.NewProperty("hello"),
-					Known:   true,
-					Secret:  true,
+			}),
+			property.NewMap(map[string]property.Value{
+				"foo": property.New([]property.Value{
+					property.New("hello"),
 				}),
-			},
-			resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewProperty("hello")),
-			},
+			}),
 		},
 		{
-			"unknown output",
-			resource.PropertyMap{
-				"foo": resource.NewProperty(resource.Output{}),
-			},
-			resource.PropertyMap{
-				"foo": resource.MakeComputed(resource.NewProperty("")),
-			},
+			"nested map",
+			property.NewMap(map[string]property.Value{
+				"foo": property.New(property.NewMap(map[string]property.Value{
+					"bar": property.New("hello").WithDependencies([]urn.URN{dep}),
+				})),
+			}),
+			property.NewMap(map[string]property.Value{
+				"foo": property.New(property.NewMap(map[string]property.Value{
+					"bar": property.New("hello"),
+				})),
+			}),
 		},
 		{
-			"unknown resource reference",
-			resource.PropertyMap{
-				"foo": resource.NewProperty(resource.ResourceReference{
+			"resource reference with computed id and dependencies",
+			property.NewMap(map[string]property.Value{
+				"foo": property.New(property.ResourceReference{
 					URN: "urn:pulumi:stack::project::package:module:resource::name",
-					ID:  resource.NewProperty(resource.Output{}),
-				}),
-			},
-			resource.PropertyMap{
-				"foo": resource.NewProperty(resource.ResourceReference{
+					ID:  property.New(property.Computed).WithDependencies([]urn.URN{dep}),
+				}).WithDependencies([]urn.URN{dep}),
+			}),
+			property.NewMap(map[string]property.Value{
+				"foo": property.New(property.ResourceReference{
 					URN: "urn:pulumi:stack::project::package:module:resource::name",
-					ID:  resource.MakeComputed(resource.NewProperty("")),
+					ID:  property.New(property.Computed),
 				}),
-			},
+			}),
 		},
 	}
 
@@ -4253,7 +4220,7 @@ func TestDowngradeOutputValues(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			actual := downgradeOutputValues(tt.input)
-			assert.Equal(t, tt.expected, actual)
+			assert.True(t, tt.expected.Equals(actual), "expected %v, got %v", tt.expected, actual)
 		})
 	}
 }

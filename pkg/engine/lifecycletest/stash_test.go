@@ -24,20 +24,21 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestStashImport(t *testing.T) {
 	t.Parallel()
 
-	input := resource.NewProperty("from-program")
+	input := property.New("from-program")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pulumi:index:Stash", "stash", true, deploytest.ResourceOptions{
-			Inputs:   resource.PropertyMap{"input": input},
+			Inputs:   property.NewMap(map[string]property.Value{"input": input}),
 			ImportID: "someid",
 		})
 		require.NoError(t, err)
 		require.Equal(t, resource.ID("someid"), resp.ID)
-		require.Equal(t, input, resp.Outputs["input"])
+		require.Equal(t, input, resp.Outputs.Get("input"))
 
 		return nil
 	})
@@ -61,17 +62,17 @@ func TestStashImport(t *testing.T) {
 func TestStash(t *testing.T) {
 	t.Parallel()
 
-	input := resource.NewProperty("first")
+	input := property.New("first")
 	expectedOutput := input
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pulumi:index:Stash", "stash", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
+			Inputs: property.NewMap(map[string]property.Value{
 				"input": input,
-			},
+			}),
 		})
 		require.NoError(t, err)
-		require.Equal(t, input, resp.Outputs["input"])
-		require.Equal(t, expectedOutput, resp.Outputs["output"])
+		require.Equal(t, input, resp.Outputs.Get("input"))
+		require.Equal(t, expectedOutput, resp.Outputs.Get("output"))
 
 		return nil
 	})
@@ -85,7 +86,7 @@ func TestStash(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 
-	input = resource.NewProperty("second")
+	input = property.New("second")
 	_, err = lt.TestOp(Update).RunStep(
 		p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)

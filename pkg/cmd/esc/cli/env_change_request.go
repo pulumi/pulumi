@@ -328,7 +328,7 @@ func newEnvChangeRequestGetCmd(cr *changeRequestCommand) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("getting change request: %w", err)
 			}
-			if c.Action != "update" {
+			if c.Entity.EntityType != "environment" || c.Action != "update" {
 				return fmt.Errorf("change request %v is not an environment draft", c.ID)
 			}
 			ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
@@ -663,7 +663,7 @@ func newEnvChangeRequestDiffCmd(cr *changeRequestCommand) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("getting change request: %w", err)
 			}
-			if c.Action != "update" {
+			if c.Entity.EntityType != "environment" || c.Action != "update" {
 				return fmt.Errorf("change request %v is not an environment draft", c.ID)
 			}
 			ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
@@ -824,7 +824,7 @@ func newEnvChangeRequestRebaseCmd(cr *changeRequestCommand) *cobra.Command {
 			if c.Status == "applied" || c.Status == "closed" {
 				return fmt.Errorf("change request %v is %v", c.ID, c.Status)
 			}
-			if c.Action != "update" {
+			if c.Entity.EntityType != "environment" || c.Action != "update" {
 				return fmt.Errorf("change request %v is not an environment draft", c.ID)
 			}
 			ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}

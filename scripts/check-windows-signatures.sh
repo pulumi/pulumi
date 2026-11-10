@@ -3,7 +3,11 @@
 set -euo pipefail
 
 ROOT_CA="$(dirname "$0")/microsoft-identity-verification-root-ca-2020.pem"
-EXPECTED_SIGNER="/O=PULUMI CORPORATION/CN=PULUMI CORPORATION"
+# osslsigncode 2.10 switched from slash-separated subjects to RFC 2253 format.
+# Accept both Ubuntu 24.04's osslsigncode 2.8 and Ubuntu 26.04's osslsigncode 2.13
+# while ubuntu-latest runners transition between these images.
+EXPECTED_SIGNER="CN=PULUMI CORPORATION,O=PULUMI CORPORATION"
+EXPECTED_SIGNER_LEGACY="/O=PULUMI CORPORATION/CN=PULUMI CORPORATION"
 
 if [[ $# -eq 0 ]]; then
     echo "no binaries to check" >&2
@@ -16,7 +20,8 @@ for binary in "$@"; do
         echo "invalid signature: ${binary}"
         echo "${output}" | tail -5
         failed=1
-    elif ! echo "${output}" | grep -m1 -A1 'Signer #0:' | grep -q "${EXPECTED_SIGNER}$"; then
+    elif ! echo "${output}" | grep -m1 -A1 'Signer #0:' |
+        grep -Eq -e "^[[:space:]]*Subject: ${EXPECTED_SIGNER}(,|$)" -e "${EXPECTED_SIGNER_LEGACY}$"; then
         echo "unexpected signer: ${binary}"
         echo "${output}" | grep -m1 -A1 'Signer #0:' | head -2
         failed=1

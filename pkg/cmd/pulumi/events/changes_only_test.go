@@ -344,6 +344,6 @@ func TestRunChangesOnly_MalformedJSONReturnsError(t *testing.T) {
 
 	var out bytes.Buffer
 	err := runChangesOnly(strings.NewReader("{not json}\n"), &out)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "decoding event")
 }

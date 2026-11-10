@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"maps"
 	"path/filepath"
+	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -38,13 +39,24 @@ type StackConfigLocation struct {
 	IsRemote bool
 	// EscEnv is the optional name of an ESC Environment being used to store the stack's configuration.
 	EscEnv *string
+	// ManagedEnvironment is "<project>/<name>" of the ESC environment the stack publishes its config to on
+	// update. Empty means the stack is not managed.
+	ManagedEnvironment string
+}
+
+// ManagedEnvironmentRef returns the managed environment's project and name, which can differ from the stack's after
+// a rename.
+func (l StackConfigLocation) ManagedEnvironmentRef() (project string, name string) {
+	project, name, _ = strings.Cut(l.ManagedEnvironment, "/")
+	return project, name
 }
 
 // Stack is used to manage stacks of resources against a pluggable backend.
 type Stack interface {
 	// Ref returns this stack's identity.
 	Ref() StackReference
-	// ConfigLocation indicates if the backend has configuration stored independent of the local file stack config.
+	// ConfigLocation reports whether the stack's configuration is stored remotely and whether the stack manages an ESC
+	// environment.
 	ConfigLocation() StackConfigLocation
 	// LoadRemoteConfig the stack's configuration remotely from the backend.
 	LoadRemoteConfig(ctx context.Context, project *workspace.Project) (*workspace.ProjectStack, error)
@@ -94,10 +106,12 @@ func UpdateStack(
 	return s.Backend().Update(ctx, s, op, events)
 }
 
-// ImportStack updates the target stack with the current workspace's contents (config and code).
+// ImportStack imports resources into the target stack. In addition to the resource changes it
+// returns the final in-memory snapshot produced by the engine; callers can use the snapshot to
+// drive codegen without re-reading persisted state. The snapshot is populated even on dry-run.
 func ImportStack(ctx context.Context, s Stack, op UpdateOperation,
 	imports []deploy.Import,
-) (display.ResourceChanges, error) {
+) (display.ResourceChanges, *deploy.Snapshot, error) {
 	return s.Backend().Import(ctx, s, op, imports)
 }
 

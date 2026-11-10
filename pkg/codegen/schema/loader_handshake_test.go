@@ -68,7 +68,7 @@ func TestLoaderServerFromContext_RealProvider(t *testing.T) {
 		NewLoaderServerFromContext, nil, nil)
 	require.NoError(t, err)
 	defer func() { require.NoError(t, pluginHost.Close()) }()
-	pctx, err := plugin.NewContext(t.Context(), sink, sink, pluginHost, nil, t.TempDir(), nil, false, nil)
+	pctx, err := plugin.NewContext(t.Context(), sink, sink, pluginHost, nil, t.TempDir(), nil, false, nil, nil)
 	require.NoError(t, err)
 	defer pctx.Close()
 

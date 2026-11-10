@@ -52,7 +52,7 @@ func TestValidateVenv(t *testing.T) {
 			require.NoError(t, err)
 
 			err = tc.ValidateVenv(t.Context())
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 		})
 		t.Run("Exists-"+Name(opts.Toolchain), func(t *testing.T) {
 			t.Parallel()
@@ -395,7 +395,7 @@ func TestParsePythonVersion(t *testing.T) {
 			version, err := ParsePythonVersion(test.versionString)
 
 			if test.expectError {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 				expected := semver.MustParse(test.expectedSemver)

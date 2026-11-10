@@ -121,7 +121,7 @@ func TestRunWithEnvelope_ReturnsErrorNotExit(t *testing.T) {
 	got := wrapped(cmd, nil)
 
 	// Contract: error is returned, not swallowed by os.Exit.
-	require.Error(t, got, "wrapper must return the error, not call os.Exit")
+	require.Error(t, got, "wrapper must return the error, not call os.Exit") //nolint:forbidigo // pre-existing
 	returned, ok := errors.AsType[*APIError](got)
 	require.True(t, ok)
 	assert.Equal(t, cmdutil.ExitCodeError, returned.ExitCode)

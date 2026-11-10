@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
 )
@@ -64,7 +65,7 @@ func TestComponentResourceTypeAliasWithReadResource(t *testing.T) {
 			"AWSBackupServiceRolePolicyForBackup",
 			"arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup",
 			componentURN, // parent
-			resource.PropertyMap{},
+			property.Map{},
 			"",
 			"",
 			"",
@@ -74,7 +75,7 @@ func TestComponentResourceTypeAliasWithReadResource(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = monitor.RegisterResourceOutputs(componentURN, resource.PropertyMap{})
+		err = monitor.RegisterResourceOutputs(componentURN, property.Map{})
 		require.NoError(t, err)
 
 		return nil
@@ -112,7 +113,7 @@ func TestComponentResourceTypeAliasWithReadResource(t *testing.T) {
 			"AWSBackupServiceRolePolicyForBackup",
 			"arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup",
 			componentURN, // parent
-			resource.PropertyMap{},
+			property.Map{},
 			"",
 			"",
 			"",
@@ -122,7 +123,7 @@ func TestComponentResourceTypeAliasWithReadResource(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		err = monitor.RegisterResourceOutputs(componentURN, resource.PropertyMap{})
+		err = monitor.RegisterResourceOutputs(componentURN, property.Map{})
 		require.NoError(t, err)
 
 		return nil
@@ -413,7 +414,7 @@ func TestTargetedUpdateWithProviderDependencyOnAliasedResource(t *testing.T) {
 	}
 
 	_, err := lt.TestOp(engine.Update).RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
-	require.Error(t, err) // TODO: Change this to require.ErrorContains with the correct error message
+	require.Error(t, err) //nolint:forbidigo // TODO: Change this to require.ErrorContains with the correct error message
 }
 
 func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
@@ -591,13 +592,13 @@ func TestUntargetedComponentResource(t *testing.T) {
 					// This call to RegisterResourceOutputs triggers the panic when the component
 					// is filtered out by targeting. The panic occurs because findResourceInNewOrOld()
 					// cannot locate the resource in either the base snapshot or the new resources map.
-					outs := resource.PropertyMap{}
+					outs := property.Map{}
 					err = monitor.RegisterResourceOutputs(resp.URN, outs)
 					require.NoError(t, err)
 
 					return plugin.ConstructResponse{
 						URN:     resp.URN,
-						Outputs: resource.FromResourcePropertyMap(outs),
+						Outputs: outs,
 					}, nil
 				},
 			}, nil
@@ -924,7 +925,7 @@ func TestRefreshProgramUpdateReplacedComponentProvider(t *testing.T) {
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"foo": resource.NewProperty("bar")},
+			Inputs: property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 		})
 		require.NoError(t, err)
 		ref, err := providers.NewReference(resp.URN, resp.ID)
@@ -994,7 +995,7 @@ func TestUpdateDeleteBeforeReplaceProviderOfComponent(t *testing.T) {
 	}
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pulumi:providers:pkgA", "prov", true, deploytest.ResourceOptions{
-			Inputs:              resource.PropertyMap{"foo": resource.NewProperty("bar")},
+			Inputs:              property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 			DeleteBeforeReplace: new(true),
 		})
 		require.NoError(t, err)

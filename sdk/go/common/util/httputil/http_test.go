@@ -176,7 +176,7 @@ func TestRetry429ContextCanceledDuringWait(t *testing.T) {
 	delay := time.Millisecond
 	start := time.Now()
 	_, err = DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay}) //nolint:bodyclose // no response on error
-	require.Error(t, err)
+	require.Error(t, err)                                                    //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Less(t, time.Since(start), 5*time.Second)
 }
@@ -197,7 +197,7 @@ func TestRetryContextCanceledDuringBackoff(t *testing.T) {
 	delay := 10 * time.Second
 	start := time.Now()
 	_, err = DoWithRetryOpts(req, server.Client(), RetryOpts{Delay: &delay}) //nolint:bodyclose // no response on error
-	require.Error(t, err)
+	require.Error(t, err)                                                    //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Less(t, time.Since(start), 5*time.Second, "the backoff must not outlive the request context")
 }

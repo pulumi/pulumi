@@ -837,7 +837,7 @@ func newTestContext(t testing.TB) *Context {
 		t.Context(),
 		sink, sink,
 		// The tests using this context wire up in-process stub clients, so the host is never used.
-		&MockHost{}, nil /* source */, cwd, nil /* options */, false, nil /* span */)
+		&MockHost{}, nil /* source */, cwd, nil /* options */, false, nil, nil /* span */)
 	require.NoError(t, err, "build context")
 
 	return ctx
@@ -1133,7 +1133,7 @@ func TestProvider_List_YieldsStreamError(t *testing.T) {
 		}
 		gotItems = append(gotItems, item)
 	}
-	require.Error(t, gotErr)
+	require.Error(t, gotErr) //nolint:forbidigo // pre-existing
 	assert.Contains(t, gotErr.Error(), "upstream blew up")
 	assert.Empty(t, gotItems)
 }
@@ -1178,7 +1178,7 @@ func TestProvider_List_EarlyBreakCancelsRPC(t *testing.T) {
 		break
 	}
 
-	assert.Error(t, rpcCtx.Err(), "context should be cancelled after early break")
+	assert.Error(t, rpcCtx.Err(), "context should be cancelled after early break") //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, rpcCtx.Err(), context.Canceled)
 }
 
@@ -1416,7 +1416,7 @@ func TestGetProviderAttachPort(t *testing.T) {
 		t.Setenv("PULUMI_DEBUG_PROVIDERS", "aws:port")
 		aws := tokens.Package("aws")
 		port, err := GetProviderAttachPort(aws)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Nil(t, port)
 	})
 }

@@ -403,8 +403,8 @@ func (p *IndexModProvider) Create(
 
 	return plugin.CreateResponse{
 		ID: resource.ID(id),
-		Properties: resource.FromResourcePropertyMap(resource.PropertyMap{
-			"text": properties["text"],
+		Properties: property.NewMap(map[string]property.Value{
+			"text": resource.FromResourcePropertyValue(properties["text"]),
 		}),
 		Status: resource.StatusOK,
 	}, nil

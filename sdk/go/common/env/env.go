@@ -79,6 +79,9 @@ var SkipNewCredentialsCheck = env.Bool("SKIP_NEW_CREDENTIALS_CHECK",
 	"Skips the best-effort cloud credentials check that `pulumi new` runs after "+
 		"creating a project for providers that opt in through their schema.")
 
+var EnableAutomaticAgentSignup = env.Bool("ENABLE_AUTOMATIC_AGENT_SIGNUP",
+	"Automatically create a temporary Pulumi Cloud account when an AI agent runs the CLI without credentials.")
+
 var SkipConfirmations = env.Bool("SKIP_CONFIRMATIONS",
 	`Whether or not confirmation prompts should be skipped. This should be used by pass any requirement
 that a --yes parameter has been set for non-interactive scenarios.
@@ -134,7 +137,10 @@ var NeoSummaryMaxLen = env.Int("NEO_SUMMARY_MAXLEN",
 var CopilotSummaryMaxLen = NeoSummaryMaxLen
 
 var FallbackToStateSecretsManager = env.Bool("FALLBACK_TO_STATE_SECRETS_MANAGER",
-	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete.")
+	"Use the snapshot secrets manager as a fallback when the stack configuration is missing or incomplete. "+
+		"Set this if you see secret decryption errors when running from a workspace that doesn't carry local "+
+		"stack configuration between invocations, such as the Automation API or a saved update plan applied "+
+		"from a different directory (see https://github.com/pulumi/pulumi/issues/16412).")
 
 var Parallel = env.Int("PARALLEL",
 	"Allow P resource operations to run in parallel at once (1 for no parallelism)")
@@ -147,6 +153,12 @@ var CredentialStore = env.String("CREDENTIAL_STORE",
 	`How to keep CLI credentials: "auto" encrypts them with a key protected by the operating `+
 		`system (macOS Keychain, Windows Credential Manager, Linux Secret Service, TPM) when such `+
 		`protection is usable, "os" requires it, and "plaintext" uses the plaintext credentials file.`)
+
+var CredentialHelper = env.String("CREDENTIAL_HELPER",
+	`[EXPERIMENTAL] Path to the credentials helper executable, or "none" to disable it.`)
+
+var CredentialHelperArgs = env.String("CREDENTIAL_HELPER_ARGS",
+	"[EXPERIMENTAL] JSON array of arguments passed to the credentials helper.", env.Secret)
 
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
@@ -180,13 +192,6 @@ var (
 	DIYBackendNoLegacyWarning = env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",
 		"Disables the warning about legacy stack files mixed with project-scoped stack files.",
 		env.Alternative("SELF_MANAGED_STATE_NO_LEGACY_WARNING"))
-
-	DIYBackendIgnoreDeprecationError = env.Bool("DIY_BACKEND_IGNORE_DEPRECATION_ERROR",
-		"Disables the error about legacy stack mode being deprecated.")
-
-	DIYBackendLegacyLayout = env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
-		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.",
-		env.Alternative("SELF_MANAGED_STATE_LEGACY_LAYOUT"))
 
 	DIYBackendGzip = env.Bool("DIY_BACKEND_GZIP",
 		"Enables gzip compression when writing state files.",
