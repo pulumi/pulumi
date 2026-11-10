@@ -62,8 +62,6 @@ type Options struct {
 	FullyQualifyStackNames bool
 	// A list of form [[URN ID]...] describing the provider IDs of pending creates
 	ImportPendingCreates []string
-	// Serialize the refresh diffs, operations, and overall output as JSON
-	Json bool
 	// Flow log settings to child processes (like plugins)
 	Logflow bool
 	// Log to stderr instead of to files
@@ -76,8 +74,6 @@ type Options struct {
 	Neo bool
 	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
-	// Output format. Supported values are: default, json
-	Output string
 	// [EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable
 	OverrideEnv []string
 	// Allow P resource operations to run in parallel at once (1 for no parallelism).
@@ -256,13 +252,6 @@ func ImportPendingCreates(v []string) Option {
 	}
 }
 
-// Json returns an Option that sets Json.
-func Json(v bool) Option {
-	return func(o *Options) {
-		o.Json = v
-	}
-}
-
 // Logflow returns an Option that sets Logflow.
 func Logflow(v bool) Option {
 	return func(o *Options) {
@@ -302,13 +291,6 @@ func Neo(v bool) Option {
 func OtelTraces(v string) Option {
 	return func(o *Options) {
 		o.OtelTraces = v
-	}
-}
-
-// Output returns an Option that sets Output.
-func Output(v string) Option {
-	return func(o *Options) {
-		o.Output = v
 	}
 }
 

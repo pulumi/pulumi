@@ -49,6 +49,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -91,14 +93,6 @@ export class API {
 
         if (options.verbose != null) {
             __flags.push("--verbose", "" + options.verbose);
-        }
-
-        if (options.json) {
-            __flags.push("--json");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.stack != null) {
@@ -203,6 +197,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -285,10 +281,6 @@ export class API {
 
         if (options.method != null) {
             __flags.push("--method", "" + options.method);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         for (const __item of options.rawField ?? []) {
@@ -325,6 +317,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -407,10 +401,6 @@ export class API {
 
         if (options.method != null) {
             __flags.push("--method", "" + options.method);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         for (const __item of options.rawField ?? []) {
@@ -649,6 +639,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -695,10 +687,6 @@ export class API {
 
         if (options.configFile != null) {
             __flags.push("--config-file", "" + options.configFile);
-        }
-
-        if (options.json) {
-            __flags.push("--json");
         }
 
         if (options.open) {
@@ -744,6 +732,7 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--json");
         __flags.push("--yes");
 
         if (options.color != null) {
@@ -792,10 +781,6 @@ export class API {
 
         if (options.configFile != null) {
             __flags.push("--config-file", "" + options.configFile);
-        }
-
-        if (options.json) {
-            __flags.push("--json");
         }
 
         if (options.open) {
@@ -833,6 +818,7 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--json");
         __flags.push("--yes");
 
         if (options.color != null) {
@@ -881,10 +867,6 @@ export class API {
 
         if (options.configFile != null) {
             __flags.push("--config-file", "" + options.configFile);
-        }
-
-        if (options.json) {
-            __flags.push("--json");
         }
 
         if (options.open) {
@@ -1009,6 +991,7 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--json");
         __flags.push("--yes");
 
         if (options.color != null) {
@@ -1057,10 +1040,6 @@ export class API {
 
         if (options.configFile != null) {
             __flags.push("--config-file", "" + options.configFile);
-        }
-
-        if (options.json) {
-            __flags.push("--json");
         }
 
         if (options.open) {
@@ -1182,6 +1161,7 @@ export class API {
         const __flags: string[] = [];
 
         __flags.push("--force");
+        __flags.push("--json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -1229,10 +1209,6 @@ export class API {
 
         if (options.configFile != null) {
             __flags.push("--config-file", "" + options.configFile);
-        }
-
-        if (options.json) {
-            __flags.push("--json");
         }
 
         if (options.open) {
@@ -1266,6 +1242,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -1312,10 +1290,6 @@ export class API {
 
         if (options.configFile != null) {
             __flags.push("--config-file", "" + options.configFile);
-        }
-
-        if (options.json) {
-            __flags.push("--json");
         }
 
         if (options.open) {
@@ -1354,6 +1328,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -1400,10 +1376,6 @@ export class API {
 
         if (options.configFile != null) {
             __flags.push("--config-file", "" + options.configFile);
-        }
-
-        if (options.json) {
-            __flags.push("--json");
         }
 
         if (options.open) {
@@ -1444,6 +1416,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -1490,10 +1464,6 @@ export class API {
 
         if (options.configFile != null) {
             __flags.push("--config-file", "" + options.configFile);
-        }
-
-        if (options.json) {
-            __flags.push("--json");
         }
 
         if (options.open) {
@@ -1825,6 +1795,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -1871,10 +1843,6 @@ export class API {
 
         if (options.dryRun) {
             __flags.push("--dry-run");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.package_ != null) {
@@ -1907,6 +1875,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -1953,10 +1923,6 @@ export class API {
 
         if (options.dryRun) {
             __flags.push("--dry-run");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.package_ != null) {
@@ -1991,6 +1957,7 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
         __flags.push("--yes");
 
         if (options.color != null) {
@@ -2047,10 +2014,6 @@ export class API {
 
         if (options.dryRun) {
             __flags.push("--dry-run");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -2377,6 +2340,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -2427,10 +2392,6 @@ export class API {
 
         if (options.organization != null) {
             __flags.push("--organization", "" + options.organization);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -2453,6 +2414,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -2503,10 +2466,6 @@ export class API {
 
         if (options.organization != null) {
             __flags.push("--organization", "" + options.organization);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.status != null) {
@@ -2533,6 +2492,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -2583,10 +2544,6 @@ export class API {
 
         if (options.organization != null) {
             __flags.push("--organization", "" + options.organization);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -2609,6 +2566,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -2659,10 +2618,6 @@ export class API {
 
         if (options.organization != null) {
             __flags.push("--organization", "" + options.organization);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -3155,6 +3110,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -3205,10 +3162,6 @@ export class API {
 
         if (options.organization != null) {
             __flags.push("--organization", "" + options.organization);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.project != null) {
@@ -3313,6 +3266,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -3367,10 +3322,6 @@ export class API {
 
         if (options.grantExpirationSeconds != null) {
             __flags.push("--grant-expiration-seconds", "" + options.grantExpirationSeconds);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.reason != null) {
@@ -3985,6 +3936,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -4047,10 +4000,6 @@ export class API {
 
         if (options.latestStackVersionOnly) {
             __flags.push("--latest-stack-version-only");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -4364,6 +4313,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -4410,10 +4361,6 @@ export class API {
 
         if (options.env != null) {
             __flags.push("--env", "" + options.env);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.utc) {
@@ -4440,6 +4387,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -4490,10 +4439,6 @@ export class API {
 
         if (options.count != null) {
             __flags.push("--count", "" + options.count);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.utc) {
@@ -4520,6 +4465,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -4570,10 +4517,6 @@ export class API {
 
         if (options.count != null) {
             __flags.push("--count", "" + options.count);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.utc) {
@@ -4837,6 +4780,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -4883,10 +4828,6 @@ export class API {
 
         if (options.env != null) {
             __flags.push("--env", "" + options.env);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -5285,6 +5226,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -5335,10 +5278,6 @@ export class API {
 
         if (options.utc) {
             __flags.push("--utc");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -5361,6 +5300,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -5411,10 +5352,6 @@ export class API {
 
         if (options.utc) {
             __flags.push("--utc");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.pager != null) {
@@ -5656,6 +5593,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -5706,10 +5645,6 @@ export class API {
 
         if (options.utc) {
             __flags.push("--utc");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.pager != null) {
@@ -5897,6 +5832,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -5947,10 +5884,6 @@ export class API {
 
         if (options.utc) {
             __flags.push("--utc");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.pager != null) {
@@ -6194,6 +6127,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -6244,10 +6179,6 @@ export class API {
 
         if (options.count != null) {
             __flags.push("--count", "" + options.count);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.utc) {
@@ -6402,6 +6333,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -6450,10 +6383,6 @@ export class API {
             __flags.push("--env", "" + options.env);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         __final.push(...__flags);
 
         const __arguments: string[] = [];
@@ -6473,6 +6402,8 @@ export class API {
         __final.push("list");
 
         const __flags: string[] = [];
+
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -6524,10 +6455,6 @@ export class API {
 
         if (options.count != null) {
             __flags.push("--count", "" + options.count);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -6780,6 +6707,7 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
         __flags.push("--skip-preview");
         __flags.push("--yes");
 
@@ -6863,20 +6791,12 @@ export class API {
             __flags.push("--generate-resources", "" + options.generateResources);
         }
 
-        if (options.json) {
-            __flags.push("--json");
-        }
-
         if (options.message != null) {
             __flags.push("--message", "" + options.message);
         }
 
         if (options.out != null) {
             __flags.push("--out", "" + options.out);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.parallel != null) {
@@ -7217,6 +7137,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -7263,10 +7185,6 @@ export class API {
 
         if (options.stack != null) {
             __flags.push("--stack", "" + options.stack);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -7579,6 +7497,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -7643,10 +7563,6 @@ export class API {
             __flags.push("--org", "" + options.org);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         if (options.startTime != null) {
             __flags.push("--start-time", "" + options.startTime);
         }
@@ -7674,6 +7590,8 @@ export class API {
         __final.push("list");
 
         const __flags: string[] = [];
+
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -7737,10 +7655,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.startTime != null) {
@@ -7897,6 +7811,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -7953,10 +7869,6 @@ export class API {
             __flags.push("--org", "" + options.org);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         if (options.role != null) {
             __flags.push("--role", "" + options.role);
         }
@@ -7981,6 +7893,8 @@ export class API {
         __final.push("list");
 
         const __flags: string[] = [];
+
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -8038,10 +7952,6 @@ export class API {
             __flags.push("--org", "" + options.org);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         __final.push(...__flags);
 
         const __arguments: string[] = [];
@@ -8062,6 +7972,7 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
         __flags.push("--yes");
 
         if (options.color != null) {
@@ -8110,10 +8021,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -8200,6 +8107,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -8248,10 +8157,6 @@ export class API {
             __flags.push("--org", "" + options.org);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         __final.push(...__flags);
 
         const __arguments: string[] = [];
@@ -8273,6 +8178,8 @@ export class API {
         __final.push("edit");
 
         const __flags: string[] = [];
+
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -8334,10 +8241,6 @@ export class API {
             __flags.push("--org", "" + options.org);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         __final.push(...__flags);
 
         const __arguments: string[] = [];
@@ -8358,6 +8261,8 @@ export class API {
         __final.push("list");
 
         const __flags: string[] = [];
+
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -8407,10 +8312,6 @@ export class API {
             __flags.push("--org", "" + options.org);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         if (options.purpose != null) {
             __flags.push("--purpose", "" + options.purpose);
         }
@@ -8434,6 +8335,8 @@ export class API {
         __final.push("new");
 
         const __flags: string[] = [];
+
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -8487,10 +8390,6 @@ export class API {
             __flags.push("--org", "" + options.org);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         if (options.purpose != null) {
             __flags.push("--purpose", "" + options.purpose);
         }
@@ -8517,6 +8416,7 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
         __flags.push("--yes");
 
         if (options.color != null) {
@@ -8569,10 +8469,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -8659,6 +8555,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -8709,10 +8607,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.query != null) {
@@ -8742,6 +8636,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -8792,10 +8688,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         for (const __item of options.query ?? []) {
@@ -8892,6 +8784,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -8950,10 +8844,6 @@ export class API {
 
         if (options.org != null) {
             __flags.push("--org", "" + options.org);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         __final.push(...__flags);
@@ -9304,6 +9194,7 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
         __flags.push("--skip-preview");
         __flags.push("--yes");
 
@@ -9413,20 +9304,12 @@ export class API {
             }
         }
 
-        if (options.json) {
-            __flags.push("--json");
-        }
-
         if (options.message != null) {
             __flags.push("--message", "" + options.message);
         }
 
         if (options.neo) {
             __flags.push("--neo");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         for (const __item of options.overrideEnv ?? []) {
@@ -9670,6 +9553,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -9712,10 +9597,6 @@ export class API {
 
         if (options.verbose != null) {
             __flags.push("--verbose", "" + options.verbose);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.showSecrets) {
@@ -10500,6 +10381,7 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
         __flags.push("--skip-preview");
         __flags.push("--yes");
 
@@ -10613,10 +10495,6 @@ export class API {
             __flags.push("--ignore-protect");
         }
 
-        if (options.json) {
-            __flags.push("--json");
-        }
-
         if (options.message != null) {
             __flags.push("--message", "" + options.message);
         }
@@ -10627,10 +10505,6 @@ export class API {
 
         if (options.neoTaskOnFailure) {
             __flags.push("--neo-task-on-failure");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         for (const __item of options.overrideEnv ?? []) {
@@ -10886,10 +10760,6 @@ export class API {
             __flags.push("--verbose");
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         __final.push(...__flags);
 
         const __arguments: string[] = [];
@@ -10957,10 +10827,6 @@ export interface PulumiAboutEnvOptions extends BaseOptions {
     tracingHeader?: string;
     /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
     verbose?: number;
-    /** Emit output as JSON (alias for --output=json) */
-    json?: boolean;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** The name of the stack to get info on. Defaults to the current stack */
     stack?: string;
     /** Include transitive dependencies */
@@ -11061,8 +10927,6 @@ export interface PulumiApiDescribeOptions extends BaseOptions {
     input?: string;
     /** HTTP method to look up (a path can map to multiple ops by method) */
     method?: string;
-    /** Output format: default is a human-readable schema render; `markdown` emits a markdown document (piping friendly, renders in IDEs/glow); `json` emits the stable agent envelope */
-    output?: string;
     /** String key=value with no type coercion. Sent as query params on GET/HEAD, JSON body fields otherwise */
     rawField?: string[];
     /** Re-fetch the OpenAPI spec from Pulumi Cloud and overwrite the local cache */
@@ -11113,8 +10977,6 @@ export interface PulumiApiListOptions extends BaseOptions {
     input?: string;
     /** HTTP method (default GET, POST when body fields are present) */
     method?: string;
-    /** Output format: `table` (human-readable, default when interactive), `json` (stable agent envelope, default when non-interactive). Use --output=table to keep the table when redirecting. */
-    output?: string;
     /** String key=value with no type coercion. Sent as query params on GET/HEAD, JSON body fields otherwise */
     rawField?: string[];
     /** Re-fetch the OpenAPI spec from Pulumi Cloud and overwrite the local cache */
@@ -11217,8 +11079,6 @@ export interface PulumiConfigCopyOptions extends BaseOptions {
     verbose?: number;
     /** Use the configuration values in the specified file rather than detecting the file name */
     configFile?: string;
-    /** Emit output as JSON */
-    json?: boolean;
     /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
     open?: boolean;
     /** Show secret values when listing config instead of displaying blinded values */
@@ -11257,8 +11117,6 @@ export interface PulumiConfigEnvAddOptions extends BaseOptions {
     verbose?: number;
     /** Use the configuration values in the specified file rather than detecting the file name */
     configFile?: string;
-    /** Emit output as JSON */
-    json?: boolean;
     /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
     open?: boolean;
     /** Show secret values in plaintext instead of ciphertext */
@@ -11293,8 +11151,6 @@ export interface PulumiConfigEnvInitOptions extends BaseOptions {
     verbose?: number;
     /** Use the configuration values in the specified file rather than detecting the file name */
     configFile?: string;
-    /** Emit output as JSON */
-    json?: boolean;
     /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
     open?: boolean;
     /** Show secret values in plaintext instead of ciphertext */
@@ -11367,8 +11223,6 @@ export interface PulumiConfigEnvRemoveOptions extends BaseOptions {
     verbose?: number;
     /** Use the configuration values in the specified file rather than detecting the file name */
     configFile?: string;
-    /** Emit output as JSON */
-    json?: boolean;
     /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
     open?: boolean;
     /** Show secret values in plaintext instead of ciphertext */
@@ -11439,8 +11293,6 @@ export interface PulumiConfigRefreshOptions extends BaseOptions {
     verbose?: number;
     /** Use the configuration values in the specified file rather than detecting the file name */
     configFile?: string;
-    /** Emit output as JSON */
-    json?: boolean;
     /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
     open?: boolean;
     /** Show secret values when listing config instead of displaying blinded values */
@@ -11475,8 +11327,6 @@ export interface PulumiConfigRemoveOptions extends BaseOptions {
     verbose?: number;
     /** Use the configuration values in the specified file rather than detecting the file name */
     configFile?: string;
-    /** Emit output as JSON */
-    json?: boolean;
     /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
     open?: boolean;
     /** Show secret values when listing config instead of displaying blinded values */
@@ -11513,8 +11363,6 @@ export interface PulumiConfigRemoveAllOptions extends BaseOptions {
     verbose?: number;
     /** Use the configuration values in the specified file rather than detecting the file name */
     configFile?: string;
-    /** Emit output as JSON */
-    json?: boolean;
     /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
     open?: boolean;
     /** Show secret values when listing config instead of displaying blinded values */
@@ -11551,8 +11399,6 @@ export interface PulumiConfigSetOptions extends BaseOptions {
     verbose?: number;
     /** Use the configuration values in the specified file rather than detecting the file name */
     configFile?: string;
-    /** Emit output as JSON */
-    json?: boolean;
     /** Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise */
     open?: boolean;
     /** Show secret values when listing config instead of displaying blinded values */
@@ -11679,8 +11525,6 @@ export interface PulumiDoOptions extends BaseOptions {
     verbose?: number;
     /** Run the operation in preview mode */
     dryRun?: boolean;
-    /** Output format for resource operation results (supported: default, json) */
-    output?: string;
     /** The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\"" */
     package_?: string;
     /** Show secret values in output */
@@ -11715,8 +11559,6 @@ export interface PulumiDoShowResourcesOptions extends BaseOptions {
     verbose?: number;
     /** Run the operation in preview mode */
     dryRun?: boolean;
-    /** Output format (supported: text, json) */
-    output?: string;
     /** The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\"" */
     package_?: string;
     /** Show secret values in output */
@@ -11755,8 +11597,6 @@ export interface PulumiEnvChangeRequestApplyOptions extends BaseOptions {
     organization?: string;
     /** show the proposed change without applying it */
     dryRun?: boolean;
-    /** output format: "text" (default) or "json" */
-    output?: string;
 }
 
 /** Options for the `pulumi env change-request approve` command. */
@@ -11915,8 +11755,6 @@ export interface PulumiEnvChangeRequestGetOptions extends BaseOptions {
     env?: string;
     /** the organization that owns the change request (defaults to your default organization) */
     organization?: string;
-    /** output format: "text" (default) or "json" */
-    output?: string;
 }
 
 /** Options for the `pulumi env change-request list` command. */
@@ -11947,8 +11785,6 @@ export interface PulumiEnvChangeRequestListOptions extends BaseOptions {
     env?: string;
     /** the organization that owns the change request (defaults to your default organization) */
     organization?: string;
-    /** output format: "text" (default) or "json" */
-    output?: string;
     /** only list change requests with this status: open (draft, pending, or ready), applied, closed, or all */
     status?: string;
 }
@@ -11981,8 +11817,6 @@ export interface PulumiEnvChangeRequestLogOptions extends BaseOptions {
     env?: string;
     /** the organization that owns the change request (defaults to your default organization) */
     organization?: string;
-    /** output format: "text" (default) or "json" */
-    output?: string;
 }
 
 /** Options for the `pulumi env change-request rebase` command. */
@@ -12013,8 +11847,6 @@ export interface PulumiEnvChangeRequestRebaseOptions extends BaseOptions {
     env?: string;
     /** the organization that owns the change request (defaults to your default organization) */
     organization?: string;
-    /** output format: "text" (default) or "json" */
-    output?: string;
 }
 
 /** Options for the `pulumi env change-request unapprove` command. */
@@ -12247,8 +12079,6 @@ export interface PulumiEnvListOptions extends BaseOptions {
     env?: string;
     /** Filter returned environments to those in a specific organization */
     organization?: string;
-    /** output format: "text" (default) or "json" */
-    output?: string;
     /** Filter returned environments to those in a specific project */
     project?: string;
 }
@@ -12317,8 +12147,6 @@ export interface PulumiEnvOpenRequestOptions extends BaseOptions {
     accessDurationSeconds?: string;
     /** expiration time for the grant in seconds */
     grantExpirationSeconds?: string;
-    /** output format: "text" (default) or "json" */
-    output?: string;
     /** an optional reason explaining why the environment is being opened, shown to approvers */
     reason?: string;
 }
@@ -12611,8 +12439,6 @@ export interface PulumiEnvReferrerListOptions extends BaseOptions {
     count?: number;
     /** only include the latest version of each referring stack */
     latestStackVersionOnly?: boolean;
-    /** output format: "text" (default) or "json" */
-    output?: string;
 }
 
 /** Options for the `pulumi env remove` command. */
@@ -12763,8 +12589,6 @@ export interface PulumiEnvScheduleGetOptions extends BaseOptions {
     verbose?: number;
     /** The name of the environment to operate on. */
     env?: string;
-    /** output format: "text" (default) or "json" */
-    output?: string;
     /** display times in UTC */
     utc?: boolean;
 }
@@ -12797,8 +12621,6 @@ export interface PulumiEnvScheduleHistoryOptions extends BaseOptions {
     env?: string;
     /** the maximum number of events to return (all if unset) */
     count?: number;
-    /** output format: "text" (default) or "json" */
-    output?: string;
     /** display times in UTC */
     utc?: boolean;
 }
@@ -12831,8 +12653,6 @@ export interface PulumiEnvScheduleListOptions extends BaseOptions {
     env?: string;
     /** the maximum number of schedules to return (all if unset) */
     count?: number;
-    /** output format: "text" (default) or "json" */
-    output?: string;
     /** display times in UTC */
     utc?: boolean;
 }
@@ -12963,8 +12783,6 @@ export interface PulumiEnvSettingsGetOptions extends BaseOptions {
     verbose?: number;
     /** The name of the environment to operate on. */
     env?: string;
-    /** output format: "text" (default) or "json" */
-    output?: string;
 }
 
 /** Options for the `pulumi env settings set` command. */
@@ -13183,8 +13001,6 @@ export interface PulumiEnvTagGetOptions extends BaseOptions {
     env?: string;
     /** display times in UTC */
     utc?: boolean;
-    /** output format: "text" (default) or "json" */
-    output?: string;
 }
 
 /** Options for the `pulumi env tag list` command. */
@@ -13215,8 +13031,6 @@ export interface PulumiEnvTagListOptions extends BaseOptions {
     env?: string;
     /** display times in UTC */
     utc?: boolean;
-    /** output format: "text" (default) or "json" */
-    output?: string;
     /** the command to use to page through the environment's version tags */
     pager?: string;
 }
@@ -13339,8 +13153,6 @@ export interface PulumiEnvVersionHistoryOptions extends BaseOptions {
     env?: string;
     /** display times in UTC */
     utc?: boolean;
-    /** output format: "text" (default) or "json" */
-    output?: string;
     /** the command to use to page through the environment's revisions */
     pager?: string;
 }
@@ -13471,8 +13283,6 @@ export interface PulumiEnvVersionTagListOptions extends BaseOptions {
     env?: string;
     /** display times in UTC */
     utc?: boolean;
-    /** output format: "text" (default) or "json" */
-    output?: string;
     /** the command to use to page through the environment's version tags */
     pager?: string;
 }
@@ -13535,8 +13345,6 @@ export interface PulumiEnvWebhookDeliveryListOptions extends BaseOptions {
     env?: string;
     /** The maximum number of deliveries to return (all if unset) */
     count?: number;
-    /** output format: "text" (default) or "json" */
-    output?: string;
     /** Display times in UTC */
     utc?: boolean;
 }
@@ -13619,8 +13427,6 @@ export interface PulumiEnvWebhookGetOptions extends BaseOptions {
     verbose?: number;
     /** The name of the environment to operate on. */
     env?: string;
-    /** output format: "text" (default) or "json" */
-    output?: string;
 }
 
 /** Options for the `pulumi env webhook list` command. */
@@ -13651,8 +13457,6 @@ export interface PulumiEnvWebhookListOptions extends BaseOptions {
     env?: string;
     /** The maximum number of webhooks to return (all if unset) */
     count?: number;
-    /** output format: "text" (default) or "json" */
-    output?: string;
 }
 
 /** Options for the `pulumi env webhook new` command. */
@@ -13791,14 +13595,10 @@ export interface PulumiImportOptions extends BaseOptions {
     generateCode?: boolean;
     /** When used with --from, always write a JSON-encoded file containing a list of importable resources discovered by conversion to the specified path */
     generateResources?: string;
-    /** Serialize the import diffs, operations, and overall output as JSON */
-    json?: boolean;
     /** Optional message to associate with the update operation */
     message?: string;
     /** The path to the file that will contain the generated resource declarations */
     out?: string;
-    /** Output format. Supported values are: default, json */
-    output?: string;
     /** Allow P resource operations to run in parallel at once (1 for no parallelism). */
     parallel?: number;
     /** The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource */
@@ -13965,8 +13765,6 @@ export interface PulumiLogsListOptions extends BaseOptions {
     verbose?: number;
     /** The name of the stack to operate on. Defaults to the current stack */
     stack?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
 }
 
 /** Options for the `pulumi logs remove` command. */
@@ -14177,8 +13975,6 @@ export interface PulumiOrgAuditLogExportOptions extends BaseOptions {
     format?: string;
     /** The organization to export audit logs for */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** The lower bound of the time range, as a Unix timestamp */
     startTime?: string;
     /** Filter by user login */
@@ -14219,8 +14015,6 @@ export interface PulumiOrgAuditLogListOptions extends BaseOptions {
     eventType?: string;
     /** The organization to list audit logs for */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** The lower bound of the time range, as a Unix timestamp */
     startTime?: string;
     /** Filter by user login */
@@ -14309,8 +14103,6 @@ export interface PulumiOrgMemberEditOptions extends BaseOptions {
     fgaRoleName?: string;
     /** The organization that owns the member */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** The built-in role to assign: member, admin, or billing-manager */
     role?: string;
 }
@@ -14345,8 +14137,6 @@ export interface PulumiOrgMemberListOptions extends BaseOptions {
     count?: number;
     /** The organization to list members for. Defaults to the user's default organization */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
 }
 
 /** Options for the `pulumi org member remove` command. */
@@ -14375,8 +14165,6 @@ export interface PulumiOrgMemberRemoveOptions extends BaseOptions {
     verbose?: number;
     /** The organization that owns the member */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
 }
 
 /** Options for the `pulumi org role` command. */
@@ -14431,8 +14219,6 @@ export interface PulumiOrgRoleAssignOptions extends BaseOptions {
     verbose?: number;
     /** The organization that owns the role. Defaults to the current default organization */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
 }
 
 /** Options for the `pulumi org role edit` command. */
@@ -14467,8 +14253,6 @@ export interface PulumiOrgRoleEditOptions extends BaseOptions {
     name?: string;
     /** The organization that owns the role. Defaults to the current default organization */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
 }
 
 /** Options for the `pulumi org role list` command. */
@@ -14497,8 +14281,6 @@ export interface PulumiOrgRoleListOptions extends BaseOptions {
     verbose?: number;
     /** The organization to list roles for. Defaults to the current default organization */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** Filter by UX purpose: role, role_private, role_temporary, policy, or set */
     purpose?: string;
 }
@@ -14531,8 +14313,6 @@ export interface PulumiOrgRoleNewOptions extends BaseOptions {
     description?: string;
     /** The organization to create the role in. Defaults to the current default organization */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** The UX purpose for the role: organization, team, or token */
     purpose?: string;
 }
@@ -14565,8 +14345,6 @@ export interface PulumiOrgRoleRemoveOptions extends BaseOptions {
     force?: boolean;
     /** The organization that owns the role. Defaults to the current default organization */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
 }
 
 /** Options for the `pulumi org search` command. */
@@ -14597,8 +14375,6 @@ export interface PulumiOrgSearchOptions extends BaseOptions {
     delimiter?: string;
     /** Name of the organization to search. Defaults to the current user's default organization. */
     org?: string;
-    /** Output format. Supported values are: default, json, yaml and csv */
-    output?: string;
     /**
      * A Pulumi Query to send to Pulumi Cloud for resource search.May be formatted as a single query, or multiple:
      * 	-q "type:aws:s3/bucketv2:BucketV2 modified:>=2023-09-01"
@@ -14638,8 +14414,6 @@ export interface PulumiOrgSearchAiOptions extends BaseOptions {
     delimiter?: string;
     /** Organization name to search within */
     org?: string;
-    /** Output format. Supported values are: default, json, yaml and csv */
-    output?: string;
     /** Plaintext natural language query */
     query?: string;
     /** Open the search results in a web browser. */
@@ -14730,8 +14504,6 @@ export interface PulumiOrgUsageGetOptions extends BaseOptions {
     lookbackStart?: number;
     /** Organization to fetch usage for (defaults to the current default org) */
     org?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
 }
 
 /** Options for the `pulumi project list` command. */
@@ -14870,14 +14642,10 @@ export interface PulumiRefreshOptions extends BaseOptions {
     expectNoChanges?: boolean;
     /** A list of form [[URN ID]...] describing the provider IDs of pending creates */
     importPendingCreates?: string[];
-    /** Serialize the refresh diffs, operations, and overall output as JSON */
-    json?: boolean;
     /** Optional message to associate with the update operation */
     message?: string;
     /** Enable Pulumi Neo's assistance for improved CLI experience and insights (can also be set with PULUMI_NEO environment variable) */
     neo?: boolean;
-    /** Output format. Supported values are: default, json */
-    output?: string;
     /** [EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable */
     overrideEnv?: string[];
     /** Allow P resource operations to run in parallel at once (1 for no parallelism). */
@@ -14996,8 +14764,6 @@ export interface PulumiStateGetOptions extends BaseOptions {
     tracingHeader?: string;
     /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
     verbose?: number;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** Show secret values in plaintext instead of [secret] */
     showSecrets?: boolean;
     /** The name of the stack to operate on. Defaults to the current stack */
@@ -15350,16 +15116,12 @@ export interface PulumiUpOptions extends BaseOptions {
     expectNoChanges?: boolean;
     /** Ignore the protect resource option for this operation, allowing protected resources to be deleted or replaced. Use with caution: deleted resources cannot be recovered */
     ignoreProtect?: boolean;
-    /** Serialize the update diffs, operations, and overall output as JSON */
-    json?: boolean;
     /** Optional message to associate with the update operation */
     message?: string;
     /** Enable Pulumi Neo's assistance for improved CLI experience and insights (can also be set with PULUMI_NEO environment variable) */
     neo?: boolean;
     /** Start a Neo task to help debug errors that occur during the operation */
     neoTaskOnFailure?: boolean;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** [EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable */
     overrideEnv?: string[];
     /** Allow P resource operations to run in parallel at once (1 for no parallelism). */
@@ -15468,6 +15230,4 @@ export interface PulumiWhoamiOptions extends BaseOptions {
     tracingHeader?: string;
     /** Print detailed whoami information */
     verbose?: boolean;
-    /** Output format. Supported values are: default and json */
-    output?: string;
 }

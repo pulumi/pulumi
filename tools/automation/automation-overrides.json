@@ -28,17 +28,29 @@
             }
         },
         {
+            "path": ["about", "env"],
+            "propagate": false,
+            "flags": {
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
+            }
+        },
+        {
             "path": ["up"],
             "propagate": false,
             "flags": {
-                "skip-preview": { "omit": true, "preset": true }
+                "skip-preview": { "omit": true, "preset": true },
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
             }
         },
         {
             "path": ["refresh"],
             "propagate": false,
             "flags": {
-                "skip-preview": { "omit": true, "preset": true }
+                "skip-preview": { "omit": true, "preset": true },
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
             }
         },
         {
@@ -46,14 +58,18 @@
             "propagate": false,
             "exclude": true,
             "flags": {
-                "skip-preview": { "omit": true, "preset": true }
+                "skip-preview": { "omit": true, "preset": true },
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
             }
         },
         {
             "path": ["import"],
             "propagate": false,
             "flags": {
-                "skip-preview": { "omit": true, "preset": true }
+                "skip-preview": { "omit": true, "preset": true },
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
             }
         },
         {
@@ -96,7 +112,28 @@
             }
         },
         {
+            "path": ["config", "copy"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
             "path": ["config", "get"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "env", "add"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "env", "init"],
             "propagate": false,
             "flags": {
                 "json": { "omit": true, "preset": true }
@@ -111,10 +148,32 @@
             }
         },
         {
+            "path": ["config", "env", "remove"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "remove"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "remove-all"],
+            "propagate": false,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
             "path": ["config", "set"],
             "propagate": false,
             "flags": {
-                "override-import": { "omit": true }
+                "override-import": { "omit": true },
+                "json": { "omit": true, "preset": true }
             }
         },
         {
@@ -128,14 +187,16 @@
             "path": ["config", "refresh"],
             "propagate": false,
             "flags": {
-                "force": { "omit": true, "preset": true }
+                "force": { "omit": true, "preset": true },
+                "json": { "omit": true, "preset": true }
             }
         },
         {
             "path": ["whoami"],
             "propagate": false,
             "flags": {
-                "json": { "omit": true, "preset": true }
+                "json": { "omit": true, "preset": true },
+                "output": { "omit": true }
             }
         },
         {
@@ -144,6 +205,20 @@
             "exclude": true,
             "flags": {
                 "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["api", "describe"],
+            "propagate": false,
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
+        },
+        {
+            "path": ["api", "list"],
+            "propagate": false,
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
             }
         },
         {
@@ -163,6 +238,20 @@
             "propagate": true,
             "exclude": true,
             "flags": {}
+        },
+        {
+            "path": ["do"],
+            "propagate": true,
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
+        },
+        {
+            "path": ["env"],
+            "propagate": true,
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
         },
         {
             "path": ["events"],
@@ -220,6 +309,13 @@
             "flags": {}
         },
         {
+            "path": ["logs", "list"],
+            "propagate": false,
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
+        },
+        {
             "path": ["new"],
             "propagate": true,
             "flags": {
@@ -229,7 +325,9 @@
         {
             "path": ["org"],
             "propagate": true,
-            "flags": {}
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
         },
         {
             "path": ["org", "webhook"],
@@ -287,6 +385,13 @@
             "propagate": true,
             "exclude": true,
             "flags": {}
+        },
+        {
+            "path": ["state", "get"],
+            "propagate": false,
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
         },
         {
             "path": ["template"],

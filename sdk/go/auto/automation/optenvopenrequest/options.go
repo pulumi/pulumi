@@ -50,8 +50,6 @@ type Options struct {
 	Memprofilerate int
 	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
-	// output format: "text" (default) or "json"
-	Output string
 	// Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
 	Profiling string
 	// an optional reason explaining why the environment is being opened, shown to approvers
@@ -148,13 +146,6 @@ func Memprofilerate(v int) Option {
 func OtelTraces(v string) Option {
 	return func(o *Options) {
 		o.OtelTraces = v
-	}
-}
-
-// Output returns an Option that sets Output.
-func Output(v string) Option {
-	return func(o *Options) {
-		o.Output = v
 	}
 }
 
