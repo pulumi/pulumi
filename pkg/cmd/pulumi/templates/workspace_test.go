@@ -53,6 +53,6 @@ func TestRetrievePrivatePulumiCloudTemplateFallsBackToAgentCredentials(t *testin
 	require.NoError(t, workspace.StoreAgentAccount(cloudURL, workspace.Account{AccessToken: "agent-token"}, true))
 
 	_, err = retrievePrivatePulumiCloudTemplate(server.URL + "/templates/private.zip")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "token agent-token", gotAuth)
 }

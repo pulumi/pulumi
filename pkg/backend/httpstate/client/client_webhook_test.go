@@ -205,7 +205,7 @@ func TestPingStackWebhook(t *testing.T) {
 
 		c := newMockClient(srv)
 		_, err := c.PingStackWebhook(t.Context(), stackID, "no-such-hook")
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -315,7 +315,7 @@ func TestDeleteStackWebhook(t *testing.T) {
 
 		c := newMockClient(srv)
 		err := c.DeleteStackWebhook(t.Context(), stackID, "no-such-hook")
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -389,7 +389,7 @@ func TestListStackWebhookDeliveries(t *testing.T) {
 
 		c := newMockClient(srv)
 		_, err := c.ListStackWebhookDeliveries(t.Context(), stackID, "no-such")
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 

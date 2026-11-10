@@ -34,10 +34,10 @@ func init() {
 					// We expect the policy pack to fail to load due to the invalid policy name, but languages vary on
 					// if they write that error to stderr or via the grpc response to be picked up in the error message,
 					// so here we just check that it _did_ error.
-					require.Error(l, res.Err)
+					require.Error(l, res.Err) //nolint:forbidigo // pre-existing
 				},
 				Assert: func(l *L, res AssertArgs) {
-					require.Error(l, res.Err)
+					require.Error(l, res.Err) //nolint:forbidigo // pre-existing
 				},
 			},
 		},

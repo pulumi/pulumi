@@ -892,7 +892,7 @@ func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
 			assert.Equal(t, secretsProvider.Type, "passphrase")
 
 			_, err := passphrase.NewPromptingPassphraseSecretsManagerFromState(secretsProvider.State)
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 		},
 	})
 

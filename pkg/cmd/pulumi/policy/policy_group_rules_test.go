@@ -235,7 +235,7 @@ func TestParseMatchRule_Errors(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			_, err := parseMatchRule(tt.kind, tt.value)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Equal(t, tt.want, err.Error())
 			assert.IsType(t, cmdCmd.ConfigurationError{}, err)
 		})

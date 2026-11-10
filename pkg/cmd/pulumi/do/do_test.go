@@ -744,7 +744,7 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 					cmd.SetErr(&stdout)
 					cmd.SetArgs(tc.args)
 					err := cmd.Execute()
-					require.Error(t, err)
+					require.Error(t, err) //nolint:forbidigo // pre-existing
 					msg := err.Error()
 					for _, want := range tc.wantContains {
 						assert.Contains(t, msg, want)
@@ -825,7 +825,7 @@ func TestDoCmdUnknownTokenErrors(t *testing.T) {
 				cmd.SetErr(&stdout)
 				cmd.SetArgs(tc.args)
 				err := cmd.Execute()
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				msg := err.Error()
 				for _, want := range tc.wantContains {
 					assert.Contains(t, msg, want)

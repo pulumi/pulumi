@@ -2977,7 +2977,7 @@ func TestTargetDestroyDependencyErrors(t *testing.T) {
 			}),
 		},
 	}, false, p.BackendClient, nil, "1")
-	assert.Error(t, err) // Expect error because we didn't specify the dependency as a target or TargetDependents
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	validateSnap(snap)
 }
 
@@ -3040,7 +3040,7 @@ func TestTargetDestroyChildErrors(t *testing.T) {
 			}),
 		},
 	}, false, p.BackendClient, nil, "1")
-	assert.Error(t, err) // Expect error because we didn't specify the child as a target or TargetDependents
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	validateSnap(snap)
 }
 
@@ -3102,7 +3102,7 @@ func TestTargetDestroyDeleteFails(t *testing.T) {
 			}),
 		},
 	}, false, p.BackendClient, nil, "1")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	validateSnap(snap)
 }
 
@@ -3175,7 +3175,7 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 			TargetDependents: true,
 		},
 	}, false, p.BackendClient, nil, "1")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	validateSnap(snap)
 
 	// Run the targeted destroy again against the original snapshot, this time explicitly specifying the targets.
@@ -3191,7 +3191,7 @@ func TestTargetDestroyDependencyDeleteFails(t *testing.T) {
 			}),
 		},
 	}, false, p.BackendClient, nil, "2")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	validateSnap(snap)
 }
 
@@ -3264,7 +3264,7 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 			TargetDependents: true,
 		},
 	}, false, p.BackendClient, nil, "1")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	validateSnap(snap)
 
 	// Run the targeted destroy again against the original snapshot, this time explicitly specifying the targets.
@@ -3280,7 +3280,7 @@ func TestTargetDestroyChildDeleteFails(t *testing.T) {
 			}),
 		},
 	}, false, p.BackendClient, nil, "2")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	validateSnap(snap)
 }
 

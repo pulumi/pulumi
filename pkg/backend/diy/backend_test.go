@@ -380,7 +380,7 @@ func TestCancel(t *testing.T) {
 	err = otherBackend.Lock(ctx, aStackRef)
 	require.NoError(t, err)
 	err = lb.checkForLock(ctx, aStackRef)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	// Now call CancelCurrentUpdate and check that checkForLocks no longer errors
 	err = lb.CancelCurrentUpdate(ctx, aStackRef)
 	require.NoError(t, err)
@@ -744,7 +744,7 @@ func TestLoginToNonExistingFolderFails(t *testing.T) {
 	fakeDir := "file://" + filepath.ToSlash(os.TempDir()) + "/non-existing"
 	ctx := t.Context()
 	b, err := New(ctx, diagtest.LogSink(t), fakeDir, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Nil(t, b)
 }
 
@@ -758,7 +758,7 @@ func TestParseEmptyStackFails(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = b.ParseStackReference("")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/10439
@@ -1037,7 +1037,7 @@ func TestProjectNameMustMatch(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "organization/not-my-project/b", bRef.String())
 	bStack, err := b.CreateStack(ctx, bRef, "", nil, nil)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Nil(t, bStack)
 
 	// Create a new project stack with the right project name
@@ -1330,7 +1330,7 @@ func TestResolveCompression(t *testing.T) {
 
 			got, err := resolveCompression(env.NewEnv(tt.store))
 			if tt.expectError {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				return
 			}
 

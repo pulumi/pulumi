@@ -170,7 +170,7 @@ func TestPackageDeleteCmd_Run(t *testing.T) {
 			err := cmd.ExecuteContext(t.Context())
 
 			if tt.expectedErr != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
 				require.NoError(t, err)

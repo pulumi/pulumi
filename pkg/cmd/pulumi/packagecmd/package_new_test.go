@@ -166,7 +166,7 @@ func TestPackageNew_NonEmptyDirRequiresForce(t *testing.T) {
 		generateOnly:      true,
 	}
 	err = runNewPackage(t.Context(), io.Discard, args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "is not empty")
 
 	// With --force, the same call should succeed.
@@ -191,7 +191,7 @@ func TestPackageNew_BrokenTemplate(t *testing.T) {
 		generateOnly:      true,
 	}
 	err = runNewPackage(t.Context(), io.Discard, args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 //nolint:paralleltest // changes process working directory
@@ -232,7 +232,7 @@ func TestPackageNew_InvalidName(t *testing.T) {
 				generateOnly:      true,
 			}
 			err := runNewPackage(t.Context(), io.Discard, args)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "not a valid package name")
 		})
 	}
@@ -274,6 +274,6 @@ func TestLoadPackageTemplate(t *testing.T) {
 		path, err := filepath.Abs(filepath.Join("testdata", "template-broken"))
 		require.NoError(t, err)
 		_, err = cmdTemplates.LoadPackageTemplate(path)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }

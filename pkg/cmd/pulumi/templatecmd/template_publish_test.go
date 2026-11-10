@@ -279,7 +279,7 @@ runtime: nodejs
 			mockCmd := &cobra.Command{}
 			err := cmd.Run(t.Context(), mockCmd, tt.args, templateDir)
 			if tt.expectedErr != "" {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
 				require.NoError(t, err)
@@ -341,7 +341,7 @@ runtime: nodejs
 				version:   "1.0.0",
 			}, tmpDir)
 
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
 	}
@@ -378,7 +378,7 @@ runtime: nodejs
 		version:   "1.0.0",
 	}, tmpDir)
 
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, customErr)
 }
 

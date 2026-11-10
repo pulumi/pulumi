@@ -264,7 +264,7 @@ func TestRegisterUsesOutputValuesRejectsPropDeps(t *testing.T) {
 			},
 			UsesOutputValues: true,
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "uses_output_values")
 		assert.Contains(t, err.Error(), "propertyDependencies")
 		return nil

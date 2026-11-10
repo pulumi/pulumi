@@ -114,12 +114,12 @@ func TestMultipleProtectedDeletes(t *testing.T) {
 	}
 	_, err = lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, true, p.BackendClient, validate, "1")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	// Run an update that will try and delete both resA and resB.
 	_, err = lt.TestOp(Update).
 		RunStep(p.GetProject(), p.GetTarget(t, snap), p.Options, false, p.BackendClient, validate, "2")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestProtectInheritance tests that the protect option is inherited from parent resources but can be overridden.
