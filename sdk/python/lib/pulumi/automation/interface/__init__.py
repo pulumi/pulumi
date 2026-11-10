@@ -2478,11 +2478,9 @@ class API:
         expect_no_changes: bool = False,
         ignore_protect: bool = False,
         import_file: Optional[str] = None,
-        json: bool = False,
         message: Optional[str] = None,
         neo: bool = False,
         neo_task_on_failure: bool = False,
-        output: Optional[str] = None,
         override_env: Optional[list[str]] = None,
         parallel: Optional[int] = None,
         policy_pack: Optional[list[str]] = None,
@@ -2539,11 +2537,9 @@ class API:
         :param expect_no_changes: Return an error if any changes are proposed by this preview
         :param ignore_protect: Ignore the protect resource option for this operation, previewing the deletion or replacement of protected resources instead of failing
         :param import_file: Save any creates seen during the preview into an import file to use with 'pulumi import'
-        :param json: Serialize the preview diffs, operations, and overall output as JSON. Set PULUMI_ENABLE_STREAMING_JSON_PREVIEW to stream JSON events instead.
         :param message: Optional message to associate with the preview operation
         :param neo: Enable Pulumi Neo's assistance for improved CLI experience and insights (can also be set with PULUMI_NEO environment variable)
         :param neo_task_on_failure: Start a Neo task to help debug errors that occur during the operation
-        :param output: Output format. Supported values are: default, json
         :param override_env: [EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable
         :param parallel: Allow P resource operations to run in parallel at once (1 for no parallelism).
         :param policy_pack: Run one or more policy packs as part of this update
@@ -2576,6 +2572,7 @@ class API:
         __final = []
         __final.append("preview")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -2628,16 +2625,12 @@ class API:
             __flags.append("--ignore-protect")
         if import_file is not None:
             __flags.extend(["--import-file", str(import_file)])
-        if json:
-            __flags.append("--json")
         if message is not None:
             __flags.extend(["--message", str(message)])
         if neo:
             __flags.append("--neo")
         if neo_task_on_failure:
             __flags.append("--neo-task-on-failure")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         for __item in override_env or []:
             __flags.extend(["--override-env", str(__item)])
         if parallel is not None:

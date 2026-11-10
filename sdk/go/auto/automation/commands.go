@@ -2568,6 +2568,8 @@ func (a *API) Preview(
 
 	final := []string{"preview"}
 
+	final = append(final, "--output", "json")
+
 	for _, v := range o.AttachDebugger {
 		final = append(final, "--attach-debugger", fmt.Sprint(v))
 	}
@@ -2640,10 +2642,6 @@ func (a *API) Preview(
 		final = append(final, "--import-file", fmt.Sprint(o.ImportFile))
 	}
 
-	if o.Json {
-		final = append(final, "--json")
-	}
-
 	if o.Logflow {
 		final = append(final, "--logflow")
 	}
@@ -2670,10 +2668,6 @@ func (a *API) Preview(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	for _, v := range o.OverrideEnv {

@@ -2196,6 +2196,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -2306,10 +2308,6 @@ export class API {
             __flags.push("--import-file", "" + options.importFile);
         }
 
-        if (options.json) {
-            __flags.push("--json");
-        }
-
         if (options.message != null) {
             __flags.push("--message", "" + options.message);
         }
@@ -2320,10 +2318,6 @@ export class API {
 
         if (options.neoTaskOnFailure) {
             __flags.push("--neo-task-on-failure");
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         for (const __item of options.overrideEnv ?? []) {
@@ -3755,16 +3749,12 @@ export interface PulumiPreviewOptions extends BaseOptions {
     ignoreProtect?: boolean;
     /** Save any creates seen during the preview into an import file to use with 'pulumi import' */
     importFile?: string;
-    /** Serialize the preview diffs, operations, and overall output as JSON. Set PULUMI_ENABLE_STREAMING_JSON_PREVIEW to stream JSON events instead. */
-    json?: boolean;
     /** Optional message to associate with the preview operation */
     message?: string;
     /** Enable Pulumi Neo's assistance for improved CLI experience and insights (can also be set with PULUMI_NEO environment variable) */
     neo?: boolean;
     /** Start a Neo task to help debug errors that occur during the operation */
     neoTaskOnFailure?: boolean;
-    /** Output format. Supported values are: default, json */
-    output?: string;
     /** [EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable */
     overrideEnv?: string[];
     /** Allow P resource operations to run in parallel at once (1 for no parallelism). */
