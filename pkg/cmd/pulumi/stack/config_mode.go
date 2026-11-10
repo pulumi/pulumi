@@ -46,17 +46,10 @@ func AddConfigModeFlags(cmd *cobra.Command, escConfig, staticConfig *bool, exclu
 	)
 	cmd.MarkFlagsMutuallyExclusive(escConfigFlag, staticConfigFlag)
 	for _, flag := range []string{escConfigFlag, staticConfigFlag} {
-		if !configModeFlagsVisible() {
-			_ = cmd.PersistentFlags().MarkHidden(flag)
-		}
 		for _, other := range exclusiveWith {
 			cmd.MarkFlagsMutuallyExclusive(flag, other)
 		}
 	}
-}
-
-func configModeFlagsVisible() bool {
-	return true
 }
 
 func followsOrgConfigDefault() bool {
