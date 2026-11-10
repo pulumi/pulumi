@@ -159,6 +159,13 @@
             "flags": {}
         },
         {
+            "path": ["deployment"],
+            "propagate": true,
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
+        },
+        {
             "path": ["events"],
             "propagate": true,
             "exclude": true,

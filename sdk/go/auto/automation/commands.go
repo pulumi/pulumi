@@ -2235,6 +2235,8 @@ func (a *API) DeploymentCancel(
 
 	final := []string{"deployment", "cancel"}
 
+	final = append(final, "--output", "json")
+
 	final = append(final, "--yes")
 
 	if o.Color != "" {
@@ -2263,10 +2265,6 @@ func (a *API) DeploymentCancel(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -2329,6 +2327,8 @@ func (a *API) DeploymentGet(
 
 	final := []string{"deployment", "get"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -2355,10 +2355,6 @@ func (a *API) DeploymentGet(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -2419,6 +2415,8 @@ func (a *API) DeploymentList(
 
 	final := []string{"deployment", "list"}
 
+	final = append(final, "--output", "json")
+
 	if o.All {
 		final = append(final, "--all")
 	}
@@ -2457,10 +2455,6 @@ func (a *API) DeploymentList(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -2523,6 +2517,8 @@ func (a *API) DeploymentLog(
 
 	final := []string{"deployment", "log"}
 
+	final = append(final, "--output", "json")
+
 	if o.All {
 		final = append(final, "--all")
 	}
@@ -2565,10 +2561,6 @@ func (a *API) DeploymentLog(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {
@@ -2925,6 +2917,8 @@ func (a *API) DeploymentSettingsEdit(
 
 	final := []string{"deployment", "settings", "edit"}
 
+	final = append(final, "--output", "json")
+
 	if o.Branch != "" {
 		final = append(final, "--branch", fmt.Sprint(o.Branch))
 	}
@@ -3089,10 +3083,6 @@ func (a *API) DeploymentSettingsEdit(
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
 	}
 
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
-	}
-
 	for _, v := range o.PathFilter {
 		final = append(final, "--path-filter", fmt.Sprint(v))
 	}
@@ -3224,6 +3214,8 @@ func (a *API) DeploymentSettingsGet(
 
 	final := []string{"deployment", "settings", "get"}
 
+	final = append(final, "--output", "json")
+
 	if o.Color != "" {
 		final = append(final, "--color", fmt.Sprint(o.Color))
 	}
@@ -3250,10 +3242,6 @@ func (a *API) DeploymentSettingsGet(
 
 	if o.OtelTraces != "" {
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
-	}
-
-	if o.Output != "" {
-		final = append(final, "--output", fmt.Sprint(o.Output))
 	}
 
 	if o.Profiling != "" {

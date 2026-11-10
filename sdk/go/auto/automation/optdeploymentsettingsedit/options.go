@@ -109,8 +109,6 @@ type Options struct {
 	OidcGcpWorkloadPoolId string
 	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
-	// Output format. Supported values are: default and json
-	Output string
 	// Replace the path filter list (repeatable; pass once per filter); empty string clears it
 	PathFilter []string
 	// Use this stack as a template for PR review stacks
@@ -468,13 +466,6 @@ func OidcGcpWorkloadPoolId(v string) Option {
 func OtelTraces(v string) Option {
 	return func(o *Options) {
 		o.OtelTraces = v
-	}
-}
-
-// Output returns an Option that sets Output.
-func Output(v string) Option {
-	return func(o *Options) {
-		o.Output = v
 	}
 }
 

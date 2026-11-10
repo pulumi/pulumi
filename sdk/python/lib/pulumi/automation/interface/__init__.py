@@ -2026,7 +2026,6 @@ class API:
         tracing: Optional[str] = None,
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
-        output: Optional[str] = None,
         stack: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -2046,7 +2045,6 @@ class API:
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param output: Output format. Supported values are: default and json
         :param stack: The name of the stack to operate on. Defaults to the current stack
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -2056,6 +2054,7 @@ class API:
         __final.append("deployment")
         __final.append("cancel")
         __flags = []
+        __flags.extend(["--output", "json"])
         __flags.append("--yes")
         if color is not None:
             __flags.extend(["--color", str(color)])
@@ -2079,8 +2078,6 @@ class API:
             __flags.extend(["--tracing-header", str(tracing_header)])
         if verbose is not None:
             __flags.extend(["--verbose", str(verbose)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if stack is not None:
             __flags.extend(["--stack", str(stack)])
         __final.extend(__flags)
@@ -2112,7 +2109,6 @@ class API:
         tracing: Optional[str] = None,
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
-        output: Optional[str] = None,
         stack: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -2132,7 +2128,6 @@ class API:
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param output: Output format. Supported values are: default and json
         :param stack: The name of the stack to operate on. Defaults to the current stack
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -2142,6 +2137,7 @@ class API:
         __final.append("deployment")
         __final.append("get")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -2164,8 +2160,6 @@ class API:
             __flags.extend(["--tracing-header", str(tracing_header)])
         if verbose is not None:
             __flags.extend(["--verbose", str(verbose)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if stack is not None:
             __flags.extend(["--stack", str(stack)])
         __final.extend(__flags)
@@ -2199,7 +2193,6 @@ class API:
         all: bool = False,
         asc: bool = False,
         count: Optional[int] = None,
-        output: Optional[str] = None,
         sort: Optional[str] = None,
         stack: Optional[str] = None,
         cwd: Optional[str] = None,
@@ -2223,7 +2216,6 @@ class API:
         :param all: Fetch all results (mutually exclusive with --count)
         :param asc: Sort in ascending order (default descending)
         :param count: Number of results to display (fetches multiple pages if needed)
-        :param output: Output format. Supported values are: default and json
         :param sort: The field to sort results by
         :param stack: The name of the stack to operate on. Defaults to the current stack
         :param cwd: Working directory to run the command in.
@@ -2234,6 +2226,7 @@ class API:
         __final.append("deployment")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -2262,8 +2255,6 @@ class API:
             __flags.append("--asc")
         if count is not None:
             __flags.extend(["--count", str(count)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if sort is not None:
             __flags.extend(["--sort", str(sort)])
         if stack is not None:
@@ -2300,7 +2291,6 @@ class API:
         count: Optional[int] = None,
         job: Optional[int] = None,
         offset: Optional[int] = None,
-        output: Optional[str] = None,
         stack: Optional[str] = None,
         step: Optional[int] = None,
         cwd: Optional[str] = None,
@@ -2325,7 +2315,6 @@ class API:
         :param count: The number of log lines to fetch, 1-499 in step mode (0 to leave unset)
         :param job: The job index to fetch step-level logs for (-1 to leave unset)
         :param offset: The offset within the step's logs (0 to leave unset)
-        :param output: Output format. Supported values are: default and json
         :param stack: The name of the stack to operate on. Defaults to the current stack
         :param step: The step index within the job; requires --job (-1 to leave unset)
         :param cwd: Working directory to run the command in.
@@ -2336,6 +2325,7 @@ class API:
         __final.append("deployment")
         __final.append("log")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -2366,8 +2356,6 @@ class API:
             __flags.extend(["--job", str(job)])
         if offset is not None:
             __flags.extend(["--offset", str(offset)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if stack is not None:
             __flags.extend(["--stack", str(stack)])
         if step is not None:
@@ -2679,7 +2667,6 @@ class API:
         oidc_gcp_service_account: Optional[str] = None,
         oidc_gcp_token_lifetime: Optional[str] = None,
         oidc_gcp_workload_pool_id: Optional[str] = None,
-        output: Optional[str] = None,
         path_filter: Optional[list[str]] = None,
         pr_template: bool = False,
         pre_run_command: Optional[list[str]] = None,
@@ -2752,7 +2739,6 @@ class API:
         :param oidc_gcp_service_account: GCP OIDC: service account email
         :param oidc_gcp_token_lifetime: GCP OIDC: lifetime of the temporary credentials (e.g. 30m, 1h)
         :param oidc_gcp_workload_pool_id: GCP OIDC: workload identity pool ID
-        :param output: Output format. Supported values are: default and json
         :param path_filter: Replace the path filter list (repeatable; pass once per filter); empty string clears it
         :param pr_template: Use this stack as a template for PR review stacks
         :param pre_run_command: Replace the pre-run command list (repeatable; pass once per command); empty string clears it
@@ -2785,6 +2771,7 @@ class API:
         __final.append("settings")
         __final.append("edit")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -2890,8 +2877,6 @@ class API:
             __flags.extend(
                 ["--oidc-gcp-workload-pool-id", str(oidc_gcp_workload_pool_id)]
             )
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         for __item in path_filter or []:
             __flags.extend(["--path-filter", str(__item)])
         if pr_template:
@@ -2965,7 +2950,6 @@ class API:
         tracing: Optional[str] = None,
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
-        output: Optional[str] = None,
         stack: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -2985,7 +2969,6 @@ class API:
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param output: Output format. Supported values are: default and json
         :param stack: The name of the stack to operate on. Defaults to the current stack
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -2996,6 +2979,7 @@ class API:
         __final.append("settings")
         __final.append("get")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -3018,8 +3002,6 @@ class API:
             __flags.extend(["--tracing-header", str(tracing_header)])
         if verbose is not None:
             __flags.extend(["--verbose", str(verbose)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if stack is not None:
             __flags.extend(["--stack", str(stack)])
         __final.extend(__flags)

@@ -1825,6 +1825,7 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
         __flags.push("--yes");
 
         if (options.color != null) {
@@ -1871,10 +1872,6 @@ export class API {
             __flags.push("--verbose", "" + options.verbose);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         if (options.stack != null) {
             __flags.push("--stack", "" + options.stack);
         }
@@ -1898,6 +1895,8 @@ export class API {
         __final.push("get");
 
         const __flags: string[] = [];
+
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -1943,10 +1942,6 @@ export class API {
             __flags.push("--verbose", "" + options.verbose);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         if (options.stack != null) {
             __flags.push("--stack", "" + options.stack);
         }
@@ -1970,6 +1965,8 @@ export class API {
         __final.push("list");
 
         const __flags: string[] = [];
+
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -2027,10 +2024,6 @@ export class API {
             __flags.push("--count", "" + options.count);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         if (options.sort != null) {
             __flags.push("--sort", "" + options.sort);
         }
@@ -2057,6 +2050,8 @@ export class API {
         __final.push("log");
 
         const __flags: string[] = [];
+
+        __flags.push("--output", "" + "json");
 
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
@@ -2116,10 +2111,6 @@ export class API {
 
         if (options.offset != null) {
             __flags.push("--offset", "" + options.offset);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.stack != null) {
@@ -2374,6 +2365,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -2558,10 +2551,6 @@ export class API {
             __flags.push("--oidc-gcp-workload-pool-id", "" + options.oidcGcpWorkloadPoolId);
         }
 
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
-        }
-
         for (const __item of options.pathFilter ?? []) {
             if (__item != null) {
                 __flags.push("--path-filter", "" + __item);
@@ -2686,6 +2675,8 @@ export class API {
 
         const __flags: string[] = [];
 
+        __flags.push("--output", "" + "json");
+
         if (options.color != null) {
             __flags.push("--color", "" + options.color);
         }
@@ -2728,10 +2719,6 @@ export class API {
 
         if (options.verbose != null) {
             __flags.push("--verbose", "" + options.verbose);
-        }
-
-        if (options.output != null) {
-            __flags.push("--output", "" + options.output);
         }
 
         if (options.stack != null) {
@@ -12760,8 +12747,6 @@ export interface PulumiDeploymentCancelOptions extends BaseOptions {
     tracingHeader?: string;
     /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
     verbose?: number;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** The name of the stack to operate on. Defaults to the current stack */
     stack?: string;
 }
@@ -12790,8 +12775,6 @@ export interface PulumiDeploymentGetOptions extends BaseOptions {
     tracingHeader?: string;
     /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
     verbose?: number;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** The name of the stack to operate on. Defaults to the current stack */
     stack?: string;
 }
@@ -12826,8 +12809,6 @@ export interface PulumiDeploymentListOptions extends BaseOptions {
     asc?: boolean;
     /** Number of results to display (fetches multiple pages if needed) */
     count?: number;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** The field to sort results by */
     sort?: string;
     /** The name of the stack to operate on. Defaults to the current stack */
@@ -12866,8 +12847,6 @@ export interface PulumiDeploymentLogOptions extends BaseOptions {
     job?: number;
     /** The offset within the step's logs (0 to leave unset) */
     offset?: number;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** The name of the stack to operate on. Defaults to the current stack */
     stack?: string;
     /** The step index within the job; requires --job (-1 to leave unset) */
@@ -13083,8 +13062,6 @@ export interface PulumiDeploymentSettingsEditOptions extends BaseOptions {
     oidcGcpTokenLifetime?: string;
     /** GCP OIDC: workload identity pool ID */
     oidcGcpWorkloadPoolId?: string;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** Replace the path filter list (repeatable; pass once per filter); empty string clears it */
     pathFilter?: string[];
     /** Use this stack as a template for PR review stacks */
@@ -13157,8 +13134,6 @@ export interface PulumiDeploymentSettingsGetOptions extends BaseOptions {
     tracingHeader?: string;
     /** Enable verbose logging (e.g., v=3); anything >3 is very verbose */
     verbose?: number;
-    /** Output format. Supported values are: default and json */
-    output?: string;
     /** The name of the stack to operate on. Defaults to the current stack */
     stack?: string;
 }
