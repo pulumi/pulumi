@@ -1055,3 +1055,42 @@ func TestGroupCommandsHelpFlagSucceeds(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, stdout.String(), "Usage:")
 }
+
+func TestIsMachineReadableOutput(t *testing.T) {
+	t.Parallel()
+
+	newCmd := func(disableFlagParsing bool) *cobra.Command {
+		c := &cobra.Command{Use: "test", DisableFlagParsing: disableFlagParsing}
+		c.Flags().Bool("json", false, "")
+		c.Flags().StringP("output", "o", "", "")
+		return c
+	}
+
+	tests := []struct {
+		name string
+		args []string
+		want bool
+	}{
+		{"no flags", []string{"aws:s3:Bucket"}, false},
+		{"json", []string{"--json"}, true},
+		{"output json", []string{"--output", "json"}, true},
+		{"output=json", []string{"--output=json"}, true},
+		{"short output json", []string{"-o", "json"}, true},
+		{"output text", []string{"--output", "text"}, false},
+		{"unknown flags", []string{"aws:s3:Bucket", "--bucket", "b", "--output", "json"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// cobra parses the flags of an ordinary command before PersistentPreRunE runs.
+			parsed := newCmd(false)
+			parsed.FParseErrWhitelist.UnknownFlags = true
+			require.NoError(t, parsed.ParseFlags(tt.args))
+			assert.Equal(t, tt.want, isMachineReadableOutput(parsed, tt.args))
+
+			// It doesn't for commands that parse their own flags, like `pulumi do`.
+			assert.Equal(t, tt.want, isMachineReadableOutput(newCmd(true), tt.args))
+		})
+	}
+}
