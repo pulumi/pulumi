@@ -1095,7 +1095,8 @@ type PulumiConfig struct {
 
 // HintsConfig holds the settings for the product hints the CLI shows at the end of commands.
 type HintsConfig struct {
-	Disabled bool `json:"disabled,omitempty"` // true to never show hints.
+	Disabled bool     `json:"disabled,omitempty"` // true to never show hints.
+	Skip     []string `json:"skip,omitempty"`     // the IDs of hints never to show.
 }
 
 func getConfigFilePath() (string, error) {

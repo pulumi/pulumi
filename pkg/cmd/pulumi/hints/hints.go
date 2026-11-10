@@ -15,9 +15,12 @@
 // Package hints shows short, contextual product hints at the end of a CLI command.
 //
 // Commands [Offer] hints while they run, and the root command calls [Flush] when it exits. Flush shows
-// at most one hint per command. A hint is shown only if hints are enabled, the user has completed at
-// least one successful update, no hint of any kind was shown in the last [GlobalCooldown], and the
-// hint's own [Hint.Cooldown] has passed.
+// at most one hint per command. A hint is shown only if hints are enabled, the user hasn't turned that
+// hint off, the user has completed at least one successful update, no hint of any kind was shown in the
+// last [GlobalCooldown], and the hint's own [Hint.Cooldown] has passed.
+//
+// Users turn all hints off with PULUMI_DISABLE_HINTS or `hints.disabled` in the Pulumi config file, and
+// turn individual hints off by [Hint.ID] with PULUMI_SKIP_HINTS or `hints.skip`.
 package hints
 
 import (
@@ -27,6 +30,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -72,7 +76,7 @@ type manager struct {
 
 	now       func() time.Time
 	statePath func() (string, error)
-	disabled  func() bool
+	settings  func() settings
 	isCI      func() bool
 }
 
@@ -80,7 +84,7 @@ func newManager() *manager {
 	return &manager{
 		now:       time.Now,
 		statePath: func() (string, error) { return workspace.GetPulumiPath(stateFileName) },
-		disabled:  disabled,
+		settings:  loadSettings,
 		isCI:      ciutil.IsCI,
 	}
 }
@@ -102,18 +106,35 @@ func RecordSuccessfulUpdate() { defaultManager.recordSuccessfulUpdate() }
 // errors reading or writing the state file are logged, and no hint is shown.
 func Flush(w io.Writer) { defaultManager.flush(w) }
 
-// disabled reports whether the user has turned hints off, through PULUMI_DISABLE_HINTS or the
-// `hints.disabled` setting in the Pulumi config file.
-func disabled() bool {
-	if env.DisableHints.Value() {
-		return true
+// settings are the user's choices about which hints to show.
+type settings struct {
+	// disabled is true if the user has turned all hints off.
+	disabled bool
+	// skip holds the IDs of the hints the user has turned off.
+	skip map[string]bool
+}
+
+// loadSettings reads the user's hint settings from PULUMI_DISABLE_HINTS, PULUMI_SKIP_HINTS and the
+// `hints` section of the Pulumi config file.
+func loadSettings() settings {
+	s := settings{disabled: env.DisableHints.Value(), skip: map[string]bool{}}
+	for id := range strings.SplitSeq(env.SkipHints.Value(), ",") {
+		if id = strings.TrimSpace(id); id != "" {
+			s.skip[id] = true
+		}
 	}
 	cfg, err := workspace.GetPulumiConfig()
 	if err != nil {
 		slog.Info("could not read Pulumi config for hints", "err", err)
-		return false
+		return s
 	}
-	return cfg.Hints != nil && cfg.Hints.Disabled
+	if cfg.Hints != nil {
+		s.disabled = s.disabled || cfg.Hints.Disabled
+		for _, id := range cfg.Hints.Skip {
+			s.skip[id] = true
+		}
+	}
+	return s
 }
 
 func (m *manager) offer(h Hint) {
@@ -150,7 +171,11 @@ func (m *manager) flush(w io.Writer) {
 	defer m.mu.Unlock()
 	pending := m.pending
 	m.pending = nil
-	if len(pending) == 0 || m.suppressed || m.isCI() || m.disabled() {
+	if len(pending) == 0 || m.suppressed || m.isCI() {
+		return
+	}
+	settings := m.settings()
+	if settings.disabled {
 		return
 	}
 
@@ -167,6 +192,9 @@ func (m *manager) flush(w io.Writer) {
 		return
 	}
 	for _, h := range pending {
+		if settings.skip[h.ID] {
+			continue
+		}
 		if last, ok := st.LastShown[h.ID]; ok && now.Sub(last) < h.Cooldown {
 			continue
 		}
