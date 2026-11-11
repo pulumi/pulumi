@@ -1,0 +1,4 @@
+component: sdk/go
+kind: feat
+body: Give `CheckConfig` response types of its own in the provider protocol, exposed in Go as a new `CheckConfig2` method alongside the existing one
+time: 2026-11-11T14:00:00Z

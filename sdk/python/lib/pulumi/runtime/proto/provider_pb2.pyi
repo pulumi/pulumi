@@ -978,13 +978,11 @@ global___CheckRequest = CheckRequest
 
 @typing.final
 class CheckResponse(google.protobuf.message.Message):
-    """`CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) or
-    [](pulumirpc.ResourceProvider.Check) call. A `CheckResponse` may contain either:
+    """`CheckResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Check) call. A `CheckResponse` may
+    contain either:
 
-    * a set of checked, known-valid `inputs`. In the case of [](pulumirpc.ResourceProvider.CheckConfig), these may
-      subsequently be passed to [](pulumirpc.ResourceProvider.DiffConfig) and/or
-      [](pulumirpc.ResourceProvider.Configure). In the case of [](pulumirpc.ResourceProvider.Check), these may be passed
-      to any of the supported lifecycle methods that accept provider inputs.
+    * a set of checked, known-valid `inputs`. These may be passed to any of the supported lifecycle methods that accept
+      provider inputs.
     * a set of `failures` detailing invalid inputs.
 
     In cases where the supplied set of inputs is valid, a `CheckResponse` may contain default values that should
@@ -1016,8 +1014,8 @@ global___CheckResponse = CheckResponse
 
 @typing.final
 class CheckFailure(google.protobuf.message.Message):
-    """A `CheckFailure` describes a single validation error that arose as part of a
-    [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check) call.
+    """A `CheckFailure` describes a single validation error that arose as part of a [](pulumirpc.ResourceProvider.Check)
+    call.
     """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
@@ -1037,6 +1035,72 @@ class CheckFailure(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["property", b"property", "reason", b"reason"]) -> None: ...
 
 global___CheckFailure = CheckFailure
+
+@typing.final
+class CheckConfigResponse(google.protobuf.message.Message):
+    """`CheckConfigResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig) call. A
+    `CheckConfigResponse` may contain either:
+
+    * a set of checked, known-valid `inputs`. These may subsequently be passed to
+      [](pulumirpc.ResourceProvider.DiffConfig) and/or [](pulumirpc.ResourceProvider.Configure).
+    * a set of `failures` detailing invalid inputs.
+
+    In cases where the supplied set of inputs is valid, a `CheckConfigResponse` may contain default values that should
+    persisted to Pulumi state and passed to subsequent calls.
+
+    `CheckConfigResponse` was forked from `CheckResponse` and must stay wire compatible with it for the fields the two
+    share, since older providers and engines exchange `CheckResponse` messages for `CheckConfig`.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    INPUTS_FIELD_NUMBER: builtins.int
+    FAILURES_FIELD_NUMBER: builtins.int
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """A valid, checked set of inputs. May contain defaults."""
+
+    @property
+    def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CheckConfigFailure]:
+        """Any validation failures that occurred."""
+
+    def __init__(
+        self,
+        *,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        failures: collections.abc.Iterable[global___CheckConfigFailure] | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["inputs", b"inputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["failures", b"failures", "inputs", b"inputs"]) -> None: ...
+
+global___CheckConfigResponse = CheckConfigResponse
+
+@typing.final
+class CheckConfigFailure(google.protobuf.message.Message):
+    """A `CheckConfigFailure` describes a single validation error that arose as part of a
+    [](pulumirpc.ResourceProvider.CheckConfig) call.
+
+    `CheckConfigFailure` was forked from `CheckFailure` and must stay wire compatible with it for the fields the two
+    share.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PROPERTY_FIELD_NUMBER: builtins.int
+    REASON_FIELD_NUMBER: builtins.int
+    property: builtins.str
+    """The provider configuration property that failed validation."""
+    reason: builtins.str
+    """The reason that the named property failed validation."""
+    def __init__(
+        self,
+        *,
+        property: builtins.str = ...,
+        reason: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["property", b"property", "reason", b"reason"]) -> None: ...
+
+global___CheckConfigFailure = CheckConfigFailure
 
 @typing.final
 class DiffRequest(google.protobuf.message.Message):

@@ -701,7 +701,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		return CheckConfigResponse{}, err
 	}
 
-	resp, err := p.clientRaw.CheckConfig(p.requestContext(), &pulumirpc.CheckRequest{
+	resp, err := p.clientRaw.CheckConfig2(p.requestContext(), &pulumirpc.CheckRequest{
 		Urn:  string(req.URN),
 		Name: req.URN.Name(),
 		Type: req.URN.Type().String(),

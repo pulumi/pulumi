@@ -475,12 +475,12 @@ class ProviderServicer(ResourceProviderServicer):
                 request.randomSeed,
             )
         )
-        return proto.CheckResponse(
+        return proto.CheckConfigResponse(
             inputs=PropertyValue.marshal_map(resp.inputs)
             if resp.inputs is not None
             else None,
             failures=[
-                proto.CheckFailure(property=f.property, reason=f.reason)
+                proto.CheckConfigFailure(property=f.property, reason=f.reason)
                 for f in resp.failures
             ]
             if resp.failures is not None

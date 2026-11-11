@@ -44,8 +44,39 @@ protoc \
     --go-grpc_out="$TEMP_DIR_GO" --go-grpc_opt=paths=source_relative \
     $PROTO_FILES_NO_STATUS
 
+# The CheckConfig RPC returns a CheckConfigResponse, which is wire compatible with the CheckResponse it used to return.
+# Generated as is, that would change the signature of CheckConfig in the Go bindings and break every provider that
+# implements it. Instead we expose the RPC as two Go methods: CheckConfig keeps the CheckResponse signature, and
+# CheckConfig2 has the generated one. The gRPC handler calls CheckConfig2 and falls back to CheckConfig. The parts that
+# are not a rename are written by hand in go/provider_check_config.go.
+
+GO_PROVIDER_GRPC="$TEMP_DIR_GO/pulumi/provider_grpc.pb.go"
+
+perl -i -pe '
+    s{^\tCheckConfig(\(.*\)) \(\*CheckConfigResponse, error\)$}
+     {\tCheckConfig$1 (*CheckResponse, error)\n\t// `CheckConfig2` serves the same call as `CheckConfig`, with response types of its own.\n\tCheckConfig2$1 (*CheckConfigResponse, error)};
+    s{^(func \(.*\)) CheckConfig(\(.*\) \(\*CheckConfigResponse, error\) \{)$}{$1 CheckConfig2$2};
+    s{srv\.\(ResourceProviderServer\)\.CheckConfig\(ctx, }{_ResourceProvider_CheckConfig_Dispatch(srv.(ResourceProviderServer), ctx, };
+' "$GO_PROVIDER_GRPC"
+
+# Fail loudly if a newer protoc-gen-go-grpc changes its output so that the rewrites above no longer apply.
+expect_count() {
+    local want=$1 pattern=$2 got
+    got=$(grep -c -E "$pattern" "$GO_PROVIDER_GRPC" || true)
+    if [ "$got" != "$want" ]; then
+        echo "error: expected $want lines matching '$pattern' in $GO_PROVIDER_GRPC, found $got" >&2
+        exit 1
+    fi
+}
+expect_count 2 '^	CheckConfig\(.*\) \(\*CheckResponse, error\)$'
+expect_count 2 '^	CheckConfig2\(.*\) \(\*CheckConfigResponse, error\)$'
+expect_count 2 '^func \(.*\) CheckConfig2\(.*\) \(\*CheckConfigResponse, error\) \{$'
+expect_count 2 '_ResourceProvider_CheckConfig_Dispatch\(srv\.\(ResourceProviderServer\), ctx, '
+expect_count 0 ' CheckConfig\(.*\) \(\*CheckConfigResponse, error\)'
+
 rm -rf "${GO_PULUMIRPC:?}"/*
 cp -r "$TEMP_DIR_GO"/pulumi/* "$GO_PULUMIRPC"
+cp "$PROTO_DIR/go/provider_check_config.go" "$GO_PULUMIRPC"
 
 # Protoc for JavaScript has a bug where it emits Google Closure Compiler directives in the module
 # prologue that mutate the global object, which causes side-by-side bugs in pulumi/pulumi

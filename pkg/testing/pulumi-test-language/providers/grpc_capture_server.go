@@ -56,6 +56,16 @@ func (p *grpcCapturingProviderServer) CheckConfig(
 	return p.ResourceProviderServer.CheckConfig(ctx, req)
 }
 
+func (p *grpcCapturingProviderServer) CheckConfig2(
+	ctx context.Context,
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	if err := p.logMessage(CheckConfigMethod, req); err != nil {
+		return nil, err
+	}
+	return p.ResourceProviderServer.CheckConfig2(ctx, req)
+}
+
 func (p *grpcCapturingProviderServer) Configure(
 	ctx context.Context,
 	req *pulumirpc.ConfigureRequest,
