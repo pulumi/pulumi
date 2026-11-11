@@ -16,10 +16,12 @@ package hints
 
 import "time"
 
-// AgentSkills suggests Pulumi's agent skills to AI coding agents that create a new project.
+// AgentSkills suggests Pulumi's agent skills to AI coding agents that create a new project. It may be shown before
+// the first update, so that an agent sees it when it starts its first project.
 var AgentSkills = Hint{
-	ID:       "agent-skills",
-	Cooldown: 30 * 24 * time.Hour,
+	ID:                "agent-skills",
+	Cooldown:          30 * 24 * time.Hour,
+	BeforeFirstUpdate: true,
 	Message: "Pulumi agent skills help AI agents write and operate Pulumi programs. " +
 		"Install them with `npx skills add pulumi/agent-skills --skill '*'`, " +
 		"or in Claude Code with `/plugin marketplace add pulumi/agent-skills`. " +
