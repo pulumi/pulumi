@@ -23,9 +23,12 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -88,4 +91,51 @@ func TestExitTelemetry(t *testing.T) {
 
 	_, facts = emittedTelemetry(t, t.Context(), exitTelemetry(t.Context(), nil))
 	require.Equal(t, map[string]any{"exit-code": float64(0)}, facts)
+}
+
+//nolint:paralleltest // NewPulumiCmd binds flags to process-wide variables
+func TestTelemetrySchema(t *testing.T) {
+	root, cleanup := NewPulumiCmd()
+	defer cleanup()
+	root.InitDefaultHelpCmd()
+
+	var names []string
+	var walk func(c *cobra.Command)
+	walk = func(c *cobra.Command) {
+		names = append(names, telemetry.CommandName(c))
+		c.Flags().VisitAll(func(f *pflag.Flag) {
+			require.NoError(t, telemetry.ValidateFact("flags", []string{f.Name}), telemetry.CommandName(c))
+		})
+		for _, sub := range c.Commands() {
+			walk(sub)
+		}
+	}
+	walk(root)
+	slices.Sort(names)
+	for _, v := range env.Variables() {
+		if strings.HasPrefix(v.Name(), env.Prefix) {
+			require.NoError(t, telemetry.ValidateFact("env-vars", []string{v.Name()}))
+		}
+	}
+
+	schema, err := telemetry.SchemaJSON(names)
+	require.NoError(t, err)
+
+	path := filepath.Join("..", "..", "telemetry", "schema.json")
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
+		require.NoError(t, os.WriteFile(path, schema, 0o600))
+		return
+	}
+	existing, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Equal(t, string(schema), string(existing),
+		"pkg/telemetry/schema.json is out of date, regenerate it with "+
+			"`PULUMI_ACCEPT=true go test ./cmd/pulumi -run TestTelemetrySchema`")
+}
+
+func TestUnknownCommand(t *testing.T) {
+	t.Parallel()
+
+	_, facts := emittedTelemetry(t, t.Context(), []telemetry.KV{telemetry.Command(&cobra.Command{Use: "my-plugin"})})
+	require.Equal(t, "other", facts["command"])
 }

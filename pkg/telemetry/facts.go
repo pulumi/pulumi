@@ -30,7 +30,11 @@ import (
 )
 
 func Command(cmd *cobra.Command) KV {
-	return enumFact("command", CommandName(cmd))
+	path := CommandName(cmd)
+	if !slices.Contains(schema["command"].Values, path) {
+		path = "other"
+	}
+	return enumFact("command", path)
 }
 
 func CommandName(cmd *cobra.Command) string {
@@ -116,21 +120,17 @@ func UsingAI(getenv func(string) string) KV {
 }
 
 func OS() KV {
-	switch runtime.GOOS {
-	case "linux", "darwin", "windows":
+	if slices.Contains(osValues, runtime.GOOS) {
 		return enumFact("os", runtime.GOOS)
-	default:
-		return enumFact("os", "other")
 	}
+	return enumFact("os", "other")
 }
 
 func Arch() KV {
-	switch runtime.GOARCH {
-	case "amd64", "arm64":
+	if slices.Contains(archValues, runtime.GOARCH) {
 		return enumFact("arch", runtime.GOARCH)
-	default:
-		return enumFact("arch", "other")
 	}
+	return enumFact("arch", "other")
 }
 
 func backendFact(backendURL string) KV {
@@ -138,10 +138,10 @@ func backendFact(backendURL string) KV {
 	if err != nil {
 		return enumFact("backend", "other")
 	}
-	switch u.Scheme {
-	case "http", "https":
+	switch {
+	case u.Scheme == "http" || u.Scheme == "https":
 		return enumFact("backend", "pulumi")
-	case "file", "s3", "azblob", "gs":
+	case slices.Contains(diySchemes, u.Scheme):
 		return enumFact("backend", u.Scheme)
 	default:
 		return enumFact("backend", "other")
