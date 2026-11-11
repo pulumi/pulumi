@@ -87,6 +87,14 @@ service ResourceProvider {
     // rendering diffs.
     rpc CheckConfig(CheckRequest) returns (CheckResponse) {}
 
+    // `CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+    // uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+    //
+    // Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+    // provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+    // to implement `CheckConfig` for as long as they support callers that only know about the latter.
+    rpc CheckConfig2(CheckConfigRequest) returns (CheckConfigResponse) {}
+
     // `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
     // difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
     // is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
@@ -711,6 +719,61 @@ message CheckResponse {
 // [](pulumirpc.ResourceProvider.CheckConfig) or [](pulumirpc.ResourceProvider.Check) call.
 message CheckFailure {
     // The input property that failed validation.
+    string property = 1;
+
+    // The reason that the named property failed validation.
+    string reason = 2;
+}
+
+// `CheckConfigRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.CheckConfig2) calls. It
+// captures the URN and configuration of the provider resource being checked.
+//
+// The fields of `CheckConfigRequest` use the same numbers as their counterparts in `CheckRequest`, so that a
+// `CheckConfigRequest` can be decoded as a `CheckRequest`.
+message CheckConfigRequest {
+    // The URN of the provider resource whose configuration is being checked, which may or may not be a [default
+    // provider](default-providers).
+    string urn = 1;
+
+    // The old configuration for the provider, if any.
+    google.protobuf.Struct olds = 2;
+
+    // The new configuration for the provider.
+    google.protobuf.Struct news = 3;
+
+    // These numbers are used by fields of `CheckRequest` that only apply to resources.
+    reserved 4, 5, 8, 9;
+
+    // The name of the provider resource being checked. This must match the name specified by the `urn` field, and is
+    // passed so that providers do not have to implement URN parsing in order to extract the name of the resource.
+    string name = 6;
+
+    // The type of the provider resource being checked. This must match the type specified by the `urn` field, and is
+    // passed so that providers do not have to implement URN parsing in order to extract the type of the resource.
+    string type = 7;
+}
+
+// `CheckConfigResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig2) call. A
+// `CheckConfigResponse` may contain either:
+//
+// * a set of checked, known-valid `inputs`. These may subsequently be passed to
+//   [](pulumirpc.ResourceProvider.DiffConfig) and/or [](pulumirpc.ResourceProvider.Configure).
+// * a set of `failures` detailing invalid inputs.
+//
+// In cases where the supplied set of inputs is valid, a `CheckConfigResponse` may contain default values that should
+// persisted to Pulumi state and passed to subsequent calls.
+message CheckConfigResponse {
+    // A valid, checked set of inputs. May contain defaults.
+    google.protobuf.Struct inputs = 1;
+
+    // Any validation failures that occurred.
+    repeated CheckConfigFailure failures = 2;
+}
+
+// A `CheckConfigFailure` describes a single validation error that arose as part of a
+// [](pulumirpc.ResourceProvider.CheckConfig2) call.
+message CheckConfigFailure {
+    // The provider configuration property that failed validation.
     string property = 1;
 
     // The reason that the named property failed validation.
