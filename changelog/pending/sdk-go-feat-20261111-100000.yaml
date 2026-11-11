@@ -1,0 +1,4 @@
+component: sdk/go
+kind: feat
+body: Add a `CheckConfig2` method to the provider protocol, with request and response types of its own
+time: 2026-11-11T10:00:00Z

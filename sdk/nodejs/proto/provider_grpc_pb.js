@@ -56,6 +56,28 @@ function deserialize_pulumirpc_CallResponse(buffer_arg) {
   return pulumi_provider_pb.CallResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_CheckConfigRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.CheckConfigRequest)) {
+    throw new Error('Expected argument of type pulumirpc.CheckConfigRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CheckConfigRequest(buffer_arg) {
+  return pulumi_provider_pb.CheckConfigRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_CheckConfigResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.CheckConfigResponse)) {
+    throw new Error('Expected argument of type pulumirpc.CheckConfigResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CheckConfigResponse(buffer_arg) {
+  return pulumi_provider_pb.CheckConfigResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_CheckRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.CheckRequest)) {
     throw new Error('Expected argument of type pulumirpc.CheckRequest');
@@ -497,6 +519,23 @@ checkConfig: {
     requestDeserialize: deserialize_pulumirpc_CheckRequest,
     responseSerialize: serialize_pulumirpc_CheckResponse,
     responseDeserialize: deserialize_pulumirpc_CheckResponse,
+  },
+  // `CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+// uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+//
+// Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+// provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+// to implement `CheckConfig` for as long as they support callers that only know about the latter.
+checkConfig2: {
+    path: '/pulumirpc.ResourceProvider/CheckConfig2',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_provider_pb.CheckConfigRequest,
+    responseType: pulumi_provider_pb.CheckConfigResponse,
+    requestSerialize: serialize_pulumirpc_CheckConfigRequest,
+    requestDeserialize: deserialize_pulumirpc_CheckConfigRequest,
+    responseSerialize: serialize_pulumirpc_CheckConfigResponse,
+    responseDeserialize: deserialize_pulumirpc_CheckConfigResponse,
   },
   // `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
 // difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)

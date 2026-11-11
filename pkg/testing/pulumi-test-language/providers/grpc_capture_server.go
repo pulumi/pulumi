@@ -56,6 +56,17 @@ func (p *grpcCapturingProviderServer) CheckConfig(
 	return p.ResourceProviderServer.CheckConfig(ctx, req)
 }
 
+// CheckConfig2 requests are logged as CheckConfig, since they carry the same fields.
+func (p *grpcCapturingProviderServer) CheckConfig2(
+	ctx context.Context,
+	req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	if err := p.logMessage(CheckConfigMethod, req); err != nil {
+		return nil, err
+	}
+	return p.ResourceProviderServer.CheckConfig2(ctx, req)
+}
+
 func (p *grpcCapturingProviderServer) Configure(
 	ctx context.Context,
 	req *pulumirpc.ConfigureRequest,
