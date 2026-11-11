@@ -129,7 +129,7 @@ func (m defaultPluginManager) InstallPlugin(
 	reinstall bool,
 ) error {
 	return pkgWorkspace.InstallPluginContent(
-		ctx, plugin, content, reinstall, schema.NewLoaderServerFromContext, m.cloudCredentialEnv)
+		ctx, plugin, content, reinstall, nil, schema.NewLoaderServerFromContext, m.cloudCredentialEnv)
 }
 
 // PluginSet represents a set of plugins.

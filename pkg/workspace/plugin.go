@@ -86,7 +86,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 
 	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
 	err = InstallPluginContent(
-		ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false, newLoader, cloudCredentialEnv)
+		ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false, nil, newLoader, cloudCredentialEnv)
 	if err != nil {
 		return nil, &InstallPluginError{
 			Spec: pluginSpec,
@@ -207,6 +207,7 @@ func EnsureLanguageInstalled(ctx context.Context, runtime string, log func(sev d
 // installed.
 func InstallPluginContent(
 	ctx context.Context, spec workspace.PluginDescriptor, content pluginstorage.Content, reinstall bool,
+	out io.Writer,
 	newLoader plugin.NewLoaderFunc,
 	cloudCredentialEnv map[string]string,
 ) (err error) {
@@ -222,12 +223,16 @@ func InstallPluginContent(
 		}
 	}()
 
-	var out lockedBuffer
-	err = installDependenciesForPluginSpec(ctx, spec, &out, &out, newLoader, cloudCredentialEnv)
+	if out != nil {
+		return installDependenciesForPluginSpec(ctx, spec, out, out, newLoader, cloudCredentialEnv)
+	}
+
+	var captured lockedBuffer
+	err = installDependenciesForPluginSpec(ctx, spec, &captured, &captured, newLoader, cloudCredentialEnv)
 	if err == nil {
 		return nil
 	}
-	if output := strings.TrimSpace(out.String()); output != "" {
+	if output := strings.TrimSpace(captured.String()); output != "" {
 		return fmt.Errorf("%w\n%s", err, output)
 	}
 	return err
