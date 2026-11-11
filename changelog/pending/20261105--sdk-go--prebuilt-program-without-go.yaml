@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Allow prebuilt Go programs to run without the Go toolchain installed
+time: 2026-11-05T14:01:55Z

@@ -221,8 +221,8 @@ type NewResolverFunc = func(ctx *Context) pulumirpc.PackageResolverServer
 // are shared across workspaces and are never run with the support of another language runtime
 // — so installation is a plain download-and-unpack and needs no workspace state. A nil
 // LanguageInstaller disables on-demand install (the host then relies on the runtime already
-// being present).
-type LanguageInstaller = func(ctx context.Context, runtime string) error
+// being present). The installer reports download progress to the user through log.
+type LanguageInstaller = func(ctx context.Context, runtime string, log func(sev diag.Severity, msg string)) error
 
 // projectPluginsFromProject parses the plugins and packages declared by a project into the list
 // of project plugins that take precedence over installed plugins when resolving plugin binaries.

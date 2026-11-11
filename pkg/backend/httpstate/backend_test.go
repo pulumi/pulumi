@@ -38,6 +38,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/auth/credentialhelper"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -102,7 +103,9 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -141,7 +144,9 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -290,7 +295,7 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 			t.Parallel()
 			org, err := inferOrg(t.Context(), tt.getDefaultOrg, tt.getUserOrg)
 			if tt.wantErr {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 			}
@@ -356,7 +361,7 @@ func TestCreateStackInaccessibleDefaultOrg(t *testing.T) {
 		project: "proj",
 		name:    tokens.MustParseStackName("dev"),
 	}, t.TempDir(), nil, nil)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotContains(t, err.Error(), "set-default")
 }
 
@@ -433,7 +438,9 @@ func TestNewDefaultOrgResolution(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false)
+			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false,
+				NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+			)
 			require.NoError(t, err)
 
 			// New spawns goroutines that may log to the test's diag sink;
@@ -478,7 +485,9 @@ func TestParseStackReferenceExplicitOrgBeatsEnvVar(t *testing.T) {
 	}, true)
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), server.URL, &workspace.Project{Name: "proj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), server.URL, &workspace.Project{Name: "proj"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	// New spawns goroutines that may log to the test's diag sink;
@@ -507,7 +516,9 @@ func TestDisableIntegrityChecking(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -662,7 +673,9 @@ func TestListStackNames(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	// Create test stacks
@@ -777,7 +790,9 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false,
+		NewClientSource(credentialhelper.NewSession(io.Discard), diagtest.LogSink(t)),
+	)
 	require.NoError(t, err)
 
 	// Create a test stack
@@ -964,7 +979,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	defer server.Client()
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, server.URL, nil, false)
+	b, err := New(ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -998,7 +1013,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, sink, server.URL, nil, false)
+	b, err = New(ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 	require.NoError(t, err)
 
 	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
@@ -1069,7 +1084,7 @@ func TestCreateStackDisplaysBackendMessages(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, server.URL, nil, false)
+	b, err := New(ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -1173,7 +1188,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	defer server.Client()
 
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
-	b, err := New(ctx, sink, server.URL, nil, false)
+	b, err := New(ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -1210,7 +1225,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, sink, server.URL, nil, false)
+	b, err = New(ctx, sink, server.URL, nil, false, NewClientSource(credentialhelper.NewSession(io.Discard), sink))
 	require.NoError(t, err)
 
 	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{
@@ -1282,7 +1297,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			d:      diagtest.LogSink(t),
 		}
 		resp, err := b.createNeoTaskOnError(t.Context(), "some error", nil, display.Options{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, resp)
 	})
 
@@ -1359,7 +1374,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 		}
 
 		resp, err := b.createNeoTaskOnError(t.Context(), "something broke", stackRef, display.Options{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, resp)
 	})
 }
@@ -1392,12 +1407,12 @@ func TestRunEngineActionPropagatesSnapshotJournalerError(t *testing.T) {
 
 	var runErr error
 	require.NotPanics(t, func() {
-		_, _, runErr = fx.backend.runEngineAction(
+		_, _, _, runErr = fx.backend.runEngineAction(
 			t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
 			"lease-token", "", updateStartedEvent, callerEvents, false, 0,
 		)
 	})
-	require.Error(t, runErr)
+	require.Error(t, runErr) //nolint:forbidigo // pre-existing
 	require.ErrorContains(t, runErr, "encrypt boom")
 
 	// The event reaches the caller synchronously as the first thing runEngineAction does, so
@@ -1423,12 +1438,12 @@ func TestRunEngineActionDeliversUpdateStartedEventWhenNewUpdateFails(t *testing.
 
 	var runErr error
 	require.NotPanics(t, func() {
-		_, _, runErr = fx.backend.runEngineAction(
+		_, _, _, runErr = fx.backend.runEngineAction(
 			t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
 			"lease-token", "", updateStartedEvent, callerEvents, false, 0,
 		)
 	})
-	require.Error(t, runErr)
+	require.Error(t, runErr) //nolint:forbidigo // pre-existing
 
 	// newUpdate fails before the display goroutine ever starts; the caller is the only
 	// path left that still hears about the operation having started.
@@ -1491,12 +1506,12 @@ func TestRunEngineActionPropagatesJournalManagerError(t *testing.T) {
 
 			var runErr error
 			require.NotPanics(t, func() {
-				_, _, runErr = fx.backend.runEngineAction(
+				_, _, _, runErr = fx.backend.runEngineAction(
 					t.Context(), apitype.UpdateUpdate, fx.stackRef, fx.op, fx.update,
 					"lease-token", "", engine.NewEvent(engine.UpdateStartedEventPayload{}), nil, false, tc.journalVersion,
 				)
 			})
-			require.Error(t, runErr)
+			require.Error(t, runErr) //nolint:forbidigo // pre-existing
 			require.ErrorContains(t, runErr, "batch boom")
 			require.ErrorContains(t, runErr, tc.wantWrap)
 		})
@@ -1603,7 +1618,7 @@ func TestRunEngineActionCoherenceWindow(t *testing.T) {
 				readingIDs <- seen
 			}()
 
-			_, _, err := fx.backend.runEngineAction(
+			_, _, _, err := fx.backend.runEngineAction(
 				t.Context(), apitype.DestroyUpdate, fx.stackRef, fx.op, fx.update,
 				"lease-token", "", engine.NewEvent(engine.UpdateStartedEventPayload{UpdateID: "update-id"}),
 				events, true /* dryRun */, 0,
@@ -1686,6 +1701,67 @@ func TestCreateAndStartUpdateRequiresCoherenceWindowCapability(t *testing.T) {
 		stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
 		_, _, err := fx.backend.createAndStartUpdate(t.Context(), apitype.PreviewUpdate, stk, &fx.op, true)
 		assert.ErrorContains(t, err, tc.want)
+	}
+}
+
+func TestCreateAndStartUpdateSendsManagedEnvironment(t *testing.T) {
+	t.Parallel()
+
+	managed := &apitype.UpdateProgramEnvironment{BaseRevision: 7, ChangeRequestID: "cr-1"}
+	for _, tc := range []struct {
+		name        string
+		beginUpdate bool
+		path        string
+	}{
+		{"legacy create", false, "/api/stacks/owner/project/stack/preview"},
+		{"begin-update", true, "/api/stacks/owner/project/stack/begin-update"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			fx := newRunEngineActionFixture(t, &deploy.Snapshot{}, nil, b64.NewBase64SecretsManager())
+
+			var mu sync.Mutex
+			var body []byte
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == tc.path {
+					raw, err := io.ReadAll(r.Body)
+					require.NoError(t, err)
+					mu.Lock()
+					body = raw
+					mu.Unlock()
+				}
+				http.Error(w, "stop", http.StatusInternalServerError)
+			}))
+			t.Cleanup(server.Close)
+
+			sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+			fx.backend.client = client.NewClient(server.URL, "token", false, sink).WithHTTPClient(server.Client())
+			fx.backend.capabilities = promise.Run(func() (apitype.Capabilities, error) {
+				return apitype.Capabilities{BeginUpdate: tc.beginUpdate}, nil
+			})
+			fx.op.M = &backend.UpdateMetadata{}
+			fx.op.StackConfiguration.ManagedEnvironment = managed
+
+			stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
+			_, _, err := fx.backend.createAndStartUpdate(t.Context(), apitype.PreviewUpdate, stk, &fx.op, true)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
+
+			mu.Lock()
+			defer mu.Unlock()
+			require.NotEmpty(t, body)
+			var sent struct {
+				Environment *apitype.UpdateProgramEnvironment `json:"environment"`
+				Program     struct {
+					Environment *apitype.UpdateProgramEnvironment `json:"environment"`
+				} `json:"program"`
+			}
+			require.NoError(t, json.Unmarshal(body, &sent))
+			if tc.beginUpdate {
+				assert.Equal(t, managed, sent.Program.Environment)
+			} else {
+				assert.Equal(t, managed, sent.Environment)
+			}
+		})
 	}
 }
 

@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -120,8 +121,10 @@ func createPathedValue(
 	return nil
 }
 
+var invalidNameCharacters = regexp.MustCompile(`[^\p{L}\p{N}_-]`)
+
 func sanitizeName(name string) string {
-	return strings.ReplaceAll(name, ".", "_")
+	return invalidNameCharacters.ReplaceAllString(name, "_")
 }
 
 func createImportState(states []*pkgresource.State, snapshot []*pkgresource.State, names NameTable) ImportState {
@@ -154,11 +157,10 @@ func createImportState(states []*pkgresource.State, snapshot []*pkgresource.Stat
 
 		initialPath := hcl.Traversal{hcl.TraverseRoot{Name: name}}
 
-		for key, value := range state.Outputs {
-			if string(key) == "name" || string(key) == "arn" {
-				nextPath := nextPropertyPath(initialPath, hcl.TraverseAttr{Name: string(key)})
-				valueV := resource.FromResourcePropertyValue(value)
-				if output := createPathedValue(name, valueV, nextPath); output != nil {
+		for key, value := range resource.FromResourcePropertyMap(state.Outputs).All {
+			if key == "name" || key == "arn" {
+				nextPath := nextPropertyPath(initialPath, hcl.TraverseAttr{Name: key})
+				if output := createPathedValue(name, value, nextPath); output != nil {
 					pathedLiteralValues = append(pathedLiteralValues, *output)
 				}
 			}

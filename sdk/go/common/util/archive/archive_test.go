@@ -308,7 +308,7 @@ func TestExtractTGZRejectsPathTraversal(t *testing.T) {
 			require.NoError(t, os.Mkdir(dest, 0o700))
 
 			err := ExtractTGZ(bytes.NewReader(tarball), dest)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "escapes destination directory")
 
 			// Make sure nothing was written outside dest.
@@ -336,7 +336,7 @@ func TestExtractTGZRelativePathWithEscape(t *testing.T) {
 
 	// Extract using relative path "dest".
 	err := ExtractTGZ(bytes.NewReader(tarball), "dest")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "escapes destination directory")
 
 	// Verify no file was written outside dest.

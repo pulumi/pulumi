@@ -97,7 +97,7 @@ resource "app" "scaleway:iam/application:Application" {}
 					},
 				}, nil
 			},
-		}, "", "", nil)
+		}, "", "", nil, nil)
 	require.NoError(t, err)
 	program, diags, err := pcl.BindProgram(parser.Files, schema.NewPluginLoader(pctx))
 	if err != nil || diags.HasErrors() {

@@ -52,12 +52,12 @@ require (
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/iancoleman/strcase v0.2.0
 	github.com/iwdgo/sigintwindows v0.2.2
-	github.com/klauspost/compress v1.18.7
+	github.com/klauspost/compress v1.20.2
 	github.com/pgavlin/fx v0.1.6
 	github.com/pgavlin/fx/v2 v2.0.12
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
-	github.com/pulumi/pulumi-cloud-sdk/go v1.20261027.1310
+	github.com/pulumi/pulumi-cloud-sdk/go v1.20261104.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/zalando/go-keyring v0.2.8
 	go.opentelemetry.io/collector/pdata v1.53.0

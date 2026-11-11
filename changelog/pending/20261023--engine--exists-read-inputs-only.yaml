@@ -1,4 +1,0 @@
-component: engine
-kind: fix
-body: Pass only inputs, not state, to the provider's `Read` when checking whether a resource exists
-time: 2026-10-23T14:16:53.973811+02:00

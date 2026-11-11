@@ -1,3 +1,0 @@
-component: cli/policy
-kind: improvement
-body: Use the API shape in `pulumi policy issue ls`, `pulumi policy issue get` and `pulumi policy compliance ls` JSON output

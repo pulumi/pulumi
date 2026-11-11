@@ -139,7 +139,12 @@ func (cmd *policyInstallCmd) Run(
 	}
 	// host is owned here, closed after the context
 	defer contract.IgnoreClose(pluginHost)
-	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, pluginHost, nil, cwd, nil, true, nil)
+	cloudCredentialEnv, err := cmdBackend.PluginCloudCredentialEnv(
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, nil)
+	if err != nil {
+		return err
+	}
+	pctx, err := plugin.NewContext(ctx, cmd.diag, cmd.diag, pluginHost, nil, cwd, nil, true, nil, cloudCredentialEnv)
 	if err != nil {
 		return fmt.Errorf("creating plugin context: %w", err)
 	}

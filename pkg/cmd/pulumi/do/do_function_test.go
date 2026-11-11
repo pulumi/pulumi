@@ -909,7 +909,7 @@ param3 = {
 			inputFile := writeHCLFile(t, "inputs.pcl", tt.input)
 			cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 			err := cmd.Execute()
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			for _, want := range tt.wantErrs {
 				assert.ErrorContains(t, err, want)
 			}
@@ -958,7 +958,7 @@ func TestDoCmdFunctionInvokeInputFileForInputlessFunction(t *testing.T) {
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "unsupported attribute 'bogus'")
 }
 
@@ -1014,7 +1014,7 @@ stuff {
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "pcl", "--input-file", inputFile})
 	err := cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, `unexpected block "stuff"`)
 }
 
@@ -2100,7 +2100,7 @@ func TestDoCmdFunctionInvokeParameterizedSchemaWithoutArgs(t *testing.T) {
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction"})
 	err := cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "provider returned parameterization but no parameterization args were sent")
 }
 
@@ -2251,7 +2251,7 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "fictional", "--input-file", inputFile})
 	err := cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "load fictional input converter")
 	assert.ErrorContains(t, err, "converter not found")
 }
@@ -2309,7 +2309,7 @@ func TestDoCmdFunctionInvokeWithConverterMissingConvertSnippet(t *testing.T) {
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:myFunction", "--input", "yaml", "--input-file", inputFile})
 	err := cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "yaml input converter does not support snippet conversion; "+
 		"use pcl format or try installing a newer yaml converter")
 	assert.NotContains(t, err.Error(), "ConvertSnippet not implemented")
@@ -2377,7 +2377,7 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "yaml", "--input-file", inputFile})
 	err := cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "could not convert: synthetic failure")
 }
 
@@ -2444,7 +2444,7 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure:index:myFunction", "--input", "yaml", "--input-file", inputFile})
 	err := cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "not_an_input")
 }
 

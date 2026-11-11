@@ -385,7 +385,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 
 			err := cmd.Run(t.Context(), tt.args, packageSource, tt.packageParams)
 			if tt.expectedErr != "" {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
 				require.NoError(t, err)
@@ -478,7 +478,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 			}
 
 			err := cmd.Run(t.Context(), tt.args, "testpackage", nil /* packageParams */)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
 	}
@@ -543,7 +543,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 				readmePath: readmePath,
 			}, "testpackage", nil /* packageParams */)
 
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tt.expectedErrStr)
 		})
 	}
@@ -585,7 +585,7 @@ func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 	err := cmd.Run(t.Context(), publishPackageArgs{readmePath: "README.md"},
 		"test-source", nil /* packageParams */)
 
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, customErr)
 }
 
@@ -663,7 +663,7 @@ func TestFindReadme(t *testing.T) {
 		invalidPlugin := "my-cool-plugin@not-a-valid-version"
 		readme, err := cmd.findReadme(ctx, invalidPlugin)
 		assert.Empty(t, readme)
-		assert.Error(t, err, "Should return error for invalid plugin spec")
+		assert.Error(t, err, "Should return error for invalid plugin spec") //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "failed to create plugin spec")
 	})
 
@@ -728,6 +728,6 @@ func installResourcePluginFromFiles(t *testing.T, spec workspace.PluginDescripto
 		require.NoError(t, err)
 	}
 	err := pkgWorkspace.InstallPluginContent(t.Context(), spec, pluginstorage.DirPlugin(dir),
-		true, schema.NewLoaderServerFromContext)
+		true, schema.NewLoaderServerFromContext, nil)
 	require.NoError(t, err)
 }

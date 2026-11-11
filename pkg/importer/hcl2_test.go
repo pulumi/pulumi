@@ -372,8 +372,10 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				},
 			}
 
+			nameTable := maps.Clone(names)
+			nameTable[state.URN] = sanitizeName(state.URN.Name())
 			importState := ImportState{
-				Names:    maps.Clone(names),
+				Names:    nameTable,
 				Snapshot: snapshot,
 			}
 
@@ -500,7 +502,7 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 	})
 
 	host := deploytest.NewPluginHost(nil /*sink*/, nil /*statusSink*/, nil /*languageRuntime*/, pluginLoader)
-	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil)
+	pctx, err := plugin.NewContextWithHost(t.Context(), nil, nil, host, "", "", nil, nil)
 	require.NoError(t, err)
 	schemaLoader := schema.NewPluginLoader(pctx)
 

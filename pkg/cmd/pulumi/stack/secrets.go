@@ -23,7 +23,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
-	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgLogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -98,19 +98,12 @@ func CreateSecretsManagerForExistingStack(
 // fall back to a default defined by the backend that will manage the stack.
 func createSecretsManagerForNewStack(
 	ctx context.Context,
-	sink diag.Sink,
-	ws pkgWorkspace.Context,
 	b backend.Backend,
-	stackRef backend.StackReference,
+	ps *workspace.ProjectStack,
 	secretsProvider string,
-	configFile string,
-) (*workspace.ProjectStack, bool, secrets.Manager, error) {
+) (bool, secrets.Manager, error) {
 	var sm secrets.Manager
-
-	ps, err := readStackConfiguration(ctx, sink, ws, b, stackRef, configFile)
-	if err != nil {
-		return nil, false, nil, err
-	}
+	var err error
 
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)
 
@@ -123,11 +116,11 @@ func createSecretsManagerForNewStack(
 		sm, err = cloud.NewCloudSecretsManager(ps, secretsProvider, false /*rotateSecretsProvider*/)
 	}
 	if err != nil {
-		return nil, false, nil, err
+		return false, nil, err
 	}
 
 	needsSave := needsSaveProjectStackAfterSecretManger(oldConfig, ps)
-	return ps, needsSave, sm, err
+	return needsSave, sm, err
 }
 
 func readStackConfiguration(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, b backend.Backend,
@@ -256,7 +249,7 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 		// default secrets manager which differs from what the user has previously
 		// specified.
 		if l.FallbackToState {
-			snap, err := s.Snapshot(ctx, backend_secrets.DefaultProvider)
+			snap, err := s.Snapshot(ctx, cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager))
 			if err != nil {
 				return nil, SecretsManagerUnchanged, err
 			}
@@ -284,6 +277,8 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 				ps.EncryptedKey = ""
 			}
 		} else {
+			// See PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER (env.go) and
+			// https://github.com/pulumi/pulumi/issues/16412.
 			sm, err = s.DefaultSecretManager(ctx, ps)
 		}
 	}

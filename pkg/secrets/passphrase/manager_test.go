@@ -73,7 +73,7 @@ func TestPassphraseManagerIncorrectStateReturnsError(t *testing.T) {
 	ptesting.Unsetenv(t, "PULUMI_CONFIG_PASSPHRASE_FILE")
 
 	_, err := NewPromptingPassphraseSecretsManagerFromState([]byte(brokenState))
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestPassphraseManagerCorrectPassphraseReturnsSecretsManager(t *testing.T) {

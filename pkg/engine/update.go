@@ -372,6 +372,8 @@ type HostFactory func(
 //
 //nolint:structcheck
 type UpdateOptions struct {
+	// CloudCredentialEnv overrides the Pulumi backend credentials passed to plugins.
+	CloudCredentialEnv map[string]string
 	// true if the step generator should calculate diffs in parallel via DiffSteps.
 	ParallelDiff bool
 
@@ -444,6 +446,11 @@ type UpdateOptions struct {
 	// feature list before opting in will fall back to the legacy union-of-arg-deps behaviour on Call. Test-only
 	// knob for exercising the fallback path against providers that do advertise `accepts_outputs_in_call`.
 	DisableCallOutputValues bool
+
+	// true if the engine should not advertise the REGISTER_RESOURCE_OUTPUT_VALUES monitor feature. SDKs that
+	// check the feature list before opting in will fall back to sending propertyDependencies maps instead of
+	// OutputValues on RegisterResource inputs. Test-only knob for exercising the legacy path.
+	DisableRegisterResourceOutputValues bool
 
 	// HostFactory builds the plugin host for this operation.
 	HostFactory HostFactory
@@ -843,7 +850,7 @@ func loadPolicyAnalyzer(
 		plugctx.Host.Log(sev, "", msg, 0)
 	}
 
-	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromContext)
+	_, installErr := installPluginFunc(ctx, me.Spec(), log, schema.NewLoaderServerFromContext, plugctx.CloudCredentialEnv)
 	if installErr != nil {
 		return nil, fmt.Errorf("failed to automatically install analyzer plugin %q: %w: %w",
 			string(name), installErr, me)
@@ -1202,15 +1209,16 @@ func newUpdateSource(ctx context.Context,
 	}
 
 	evalOpts := deploy.EvalSourceOptions{
-		DryRun:                    opts.DryRun,
-		Parallel:                  opts.Parallel,
-		DisableResourceReferences: opts.DisableResourceReferences,
-		DisableOutputValues:       opts.DisableOutputValues,
-		DisableInvokeOutputValues: opts.DisableInvokeOutputValues,
-		DisableCallOutputValues:   opts.DisableCallOutputValues,
-		AttachDebugger:            opts.AttachDebugger,
-		SupportsStateMigrations:   opts.supportsStateMigrations,
-		ShowSecrets:               opts.ShowSecrets,
+		DryRun:                              opts.DryRun,
+		Parallel:                            opts.Parallel,
+		DisableResourceReferences:           opts.DisableResourceReferences,
+		DisableOutputValues:                 opts.DisableOutputValues,
+		DisableInvokeOutputValues:           opts.DisableInvokeOutputValues,
+		DisableCallOutputValues:             opts.DisableCallOutputValues,
+		DisableRegisterResourceOutputValues: opts.DisableRegisterResourceOutputValues,
+		AttachDebugger:                      opts.AttachDebugger,
+		SupportsStateMigrations:             opts.supportsStateMigrations,
+		ShowSecrets:                         opts.ShowSecrets,
 	}
 
 	program := deploy.NewProgramSource(plugctx, runinfo, evalOpts, panicErrs)
@@ -1626,6 +1634,13 @@ func (acts *previewActions) OnResourceStepPre(step deploy.Step) (any, error) {
 		acts.Opts.ShowSecrets,
 	)
 
+	// If a SnapshotManager is wired up (e.g. by the backend for preview/dry-run), mutate it so
+	// the in-memory snapshot reflects what would have happened. Nothing is persisted — the
+	// backend installs a discarding persister for dry-run — but callers like `pulumi import
+	// --preview-only` need the resulting snapshot to drive codegen.
+	if acts.Context.SnapshotManager != nil {
+		return acts.Context.SnapshotManager.BeginMutation(step)
+	}
 	return nil, nil
 }
 
@@ -1682,6 +1697,11 @@ func (acts *previewActions) OnResourceStepPost(ctx any,
 		)
 	}
 
+	// Commit the step to the in-memory snapshot if a SnapshotManager is wired up. See
+	// OnResourceStepPre for the rationale.
+	if mutation, ok := ctx.(SnapshotMutation); ok && mutation != nil {
+		return mutation.End(step, err == nil)
+	}
 	return nil
 }
 

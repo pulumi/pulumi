@@ -131,7 +131,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -152,7 +152,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -174,7 +174,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -193,11 +193,15 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 		// auto-install is enabled by default. The first call to PolicyAnalyzer
 		// returns MissingError; after the install attempt the second call succeeds.
+		expectedCredentials := map[string]string{
+			"PULUMI_API": "https://helper.example.com", "PULUMI_ACCESS_TOKEN": "helper-token",
+		}
 		origInstall := installPluginFunc
 		installPluginFunc = func(
 			_ context.Context, _ workspace.PluginDescriptor,
-			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc, credentials map[string]string,
 		) (*semver.Version, error) {
+			assert.Equal(t, expectedCredentials, credentials)
 			return nil, nil
 		}
 		t.Cleanup(func() { installPluginFunc = origInstall })
@@ -218,7 +222,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, expectedCredentials)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -234,7 +238,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		installErr := errors.New("network timeout")
 		installPluginFunc = func(
 			_ context.Context, _ workspace.PluginDescriptor,
-			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc, _ map[string]string,
 		) (*semver.Version, error) {
 			return nil, installErr
 		}
@@ -251,7 +255,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 
@@ -269,7 +273,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 		origInstall := installPluginFunc
 		installPluginFunc = func(
 			_ context.Context, _ workspace.PluginDescriptor,
-			_ func(diag.Severity, string), _ plugin.NewLoaderFunc,
+			_ func(diag.Severity, string), _ plugin.NewLoaderFunc, _ map[string]string,
 		) (*semver.Version, error) {
 			return nil, nil
 		}
@@ -287,7 +291,7 @@ func TestLoadPolicyAnalyzer(t *testing.T) {
 			},
 		}
 		plugctx, err := plugin.NewContextWithRoot(
-			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil)
+			t.Context(), nil, nil, host, "", "", nil, false, nil, nil, nil, nil, nil)
 		require.NoError(t, err)
 		defer plugctx.Close()
 

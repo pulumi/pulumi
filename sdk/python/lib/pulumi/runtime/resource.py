@@ -959,9 +959,9 @@ def exists_resource(
 
     Returns an Output[bool] that resolves to True if the resource exists, False otherwise.
 
-    `res` is an optional backing resource used to resolve the provider and parent. It is None when there
-    is no backing resource, e.g. for the PCL `resourceExists` builtin, in which case the engine resolves
-    the default provider.
+    `res` is an optional backing resource used to resolve the provider and parent. When it is None, the
+    provider is selected from `opts` (and the parent's providers) as it would be for a new resource, and
+    the engine resolves the default provider if none is found.
     """
     log.debug(f"checking resource exists: ty={ty}, id={_safe_str(id)}")
     monitor = settings.get_monitor()
@@ -1002,11 +1002,17 @@ def exists_resource(
                 parent_urn = (
                     await opts.parent.urn.future() if opts.parent is not None else None
                 )
-                provider_ref = None
-                if opts.provider is not None:
-                    provider_urn = await opts.provider.urn.future()
-                    provider_id = await opts.provider.id.future()
-                    provider_ref = f"{provider_urn}::{provider_id or ''}"
+                from ..resource import _select_providers
+
+                pkg = settings.get_base_provider_for_ref(
+                    package_ref_str
+                ) or _pkg_from_type(ty)
+                provider, _ = _select_providers(ty, pkg, opts, {})
+                provider_ref = (
+                    await _create_provider_ref(provider)
+                    if provider is not None
+                    else None
+                )
                 serialized_props = (
                     await rpc.serialize_properties(props, {}, None) if props else None
                 )

@@ -108,21 +108,16 @@ type RequiredPolicy struct {
 	Exceptions map[string]json.RawMessage `json:"exceptions,omitempty"`
 }
 
-// PolicyException excepts the violations it matches, so that they don't fail an operation.
+// PolicyException exempts the violations it matches, so that they don't fail an operation.
 type PolicyException struct {
 	// The justification for the exception.
 	Reason string `json:"reason"`
-	// The violations to except. A violation is excepted when it matches any entry.
+	// The violations to exempt. A violation is exempted when it matches any entry.
 	Match []PolicyExceptionMatch `json:"match"`
 }
 
 // PolicyExceptionMatch matches the violations of any of its policies on any of its targets.
-type PolicyExceptionMatch struct {
-	// The names of policies within the Policy Pack.
-	Policies []string `json:"policies"`
-	// The URNs of the resources the violations are reported against, compared exactly.
-	Targets []string `json:"targets"`
-}
+type PolicyExceptionMatch = cloudapitype.PolicyExceptionMatch
 
 // Policy is the Cloud SDK's AppPolicy.
 type Policy = cloudapitype.AppPolicy

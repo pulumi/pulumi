@@ -199,7 +199,8 @@ func secretsManagerFromStack(ctx context.Context, s backend.Stack) (secrets.Mana
 		return nil, errors.New("deployment has no secrets provider configured")
 	}
 
-	provider := backend_secrets.NamedStackProvider{StackName: s.Ref().Name().String()}
+	provider := backend_secrets.NewNamedStackProvider(
+		s.Ref().Name().String(), cmdBackend.DefaultLoginManager.ClientSource().ClientForURL)
 	return provider.OfType(ctx, v3.SecretsProviders.Type, v3.SecretsProviders.State)
 }
 
@@ -289,7 +290,7 @@ func chooseLog(stackName, prompt string) (string, error) {
 	options, optionMap := formatLogChoices(entries)
 
 	var choice string
-	if err := survey.AskOne(&survey.Select{
+	if err := ui.AskOne(&survey.Select{
 		Message:  prompt,
 		Options:  options,
 		PageSize: cmd.OptimalPageSize(cmd.OptimalPageSizeOpts{Nopts: len(options)}),

@@ -71,7 +71,7 @@ func TestReadPackageManifest(t *testing.T) {
 		dir := t.TempDir()
 
 		_, _, err := ReadPackageManifest(dir)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.True(t, errors.Is(err, os.ErrNotExist))
 	})
 
@@ -82,7 +82,7 @@ func TestReadPackageManifest(t *testing.T) {
 			[]byte(`{not json`), 0o600))
 
 		_, _, err := ReadPackageManifest(dir)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("errors on malformed package.yaml", func(t *testing.T) {
@@ -92,7 +92,7 @@ func TestReadPackageManifest(t *testing.T) {
 			[]byte("not: : yaml: ::\n"), 0o600))
 
 		_, _, err := ReadPackageManifest(dir)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }
 

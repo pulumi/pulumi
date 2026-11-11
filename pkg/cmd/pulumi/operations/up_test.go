@@ -82,7 +82,7 @@ func TestValidatePolicyPackConfig(t *testing.T) {
 			t.Parallel()
 			err := validatePolicyPackConfig(test.PolicyPackPaths, test.PolicyPackConfigPaths)
 			if test.ExpectError {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 			}

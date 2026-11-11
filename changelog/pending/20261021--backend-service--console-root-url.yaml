@@ -1,3 +1,0 @@
-component: backend/service
-kind: fix
-body: Link to the Pulumi Cloud console root instead of a page named after the user in `pulumi login`, `pulumi whoami --verbose`, and `pulumi about`, so the link no longer opens a Not Found page for users without an organization of that name

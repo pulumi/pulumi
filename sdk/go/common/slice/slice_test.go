@@ -128,7 +128,7 @@ func TestMapError(t *testing.T) {
 		input := []string{"1", "2", "x", "4"}
 		expected := []int{1, 2}
 		result, err := MapError(input, strconv.Atoi)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Equal(t, expected, result)
 		assert.Equal(t, 4, cap(result))
 	})

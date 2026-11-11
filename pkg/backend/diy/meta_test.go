@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gocloud.dev/blob/fileblob"
@@ -29,44 +28,15 @@ import (
 func TestEnsurePulumiMeta(t *testing.T) {
 	t.Parallel()
 
-	mkmap := func(value string) env.MapStore {
-		m := make(env.MapStore)
-		m[env.DIYBackendLegacyLayout.Var().Name()] = value
-		return m
-	}
-
 	tests := []struct {
 		desc string
 		give map[string]string // files in the bucket
-		env  env.MapStore      // environment variables
 		want pulumiMeta
 	}{
 		{
 			// Empty bucket should be initialized to
 			// the current version by default.
 			desc: "empty",
-			want: pulumiMeta{Version: 1},
-		},
-		{
-			// Use legacy mode even for the new bucket
-			// because the environment variable is "1".
-			desc: "empty/legacy",
-			env:  mkmap("1"),
-			want: pulumiMeta{Version: 0},
-		},
-		{
-			// Use legacy mode even for the new bucket
-			// because the environment variable is "true".
-			desc: "empty/legacy/true",
-			env:  mkmap("true"),
-			want: pulumiMeta{Version: 0},
-		},
-		{
-			// Legacy mode is disabled by setting the env var
-			// to "false".
-			// This is also the default behavior.
-			desc: "empty/legacy/false",
-			env:  mkmap("false"),
 			want: pulumiMeta{Version: 1},
 		},
 		{
@@ -113,7 +83,7 @@ func TestEnsurePulumiMeta(t *testing.T) {
 				require.NoError(t, b.WriteAll(ctx, name, []byte(body), nil))
 			}
 
-			state, err := ensurePulumiMeta(ctx, b, env.NewEnv(tt.env))
+			state, err := ensurePulumiMeta(ctx, b, env.NewEnv(env.MapStore{}))
 			require.NoError(t, err)
 			assert.Equal(t, &tt.want, state)
 		})
@@ -204,24 +174,6 @@ func TestMeta_WriteTo_zero(t *testing.T) {
 	require.NoError(t, (&pulumiMeta{
 		Version: 0,
 	}).WriteTo(ctx, bucket))
-
-	assert.NoFileExists(t, filepath.Join(tmpDir, ".pulumi", "meta.yaml"))
-}
-
-// Verify that we don't create a metadata file with version 0 in buckets
-// that have other files.
-func TestNew_noMetaOnInit(t *testing.T) {
-	t.Setenv("PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_ERROR", "true")
-
-	tmpDir := t.TempDir()
-	bucket, err := fileblob.OpenBucket(tmpDir, nil)
-	require.NoError(t, err)
-	require.NoError(t,
-		bucket.WriteAll(t.Context(), ".pulumi/stacks/dev.json", []byte("bar"), nil))
-
-	ctx := t.Context()
-	_, err = New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
-	require.NoError(t, err)
 
 	assert.NoFileExists(t, filepath.Join(tmpDir, ".pulumi", "meta.yaml"))
 }

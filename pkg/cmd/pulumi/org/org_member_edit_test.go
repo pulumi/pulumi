@@ -191,7 +191,7 @@ func TestOrgMemberEdit_NoFlagsChanged(t *testing.T) {
 			fgaRoleID:    "role-abc",
 			changedFlags: map[string]bool{"role": false, "fga-role-id": false},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t,
 		"no changes specified; pass --role, --fga-role-id, or --fga-role-name",
 		err.Error())
@@ -214,7 +214,7 @@ func TestOrgMemberEdit_UpdateError(t *testing.T) {
 			role:         "admin",
 			changedFlags: map[string]bool{"role": true},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "updating organization member: boom", err.Error())
 	assert.Empty(t, c.listCalls)
 	assert.Equal(t, "", buf.String())
@@ -237,7 +237,7 @@ func TestOrgMemberEdit_GetAfterPatchError(t *testing.T) {
 			role:         "admin",
 			changedFlags: map[string]bool{"role": true},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t,
 		"reading organization member after edit: getting organization member: boom",
 		err.Error())
@@ -256,6 +256,6 @@ func TestOrgMemberEdit_FactoryError(t *testing.T) {
 			role:         "admin",
 			changedFlags: map[string]bool{"role": true},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "not logged in", err.Error())
 }

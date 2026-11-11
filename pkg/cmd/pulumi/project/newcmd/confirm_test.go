@@ -307,8 +307,8 @@ func TestGuidedNewConfirmationInterruptIsFriendly(t *testing.T) {
 
 	err := runNew(t.Context(), args)
 
-	require.Error(t, err)
-	assert.ErrorIs(t, err, errConfirmationInterrupted)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
+	assert.ErrorIs(t, err, errNoProjectCreated)
 	assert.Empty(t, *created, "Ctrl-C at the confirmation must not create a stack")
 }
 

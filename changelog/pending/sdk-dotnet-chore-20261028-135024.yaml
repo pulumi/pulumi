@@ -1,4 +1,0 @@
-component: sdk/dotnet
-kind: chore
-body: Upgrade dotnet to v3.116.2
-time: 2026-10-28T13:50:24.374196+01:00

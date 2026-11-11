@@ -53,8 +53,8 @@ func TestImportOption(t *testing.T) {
 		"out": property.New(41.0),
 	})
 
-	// For imports we expect inputs and state to be empty. For a read we expect the resource inputs to be passed in the
-	// Inputs field; State is empty (the engine no longer duplicates Inputs into State on reads for non-dynamic providers).
+	// For imports we expect inputs and state to be nil, but when we change to do a read they should both be set to the
+	// resource inputs.
 	var expectedInputs, expectedState property.Map
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -106,12 +106,13 @@ func TestImportOption(t *testing.T) {
 		}, deploytest.WithGrpc),
 	}
 
-	readID, importID, inputs := resource.ID(""), resource.ID("id"), resource.PropertyMap{}
+	readID, importID, inputs := resource.ID(""), resource.ID("id"), property.Map{}
 	var expectedOutputs property.Map
 	expectedID := resource.ID("imported-id")
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		if readID != "" {
-			_, _, err := monitor.ReadResource("pkgA:m:typA", "resA", readID, "", inputs, "", "", "", nil, "", "")
+			_, _, err := monitor.ReadResource(
+				"pkgA:m:typA", "resA", readID, "", inputs, "", "", "", nil, "", "")
 			require.NoError(t, err)
 		} else {
 			resp, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -120,7 +121,7 @@ func TestImportOption(t *testing.T) {
 			})
 			if err == nil {
 				assert.Equal(t, expectedID, resp.ID)
-				assert.Equal(t, expectedOutputs, resource.FromResourcePropertyMap(resp.Outputs))
+				assert.Equal(t, expectedOutputs, resp.Outputs)
 			} else {
 				return nil
 			}
@@ -137,7 +138,7 @@ func TestImportOption(t *testing.T) {
 
 	// Run the initial update. The import should succeed and update the state to the differing goal state.
 	project := p.GetProject()
-	expectedOutputs = resource.FromResourcePropertyMap(inputs)
+	expectedOutputs = inputs
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			seenImport := false
@@ -163,12 +164,12 @@ func TestImportOption(t *testing.T) {
 		}, "0")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, inputs, snap.Resources[1].Inputs)
+	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
 	assert.Equal(t, expectedOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Run another update (from zero starting snapshot) after matching the inputs to the cloud. The import
 	// should succeed, and just import the resource (i.e. we don't bother Same'ing it).
-	inputs["foo"] = resource.NewProperty("bar")
+	inputs = inputs.Set("foo", property.New("bar"))
 	expectedOutputs = readOutputs
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
@@ -211,8 +212,8 @@ func TestImportOption(t *testing.T) {
 	assert.Equal(t, resource.ID("imported-id"), snap.Resources[1].ID)
 
 	// Change a property value and run a third update. The update should succeed.
-	inputs["foo"] = resource.NewProperty("rab")
-	expectedOutputs = resource.FromResourcePropertyMap(inputs)
+	inputs = inputs.Set("foo", property.New("rab"))
+	expectedOutputs = inputs
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
@@ -229,13 +230,13 @@ func TestImportOption(t *testing.T) {
 		}, "3")
 	require.NoError(t, err)
 	// This should call update not read, which just returns the passed inputs as outputs.
-	assert.Equal(t, inputs, snap.Resources[1].Inputs)
-	assert.Equal(t, inputs, snap.Resources[1].Outputs)
+	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 	assert.Equal(t, resource.ID("id"), snap.Resources[1].ImportID)
 	assert.Equal(t, resource.ID("imported-id"), snap.Resources[1].ID)
 
 	// Change the property value s.t. the resource requires replacement. The update should fail.
-	inputs["foo"] = resource.NewProperty("replace")
+	inputs = inputs.Set("foo", property.New("replace"))
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "4")
 	assert.ErrorContains(t, err, "previously-imported resources that still specify an ID may not be replaced")
 
@@ -255,9 +256,9 @@ func TestImportOption(t *testing.T) {
 	require.NoError(t, err)
 
 	// Now clear the ID to import and run an initial update to create a resource that we will import-replace.
-	importID, inputs["foo"] = "", resource.NewProperty("bar")
+	importID, inputs = "", inputs.Set("foo", property.New("bar"))
 	expectedID = resource.ID("created-id")
-	expectedOutputs = resource.FromResourcePropertyMap(inputs)
+	expectedOutputs = inputs
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
@@ -273,8 +274,8 @@ func TestImportOption(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
 	// This will have just called create which returns the inputs as outputs.
-	assert.Equal(t, inputs, snap.Resources[1].Inputs)
-	assert.Equal(t, inputs, snap.Resources[1].Outputs)
+	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Set the import ID to the same ID as the existing resource and run an update. This should produce no changes.
 	for _, r := range snap.Resources {
@@ -296,8 +297,8 @@ func TestImportOption(t *testing.T) {
 		}, "7")
 	require.NoError(t, err)
 	// This will have 'same'd so the inputs and outputs will be the same as the lat run with create.
-	assert.Equal(t, inputs, snap.Resources[1].Inputs)
-	assert.Equal(t, inputs, snap.Resources[1].Outputs)
+	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 
 	// Then set the import ID and run another update. The update should succeed and should show an import-replace and
 	// a delete-replaced.
@@ -329,7 +330,7 @@ func TestImportOption(t *testing.T) {
 
 	// Change the program to read a resource rather than creating one.
 	readID = "id"
-	expectedInputs, expectedState = resource.FromResourcePropertyMap(inputs), property.Map{}
+	expectedInputs, expectedState = inputs, inputs
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
 			for _, entry := range entries {
@@ -424,9 +425,9 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("bar"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("bar"),
+			}),
 			// The import ID is deliberately not the same as the ID returned from Read.
 			ImportID: resource.ID("import-id"),
 		})
@@ -719,14 +720,14 @@ func TestImportThenSecretValueDoesNotReplace(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			readInputs := resource.PropertyMap{
-				"foo":        resource.NewProperty("bar"),
-				"fromOutput": resource.NewProperty("output-value"),
-			}
-			readOutputs := resource.PropertyMap{
-				"foo":        resource.NewProperty("bar"),
-				"fromOutput": resource.NewProperty("output-value"),
-			}
+			readInputs := property.NewMap(map[string]property.Value{
+				"foo":        property.New("bar"),
+				"fromOutput": property.New("output-value"),
+			})
+			readOutputs := property.NewMap(map[string]property.Value{
+				"foo":        property.New("bar"),
+				"fromOutput": property.New("output-value"),
+			})
 
 			loaders := []*deploytest.ProviderLoader{
 				deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -749,8 +750,8 @@ func TestImportThenSecretValueDoesNotReplace(t *testing.T) {
 							return plugin.ReadResponse{
 								ReadResult: plugin.ReadResult{
 									ID:      "imported-id",
-									Inputs:  ptrMap(readInputs),
-									Outputs: ptrMap(readOutputs),
+									Inputs:  &readInputs,
+									Outputs: &readOutputs,
 								},
 								Status: resource.StatusOK,
 							}, nil
@@ -759,15 +760,16 @@ func TestImportThenSecretValueDoesNotReplace(t *testing.T) {
 				}),
 			}
 
-			inputs := resource.PropertyMap{
-				"foo": resource.MakeSecret(resource.NewProperty("bar")),
-				"fromOutput": resource.NewProperty(resource.Output{
-					Element: resource.NewProperty("output-value"),
-					Known:   true,
-				}),
-			}
 			programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-				_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				resp, err := monitor.RegisterResource("pkgA:m:typA", "dep", true)
+				require.NoError(t, err)
+
+				inputs := property.NewMap(map[string]property.Value{
+					"foo":        property.New("bar").WithSecret(true),
+					"fromOutput": property.New("output-value").WithDependencies([]resource.URN{resp.URN}),
+				})
+
+				_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 					Inputs:           inputs,
 					ReplaceOnChanges: []string{"foo", "fromOutput"},
 				})
@@ -838,13 +840,13 @@ func findImportTestResourceByURN(snap *deploy.Snapshot, urn resource.URN) *pkgre
 func TestImportPlan(t *testing.T) {
 	t.Parallel()
 
-	readInputs := resource.PropertyMap{
-		"foo": resource.NewProperty("bar"),
-	}
-	readOutputs := resource.PropertyMap{
-		"foo":  resource.NewProperty("bar"),
-		"frob": resource.NewProperty(1.0),
-	}
+	readInputs := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+	})
+	readOutputs := property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New(1.0),
+	})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -864,8 +866,8 @@ func TestImportPlan(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      "actual-id",
-							Inputs:  ptrMap(readInputs),
-							Outputs: ptrMap(readOutputs),
+							Inputs:  &readInputs,
+							Outputs: &readOutputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -902,8 +904,8 @@ func TestImportPlan(t *testing.T) {
 
 	// Import should save the ID, inputs and outputs
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[3].ID)
-	assert.Equal(t, readInputs, snap.Resources[3].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[3].Outputs)
+	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[3].Inputs))
+	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[3].Outputs))
 
 	// Import should set Created and Modified timestamps on state.
 	for _, r := range snap.Resources {
@@ -947,10 +949,10 @@ func TestImportIgnoreChanges(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo":  resource.NewProperty("foo"),
-				"frob": resource.NewProperty(1.0),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo":  property.New("foo"),
+				"frob": property.New(1.0),
+			}),
 			ImportID:      "import-id",
 			IgnoreChanges: []string{"foo"},
 		})
@@ -1012,16 +1014,16 @@ func TestImportPlanExistingImport(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"foo":  resource.NewProperty("bar"),
-				"frob": resource.NewProperty(1.0),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo":  property.New("bar"),
+				"frob": property.New(1.0),
+			}),
 			ImportID: "imported-id",
 			Parent:   resp.URN,
 		})
 		require.NoError(t, err)
 
-		err = monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{})
+		err = monitor.RegisterResourceOutputs(resp.URN, property.Map{})
 		require.NoError(t, err)
 		return nil
 	})
@@ -1064,14 +1066,14 @@ func TestImportPlanExistingImport(t *testing.T) {
 func TestImportPlanSuppliedOutputs(t *testing.T) {
 	t.Parallel()
 
-	suppliedInputs := resource.PropertyMap{
-		"foo":  resource.NewProperty("bar"),
-		"frob": resource.MakeSecret(resource.NewProperty(1.0)),
-	}
-	suppliedOutputs := resource.PropertyMap{
-		"foo":  resource.NewProperty("bar"),
-		"frob": resource.MakeSecret(resource.NewProperty(1.0)),
-	}
+	suppliedInputs := property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New(1.0).WithSecret(true),
+	})
+	suppliedOutputs := property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New(1.0).WithSecret(true),
+	})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1094,26 +1096,26 @@ func TestImportPlanSuppliedOutputs(t *testing.T) {
 		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
 	}
 
-	componentInputs := resource.PropertyMap{
-		"size": resource.NewProperty(3.0),
-	}
-	componentOutputs := resource.PropertyMap{
-		"result": resource.NewProperty("value"),
-	}
+	componentInputs := property.NewMap(map[string]property.Value{
+		"size": property.New(3.0),
+	})
+	componentOutputs := property.NewMap(map[string]property.Value{
+		"result": property.New("value"),
+	})
 
 	project := p.GetProject()
 	snap, err := lt.ImportOp([]deploy.Import{{
 		Type:      "my:module:Component",
 		Name:      "comp",
 		Component: true,
-		Inputs:    resource.FromResourcePropertyMap(componentInputs),
-		Outputs:   resource.FromResourcePropertyMap(componentOutputs),
+		Inputs:    componentInputs,
+		Outputs:   componentOutputs,
 	}, {
 		Type:    "pkgA:m:typA",
 		Name:    "resB",
 		ID:      "imported-id",
-		Inputs:  resource.FromResourcePropertyMap(suppliedInputs),
-		Outputs: resource.FromResourcePropertyMap(suppliedOutputs),
+		Inputs:  suppliedInputs,
+		Outputs: suppliedOutputs,
 	}}).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 
 	require.NoError(t, err)
@@ -1131,13 +1133,13 @@ func TestImportPlanSuppliedOutputs(t *testing.T) {
 	}
 
 	comp := byName("comp")
-	assert.Equal(t, componentInputs, comp.Inputs)
-	assert.Equal(t, componentOutputs, comp.Outputs)
+	assert.Equal(t, componentInputs, resource.FromResourcePropertyMap(comp.Inputs))
+	assert.Equal(t, componentOutputs, resource.FromResourcePropertyMap(comp.Outputs))
 
 	resB := byName("resB")
 	assert.Equal(t, resource.ID("imported-id"), resB.ID)
-	assert.Equal(t, suppliedInputs, resB.Inputs)
-	assert.Equal(t, suppliedOutputs, resB.Outputs)
+	assert.Equal(t, suppliedInputs, resource.FromResourcePropertyMap(resB.Inputs))
+	assert.Equal(t, suppliedOutputs, resource.FromResourcePropertyMap(resB.Outputs))
 }
 
 func TestImportPlanSuppliedInputsMerge(t *testing.T) {
@@ -1690,16 +1692,16 @@ func TestImportRemoteComponent(t *testing.T) {
 func TestImportInputDiff(t *testing.T) {
 	t.Parallel()
 
-	upInputs := resource.PropertyMap{
-		"foo": resource.NewProperty("barz"),
-	}
-	readInputs := resource.PropertyMap{
-		"foo": resource.NewProperty("bar"),
-	}
-	readOutputs := resource.PropertyMap{
-		"foo":  resource.NewProperty("bar"),
-		"frob": resource.NewProperty(1.0),
-	}
+	upInputs := property.NewMap(map[string]property.Value{
+		"foo": property.New("barz"),
+	})
+	readInputs := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+	})
+	readOutputs := property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New(1.0),
+	})
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1719,8 +1721,8 @@ func TestImportInputDiff(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      "actual-id",
-							Inputs:  ptrMap(readInputs),
-							Outputs: ptrMap(readOutputs),
+							Inputs:  &readInputs,
+							Outputs: &readOutputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1760,8 +1762,8 @@ func TestImportInputDiff(t *testing.T) {
 
 	// Import should save the ID, inputs and outputs
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[2].ID)
-	assert.Equal(t, readInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Run an update that changes the input but the provider normalizes it.
 	snap, err = lt.TestOp(Update).RunStep(
@@ -1774,8 +1776,8 @@ func TestImportInputDiff(t *testing.T) {
 
 	// Update should have updated to the new inputs from the program.
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[1].ID)
-	assert.Equal(t, upInputs, snap.Resources[1].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
+	assert.Equal(t, upInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
+	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
 }
 
 // Test that the provider packages returned form the language runtime are used for setting the default provider
@@ -1783,13 +1785,13 @@ func TestImportInputDiff(t *testing.T) {
 func TestImportDefaultProvider(t *testing.T) {
 	t.Parallel()
 
-	readInputs := resource.PropertyMap{
-		"foo": resource.NewProperty("bar"),
-	}
-	readOutputs := resource.PropertyMap{
-		"foo":  resource.NewProperty("bar"),
-		"frob": resource.NewProperty(1.0),
-	}
+	readInputs := property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+	})
+	readOutputs := property.NewMap(map[string]property.Value{
+		"foo":  property.New("bar"),
+		"frob": property.New(1.0),
+	})
 
 	pkgAVersion := semver.MustParse("1.0.0")
 	loaders := []*deploytest.ProviderLoader{
@@ -1810,8 +1812,8 @@ func TestImportDefaultProvider(t *testing.T) {
 					return plugin.ReadResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      "actual-id",
-							Inputs:  ptrMap(readInputs),
-							Outputs: ptrMap(readOutputs),
+							Inputs:  &readInputs,
+							Outputs: &readOutputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1852,8 +1854,8 @@ func TestImportDefaultProvider(t *testing.T) {
 
 	// Import should save the ID, inputs and outputs
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[2].ID)
-	assert.Equal(t, readInputs, snap.Resources[2].Inputs)
-	assert.Equal(t, readOutputs, snap.Resources[2].Outputs)
+	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[2].Inputs))
+	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
 
 	// Import should set Created and Modified timestamps on state.
 	for _, r := range snap.Resources {
@@ -1902,8 +1904,8 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		"out": property.New(41.0),
 	})
 
-	// For imports we expect inputs and state to be empty. For a read we expect the resource inputs to be passed in the
-	// Inputs field; State is empty (the engine no longer duplicates Inputs into State on reads for non-dynamic providers).
+	// For imports we expect inputs and state to be nil, but when we change to do a read they should both be set to the
+	// resource inputs.
 	var expectedInputs, expectedState property.Map
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -1941,9 +1943,10 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		}),
 	}
 
-	importID, inputs := resource.ID("id"), resource.PropertyMap{
-		"foo": resource.NewProperty("baz"),
-	}
+	importID := resource.ID("id")
+	inputs := property.NewMap(map[string]property.Value{
+		"foo": property.New("baz"),
+	})
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs:   inputs,
@@ -2063,9 +2066,9 @@ func TestImportDeleteBeforeReplace(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			ImportID: "import-id",
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("baz"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("baz"),
+			}),
 		})
 		require.NoError(t, err)
 		return nil
@@ -2138,9 +2141,9 @@ func TestImportIDPreservedAcrossUpdate(t *testing.T) {
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			ImportID: importIdentifier,
-			Inputs: resource.PropertyMap{
-				"foo": resource.NewProperty("desired"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"foo": property.New("desired"),
+			}),
 		})
 		require.NoError(t, err)
 		return nil

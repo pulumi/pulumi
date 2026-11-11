@@ -119,7 +119,7 @@ func TestHTTPExporterServerError(t *testing.T) {
 	}()
 
 	err = exp.ExportSpans(t.Context(), testSpans())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Contains(t, err.Error(), "401")
 	require.Contains(t, err.Error(), "invalid api key")
 }

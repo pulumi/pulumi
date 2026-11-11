@@ -2413,7 +2413,7 @@ func TestCLI(t *testing.T) {
 			if def.Error == "" {
 				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			}
 
 			assert.Equal(t, testcase.expectedStdout, stdout.String())
@@ -2480,4 +2480,36 @@ func TestEnvDraftReasonSubmits(t *testing.T) {
 	require.NotNil(t, subs[0].description)
 	assert.Equal(t, "Rotate foo", *subs[0].description)
 	assert.Nil(t, subs[1].description)
+}
+
+func TestEnvChangeRequestRejectsNonEnvironment(t *testing.T) {
+	t.Setenv("PULUMI_API", "")
+	t.Setenv("PULUMI_HOME", t.TempDir())
+
+	_, testcase, err := loadTestcase(filepath.Join("testdata", "env-change-request.yaml"))
+	require.NoError(t, err)
+
+	run := func(script string) (string, error) {
+		var stdout, stderr bytes.Buffer
+		err := testcase.exec.runScript(script, &exec.Cmd{
+			Path:   "<script>",
+			Args:   []string{"<script>"},
+			Stdin:  bytes.NewReader(nil),
+			Stdout: &stdout,
+			Stderr: &stderr,
+		})
+		return stderr.String(), err
+	}
+
+	_, err = run("esc env init default/test\nesc env set default/test foo bar --draft\n")
+	require.NoError(t, err)
+
+	id := "00000000-0000-0000-0000-000000000000"
+	testcase.exec.client.changeRequests[id].Entity.EntityType = "policy_exceptions"
+
+	for _, cmd := range []string{"get", "diff", "rebase"} {
+		stderr, err := run("esc env change-request " + cmd + " " + id + "\n")
+		assert.Error(t, err, cmd) //nolint:forbidigo // pre-existing
+		assert.Contains(t, stderr, "is not an environment draft", cmd)
+	}
 }

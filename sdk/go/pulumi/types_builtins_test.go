@@ -72,7 +72,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err := await(app)
 		assert.False(t, ranApp)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, v)
 	}
 	// Test that an an apply that returns an output returns the resolution of that output, not the output itself.
@@ -117,7 +117,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err := await(app)
 		assert.True(t, ranApp)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, v)
 
 		app = out.ApplyT(func(v int) (any, error) {
@@ -128,7 +128,7 @@ func TestOutputApply(t *testing.T) {
 		})
 		v, _, _, _, err = await(app)
 		assert.True(t, ranApp)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, v)
 	}
 	// Test that applies return appropriate concrete implementations of Output based on the callback type

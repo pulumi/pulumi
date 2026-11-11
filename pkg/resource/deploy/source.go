@@ -25,8 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type ResultState int
@@ -41,6 +39,11 @@ const (
 type ProviderSource interface {
 	// GetProvider fetches the provider plugin for the given reference.
 	GetProvider(ref providers.Reference) (plugin.Provider, bool)
+	// ParameterizeExtension parameterizes the provider for the given reference with ext. The provider receives
+	// one Parameterize call per (provider, extension) pair, however many callers ask for it.
+	ParameterizeExtension(
+		ctx context.Context, ref providers.Reference, extRef apitype.ExtensionRef, ext apitype.Extension,
+	) error
 }
 
 // A Source can generate a new set of resources that the planner will process accordingly.
@@ -56,32 +59,11 @@ type Source interface {
 
 // A SourceIterator enumerates the list of resources that a source has to offer and tracks associated state.
 type SourceIterator interface {
-	// Cancel the iterator. This will cancel the SourceResourceMonitor monitor attached to the iterator.
+	// Cancel the iterator. This will cancel the resource monitor attached to the iterator.
 	Cancel(context.Context) error
 
 	// Next returns the next event from the source.
 	Next() (SourceEvent, error)
-}
-
-// SourceResourceMonitor directs resource operations from the `Source` to various resource
-// providers.
-type SourceResourceMonitor interface {
-	// NOTE: This interface does not implement pulumirpc.ResourceMonitorClient because the eval and
-	// query implementations of `Source` do not implement precisely the same signatures.
-
-	Address() string
-	Cancel(ctx context.Context) error
-	AbortChan() <-chan bool
-	Invoke(ctx context.Context, req *pulumirpc.ResourceInvokeRequest) (*pulumirpc.ResourceInvokeResponse, error)
-	Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
-	ReadResource(ctx context.Context,
-		req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error)
-	ExistsResource(ctx context.Context,
-		req *pulumirpc.ExistsResourceRequest) (*pulumirpc.ExistsResourceResponse, error)
-	RegisterResource(ctx context.Context,
-		req *pulumirpc.RegisterResourceRequest) (*pulumirpc.RegisterResourceResponse, error)
-	RegisterResourceOutputs(ctx context.Context,
-		req *pulumirpc.RegisterResourceOutputsRequest) (*emptypb.Empty, error)
 }
 
 // SourceEvent is an event associated with the enumeration of a plan.  It is an intent expressed by the source

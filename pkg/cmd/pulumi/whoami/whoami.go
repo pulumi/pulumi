@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
@@ -61,8 +62,10 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 			"\n" +
 			"Displays the username of the currently logged in user.\n" +
 			"\n" +
-			"When the current token is a Pulumi Cloud team token or an organization token, " +
-			"the command will return the name of the organization with which the token is associated.",
+			"When the current token is a Pulumi Cloud organization token, " +
+			"the command returns the name of the organization with which the token is associated. " +
+			"When it is a team token, the command returns the login of the team's service principal, " +
+			"in the form team-account:<team-id>.",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -93,6 +96,32 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 				return err
 			}
 
+			if verbose && output.String() == "default" {
+				source := "none"
+				if cloud, ok := b.(interface{ CloudURL() string }); ok {
+					if env.AccessToken.Value() != "" {
+						source = "PULUMI_ACCESS_TOKEN"
+					} else {
+						account, fromAgent, err := workspace.GetAccountWithAgentFallback(cloud.CloudURL())
+						if err == nil && account.HasCredential() {
+							source = "stored account"
+							if fromAgent {
+								source = "shared agent credentials"
+							}
+						}
+					}
+				}
+				if r := lm.CredentialHelperSession().Current(); r != nil && r.Helper != nil {
+					fmt.Fprintf(stdout, "Credentials helper: %s\n", r.Helper.Path)
+					if r.HasHTTP() {
+						source = "credentials helper"
+						if r.Token() == "" {
+							source = "none"
+						}
+					}
+				}
+				fmt.Fprintf(stdout, "Access token source: %s\n", source)
+			}
 			return output.Get()(stdout, b, name, orgs, tokenInfo)
 		},
 	}

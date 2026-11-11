@@ -1,4 +1,0 @@
-component: programgen/go
-kind: fix
-body: Fix Go program generation for a tuple of optional strings
-time: 2026-10-24T15:30:00Z

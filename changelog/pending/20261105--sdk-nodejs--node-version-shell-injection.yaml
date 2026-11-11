@@ -1,0 +1,4 @@
+component: sdk/nodejs
+kind: fix
+body: Fix command injection through Node.js version files when using language version tools
+time: 2026-11-05T00:00:00Z

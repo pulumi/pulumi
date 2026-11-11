@@ -772,7 +772,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
-				if call.Name == pcl.Invoke {
+				if call.Name == pcl.Invoke || call.Name == "resourceExists" {
 					pkg, _, _, invokeDiags := functionName(call.Args[0])
 					contract.Assertf(len(invokeDiags) == 0, "unexpected diagnostics reported: %v", invokeDiags)
 					importSet["pulumi_"+makeValidIdentifier(pkg)] = Import{

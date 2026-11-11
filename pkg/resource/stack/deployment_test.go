@@ -366,7 +366,7 @@ func TestLoadTooNewDeployment(t *testing.T) {
 
 	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, ErrDeploymentSchemaVersionTooNew, err)
 }
 
@@ -380,7 +380,7 @@ func TestLoadTooOldDeployment(t *testing.T) {
 
 	deployment, err := DeserializeUntypedDeployment(ctx, untypedDeployment, b64.Base64SecretsProvider)
 	assert.Nil(t, deployment)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, ErrDeploymentSchemaVersionTooOld, err)
 }
 
@@ -520,7 +520,7 @@ func TestUnsupportedSecret(t *testing.T) {
 		resource.SigKey: resource.SecretSig,
 	}
 	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter())
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestUnknownSig(t *testing.T) {
@@ -530,7 +530,7 @@ func TestUnknownSig(t *testing.T) {
 		resource.SigKey: "foobar",
 	}
 	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter())
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestDeserializeResourceReferencePropertyValueID tests the ability of the deserializer to handle resource references
