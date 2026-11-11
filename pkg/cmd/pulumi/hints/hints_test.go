@@ -83,6 +83,20 @@ func TestNoHintBeforeSuccessfulUpdate(t *testing.T) {
 	assert.Contains(t, tm.run(hintA), "hint a")
 }
 
+func TestHintBeforeFirstUpdate(t *testing.T) {
+	t.Parallel()
+	tm := newTestManager(t)
+	early := Hint{ID: "early", Cooldown: 7 * 24 * time.Hour, Message: "early hint", BeforeFirstUpdate: true}
+
+	// Hints that wait for the first update are skipped, and an early hint can still be shown.
+	out := tm.run(hintA, early)
+	assert.Contains(t, out, "early hint")
+	assert.NotContains(t, out, "hint a")
+
+	// Its cooldown still applies.
+	assert.Empty(t, tm.run(early))
+}
+
 func TestOneHintPerCommand(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
