@@ -550,6 +550,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				cmdVersion.NewVersionCmd(),
 				about.NewAboutCmd(pkgWorkspace.Instance),
 				completion.NewGenCompletionCmd(cmd),
+				notifications.NewNotificationsCmd(),
 			},
 		},
 
