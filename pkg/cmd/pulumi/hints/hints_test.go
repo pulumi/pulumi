@@ -97,6 +97,16 @@ func TestHintBeforeFirstUpdate(t *testing.T) {
 	assert.Empty(t, tm.run(early))
 }
 
+func TestMultiLineHint(t *testing.T) {
+	t.Parallel()
+	tm := newTestManager(t)
+	tm.recordSuccessfulUpdate()
+
+	// Later lines line up with the first line, after the "Hint: " label.
+	out := tm.run(Hint{ID: "multi", Message: "first line\nLearn more: https://example.com"})
+	assert.Contains(t, out, "Hint: first line\n      Learn more: https://example.com\n")
+}
+
 func TestOneHintPerCommand(t *testing.T) {
 	t.Parallel()
 	tm := newTestManager(t)
