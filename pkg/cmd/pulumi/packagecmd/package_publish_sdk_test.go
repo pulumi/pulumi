@@ -154,7 +154,7 @@ func TestDetermineNPMTagFromCommandResult(t *testing.T) {
 			tag, err := determineNPMTagFromCommandResult(tt.currentVersion, tt.npmOutput, tt.npmStderr, tt.npmError)
 
 			if tt.expectedErr != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.expectedErr)
 			} else {
 				require.NoError(t, err)
@@ -329,7 +329,7 @@ func main() {
 
 	var stdout, stderr bytes.Buffer
 	err := publishToNPM(&stdout, &stderr, pkgDir)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, stderr.String(), "whoami failed")
 }
 
@@ -369,7 +369,7 @@ func main() {
 
 	var stdout, stderr bytes.Buffer
 	err := publishToNPM(&stdout, &stderr, pkgDir)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, stderr.String(), "token auth failed")
 }
 

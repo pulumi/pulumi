@@ -285,7 +285,7 @@ func TestPolicyGroupGet_ClientError(t *testing.T) {
 	err := runPolicyGroupGet(t.Context(), &buf, io.Discard,
 		stubPolicyGroupGetFactory(c, "acme"), "missing",
 		policyGroupGetArgs{outputFormat: defaultPolicyGroupGetRenderers()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "getting policy group: not found", err.Error())
 }
 
@@ -296,7 +296,7 @@ func TestPolicyGroupGet_FactoryError(t *testing.T) {
 	err := runPolicyGroupGet(t.Context(), &buf, io.Discard,
 		failingPolicyGroupGetFactory(errors.New("not logged in")),
 		"prod-policies", policyGroupGetArgs{outputFormat: defaultPolicyGroupGetRenderers()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "not logged in", err.Error())
 }
 

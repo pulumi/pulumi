@@ -1193,9 +1193,9 @@ func TestExtensionParameterizeStepApply_MalformedVersion(t *testing.T) {
 	)
 
 	_, _, err := step.Apply()
-	require.Error(t, err, "malformed version must fail Apply")
+	require.Error(t, err, "malformed version must fail Apply") //nolint:forbidigo // pre-existing
 	assert.False(t, called, "Apply must reject the blob without calling the provider")
 
 	_, err = completionSource.Promise().Result(t.Context())
-	assert.Error(t, err, "malformed version must reject the CompletionSource")
+	assert.Error(t, err, "malformed version must reject the CompletionSource") //nolint:forbidigo // pre-existing
 }

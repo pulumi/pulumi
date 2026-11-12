@@ -987,7 +987,7 @@ func TestNodeInstall(t *testing.T) {
 	// We expect the file written by our mock fnm executable to not exist.
 	stdout = &bytes.Buffer{}
 	err = installNodeVersion(tmpDir, stdout)
-	require.Error(t, err, errVersionFileNotFound)
+	require.Error(t, err, errVersionFileNotFound) //nolint:forbidigo // pre-existing
 
 	// Create a .node-version file
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".node-version"), []byte("20.1.2"), 0o600))

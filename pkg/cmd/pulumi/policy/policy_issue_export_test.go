@@ -165,7 +165,7 @@ func TestPolicyIssueExport_InvalidFilterFailsBeforeRequest(t *testing.T) {
 
 	c := &mockPolicyIssueExportClient{csv: exportCSV}
 	_, err := runPolicyIssueExportCmd(t, c, "--severity", "urgent")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "critical")
 	assert.Empty(t, c.org)
 }

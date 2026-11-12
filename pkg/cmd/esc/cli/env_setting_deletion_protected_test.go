@@ -45,14 +45,14 @@ func TestDeletionProtectedSetting(t *testing.T) {
 		t.Run("invalid value", func(t *testing.T) {
 			t.Parallel()
 			_, err := s.ValidateValue("yes")
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "invalid value for deletion-protected")
 		})
 
 		t.Run("case sensitive", func(t *testing.T) {
 			t.Parallel()
 			_, err := s.ValidateValue("True")
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 		})
 	})
 

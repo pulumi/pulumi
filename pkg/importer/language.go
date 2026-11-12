@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
@@ -120,8 +121,10 @@ func createPathedValue(
 	return nil
 }
 
+var invalidNameCharacters = regexp.MustCompile(`[^\p{L}\p{N}_-]`)
+
 func sanitizeName(name string) string {
-	return strings.ReplaceAll(name, ".", "_")
+	return invalidNameCharacters.ReplaceAllString(name, "_")
 }
 
 func createImportState(states []*pkgresource.State, snapshot []*pkgresource.State, names NameTable) ImportState {

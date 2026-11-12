@@ -1043,7 +1043,7 @@ func TestImportStep(t *testing.T) {
 					},
 				}
 				status, _, err := s.Apply()
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Equal(t, resource.StatusOK, status)
 				require.Len(t, s.new.InitErrors, 1)
 			})

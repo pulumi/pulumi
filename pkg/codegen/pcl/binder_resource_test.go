@@ -393,7 +393,7 @@ func TestBindReadComponentResourceFails(t *testing.T) {
 	prog, diags, err := BindProgram(parser.Files, &stubSchemaLoader{
 		Package: fooPkg,
 	})
-	require.Error(t, err, "bind should fail")
+	require.Error(t, err, "bind should fail") //nolint:forbidigo // pre-existing
 	require.True(t, diags.HasErrors(), "expected bind diagnostics")
 	require.Nil(t, prog)
 	require.Contains(t, diags.Error(), "component resources cannot be read")

@@ -708,7 +708,7 @@ func TestSnapshotPrune_FixesDanglingReferences(t *testing.T) {
 			t.Parallel()
 
 			snap := &Snapshot{Resources: c.given}
-			assert.Error(t, snap.VerifyIntegrity())
+			assert.Error(t, snap.VerifyIntegrity()) //nolint:forbidigo // pre-existing
 
 			// Act.
 			actual := snap.Prune()
@@ -1135,7 +1135,7 @@ func TestSnapshotToposort_FixesOrderInvalidSnapshots(t *testing.T) {
 			t.Parallel()
 
 			snap := &Snapshot{Resources: c.given}
-			assert.Error(t, snap.VerifyIntegrity())
+			assert.Error(t, snap.VerifyIntegrity()) //nolint:forbidigo // pre-existing
 
 			// Act.
 			err := snap.Toposort()

@@ -1,4 +1,0 @@
-component: backend/diy
-kind: improvement
-body: Warn when logging in with a relative path
-time: 2026-11-06T10:09:46.72345847+01:00

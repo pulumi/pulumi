@@ -595,7 +595,7 @@ func TestCheckDiff(t *testing.T) {
 							"should-delete",
 						},
 					}, false)
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			})
 			t.Run("update", func(t *testing.T) {
 				t.Parallel()
@@ -611,7 +611,7 @@ func TestCheckDiff(t *testing.T) {
 							"should-delete",
 						},
 					}, false)
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			})
 			t.Run("same", func(t *testing.T) {
 				t.Parallel()

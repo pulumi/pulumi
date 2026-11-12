@@ -53,7 +53,7 @@ func TestChangeSecretsProvider_Invalid(t *testing.T) {
 		stack:  "test",
 	}
 	err := cmd.Run(t.Context(), []string{"not_a_secret"})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "unknown secrets provider type 'not_a_secret' "+
 		"(supported values: default,passphrase,awskms,azurekeyvault,gcpkms,hashivault)")
 }

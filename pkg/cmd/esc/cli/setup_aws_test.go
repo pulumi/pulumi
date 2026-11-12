@@ -149,7 +149,7 @@ func TestClassifySSOTokenError(t *testing.T) {
 				require.ErrorIs(t, cause, tt.err)
 				return
 			}
-			require.Error(t, cause)
+			require.Error(t, cause) //nolint:forbidigo // pre-existing
 			assert.Contains(t, cause.Error(), tt.wantMsg)
 		})
 	}
@@ -162,7 +162,7 @@ func TestClassifySSOTokenErrorUnwrapsOperationError(t *testing.T) {
 	wrapped := fmt.Errorf("operation error SSO OIDC: CreateToken, %w", &ssooidctypes.AccessDeniedException{})
 	retry, cause := classifySSOTokenError(wrapped)
 	assert.False(t, retry)
-	require.Error(t, cause)
+	require.Error(t, cause) //nolint:forbidigo // pre-existing
 	assert.Contains(t, cause.Error(), "denied")
 
 	wrapped = fmt.Errorf("operation error SSO OIDC: CreateToken, %w", &ssooidctypes.AuthorizationPendingException{})
@@ -208,7 +208,7 @@ func TestOIDCIssuer(t *testing.T) {
 			}}}
 			got, err := setup.oidcIssuer()
 			if tt.wantErr != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.wantErr)
 				return
 			}
@@ -256,7 +256,7 @@ func TestAWSPolicyPresetsAreValidARNs(t *testing.T) {
 
 	// The case the early check exists for: an official name passed where an ARN is expected.
 	_, err := arn.Parse("AdministratorAccess")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // resolvePolicy hands back the AWS presets as policy ARNs, and a custom policy untouched.

@@ -42,7 +42,7 @@ func TestUnknownCommandSuggestions(t *testing.T) {
 	pulumiCmd.SetArgs([]string{"export"})
 
 	err := pulumiCmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, `unknown command "export" for "pulumi"`)
 	assert.ErrorContains(t, err, "Did you mean this?")
 	assert.ErrorContains(t, err, "pulumi stack export")
@@ -91,7 +91,7 @@ func TestBareRootPrintsHelpAndFails(t *testing.T) {
 	pulumiCmd.SetArgs([]string{})
 
 	err := pulumiCmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, `"pulumi" requires a subcommand`)
 	assert.NotEmpty(t, stdout.String(), "help text should be printed")
 }

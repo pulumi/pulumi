@@ -140,7 +140,7 @@ func TestPolicyInstallCmd_Run(t *testing.T) {
 		}
 
 		err := cmd.Run(t.Context(), "")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "could not find a Pulumi project")
 		assert.Contains(t, err.Error(), "--stack flag")
 		assert.NotErrorIs(t, err, workspace.ErrProjectNotFound,

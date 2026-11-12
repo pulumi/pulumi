@@ -60,7 +60,7 @@ func TestResolveGoogleCredentials_InvalidCredentials(t *testing.T) {
 
 	credentials, err := ResolveGoogleCredentials(ctx, scope)
 
-	assert.Error(t, err, "Expected an error")
+	assert.Error(t, err, "Expected an error") //nolint:forbidigo // pre-existing
 	assert.Nil(t, credentials, "Expected nil credentials")
 }
 

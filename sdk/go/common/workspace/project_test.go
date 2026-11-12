@@ -1465,7 +1465,7 @@ func TestPackageValueSerialization(t *testing.T) {
 		jsonData := `{"name":"test-project","runtime":"nodejs","packages":{"invalid":123}}`
 		var proj Project
 		err := json.Unmarshal([]byte(jsonData), &proj)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "package must be either a string or a package specification object")
 	})
 }

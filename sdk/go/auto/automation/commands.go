@@ -40,6 +40,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigset"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconfigsetall"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optconvert"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeployment"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentcancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentget"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentlist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentlog"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentrun"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentsettings"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentsettingsdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentsettingsedit"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdeploymentsettingsget"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdo"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optdoshowresources"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestapply"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestapprove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvchangerequestclose"
@@ -100,7 +113,19 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvwebhookping"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optenvwebhookremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optimport"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinsights"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinsightsaccount"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinsightsaccountlist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinsightsaccountnew"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinsightsaccountscan"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinsightsaccountscanget"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinsightsaccountscanlist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinsightsaccountscanlog"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinsightsresource"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinsightsresourceget"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinsightsresourcesearch"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optinstall"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogin"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogsdecrypt"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogslist"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optlogsremove"
@@ -142,6 +167,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateunprotect"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateuntaint"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optstateupgrade"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/opttemplatelist"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/opttemplatepublish"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optwhoami"
@@ -2124,6 +2151,1529 @@ func (a *API) Convert(
 	if len(args) > 0 {
 		final = append(final, "--")
 		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Deployment corresponds to `pulumi deployment`.
+func (a *API) Deployment(
+	ctx context.Context,
+	opts ...optdeployment.Option,
+) (base.CommandResult, error) {
+	o := optdeployment.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentCancel corresponds to `pulumi deployment cancel`.
+//
+// [EXPERIMENTAL] Cancel an in-progress deployment.
+//
+// Terminates an in-progress Pulumi Deployments execution. If the deployment is
+// currently running, it is stopped immediately. If the deployment is queued but
+// has not yet started, it is removed from the queue.
+//
+// Canceling a deployment is a dangerous action and may leave the stack in an
+// inconsistent state if canceled during the execution of a Pulumi operation.
+func (a *API) DeploymentCancel(
+	ctx context.Context,
+	deploymentId string,
+	opts ...optdeploymentcancel.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentcancel.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "cancel"}
+
+	final = append(final, "--output", "json")
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(deploymentId))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentGet corresponds to `pulumi deployment get`.
+//
+// [EXPERIMENTAL] Get details for a specific deployment.
+//
+// The deployment may be referenced by its UUID or by its per-stack version
+// number (the integer shown in the Pulumi Cloud UI, e.g. 9410 or #9410).
+//
+// Retrieves detailed information about a single Pulumi Deployments execution.
+// The response includes the deployment's current status, creation and
+// modification timestamps, version number, the user who requested the
+// deployment, the Pulumi operation type, the list of jobs (with their
+// step-level status), and any stack updates produced by the deployment.
+func (a *API) DeploymentGet(
+	ctx context.Context,
+	deploymentVersion string,
+	opts ...optdeploymentget.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentget.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "get"}
+
+	final = append(final, "--output", "json")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(deploymentVersion))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentList corresponds to `pulumi deployment list`.
+//
+// [EXPERIMENTAL] List deployments for a stack.
+//
+// Returns deployments for the selected stack, showing each deployment's ID,
+// operation, status, version, initiator, and the time it was last modified.
+// Default output is a human-readable table; pass --output=json for a JSON
+// envelope.
+//
+// By default, the first 10 results are shown. Use --count to request more,
+// or --all to fetch every deployment.
+func (a *API) DeploymentList(
+	ctx context.Context,
+	opts ...optdeploymentlist.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentlist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "list"}
+
+	final = append(final, "--output", "json")
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Asc {
+		final = append(final, "--asc")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Count != 0 {
+		final = append(final, "--count", fmt.Sprint(o.Count))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Sort != "" {
+		final = append(final, "--sort", fmt.Sprint(o.Sort))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentLog corresponds to `pulumi deployment log`.
+//
+// [EXPERIMENTAL] Retrieve execution logs for a deployment.
+//
+// The deployment may be referenced by its UUID or by its per-stack version
+// number (the integer shown in the Pulumi Cloud UI, e.g. 9410 or #9410).
+//
+// Returns log lines from a deployment. Pass --job and --step to scope to a
+// specific step within a specific job; in step mode --count must be 1-499
+// (default 100 server-side). Pass --all to fetch every available log line,
+// following the server's pagination internally; --count and --all are
+// mutually exclusive.
+//
+// Default output prints one log line per row; pass --output=json for a
+// structured envelope.
+func (a *API) DeploymentLog(
+	ctx context.Context,
+	deploymentVersion string,
+	opts ...optdeploymentlog.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentlog.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "log"}
+
+	final = append(final, "--output", "json")
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Count != 0 {
+		final = append(final, "--count", fmt.Sprint(o.Count))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Job != 0 {
+		final = append(final, "--job", fmt.Sprint(o.Job))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Offset != 0 {
+		final = append(final, "--offset", fmt.Sprint(o.Offset))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Step != 0 {
+		final = append(final, "--step", fmt.Sprint(o.Step))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(deploymentVersion))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentRun corresponds to `pulumi deployment run`.
+//
+// # Launch a deployment job on Pulumi Cloud
+//
+// This command queues a new deployment job for any supported operation of type
+// update, preview, destroy, refresh, detect-drift or remediate-drift.
+func (a *API) DeploymentRun(
+	ctx context.Context,
+	operation string,
+	url *string,
+	opts ...optdeploymentrun.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentrun.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "run"}
+
+	if o.AgentPoolId != "" {
+		final = append(final, "--agent-pool-id", fmt.Sprint(o.AgentPoolId))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	for _, v := range o.Env {
+		final = append(final, "--env", fmt.Sprint(v))
+	}
+
+	for _, v := range o.EnvSecret {
+		final = append(final, "--env-secret", fmt.Sprint(v))
+	}
+
+	if o.ExecutorImage != "" {
+		final = append(final, "--executor-image", fmt.Sprint(o.ExecutorImage))
+	}
+
+	if o.ExecutorImagePassword != "" {
+		final = append(final, "--executor-image-password", fmt.Sprint(o.ExecutorImagePassword))
+	}
+
+	if o.ExecutorImageUsername != "" {
+		final = append(final, "--executor-image-username", fmt.Sprint(o.ExecutorImageUsername))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.GitAuthAccessToken != "" {
+		final = append(final, "--git-auth-access-token", fmt.Sprint(o.GitAuthAccessToken))
+	}
+
+	if o.GitAuthPassword != "" {
+		final = append(final, "--git-auth-password", fmt.Sprint(o.GitAuthPassword))
+	}
+
+	if o.GitAuthSshPrivateKey != "" {
+		final = append(final, "--git-auth-ssh-private-key", fmt.Sprint(o.GitAuthSshPrivateKey))
+	}
+
+	if o.GitAuthSshPrivateKeyPath != "" {
+		final = append(final, "--git-auth-ssh-private-key-path", fmt.Sprint(o.GitAuthSshPrivateKeyPath))
+	}
+
+	if o.GitAuthUsername != "" {
+		final = append(final, "--git-auth-username", fmt.Sprint(o.GitAuthUsername))
+	}
+
+	if o.GitBranch != "" {
+		final = append(final, "--git-branch", fmt.Sprint(o.GitBranch))
+	}
+
+	if o.GitCommit != "" {
+		final = append(final, "--git-commit", fmt.Sprint(o.GitCommit))
+	}
+
+	if o.GitRepoDir != "" {
+		final = append(final, "--git-repo-dir", fmt.Sprint(o.GitRepoDir))
+	}
+
+	if o.InheritSettings {
+		final = append(final, "--inherit-settings")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	for _, v := range o.PreRunCommand {
+		final = append(final, "--pre-run-command", fmt.Sprint(v))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.SkipInstallDependencies {
+		final = append(final, "--skip-install-dependencies")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.SuppressPermalink {
+		final = append(final, "--suppress-permalink")
+	}
+
+	if o.SuppressStreamLogs {
+		final = append(final, "--suppress-stream-logs")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(operation))
+	if url != nil {
+		args = append(args, fmt.Sprint(*url))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentSettings corresponds to `pulumi deployment settings`.
+func (a *API) DeploymentSettings(
+	ctx context.Context,
+	opts ...optdeploymentsettings.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentsettings.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "settings"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentSettingsDestroy corresponds to `pulumi deployment settings destroy`.
+//
+// Delete all the stack's deployment settings
+func (a *API) DeploymentSettingsDestroy(
+	ctx context.Context,
+	opts ...optdeploymentsettingsdestroy.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentsettingsdestroy.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "settings", "destroy"}
+
+	final = append(final, "--yes")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentSettingsEdit corresponds to `pulumi deployment settings edit`.
+//
+// [EXPERIMENTAL] Create or update deployment settings for a stack.
+func (a *API) DeploymentSettingsEdit(
+	ctx context.Context,
+	opts ...optdeploymentsettingsedit.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentsettingsedit.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "settings", "edit"}
+
+	final = append(final, "--output", "json")
+
+	if o.Branch != "" {
+		final = append(final, "--branch", fmt.Sprint(o.Branch))
+	}
+
+	if o.Cache {
+		final = append(final, "--cache")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Commit != "" {
+		final = append(final, "--commit", fmt.Sprint(o.Commit))
+	}
+
+	if o.DeleteAfterDestroy {
+		final = append(final, "--delete-after-destroy")
+	}
+
+	if o.DeployTags {
+		final = append(final, "--deploy-tags")
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	for _, v := range o.Env {
+		final = append(final, "--env", fmt.Sprint(v))
+	}
+
+	if o.ExecutorImage != "" {
+		final = append(final, "--executor-image", fmt.Sprint(o.ExecutorImage))
+	}
+
+	if o.ExecutorRootPath != "" {
+		final = append(final, "--executor-root-path", fmt.Sprint(o.ExecutorRootPath))
+	}
+
+	if o.Folder != "" {
+		final = append(final, "--folder", fmt.Sprint(o.Folder))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.GitAuthAccessToken != "" {
+		final = append(final, "--git-auth-access-token", fmt.Sprint(o.GitAuthAccessToken))
+	}
+
+	if o.GitAuthPassword != "" {
+		final = append(final, "--git-auth-password", fmt.Sprint(o.GitAuthPassword))
+	}
+
+	if o.GitAuthSshPrivateKey != "" {
+		final = append(final, "--git-auth-ssh-private-key", fmt.Sprint(o.GitAuthSshPrivateKey))
+	}
+
+	if o.GitAuthSshPrivateKeyPassword != "" {
+		final = append(final, "--git-auth-ssh-private-key-password", fmt.Sprint(o.GitAuthSshPrivateKeyPassword))
+	}
+
+	if o.GitAuthSshPrivateKeyPath != "" {
+		final = append(final, "--git-auth-ssh-private-key-path", fmt.Sprint(o.GitAuthSshPrivateKeyPath))
+	}
+
+	if o.GitAuthUsername != "" {
+		final = append(final, "--git-auth-username", fmt.Sprint(o.GitAuthUsername))
+	}
+
+	if o.GitUrl != "" {
+		final = append(final, "--git-url", fmt.Sprint(o.GitUrl))
+	}
+
+	if o.GithubRepo != "" {
+		final = append(final, "--github-repo", fmt.Sprint(o.GithubRepo))
+	}
+
+	if o.InstallationId != "" {
+		final = append(final, "--installation-id", fmt.Sprint(o.InstallationId))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OidcAwsClear {
+		final = append(final, "--oidc-aws-clear")
+	}
+
+	if o.OidcAwsDuration != "" {
+		final = append(final, "--oidc-aws-duration", fmt.Sprint(o.OidcAwsDuration))
+	}
+
+	for _, v := range o.OidcAwsPolicyArn {
+		final = append(final, "--oidc-aws-policy-arn", fmt.Sprint(v))
+	}
+
+	if o.OidcAwsRoleArn != "" {
+		final = append(final, "--oidc-aws-role-arn", fmt.Sprint(o.OidcAwsRoleArn))
+	}
+
+	if o.OidcAwsSessionName != "" {
+		final = append(final, "--oidc-aws-session-name", fmt.Sprint(o.OidcAwsSessionName))
+	}
+
+	if o.OidcAzureClear {
+		final = append(final, "--oidc-azure-clear")
+	}
+
+	if o.OidcAzureClientId != "" {
+		final = append(final, "--oidc-azure-client-id", fmt.Sprint(o.OidcAzureClientId))
+	}
+
+	if o.OidcAzureSubscriptionId != "" {
+		final = append(final, "--oidc-azure-subscription-id", fmt.Sprint(o.OidcAzureSubscriptionId))
+	}
+
+	if o.OidcAzureTenantId != "" {
+		final = append(final, "--oidc-azure-tenant-id", fmt.Sprint(o.OidcAzureTenantId))
+	}
+
+	if o.OidcGcpClear {
+		final = append(final, "--oidc-gcp-clear")
+	}
+
+	if o.OidcGcpProjectNumber != "" {
+		final = append(final, "--oidc-gcp-project-number", fmt.Sprint(o.OidcGcpProjectNumber))
+	}
+
+	if o.OidcGcpProviderId != "" {
+		final = append(final, "--oidc-gcp-provider-id", fmt.Sprint(o.OidcGcpProviderId))
+	}
+
+	if o.OidcGcpRegion != "" {
+		final = append(final, "--oidc-gcp-region", fmt.Sprint(o.OidcGcpRegion))
+	}
+
+	if o.OidcGcpServiceAccount != "" {
+		final = append(final, "--oidc-gcp-service-account", fmt.Sprint(o.OidcGcpServiceAccount))
+	}
+
+	if o.OidcGcpTokenLifetime != "" {
+		final = append(final, "--oidc-gcp-token-lifetime", fmt.Sprint(o.OidcGcpTokenLifetime))
+	}
+
+	if o.OidcGcpWorkloadPoolId != "" {
+		final = append(final, "--oidc-gcp-workload-pool-id", fmt.Sprint(o.OidcGcpWorkloadPoolId))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	for _, v := range o.PathFilter {
+		final = append(final, "--path-filter", fmt.Sprint(v))
+	}
+
+	if o.PrTemplate {
+		final = append(final, "--pr-template")
+	}
+
+	for _, v := range o.PreRunCommand {
+		final = append(final, "--pre-run-command", fmt.Sprint(v))
+	}
+
+	if o.PreviewPrs {
+		final = append(final, "--preview-prs")
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.PushToDeploy {
+		final = append(final, "--push-to-deploy")
+	}
+
+	if o.RemediateIfDriftDetected {
+		final = append(final, "--remediate-if-drift-detected")
+	}
+
+	if o.RemoveAllEnv {
+		final = append(final, "--remove-all-env")
+	}
+
+	for _, v := range o.RemoveEnv {
+		final = append(final, "--remove-env", fmt.Sprint(v))
+	}
+
+	if o.RemoveGitAuth {
+		final = append(final, "--remove-git-auth")
+	}
+
+	if o.RemoveOidcAws {
+		final = append(final, "--remove-oidc-aws")
+	}
+
+	if o.RemoveOidcAzure {
+		final = append(final, "--remove-oidc-azure")
+	}
+
+	if o.RemoveOidcGcp {
+		final = append(final, "--remove-oidc-gcp")
+	}
+
+	if o.Repo != "" {
+		final = append(final, "--repo", fmt.Sprint(o.Repo))
+	}
+
+	for _, v := range o.ReviewStackLabel {
+		final = append(final, "--review-stack-label", fmt.Sprint(v))
+	}
+
+	if o.RunnerPool != "" {
+		final = append(final, "--runner-pool", fmt.Sprint(o.RunnerPool))
+	}
+
+	for _, v := range o.SecretEnv {
+		final = append(final, "--secret-env", fmt.Sprint(v))
+	}
+
+	if o.Shell != "" {
+		final = append(final, "--shell", fmt.Sprint(o.Shell))
+	}
+
+	if o.SkipInstallDeps {
+		final = append(final, "--skip-install-deps")
+	}
+
+	if o.SkipIntermediateDeployments {
+		final = append(final, "--skip-intermediate-deployments")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	for _, v := range o.TagFilter {
+		final = append(final, "--tag-filter", fmt.Sprint(v))
+	}
+
+	if o.TemplateSourceUrl != "" {
+		final = append(final, "--template-source-url", fmt.Sprint(o.TemplateSourceUrl))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.VcsProvider != "" {
+		final = append(final, "--vcs-provider", fmt.Sprint(o.VcsProvider))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DeploymentSettingsGet corresponds to `pulumi deployment settings get`.
+//
+// [EXPERIMENTAL] Retrieve the deployment settings for a stack.
+func (a *API) DeploymentSettingsGet(
+	ctx context.Context,
+	opts ...optdeploymentsettingsget.Option,
+) (base.CommandResult, error) {
+	o := optdeploymentsettingsget.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"deployment", "settings", "get"}
+
+	final = append(final, "--output", "json")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Destroy corresponds to `pulumi destroy`.
+//
+// # Destroy all existing resources in the stack, but not the stack itself
+//
+// Deletes all the resources in the selected stack.  The current state is
+// loaded from the associated state file in the workspace.  After running to completion,
+// all of this stack's resources and associated state are deleted.
+//
+// The stack itself is not deleted. Use `pulumi stack rm` or the
+// `--remove` flag to delete the stack and its config file.
+//
+// Warning: this command is generally irreversible and should be used with great care.
+func (a *API) Destroy(
+	ctx context.Context,
+	opts ...optdestroy.Option,
+) (base.CommandResult, error) {
+	o := optdestroy.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"destroy"}
+
+	final = append(final, "--skip-preview")
+
+	final = append(final, "--yes")
+
+	if o.Client != "" {
+		final = append(final, "--client", fmt.Sprint(o.Client))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	for _, v := range o.Config {
+		final = append(final, "--config", fmt.Sprint(v))
+	}
+
+	if o.ConfigFile != "" {
+		final = append(final, "--config-file", fmt.Sprint(o.ConfigFile))
+	}
+
+	if o.ConfigPath {
+		final = append(final, "--config-path")
+	}
+
+	if o.ContinueOnError {
+		final = append(final, "--continue-on-error")
+	}
+
+	if o.Copilot {
+		final = append(final, "--copilot")
+	}
+
+	if o.Debug {
+		final = append(final, "--debug")
+	}
+
+	if o.Diff {
+		final = append(final, "--diff")
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	for _, v := range o.Exclude {
+		final = append(final, "--exclude", fmt.Sprint(v))
+	}
+
+	if o.ExcludeProtected {
+		final = append(final, "--exclude-protected")
+	}
+
+	if o.ExecAgent != "" {
+		final = append(final, "--exec-agent", fmt.Sprint(o.ExecAgent))
+	}
+
+	if o.ExecKind != "" {
+		final = append(final, "--exec-kind", fmt.Sprint(o.ExecKind))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.IgnoreProtect {
+		final = append(final, "--ignore-protect")
+	}
+
+	if o.Json {
+		final = append(final, "--json")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Message != "" {
+		final = append(final, "--message", fmt.Sprint(o.Message))
+	}
+
+	if o.Neo {
+		final = append(final, "--neo")
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	for _, v := range o.OverrideEnv {
+		final = append(final, "--override-env", fmt.Sprint(v))
+	}
+
+	if o.Parallel != 0 {
+		final = append(final, "--parallel", fmt.Sprint(o.Parallel))
+	}
+
+	if o.PreviewOnly {
+		final = append(final, "--preview-only")
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Refresh != "" {
+		final = append(final, "--refresh", fmt.Sprint(o.Refresh))
+	}
+
+	if o.Remove {
+		final = append(final, "--remove")
+	}
+
+	if o.RunProgram {
+		final = append(final, "--run-program")
+	}
+
+	if o.ShowConfig {
+		final = append(final, "--show-config")
+	}
+
+	if o.ShowFullOutput {
+		final = append(final, "--show-full-output")
+	}
+
+	if o.ShowReplacementSteps {
+		final = append(final, "--show-replacement-steps")
+	}
+
+	if o.ShowSames {
+		final = append(final, "--show-sames")
+	}
+
+	if o.SkipConfigValidation {
+		final = append(final, "--skip-config-validation")
+	}
+
+	if o.SkipPluginPreInstall {
+		final = append(final, "--skip-plugin-pre-install")
+	}
+
+	if o.Stack != "" {
+		final = append(final, "--stack", fmt.Sprint(o.Stack))
+	}
+
+	if o.SuppressOutputs {
+		final = append(final, "--suppress-outputs")
+	}
+
+	if o.SuppressPermalink != "" {
+		final = append(final, "--suppress-permalink", fmt.Sprint(o.SuppressPermalink))
+	}
+
+	if o.SuppressProgress {
+		final = append(final, "--suppress-progress")
+	}
+
+	for _, v := range o.Target {
+		final = append(final, "--target", fmt.Sprint(v))
+	}
+
+	if o.TargetDependents {
+		final = append(final, "--target-dependents")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Urns {
+		final = append(final, "--urns")
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Do corresponds to `pulumi do`.
+func (a *API) Do(
+	ctx context.Context,
+	opts ...optdo.Option,
+) (base.CommandResult, error) {
+	o := optdo.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"do"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Package != "" {
+		final = append(final, "--package", fmt.Sprint(o.Package))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stateless {
+		final = append(final, "--stateless")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// DoShowResources corresponds to `pulumi do show-resources`.
+//
+// Show the identifiers `pulumi do` will auto-assign to resources in the current stack.
+//
+// Each identifier can be used in a --input-file expression in place of the resource's URN, in whatever expression syntax the chosen input format supports. Entries in --resources-file take precedence over the auto-assigned identifiers shown here.
+func (a *API) DoShowResources(
+	ctx context.Context,
+	opts ...optdoshowresources.Option,
+) (base.CommandResult, error) {
+	o := optdoshowresources.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"do", "show-resources"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.DryRun {
+		final = append(final, "--dry-run")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Output != "" {
+		final = append(final, "--output", fmt.Sprint(o.Output))
+	}
+
+	if o.Package != "" {
+		final = append(final, "--package", fmt.Sprint(o.Package))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ShowSecrets {
+		final = append(final, "--show-secrets")
+	}
+
+	if o.Stateless {
+		final = append(final, "--stateless")
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
 	}
 
 	return a.run(ctx, base.BaseOptions{
@@ -7624,6 +9174,1057 @@ func (a *API) Import(
 	}, final)
 }
 
+// Insights corresponds to `pulumi insights`.
+func (a *API) Insights(
+	ctx context.Context,
+	opts ...optinsights.Option,
+) (base.CommandResult, error) {
+	o := optinsights.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"insights"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// InsightsAccount corresponds to `pulumi insights account`.
+func (a *API) InsightsAccount(
+	ctx context.Context,
+	opts ...optinsightsaccount.Option,
+) (base.CommandResult, error) {
+	o := optinsightsaccount.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"insights", "account"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// InsightsAccountList corresponds to `pulumi insights account list`.
+//
+// [EXPERIMENTAL] List Pulumi Insights accounts within an organization.
+//
+// The organization defaults to the current default org and can be overridden
+// with --org. --parent restricts results to child accounts of the named parent
+// (e.g. an AWS Organizations management account). --role-id restricts results to
+// accounts accessible by a particular role.
+//
+// By default the command returns a single page of results. --count N returns at
+// most N results. --all (equivalent to --count 0) returns every matching
+// account. --count and --all are mutually exclusive.
+func (a *API) InsightsAccountList(
+	ctx context.Context,
+	opts ...optinsightsaccountlist.Option,
+) (base.CommandResult, error) {
+	o := optinsightsaccountlist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"insights", "account", "list"}
+
+	final = append(final, "--output", "json")
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Count != 0 {
+		final = append(final, "--count", fmt.Sprint(o.Count))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Parent != "" {
+		final = append(final, "--parent", fmt.Sprint(o.Parent))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.RoleId != "" {
+		final = append(final, "--role-id", fmt.Sprint(o.RoleId))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// InsightsAccountNew corresponds to `pulumi insights account new`.
+//
+// [EXPERIMENTAL] Create a new Pulumi Insights account.
+//
+// An Insights account represents a cloud provider account (e.g. AWS,
+// Azure, GCP, OCI, Kubernetes) configured for resource discovery.
+func (a *API) InsightsAccountNew(
+	ctx context.Context,
+	name string,
+	opts ...optinsightsaccountnew.Option,
+) (base.CommandResult, error) {
+	o := optinsightsaccountnew.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"insights", "account", "new"}
+
+	final = append(final, "--output", "json")
+
+	final = append(final, "--yes")
+
+	if o.AgentPoolId != "" {
+		final = append(final, "--agent-pool-id", fmt.Sprint(o.AgentPoolId))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.Environment != "" {
+		final = append(final, "--environment", fmt.Sprint(o.Environment))
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Provider != "" {
+		final = append(final, "--provider", fmt.Sprint(o.Provider))
+	}
+
+	if o.ProviderConfig != "" {
+		final = append(final, "--provider-config", fmt.Sprint(o.ProviderConfig))
+	}
+
+	if o.ScanSchedule != "" {
+		final = append(final, "--scan-schedule", fmt.Sprint(o.ScanSchedule))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(name))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// InsightsAccountScan corresponds to `pulumi insights account scan`.
+func (a *API) InsightsAccountScan(
+	ctx context.Context,
+	opts ...optinsightsaccountscan.Option,
+) (base.CommandResult, error) {
+	o := optinsightsaccountscan.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"insights", "account", "scan"}
+
+	final = append(final, "--output", "json")
+
+	if o.AgentPool != "" {
+		final = append(final, "--agent-pool", fmt.Sprint(o.AgentPool))
+	}
+
+	if o.BatchSize != 0 {
+		final = append(final, "--batch-size", fmt.Sprint(o.BatchSize))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.ListConcurrency != 0 {
+		final = append(final, "--list-concurrency", fmt.Sprint(o.ListConcurrency))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ReadConcurrency != 0 {
+		final = append(final, "--read-concurrency", fmt.Sprint(o.ReadConcurrency))
+	}
+
+	if o.ReadTimeout != "" {
+		final = append(final, "--read-timeout", fmt.Sprint(o.ReadTimeout))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// InsightsAccountScanGet corresponds to `pulumi insights account scan get`.
+//
+// [EXPERIMENTAL] Get details for a specific Pulumi Insights scan.
+//
+// Returns the workflow run for a single scan: status, timing, and the
+// list of jobs (with their step-level status). Use `account scan list`
+// to discover recent scan IDs, and `account scan log` to fetch the raw
+// log output for a step.
+//
+// Default output is a human-readable summary; pass --output=json for
+// the full response as JSON.
+func (a *API) InsightsAccountScanGet(
+	ctx context.Context,
+	account string,
+	scanId string,
+	opts ...optinsightsaccountscanget.Option,
+) (base.CommandResult, error) {
+	o := optinsightsaccountscanget.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"insights", "account", "scan", "get"}
+
+	final = append(final, "--output", "json")
+
+	if o.AgentPool != "" {
+		final = append(final, "--agent-pool", fmt.Sprint(o.AgentPool))
+	}
+
+	if o.BatchSize != 0 {
+		final = append(final, "--batch-size", fmt.Sprint(o.BatchSize))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.ListConcurrency != 0 {
+		final = append(final, "--list-concurrency", fmt.Sprint(o.ListConcurrency))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ReadConcurrency != 0 {
+		final = append(final, "--read-concurrency", fmt.Sprint(o.ReadConcurrency))
+	}
+
+	if o.ReadTimeout != "" {
+		final = append(final, "--read-timeout", fmt.Sprint(o.ReadTimeout))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(account))
+	args = append(args, fmt.Sprint(scanId))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// InsightsAccountScanList corresponds to `pulumi insights account scan list`.
+//
+// [EXPERIMENTAL] List recent scans for a Pulumi Insights account.
+//
+// The positional argument is the Insights account. For parent accounts the
+// endpoint returns scans across every child account, so this is the
+// recommended way to discover scan IDs to feed into `account scan log`.
+//
+// By default the command returns a single page of results. --count N
+// returns at most N results. --all (equivalent to --count 0) returns every
+// matching scan. --count and --all are mutually exclusive.
+func (a *API) InsightsAccountScanList(
+	ctx context.Context,
+	account string,
+	opts ...optinsightsaccountscanlist.Option,
+) (base.CommandResult, error) {
+	o := optinsightsaccountscanlist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"insights", "account", "scan", "list"}
+
+	final = append(final, "--output", "json")
+
+	if o.AgentPool != "" {
+		final = append(final, "--agent-pool", fmt.Sprint(o.AgentPool))
+	}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.BatchSize != 0 {
+		final = append(final, "--batch-size", fmt.Sprint(o.BatchSize))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Count != 0 {
+		final = append(final, "--count", fmt.Sprint(o.Count))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.ListConcurrency != 0 {
+		final = append(final, "--list-concurrency", fmt.Sprint(o.ListConcurrency))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ReadConcurrency != 0 {
+		final = append(final, "--read-concurrency", fmt.Sprint(o.ReadConcurrency))
+	}
+
+	if o.ReadTimeout != "" {
+		final = append(final, "--read-timeout", fmt.Sprint(o.ReadTimeout))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(account))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// InsightsAccountScanLog corresponds to `pulumi insights account scan log`.
+//
+// [EXPERIMENTAL] Retrieve log output for an Insights scan.
+//
+// By default, a single page of log entries is returned. Use --count
+// to request more, or --all to fetch every entry.
+//
+// Passing --job switches to step mode and returns the raw text
+// output of a single step. --step selects the step within the job,
+// and --all fetches the full step output.
+func (a *API) InsightsAccountScanLog(
+	ctx context.Context,
+	account string,
+	scanId string,
+	opts ...optinsightsaccountscanlog.Option,
+) (base.CommandResult, error) {
+	o := optinsightsaccountscanlog.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"insights", "account", "scan", "log"}
+
+	final = append(final, "--output", "json")
+
+	if o.AgentPool != "" {
+		final = append(final, "--agent-pool", fmt.Sprint(o.AgentPool))
+	}
+
+	if o.All {
+		final = append(final, "--all")
+	}
+
+	if o.BatchSize != 0 {
+		final = append(final, "--batch-size", fmt.Sprint(o.BatchSize))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Count != 0 {
+		final = append(final, "--count", fmt.Sprint(o.Count))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Job != 0 {
+		final = append(final, "--job", fmt.Sprint(o.Job))
+	}
+
+	if o.ListConcurrency != 0 {
+		final = append(final, "--list-concurrency", fmt.Sprint(o.ListConcurrency))
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.ReadConcurrency != 0 {
+		final = append(final, "--read-concurrency", fmt.Sprint(o.ReadConcurrency))
+	}
+
+	if o.ReadTimeout != "" {
+		final = append(final, "--read-timeout", fmt.Sprint(o.ReadTimeout))
+	}
+
+	if o.Step != 0 {
+		final = append(final, "--step", fmt.Sprint(o.Step))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(account))
+	args = append(args, fmt.Sprint(scanId))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// InsightsResource corresponds to `pulumi insights resource`.
+func (a *API) InsightsResource(
+	ctx context.Context,
+	opts ...optinsightsresource.Option,
+) (base.CommandResult, error) {
+	o := optinsightsresource.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"insights", "resource"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// InsightsResourceGet corresponds to `pulumi insights resource get`.
+//
+// [EXPERIMENTAL] Look up a single resource discovered by Pulumi Insights.
+//
+// The positional argument identifies the resource within an Insights account, in
+// the `<type>::<id>` form described by the Pulumi Cloud REST API (e.g.
+// `aws:s3/bucket:Bucket::my-bucket`). The account is selected with --account; the
+// organization defaults to the current default org and can be overridden with
+// --org.
+//
+// Wraps the `ReadResource` Pulumi Cloud REST endpoint.
+func (a *API) InsightsResourceGet(
+	ctx context.Context,
+	resourceTypeAndId string,
+	opts ...optinsightsresourceget.Option,
+) (base.CommandResult, error) {
+	o := optinsightsresourceget.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"insights", "resource", "get"}
+
+	final = append(final, "--output", "json")
+
+	final = append(final, "--account", fmt.Sprint(o.Account))
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	args = append(args, fmt.Sprint(resourceTypeAndId))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// InsightsResourceSearch corresponds to `pulumi insights resource search`.
+//
+// [EXPERIMENTAL] Search resources discovered by Pulumi Insights across an
+// organization, with advanced filtering, sorting, and pagination.
+//
+// --query accepts the Pulumi query syntax. --sort takes one or more fields and
+// may be repeated; --asc flips the direction to ascending (default: descending).
+// --page selects a 1-based page up to 10,000 total results; beyond that use --cursor
+// with the token surfaced in a previous response (Enterprise plans only).
+// --properties=true asks the server to include each resource's input/output
+// values — requires a supported subscription. --collapse consolidates resources
+// that exist in multiple sources (e.g. an IaC stack and an Insights scan).
+//
+// Wraps the `GetOrgResourceSearchV2Query` Pulumi Cloud REST endpoint.
+func (a *API) InsightsResourceSearch(
+	ctx context.Context,
+	opts ...optinsightsresourcesearch.Option,
+) (base.CommandResult, error) {
+	o := optinsightsresourcesearch.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"insights", "resource", "search"}
+
+	final = append(final, "--output", "json")
+
+	if o.Asc {
+		final = append(final, "--asc")
+	}
+
+	if o.Collapse {
+		final = append(final, "--collapse")
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.Cursor != "" {
+		final = append(final, "--cursor", fmt.Sprint(o.Cursor))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Page != 0 {
+		final = append(final, "--page", fmt.Sprint(o.Page))
+	}
+
+	if o.PageSize != 0 {
+		final = append(final, "--page-size", fmt.Sprint(o.PageSize))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Properties {
+		final = append(final, "--properties")
+	}
+
+	if o.Query != "" {
+		final = append(final, "--query", fmt.Sprint(o.Query))
+	}
+
+	for _, v := range o.Sort {
+		final = append(final, "--sort", fmt.Sprint(v))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
 // Install corresponds to `pulumi install`.
 //
 // Install packages and plugins for the current program or policy pack.
@@ -7704,6 +10305,168 @@ func (a *API) Install(
 
 	if o.Verbose != 0 {
 		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// Login corresponds to `pulumi login`.
+//
+// Log in to a Pulumi state backend.
+//
+// With no arguments, this command logs in to Pulumi Cloud:
+//
+//	$ pulumi login
+//
+// If `PULUMI_ACCESS_TOKEN` is set, that token is used. Otherwise, the command prompts for an
+// access token and offers to open a browser where you can create one.
+//
+// To log in to a self-hosted Pulumi Cloud, pass its API URL:
+//
+//	$ pulumi login https://api.pulumi.acmecorp.com
+//
+// For either, `--default-org` sets the organization to use when a command doesn't name one, and
+// `--interactive` lists the accounts you're already logged in to so you can choose among them.
+//
+// To manage state yourself, pass the URL of a supported storage backend instead. Pulumi stores
+// state under a `.pulumi` directory at that location, and backing it up and coordinating access
+// across a team is then up to you:
+//
+//	$ pulumi login file://~                                    # local filesystem
+//	$ pulumi login s3://my-pulumi-state-bucket                 # AWS S3
+//	$ pulumi login gs://my-pulumi-state-bucket                 # Google Cloud Storage
+//	$ pulumi login azblob://my-pulumi-state-bucket             # Azure Blob Storage
+//	$ pulumi login postgres://user:password@host:5432/database # PostgreSQL
+//
+// `--local` is a shortcut for `file://~`, which stores state under `~/.pulumi`.
+//
+// [EXPERIMENTAL] A credentials helper can select a backend and supply HTTP authentication
+// and cloud credentials. Helper credentials are kept in memory. Pulumi selects a helper
+// in the following order:
+//
+//  1. The --credential-helper flag, with repeatable --credential-helper-arg arguments.
+//  2. PULUMI_CREDENTIAL_HELPER, with PULUMI_CREDENTIAL_HELPER_ARGS as a JSON array.
+//  3. Saved helper configuration in credentials.json.
+//  4. pulumi-credential-helper beside the pulumi executable, after resolving symlinks.
+//  5. pulumi-credential-helper on PATH.
+//
+// On Windows, the discovered executable is named pulumi-credential-helper.exe.
+// A successful login with --credential-helper saves the helper path and arguments for
+// subsequent commands. Environment configuration applies only to the current process.
+// Set PULUMI_CREDENTIAL_HELPER=none to disable saved and automatically discovered helpers.
+func (a *API) Login(
+	ctx context.Context,
+	url *string,
+	opts ...optlogin.Option,
+) (base.CommandResult, error) {
+	o := optlogin.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"login"}
+
+	if o.CloudUrl != "" {
+		final = append(final, "--cloud-url", fmt.Sprint(o.CloudUrl))
+	}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.CredentialHelper != "" {
+		final = append(final, "--credential-helper", fmt.Sprint(o.CredentialHelper))
+	}
+
+	for _, v := range o.CredentialHelperArg {
+		final = append(final, "--credential-helper-arg", fmt.Sprint(v))
+	}
+
+	if o.DefaultOrg != "" {
+		final = append(final, "--default-org", fmt.Sprint(o.DefaultOrg))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Insecure {
+		final = append(final, "--insecure")
+	}
+
+	if o.Local {
+		final = append(final, "--local")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.OidcExpiration != "" {
+		final = append(final, "--oidc-expiration", fmt.Sprint(o.OidcExpiration))
+	}
+
+	if o.OidcOrg != "" {
+		final = append(final, "--oidc-org", fmt.Sprint(o.OidcOrg))
+	}
+
+	if o.OidcTeam != "" {
+		final = append(final, "--oidc-team", fmt.Sprint(o.OidcTeam))
+	}
+
+	if o.OidcToken != "" {
+		final = append(final, "--oidc-token", fmt.Sprint(o.OidcToken))
+	}
+
+	if o.OidcUser != "" {
+		final = append(final, "--oidc-user", fmt.Sprint(o.OidcUser))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	args := []string{}
+	if url != nil {
+		args = append(args, fmt.Sprint(*url))
+	}
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
 	}
 
 	return a.run(ctx, base.BaseOptions{
@@ -11609,6 +14372,178 @@ func (a *API) StateUpgrade(
 	}, final)
 }
 
+// TemplateList corresponds to `pulumi template list`.
+//
+// [EXPERIMENTAL] List templates from the Pulumi Cloud registry.
+//
+// No authentication is required; without a Pulumi Cloud session, only publicly
+// visible templates are returned.
+//
+// Results are paginated by the server; the command follows continuation tokens
+// internally so all matching templates are streamed in a single invocation.
+func (a *API) TemplateList(
+	ctx context.Context,
+	opts ...opttemplatelist.Option,
+) (base.CommandResult, error) {
+	o := opttemplatelist.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"template", "list"}
+
+	final = append(final, "--output", "json")
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	if o.Name != "" {
+		final = append(final, "--name", fmt.Sprint(o.Name))
+	}
+
+	if o.Org != "" {
+		final = append(final, "--org", fmt.Sprint(o.Org))
+	}
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Search != "" {
+		final = append(final, "--search", fmt.Sprint(o.Search))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
+// TemplatePublish corresponds to `pulumi template publish`.
+//
+// Publish a template to the Private Registry.
+//
+// This command publishes a template directory to the Private Registry.
+func (a *API) TemplatePublish(
+	ctx context.Context,
+	directory string,
+	opts ...opttemplatepublish.Option,
+) (base.CommandResult, error) {
+	o := opttemplatepublish.Options{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+
+	final := []string{"template", "publish"}
+
+	if o.Color != "" {
+		final = append(final, "--color", fmt.Sprint(o.Color))
+	}
+
+	if o.DisableIntegrityChecking {
+		final = append(final, "--disable-integrity-checking")
+	}
+
+	if o.FullyQualifyStackNames {
+		final = append(final, "--fully-qualify-stack-names")
+	}
+
+	if o.Logflow {
+		final = append(final, "--logflow")
+	}
+
+	if o.Logtostderr {
+		final = append(final, "--logtostderr")
+	}
+
+	if o.Memprofilerate != 0 {
+		final = append(final, "--memprofilerate", fmt.Sprint(o.Memprofilerate))
+	}
+
+	final = append(final, "--name", fmt.Sprint(o.Name))
+
+	if o.OtelTraces != "" {
+		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
+	}
+
+	if o.Profiling != "" {
+		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
+	}
+
+	if o.Publisher != "" {
+		final = append(final, "--publisher", fmt.Sprint(o.Publisher))
+	}
+
+	if o.Tracing != "" {
+		final = append(final, "--tracing", fmt.Sprint(o.Tracing))
+	}
+
+	if o.TracingHeader != "" {
+		final = append(final, "--tracing-header", fmt.Sprint(o.TracingHeader))
+	}
+
+	if o.Verbose != 0 {
+		final = append(final, "--verbose", fmt.Sprint(o.Verbose))
+	}
+
+	final = append(final, "--version", fmt.Sprint(o.Version))
+
+	args := []string{}
+	args = append(args, fmt.Sprint(directory))
+	if len(args) > 0 {
+		final = append(final, "--")
+		final = append(final, args...)
+	}
+
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
+}
+
 // Up corresponds to `pulumi up`.
 //
 // Create or update the resources in a stack.
@@ -11968,7 +14903,7 @@ func (a *API) Version(
 //
 // Displays the username of the currently logged in user.
 //
-// When the current token is a Pulumi Cloud team token or an organization token, the command will return the name of the organization with which the token is associated.
+// When the current token is a Pulumi Cloud organization token, the command returns the name of the organization with which the token is associated. When it is a team token, the command returns the login of the team's service principal, in the form team-account:<team-id>.
 func (a *API) Whoami(
 	ctx context.Context,
 	opts ...optwhoami.Option,

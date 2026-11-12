@@ -629,7 +629,7 @@ func TestCRUDNoProviders(t *testing.T) {
 		OldInputs: resource.FromResourcePropertyMap(olds),
 		NewInputs: resource.FromResourcePropertyMap(news),
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, check.Failures)
 	assert.Equal(t, property.Map{}, check.Properties)
 }
@@ -655,7 +655,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 		OldInputs: resource.FromResourcePropertyMap(olds),
 		NewInputs: resource.FromResourcePropertyMap(news),
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, check.Failures)
 	assert.Equal(t, property.Map{}, check.Properties)
 }
@@ -681,7 +681,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 		OldInputs: resource.FromResourcePropertyMap(olds),
 		NewInputs: resource.FromResourcePropertyMap(news),
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, check.Failures)
 	assert.Equal(t, property.Map{}, check.Properties)
 }

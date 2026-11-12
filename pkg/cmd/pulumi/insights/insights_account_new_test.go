@@ -269,7 +269,7 @@ func TestRunInsightsAccountNew_MissingRequired(t *testing.T) {
 				t.Context(), &bytes.Buffer{}, client, "acme", "prod-aws",
 				tt.args, renderInsightsAccountText,
 			)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tt.want)
 		})
 	}
@@ -299,7 +299,7 @@ func TestRunInsightsAccountNew_InvalidProviderConfig(t *testing.T) {
 				accountNewArgs{provider: "aws", environment: "infra/creds", providerConfig: tt.raw},
 				renderInsightsAccountText,
 			)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "invalid --provider-config")
 		})
 	}
@@ -314,7 +314,7 @@ func TestRunInsightsAccountNew_CreateError(t *testing.T) {
 		accountNewArgs{provider: "aws", environment: "infra/missing"},
 		renderInsightsAccountText,
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "creating insights account")
 	assert.Contains(t, err.Error(), "404 environment not found")
 }
@@ -331,7 +331,7 @@ func TestRunInsightsAccountNew_ReadBackError(t *testing.T) {
 		accountNewArgs{provider: "aws", environment: "infra/creds"},
 		renderInsightsAccountText,
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `account "prod-aws" was created`)
 	assert.Contains(t, err.Error(), `organization "acme"`)
 	assert.Contains(t, err.Error(), "503 service unavailable")
@@ -349,7 +349,7 @@ func TestNewInsightsAccountNewCmd_FactoryError(t *testing.T) {
 	cmd.SetOut(&out)
 	cmd.SetErr(&out)
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
@@ -410,7 +410,7 @@ func TestResolveAccountNewArgs_SkipPromptsRequiresFlags(t *testing.T) {
 			_, err := resolveAccountNewArgs(
 				t.Context(), true, nil, "acme", tt.args, display.Options{},
 			)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tt.want)
 		})
 	}
@@ -490,7 +490,7 @@ func TestNewInsightsAccountNewCmd_YesSkipsPrompts(t *testing.T) {
 	cmd.SetOut(&out)
 	cmd.SetErr(&out)
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--environment is required")
 }
 
@@ -650,7 +650,7 @@ func TestPromptForESCEnvironment(t *testing.T) {
 		client := &mockInsightsAccountNewClient{} // empty → free-text path
 		p, _, _, _ := scriptedPrompter("", "", errors.New("stdin closed"))
 		_, err := promptForESCEnvironment(t.Context(), client, "acme", p)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "stdin closed")
 	})
 }
@@ -664,7 +664,7 @@ func TestNonEmptyValidator(t *testing.T) {
 	// accepting an unusable value.
 	for _, empty := range []string{"", " ", "\t\n"} {
 		err := validator(empty)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "a thing is required")
 	}
 }

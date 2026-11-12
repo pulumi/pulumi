@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -390,7 +391,7 @@ func TestExtensionParameterizedProviderInvoke(t *testing.T) {
 					provider = provRef.String()
 				}
 
-				_, _, err = monitor.Invoke("ext:index:echo", nil, provider, "", ref, deploytest.InvokeOptions{})
+				_, _, err = monitor.Invoke("ext:index:echo", property.Map{}, provider, "", ref, deploytest.InvokeOptions{})
 				return err
 			})
 
@@ -411,7 +412,7 @@ func TestExtensionParameterizedOncePerProvider(t *testing.T) {
 
 	type op func(t *testing.T, monitor *deploytest.ResourceMonitor, ref string)
 	invoke := func(t *testing.T, monitor *deploytest.ResourceMonitor, ref string) {
-		_, _, err := monitor.Invoke("ext:index:echo", nil, "", "", ref, deploytest.InvokeOptions{})
+		_, _, err := monitor.Invoke("ext:index:echo", property.Map{}, "", "", ref, deploytest.InvokeOptions{})
 		require.NoError(t, err)
 	}
 	register := func(t *testing.T, monitor *deploytest.ResourceMonitor, ref string) {

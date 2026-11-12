@@ -205,7 +205,7 @@ func TestPolicyIssueEdit_RejectsMultipleIDs(t *testing.T) {
 
 	c := &mockPolicyIssueEditClient{}
 	_, err := runPolicyIssueEditCmd(t, c, "i1", "i2", "--status", "open")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, c.calls)
 }
 

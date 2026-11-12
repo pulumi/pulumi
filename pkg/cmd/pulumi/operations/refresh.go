@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -622,7 +623,7 @@ func interactiveFixPendingCreate(op pkgresource.Operation) (*pkgresource.Operati
 			"skip (do nothing)",
 			"import (the CREATE succeeded; provide a resource ID and complete the CREATE operation)",
 		}
-		if err := survey.AskOne(&survey.Select{
+		if err := ui.AskOne(&survey.Select{
 			Message: fmt.Sprintf("Options for pending CREATE of %s", op.Resource.URN),
 			Options: options,
 		}, &option, nil); err != nil {
@@ -637,7 +638,7 @@ func interactiveFixPendingCreate(op pkgresource.Operation) (*pkgresource.Operati
 			return &op, nil
 		case options[2]:
 			var id string
-			err = survey.AskOne(&survey.Input{
+			err = ui.AskOne(&survey.Input{
 				Message: "ID: ",
 			}, &id, nil)
 			if err == nil {
