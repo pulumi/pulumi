@@ -1,4 +1,0 @@
-component: ci
-kind: fix
-body: Serialize prepare-release runs per version to prevent checksum/binary mismatches on draft releases
-time: 2026-11-08T12:00:00+00:00

@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.276.0 (2026-11-12)
+
+### Features
+
+- [auto] Add `destroy` to the generated automation APIs for NodeJS, Python and Go [#25053](https://github.com/pulumi/pulumi/pull/25053)
+- [auto] Add `template` commands to the generated automation APIs for NodeJS, Python and Go [#25061](https://github.com/pulumi/pulumi/pull/25061)
+- [auto] Add `insights` commands to the generated automation APIs for NodeJS, Python and Go [#25069](https://github.com/pulumi/pulumi/pull/25069)
+
+### Bug Fixes
+
+- [sdkgen/nodejs] Fix resource reference imports for modules with upper-case letters [#25599](https://github.com/pulumi/pulumi/pull/25599)
+- [ci] Serialize prepare-release runs per version to prevent checksum/binary mismatches on draft releases [#25684](https://github.com/pulumi/pulumi/pull/25684)
 ## 3.275.0 (2026-11-12)
 
 ### Features
