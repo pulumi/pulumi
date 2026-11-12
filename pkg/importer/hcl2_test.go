@@ -372,8 +372,10 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				},
 			}
 
+			nameTable := maps.Clone(names)
+			nameTable[state.URN] = sanitizeName(state.URN.Name())
 			importState := ImportState{
-				Names:    maps.Clone(names),
+				Names:    nameTable,
 				Snapshot: snapshot,
 			}
 

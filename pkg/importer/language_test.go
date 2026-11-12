@@ -532,3 +532,29 @@ const randomPet = new random.RandomPet("randomPet", {}, {
 `
 	assert.Equal(t, expectedTypeScript, generatedTypeScript)
 }
+
+func TestSanitizeName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		want string
+	}{
+		{"bucket", "bucket"},
+		{"my-bucket_1", "my-bucket_1"},
+		{"m.inner", "m_inner"},
+		{"m[0].inner", "m_0__inner"},
+		{`m["us-east"].inner`, "m__us-east___inner"},
+		{`m["a b"].inner`, "m__a_b___inner"},
+		{"default/nginx", "default_nginx"},
+		{"imported resource", "imported_resource"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, sanitizeName(tt.name))
+		})
+	}
+}
