@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	pkgsecrets "github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -178,7 +179,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 				return err
 			}
 		} else {
-			return fmt.Errorf("current stack does not have output property '%v'", name)
+			return missingStackOutput(ctx, s, secretsProvider, outputs, name)
 		}
 	} else {
 		if err := outw.WriteMany(outputs); err != nil {
@@ -191,6 +192,51 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	return nil
+}
+
+// neverDeployedOutputsMessage is the error for `pulumi stack output <name>` when the
+// stack has no deployment. A deployed stack that simply lacks the property keeps the
+// "does not have output property" error.
+const neverDeployedOutputsMessage = "current stack has never been updated; " +
+	"outputs are only available after the stack has been deployed (`pulumi up`)"
+
+// missingStackOutput returns the error for a named output that is not in the stack.
+// Outputs are empty both before the first deployment and when a deployment exported nothing,
+// so an empty map is not enough to tell those apart.
+func missingStackOutput(
+	ctx context.Context, s backend.Stack, secretsProvider pkgsecrets.Provider, outputs map[string]any, name string,
+) error {
+	if len(outputs) == 0 {
+		neverDeployed, err := stackOutputsNeverDeployed(ctx, s, secretsProvider)
+		if err != nil {
+			return err
+		}
+		if neverDeployed {
+			return errors.New(neverDeployedOutputsMessage)
+		}
+	}
+	return fmt.Errorf("current stack does not have output property '%v'", name)
+}
+
+// stackOutputsNeverDeployed reports whether an empty output map is empty because the stack
+// has never been deployed. A snapshot that fails to load falls back to update history so a
+// backend can serve outputs without a readable deployment.
+func stackOutputsNeverDeployed(
+	ctx context.Context, s backend.Stack, secretsProvider pkgsecrets.Provider,
+) (bool, error) {
+	snap, err := s.Snapshot(ctx, secretsProvider)
+	if err != nil {
+		updated, histErr := stackHasUpdateHistory(ctx, s)
+		if histErr != nil {
+			return false, err
+		}
+		return !updated, nil
+	}
+	updated, err := stackHasBeenUpdated(ctx, s, snap)
+	if err != nil {
+		return false, err
+	}
+	return !updated, nil
 }
 
 // stackOutputWriter writes one or more properties to stdout
