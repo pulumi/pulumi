@@ -55,10 +55,11 @@ func (loggingCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) ([
 
 type loggingSecretsManager struct{}
 
-func (loggingSecretsManager) Type() string                { return "logging-test" }
-func (loggingSecretsManager) State() json.RawMessage      { return json.RawMessage("{}") }
-func (loggingSecretsManager) Encrypter() config.Encrypter { return loggingCrypter{} }
-func (loggingSecretsManager) Decrypter() config.Decrypter { return loggingCrypter{} }
+func (loggingSecretsManager) Type() string                      { return "logging-test" }
+func (loggingSecretsManager) State() json.RawMessage            { return json.RawMessage("{}") }
+func (loggingSecretsManager) Encrypter() config.Encrypter       { return loggingCrypter{} }
+func (loggingSecretsManager) Decrypter() config.Decrypter       { return loggingCrypter{} }
+func (loggingSecretsManager) Equivalent(_ json.RawMessage) bool { return true }
 
 func TestUpgradeToEncryptedDoesNotDeadlock(t *testing.T) {
 	t.Setenv("PULUMI_HOME", t.TempDir())

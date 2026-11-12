@@ -1455,10 +1455,11 @@ func TestRunEngineActionDeliversUpdateStartedEventWhenNewUpdateFails(t *testing.
 
 type failingSecretsManager struct{ err error }
 
-func (m failingSecretsManager) Type() string                { return "failing" }
-func (m failingSecretsManager) State() json.RawMessage      { return nil }
-func (m failingSecretsManager) Encrypter() config.Encrypter { return m }
-func (m failingSecretsManager) Decrypter() config.Decrypter { return config.NopDecrypter }
+func (m failingSecretsManager) Type() string                      { return "failing" }
+func (m failingSecretsManager) State() json.RawMessage            { return nil }
+func (m failingSecretsManager) Encrypter() config.Encrypter       { return m }
+func (m failingSecretsManager) Decrypter() config.Decrypter       { return config.NopDecrypter }
+func (m failingSecretsManager) Equivalent(_ json.RawMessage) bool { return true }
 
 func (m failingSecretsManager) EncryptValue(context.Context, string) (string, error) {
 	return "", m.err
@@ -1866,10 +1867,11 @@ func newRunEngineActionFixture(
 
 type failingBatchingSecretsManager struct{ err error }
 
-func (m failingBatchingSecretsManager) Type() string                { return "failing-batch" }
-func (m failingBatchingSecretsManager) State() json.RawMessage      { return nil }
-func (m failingBatchingSecretsManager) Encrypter() config.Encrypter { return config.NopEncrypter }
-func (m failingBatchingSecretsManager) Decrypter() config.Decrypter { return config.NopDecrypter }
+func (m failingBatchingSecretsManager) Type() string                      { return "failing-batch" }
+func (m failingBatchingSecretsManager) State() json.RawMessage            { return nil }
+func (m failingBatchingSecretsManager) Encrypter() config.Encrypter       { return config.NopEncrypter }
+func (m failingBatchingSecretsManager) Decrypter() config.Decrypter       { return config.NopDecrypter }
+func (m failingBatchingSecretsManager) Equivalent(_ json.RawMessage) bool { return true }
 
 func (m failingBatchingSecretsManager) BeginBatchEncryption() (stack.BatchEncrypter, stack.CompleteCrypterBatch) {
 	return nopBatchEncrypter{}, func(context.Context) error { return m.err }
