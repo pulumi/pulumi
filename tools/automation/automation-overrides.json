@@ -192,6 +192,13 @@
             }
         },
         {
+            "path": ["template", "list"],
+            "propagate": false,
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
+        },
+        {
             "path": ["whoami"],
             "propagate": false,
             "flags": {
@@ -236,8 +243,9 @@
         {
             "path": ["deployment"],
             "propagate": true,
-            "exclude": true,
-            "flags": {}
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
         },
         {
             "path": ["do"],
@@ -392,12 +400,6 @@
             "flags": {
                 "output": { "omit": true, "preset": "json" }
             }
-        },
-        {
-            "path": ["template"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
         },
         {
             "path": ["view-trace"],
