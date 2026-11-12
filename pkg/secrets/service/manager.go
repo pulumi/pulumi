@@ -159,6 +159,19 @@ func (sm *serviceSecretsManager) Encrypter() config.Encrypter {
 	return sm.crypter
 }
 
+// Equivalent reports whether another service secrets state refers to the same stack identity on
+// the same service endpoint. All fields are semantically load-bearing.
+func (sm *serviceSecretsManager) Equivalent(otherState json.RawMessage) bool {
+	var mine, theirs serviceSecretsManagerState
+	if err := json.Unmarshal(sm.state, &mine); err != nil {
+		return false
+	}
+	if err := json.Unmarshal(otherState, &theirs); err != nil {
+		return false
+	}
+	return mine == theirs
+}
+
 func NewServiceSecretsManager(
 	ctx context.Context, client *client.Client, id client.StackIdentifier, info *workspace.ProjectStack,
 ) (secrets.Manager, error) {

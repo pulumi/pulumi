@@ -25,10 +25,11 @@ import (
 )
 
 type MockSecretsManager struct {
-	TypeF      func() string
-	StateF     func() json.RawMessage
-	EncrypterF func() config.Encrypter
-	DecrypterF func() config.Decrypter
+	TypeF       func() string
+	StateF      func() json.RawMessage
+	EncrypterF  func() config.Encrypter
+	DecrypterF  func() config.Decrypter
+	EquivalentF func(otherState json.RawMessage) bool
 }
 
 var _ Manager = &MockSecretsManager{}
@@ -63,6 +64,13 @@ func (msm *MockSecretsManager) Decrypter() config.Decrypter {
 	}
 
 	panic("not implemented")
+}
+
+func (msm *MockSecretsManager) Equivalent(otherState json.RawMessage) bool {
+	if msm.EquivalentF != nil {
+		return msm.EquivalentF(otherState)
+	}
+	return StateJSONEqual(msm.State(), otherState)
 }
 
 type MockEncrypter struct {

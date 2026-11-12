@@ -130,6 +130,14 @@ func getStackConfigurationWithFallback(
 		return backend.StackConfiguration{}, nil, err
 	}
 
+	// Before any operation that will both encrypt-new (with sm) and decrypt-old (from state),
+	// confirm the config-derived manager matches what the state was encrypted with. This turns
+	// an opaque "cipher: message authentication failed" deep in deserialize into a clear error
+	// pointing at the actual divergence between Pulumi.<stack>.yaml and the deployment.
+	if err := ssml.VerifyAgainstSnapshot(ctx, s, sm); err != nil {
+		return backend.StackConfiguration{}, nil, err
+	}
+
 	config, err := getStackConfigurationFromProjectStack(ctx, s, project, sm, workspaceStack, envOverrides)
 	if err != nil {
 		return backend.StackConfiguration{}, nil, err

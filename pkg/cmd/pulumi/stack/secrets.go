@@ -16,6 +16,7 @@ package stack
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -37,6 +38,62 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// ErrSecretsManagerMismatch is returned by VerifyAgainstSnapshot when the secrets manager derived
+// from the stack's config does not match the one recorded in the stack's latest snapshot. This
+// signals that `Pulumi.<stack>.yaml` and the deployment have drifted apart — e.g. the config was
+// copied from another stack, the encryption salt was regenerated, or a `change-secrets-provider`
+// operation was interrupted — and continuing would produce ciphertexts that cannot be decrypted
+// on the next load.
+var ErrSecretsManagerMismatch = errors.New(
+	"the stack's configured secrets provider does not match the one recorded in its state")
+
+// VerifyAgainstSnapshot checks that the given secrets manager (built from stack config) matches
+// the SecretsProviders block recorded in the stack's latest snapshot. Type equality is checked
+// at this layer; semantic equality of provider state is delegated to the provider's Equivalent
+// method. Returns ErrSecretsManagerMismatch (wrapped with the specific divergence) when they
+// disagree. Returns nil (and no error) when the stack has no snapshot yet, the snapshot has no
+// embedded SecretsProviders, or the two match.
+//
+// Callers that intentionally change the secrets manager (e.g. `stack change-secrets-provider`)
+// should not call this.
+func (l *SecretsManagerLoader) VerifyAgainstSnapshot(
+	ctx context.Context,
+	s backend.Stack,
+	sm secrets.Manager,
+) error {
+	if sm == nil {
+		return nil
+	}
+	b := s.Backend()
+	if b == nil {
+		return nil
+	}
+	untyped, err := b.ExportDeployment(ctx, s)
+	if err != nil || untyped == nil || len(untyped.Deployment) == 0 {
+		return nil
+	}
+	v3, err := stack.UnmarshalUntypedDeployment(ctx, untyped)
+	if err != nil {
+		// If we can't even parse the deployment metadata, skip the check — deserialization will
+		// surface a more specific error shortly.
+		return nil //nolint:nilerr
+	}
+	if v3.SecretsProviders == nil || v3.SecretsProviders.Type == "" {
+		return nil
+	}
+
+	if sm.Type() != v3.SecretsProviders.Type {
+		return fmt.Errorf("%w: config specifies %q but state was encrypted with %q",
+			ErrSecretsManagerMismatch, sm.Type(), v3.SecretsProviders.Type)
+	}
+	if !sm.Equivalent(v3.SecretsProviders.State) {
+		return fmt.Errorf("%w: config and state carry different %s provider configuration "+
+			"(e.g. encryption salt or key id). Restore the matching stack configuration",
+			ErrSecretsManagerMismatch, sm.Type())
+	}
+	return nil
+}
 
 // Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
 // changes back to the stack's configuration where applicable.

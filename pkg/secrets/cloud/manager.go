@@ -16,6 +16,7 @@
 package cloud
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
@@ -135,6 +136,20 @@ func (m *Manager) Type() string                { return Type }
 func (m *Manager) State() json.RawMessage      { return m.state }
 func (m *Manager) Encrypter() config.Encrypter { return m.crypter }
 func (m *Manager) Decrypter() config.Decrypter { return m.crypter }
+
+// Equivalent reports whether another cloud secrets state would produce and consume the same
+// ciphertexts. Both the URL (which identifies the KMS/key) and the EncryptedKey (the wrapped
+// data encryption key) must match.
+func (m *Manager) Equivalent(otherState json.RawMessage) bool {
+	var mine, theirs cloudSecretsManagerState
+	if err := json.Unmarshal(m.state, &mine); err != nil {
+		return false
+	}
+	if err := json.Unmarshal(otherState, &theirs); err != nil {
+		return false
+	}
+	return mine.URL == theirs.URL && bytes.Equal(mine.EncryptedKey, theirs.EncryptedKey)
+}
 
 func EditProjectStack(info *workspace.ProjectStack, state json.RawMessage) error {
 	info.EncryptionSalt = ""
