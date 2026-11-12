@@ -51,7 +51,8 @@ type Hint struct {
 	ID string
 	// Cooldown is the minimum time between two showings of this hint.
 	Cooldown time.Duration
-	// Message is the text of the hint. It may contain color directives.
+	// Message is the text of the hint. It may contain color directives, and newlines to start a new line, for example
+	// before a "Learn more" link.
 	Message string
 	// BeforeFirstUpdate is true for hints that may be shown before the user has completed a successful update,
 	// because they are meant for users who are just starting out.
@@ -210,7 +211,11 @@ func (m *manager) flush(w io.Writer) {
 }
 
 func show(w io.Writer, h Hint) {
-	msg := fmt.Sprintf("\n%s%s%s %s\n", colors.SpecInfo, cmdutil.EmojiOr("💡 ", "")+"Hint:", colors.Reset, h.Message)
+	label := cmdutil.EmojiOr("💡 ", "") + "Hint:"
+	// Line up the later lines of the message with its first line. The emoji is two columns wide.
+	indent := cmdutil.EmojiOr("   ", "") + "      "
+	message := strings.ReplaceAll(h.Message, "\n", "\n"+indent)
+	msg := fmt.Sprintf("\n%s%s%s %s\n", colors.SpecInfo, label, colors.Reset, message)
 	_, err := fmt.Fprint(w, cmdutil.GetGlobalColorization().Colorize(msg))
 	contract.IgnoreError(err)
 }
