@@ -531,7 +531,7 @@ func askConfirmation(
 	fmt.Fprintln(w)
 	printFields(w, opts.Color, "  ", rows)
 	if len(configRows) > 0 {
-		fmt.Fprintln(w, "  Config")
+		fmt.Fprintln(w, "  Config:")
 		printFields(w, opts.Color, "    ", configRows)
 	}
 	fmt.Fprintln(w)
@@ -548,7 +548,7 @@ func printFields(w io.Writer, color colors.Colorization, indent string, fields [
 		width = max(width, len(f.label))
 	}
 	for _, f := range fields {
-		label := f.label + strings.Repeat(" ", width-len(f.label))
-		fmt.Fprintln(w, indent+label+"   "+color.Colorize(colors.SpecSubHeadline+f.value+colors.Reset))
+		label := f.label + ":" + strings.Repeat(" ", width-len(f.label))
+		fmt.Fprintln(w, indent+label+"  "+color.Colorize(colors.SpecSubHeadline+f.value+colors.Reset))
 	}
 }
