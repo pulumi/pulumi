@@ -1,4 +1,4 @@
 component: sdkgen/nodejs
 kind: fix
-body: Local Node.js SDKs depend on typescript ^5.8.0 and @types/node ^22, so workspaces on current versions no longer install a second copy of typescript and @pulumi/pulumi
+body: Raise the typescript and @types/node ranges of local Node.js SDKs to ^5.8.0 and ^22, so current workspaces install one copy of typescript and @pulumi/pulumi
 time: 2026-11-12T00:00:00Z
