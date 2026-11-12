@@ -142,6 +142,6 @@ func TestRefresh_FailureKeepsCache(t *testing.T) {
 	url, _ := serve(t, `oops`, http.StatusInternalServerError)
 
 	_, err := refresh(t.Context(), url, readCache())
-	require.Error(t, err)
+	require.ErrorContains(t, err, "500 Internal Server Error")
 	assert.Equal(t, stale, readCache())
 }
