@@ -42,22 +42,14 @@ const (
 	fetchTimeout = 3 * time.Second
 )
 
-type Severity string
-
-const (
-	Info    Severity = "info"
-	Warning Severity = "warning"
-	Error   Severity = "error"
-)
-
 // Notification is a single message, along with the conditions under which it should be shown.
 type Notification struct {
-	Title         string   `json:"title"`
-	ID            string   `json:"identifier"`
-	Overview      string   `json:"overview"`
-	Severity      Severity `json:"severity"`
-	Where         Where    `json:"where"`
-	SchemaVersion uint     `json:"schemaVersion"`
+	Title         string        `json:"title"`
+	ID            string        `json:"identifier"`
+	Overview      string        `json:"overview"`
+	Severity      diag.Severity `json:"severity"`
+	Where         Where         `json:"where"`
+	SchemaVersion uint          `json:"schemaVersion"`
 }
 
 // Where holds the version ranges a user's environment must match for a notification to apply.
@@ -208,15 +200,11 @@ func applies(n Notification, cli semver.Version, cliKnown bool) bool {
 }
 
 func render(n Notification, cliVersion string) string {
-	var prefix string
-	switch n.Severity {
-	case Warning:
-		prefix = colors.SpecWarning + "WARNING:" + colors.Reset
-	case Error:
-		prefix = colors.SpecError + "ERROR:" + colors.Reset
-	case Info:
-		fallthrough
-	default:
+	prefix, ok := map[diag.Severity]string{
+		diag.Warning: colors.SpecWarning + "WARNING:" + colors.Reset,
+		diag.Error:   colors.SpecError + "ERROR:" + colors.Reset,
+	}[n.Severity]
+	if !ok {
 		prefix = "INFO:"
 	}
 

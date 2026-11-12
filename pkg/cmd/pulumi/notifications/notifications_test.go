@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
@@ -32,7 +33,7 @@ var survey = Notification{
 	Title:         "We want to hear from you!",
 	ID:            "90abcdef-0123-4567-890a-bcdef0123456",
 	Overview:      "Fill out a quick survey here: https://example.com",
-	Severity:      Info,
+	Severity:      diag.Info,
 	SchemaVersion: 1,
 }
 
@@ -82,7 +83,7 @@ func TestRender(t *testing.T) {
 	n := Notification{
 		Title:    "CLI {cli} is no longer actively maintained",
 		Overview: "You are running {cli}.\nPlease upgrade.",
-		Severity: Warning,
+		Severity: diag.Warning,
 	}
 
 	assert.Equal(t,
