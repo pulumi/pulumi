@@ -230,3 +230,21 @@ func Test_isStringType(t *testing.T) {
 		})
 	}
 }
+
+func TestLocalSDKToolchainPins(t *testing.T) {
+	t.Parallel()
+
+	pkg, err := schema.ImportSpec(
+		schema.PackageSpec{Name: "example"}, nil, schema.NewNullLoader(), schema.ValidationOptions{})
+	require.NoError(t, err)
+
+	local, err := genNPMPackageMetadata(pkg, NodePackageInfo{}, nil, true, nil)
+	require.NoError(t, err)
+	require.Contains(t, local, `"typescript": "`+LocalSDKTypescriptVersion+`"`)
+	require.Contains(t, local, `"@types/node": "`+LocalSDKNodeTypesVersion+`"`)
+
+	published, err := genNPMPackageMetadata(pkg, NodePackageInfo{}, nil, false, nil)
+	require.NoError(t, err)
+	require.Contains(t, published, `"typescript": "`+MinimumTypescriptVersion+`"`)
+	require.Contains(t, published, `"@types/node": "`+MinimumNodeTypesVersion+`"`)
+}
