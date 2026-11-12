@@ -152,7 +152,7 @@ func TestGetTokenValue(t *testing.T) {
 			value, err := getTokenValue(token)
 
 			if tt.wantErr {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				if tt.errContains != "" {
 					assert.Contains(t, err.Error(), tt.errContains)
 				}
@@ -290,7 +290,7 @@ func TestExchangeOidcToken(t *testing.T) {
 			)
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				if tt.errContains != "" {
 					assert.Contains(t, err.Error(), tt.errContains)
 				}

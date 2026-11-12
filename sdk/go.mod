@@ -52,7 +52,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/iancoleman/strcase v0.2.0
 	github.com/iwdgo/sigintwindows v0.2.2
-	github.com/klauspost/compress v1.18.7
+	github.com/klauspost/compress v1.20.2
 	github.com/pgavlin/fx v0.1.6
 	github.com/pgavlin/fx/v2 v2.0.12
 	github.com/pkg/term v1.1.0

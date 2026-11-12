@@ -44,7 +44,6 @@
         {
             "path": ["destroy"],
             "propagate": false,
-            "exclude": true,
             "flags": {
                 "skip-preview": { "omit": true, "preset": true }
             }
@@ -132,6 +131,13 @@
             }
         },
         {
+            "path": ["template", "list"],
+            "propagate": false,
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
+        },
+        {
             "path": ["whoami"],
             "propagate": false,
             "flags": {
@@ -161,14 +167,9 @@
         {
             "path": ["deployment"],
             "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["do"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
         },
         {
             "path": ["events"],
@@ -203,14 +204,16 @@
         {
             "path": ["insights"],
             "propagate": true,
-            "exclude": true,
-            "flags": {}
+            "flags": {
+                "output": { "omit": true, "preset": "json" }
+            }
         },
         {
             "path": ["login"],
             "propagate": true,
-            "exclude": true,
-            "flags": {}
+            "flags": {
+                "interactive": { "omit": true }
+            }
         },
         {
             "path": ["logout"],
@@ -289,12 +292,6 @@
         },
         {
             "path": ["stack"],
-            "propagate": true,
-            "exclude": true,
-            "flags": {}
-        },
-        {
-            "path": ["template"],
             "propagate": true,
             "exclude": true,
             "flags": {}

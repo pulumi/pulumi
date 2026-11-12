@@ -87,7 +87,7 @@ func TestOrgRoleEdit_NoChangesError(t *testing.T) {
 	cmd.SetArgs([]string{"role-1"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "nothing to update")
 }
 
@@ -115,7 +115,7 @@ func TestOrgRoleEdit_GetError(t *testing.T) {
 	cmd.SetArgs([]string{"role-1", "--name", "x"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `looking up role "role-1"`)
 	assert.Contains(t, err.Error(), "not found")
 }
@@ -131,7 +131,7 @@ func TestOrgRoleEdit_UpdateError(t *testing.T) {
 	cmd.SetArgs([]string{"role-1", "--name", "x"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "updating organization role")
 	assert.Contains(t, err.Error(), "server error")
 }
@@ -193,7 +193,7 @@ func TestOrgRoleEdit_FactoryError(t *testing.T) {
 	cmd := newOrgRoleEditCmdWith(failingRoleFactory(errors.New("not logged in")))
 	cmd.SetArgs([]string{"role-1", "--name", "x"})
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 

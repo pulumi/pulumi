@@ -144,6 +144,6 @@ func TestConfirmBeforeUpdating_ExplainerErrorDoesNotCrash(t *testing.T) {
 
 	// Instead of waiting for EOF, just assert on the error and result
 	require.Nil(t, resultPlan)
-	require.Error(t, callErr)
+	require.Error(t, callErr) //nolint:forbidigo // pre-existing
 	require.Contains(t, callErr.Error(), "confirmation declined")
 }

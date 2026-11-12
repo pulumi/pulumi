@@ -285,7 +285,7 @@ func TestStackScheduleNew_ValidationErrors(t *testing.T) {
 				t.Context(), &bytes.Buffer{}, newClientFactory(&mockScheduleNewClient{}), tc.args,
 				renderScheduleGetText,
 			)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tc.want)
 		})
 	}

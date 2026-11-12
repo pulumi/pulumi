@@ -1416,7 +1416,7 @@ func TestFailsOnImplicitDependencyCyclesPython(t *testing.T) {
 	t.Cleanup(pt.TestCleanUp)
 
 	require.NoError(t, pt.TestLifeCycleInitialize(), "initialize")
-	require.Error(t, pt.TestPreviewUpdateAndEdits(), "preview")
+	require.Error(t, pt.TestPreviewUpdateAndEdits(), "preview") //nolint:forbidigo // pre-existing
 }
 
 // Test a paramaterized provider with python.

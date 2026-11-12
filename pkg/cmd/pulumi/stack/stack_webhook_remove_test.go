@@ -67,7 +67,7 @@ func TestStackWebhookRemove_ClientError(t *testing.T) {
 		t.Context(), &buf, stubRemoveFactory(c),
 		"", "no-such", true,
 	)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "removing stack webhook")
 	assert.Contains(t, err.Error(), "not found")
 }

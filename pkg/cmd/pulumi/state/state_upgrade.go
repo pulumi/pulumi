@@ -155,7 +155,7 @@ func (w *stateUpgradeProjectNameWidget) Prompt(stacks []tokens.StackName, projec
 	fmt.Fprintln(stdout, "Please enter a project name for each stack, or enter to skip that stack.")
 	for i, stack := range stacks {
 		var project string
-		err := survey.AskOne(
+		err := ui.AskOne(
 			&survey.Input{
 				Message: fmt.Sprintf("Stack %s", stack),
 				Help:    "Enter a name for the project, or press enter to skip",

@@ -70,7 +70,7 @@ func TestAnalyzerSpawnBinary(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = plugin.NewPolicyAnalyzer(ctx.Host, ctx, "binary-analyzer", filepath.Join(tmp, bin), nil)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.ErrorContains(t, err, "exit status 1")
 }
 

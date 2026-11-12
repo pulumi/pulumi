@@ -47,7 +47,7 @@ runtime: nodejs
 	cmd := e.SetupCommandIn(t.Context(), e.CWD, "pulumi", "stack", "select", "does-not-exist")
 	err := cmd.Run()
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok)
 	require.Equal(t, 6, exitErr.ExitCode())
@@ -86,7 +86,7 @@ new pulumi.CustomResource("testprovider:index:AwaitsOnCreate", "awaiting", {});
 	cmd := e.SetupCommandIn(t.Context(), e.CWD, "pulumi", "up", "--yes", "--skip-preview")
 	err := cmd.Run()
 
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	exitErr, ok := err.(*exec.ExitError)
 	require.True(t, ok, "expected pulumi up to return an *exec.ExitError, got %T: %v", err, err)
 	require.Equal(t, 10, exitErr.ExitCode(), "await failure should exit with ExitAwaitError (10)")

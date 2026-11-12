@@ -90,7 +90,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 				Protect:      g.Protect,
 				Dependencies: g.Dependencies,
 				Provider:     g.Provider,
-				Inputs:       resource.ToResourcePropertyMap(g.Properties),
+				Inputs:       g.Properties,
 				PropertyDeps: g.PropertyDependencies,
 			})
 			if err != nil {
@@ -108,7 +108,7 @@ func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 					Delete:                  false,
 					ID:                      resp.ID,
 					Inputs:                  resource.ToResourcePropertyMap(g.Properties),
-					Outputs:                 resp.Outputs,
+					Outputs:                 resource.ToResourcePropertyMap(resp.Outputs),
 					Parent:                  g.Parent,
 					Protect:                 protect,
 					Taint:                   false,
@@ -1118,7 +1118,7 @@ func TestRegistrationObserverComponentResolvedAtRegisterResourceOutputs(t *testi
 		if err != nil {
 			return err
 		}
-		return monitor.RegisterResourceOutputs(resp.URN, expectedOutputs)
+		return monitor.RegisterResourceOutputs(resp.URN, resource.FromResourcePropertyMap(expectedOutputs))
 	}
 
 	ctx, err := newTestPluginContext(t, program)
@@ -1332,7 +1332,7 @@ func TestRegistrationObserverComponentAliasesArePublishedAtROC(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		return monitor.RegisterResourceOutputs(resp.URN, expectedOutputs)
+		return monitor.RegisterResourceOutputs(resp.URN, resource.FromResourcePropertyMap(expectedOutputs))
 	}
 
 	ctx, err := newTestPluginContext(t, program)
@@ -1409,18 +1409,21 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with explicit provider references.
-		_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, providerARef.String(), "", "", nil, "", "")
+		_, _, perr := resmon.ReadResource(
+			"pkgA:m:typA", "resA", "id1", "", property.Map{}, providerARef.String(), "", "", nil, "", "")
 		require.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", nil, "", "")
+		_, _, perr = resmon.ReadResource(
+			"pkgA:m:typB", "resB", "id1", "", property.Map{}, providerBRef.String(), "", "", nil, "", "")
 		require.NoError(t, perr)
-		_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, providerCRef.String(), "", "", nil, "", "")
+		_, _, perr = resmon.ReadResource(
+			"pkgC:m:typC", "resC", "id1", "", property.Map{}, providerCRef.String(), "", "", nil, "", "")
 		require.NoError(t, perr)
 
-		_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, providerARef.String(), "", "")
+		_, _, perr = resmon.Invoke("pkgA:m:funcA", property.Map{}, providerARef.String(), "", "")
 		require.NoError(t, perr)
-		_, _, perr = resmon.Invoke("pkgA:m:funcB", nil, providerBRef.String(), "", "")
+		_, _, perr = resmon.Invoke("pkgA:m:funcB", property.Map{}, providerBRef.String(), "", "")
 		require.NoError(t, perr)
-		_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, providerCRef.String(), "", "")
+		_, _, perr = resmon.Invoke("pkgC:m:funcC", property.Map{}, providerCRef.String(), "", "")
 		require.NoError(t, perr)
 
 		return nil
@@ -1525,18 +1528,18 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	expectedReads, expectedInvokes := 3, 3
 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 		// Perform some reads and invokes with default provider references.
-		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "", "", nil, "", "")
+		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", property.Map{}, "", "", "", nil, "", "")
 		require.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "", "", nil, "", "")
+		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", property.Map{}, "", "", "", nil, "", "")
 		require.NoError(t, err)
-		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", nil, "", "")
+		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", property.Map{}, "", "", "", nil, "", "")
 		require.NoError(t, err)
 
-		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "", "")
+		_, _, err = resmon.Invoke("pkgA:m:funcA", property.Map{}, "", "", "")
 		require.NoError(t, err)
-		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "", "")
+		_, _, err = resmon.Invoke("pkgA:m:funcB", property.Map{}, "", "", "")
 		require.NoError(t, err)
-		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "", "")
+		_, _, err = resmon.Invoke("pkgC:m:funcC", property.Map{}, "", "", "")
 		require.NoError(t, err)
 
 		return nil
@@ -1777,25 +1780,27 @@ func TestDisableDefaultProviders(t *testing.T) {
 			program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 				aErrorAssert := require.NoError
 				if tt.expectFail {
-					aErrorAssert = require.Error
+					aErrorAssert = require.Error //nolint:forbidigo // pre-existing
 				}
 				var aPkgProvider string
 				if tt.hasExplicit {
 					aPkgProvider = providerARef.String()
 				}
 				// Perform some reads and invokes with explicit provider references.
-				_, _, perr := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, aPkgProvider, "", "", nil, "", "")
+				_, _, perr := resmon.ReadResource(
+					"pkgA:m:typA", "resA", "id1", "", property.Map{}, aPkgProvider, "", "", nil, "", "")
 				aErrorAssert(t, perr)
-				_, _, perr = resmon.ReadResource("pkgB:m:typB", "resB", "id1", "", nil, providerBRef.String(), "", "", nil, "", "")
+				_, _, perr = resmon.ReadResource(
+					"pkgB:m:typB", "resB", "id1", "", property.Map{}, providerBRef.String(), "", "", nil, "", "")
 				require.NoError(t, perr)
-				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "", "", nil, "", "")
+				_, _, perr = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", property.Map{}, "", "", "", nil, "", "")
 				require.NoError(t, perr)
 
-				_, _, perr = resmon.Invoke("pkgA:m:funcA", nil, aPkgProvider, "", "")
+				_, _, perr = resmon.Invoke("pkgA:m:funcA", property.Map{}, aPkgProvider, "", "")
 				aErrorAssert(t, perr)
-				_, _, perr = resmon.Invoke("pkgB:m:funcB", nil, providerBRef.String(), "", "")
+				_, _, perr = resmon.Invoke("pkgB:m:funcB", property.Map{}, providerBRef.String(), "", "")
 				require.NoError(t, perr)
-				_, _, perr = resmon.Invoke("pkgC:m:funcC", nil, "", "", "")
+				_, _, perr = resmon.Invoke("pkgC:m:funcC", property.Map{}, "", "", "")
 				require.NoError(t, perr)
 
 				return nil
@@ -2183,22 +2188,22 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 // 	//  2. Provider pkgC, version 0.18.0
 // 	program := func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
 // 		// Triggers pkgA, v0.18.0.
-// 		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", nil, "", "0.18.0")
+// 		_, _, err := resmon.ReadResource("pkgA:m:typA", "resA", "id1", "", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
 // 		// Uses pkgA's already-instantiated provider.
-// 		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", nil, "", "0.18.0")
+// 		_, _, err = resmon.ReadResource("pkgA:m:typB", "resB", "id1", "", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
 
 // 		// Triggers pkgC, v0.18.0.
-// 		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", nil, "", "0.18.0")
+// 		_, _, err = resmon.ReadResource("pkgC:m:typC", "resC", "id1", "", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
 
 // 		// Uses pkgA and pkgC's already-instantiated provider.
-// 		_, _, err = resmon.Invoke("pkgA:m:funcA", nil, "", "0.18.0")
+// 		_, _, err = resmon.Invoke("pkgA:m:funcA", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
-// 		_, _, err = resmon.Invoke("pkgA:m:funcB", nil, "", "0.18.0")
+// 		_, _, err = resmon.Invoke("pkgA:m:funcB", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
-// 		_, _, err = resmon.Invoke("pkgC:m:funcC", nil, "", "0.18.0")
+// 		_, _, err = resmon.Invoke("pkgC:m:funcC", property.Map{}, "", "0.18.0")
 // 		require.NoError(t, err)
 
 // 		return nil
@@ -3535,7 +3540,7 @@ func TestRegisterResource(t *testing.T) {
 		_, err := rm.RegisterResource(t.Context(), &pulumirpc.RegisterResourceRequest{
 			StateMigrations: []*pulumirpc.Callback{{}},
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 		assert.ErrorContains(t, err, "state migrations are not supported by this deployment")
 	})

@@ -408,7 +408,7 @@ func TestInsightsAccountScanListCmd_NegativeCountRejected(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, "prod-aws", args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--count must be non-negative")
 }
 
@@ -490,7 +490,7 @@ func TestInsightsAccountScanListCmd_ClientErrorWrapped(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, "prod-aws", defaultScanListArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "listing insights scans")
 	assert.ErrorIs(t, err, wantErr)
 }
@@ -514,7 +514,7 @@ func TestInsightsAccountScanListCmd_PageLoopBudget(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, "prod-aws", args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "pagination exceeded")
 }
 

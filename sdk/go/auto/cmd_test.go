@@ -370,7 +370,7 @@ func TestRunCanceled(t *testing.T) {
 		"PULUMI_CONFIG_PASSPHRASE=correct horse battery staple",
 	}
 	_, _, code, err := cmd.Run(ctx, e.CWD, nil, nil, nil, env, "preview", "-s", stackName)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.ErrorContains(t, err, "exit status 1")
 	require.Equal(t, 1, code)
 
