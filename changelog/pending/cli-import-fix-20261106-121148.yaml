@@ -1,4 +1,0 @@
-component: cli/import
-kind: fix
-body: Fix `pulumi import` failing to generate code for resources in indexed modules, such as those using `count` or `for_each`
-time: 2026-11-06T12:11:48.366604-08:00

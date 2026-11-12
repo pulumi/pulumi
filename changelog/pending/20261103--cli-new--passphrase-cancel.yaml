@@ -1,3 +1,0 @@
-component: cli/new
-kind: fix
-body: Stop asking for another stack name when the passphrase prompt is cancelled during `pulumi new`

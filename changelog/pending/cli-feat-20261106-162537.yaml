@@ -1,4 +1,0 @@
-component: cli
-kind: feat
-body: Report operation activity and interactive prompts to terminals supporting the OSC 7501 Program Status Protocol
-time: 2026-11-06T16:25:37.968301+01:00

@@ -1,4 +1,0 @@
-component: cli/import
-kind: fix
-body: Print the generated program from `pulumi import` when a language also generates local SDK metadata, such as with `--from hcl`
-time: 2026-11-06T12:08:49.454371-08:00
