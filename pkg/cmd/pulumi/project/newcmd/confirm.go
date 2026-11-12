@@ -351,9 +351,7 @@ func confirmGuidedValues(
 		rows = append(rows, field{"Stack name", c.stackName})
 	}
 
-	rows = append(rows, c.configRows()...)
-
-	accepted, err := askConfirmation(args.stdout, opts, args.selectOne, rows)
+	accepted, err := askConfirmation(args.stdout, opts, args.selectOne, rows, c.configRows())
 	if err != nil {
 		return nil, err
 	}
@@ -509,38 +507,33 @@ func (c *setupAnswers) repromptConfig(
 	return nil
 }
 
-// configRows lists each config value as its key and value in aligned columns, hiding secrets. Only
-// the first row is labelled, so the values read as one "Config" entry.
+// configRows lists each config value under its key, hiding secrets.
 func (c *setupAnswers) configRows() []field {
 	if c.config == nil {
 		return nil
 	}
-	keys := make([]string, len(c.config.values))
-	width := 0
-	for i, v := range c.config.values {
-		keys[i] = cmdConfig.PrettyKeyForProject(v.key, tokens.PackageName(c.name))
-		width = max(width, len(keys[i]))
-	}
 	rows := make([]field, 0, len(c.config.values))
-	for i, v := range c.config.values {
+	for _, v := range c.config.values {
 		value := v.value
 		if v.secret {
 			value = "[secret]"
 		}
-		label := ""
-		if i == 0 {
-			label = "Config"
-		}
-		rows = append(rows, field{label, keys[i] + strings.Repeat(" ", width-len(keys[i])) + "  " + value})
+		rows = append(rows, field{cmdConfig.PrettyKeyForProject(v.key, tokens.PackageName(c.name)), value})
 	}
 	return rows
 }
 
-func askConfirmation(w io.Writer, opts display.Options, sel selectFunc, rows []field) (bool, error) {
+func askConfirmation(
+	w io.Writer, opts display.Options, sel selectFunc, rows, configRows []field,
+) (bool, error) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, opts.Color.Colorize(colors.SpecSubHeadline+"Review your new project:"+colors.Reset))
 	fmt.Fprintln(w)
 	printFields(w, opts.Color, "  ", rows)
+	if len(configRows) > 0 {
+		fmt.Fprintln(w, "  Config")
+		printFields(w, opts.Color, "    ", configRows)
+	}
 	fmt.Fprintln(w)
 	i, err := sel("Create the project with these settings?", []string{confirmYes, confirmChange}, opts)
 	return i == 0, err

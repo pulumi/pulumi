@@ -57,8 +57,7 @@ func TestAskConfirmationRendersBlock(t *testing.T) {
 		{"Project name", "my-project"},
 		{"Description", "A minimal AWS TypeScript Pulumi program"},
 		{"Stack name", "my-org/dev"},
-		{"Config", "aws:region  us-east-1"},
-	})
+	}, []field{{"aws:region", "us-east-1"}, {"token", "[secret]"}})
 	require.NoError(t, err)
 	assert.True(t, ok)
 
@@ -69,40 +68,26 @@ func TestAskConfirmationRendersBlock(t *testing.T) {
 			"  Project name   my-project\n"+
 			"  Description    A minimal AWS TypeScript Pulumi program\n"+
 			"  Stack name     my-org/dev\n"+
-			"  Config         aws:region  us-east-1\n"+
+			"  Config\n"+
+			"    aws:region   us-east-1\n"+
+			"    token        [secret]\n"+
 			"\n",
 		out.String())
 	require.Len(t, *offered, 1)
 	assert.Equal(t, []string{confirmYes, confirmChange}, (*offered)[0])
 }
 
-func TestConfigRowsLabelsOnlyTheFirstRow(t *testing.T) {
-	t.Parallel()
-
-	assert.Empty(t, (&setupAnswers{name: "p"}).configRows())
-
-	c := &setupAnswers{name: "p", config: &askedConfig{values: []templateConfigValue{
-		{key: config.MustMakeKey("aws", "region"), value: "us-east-1"},
-		{key: config.MustMakeKey("p", "token"), value: "hunter2", secret: true},
-	}}}
-	assert.Equal(t, []field{
-		{"Config", "aws:region  us-east-1"},
-		{"", "token       [secret]"},
-	}, c.configRows())
-}
-
-func TestPrintFieldsAlignsUnlabelledRows(t *testing.T) {
+func TestAskConfirmationOmitsEmptyConfig(t *testing.T) {
 	t.Parallel()
 
 	var out bytes.Buffer
-	printFields(&out, colors.Never, "  ", []field{
-		{"Config", "aws:region  us-east-1"},
-		{"", "token       [secret]"},
-	})
-	assert.Equal(t,
-		"  Config   aws:region  us-east-1\n"+
-			"           token       [secret]\n",
-		out.String())
+	opts := display.Options{Color: colors.Never, Stdout: &out}
+	sel, _ := scriptedSelect(t, confirmChange)
+
+	ok, err := askConfirmation(&out, opts, sel, []field{{"Project name", "p"}}, nil)
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.NotContains(t, out.String(), "Config")
 }
 
 // runtimeOptionsNone is a promptRuntimeOptions that reports no additional runtime options,
@@ -281,7 +266,7 @@ func TestGuidedNewAcceptSkipsAllPrompts(t *testing.T) {
 	require.Equal(t, []string{"my-org/dev"}, *created)
 	assert.NotContains(t, errOut.String(), "Created stack", "guided stack creation must run quiet")
 	assert.Contains(t, out.String(), "Stack name     my-org/dev")
-	assert.Contains(t, out.String(), "Config         aws:region  us-east-1",
+	assert.Contains(t, out.String(), "  Config\n    aws:region   us-east-1\n",
 		"the block must show a declared key at its template default")
 	assert.NotContains(t, out.String(), "aws:profile",
 		"the block must not list a --config key the template doesn't declare")
@@ -408,7 +393,7 @@ func TestGuidedNewDeclineDoesNotReofferFlagConfig(t *testing.T) {
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 
-	assert.Contains(t, out.String(), "aws:region  eu-west-1", "the block must show the flag value")
+	assert.Contains(t, out.String(), "aws:region   eu-west-1", "the block must show the flag value")
 	assert.Equal(t, []string{
 		"Project name=" + filepath.Base(tempdir),
 		"Project description=A guided test template",
@@ -466,7 +451,7 @@ template:
 
 	assert.Equal(t, []string{"The Google Cloud project to deploy into (gcp:project)="}, prompts,
 		"a key with no default must be prompted for with an empty default, before the block")
-	assert.Contains(t, out.String(), "gcp:project  proj-123")
+	assert.Contains(t, out.String(), "gcp:project   proj-123")
 	require.Equal(t, []string{"my-org/dev"}, *created)
 	assert.NotContains(t, errOut.String(), "Created stack", "guided stack creation must run quiet")
 }
@@ -518,7 +503,7 @@ template:
 
 	require.Len(t, secretFlags, 1, "only the key with no default is prompted for, before the block")
 	assert.True(t, secretFlags[0], "the pre-block prompt for a secret key must be marked secret")
-	assert.Contains(t, out.String(), "github:token  [secret]", "the block must mask the secret value, not show it")
+	assert.Contains(t, out.String(), "github:token   [secret]", "the block must mask the secret value, not show it")
 	assert.NotContains(t, out.String(), "tok_secret_value", "the plaintext secret must never reach the block")
 	require.Equal(t, []string{"my-org/dev"}, *created)
 	assert.NotContains(t, errOut.String(), "Created stack", "guided stack creation must run quiet")
