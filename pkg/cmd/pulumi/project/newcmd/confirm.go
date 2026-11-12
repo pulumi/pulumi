@@ -509,11 +509,17 @@ func (c *setupAnswers) repromptConfig(
 	return nil
 }
 
-// configRows lists each config value as `key = value`, hiding secrets. Only the first row is
-// labelled, so the values read as one "Config" entry.
+// configRows lists each config value as its key and value in aligned columns, hiding secrets. Only
+// the first row is labelled, so the values read as one "Config" entry.
 func (c *setupAnswers) configRows() []field {
 	if c.config == nil {
 		return nil
+	}
+	keys := make([]string, len(c.config.values))
+	width := 0
+	for i, v := range c.config.values {
+		keys[i] = cmdConfig.PrettyKeyForProject(v.key, tokens.PackageName(c.name))
+		width = max(width, len(keys[i]))
 	}
 	rows := make([]field, 0, len(c.config.values))
 	for i, v := range c.config.values {
@@ -525,8 +531,7 @@ func (c *setupAnswers) configRows() []field {
 		if i == 0 {
 			label = "Config"
 		}
-		key := cmdConfig.PrettyKeyForProject(v.key, tokens.PackageName(c.name))
-		rows = append(rows, field{label, key + " = " + value})
+		rows = append(rows, field{label, keys[i] + strings.Repeat(" ", width-len(keys[i])) + "  " + value})
 	}
 	return rows
 }
