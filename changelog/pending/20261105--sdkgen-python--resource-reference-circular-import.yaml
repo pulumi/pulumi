@@ -1,4 +1,0 @@
-component: sdkgen/python
-kind: fix
-body: Fix a circular import when an object type references a resource in the same module
-time: 2026-11-05T00:00:00Z

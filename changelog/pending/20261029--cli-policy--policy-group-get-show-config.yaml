@@ -1,3 +1,0 @@
-component: cli/policy
-kind: improvement
-body: Show how many policies a policy group configures for each pack in `pulumi policy group get`, and list them with `--show-config`
