@@ -1,0 +1,4 @@
+component: cli
+kind: feat
+body: Add notifications from Pulumi after commands, which `pulumi notifications dismiss` hides and `PULUMI_HIDE_NOTIFICATIONS` turns off
+time: 2026-11-12T14:32:18.877314+01:00
