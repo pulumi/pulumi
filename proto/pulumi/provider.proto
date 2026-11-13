@@ -775,6 +775,28 @@ message CheckConfigFailure {
 
     // The reason that the named property failed validation.
     string reason = 2;
+
+    // Commands the user can run to resolve the failure, such as signing in to refresh expired credentials.
+    repeated CommandRemediation remediations = 3;
+}
+
+// A `CommandRemediation` describes a command that the user can run to resolve a problem a provider reported, such as
+// missing or expired credentials. Providers return it in a [](pulumirpc.CheckConfigFailure) from
+// [](pulumirpc.ResourceProvider.CheckConfig2).
+//
+// The engine must not run a remediation without showing its command to the user and getting their consent. Providers
+// should only offer a remediation that can run on the current machine, and should keep describing the fix in the
+// failure or error message itself for engines that do not support remediations.
+message CommandRemediation {
+    // A short, imperative summary of what the command does, such as "Sign in to AWS".
+    string description = 1;
+
+    // The command to run, as an argument vector. The first element is the program, which is looked up on `PATH`. The
+    // command is run directly, without a shell, attached to the user's terminal so that it can prompt.
+    repeated string command = 2;
+
+    // Environment variables to set for the command, in addition to the engine's own environment.
+    map<string, string> env = 3;
 }
 
 // `DiffRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.DiffConfig) and
