@@ -266,8 +266,10 @@
         {
             "path": ["preview"],
             "propagate": true,
-            "exclude": true,
-            "flags": {}
+            "flags": {
+                "output": { "omit": true, "preset": "json" },
+                "json": { "omit": true }
+            }
         },
         {
             "path": ["project", "list"],
