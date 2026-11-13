@@ -81,12 +81,11 @@ describe("Command examples", () => {
         const options: PulumiOrgSearchOptions = {
             org: "my-org",
             query: ["type:aws:s3/bucketv2:BucketV2", "modified:>=2023-09-01"],
-            output: "json",
         };
         const command = api.orgSearch(options);
         assert.strictEqual(
             command,
-            "pulumi org search --org my-org --output json --query type:aws:s3/bucketv2:BucketV2 --query modified:>=2023-09-01",
+            "pulumi org search --output json --org my-org --query type:aws:s3/bucketv2:BucketV2 --query modified:>=2023-09-01",
         );
     });
 
@@ -96,6 +95,6 @@ describe("Command examples", () => {
             query: "find all S3 buckets",
         };
         const command = api.orgSearchAi(options);
-        assert.strictEqual(command, "pulumi org search ai --org my-org --query find all S3 buckets");
+        assert.strictEqual(command, "pulumi org search ai --output json --org my-org --query find all S3 buckets");
     });
 });

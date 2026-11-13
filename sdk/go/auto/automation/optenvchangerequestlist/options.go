@@ -48,8 +48,6 @@ type Options struct {
 	Organization string
 	// Export OpenTelemetry traces to the specified endpoint. Use file:// for local JSON files, grpc:// or https:// for remote collectors
 	OtelTraces string
-	// output format: "text" (default) or "json"
-	Output string
 	// Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively
 	Profiling string
 	// only list change requests with this status: open (draft, pending, or ready), applied, closed, or all
@@ -139,13 +137,6 @@ func Organization(v string) Option {
 func OtelTraces(v string) Option {
 	return func(o *Options) {
 		o.OtelTraces = v
-	}
-}
-
-// Output returns an Option that sets Output.
-func Output(v string) Option {
-	return func(o *Options) {
-		o.Output = v
 	}
 }
 

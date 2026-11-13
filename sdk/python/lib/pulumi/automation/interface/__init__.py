@@ -54,8 +54,6 @@ class API:
         tracing: Optional[str] = None,
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
-        json: bool = False,
-        output: Optional[str] = None,
         stack: Optional[str] = None,
         transitive: bool = False,
         cwd: Optional[str] = None,
@@ -76,8 +74,6 @@ class API:
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param json: Emit output as JSON (alias for --output=json)
-        :param output: Output format. Supported values are: default and json
         :param stack: The name of the stack to get info on. Defaults to the current stack
         :param transitive: Include transitive dependencies
         :param cwd: Working directory to run the command in.
@@ -88,6 +84,7 @@ class API:
         __final.append("about")
         __final.append("env")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -110,10 +107,6 @@ class API:
             __flags.extend(["--tracing-header", str(tracing_header)])
         if verbose is not None:
             __flags.extend(["--verbose", str(verbose)])
-        if json:
-            __flags.append("--json")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if stack is not None:
             __flags.extend(["--stack", str(stack)])
         if transitive:
@@ -240,7 +233,6 @@ class API:
         include: bool = False,
         input: Optional[str] = None,
         method: Optional[str] = None,
-        output: Optional[str] = None,
         raw_field: Optional[list[str]] = None,
         refresh_spec: bool = False,
         silent: bool = False,
@@ -271,7 +263,6 @@ class API:
         :param include: Include HTTP status line and response headers in output
         :param input: Read request body from file; `-` reads stdin
         :param method: HTTP method to look up (a path can map to multiple ops by method)
-        :param output: Output format: default is a human-readable schema render; `markdown` emits a markdown document (piping friendly, renders in IDEs/glow); `json` emits the stable agent envelope
         :param raw_field: String key=value with no type coercion. Sent as query params on GET/HEAD, JSON body fields otherwise
         :param refresh_spec: Re-fetch the OpenAPI spec from Pulumi Cloud and overwrite the local cache
         :param silent: Do not print the response body on success; errors are still printed and exit non-zero
@@ -283,6 +274,7 @@ class API:
         __final.append("api")
         __final.append("describe")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -323,8 +315,6 @@ class API:
             __flags.extend(["--input", str(input)])
         if method is not None:
             __flags.extend(["--method", str(method)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         for __item in raw_field or []:
             __flags.extend(["--raw-field", str(__item)])
         if refresh_spec:
@@ -368,7 +358,6 @@ class API:
         include: bool = False,
         input: Optional[str] = None,
         method: Optional[str] = None,
-        output: Optional[str] = None,
         raw_field: Optional[list[str]] = None,
         refresh_spec: bool = False,
         silent: bool = False,
@@ -402,7 +391,6 @@ class API:
         :param include: Include HTTP status line and response headers in output
         :param input: Read request body from file; `-` reads stdin
         :param method: HTTP method (default GET, POST when body fields are present)
-        :param output: Output format: `table` (human-readable, default when interactive), `json` (stable agent envelope, default when non-interactive). Use --output=table to keep the table when redirecting.
         :param raw_field: String key=value with no type coercion. Sent as query params on GET/HEAD, JSON body fields otherwise
         :param refresh_spec: Re-fetch the OpenAPI spec from Pulumi Cloud and overwrite the local cache
         :param silent: Do not print the response body on success; errors are still printed and exit non-zero
@@ -417,6 +405,7 @@ class API:
         __final.append("api")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -457,8 +446,6 @@ class API:
             __flags.extend(["--input", str(input)])
         if method is not None:
             __flags.extend(["--method", str(method)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         for __item in raw_field or []:
             __flags.extend(["--raw-field", str(__item)])
         if refresh_spec:
@@ -708,7 +695,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         config_file: Optional[str] = None,
-        json: bool = False,
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
@@ -733,7 +719,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param config_file: Use the configuration values in the specified file rather than detecting the file name
-        :param json: Emit output as JSON
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values when listing config instead of displaying blinded values
         :param stack: The name of the stack to operate on. Defaults to the current stack
@@ -747,6 +732,7 @@ class API:
         __final.append("config")
         __final.append("copy")
         __flags = []
+        __flags.append("--json")
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -771,8 +757,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if config_file is not None:
             __flags.extend(["--config-file", str(config_file)])
-        if json:
-            __flags.append("--json")
         if open:
             __flags.append("--open")
         if show_secrets:
@@ -813,7 +797,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         config_file: Optional[str] = None,
-        json: bool = False,
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
@@ -836,7 +819,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param config_file: Use the configuration values in the specified file rather than detecting the file name
-        :param json: Emit output as JSON
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values in plaintext instead of ciphertext
         :param stack: The name of the stack to operate on. Defaults to the current stack
@@ -849,6 +831,7 @@ class API:
         __final.append("env")
         __final.append("add")
         __flags = []
+        __flags.append("--json")
         __flags.append("--yes")
         if color is not None:
             __flags.extend(["--color", str(color)])
@@ -874,8 +857,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if config_file is not None:
             __flags.extend(["--config-file", str(config_file)])
-        if json:
-            __flags.append("--json")
         if open:
             __flags.append("--open")
         if show_secrets:
@@ -912,7 +893,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         config_file: Optional[str] = None,
-        json: bool = False,
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
@@ -937,7 +917,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param config_file: Use the configuration values in the specified file rather than detecting the file name
-        :param json: Emit output as JSON
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values in plaintext instead of ciphertext
         :param stack: The name of the stack to operate on. Defaults to the current stack
@@ -952,6 +931,7 @@ class API:
         __final.append("env")
         __final.append("init")
         __flags = []
+        __flags.append("--json")
         __flags.append("--yes")
         if color is not None:
             __flags.extend(["--color", str(color)])
@@ -977,8 +957,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if config_file is not None:
             __flags.extend(["--config-file", str(config_file)])
-        if json:
-            __flags.append("--json")
         if open:
             __flags.append("--open")
         if show_secrets:
@@ -1111,7 +1089,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         config_file: Optional[str] = None,
-        json: bool = False,
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
@@ -1134,7 +1111,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param config_file: Use the configuration values in the specified file rather than detecting the file name
-        :param json: Emit output as JSON
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values in plaintext instead of ciphertext
         :param stack: The name of the stack to operate on. Defaults to the current stack
@@ -1147,6 +1123,7 @@ class API:
         __final.append("env")
         __final.append("remove")
         __flags = []
+        __flags.append("--json")
         __flags.append("--yes")
         if color is not None:
             __flags.extend(["--color", str(color)])
@@ -1172,8 +1149,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if config_file is not None:
             __flags.extend(["--config-file", str(config_file)])
-        if json:
-            __flags.append("--json")
         if open:
             __flags.append("--open")
         if show_secrets:
@@ -1307,7 +1282,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         config_file: Optional[str] = None,
-        json: bool = False,
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
@@ -1330,7 +1304,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param config_file: Use the configuration values in the specified file rather than detecting the file name
-        :param json: Emit output as JSON
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values when listing config instead of displaying blinded values
         :param stack: The name of the stack to operate on. Defaults to the current stack
@@ -1343,6 +1316,7 @@ class API:
         __final.append("refresh")
         __flags = []
         __flags.append("--force")
+        __flags.append("--json")
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -1367,8 +1341,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if config_file is not None:
             __flags.extend(["--config-file", str(config_file)])
-        if json:
-            __flags.append("--json")
         if open:
             __flags.append("--open")
         if show_secrets:
@@ -1404,7 +1376,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         config_file: Optional[str] = None,
-        json: bool = False,
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
@@ -1428,7 +1399,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param config_file: Use the configuration values in the specified file rather than detecting the file name
-        :param json: Emit output as JSON
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values when listing config instead of displaying blinded values
         :param stack: The name of the stack to operate on. Defaults to the current stack
@@ -1441,6 +1411,7 @@ class API:
         __final.append("config")
         __final.append("remove")
         __flags = []
+        __flags.append("--json")
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -1465,8 +1436,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if config_file is not None:
             __flags.extend(["--config-file", str(config_file)])
-        if json:
-            __flags.append("--json")
         if open:
             __flags.append("--open")
         if show_secrets:
@@ -1504,7 +1473,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         config_file: Optional[str] = None,
-        json: bool = False,
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
@@ -1528,7 +1496,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param config_file: Use the configuration values in the specified file rather than detecting the file name
-        :param json: Emit output as JSON
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values when listing config instead of displaying blinded values
         :param stack: The name of the stack to operate on. Defaults to the current stack
@@ -1541,6 +1508,7 @@ class API:
         __final.append("config")
         __final.append("remove-all")
         __flags = []
+        __flags.append("--json")
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -1565,8 +1533,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if config_file is not None:
             __flags.extend(["--config-file", str(config_file)])
-        if json:
-            __flags.append("--json")
         if open:
             __flags.append("--open")
         if show_secrets:
@@ -1607,7 +1573,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         config_file: Optional[str] = None,
-        json: bool = False,
         open: bool = False,
         show_secrets: bool = False,
         stack: Optional[str] = None,
@@ -1635,7 +1600,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param config_file: Use the configuration values in the specified file rather than detecting the file name
-        :param json: Emit output as JSON
         :param open: Open and resolve any environments listed in the stack configuration. Defaults to true if --show-secrets is set, false otherwise
         :param show_secrets: Show secret values when listing config instead of displaying blinded values
         :param stack: The name of the stack to operate on. Defaults to the current stack
@@ -1652,6 +1616,7 @@ class API:
         __final.append("config")
         __final.append("set")
         __flags = []
+        __flags.append("--json")
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -1676,8 +1641,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if config_file is not None:
             __flags.extend(["--config-file", str(config_file)])
-        if json:
-            __flags.append("--json")
         if open:
             __flags.append("--open")
         if show_secrets:
@@ -3399,7 +3362,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         dry_run: bool = False,
-        output: Optional[str] = None,
         package: Optional[str] = None,
         show_secrets: bool = False,
         stateless: bool = False,
@@ -3422,7 +3384,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param dry_run: Run the operation in preview mode
-        :param output: Output format (supported: text, json)
         :param package: The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \\"multi word param\\""
         :param show_secrets: Show secret values in output
         :param stateless: Run create/patch/delete directly against the provider without persisting state.
@@ -3434,6 +3395,7 @@ class API:
         __final.append("do")
         __final.append("show-resources")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -3458,8 +3420,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if dry_run:
             __flags.append("--dry-run")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if package is not None:
             __flags.extend(["--package", str(package)])
         if show_secrets:
@@ -3494,7 +3454,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         dry_run: bool = False,
-        output: Optional[str] = None,
         package: Optional[str] = None,
         show_secrets: bool = False,
         stateless: bool = False,
@@ -3517,7 +3476,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param dry_run: Run the operation in preview mode
-        :param output: Output format for resource operation results (supported: default, json)
         :param package: The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \\"multi word param\\""
         :param show_secrets: Show secret values in output
         :param stateless: Run create/patch/delete directly against the provider without persisting state.
@@ -3528,6 +3486,7 @@ class API:
         __final = []
         __final.append("do")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -3552,8 +3511,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if dry_run:
             __flags.append("--dry-run")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if package is not None:
             __flags.extend(["--package", str(package)])
         if show_secrets:
@@ -3590,7 +3547,6 @@ class API:
         env: Optional[str] = None,
         organization: Optional[str] = None,
         dry_run: bool = False,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -3612,7 +3568,6 @@ class API:
         :param env: The name of the environment to operate on.
         :param organization: the organization that owns the change request (defaults to your default organization)
         :param dry_run: show the proposed change without applying it
-        :param output: output format: "text" (default) or "json"
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -3622,6 +3577,7 @@ class API:
         __final.append("change-request")
         __final.append("apply")
         __flags = []
+        __flags.extend(["--output", "json"])
         __flags.append("--yes")
         if color is not None:
             __flags.extend(["--color", str(color)])
@@ -3651,8 +3607,6 @@ class API:
             __flags.extend(["--organization", str(organization)])
         if dry_run:
             __flags.append("--dry-run")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -4034,7 +3988,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         organization: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -4055,7 +4008,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param organization: the organization that owns the change request (defaults to your default organization)
-        :param output: output format: "text" (default) or "json"
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -4065,6 +4017,7 @@ class API:
         __final.append("change-request")
         __final.append("get")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -4091,8 +4044,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if organization is not None:
             __flags.extend(["--organization", str(organization)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -4122,7 +4073,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         organization: Optional[str] = None,
-        output: Optional[str] = None,
         status: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -4144,7 +4094,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param organization: the organization that owns the change request (defaults to your default organization)
-        :param output: output format: "text" (default) or "json"
         :param status: only list change requests with this status: open (draft, pending, or ready), applied, closed, or all
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -4155,6 +4104,7 @@ class API:
         __final.append("change-request")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -4181,8 +4131,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if organization is not None:
             __flags.extend(["--organization", str(organization)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if status is not None:
             __flags.extend(["--status", str(status)])
         __final.extend(__flags)
@@ -4214,7 +4162,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         organization: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -4235,7 +4182,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param organization: the organization that owns the change request (defaults to your default organization)
-        :param output: output format: "text" (default) or "json"
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -4245,6 +4191,7 @@ class API:
         __final.append("change-request")
         __final.append("log")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -4271,8 +4218,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if organization is not None:
             __flags.extend(["--organization", str(organization)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -4302,7 +4247,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         organization: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -4323,7 +4267,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param organization: the organization that owns the change request (defaults to your default organization)
-        :param output: output format: "text" (default) or "json"
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -4333,6 +4276,7 @@ class API:
         __final.append("change-request")
         __final.append("rebase")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -4359,8 +4303,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if organization is not None:
             __flags.extend(["--organization", str(organization)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -4933,7 +4875,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         organization: Optional[str] = None,
-        output: Optional[str] = None,
         project: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -4955,7 +4896,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param organization: Filter returned environments to those in a specific organization
-        :param output: output format: "text" (default) or "json"
         :param project: Filter returned environments to those in a specific project
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -4965,6 +4905,7 @@ class API:
         __final.append("env")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -4991,8 +4932,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if organization is not None:
             __flags.extend(["--organization", str(organization)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if project is not None:
             __flags.extend(["--project", str(project)])
         __final.extend(__flags)
@@ -5116,7 +5055,6 @@ class API:
         env: Optional[str] = None,
         access_duration_seconds: Optional[str] = None,
         grant_expiration_seconds: Optional[str] = None,
-        output: Optional[str] = None,
         reason: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -5139,7 +5077,6 @@ class API:
         :param env: The name of the environment to operate on.
         :param access_duration_seconds: duration of access in seconds
         :param grant_expiration_seconds: expiration time for the grant in seconds
-        :param output: output format: "text" (default) or "json"
         :param reason: an optional reason explaining why the environment is being opened, shown to approvers
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -5149,6 +5086,7 @@ class API:
         __final.append("env")
         __final.append("open-request")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -5179,8 +5117,6 @@ class API:
             __flags.extend(
                 ["--grant-expiration-seconds", str(grant_expiration_seconds)]
             )
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if reason is not None:
             __flags.extend(["--reason", str(reason)])
         __final.extend(__flags)
@@ -5870,7 +5806,6 @@ class API:
         all_revisions: bool = False,
         count: Optional[int] = None,
         latest_stack_version_only: bool = False,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -5894,7 +5829,6 @@ class API:
         :param all_revisions: include referrers across all revisions of the environment, not just the latest
         :param count: the maximum number of referrers to return (server default if unset; max 500). Mutually exclusive with --all
         :param latest_stack_version_only: only include the latest version of each referring stack
-        :param output: output format: "text" (default) or "json"
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -5904,6 +5838,7 @@ class API:
         __final.append("referrer")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -5936,8 +5871,6 @@ class API:
             __flags.extend(["--count", str(count)])
         if latest_stack_version_only:
             __flags.append("--latest-stack-version-only")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -6304,7 +6237,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         env: Optional[str] = None,
-        output: Optional[str] = None,
         utc: bool = False,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -6325,7 +6257,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
-        :param output: output format: "text" (default) or "json"
         :param utc: display times in UTC
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -6336,6 +6267,7 @@ class API:
         __final.append("schedule")
         __final.append("get")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -6360,8 +6292,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if env is not None:
             __flags.extend(["--env", str(env)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if utc:
             __flags.append("--utc")
         __final.extend(__flags)
@@ -6393,7 +6323,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         count: Optional[int] = None,
-        output: Optional[str] = None,
         utc: bool = False,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -6415,7 +6344,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param count: the maximum number of events to return (all if unset)
-        :param output: output format: "text" (default) or "json"
         :param utc: display times in UTC
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -6426,6 +6354,7 @@ class API:
         __final.append("schedule")
         __final.append("history")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -6452,8 +6381,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if count is not None:
             __flags.extend(["--count", str(count)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if utc:
             __flags.append("--utc")
         __final.extend(__flags)
@@ -6485,7 +6412,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         count: Optional[int] = None,
-        output: Optional[str] = None,
         utc: bool = False,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -6507,7 +6433,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param count: the maximum number of schedules to return (all if unset)
-        :param output: output format: "text" (default) or "json"
         :param utc: display times in UTC
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -6518,6 +6443,7 @@ class API:
         __final.append("schedule")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -6544,8 +6470,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if count is not None:
             __flags.extend(["--count", str(count)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if utc:
             __flags.append("--utc")
         __final.extend(__flags)
@@ -6848,7 +6772,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         env: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -6868,7 +6791,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
-        :param output: output format: "text" (default) or "json"
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -6878,6 +6800,7 @@ class API:
         __final.append("settings")
         __final.append("get")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -6902,8 +6825,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if env is not None:
             __flags.extend(["--env", str(env)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -7348,7 +7269,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         utc: bool = False,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -7369,7 +7289,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param utc: display times in UTC
-        :param output: output format: "text" (default) or "json"
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -7379,6 +7298,7 @@ class API:
         __final.append("tag")
         __final.append("get")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -7405,8 +7325,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if utc:
             __flags.append("--utc")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -7436,7 +7354,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         utc: bool = False,
-        output: Optional[str] = None,
         pager: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -7458,7 +7375,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param utc: display times in UTC
-        :param output: output format: "text" (default) or "json"
         :param pager: the command to use to page through the environment's version tags
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -7469,6 +7385,7 @@ class API:
         __final.append("tag")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -7495,8 +7412,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if utc:
             __flags.append("--utc")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if pager is not None:
             __flags.extend(["--pager", str(pager)])
         __final.extend(__flags)
@@ -7779,7 +7694,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         utc: bool = False,
-        output: Optional[str] = None,
         pager: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -7801,7 +7715,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param utc: display times in UTC
-        :param output: output format: "text" (default) or "json"
         :param pager: the command to use to page through the environment's revisions
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -7812,6 +7725,7 @@ class API:
         __final.append("version")
         __final.append("history")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -7838,8 +7752,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if utc:
             __flags.append("--utc")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if pager is not None:
             __flags.extend(["--pager", str(pager)])
         __final.extend(__flags)
@@ -8055,7 +7967,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         utc: bool = False,
-        output: Optional[str] = None,
         pager: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -8077,7 +7988,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param utc: display times in UTC
-        :param output: output format: "text" (default) or "json"
         :param pager: the command to use to page through the environment's version tags
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -8089,6 +7999,7 @@ class API:
         __final.append("tag")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -8115,8 +8026,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if utc:
             __flags.append("--utc")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if pager is not None:
             __flags.extend(["--pager", str(pager)])
         __final.extend(__flags)
@@ -8400,7 +8309,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         count: Optional[int] = None,
-        output: Optional[str] = None,
         utc: bool = False,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -8422,7 +8330,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param count: The maximum number of deliveries to return (all if unset)
-        :param output: output format: "text" (default) or "json"
         :param utc: Display times in UTC
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -8434,6 +8341,7 @@ class API:
         __final.append("delivery")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -8460,8 +8368,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if count is not None:
             __flags.extend(["--count", str(count)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if utc:
             __flags.append("--utc")
         __final.extend(__flags)
@@ -8620,7 +8526,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         env: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -8640,7 +8545,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
-        :param output: output format: "text" (default) or "json"
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -8650,6 +8554,7 @@ class API:
         __final.append("webhook")
         __final.append("get")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -8674,8 +8579,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if env is not None:
             __flags.extend(["--env", str(env)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -8705,7 +8608,6 @@ class API:
         verbose: Optional[int] = None,
         env: Optional[str] = None,
         count: Optional[int] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -8726,7 +8628,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param env: The name of the environment to operate on.
         :param count: The maximum number of webhooks to return (all if unset)
-        :param output: output format: "text" (default) or "json"
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -8736,6 +8637,7 @@ class API:
         __final.append("webhook")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -8762,8 +8664,6 @@ class API:
             __flags.extend(["--env", str(env)])
         if count is not None:
             __flags.extend(["--count", str(count)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -9064,10 +8964,8 @@ class API:
         _from: Optional[str] = None,
         generate_code: bool = False,
         generate_resources: Optional[str] = None,
-        json: bool = False,
         message: Optional[str] = None,
         out: Optional[str] = None,
-        output: Optional[str] = None,
         parallel: Optional[int] = None,
         parent: Optional[str] = None,
         preview_only: bool = False,
@@ -9105,10 +9003,8 @@ class API:
         :param _from: Invoke a converter to import the resources
         :param generate_code: Generate resource declaration code for the imported resources
         :param generate_resources: When used with --from, always write a JSON-encoded file containing a list of importable resources discovered by conversion to the specified path
-        :param json: Serialize the import diffs, operations, and overall output as JSON
         :param message: Optional message to associate with the update operation
         :param out: The path to the file that will contain the generated resource declarations
-        :param output: Output format. Supported values are: default, json
         :param parallel: Allow P resource operations to run in parallel at once (1 for no parallelism).
         :param parent: The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource
         :param preview_only: Only show a preview of the import, but don't perform the import itself
@@ -9128,6 +9024,7 @@ class API:
         __final = []
         __final.append("import")
         __flags = []
+        __flags.extend(["--output", "json"])
         __flags.append("--skip-preview")
         __flags.append("--yes")
         if color is not None:
@@ -9170,14 +9067,10 @@ class API:
             __flags.append("--generate-code")
         if generate_resources is not None:
             __flags.extend(["--generate-resources", str(generate_resources)])
-        if json:
-            __flags.append("--json")
         if message is not None:
             __flags.extend(["--message", str(message)])
         if out is not None:
             __flags.extend(["--out", str(out)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if parallel is not None:
             __flags.extend(["--parallel", str(parallel)])
         if parent is not None:
@@ -10595,7 +10488,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         stack: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -10615,7 +10507,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param stack: The name of the stack to operate on. Defaults to the current stack
-        :param output: Output format. Supported values are: default and json
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -10624,6 +10515,7 @@ class API:
         __final.append("logs")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -10648,8 +10540,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if stack is not None:
             __flags.extend(["--stack", str(stack)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -11002,7 +10892,6 @@ class API:
         event_type: Optional[str] = None,
         format: Optional[str] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         start_time: Optional[str] = None,
         user: Optional[str] = None,
         cwd: Optional[str] = None,
@@ -11028,7 +10917,6 @@ class API:
         :param event_type: Filter by event type
         :param format: The export format. One of: csv, cef
         :param org: The organization to export audit logs for
-        :param output: Output format. Supported values are: default and json
         :param start_time: The lower bound of the time range, as a Unix timestamp
         :param user: Filter by user login
         :param cwd: Working directory to run the command in.
@@ -11040,6 +10928,7 @@ class API:
         __final.append("audit-log")
         __final.append("export")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -11072,8 +10961,6 @@ class API:
             __flags.extend(["--format", str(format)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if start_time is not None:
             __flags.extend(["--start-time", str(start_time)])
         if user is not None:
@@ -11110,7 +10997,6 @@ class API:
         end_time: Optional[str] = None,
         event_type: Optional[str] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         start_time: Optional[str] = None,
         user: Optional[str] = None,
         cwd: Optional[str] = None,
@@ -11136,7 +11022,6 @@ class API:
         :param end_time: The upper bound of the time range, as a Unix timestamp
         :param event_type: Filter by event type
         :param org: The organization to list audit logs for
-        :param output: Output format. Supported values are: default and json
         :param start_time: The lower bound of the time range, as a Unix timestamp
         :param user: Filter by user login
         :param cwd: Working directory to run the command in.
@@ -11148,6 +11033,7 @@ class API:
         __final.append("audit-log")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -11180,8 +11066,6 @@ class API:
             __flags.extend(["--event-type", str(event_type)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if start_time is not None:
             __flags.extend(["--start-time", str(start_time)])
         if user is not None:
@@ -11367,7 +11251,6 @@ class API:
         fga_role_id: Optional[str] = None,
         fga_role_name: Optional[str] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         role: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -11390,7 +11273,6 @@ class API:
         :param fga_role_id: The custom role to assign (by ID)
         :param fga_role_name: The custom role to assign (by name; resolved to ID automatically)
         :param org: The organization that owns the member
-        :param output: Output format. Supported values are: default and json
         :param role: The built-in role to assign: member, admin, or billing-manager
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -11401,6 +11283,7 @@ class API:
         __final.append("member")
         __final.append("edit")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -11429,8 +11312,6 @@ class API:
             __flags.extend(["--fga-role-name", str(fga_role_name)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if role is not None:
             __flags.extend(["--role", str(role)])
         __final.extend(__flags)
@@ -11464,7 +11345,6 @@ class API:
         all: bool = False,
         count: Optional[int] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -11486,7 +11366,6 @@ class API:
         :param all: Fetch every page until the server reports no more results. Mutually exclusive with --count
         :param count: The number of members to return; if larger than the server page size, additional pages are fetched automatically. Defaults to the size of the first page
         :param org: The organization to list members for. Defaults to the user's default organization
-        :param output: Output format. Supported values are: default and json
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -11496,6 +11375,7 @@ class API:
         __final.append("member")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -11524,8 +11404,6 @@ class API:
             __flags.extend(["--count", str(count)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -11555,7 +11433,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -11575,7 +11452,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param org: The organization that owns the member
-        :param output: Output format. Supported values are: default and json
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -11585,6 +11461,7 @@ class API:
         __final.append("member")
         __final.append("remove")
         __flags = []
+        __flags.extend(["--output", "json"])
         __flags.append("--yes")
         if color is not None:
             __flags.extend(["--color", str(color)])
@@ -11610,8 +11487,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         __arguments.append(str(user_login))
@@ -11718,7 +11593,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -11738,7 +11612,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param org: The organization that owns the role. Defaults to the current default organization
-        :param output: Output format. Supported values are: default and json
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -11748,6 +11621,7 @@ class API:
         __final.append("role")
         __final.append("assign")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -11772,8 +11646,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         __arguments.append(str(role_id))
@@ -11808,7 +11680,6 @@ class API:
         details_file: Optional[str] = None,
         name: Optional[str] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -11831,7 +11702,6 @@ class API:
         :param details_file: Path to a JSON file containing the role's new permission tree (use `-` for stdin)
         :param name: Rename the role
         :param org: The organization that owns the role. Defaults to the current default organization
-        :param output: Output format. Supported values are: default and json
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -11841,6 +11711,7 @@ class API:
         __final.append("role")
         __final.append("edit")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -11871,8 +11742,6 @@ class API:
             __flags.extend(["--name", str(name)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         __arguments.append(str(role_id))
@@ -11902,7 +11771,6 @@ class API:
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         purpose: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -11923,7 +11791,6 @@ class API:
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param org: The organization to list roles for. Defaults to the current default organization
-        :param output: Output format. Supported values are: default and json
         :param purpose: Filter by UX purpose: role, role_private, role_temporary, policy, or set
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -11934,6 +11801,7 @@ class API:
         __final.append("role")
         __final.append("list")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -11958,8 +11826,6 @@ class API:
             __flags.extend(["--verbose", str(verbose)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if purpose is not None:
             __flags.extend(["--purpose", str(purpose)])
         __final.extend(__flags)
@@ -11993,7 +11859,6 @@ class API:
         verbose: Optional[int] = None,
         description: Optional[str] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         purpose: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -12015,7 +11880,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param description: A description for the role
         :param org: The organization to create the role in. Defaults to the current default organization
-        :param output: Output format. Supported values are: default and json
         :param purpose: The UX purpose for the role: organization, team, or token
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -12026,6 +11890,7 @@ class API:
         __final.append("role")
         __final.append("new")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -12052,8 +11917,6 @@ class API:
             __flags.extend(["--description", str(description)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if purpose is not None:
             __flags.extend(["--purpose", str(purpose)])
         __final.extend(__flags)
@@ -12088,7 +11951,6 @@ class API:
         verbose: Optional[int] = None,
         force: bool = False,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -12109,7 +11971,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param force: Force deletion even if the role is currently assigned to members or teams
         :param org: The organization that owns the role. Defaults to the current default organization
-        :param output: Output format. Supported values are: default and json
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -12119,6 +11980,7 @@ class API:
         __final.append("role")
         __final.append("remove")
         __flags = []
+        __flags.extend(["--output", "json"])
         __flags.append("--yes")
         if color is not None:
             __flags.extend(["--color", str(color)])
@@ -12146,8 +12008,6 @@ class API:
             __flags.append("--force")
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         __arguments.append(str(role_id))
@@ -12253,7 +12113,6 @@ class API:
         verbose: Optional[int] = None,
         delimiter: Optional[str] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         query: Optional[str] = None,
         web: bool = False,
         cwd: Optional[str] = None,
@@ -12276,7 +12135,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param delimiter: Delimiter to use when rendering CSV output.
         :param org: Organization name to search within
-        :param output: Output format. Supported values are: default, json, yaml and csv
         :param query: Plaintext natural language query
         :param web: Open the search results in a web browser.
         :param cwd: Working directory to run the command in.
@@ -12288,6 +12146,7 @@ class API:
         __final.append("search")
         __final.append("ai")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -12314,8 +12173,6 @@ class API:
             __flags.extend(["--delimiter", str(delimiter)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if query is not None:
             __flags.extend(["--query", str(query)])
         if web:
@@ -12349,7 +12206,6 @@ class API:
         verbose: Optional[int] = None,
         delimiter: Optional[str] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         query: Optional[list[str]] = None,
         web: bool = False,
         cwd: Optional[str] = None,
@@ -12372,7 +12228,6 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param delimiter: Delimiter to use when rendering CSV output.
         :param org: Name of the organization to search. Defaults to the current user's default organization.
-        :param output: Output format. Supported values are: default, json, yaml and csv
         :param query: A Pulumi Query to send to Pulumi Cloud for resource search.May be formatted as a single query, or multiple:
                 -q "type:aws:s3/bucketv2:BucketV2 modified:>=2023-09-01"
                 -q "type:aws:s3/bucketv2:BucketV2" -q "modified:>=2023-09-01"
@@ -12386,6 +12241,7 @@ class API:
         __final.append("org")
         __final.append("search")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -12412,8 +12268,6 @@ class API:
             __flags.extend(["--delimiter", str(delimiter)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         for __item in query or []:
             __flags.extend(["--query", str(__item)])
         if web:
@@ -12526,7 +12380,6 @@ class API:
         lookback_days: Optional[int] = None,
         lookback_start: Optional[int] = None,
         org: Optional[str] = None,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -12549,7 +12402,6 @@ class API:
         :param lookback_days: Number of days to look back from --lookback-start (or the current time)
         :param lookback_start: Unix timestamp (seconds) marking the end of the lookback window
         :param org: Organization to fetch usage for (defaults to the current default org)
-        :param output: Output format. Supported values are: default and json
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -12559,6 +12411,7 @@ class API:
         __final.append("usage")
         __final.append("get")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -12589,8 +12442,6 @@ class API:
             __flags.extend(["--lookback-start", str(lookback_start)])
         if org is not None:
             __flags.extend(["--org", str(org)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
@@ -13004,10 +12855,8 @@ class API:
         exec_kind: Optional[str] = None,
         expect_no_changes: bool = False,
         import_pending_creates: Optional[list[str]] = None,
-        json: bool = False,
         message: Optional[str] = None,
         neo: bool = False,
-        output: Optional[str] = None,
         override_env: Optional[list[str]] = None,
         parallel: Optional[int] = None,
         preview_only: bool = False,
@@ -13054,10 +12903,8 @@ class API:
         :param exclude_dependents: Allows ignoring of dependent targets discovered but not specified in --exclude list
         :param expect_no_changes: Return an error if any changes occur during this refresh. This check happens after the refresh is applied
         :param import_pending_creates: A list of form [[URN ID]...] describing the provider IDs of pending creates
-        :param json: Serialize the refresh diffs, operations, and overall output as JSON
         :param message: Optional message to associate with the update operation
         :param neo: Enable Pulumi Neo's assistance for improved CLI experience and insights (can also be set with PULUMI_NEO environment variable)
-        :param output: Output format. Supported values are: default, json
         :param override_env: [EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable
         :param parallel: Allow P resource operations to run in parallel at once (1 for no parallelism).
         :param preview_only: Only show a preview of the refresh, but don't perform the refresh itself
@@ -13081,6 +12928,7 @@ class API:
         __final = []
         __final.append("refresh")
         __flags = []
+        __flags.extend(["--output", "json"])
         __flags.append("--skip-preview")
         __flags.append("--yes")
         if color is not None:
@@ -13133,14 +12981,10 @@ class API:
             __flags.append("--expect-no-changes")
         for __item in import_pending_creates or []:
             __flags.extend(["--import-pending-creates", str(__item)])
-        if json:
-            __flags.append("--json")
         if message is not None:
             __flags.extend(["--message", str(message)])
         if neo:
             __flags.append("--neo")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         for __item in override_env or []:
             __flags.extend(["--override-env", str(__item)])
         if parallel is not None:
@@ -13371,7 +13215,6 @@ class API:
         tracing: Optional[str] = None,
         tracing_header: Optional[str] = None,
         verbose: Optional[int] = None,
-        output: Optional[str] = None,
         show_secrets: bool = False,
         stack: Optional[str] = None,
         cwd: Optional[str] = None,
@@ -13392,7 +13235,6 @@ class API:
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
-        :param output: Output format. Supported values are: default and json
         :param show_secrets: Show secret values in plaintext instead of [secret]
         :param stack: The name of the stack to operate on. Defaults to the current stack
         :param cwd: Working directory to run the command in.
@@ -13403,6 +13245,7 @@ class API:
         __final.append("state")
         __final.append("get")
         __flags = []
+        __flags.extend(["--output", "json"])
         if color is not None:
             __flags.extend(["--color", str(color)])
         if disable_integrity_checking:
@@ -13425,8 +13268,6 @@ class API:
             __flags.extend(["--tracing-header", str(tracing_header)])
         if verbose is not None:
             __flags.extend(["--verbose", str(verbose)])
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         if show_secrets:
             __flags.append("--show-secrets")
         if stack is not None:
@@ -14499,11 +14340,9 @@ class API:
         exec_kind: Optional[str] = None,
         expect_no_changes: bool = False,
         ignore_protect: bool = False,
-        json: bool = False,
         message: Optional[str] = None,
         neo: bool = False,
         neo_task_on_failure: bool = False,
-        output: Optional[str] = None,
         override_env: Optional[list[str]] = None,
         parallel: Optional[int] = None,
         plan: Optional[str] = None,
@@ -14563,11 +14402,9 @@ class API:
         :param exclude_dependents: Allows ignoring of dependent targets discovered but not specified in --exclude list
         :param expect_no_changes: Return an error if any changes occur during this update. This check happens after the update is applied
         :param ignore_protect: Ignore the protect resource option for this operation, allowing protected resources to be deleted or replaced. Use with caution: deleted resources cannot be recovered
-        :param json: Serialize the update diffs, operations, and overall output as JSON
         :param message: Optional message to associate with the update operation
         :param neo: Enable Pulumi Neo's assistance for improved CLI experience and insights (can also be set with PULUMI_NEO environment variable)
         :param neo_task_on_failure: Start a Neo task to help debug errors that occur during the operation
-        :param output: Output format. Supported values are: default and json
         :param override_env: [EXPERIMENTAL] Override an imported environment for this run only, as <env>=<replacement>; repeatable
         :param parallel: Allow P resource operations to run in parallel at once (1 for no parallelism).
         :param plan: [EXPERIMENTAL] Path to a plan file to use for the update. The update will not perform operations that exceed its plan (e.g. replacements instead of updates, or updates insteadof sames).
@@ -14603,6 +14440,7 @@ class API:
         __final = []
         __final.append("up")
         __flags = []
+        __flags.extend(["--output", "json"])
         __flags.append("--skip-preview")
         __flags.append("--yes")
         if color is not None:
@@ -14657,16 +14495,12 @@ class API:
             __flags.append("--expect-no-changes")
         if ignore_protect:
             __flags.append("--ignore-protect")
-        if json:
-            __flags.append("--json")
         if message is not None:
             __flags.extend(["--message", str(message)])
         if neo:
             __flags.append("--neo")
         if neo_task_on_failure:
             __flags.append("--neo-task-on-failure")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         for __item in override_env or []:
             __flags.extend(["--override-env", str(__item)])
         if parallel is not None:
@@ -14826,7 +14660,6 @@ class API:
         tracing: Optional[str] = None,
         tracing_header: Optional[str] = None,
         verbose: bool = False,
-        output: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
         on_output: Optional[Callable[[str], Any]] = None,
@@ -14845,7 +14678,6 @@ class API:
         :param tracing: Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file
         :param tracing_header: Include the tracing header with the given contents.
         :param verbose: Print detailed whoami information
-        :param output: Output format. Supported values are: default and json
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
         :param on_output: A callback to invoke when the command outputs stdout data.
@@ -14876,8 +14708,6 @@ class API:
             __flags.extend(["--tracing-header", str(tracing_header)])
         if verbose:
             __flags.append("--verbose")
-        if output is not None:
-            __flags.extend(["--output", str(output)])
         __final.extend(__flags)
         __arguments: list[str] = []
         if __arguments:
