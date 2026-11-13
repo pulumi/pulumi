@@ -818,14 +818,11 @@ func TestRetrievePulumiTemplatesBranchChange(t *testing.T) {
 	require.Equal(t, featureCommit, cacheHead.Hash())
 }
 
-// TestRetrieveFileTemplatesAlwaysAbsolute verifies that retrieveFileTemplates returns a
-// TemplateRepository whose Root and SubDirectory are always absolute paths, even when the
-// caller supplies a relative path.  This is a regression test for
-// https://github.com/pulumi/pulumi/issues/25705: a relative path stored in
-// TemplateRepository.SubDirectory was later used as the rootDirectory argument of
-// plugin.NewProgramInfo, which panics on a non-absolute path.
+// Verifies that retrieveFileTemplates returns a TemplateRepository whose Root and
+// SubDirectory are always absolute paths, even when the caller supplies a relative
+// path.
 //
-//nolint:paralleltest // changes directory for process
+//nolint:paralleltest // uses shared state in pulumi dir
 func TestRetrieveFileTemplatesAlwaysAbsolute(t *testing.T) {
 	// Create a template directory and a separate working directory so that
 	// the relative path between them starts with "..".

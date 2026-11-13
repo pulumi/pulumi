@@ -150,10 +150,7 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 	originalCwd := cwd
 
 	// Normalize a relative local-path template to an absolute path before we
-	// potentially change the working directory via --dir. This keeps the path
-	// valid after Chdir and prevents a panic inside NewProgramInfo (which
-	// requires an absolute rootDirectory) when the template dir is used as the
-	// plugin-context root by promptTemplateRuntimeOptions.
+	// potentially change the working directory via --dir.
 	if args.templateNameOrURL != "" {
 		if _, statErr := os.Stat(args.templateNameOrURL); statErr == nil {
 			if abs, absErr := filepath.Abs(args.templateNameOrURL); absErr == nil {

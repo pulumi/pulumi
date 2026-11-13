@@ -1539,8 +1539,7 @@ func TestNewInstallsRequiredPackages(t *testing.T) {
 		filepath.Join(pulumiHome, "plugins", "resource-testpkg-v1.2.3", pluginBinaryName("testpkg")))
 }
 
-// TestNewWithRelativeLocalTemplatePath is a regression test for
-// https://github.com/pulumi/pulumi/issues/25705.
+// Regression test for https://github.com/pulumi/pulumi/issues/25705.
 // A relative local-template path should work the same as an absolute one.
 //
 //nolint:paralleltest // changes directory for process
@@ -1591,8 +1590,6 @@ func TestNewWithRelativeLocalTemplatePath(t *testing.T) {
 		// TemplateRepository.SubDirectory and later passed as the rootDirectory
 		// argument of plugin.NewProgramInfo (via promptTemplateRuntimeOptions →
 		// newProjectPluginContext), which panics on a non-absolute path.
-		// See TestRetrieveFileTemplatesAlwaysAbsolute in the templates package
-		// for a focused unit test of the absolutisation fix.
 		//
 		// Use a fresh project directory so the working directory is empty.
 		projectDir2 := filepath.Join(base, "project2")
@@ -1614,8 +1611,7 @@ func TestNewWithRelativeLocalTemplatePath(t *testing.T) {
 			templateNameOrURL: relPath2,
 			languageTemplate:  languageTemplateMock,
 			// promptRuntimeOptions is intentionally left nil so we do not
-			// require a real language-plugin binary in this test.  The panic
-			// fix is tested directly in TestRetrieveFileTemplatesAlwaysAbsolute.
+			// require a real language-plugin binary in this test.
 		}
 
 		err = runNew(t.Context(), args)
