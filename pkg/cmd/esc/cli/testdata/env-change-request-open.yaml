@@ -1,6 +1,6 @@
 run: |
   esc env init default/test
-  esc env open-request default/test --grant-expiration-seconds 1h --access-duration-seconds 30m
+  esc env open-request default/test --grant-expiration-seconds 1h --access-duration-seconds 30m --reason "Debugging an outage"
   esc env approvals ls
   esc env approvals get test-request-id-12345
   esc env approvals get test-request-id-12345 --output json
@@ -14,7 +14,7 @@ run: |
 ---
 > esc env init default/test
 Environment created: test-user/default/test
-> esc env open-request default/test --grant-expiration-seconds 1h --access-duration-seconds 30m
+> esc env open-request default/test --grant-expiration-seconds 1h --access-duration-seconds 30m --reason Debugging an outage
 Created environment open request with ID: test-request-id-12345
 Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests?requestId=test-request-id-12345
 Change request submitted
@@ -34,6 +34,8 @@ Created: a long while ago
 Revision: 1
 Access duration: 30m0s
 Grant expiration: 1h0m0s
+Description:
+  Debugging an outage
 Approved: false
   Require approval (not satisfied): 0 of 1 approvals
 URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests?requestId=test-request-id-12345
@@ -42,7 +44,7 @@ URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests?requ
   "id": "test-request-id-12345",
   "status": "pending",
   "action": "open",
-  "description": "",
+  "description": "Debugging an outage",
   "createdAt": "0001-01-01T00:00:00Z",
   "createdBy": {
     "name": "Test User",
@@ -81,18 +83,24 @@ Change request test-request-id-12345 will allow test-user to open environment te
 
 Access duration: 30m0s
 Grant expiration: 1h0m0s
+Description:
+  Debugging an outage
 
 > esc env approvals approve test-request-id-12345 --yes
 Change request test-request-id-12345 will allow test-user to open environment test-user/default/test.
 
 Access duration: 30m0s
 Grant expiration: 1h0m0s
+Description:
+  Debugging an outage
 
 > esc env approvals apply test-request-id-12345 --yes
 Change request test-request-id-12345 will allow test-user to open environment test-user/default/test.
 
 Access duration: 30m0s
 Grant expiration: 1h0m0s
+Description:
+  Debugging an outage
 
 > esc env approvals log test-request-id-12345
 a long while ago  test-user created the change request
@@ -103,7 +111,7 @@ a long while ago  test-user applied the change request
 
 ---
 > esc env init default/test
-> esc env open-request default/test --grant-expiration-seconds 1h --access-duration-seconds 30m
+> esc env open-request default/test --grant-expiration-seconds 1h --access-duration-seconds 30m --reason Debugging an outage
 > esc env approvals ls
 > esc env approvals get test-request-id-12345
 > esc env approvals get test-request-id-12345 --output json

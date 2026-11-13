@@ -118,6 +118,9 @@ func (cr *changeRequestCommand) confirm(
 		fmt.Fprintf(w, "Change request %v will allow %v to open environment %v.\n\n",
 			c.ID, c.CreatedBy.GithubLogin, ref.String())
 		printOpenRequest(w, o)
+		if c.Description != "" {
+			fmt.Fprintf(w, "Description:\n  %v\n", strings.ReplaceAll(c.Description, "\n", "\n  "))
+		}
 	} else {
 		fmt.Fprintf(w, "Change request %v will update environment %v.\n\n", c.ID, ref.String())
 		if err := cr.printDraftDiff(ctx, w, ref, c.ID, ""); err != nil {
