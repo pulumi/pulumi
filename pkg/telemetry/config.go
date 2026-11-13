@@ -74,6 +74,41 @@ type config struct {
 	Notified     bool   `json:"notified,omitempty"`
 }
 
+func Status(homeDir string, e declared.Env) (Settings, error) {
+	path := filepath.Join(homeDir, configFile)
+	cfg, _, err := readConfig(path)
+	if err != nil {
+		return Settings{}, err
+	}
+	return cfg.settings(path, homeDir, e)
+}
+
+func SetMode(homeDir string, m Mode) error {
+	return updateConfig(homeDir, func(cfg *config) {
+		cfg.Telemetry = string(m)
+		cfg.Notified = true
+	})
+}
+
+func SetLog(homeDir string, log bool) error {
+	return updateConfig(homeDir, func(cfg *config) { cfg.Log = log })
+}
+
+func updateConfig(homeDir string, update func(*config)) error {
+	if err := os.MkdirAll(homeDir, 0o700); err != nil {
+		return err
+	}
+	path := filepath.Join(homeDir, configFile)
+	return lockedfile.Transform(path, func(old []byte) ([]byte, error) {
+		cfg, err := parseConfig(path, old)
+		if err != nil {
+			return nil, err
+		}
+		update(&cfg)
+		return marshalConfig(cfg)
+	})
+}
+
 func newTelemetry(args InitArgs) *telemetry {
 	telemetryEnv := args.Env.GetString(env.Telemetry)
 	logging := cmdutil.IsTruthy(args.Env.GetString(env.TelemetryLog))
