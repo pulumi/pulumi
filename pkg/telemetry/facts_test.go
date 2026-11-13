@@ -20,6 +20,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -141,4 +143,46 @@ func TestResult(t *testing.T) {
 		"os":             runtime.GOOS,
 		"arch":           runtime.GOARCH,
 	}, facts)
+}
+
+func TestValidateFact(t *testing.T) {
+	t.Parallel()
+
+	for name, value := range map[string]any{
+		"ci":          true,
+		"exit-code":   float64(255),
+		"duration-ms": float64(0),
+		"command":     "pulumi:stack:new",
+		"backend":     "other",
+		"flags":       []string{"yes", "skip-preview"},
+		"env-vars":    []string{"PULUMI_HOME"},
+	} {
+		require.NoError(t, ValidateFact(name, value), name)
+	}
+
+	for _, c := range []struct {
+		name  string
+		value any
+		err   string
+	}{
+		{"stack", "dev", `unknown fact "stack"`},
+		{"ci", "yes", "expected a bool"},
+		{"exit-code", 1.5, "expected an integer"},
+		{"command", "pulumi:stack:select my-org/dev", "expected one of the allowed values"},
+		{"using-ai", "my-agent", "expected one of the allowed values"},
+		{"flags", []string{"stack=prod"}, "does not match"},
+		{"flags", []string{strings.Repeat("a", maxNameLength+1)}, "does not match"},
+		{"flags", slices.Repeat([]string{"yes"}, maxNames+1), "at most"},
+		{"env-vars", []string{"AWS_SECRET_ACCESS_KEY"}, "does not match"},
+	} {
+		require.ErrorContains(t, ValidateFact(c.name, c.value), c.err, c.name)
+	}
+}
+
+func TestEmitDropsInvalidFacts(t *testing.T) {
+	t.Parallel()
+
+	facts := emitted(t, boolFact("ci", true), enumFact("command", "my-secret-command"), enumFact("stack", "dev"))
+
+	require.Equal(t, map[string]any{"ci": true}, facts)
 }

@@ -112,7 +112,14 @@ func Emit(ctx context.Context, info ...KV) {
 	facts := make(map[string]any, len(info))
 	for _, i := range info {
 		name, value := i.fact()
+		if err := ValidateFact(name, value); err != nil {
+			slog.DebugContext(ctx, "dropping invalid telemetry fact", "err", err)
+			continue
+		}
 		facts[name] = value
+	}
+	if len(facts) == 0 {
+		return
 	}
 	line, err := json.Marshal(event{
 		Installation: t.installation,

@@ -66,6 +66,21 @@ jobs:
       - name: Run go mod tidy
         run: make tidy
 
+  telemetry-schema:
+    name: Check telemetry schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ fromJson(inputs.version-set).go }}
+          check-latest: true
+      - name: Check telemetry schema
+        run: make check_telemetry_schema
+
   gen:
     name: Generate Go SDK
     runs-on: ubuntu-latest
