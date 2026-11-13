@@ -50,6 +50,8 @@ func checkConfigFailureFromRPC(failure *pulumirpc.CheckConfigFailure) CheckConfi
 		Property:     resource.PropertyKey(failure.GetProperty()),
 		Reason:       failure.GetReason(),
 		Remediations: remediations,
+		Hint:         hintFromRPC(failure.GetHint()),
+		HintMessage:  failure.GetHintMessage(),
 	}
 }
 
@@ -67,5 +69,7 @@ func checkConfigFailureToRPC(failure CheckConfigFailure) *pulumirpc.CheckConfigF
 		Property:     string(failure.Property),
 		Reason:       failure.Reason,
 		Remediations: remediations,
+		Hint:         failure.Hint.rpc(),
+		HintMessage:  failure.HintMessage,
 	}
 }

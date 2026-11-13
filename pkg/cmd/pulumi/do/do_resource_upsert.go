@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonames"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -850,6 +851,7 @@ func DefaultRunStatefulUpdate(
 	}
 	engineOpts := engine.UpdateOptions{
 		CloudCredentialEnv: cloudCredentialEnv,
+		HintRecorder:       hints.Recorder(),
 		Snippets:           snippets,
 		TargetSnippets:     targetSnippets,
 		ShowSecrets:        req.ShowSecrets,

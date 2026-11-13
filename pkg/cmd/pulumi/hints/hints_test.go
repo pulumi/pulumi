@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -244,4 +245,37 @@ func TestLoadSettings(t *testing.T) {
 
 	t.Setenv("PULUMI_DISABLE_HINTS", "true")
 	assert.True(t, loadSettings().disabled)
+}
+
+func TestESCHintOnCredentialsFailure(t *testing.T) {
+	t.Parallel()
+
+	const message = "Run `pulumi env setup aws`."
+	tests := []struct {
+		name    string
+		hint    plugin.Hint
+		message string
+		isCloud bool
+		want    bool
+	}{
+		{"dynamic credentials on cloud", plugin.HintDynamicCredentials, message, true, true},
+		{"dynamic credentials on diy", plugin.HintDynamicCredentials, message, false, false},
+		{"no message", plugin.HintDynamicCredentials, "", true, false},
+		{"unspecified hint", plugin.HintUnspecified, message, true, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tm := newTestManager(t)
+			tm.recordSuccessfulUpdate()
+			tm.local = !tt.isCloud
+			tm.RecordHint(tt.hint, tt.message)
+			out := tm.run()
+			if tt.want {
+				assert.Contains(t, out, message)
+			} else {
+				assert.Empty(t, out)
+			}
+		})
+	}
 }

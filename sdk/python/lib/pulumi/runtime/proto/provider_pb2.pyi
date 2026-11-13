@@ -34,6 +34,33 @@ else:
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
+class _Hint:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _HintEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_Hint.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    HINT_UNSPECIFIED: _Hint.ValueType  # 0
+    """No product hint is relevant."""
+    HINT_DYNAMIC_CREDENTIALS: _Hint.ValueType  # 1
+    """The failure comes from missing, rejected or expired credentials, so short-lived credentials from an identity
+    provider, for example through OIDC, may help. Don't use it for configuration mistakes such as an unknown profile.
+    """
+
+class Hint(_Hint, metaclass=_HintEnumTypeWrapper):
+    """`Hint` names a product hint that is relevant to a [](pulumirpc.CheckConfigFailure) a provider reports. A product hint points
+    the user to a Pulumi feature that helps with this kind of failure. The provider says which hint is relevant and what it says, and
+    the engine decides whether to show it.
+    """
+
+HINT_UNSPECIFIED: Hint.ValueType  # 0
+"""No product hint is relevant."""
+HINT_DYNAMIC_CREDENTIALS: Hint.ValueType  # 1
+"""The failure comes from missing, rejected or expired credentials, so short-lived credentials from an identity
+provider, for example through OIDC, may help. Don't use it for configuration mistakes such as an unknown profile.
+"""
+global___Hint = Hint
+
 @typing.final
 class ProviderHandshakeRequest(google.protobuf.message.Message):
     """`ProviderHandshakeRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Handshake) call."""
@@ -1136,10 +1163,18 @@ class CheckConfigFailure(google.protobuf.message.Message):
     PROPERTY_FIELD_NUMBER: builtins.int
     REASON_FIELD_NUMBER: builtins.int
     REMEDIATIONS_FIELD_NUMBER: builtins.int
+    HINT_FIELD_NUMBER: builtins.int
+    HINT_MESSAGE_FIELD_NUMBER: builtins.int
     property: builtins.str
     """The provider configuration property that failed validation."""
     reason: builtins.str
     """The reason that the named property failed validation."""
+    hint: global___Hint.ValueType
+    """A product hint that is relevant to this failure, if any. The engine may show it to the user."""
+    hint_message: builtins.str
+    """The text of the product hint in `hint`. The engine shows it if it decides to show the hint. It may span several
+    lines, for example to put a "Learn more" link on a line of its own.
+    """
     @property
     def remediations(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CommandRemediation]:
         """Commands the user can run to resolve the failure, such as signing in to refresh expired credentials."""
@@ -1150,8 +1185,10 @@ class CheckConfigFailure(google.protobuf.message.Message):
         property: builtins.str = ...,
         reason: builtins.str = ...,
         remediations: collections.abc.Iterable[global___CommandRemediation] | None = ...,
+        hint: global___Hint.ValueType = ...,
+        hint_message: builtins.str = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["property", b"property", "reason", b"reason", "remediations", b"remediations"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["hint", b"hint", "hint_message", b"hint_message", "property", b"property", "reason", b"reason", "remediations", b"remediations"]) -> None: ...
 
 global___CheckConfigFailure = CheckConfigFailure
 

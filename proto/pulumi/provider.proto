@@ -778,6 +778,25 @@ message CheckConfigFailure {
 
     // Commands the user can run to resolve the failure, such as signing in to refresh expired credentials.
     repeated CommandRemediation remediations = 3;
+
+    // A product hint that is relevant to this failure, if any. The engine may show it to the user.
+    Hint hint = 4;
+
+    // The text of the product hint in `hint`. The engine shows it if it decides to show the hint. It may span several
+    // lines, for example to put a "Learn more" link on a line of its own.
+    string hint_message = 5;
+}
+
+// `Hint` names a product hint that is relevant to a [](pulumirpc.CheckConfigFailure) a provider reports. A product hint points
+// the user to a Pulumi feature that helps with this kind of failure. The provider says which hint is relevant and what it says, and
+// the engine decides whether to show it.
+enum Hint {
+    // No product hint is relevant.
+    HINT_UNSPECIFIED = 0;
+
+    // The failure comes from missing, rejected or expired credentials, so short-lived credentials from an identity
+    // provider, for example through OIDC, may help. Don't use it for configuration mistakes such as an unknown profile.
+    HINT_DYNAMIC_CREDENTIALS = 1;
 }
 
 // A `CommandRemediation` describes a command that the user can run to resolve a problem a provider reported, such as

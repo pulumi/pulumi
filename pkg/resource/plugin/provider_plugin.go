@@ -752,8 +752,10 @@ func (p *provider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (Ch
 	case err == nil:
 		rpcInputs = resp2.GetInputs()
 		failures = slice.Prealloc[CheckConfigFailure](len(resp2.GetFailures()))
-		for _, failure := range resp2.GetFailures() {
-			failures = append(failures, checkConfigFailureFromRPC(failure))
+		for _, rpcFailure := range resp2.GetFailures() {
+			failure := checkConfigFailureFromRPC(rpcFailure)
+			p.recordHint(failure.Hint, failure.HintMessage)
+			failures = append(failures, failure)
 		}
 	case rpcerror.Convert(err).Code() == codes.Unimplemented:
 		logging.V(7).Infof("%s CheckConfig2 is unimplemented: falling back to CheckConfig", label)

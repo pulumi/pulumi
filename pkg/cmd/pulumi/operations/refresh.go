@@ -344,6 +344,7 @@ func NewRefreshCmd() *cobra.Command {
 			}
 			opts.Engine = engine.UpdateOptions{
 				CloudCredentialEnv:        cloudCredentialEnv,
+				HintRecorder:              hints.Recorder(),
 				ParallelDiff:              env.ParallelDiff.Value(),
 				Parallel:                  parallel,
 				Debug:                     debug,
