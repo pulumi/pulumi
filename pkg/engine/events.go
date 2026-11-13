@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
@@ -436,10 +437,10 @@ type StepEventStateMetadata struct {
 	// have a simple hash-based representation.  This allows clients to display this information
 	// properly, without worrying about leaking sensitive data, and without having to transmit huge
 	// amounts of data.
-	Inputs resource.PropertyMap
+	Inputs property.Map
 	// the resource's complete output state (as returned by the resource provider).  See "Inputs"
 	// for additional details about how data will be transformed before going into this map.
-	Outputs resource.PropertyMap
+	Outputs property.Map
 	// the resource's provider reference
 	Provider string
 	// InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
@@ -593,11 +594,13 @@ func makeStepEventStateMetadata(state *pkgresource.State, debug bool, showSecret
 		Taint:          state.Taint,
 		External:       state.External,
 		RetainOnDelete: state.RetainOnDelete,
-		Inputs:         filterResourceProperties(state.Inputs, debug, showSecrets),
-		Outputs:        filterResourceProperties(state.Outputs, debug, showSecrets),
-		Provider:       state.Provider,
-		InitErrors:     state.InitErrors,
-		HideDiffs:      state.HideDiff,
+		Inputs: filterResourceProperties(
+			resource.FromResourcePropertyMap(state.Inputs), debug, showSecrets),
+		Outputs: filterResourceProperties(
+			resource.FromResourcePropertyMap(state.Outputs), debug, showSecrets),
+		Provider:   state.Provider,
+		InitErrors: state.InitErrors,
+		HideDiffs:  state.HideDiff,
 	}
 }
 
@@ -856,53 +859,57 @@ func (e *eventEmitter) startDebugging(info plugin.DebuggingInfo) {
 	}))
 }
 
-func filterResourceProperties(m resource.PropertyMap, debug bool, showSecrets bool) resource.PropertyMap {
-	return filterPropertyValue(resource.NewProperty(m), debug, showSecrets).ObjectValue()
+func filterResourceProperties(m property.Map, debug bool, showSecrets bool) property.Map {
+	// Always return a non-nil map so downstream len/empty checks can distinguish
+	// "no properties recorded" (zero-value Map) from "properties were present but
+	// have all been filtered out".
+	out := property.NewMap(map[string]property.Value{})
+	for k, v := range m.All {
+		out = out.Set(k, filterPropertyValue(v, debug, showSecrets))
+	}
+	return out
 }
 
-func filterPropertyValue(v resource.PropertyValue, debug bool, showSecrets bool) resource.PropertyValue {
+func filterPropertyValue(v property.Value, debug bool, showSecrets bool) property.Value {
+	if v.Secret() && !showSecrets {
+		return property.New("[secret]").WithSecret(true)
+	}
+	// When showSecrets is true, pass secret values through unchanged (including any
+	// nested content); this mirrors the previous behavior which did not recurse into
+	// the element of a secret.
+	if v.Secret() {
+		return v
+	}
 	switch {
-	case v.IsNull(), v.IsBool(), v.IsNumber():
+	case v.IsNull(), v.IsBool(), v.IsNumber(), v.IsComputed():
 		return v
 	case v.IsString():
-		// have to ensure we filter out secrets.
-		return resource.NewProperty(logging.FilterString(v.StringValue()))
+		return property.New(logging.FilterString(v.AsString()))
 	case v.IsAsset():
-		return resource.NewProperty(filterAsset(v.AssetValue(), debug))
+		return property.New(filterAsset(v.AsAsset(), debug))
 	case v.IsArchive():
-		return resource.NewProperty(filterArchive(v.ArchiveValue(), debug))
+		return property.New(filterArchive(v.AsArchive(), debug))
 	case v.IsArray():
-		arr := make([]resource.PropertyValue, len(v.ArrayValue()))
-		for i, v := range v.ArrayValue() {
-			arr[i] = filterPropertyValue(v, debug, showSecrets)
+		src := v.AsArray()
+		arr := make([]property.Value, src.Len())
+		for i, elem := range src.All {
+			arr[i] = filterPropertyValue(elem, debug, showSecrets)
 		}
-		return resource.NewProperty(arr)
-	case v.IsObject():
-		obj := make(resource.PropertyMap, len(v.ObjectValue()))
-		for k, v := range v.ObjectValue() {
-			obj[k] = filterPropertyValue(v, debug, showSecrets)
-		}
-		return resource.NewProperty(obj)
-	case v.IsComputed():
-		return resource.MakeComputed(filterPropertyValue(v.Input().Element, debug, showSecrets))
-	case v.IsOutput():
-		return resource.MakeComputed(filterPropertyValue(v.OutputValue().Element, debug, showSecrets))
-	case v.IsSecret() && showSecrets:
-		return resource.NewProperty(v.SecretValue())
-	case v.IsSecret():
-		return resource.MakeSecret(resource.NewProperty("[secret]"))
+		return property.New(arr)
+	case v.IsMap():
+		return property.New(filterResourceProperties(v.AsMap(), debug, showSecrets))
 	case v.IsResourceReference():
-		ref := v.ResourceReferenceValue()
-		return resource.NewProperty(resource.ResourceReference{
-			URN:            resource.URN(logging.FilterString(string(ref.URN))),
+		ref := v.AsResourceReference()
+		return property.New(property.ResourceReference{
+			URN:            urn.URN(logging.FilterString(string(ref.URN))),
 			Name:           logging.FilterString(ref.Name),
 			Type:           logging.FilterString(ref.Type),
 			ID:             filterPropertyValue(ref.ID, debug, showSecrets),
 			PackageVersion: logging.FilterString(ref.PackageVersion),
 		})
 	default:
-		contract.Failf("unexpected property value type %T", v.V)
-		return resource.PropertyValue{}
+		contract.Failf("unexpected property value: %#v", v)
+		return property.Value{}
 	}
 }
 

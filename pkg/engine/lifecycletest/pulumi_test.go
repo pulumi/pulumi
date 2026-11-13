@@ -3420,9 +3420,9 @@ func TestEventSecrets(t *testing.T) {
 				continue
 			}
 
-			assert.True(t, step.Old.Inputs["webhooks"].IsSecret())
-			assert.True(t, step.Old.Outputs["webhooks"].IsSecret())
-			assert.True(t, step.New.Inputs["webhooks"].IsSecret())
+			assert.True(t, step.Old.Inputs.Get("webhooks").Secret())
+			assert.True(t, step.Old.Outputs.Get("webhooks").Secret())
+			assert.True(t, step.New.Inputs.Get("webhooks").Secret())
 		}
 		return err
 	}

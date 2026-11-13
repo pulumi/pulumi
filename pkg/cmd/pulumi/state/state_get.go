@@ -241,7 +241,8 @@ func renderResourceStateText(cmd *cobra.Command, res *pkgresource.State, showSec
 			continue
 		}
 		var buf bytes.Buffer
-		display.PrintObject(&buf, section.props, false /* planning */, 1 /* indent */, deploy.OpSame,
+		display.PrintObject(&buf, resource.FromResourcePropertyMap(section.props),
+			false /* planning */, 1 /* indent */, deploy.OpSame,
 			false /* prefix */, false /* truncateOutput */, false /* debug */, showSecrets)
 		fmt.Fprintf(w, "%s:\n%s\n", section.title, color.Colorize(buf.String()))
 	}

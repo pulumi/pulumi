@@ -54,17 +54,17 @@ func init() {
 					require.True(l, foundStackEvent, "expected stack outputs event")
 
 					outputs := stackEvent.Metadata.New.Outputs
-					assert.False(l, outputs["resourceUrn"].IsComputed(),
-						"expected resourceUrn to be known: %v", outputs["resourceUrn"])
+					assert.False(l, outputs.Get("resourceUrn").IsComputed(),
+						"expected resourceUrn to be known: %v", outputs.Get("resourceUrn"))
 					// The id passed to a read is an import/lookup string, not necessarily
 					// the real resource id — the provider's Read is what resolves it. Since
 					// Read is skipped here, resourceId must come back unknown.
-					assert.True(l, outputs["resourceId"].IsComputed(),
-						"expected resourceId to be unknown: %v", outputs["resourceId"])
-					assert.True(l, outputs["lookup"].IsComputed(),
-						"expected lookup to be unknown: %v", outputs["lookup"])
-					assert.True(l, outputs["value"].IsComputed(),
-						"expected value to be unknown: %v", outputs["value"])
+					assert.True(l, outputs.Get("resourceId").IsComputed(),
+						"expected resourceId to be unknown: %v", outputs.Get("resourceId"))
+					assert.True(l, outputs.Get("lookup").IsComputed(),
+						"expected lookup to be unknown: %v", outputs.Get("lookup"))
+					assert.True(l, outputs.Get("value").IsComputed(),
+						"expected value to be unknown: %v", outputs.Get("value"))
 				},
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)

@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type Row interface {
@@ -481,75 +482,79 @@ func (data *resourceRowData) getInfoColumn() string {
 func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) string {
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
-		var diff *resource.ObjectDiff
+		var diff *property.ObjectDiff
 		// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
 		// even if the properties appear to have changed. See https://github.com/pulumi/pulumi/issues/15944 for context.
 		if step.Op != deploy.OpSame {
 			if step.DetailedDiff != nil {
 				diff, _ = engine.TranslateDetailedDiff(&step, false)
-			} else if step.Old.Inputs != nil && step.New.Inputs != nil {
-				diff = step.Old.Inputs.DiffWithOptions(step.New.Inputs,
-					resource.IgnoreKeyFunc(resource.IsInternalPropertyKey))
+			} else {
+				diff = step.Old.Inputs.Diff(step.New.Inputs,
+					property.IgnoreKeyFunc(isInternalPropertyKey))
 			}
 		}
 
 		// Show a diff if either `provider` or `protect` changed; they might not show a diff via inputs or outputs, but
 		// it is still useful to show that these changed in output.
-		recordMetadataDiff := func(name string, old, new resource.PropertyValue) {
-			if old != new {
+		recordMetadataDiff := func(name string, old, new property.Value) {
+			if !old.Equals(new) {
 				if diff == nil {
-					diff = &resource.ObjectDiff{
-						Adds:    make(resource.PropertyMap),
-						Deletes: make(resource.PropertyMap),
-						Sames:   make(resource.PropertyMap),
-						Updates: make(map[resource.PropertyKey]resource.ValueDiff),
+					diff = &property.ObjectDiff{
+						Adds:    make(map[string]property.Value),
+						Deletes: make(map[string]property.Value),
+						Sames:   make(map[string]property.Value),
+						Updates: make(map[string]property.ValueDiff),
 					}
 				}
 
-				diff.Updates[resource.PropertyKey(name)] = resource.ValueDiff{Old: old, New: new}
+				diff.Updates[name] = property.ValueDiff{Old: old, New: new}
 			}
 		}
 
 		recordMetadataDiff("provider",
-			resource.NewProperty(step.Old.Provider), resource.NewProperty(step.New.Provider))
+			property.New(step.Old.Provider), property.New(step.New.Provider))
 		recordMetadataDiff("protect",
-			resource.NewProperty(step.Old.Protect), resource.NewProperty(step.New.Protect))
+			property.New(step.Old.Protect), property.New(step.New.Protect))
 		recordMetadataDiff(colors.Red+"taint"+colors.Reset,
-			resource.NewProperty(step.Old.Taint), resource.NewProperty(step.New.Taint))
+			property.New(step.Old.Taint), property.New(step.New.Taint))
 
-		writeShortDiff(changesBuf, diff, step.Diffs)
+		diffs := make([]string, len(step.Diffs))
+		for i, k := range step.Diffs {
+			diffs[i] = string(k)
+		}
+		writeShortDiff(changesBuf, diff, diffs)
 	}
 
 	fprintIgnoreError(changesBuf, colors.Reset)
 	return changesBuf.String()
 }
 
-func writeShortDiff(changesBuf io.StringWriter, diff *resource.ObjectDiff, include []resource.PropertyKey) {
+func writeShortDiff(changesBuf io.StringWriter, diff *property.ObjectDiff, include []string) {
 	if diff != nil {
 		writeString(changesBuf, "diff: ")
 
-		updates := make(resource.PropertyMap)
+		updates := make(map[string]property.Value)
 		for k := range diff.Updates {
-			updates[k] = resource.PropertyValue{}
+			updates[k] = property.Value{}
 		}
 
-		filteredKeys := func(m resource.PropertyMap) []string {
+		filteredKeys := func(m map[string]property.Value) []string {
 			keys := slice.Prealloc[string](len(m))
 			for k := range m {
-				keys = append(keys, string(k))
+				keys = append(keys, k)
 			}
 			return keys
 		}
 		if len(include) > 0 {
-			includeSet := make(map[resource.PropertyKey]bool)
+			includeSet := make(map[string]bool)
 			for _, k := range include {
 				includeSet[k] = true
 			}
-			filteredKeys = func(m resource.PropertyMap) []string {
+			filteredKeys = func(m map[string]property.Value) []string {
 				var filteredKeys []string
 				for k := range m {
 					if includeSet[k] {
-						filteredKeys = append(filteredKeys, string(k))
+						filteredKeys = append(filteredKeys, k)
 					}
 				}
 				return filteredKeys

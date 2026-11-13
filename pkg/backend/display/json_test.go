@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgresource "github.com/pulumi/pulumi/pkg/v3/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -96,11 +97,12 @@ func TestPreviewMetadataStepRedactsSecretMaps(t *testing.T) {
 	metadata := event.Payload().(engine.ResourcePreEventPayload).Metadata
 	for _, state := range []*engine.StepEventStateMetadata{metadata.Old, metadata.New} {
 		require.NotNil(t, state)
-		require.True(t, state.Inputs["keepers"].IsSecret())
+		require.True(t, state.Inputs.Get("keepers").Secret())
 		// JSON event replay does not populate the engine's internal resource state.
+		inputs := resource.ToResourcePropertyMap(state.Inputs)
 		state.State = pkgresource.NewState{ //nolint:requiredfield // Only properties and identity matter here.
 			Type: state.Type, URN: state.URN,
-			Inputs: state.Inputs, Outputs: state.Inputs,
+			Inputs: inputs, Outputs: inputs,
 		}.Make()
 	}
 

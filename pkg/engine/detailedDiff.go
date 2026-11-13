@@ -21,40 +21,41 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // getProperty fetches the child property with the indicated key from the given property value. The second result
-// reports whether the key exists; if it does not, an empty `PropertyValue` is returned.
-func getProperty(key any, v resource.PropertyValue) (resource.PropertyValue, bool) {
+// reports whether the key exists; if it does not, an empty property.Value is returned.
+func getProperty(key any, v property.Value) (property.Value, bool) {
 	switch {
 	case v.IsArray():
 		index, ok := key.(int)
-		if !ok || index < 0 || index >= len(v.ArrayValue()) {
-			return resource.PropertyValue{}, false
+		arr := v.AsArray()
+		if !ok || index < 0 || index >= arr.Len() {
+			return property.Value{}, false
 		}
-		return v.ArrayValue()[index], true
-	case v.IsObject():
+		return arr.Get(index), true
+	case v.IsMap():
 		k, ok := key.(string)
 		if !ok {
-			return resource.PropertyValue{}, false
+			return property.Value{}, false
 		}
-		pv, has := v.ObjectValue()[resource.PropertyKey(k)]
-		return pv, has
-	case v.IsComputed() || v.IsOutput() || v.IsSecret():
+		return v.AsMap().GetOk(k)
+	case v.IsComputed() || v.Secret():
 		// We consider the contents of these values opaque and return them as-is, as we cannot know whether or not the
 		// value will or does contain an element with the given key.
 		return v, true
 	default:
-		return resource.PropertyValue{}, false
+		return property.Value{}, false
 	}
 }
 
 // valueOrUnknown returns v if the property it came from exists, and an unknown value otherwise.
-func valueOrUnknown(v resource.PropertyValue, exists bool) resource.PropertyValue {
+func valueOrUnknown(v property.Value, exists bool) property.Value {
 	if exists {
 		return v
 	}
-	return resource.MakeComputed(resource.NewProperty(""))
+	return property.New(property.Computed)
 }
 
 // addDiff inserts a diff of the given kind at the given path into the parent ValueDiff.
@@ -63,8 +64,8 @@ func valueOrUnknown(v resource.PropertyValue, exists bool) resource.PropertyValu
 // property named by the first element of the path exists in both parents, we snip off the first element of the path
 // and recurse into the property itself. If the property does not exist in one parent or the other, the diff kind is
 // disregarded and the change is treated as either an Add or a Delete.
-func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.ValueDiff,
-	oldParent, newParent resource.PropertyValue,
+func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *property.ValueDiff,
+	oldParent, newParent property.Value,
 ) {
 	contract.Requiref(len(path) > 0, "path", "must not be empty")
 
@@ -76,11 +77,11 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 	switch element := element.(type) {
 	case int:
 		if parent.Array == nil {
-			parent.Array = &resource.ArrayDiff{
-				Adds:    make(map[int]resource.PropertyValue),
-				Deletes: make(map[int]resource.PropertyValue),
-				Sames:   make(map[int]resource.PropertyValue),
-				Updates: make(map[int]resource.ValueDiff),
+			parent.Array = &property.ArrayDiff{
+				Adds:    make(map[int]property.Value),
+				Deletes: make(map[int]property.Value),
+				Sames:   make(map[int]property.Value),
+				Updates: make(map[int]property.ValueDiff),
 			}
 		}
 
@@ -93,7 +94,7 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 			case plugin.DiffDelete, plugin.DiffDeleteReplace:
 				parent.Array.Deletes[element] = valueOrUnknown(old, hasOld)
 			case plugin.DiffUpdate, plugin.DiffUpdateReplace:
-				valueDiff := resource.ValueDiff{Old: old, New: new}
+				valueDiff := property.ValueDiff{Old: old, New: new}
 				if d := old.Diff(new); d != nil {
 					valueDiff = *d
 				}
@@ -115,40 +116,39 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 		}
 	case string:
 		if parent.Object == nil {
-			parent.Object = &resource.ObjectDiff{
-				Adds:    make(resource.PropertyMap),
-				Deletes: make(resource.PropertyMap),
-				Sames:   make(resource.PropertyMap),
-				Updates: make(map[resource.PropertyKey]resource.ValueDiff),
+			parent.Object = &property.ObjectDiff{
+				Adds:    make(map[string]property.Value),
+				Deletes: make(map[string]property.Value),
+				Sames:   make(map[string]property.Value),
+				Updates: make(map[string]property.ValueDiff),
 			}
 		}
 
-		e := resource.PropertyKey(element)
 		if len(path) == 1 {
 			switch kind {
 			case plugin.DiffAdd, plugin.DiffAddReplace:
-				parent.Object.Adds[e] = valueOrUnknown(new, hasNew)
+				parent.Object.Adds[element] = valueOrUnknown(new, hasNew)
 			case plugin.DiffDelete, plugin.DiffDeleteReplace:
-				parent.Object.Deletes[e] = valueOrUnknown(old, hasOld)
+				parent.Object.Deletes[element] = valueOrUnknown(old, hasOld)
 			case plugin.DiffUpdate, plugin.DiffUpdateReplace:
-				valueDiff := resource.ValueDiff{Old: old, New: new}
+				valueDiff := property.ValueDiff{Old: old, New: new}
 				if d := old.Diff(new); d != nil {
 					valueDiff = *d
 				}
-				parent.Object.Updates[e] = valueDiff
+				parent.Object.Updates[element] = valueDiff
 			default:
 				contract.Failf("unexpected diff kind %v", kind)
 			}
 		} else {
 			switch {
 			case old.IsNull() && !new.IsNull():
-				parent.Object.Adds[e] = new
+				parent.Object.Adds[element] = new
 			case !old.IsNull() && new.IsNull():
-				parent.Object.Deletes[e] = old
+				parent.Object.Deletes[element] = old
 			default:
-				ed := parent.Object.Updates[e]
+				ed := parent.Object.Updates[element]
 				addDiff(path[1:], kind, &ed, old, new)
-				parent.Object.Updates[e] = ed
+				parent.Object.Updates[element] = ed
 			}
 		}
 	default:
@@ -160,7 +160,7 @@ func addDiff(path resource.PropertyPath, kind plugin.DiffKind, parent *resource.
 // for display.
 //
 // The second returned argument is the list of hidden diffs.
-func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*resource.ObjectDiff, []resource.PropertyPath) {
+func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*property.ObjectDiff, []resource.PropertyPath) {
 	contract.Assertf(step.DetailedDiff != nil, "%v step has no detailed diff", step.Op)
 
 	// The rich diff is presented as a list of simple JS property paths and corresponding diffs. We translate this to
@@ -175,7 +175,7 @@ func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*resource.Obj
 		hiddenPaths = step.Old.HideDiffs
 	}
 
-	var diff resource.ValueDiff
+	var diff property.ValueDiff
 diffs:
 	for path, pdiff := range step.DetailedDiff {
 		elements, err := resource.ParsePropertyPath(path)
@@ -190,14 +190,14 @@ diffs:
 			}
 		}
 
-		olds := resource.NewProperty(step.Old.Outputs)
+		olds := property.New(step.Old.Outputs)
 		if pdiff.InputDiff {
-			olds = resource.NewProperty(step.Old.Inputs)
+			olds = property.New(step.Old.Inputs)
 		}
 
-		news := resource.NewProperty(step.New.Inputs)
+		news := property.New(step.New.Inputs)
 		if refresh && !pdiff.InputDiff {
-			news = resource.NewProperty(step.New.Outputs)
+			news = property.New(step.New.Outputs)
 		}
 
 		addDiff(elements, pdiff.Kind, &diff, olds, news)
