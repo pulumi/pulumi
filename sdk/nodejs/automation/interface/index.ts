@@ -12267,6 +12267,10 @@ export class API {
             __flags.push("--include-parents");
         }
 
+        if (options.parent != null) {
+            __flags.push("--parent", "" + options.parent);
+        }
+
         if (options.source != null) {
             __flags.push("--source", "" + options.source);
         }
@@ -18685,6 +18689,8 @@ export interface PulumiStateMoveOptions extends BaseOptions {
     dest?: string;
     /** Include all the parents of the moved resources as well */
     includeParents?: boolean;
+    /** URN of a resource in the destination stack to parent moved resources under. Mutually exclusive with --include-parents */
+    parent?: string;
     /** The name of the stack to move resources from */
     source?: string;
 }

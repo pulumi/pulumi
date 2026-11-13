@@ -13779,6 +13779,10 @@ func (a *API) StateMove(
 		final = append(final, "--otel-traces", fmt.Sprint(o.OtelTraces))
 	}
 
+	if o.Parent != "" {
+		final = append(final, "--parent", fmt.Sprint(o.Parent))
+	}
+
 	if o.Profiling != "" {
 		final = append(final, "--profiling", fmt.Sprint(o.Profiling))
 	}
