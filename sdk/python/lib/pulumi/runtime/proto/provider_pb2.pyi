@@ -1040,9 +1040,7 @@ global___CheckFailure = CheckFailure
 
 @typing.final
 class CheckConfigRequest(google.protobuf.message.Message):
-    """`CheckConfigRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.CheckConfig2) calls. It
-    captures the URN and configuration of the provider resource being checked.
-    """
+    """`CheckConfigRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.CheckConfig2) calls."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -1099,15 +1097,9 @@ global___CheckConfigRequest = CheckConfigRequest
 
 @typing.final
 class CheckConfigResponse(google.protobuf.message.Message):
-    """`CheckConfigResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig2) call. A
-    `CheckConfigResponse` may contain either:
-
-    * a set of checked, known-valid `inputs`. These may subsequently be passed to
-      [](pulumirpc.ResourceProvider.DiffConfig) and/or [](pulumirpc.ResourceProvider.Configure).
-    * a set of `failures` detailing invalid inputs.
-
-    In cases where the supplied set of inputs is valid, a `CheckConfigResponse` may contain default values that should
-    persisted to Pulumi state and passed to subsequent calls.
+    """`CheckConfigResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig2) call. It
+    contains either checked `inputs`, which may subsequently be passed to [](pulumirpc.ResourceProvider.DiffConfig)
+    and [](pulumirpc.ResourceProvider.Configure), or a set of `failures` detailing invalid inputs.
     """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor

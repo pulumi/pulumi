@@ -496,7 +496,7 @@ class ProviderServicer(ResourceProviderServicer):
                 request.urn,
                 PropertyValue.unmarshal_map(request.olds),
                 PropertyValue.unmarshal_map(request.news),
-                b"",
+                request.randomSeed,
             )
         )
         return proto.CheckConfigResponse(
