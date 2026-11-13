@@ -149,6 +149,16 @@ func runNew(ctx context.Context, args newArgs) (err error) {
 	}
 	originalCwd := cwd
 
+	// Normalize a relative local-path template to an absolute path before we
+	// potentially change the working directory via --dir.
+	if args.templateNameOrURL != "" {
+		if _, statErr := os.Stat(args.templateNameOrURL); statErr == nil {
+			if abs, absErr := filepath.Abs(args.templateNameOrURL); absErr == nil {
+				args.templateNameOrURL = abs
+			}
+		}
+	}
+
 	// If dir was specified, ensure it exists and use it as the
 	// current working directory.
 	if args.dir != "" {
