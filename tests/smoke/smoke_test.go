@@ -921,6 +921,72 @@ func TestSecretsProvidersFallbackSmoke(t *testing.T) {
 	}
 }
 
+// Smoke test that `pulumi preview` (and the rest of the operation entry points that share
+// `GetStackConfiguration`) refuses to run when the stack's `encryptionsalt` has drifted from the
+// salt recorded in the state's `SecretsProviders` block, even if the passphrase itself still
+// verifies the config's sentinel. Prior to the SecretsManagerLoader.VerifyAgainstSnapshot check
+// this scenario produced an opaque "cipher: message authentication failed" deep inside
+// deployment deserialization; it should now fail fast with a message naming the divergence.
+func TestSecretsManagerMismatchSmoke(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Pin the passphrase so that two independently-initialised stacks derive different salts but
+	// share the same KDF passphrase. The sentinel embedded in each salt is valid for the
+	// passphrase, so the mismatch has to be caught by the manager-equality check, not the
+	// passphrase sentinel check.
+	e.Env = append(e.Env, "PULUMI_CONFIG_PASSPHRASE=test-passphrase")
+
+	projectA := filepath.Join(e.RootPath, "a")
+	projectB := filepath.Join(e.RootPath, "b")
+	for _, c := range []struct{ dir, name string }{{projectA, "a"}, {projectB, "b"}} {
+		require.NoError(t, os.Mkdir(c.dir, 0o700))
+		require.NoError(t, os.WriteFile(
+			filepath.Join(c.dir, "Pulumi.yaml"),
+			fmt.Appendf(nil, "name: %s\nruntime: yaml\nbackend:\n  url: '%s'\n", c.name, e.LocalURL()),
+			0o600,
+		))
+	}
+
+	// Initialise stack A, run up to produce a snapshot whose SecretsProviders.State carries A's salt.
+	e.CWD = projectA
+	e.RunCommand("pulumi", "--stack", "organization/a/dev", "stack", "init", "--secrets-provider", "passphrase")
+	e.RunCommand("pulumi", "--stack", "organization/a/dev", "up", "--yes")
+
+	// Initialise stack B in a sibling dir purely to harvest a different (but same-passphrase) salt.
+	e.CWD = projectB
+	e.RunCommand("pulumi", "--stack", "organization/b/dev", "stack", "init", "--secrets-provider", "passphrase")
+	bYAML, err := os.ReadFile(filepath.Join(projectB, "Pulumi.dev.yaml"))
+	require.NoError(t, err)
+	var psB workspace.ProjectStack
+	require.NoError(t, yaml.Unmarshal(bYAML, &psB))
+	require.NotEmpty(t, psB.EncryptionSalt)
+
+	// Splice B's salt into A's config to simulate the user accidentally overwriting it (or an
+	// interrupted change-secrets-provider leaving config mid-swap).
+	aYAMLPath := filepath.Join(projectA, "Pulumi.dev.yaml")
+	aYAMLBytes, err := os.ReadFile(aYAMLPath)
+	require.NoError(t, err)
+	var psA workspace.ProjectStack
+	require.NoError(t, yaml.Unmarshal(aYAMLBytes, &psA))
+	require.NotEmpty(t, psA.EncryptionSalt)
+	require.NotEqual(t, psA.EncryptionSalt, psB.EncryptionSalt)
+	patched := strings.Replace(string(aYAMLBytes), psA.EncryptionSalt, psB.EncryptionSalt, 1)
+	require.NoError(t, os.WriteFile(aYAMLPath, []byte(patched), 0o600))
+
+	// Any operation that goes through GetStackConfiguration (up/preview/refresh/destroy/import)
+	// must now refuse to run with a clear mismatch error rather than attempting decryption and
+	// failing with a generic cipher auth error.
+	e.CWD = projectA
+	_, stderr := e.RunCommandExpectError("pulumi", "--stack", "organization/a/dev", "preview")
+	require.Contains(t, stderr, "does not match",
+		"expected secrets manager mismatch error, got stderr: %s", stderr)
+	require.NotContains(t, stderr, "message authentication failed",
+		"mismatch should be caught before decryption attempts; got stderr: %s", stderr)
+}
+
 // Quick sanity tests to check that import for a package picks up the right version. This uses Go as the language choice
 // shouldn't matter for the test.
 func TestImportVersionSmoke(t *testing.T) {

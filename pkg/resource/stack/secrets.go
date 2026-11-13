@@ -104,6 +104,10 @@ func (csm *batchingCachingSecretsManager) Decrypter() config.Decrypter {
 	return csm.manager.Decrypter()
 }
 
+func (csm *batchingCachingSecretsManager) Equivalent(otherState json.RawMessage) bool {
+	return csm.manager.Equivalent(otherState)
+}
+
 func (csm *batchingCachingSecretsManager) BeginBatchEncryption() (BatchEncrypter, CompleteCrypterBatch) {
 	return BeginBatchEncryptionWithCache(csm.manager.Encrypter(), csm.cache)
 }

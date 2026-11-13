@@ -1129,10 +1129,11 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabledJ
 // from Pulumi Cloud's secrets endpoint, an expired token, or a network blip).
 type failingBatchEncryptSecretsManager struct{}
 
-func (failingBatchEncryptSecretsManager) Type() string                  { return "failing" }
-func (failingBatchEncryptSecretsManager) State() json.RawMessage        { return nil }
-func (f failingBatchEncryptSecretsManager) Encrypter() config.Encrypter { return f }
-func (f failingBatchEncryptSecretsManager) Decrypter() config.Decrypter { return f }
+func (failingBatchEncryptSecretsManager) Type() string                      { return "failing" }
+func (failingBatchEncryptSecretsManager) State() json.RawMessage            { return nil }
+func (f failingBatchEncryptSecretsManager) Encrypter() config.Encrypter     { return f }
+func (f failingBatchEncryptSecretsManager) Decrypter() config.Decrypter     { return f }
+func (failingBatchEncryptSecretsManager) Equivalent(_ json.RawMessage) bool { return true }
 
 func (failingBatchEncryptSecretsManager) EncryptValue(
 	_ context.Context, plaintext string,

@@ -107,6 +107,21 @@ func (sm *localSecretsManager) State() json.RawMessage {
 	return sm.state
 }
 
+// Equivalent reports whether another passphrase state represents the same encryption key. For
+// the passphrase provider the salt string (which contains both the KDF salt and a sentinel
+// ciphertext) is the only semantically meaningful field; identical salts imply identical derived
+// keys and therefore identical ciphertexts.
+func (sm *localSecretsManager) Equivalent(otherState json.RawMessage) bool {
+	var mine, theirs localSecretsManagerState
+	if err := json.Unmarshal(sm.state, &mine); err != nil {
+		return false
+	}
+	if err := json.Unmarshal(otherState, &theirs); err != nil {
+		return false
+	}
+	return mine.Salt == theirs.Salt
+}
+
 func (sm *localSecretsManager) Decrypter() config.Decrypter {
 	contract.Assertf(sm.crypter != nil, "decrypter not initialized")
 	return sm.crypter

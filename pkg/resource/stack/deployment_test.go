@@ -1497,6 +1497,10 @@ func (c *countingSecretsManager) Decrypter() config.Decrypter {
 	return &countingDecrypter{inner: c.inner.Decrypter(), m: c}
 }
 
+func (c *countingSecretsManager) Equivalent(otherState json.RawMessage) bool {
+	return c.inner.Equivalent(otherState)
+}
+
 type countingDecrypter struct {
 	inner config.Decrypter
 	m     *countingSecretsManager
