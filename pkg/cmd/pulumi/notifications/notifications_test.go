@@ -29,6 +29,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 var survey = Notification{
@@ -156,7 +157,7 @@ func TestRefresh_FailureKeepsCache(t *testing.T) {
 	require.NoError(t, writeJSON(cacheFile, stale))
 	url, _ := serve(t, `oops`, http.StatusInternalServerError)
 
-	_, err := refresh(t.Context(), url, readCache())
+	_, err := refresh(t.Context(), sources(url), readCache())
 	require.ErrorContains(t, err, "500 Internal Server Error")
 	assert.Equal(t, stale, readCache())
 }
@@ -197,4 +198,42 @@ func TestDismiss(t *testing.T) {
 	assert.NotContains(t, stderr.String(), survey.Title)
 	assert.Contains(t, stderr.String(), "pulumi notifications dismiss 90abf")
 	assert.Contains(t, stderr.String(), "pulumi notifications dismiss 123")
+}
+
+func TestStart_FetchesCloudNotifications(t *testing.T) {
+	t.Setenv("PULUMI_HOME", t.TempDir())
+	billing := Notification{Title: "Billing", ID: "b1111111-0000-0000-0000-000000000000", SchemaVersion: 1}
+	static, err := json.Marshal([]Notification{survey})
+	require.NoError(t, err)
+	cloud, err := json.Marshal([]Notification{billing})
+	require.NoError(t, err)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/static":
+			_, _ = w.Write(static)
+		case "/api/user/organizations/default":
+			_, _ = w.Write([]byte(`{"GitHubLogin": "acme"}`))
+		case "/api/orgs/acme/notifications":
+			assert.Equal(t, "token secret", r.Header.Get("Authorization"))
+			_, _ = w.Write(cloud)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	require.NoError(t, workspace.StoreCredentials(workspace.Credentials{
+		Current:  srv.URL,
+		Accounts: map[string]workspace.Account{srv.URL: {AccessToken: "secret"}},
+	}))
+
+	pending := Start(t.Context(), srv.URL+"/static")
+	var got []Notification
+	require.Eventually(t, func() bool {
+		got = pending()
+		return len(got) == 2
+	}, 5*time.Second, 10*time.Millisecond)
+
+	assert.ElementsMatch(t, []Notification{survey, billing}, got)
+	assert.Equal(t, []Notification{billing}, readCache()[srv.URL+"/"].Notifications)
 }
