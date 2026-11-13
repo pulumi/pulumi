@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -49,22 +50,43 @@ var ErrSecretsManagerMismatch = errors.New(
 	"the stack's configured secrets provider does not match the one recorded in its state")
 
 // VerifyAgainstSnapshot checks that the given secrets manager (built from stack config) matches
-// the SecretsProviders block recorded in the stack's latest snapshot. Type equality is checked
-// at this layer; semantic equality of provider state is delegated to the provider's Equivalent
-// method. Returns ErrSecretsManagerMismatch (wrapped with the specific divergence) when they
-// disagree. Returns nil (and no error) when the stack has no snapshot yet, the snapshot has no
-// embedded SecretsProviders, or the two match.
+// the SecretsProviders block recorded in a snapshot. Type equality is checked at this layer;
+// semantic equality of provider state is delegated to the provider's Equivalent method. Returns
+// ErrSecretsManagerMismatch (wrapped with the specific divergence) when they disagree, or nil
+// when either side is empty or the two match. Callers are expected to fetch the snapshot once
+// (see PeekSnapshotSecretsProviders) and pass it in, so this never performs I/O.
 //
 // Callers that intentionally change the secrets manager (e.g. `stack change-secrets-provider`)
 // should not call this.
 func (l *SecretsManagerLoader) VerifyAgainstSnapshot(
-	ctx context.Context,
-	s backend.Stack,
 	sm secrets.Manager,
+	snapshotProviders *apitype.SecretsProvidersV1,
 ) error {
-	if sm == nil {
+	if sm == nil || snapshotProviders == nil || snapshotProviders.Type == "" {
 		return nil
 	}
+	if sm.Type() != snapshotProviders.Type {
+		return fmt.Errorf("%w: config specifies %q but state was encrypted with %q",
+			ErrSecretsManagerMismatch, sm.Type(), snapshotProviders.Type)
+	}
+	if !sm.Equivalent(snapshotProviders.State) {
+		return fmt.Errorf("%w: config and state carry different %s provider configuration "+
+			"(e.g. encryption salt or key id). Restore the matching stack configuration",
+			ErrSecretsManagerMismatch, sm.Type())
+	}
+	return nil
+}
+
+// PeekSnapshotSecretsProviders returns the SecretsProviders block recorded in the given stack's
+// latest snapshot, without decrypting any resource secrets. Returns nil (and no error) when the
+// stack has no snapshot, the backend does not support export, or the deployment could not be
+// parsed — all cases where we want VerifyAgainstSnapshot to silently skip.
+func PeekSnapshotSecretsProviders(ctx context.Context, s backend.Stack) *apitype.SecretsProvidersV1 {
+	defer func() {
+		// Some test backends panic on ExportDeployment when the stub is not wired up. Treat that
+		// as "not supported" and skip the peek — the check is strictly diagnostic.
+		_ = recover()
+	}()
 	b := s.Backend()
 	if b == nil {
 		return nil
@@ -75,24 +97,9 @@ func (l *SecretsManagerLoader) VerifyAgainstSnapshot(
 	}
 	v3, err := stack.UnmarshalUntypedDeployment(ctx, untyped)
 	if err != nil {
-		// If we can't even parse the deployment metadata, skip the check — deserialization will
-		// surface a more specific error shortly.
-		return nil //nolint:nilerr
-	}
-	if v3.SecretsProviders == nil || v3.SecretsProviders.Type == "" {
 		return nil
 	}
-
-	if sm.Type() != v3.SecretsProviders.Type {
-		return fmt.Errorf("%w: config specifies %q but state was encrypted with %q",
-			ErrSecretsManagerMismatch, sm.Type(), v3.SecretsProviders.Type)
-	}
-	if !sm.Equivalent(v3.SecretsProviders.State) {
-		return fmt.Errorf("%w: config and state carry different %s provider configuration "+
-			"(e.g. encryption salt or key id). Restore the matching stack configuration",
-			ErrSecretsManagerMismatch, sm.Type())
-	}
-	return nil
+	return v3.SecretsProviders
 }
 
 // Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
