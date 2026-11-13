@@ -2592,3 +2592,23 @@ func TestEnvChangeRequestRejectsNonEnvironment(t *testing.T) {
 		assert.Contains(t, stderr, msg, cmd)
 	}
 }
+
+func TestEnvChangeRequestAliasIsDeprecated(t *testing.T) {
+	t.Parallel()
+
+	root := New(nil)
+	approvals, _, err := root.Find([]string{"env", "approvals"})
+	require.NoError(t, err)
+	alias, _, err := root.Find([]string{"env", "change-request"})
+	require.NoError(t, err)
+
+	assert.True(t, alias.Hidden)
+	assert.NotEmpty(t, alias.Deprecated)
+	require.Equal(t, len(approvals.Commands()), len(alias.Commands()))
+	for _, c := range approvals.Commands() {
+		sub, _, err := alias.Find([]string{c.Name()})
+		require.NoError(t, err, c.Name())
+		assert.Equal(t, c.Name(), sub.Name())
+		assert.Equal(t, "use `env approvals "+c.Name()+"` instead", sub.Deprecated)
+	}
+}
