@@ -1,0 +1,4 @@
+component: sdkgen/nodejs
+kind: fix
+body: Raise the typescript and @types/node ranges of local Node.js SDKs to ^5.8.0 and ^22, so current workspaces install one copy of typescript and @pulumi/pulumi
+time: 2026-11-12T00:00:00Z

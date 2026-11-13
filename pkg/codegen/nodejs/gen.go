@@ -55,6 +55,10 @@ const (
 	MinimumValidParameterizationSDKVersion string = "^3.269.0"
 	MinimumTypescriptVersion               string = "^4.7.0"
 	MinimumNodeTypesVersion                string = "^20"
+	// The typescript and @types/node ranges of local SDKs. Local SDKs install into the user's workspace, so these
+	// stay close to what current workspaces already use, to avoid duplicate installs.
+	LocalSDKTypescriptVersion string = "^5.8.0"
+	LocalSDKNodeTypesVersion  string = "^22"
 )
 
 type typeDetails struct {
@@ -2594,7 +2598,11 @@ func genNPMPackageMetadata(
 
 	typescriptVersion := info.TypeScriptVersion
 	if typescriptVersion == "" {
-		typescriptVersion = MinimumTypescriptVersion
+		if localSDK {
+			typescriptVersion = LocalSDKTypescriptVersion
+		} else {
+			typescriptVersion = MinimumTypescriptVersion
+		}
 	}
 
 	dependencies := map[string]string{}
@@ -2603,7 +2611,7 @@ func genNPMPackageMetadata(
 	// compile the SDK in the postinstall script.
 	if localSDK {
 		dependencies["typescript"] = typescriptVersion
-		dependencies["@types/node"] = MinimumNodeTypesVersion
+		dependencies["@types/node"] = LocalSDKNodeTypesVersion
 	} else {
 		devDependencies["typescript"] = typescriptVersion
 		devDependencies["@types/node"] = MinimumNodeTypesVersion
