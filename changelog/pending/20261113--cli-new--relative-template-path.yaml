@@ -1,3 +1,3 @@
 component: cli/new
-kind: bug
+kind: fix
 body: Fix `pulumi new <path>` failing with "not found" or panicking when a relative local-template path is used with `--dir` or without it
