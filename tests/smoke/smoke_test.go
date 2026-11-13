@@ -941,23 +941,23 @@ func TestSecretsManagerMismatchSmoke(t *testing.T) {
 
 	projectA := filepath.Join(e.RootPath, "a")
 	projectB := filepath.Join(e.RootPath, "b")
-	for _, d := range []string{projectA, projectB} {
-		require.NoError(t, os.Mkdir(d, 0o700))
+	for _, c := range []struct{ dir, name string }{{projectA, "a"}, {projectB, "b"}} {
+		require.NoError(t, os.Mkdir(c.dir, 0o700))
 		require.NoError(t, os.WriteFile(
-			filepath.Join(d, "Pulumi.yaml"),
-			fmt.Appendf(nil, "name: p\nruntime: yaml\nbackend:\n  url: '%s'\n", e.LocalURL()),
+			filepath.Join(c.dir, "Pulumi.yaml"),
+			fmt.Appendf(nil, "name: %s\nruntime: yaml\nbackend:\n  url: '%s'\n", c.name, e.LocalURL()),
 			0o600,
 		))
 	}
 
 	// Initialise stack A, run up to produce a snapshot whose SecretsProviders.State carries A's salt.
 	e.CWD = projectA
-	e.RunCommand("pulumi", "--stack", "organization/p/dev", "stack", "init", "--secrets-provider", "passphrase")
-	e.RunCommand("pulumi", "--stack", "organization/p/dev", "up", "--yes")
+	e.RunCommand("pulumi", "--stack", "organization/a/dev", "stack", "init", "--secrets-provider", "passphrase")
+	e.RunCommand("pulumi", "--stack", "organization/a/dev", "up", "--yes")
 
 	// Initialise stack B in a sibling dir purely to harvest a different (but same-passphrase) salt.
 	e.CWD = projectB
-	e.RunCommand("pulumi", "--stack", "organization/p/dev", "stack", "init", "--secrets-provider", "passphrase")
+	e.RunCommand("pulumi", "--stack", "organization/b/dev", "stack", "init", "--secrets-provider", "passphrase")
 	bYAML, err := os.ReadFile(filepath.Join(projectB, "Pulumi.dev.yaml"))
 	require.NoError(t, err)
 	var psB workspace.ProjectStack
@@ -980,7 +980,7 @@ func TestSecretsManagerMismatchSmoke(t *testing.T) {
 	// must now refuse to run with a clear mismatch error rather than attempting decryption and
 	// failing with a generic cipher auth error.
 	e.CWD = projectA
-	_, stderr := e.RunCommandExpectError("pulumi", "--stack", "organization/p/dev", "preview")
+	_, stderr := e.RunCommandExpectError("pulumi", "--stack", "organization/a/dev", "preview")
 	require.Contains(t, stderr, "does not match",
 		"expected secrets manager mismatch error, got stderr: %s", stderr)
 	require.NotContains(t, stderr, "message authentication failed",

@@ -1867,9 +1867,10 @@ func newRunEngineActionFixture(
 
 type failingBatchingSecretsManager struct{ err error }
 
-func (m failingBatchingSecretsManager) Type() string                      { return "failing-batch" }
-func (m failingBatchingSecretsManager) State() json.RawMessage            { return nil }
-func (m failingBatchingSecretsManager) Encrypter() config.Encrypter       { return config.NopEncrypter }
+func (m failingBatchingSecretsManager) Type() string                { return "failing-batch" }
+func (m failingBatchingSecretsManager) State() json.RawMessage      { return nil }
+func (m failingBatchingSecretsManager) Encrypter() config.Encrypter { return config.NopEncrypter }
+
 func (m failingBatchingSecretsManager) Decrypter() config.Decrypter       { return config.NopDecrypter }
 func (m failingBatchingSecretsManager) Equivalent(_ json.RawMessage) bool { return true }
 
