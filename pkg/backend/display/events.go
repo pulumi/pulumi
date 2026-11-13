@@ -278,7 +278,6 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 
 func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) apitype.StepEventMetadata {
 	keys := slice.Cast[string](md.Keys)
-
 	diffs := slice.Cast[string](md.Diffs)
 
 	var detailedDiff map[string]apitype.PropertyDiff
@@ -339,10 +338,10 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 
 	ctx := context.TODO()
 	encrypter := config.BlindingCrypter
-	inputs, err := stack.SerializeProperties(ctx, md.Inputs, encrypter, showSecrets)
+	inputs, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(md.Inputs), encrypter, showSecrets)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.SerializeProperties(ctx, md.Outputs, encrypter, showSecrets)
+	outputs, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(md.Outputs), encrypter, showSecrets)
 	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{
@@ -625,8 +624,8 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Taint:          md.Taint,
 		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
-		Inputs:         inputs,
-		Outputs:        outputs,
+		Inputs:         resource.FromResourcePropertyMap(inputs),
+		Outputs:        resource.FromResourcePropertyMap(outputs),
 		InitErrors:     md.InitErrors,
 		HideDiffs:      md.HideDiffs,
 	}

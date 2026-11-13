@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -187,61 +188,61 @@ func TestGetDiffInfo_FiltersInternalProperties(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		oldInputs      resource.PropertyMap
-		newInputs      resource.PropertyMap
+		oldInputs      property.Map
+		newInputs      property.Map
 		expectDiff     bool
 		shouldMatch    string
 		shouldNotMatch string
 	}{
 		{
 			name: "__defaults should be filtered out",
-			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-			},
-			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-				"__defaults": resource.NewProperty([]resource.PropertyValue{
-					resource.NewProperty("default1"),
+			oldInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+			}),
+			newInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+				"__defaults": property.New([]property.Value{
+					property.New("default1"),
 				}),
-			},
+			}),
 			expectDiff:     false,
 			shouldNotMatch: "__defaults",
 		},
 		{
 			name: "normal property changes should still be shown",
-			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-			},
-			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value2"),
-			},
+			oldInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+			}),
+			newInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value2"),
+			}),
 			expectDiff:  true,
 			shouldMatch: "normalProp",
 		},
 		{
 			name: "both normal and __defaults changes - only normal shown",
-			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-			},
-			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value2"),
-				"__defaults": resource.NewProperty([]resource.PropertyValue{
-					resource.NewProperty("default1"),
+			oldInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+			}),
+			newInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value2"),
+				"__defaults": property.New([]property.Value{
+					property.New("default1"),
 				}),
-			},
+			}),
 			expectDiff:     true,
 			shouldMatch:    "normalProp",
 			shouldNotMatch: "__defaults",
 		},
 		{
 			name: "other internal properties should also be filtered",
-			oldInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-			},
-			newInputs: resource.PropertyMap{
-				"normalProp": resource.NewProperty("value1"),
-				"__meta":     resource.NewProperty("metadata"),
-			},
+			oldInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+			}),
+			newInputs: property.NewMap(map[string]property.Value{
+				"normalProp": property.New("value1"),
+				"__meta":     property.New("metadata"),
+			}),
 			expectDiff:     false,
 			shouldNotMatch: "__meta",
 		},
