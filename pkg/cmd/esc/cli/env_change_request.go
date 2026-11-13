@@ -110,7 +110,8 @@ func (cr *changeRequestCommand) confirm(
 	}
 
 	ref := environmentRef{orgName: orgName, projectName: c.Entity.Project, envName: c.Entity.Name}
-	if c.Action == "open" {
+	switch c.Action {
+	case "open":
 		o, err := cr.env.esc.client.GetEnvironmentOpenRequest(ctx, orgName, ref.projectName, ref.envName, c.ID)
 		if err != nil {
 			return false, fmt.Errorf("getting open request: %w", err)
@@ -121,11 +122,13 @@ func (cr *changeRequestCommand) confirm(
 		if c.Description != "" {
 			fmt.Fprintf(w, "Description:\n  %v\n", strings.ReplaceAll(c.Description, "\n", "\n  "))
 		}
-	} else {
+	case "update":
 		fmt.Fprintf(w, "Change request %v will update environment %v.\n\n", c.ID, ref.String())
 		if err := cr.printDraftDiff(ctx, w, ref, c.ID, ""); err != nil {
 			return false, err
 		}
+	default:
+		return false, fmt.Errorf("change request %v has unsupported action %q", c.ID, c.Action)
 	}
 	fmt.Fprintln(w)
 
@@ -359,22 +362,24 @@ func newEnvChangeRequestGetCmd(cr *changeRequestCommand) *cobra.Command {
 
 			var draftStatus *client.EnvironmentDraftStatus
 			var openRequest *client.EnvironmentOpenRequest
-			if c.Action == "open" {
+			var url string
+			switch c.Action {
+			case "open":
 				openRequest, err = cr.env.esc.client.GetEnvironmentOpenRequest(
 					ctx, orgName, ref.projectName, ref.envName, c.ID)
 				if err != nil {
 					return fmt.Errorf("getting open request: %w", err)
 				}
-			} else {
+				url = cr.env.esc.openRequestURL(ref, c.ID)
+			case "update":
 				draftStatus, err = cr.env.esc.client.GetEnvironmentDraftStatus(
 					ctx, orgName, ref.projectName, ref.envName, c.ID)
 				if err != nil {
 					return fmt.Errorf("getting draft status: %w", err)
 				}
-			}
-			url := cr.env.esc.changeRequestURL(ref, c.ID)
-			if c.Action == "open" {
-				url = cr.env.esc.openRequestURL(ref, c.ID)
+				url = cr.env.esc.changeRequestURL(ref, c.ID)
+			default:
+				return fmt.Errorf("change request %v has unsupported action %q", c.ID, c.Action)
 			}
 
 			if format == outputJSON {
