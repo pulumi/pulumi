@@ -64,6 +64,7 @@ func createStackWithResources(
 
 type MoveOptions struct {
 	IncludeParents bool
+	NewParent      urn.URN
 }
 
 func runMove(
@@ -111,6 +112,7 @@ func runMoveWithOptionsAndDestResources(
 		Stdout:         &stdout,
 		Colorizer:      colors.Never,
 		IncludeParents: options.IncludeParents,
+		NewParent:      options.NewParent,
 	}
 	err = stateMoveCmd.Run(ctx, sourceStack, destStack, args, mp, mp)
 	require.NoError(t, err)
@@ -216,6 +218,193 @@ func TestChildrenAreBeingMoved(t *testing.T) {
 		destSnapshot.Resources[3].URN)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::a:b:c::name"),
 		destSnapshot.Resources[3].Parent)
+}
+
+// TestMoveChildWithoutParentIsOrphaned documents the baseline behaviour for
+// https://github.com/pulumi/pulumi-service/issues/46883: moving a child
+// resource without its source parent reparents the child to the destination's
+// root stack. --parent lets users override this (see TestMoveWithNewParent).
+func TestMoveChildWithoutParentIsOrphaned(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	parentURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "name")
+	childURN := resource.NewURN("sourceStack", "test", "a:b:c", "a:b:c", "name2")
+	sourceResources := []*pkgresource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:      parentURN,
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+		},
+		{
+			URN:      childURN,
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   parentURN,
+		},
+	}
+
+	sourceSnapshot, destSnapshot, _ := runMove(t, sourceResources, []string{string(childURN)})
+
+	require.Len(t, sourceSnapshot.Resources, 2)
+	assert.Equal(t, parentURN, sourceSnapshot.Resources[1].URN)
+
+	require.Len(t, destSnapshot.Resources, 3)
+	assert.Equal(t,
+		urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
+		destSnapshot.Resources[2].Parent)
+}
+
+// TestMoveWithNewParent verifies --parent reparents a moved resource under a
+// resource that already exists in the destination stack, and the moved
+// resource's URN nests under the new parent's type path.
+func TestMoveWithNewParent(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	sourceChildURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "child")
+	sourceResources := []*pkgresource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:      sourceChildURN,
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+		},
+	}
+
+	destParentURN := resource.NewURN("destStack", "test", "", "a:b:component", "destParent")
+	destResources := []*pkgresource.State{
+		{URN: destParentURN, Type: "a:b:component"},
+	}
+
+	_, destSnapshot, _ := runMoveWithOptionsAndDestResources(
+		t, sourceResources, destResources,
+		[]string{string(sourceChildURN)},
+		&MoveOptions{NewParent: destParentURN})
+
+	// Dest should contain: root stack, destParent, copied provider, moved child.
+	require.Len(t, destSnapshot.Resources, 4)
+
+	var moved *pkgresource.State
+	for _, r := range destSnapshot.Resources {
+		if r.URN.Name() == "child" {
+			moved = r
+		}
+	}
+	require.NotNil(t, moved, "moved resource not found in destination snapshot")
+
+	assert.Equal(t, destParentURN, moved.Parent)
+	assert.Equal(t,
+		urn.URN("urn:pulumi:destStack::test::a:b:component$a:b:c::child"),
+		moved.URN)
+}
+
+// TestMoveWithNewParentPreservesSubtree verifies that moving a parent and its
+// children with --parent reparents the top of the moved subtree under the
+// specified dest parent while keeping internal parent-child relationships of
+// the subtree intact.
+func TestMoveWithNewParentPreservesSubtree(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	srcParentURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "parent")
+	srcChildURN := resource.NewURN("sourceStack", "test", "a:b:c", "a:b:c", "child")
+	sourceResources := []*pkgresource.State{
+		{
+			URN:    providerURN,
+			Type:   "pulumi:providers:a::default_1_0_0",
+			ID:     "provider_id",
+			Custom: true,
+		},
+		{
+			URN:      srcParentURN,
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+		},
+		{
+			URN:      srcChildURN,
+			Type:     "a:b:c",
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   srcParentURN,
+		},
+	}
+
+	destComponentURN := resource.NewURN("destStack", "test", "", "a:b:component", "host")
+	destResources := []*pkgresource.State{
+		{URN: destComponentURN, Type: "a:b:component"},
+	}
+
+	_, destSnapshot, _ := runMoveWithOptionsAndDestResources(
+		t, sourceResources, destResources,
+		[]string{string(srcParentURN)},
+		&MoveOptions{NewParent: destComponentURN})
+
+	// root stack, destComponent, copied provider, moved parent, moved child.
+	require.Len(t, destSnapshot.Resources, 5)
+
+	movedParentURN := urn.URN("urn:pulumi:destStack::test::a:b:component$a:b:c::parent")
+	movedChildURN := urn.URN("urn:pulumi:destStack::test::a:b:component$a:b:c$a:b:c::child")
+
+	var movedParent, movedChild *pkgresource.State
+	for _, r := range destSnapshot.Resources {
+		switch r.URN {
+		case movedParentURN:
+			movedParent = r
+		case movedChildURN:
+			movedChild = r
+		}
+	}
+	require.NotNil(t, movedParent)
+	require.NotNil(t, movedChild)
+
+	assert.Equal(t, destComponentURN, movedParent.Parent)
+	assert.Equal(t, movedParentURN, movedChild.Parent)
+}
+
+// TestMoveWithNewParentNotInDest errors when --parent names a URN not present
+// in the destination stack.
+func TestMoveWithNewParentNotInDest(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	tmpDir := t.TempDir()
+	b, err := diy.New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
+	require.NoError(t, err)
+
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	childURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "child")
+	sourceResources := []*pkgresource.State{
+		{
+			URN: providerURN, Type: "pulumi:providers:a::default_1_0_0",
+			ID: "provider_id", Custom: true,
+		},
+		{URN: childURN, Type: "a:b:c", Provider: string(providerURN) + "::provider_id"},
+	}
+
+	sourceStack := createStackWithResources(t, b, "organization/test/sourceStack", sourceResources)
+	destStack := createStackWithResources(t, b, "organization/test/destStack", nil)
+
+	mp := (&secrets.MockProvider{}).Add("b64", func(_ json.RawMessage) (secrets.Manager, error) {
+		return b64.NewBase64SecretsManager(), nil
+	})
+
+	cmd := stateMoveCmd{
+		Yes: true, Stdout: new(bytes.Buffer), Colorizer: colors.Never,
+		NewParent: resource.NewURN("destStack", "test", "", "a:b:component", "missing"),
+	}
+	err = cmd.Run(ctx, sourceStack, destStack, []string{string(childURN)}, mp, mp)
+	require.ErrorContains(t, err, "not found in destination stack")
 }
 
 func TestMoveResourceWithDependencies(t *testing.T) {
