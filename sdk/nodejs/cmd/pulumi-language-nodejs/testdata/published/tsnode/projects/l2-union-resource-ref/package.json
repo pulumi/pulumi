@@ -1,0 +1,11 @@
+{
+	"name": "l2-union-resource-ref",
+	"devDependencies": {
+		"@types/node": "^20"
+	},
+	"dependencies": {
+		"typescript": "^4.7.0",
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/unionref": "ROOT/artifacts/pulumi-unionref-63.0.0.tgz"
+	}
+}
