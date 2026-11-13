@@ -45,7 +45,7 @@ func init() {
 						if evt.Type == engine.ResourceOutputsEvent {
 							payload := evt.Payload().(engine.ResourceOutputsEventPayload)
 							if payload.Metadata.URN.Type() == "simple:index:Resource" &&
-								payload.Metadata.New.Inputs["value"].IsComputed() {
+								payload.Metadata.New.Inputs.Get("value").IsComputed() {
 								simpleComputedInputs++
 							} else if payload.Metadata.URN.Type() == resource.RootStackType {
 								stackEvent = payload
@@ -56,13 +56,13 @@ func init() {
 
 					assert.Equal(l, 4, simpleComputedInputs, "expected all simple resource inputs to be unknown")
 					require.True(l, foundStackEvent, "expected stack outputs event")
-					assert.True(l, stackEvent.Metadata.New.Outputs["out"].IsComputed(),
+					assert.True(l, stackEvent.Metadata.New.Outputs.Get("out").IsComputed(),
 						"expected stack output to be unknown: %v", stackEvent.Metadata.New.Outputs)
-					assert.True(l, stackEvent.Metadata.New.Outputs["outArray"].IsComputed(),
+					assert.True(l, stackEvent.Metadata.New.Outputs.Get("outArray").IsComputed(),
 						"expected stack output to be unknown: %v", stackEvent.Metadata.New.Outputs)
-					assert.True(l, stackEvent.Metadata.New.Outputs["outMap"].IsComputed(),
+					assert.True(l, stackEvent.Metadata.New.Outputs.Get("outMap").IsComputed(),
 						"expected stack output to be unknown: %v", stackEvent.Metadata.New.Outputs)
-					assert.True(l, stackEvent.Metadata.New.Outputs["outObject"].IsComputed(),
+					assert.True(l, stackEvent.Metadata.New.Outputs.Get("outObject").IsComputed(),
 						"expected stack output to be unknown: %v", stackEvent.Metadata.New.Outputs)
 				},
 				Assert: func(l *L, res AssertArgs) {

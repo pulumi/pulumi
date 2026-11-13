@@ -254,10 +254,10 @@ func TestGetDiffInfo_FiltersInternalProperties(t *testing.T) {
 			step := engine.StepEventMetadata{
 				Op: deploy.OpUpdate,
 				Old: &engine.StepEventStateMetadata{
-					Inputs: tt.oldInputs,
+					Inputs: resource.FromResourcePropertyMap(tt.oldInputs),
 				},
 				New: &engine.StepEventStateMetadata{
-					Inputs: tt.newInputs,
+					Inputs: resource.FromResourcePropertyMap(tt.newInputs),
 				},
 			}
 

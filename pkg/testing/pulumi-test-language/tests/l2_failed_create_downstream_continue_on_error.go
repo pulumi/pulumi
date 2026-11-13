@@ -65,7 +65,7 @@ func init() {
 						}
 						payload := evt.Payload().(engine.ResourceOutputsEventPayload)
 						if payload.Metadata.URN.Type() == resource.RootStackType && payload.Metadata.New != nil {
-							stackOutputs = resource.FromResourcePropertyMap(payload.Metadata.New.Outputs)
+							stackOutputs = payload.Metadata.New.Outputs
 							found = true
 						}
 					}

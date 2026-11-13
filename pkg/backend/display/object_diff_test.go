@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -93,13 +94,13 @@ func Test_decodeValue(t *testing.T) {
 			actual, kind, ok := printer.decodeValue(c.repr)
 
 			if c.kind == "" {
-				assert.Equal(t, resource.PropertyValue{}, actual)
+				assert.Equal(t, property.Value{}, actual)
 				assert.Equal(t, "", kind)
 				assert.False(t, ok)
 			} else {
 				require.True(t, ok)
 				require.Equal(t, c.kind, kind)
-				assert.True(t, resource.NewPropertyValue(c.expected).DeepEquals(actual))
+				assert.True(t, resource.FromResourcePropertyValue(resource.NewPropertyValue(c.expected)).Equals(actual))
 			}
 		})
 	}
@@ -179,7 +180,8 @@ func Test_PrintObject(t *testing.T) {
 			t.Parallel()
 
 			var buf bytes.Buffer
-			PrintObject(&buf, c.object, false, 0, deploy.OpSame, false, false, false, c.showSecret)
+			PrintObject(&buf, resource.FromResourcePropertyMap(c.object),
+				false, 0, deploy.OpSame, false, false, false, c.showSecret)
 			assert.Equal(t, c.expected, buf.String())
 		})
 	}
@@ -202,16 +204,16 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"banana": "yummy",
-				}),
+				})),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"banana": "yummy",
-				}),
+				})),
 			},
 			showSames: true,
 			expected: "<{%fg 3%}>    banana: <{%reset%}>" +
@@ -223,16 +225,16 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"banana": "yummy",
-				}),
+				})),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"banana": "yummy",
-				}),
+				})),
 			},
 			showSames: false,
 			expected: "<{%fg 3%}>    banana: <{%reset%}>" +
@@ -244,14 +246,14 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			oldState: engine.StepEventStateMetadata{
 				URN:     "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type:    "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{}),
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{})),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"someProp": "added",
-				}),
+				})),
 			},
 			expected: "<{%fg 2%}>  + someProp: <{%reset%}>" +
 				"<{%fg 2%}>\"added\"<{%reset%}>" +
@@ -262,14 +264,14 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"someProp": "removed",
-				}),
+				})),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:     "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type:    "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{}),
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{})),
 			},
 			expected: "<{%fg 1%}>  - someProp: <{%reset%}>" +
 				"<{%fg 1%}>\"removed\"<{%reset%}>" +
@@ -280,16 +282,16 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"someProp": "initial",
-				}),
+				})),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"someProp": "changed",
-				}),
+				})),
 			},
 			expected: "<{%fg 3%}>  ~ someProp: <{%reset%}>" +
 				"<{%fg 3%}>\"<{%reset%}>" +
@@ -305,20 +307,20 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewProperty("shhhh")),
-				}),
+				})),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewProperty("shhhh")),
 					"secretObj": resource.MakeSecret(
 						resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 							"a": resource.NewProperty("1"),
 						}))),
-				}),
+				})),
 			},
 			showSecrets: false,
 			expected: "<{%reset%}>" +
@@ -336,20 +338,20 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewProperty("shhhh")),
-				}),
+				})),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewProperty("shhhh")),
 					"secretObj": resource.MakeSecret(
 						resource.NewProperty(resource.NewPropertyMapFromMap(map[string]any{
 							"a": resource.NewProperty("1"),
 						}))),
-				}),
+				})),
 			},
 			showSecrets: true,
 			expected: "<{%reset%}>" +
@@ -371,16 +373,16 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewProperty("initial")),
-				}),
+				})),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewProperty("changed")),
-				}),
+				})),
 			},
 			showSecrets: true,
 			expected: "<{%fg 3%}>  ~ secret: <{%reset%}>" +
@@ -397,16 +399,16 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewProperty("initial")),
-				}),
+				})),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewProperty("changed")),
-				}),
+				})),
 			},
 			showSecrets: false,
 			expected: "<{%fg 3%}>  ~ secret: <{%reset%}>" +
@@ -420,16 +422,16 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewProperty("initial")),
-				}),
+				})),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.NewProperty("changed"),
-				}),
+				})),
 			},
 			showSecrets: true,
 			expected: "<{%fg 3%}>  ~ secret: <{%reset%}>" +
@@ -446,16 +448,16 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			oldState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.NewProperty("initial"),
-				}),
+				})),
 			},
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"secret": resource.MakeSecret(resource.NewProperty("changed")),
-				}),
+				})),
 			},
 			showSecrets: true,
 			expected: "<{%fg 3%}>  ~ secret: <{%reset%}>" +
@@ -476,29 +478,29 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 			newState: engine.StepEventStateMetadata{
 				URN:  "urn:pulumi:test::stack::pulumi:pulumi:Stack::test-stack",
 				Type: "pulumi:pulumi:Stack",
-				Outputs: resource.NewPropertyMapFromMap(map[string]any{
+				Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 					"truncate_this":        strings.Repeat("a", 300), // max 150 characters
 					"dont_truncate_this":   strings.Repeat("a", 150),
 					"truncate_this_also":   "1\n2\n3\n4\n5\n6", // max 3 lines
 					"dont_truncate_either": "1\n2\n3\n",
-				}),
+				})),
 			},
 			showSames:      false,
 			truncateOutput: true,
-			expected: "<{%fg 3%}>    dont_truncate_either: <{%reset%}>" +
-				"<{%fg 3%}>\"1\\n2\\n3\\n...\"<{%reset%}>" +
-				"<{%fg 3%}>\n<{%reset%}>" +
-				"<{%fg 3%}>    dont_truncate_this  : <{%reset%}>" +
+			expected: "<{%fg 2%}>  + dont_truncate_either: <{%reset%}>" +
+				"<{%fg 2%}>\"1\\n2\\n3\\n...\"<{%reset%}>" +
+				"<{%fg 2%}>\n<{%reset%}>" +
+				"<{%fg 2%}>  + dont_truncate_this  : <{%reset%}>" +
 				//nolint:lll
-				"<{%fg 3%}>\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"<{%reset%}>" +
-				"<{%fg 3%}>\n<{%reset%}>" +
-				"<{%fg 3%}>    truncate_this       : <{%reset%}>" +
+				"<{%fg 2%}>\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"<{%reset%}>" +
+				"<{%fg 2%}>\n<{%reset%}>" +
+				"<{%fg 2%}>  + truncate_this       : <{%reset%}>" +
 				//nolint:lll
-				"<{%fg 3%}>\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...\"<{%reset%}>" +
-				"<{%fg 3%}>\n<{%reset%}>" +
-				"<{%fg 3%}>    truncate_this_also  : <{%reset%}>" +
-				"<{%fg 3%}>\"1\\n2\\n3\\n...\"<{%reset%}>" +
-				"<{%fg 3%}>\n<{%reset%}>",
+				"<{%fg 2%}>\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...\"<{%reset%}>" +
+				"<{%fg 2%}>\n<{%reset%}>" +
+				"<{%fg 2%}>  + truncate_this_also  : <{%reset%}>" +
+				"<{%fg 2%}>\"1\\n2\\n3\\n...\"<{%reset%}>" +
+				"<{%fg 2%}>\n<{%reset%}>",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

@@ -57,18 +57,18 @@ func init() {
 					outputs := stackEvent.Metadata.New.Outputs
 
 					// Known literal id → provider's Read ran and returned a rewritten id.
-					assert.False(l, outputs["resourceId"].IsComputed(),
-						"expected resourceId to be known: %v", outputs["resourceId"])
-					assert.Equal(l, "rewritten-existing-id", outputs["resourceId"].StringValue())
-					assert.False(l, outputs["lookup"].IsComputed())
-					assert.Equal(l, "existing-key", outputs["lookup"].StringValue())
+					assert.False(l, outputs.Get("resourceId").IsComputed(),
+						"expected resourceId to be known: %v", outputs.Get("resourceId"))
+					assert.Equal(l, "rewritten-existing-id", outputs.Get("resourceId").AsString())
+					assert.False(l, outputs.Get("lookup").IsComputed())
+					assert.Equal(l, "existing-key", outputs.Get("lookup").AsString())
 
 					// Unknown input id → the engine returns an empty id and the SDK
 					// should surface it as unknown rather than echoing the request value.
-					assert.True(l, outputs["unknownResourceId"].IsComputed(),
-						"expected unknownResourceId to be unknown: %v", outputs["unknownResourceId"])
-					assert.True(l, outputs["unknownLookup"].IsComputed(),
-						"expected unknownLookup to be unknown: %v", outputs["unknownLookup"])
+					assert.True(l, outputs.Get("unknownResourceId").IsComputed(),
+						"expected unknownResourceId to be unknown: %v", outputs.Get("unknownResourceId"))
+					assert.True(l, outputs.Get("unknownLookup").IsComputed(),
+						"expected unknownLookup to be unknown: %v", outputs.Get("unknownLookup"))
 				},
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
