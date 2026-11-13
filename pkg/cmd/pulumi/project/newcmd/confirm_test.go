@@ -57,17 +57,21 @@ func TestAskConfirmationRendersBlock(t *testing.T) {
 		{"Project name", "my-project"},
 		{"Description", "A minimal AWS TypeScript Pulumi program"},
 		{"Stack name", "my-org/dev"},
-	}, []field{{"aws:region", "us-east-1"}})
+	}, []field{{"aws:region", "us-east-1"}, {"token", "[secret]"}})
 	require.NoError(t, err)
 	assert.True(t, ok)
 
 	assert.Equal(t,
 		"\n"+
-			"Project name:  my-project\n"+
-			"Description:   A minimal AWS TypeScript Pulumi program\n"+
-			"Stack name:    my-org/dev\n"+
-			"Config:\n"+
-			"  aws:region:  us-east-1\n",
+			"Review your new project:\n"+
+			"\n"+
+			"  Project name:  my-project\n"+
+			"  Description:   A minimal AWS TypeScript Pulumi program\n"+
+			"  Stack name:    my-org/dev\n"+
+			"  Config:\n"+
+			"    aws:region:  us-east-1\n"+
+			"    token:       [secret]\n"+
+			"\n",
 		out.String())
 	require.Len(t, *offered, 1)
 	assert.Equal(t, []string{confirmYes, confirmChange}, (*offered)[0])
@@ -262,7 +266,10 @@ func TestGuidedNewAcceptSkipsAllPrompts(t *testing.T) {
 	require.Equal(t, []string{"my-org/dev"}, *created)
 	assert.NotContains(t, errOut.String(), "Created stack", "guided stack creation must run quiet")
 	assert.Contains(t, out.String(), "Stack name:    my-org/dev")
-	assert.Contains(t, out.String(), "aws:region:  us-east-1")
+	assert.Contains(t, out.String(), "  Config:\n    aws:region:  us-east-1\n",
+		"the block must show a declared key at its template default")
+	assert.NotContains(t, out.String(), "aws:profile",
+		"the block must not list a --config key the template doesn't declare")
 	assert.NotContains(t, out.String(), "Created project")
 	assert.Contains(t, out.String(), "Project name:  "+filepath.Base(tempdir))
 	assert.Contains(t, out.String(), "Stack name:    my-org/dev")
