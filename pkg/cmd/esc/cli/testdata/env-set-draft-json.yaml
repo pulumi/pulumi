@@ -1,0 +1,29 @@
+run: |
+  esc env init default/test
+  esc env set default/test foo.bar.baz qux --draft --output json
+  esc env set default/test foo.bar.baz quy --draft=EXAMPLE --output json
+  esc env set default/test foo.bar.baz quz --output json
+
+---
+> esc env init default/test
+Environment created: test-user/default/test
+> esc env set default/test foo.bar.baz qux --draft --output json
+{
+  "changeRequestId": "00000000-0000-0000-0000-000000000000",
+  "url": "https://app.fake.pulumi.com/test-user/esc/default/test?version=00000000-0000-0000-0000-000000000000"
+}
+> esc env set default/test foo.bar.baz quy --draft=EXAMPLE --output json
+{
+  "changeRequestId": "EXAMPLE",
+  "url": "https://app.fake.pulumi.com/test-user/esc/default/test?version=EXAMPLE"
+}
+> esc env set default/test foo.bar.baz quz --output json
+{
+  "revision": 2
+}
+
+---
+> esc env init default/test
+> esc env set default/test foo.bar.baz qux --draft --output json
+> esc env set default/test foo.bar.baz quy --draft=EXAMPLE --output json
+> esc env set default/test foo.bar.baz quz --output json
