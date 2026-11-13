@@ -1885,7 +1885,7 @@ func (c *testPulumiClient) GetEnvironmentOpenRequest(
 	changeRequestID string,
 ) (*client.EnvironmentOpenRequest, error) {
 	cr, err := c.getChangeRequest(orgName, changeRequestID)
-	if err != nil || cr.openRequest == nil {
+	if err != nil || cr.openRequest == nil || cr.Entity.Project != projectName || cr.Entity.Name != envName {
 		return nil, errors.New("not found")
 	}
 	return cr.openRequest, nil
