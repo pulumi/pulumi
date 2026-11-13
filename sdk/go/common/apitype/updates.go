@@ -39,6 +39,12 @@ type UpdateProgramRequest struct {
 	// Configuration values.
 	Config map[string]ConfigValue `json:"config"`
 
+	// StackConfigYAML is the raw contents of Pulumi.<stack>.yaml verbatim. The service
+	// stores this alongside the resolved Config map so that `pulumi config refresh` can
+	// round-trip the file on disk without reconstruction (preserves comments, ordering,
+	// and the `environment:` imports list).
+	StackConfigYAML string `json:"stackConfigYAML,omitempty"`
+
 	Metadata UpdateMetadata `json:"metadata"`
 
 	CoherenceWindow string `json:"coherenceWindow,omitempty"`

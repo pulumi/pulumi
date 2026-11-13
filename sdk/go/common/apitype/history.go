@@ -107,6 +107,11 @@ type UpdateInfo struct {
 	Message     string                 `json:"message"`
 	Environment map[string]string      `json:"environment"`
 	Config      map[string]ConfigValue `json:"config"`
+	// StackConfigYAML is the raw contents of Pulumi.<stack>.yaml as it existed at the time
+	// of the update. Preserves formatting, comments, key ordering, and the `environment:`
+	// imports list exactly. When present, `pulumi config refresh` prefers this over
+	// reconstructing the file from the resolved Config map above.
+	StackConfigYAML string `json:"stackConfigYAML,omitempty"`
 
 	// Information obtained from an update completing.
 	Result          UpdateResult    `json:"result"`
