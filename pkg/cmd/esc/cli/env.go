@@ -449,6 +449,11 @@ func (esc *escCommand) changeRequestURL(ref environmentRef, changeRequestID stri
 	return path + "?version=" + changeRequestID
 }
 
+type changeRequestJSON struct {
+	ChangeRequestID string `json:"changeRequestId"`
+	URL             string `json:"url"`
+}
+
 // updateEnvironment updates an environment.
 // If draft is empty, the environment is directly updated.
 // If draft is "new", a change request is created and submitted.
@@ -463,6 +468,7 @@ func (esc *escCommand) updateEnvironment(
 	yaml []byte,
 	tag string,
 	envUpdateSuccessMessage string,
+	format outputFormat,
 ) ([]client.EnvironmentDiagnostic, error) {
 	if err := checkReason(draft, reason); err != nil {
 		return nil, err
@@ -480,8 +486,11 @@ func (esc *escCommand) updateEnvironment(
 			return nil, fmt.Errorf("creating environment draft: %w", err)
 		}
 		if !client.DiagnosticsHaveErrors(diags) {
-			fmt.Fprintf(esc.stdout, "Change request created: %v\n", changeRequestID)
-			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.changeRequestURL(ref, changeRequestID))
+			url := esc.changeRequestURL(ref, changeRequestID)
+			if format == outputText {
+				fmt.Fprintf(esc.stdout, "Change request created: %v\n", changeRequestID)
+				fmt.Fprintf(esc.stdout, "Change request URL: %v\n", url)
+			}
 
 			var description *string
 			if reason != "" {
@@ -490,6 +499,9 @@ func (esc *escCommand) updateEnvironment(
 			err = esc.client.SubmitChangeRequest(ctx, ref.orgName, changeRequestID, description)
 			if err != nil {
 				return nil, fmt.Errorf("submitting change request: %w", err)
+			}
+			if format == outputJSON {
+				return diags, writeJSON(esc.stdout, changeRequestJSON{ChangeRequestID: changeRequestID, URL: url})
 			}
 			fmt.Fprintln(esc.stdout, "Change request submitted")
 		}
@@ -501,14 +513,23 @@ func (esc *escCommand) updateEnvironment(
 			return nil, fmt.Errorf("updating environment draft: %w", err)
 		}
 		if !client.DiagnosticsHaveErrors(diags) {
+			url := esc.changeRequestURL(ref, changeRequestID)
+			if format == outputJSON {
+				return diags, writeJSON(esc.stdout, changeRequestJSON{ChangeRequestID: changeRequestID, URL: url})
+			}
 			fmt.Fprintln(esc.stdout, "Change request updated")
-			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.changeRequestURL(ref, changeRequestID))
+			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", url)
 		}
 		return diags, nil
 	} else {
 		diags, revision, err := esc.client.UpdateEnvironment(ctx, ref.orgName, ref.projectName, ref.envName, yaml, tag)
 		if err != nil {
 			return nil, fmt.Errorf("updating environment definition: %w", err)
+		}
+		if !client.DiagnosticsHaveErrors(diags) && format == outputJSON {
+			return diags, writeJSON(esc.stdout, struct {
+				Revision int `json:"revision"`
+			}{revision})
 		}
 		if !client.DiagnosticsHaveErrors(diags) && envUpdateSuccessMessage != "" {
 			fmt.Fprintf(esc.stdout, "%s (revision %d)\n", envUpdateSuccessMessage, revision)

@@ -1,0 +1,4 @@
+component: cli/env
+kind: feat
+body: Add `--output json` to `pulumi env set`, `pulumi env edit`, and `pulumi env version rollback`, which prints the change request ID and URL when used with `--draft`
+time: 2026-11-13T00:00:00.000000-00:00
