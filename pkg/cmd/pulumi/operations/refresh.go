@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
@@ -372,6 +373,9 @@ func NewRefreshCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
 			})
+			if err == nil && changes != nil && engine.HasChanges(changes) {
+				hints.Offer(hints.DriftDetection)
+			}
 
 			switch {
 			case err == context.Canceled:

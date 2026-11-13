@@ -34,6 +34,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
@@ -57,6 +59,9 @@ type Hint struct {
 	// BeforeFirstUpdate is true for hints that may be shown before the user has completed a successful update,
 	// because they are meant for users who are just starting out.
 	BeforeFirstUpdate bool
+	// CloudOnly is true for hints about Pulumi Cloud features, which are shown only to users of a Pulumi Cloud
+	// backend.
+	CloudOnly bool
 }
 
 // state is the content of the hints state file.
@@ -77,6 +82,7 @@ type manager struct {
 	statePath func() (string, error)
 	settings  func() settings
 	isCI      func() bool
+	isCloud   func() bool
 }
 
 func newManager() *manager {
@@ -85,6 +91,7 @@ func newManager() *manager {
 		statePath: func() (string, error) { return workspace.GetPulumiPath(stateFileName) },
 		settings:  loadSettings,
 		isCI:      ciutil.IsCI,
+		isCloud:   isCloudBackend,
 	}
 }
 
@@ -184,11 +191,15 @@ func (m *manager) flush(w io.Writer) {
 		return
 	}
 	now := m.now()
+	isCloud := sync.OnceValue(m.isCloud)
 	for _, h := range pending {
 		if settings.skip[h.ID] {
 			continue
 		}
 		if !st.SuccessfulUpdate && !h.BeforeFirstUpdate {
+			continue
+		}
+		if h.CloudOnly && !isCloud() {
 			continue
 		}
 		if last, ok := st.LastShown[h.ID]; ok && now.Sub(last) < h.Cooldown {
@@ -208,6 +219,24 @@ func (m *manager) flush(w io.Writer) {
 		show(w, h)
 		return
 	}
+}
+
+// isCloudBackend reports whether the current project uses a Pulumi Cloud backend, without contacting it.
+func isCloudBackend() bool {
+	ws := pkgWorkspace.Instance
+	// A project may configure its own backend. Without one, the user's current login applies.
+	var proj *workspace.Project
+	if cwd, err := os.Getwd(); err == nil {
+		if p, _, err := ws.ReadProject(cwd); err == nil {
+			proj = p
+		}
+	}
+	url, err := pkgWorkspace.GetCurrentCloudURL(ws, env.Global(), proj)
+	if err != nil {
+		slog.Info("could not determine backend for hints", "err", err)
+		return false
+	}
+	return url != "" && !diy.IsDIYBackendURL(url)
 }
 
 func show(w io.Writer, h Hint) {
