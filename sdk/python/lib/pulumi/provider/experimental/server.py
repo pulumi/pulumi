@@ -488,7 +488,9 @@ class ProviderServicer(ResourceProviderServicer):
         )
 
     @_raise_with_traceback
-    async def CheckConfig2(self, request: pulumi.runtime.proto.CheckConfigRequest, context):
+    async def CheckConfig2(
+        self, request: pulumi.runtime.proto.CheckConfigRequest, context
+    ):
         resp = await self._provider.check_config(
             provider.CheckRequest(
                 request.urn,
