@@ -1042,9 +1042,6 @@ global___CheckFailure = CheckFailure
 class CheckConfigRequest(google.protobuf.message.Message):
     """`CheckConfigRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.CheckConfig2) calls. It
     captures the URN and configuration of the provider resource being checked.
-
-    The fields of `CheckConfigRequest` use the same numbers as their counterparts in `CheckRequest`, so that a
-    `CheckConfigRequest` can be decoded as a `CheckRequest`.
     """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
