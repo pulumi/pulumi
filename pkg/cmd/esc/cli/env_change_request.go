@@ -368,6 +368,9 @@ func newEnvChangeRequestGetCmd(cr *changeRequestCommand) *cobra.Command {
 				}
 			}
 			url := cr.env.esc.changeRequestURL(ref, c.ID)
+			if c.Action == "open" {
+				url = cr.env.esc.openRequestURL(ref, c.ID)
+			}
 
 			if format == outputJSON {
 				return writeJSON(cr.env.esc.stdout, struct {

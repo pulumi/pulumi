@@ -106,7 +106,7 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 				fmt.Fprintf(
 					envcmd.esc.stdout,
 					"Change request URL: %v\n",
-					envcmd.esc.changeRequestURL(crRef, cr.ChangeRequestID),
+					envcmd.esc.openRequestURL(crRef, cr.ChangeRequestID),
 				)
 				fmt.Fprintln(envcmd.esc.stdout, "Change request submitted")
 			}

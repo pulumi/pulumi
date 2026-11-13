@@ -458,6 +458,23 @@ func (esc *escCommand) changeRequestURL(ref environmentRef, changeRequestID stri
 	return path + "?version=" + changeRequestID
 }
 
+// openRequestURL returns a URL to an open request in the Pulumi Cloud Console, rooted at cloudURL.
+// If there is an error, returns "".
+func (esc *escCommand) openRequestURL(ref environmentRef, changeRequestID string) string {
+	path := pulumiclient.CloudConsoleURL(
+		esc.client.URL(),
+		ref.orgName,
+		"esc",
+		ref.projectName,
+		ref.envName,
+		"change-requests",
+	)
+	if path == "" {
+		return path
+	}
+	return path + "?requestId=" + changeRequestID
+}
+
 // updateEnvironment updates an environment.
 // If draft is empty, the environment is directly updated.
 // If draft is "new", a change request is created and submitted.

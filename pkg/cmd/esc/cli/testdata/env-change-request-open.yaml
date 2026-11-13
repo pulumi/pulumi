@@ -16,7 +16,7 @@ run: |
 Environment created: test-user/default/test
 > esc env open-request default/test --grant-expiration-seconds 1h --access-duration-seconds 30m
 Created environment open request with ID: test-request-id-12345
-Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=test-request-id-12345
+Change request URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests?requestId=test-request-id-12345
 Change request submitted
 > esc env approvals ls
 ┌───────────────────────┬──────────────┬────────┬───────────┐
@@ -36,7 +36,7 @@ Access duration: 30m0s
 Grant expiration: 1h0m0s
 Approved: false
   Require approval (not satisfied): 0 of 1 approvals
-URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=test-request-id-12345
+URL: https://app.fake.pulumi.com/test-user/esc/default/test/change-requests?requestId=test-request-id-12345
 > esc env approvals get test-request-id-12345 --output json
 {
   "id": "test-request-id-12345",
@@ -72,7 +72,7 @@ URL: https://app.fake.pulumi.com/test-user/esc/default/test?version=test-request
     "grantExpirationSeconds": 3600,
     "accessDurationSeconds": 1800
   },
-  "url": "https://app.fake.pulumi.com/test-user/esc/default/test?version=test-request-id-12345"
+  "url": "https://app.fake.pulumi.com/test-user/esc/default/test/change-requests?requestId=test-request-id-12345"
 }
 > esc env approvals diff test-request-id-12345
 > esc env approvals rebase test-request-id-12345
