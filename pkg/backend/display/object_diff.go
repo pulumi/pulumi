@@ -205,21 +205,86 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int, sho
 	return b.String()
 }
 
+// stepDiffOperands picks the property maps a step's diff is computed over, and
+// the top-level keys the result should be restricted to. Outputs are preferred
+// once a step has them, since they reflect what the provider returned rather
+// than what the program asked for.
+func stepDiffOperands(
+	step engine.StepEventMetadata,
+) (olds, news resource.PropertyMap, include []resource.PropertyKey) {
+	old, new := step.Old, step.New
+	switch {
+	case old == nil && new == nil:
+		return nil, nil, nil
+	case old == nil:
+		if len(new.Outputs) > 0 {
+			return nil, new.Outputs, nil
+		}
+		return nil, new.Inputs, nil
+	case new == nil:
+		return old.Inputs, nil, nil
+	case len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement:
+		return old.Outputs, new.Outputs, nil
+	default:
+		return old.Inputs, new.Inputs, step.Diffs
+	}
+}
+
+// stepHidePaths returns the property paths whose diffs the program asked to
+// hide, via the HideDiffs resource option.
+func stepHidePaths(step engine.StepEventMetadata) []resource.PropertyPath {
+	if step.New != nil {
+		return step.New.HideDiffs
+	}
+	if step.Old != nil {
+		return step.Old.HideDiffs
+	}
+	return nil
+}
+
+// stepObjectDiff computes a step's property diff: the provider's detailed diff
+// when it supplied one, and a structural diff of olds against news otherwise.
+// Paths in hidePaths are excluded from the diff and returned separately, so
+// callers can report that a diff was withheld rather than silently dropping it.
+func stepObjectDiff(
+	step engine.StepEventMetadata, olds, news resource.PropertyMap,
+	refresh bool, hidePaths []resource.PropertyPath,
+) (*resource.ObjectDiff, []resource.PropertyPath) {
+	// An OpSame may carry a metadata change (e.g. protect) but never a property diff.
+	// See https://github.com/pulumi/pulumi/issues/15944 for context.
+	if step.Op == deploy.OpSame {
+		return nil, nil
+	}
+
+	if step.DetailedDiff != nil && step.Old != nil && step.New != nil {
+		diff, hidden := engine.TranslateDetailedDiff(&step, refresh)
+		return diff, sortedUniquePaths(hidden)
+	}
+
+	var hidden []resource.PropertyPath
+	diff := olds.DiffWithOptions(news,
+		resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
+		resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
+			for _, v := range hidePaths {
+				if v.Contains(path) {
+					hidden = append(hidden, v)
+					return true
+				}
+			}
+			return false
+		}),
+	)
+	return diff, sortedUniquePaths(hidden)
+}
+
 func getResourcePropertiesDetails(
-	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool,
+	step engine.StepEventMetadata, indent int, planning, refresh, summary, truncateOutput bool,
 	debug bool, showSecrets bool,
 ) string {
 	var b bytes.Buffer
 
 	// indent everything an additional level, like other properties.
 	indent++
-
-	var hideDiff []resource.PropertyPath
-	if step.New != nil {
-		hideDiff = step.New.HideDiffs
-	} else if step.Old != nil {
-		hideDiff = step.Old.HideDiffs
-	}
 
 	old, new := step.Old, step.New
 	if old == nil && new != nil {
@@ -228,21 +293,39 @@ func getResourcePropertiesDetails(
 		} else {
 			PrintObject(&b, new.Inputs, planning, indent, step.Op, false, truncateOutput, debug, showSecrets)
 		}
-	} else if new == nil && old != nil {
+		return b.String()
+	}
+	if new == nil && old != nil {
 		// in summary view, we don't have to print out the entire object that is getting deleted.
 		// note, the caller will have already printed out the type/name/id/urn of the resource,
 		// and that's sufficient for a summarized deletion view.
 		if !summary {
 			PrintObject(&b, old.Inputs, planning, indent, step.Op, false, truncateOutput, debug, showSecrets)
 		}
-	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
-		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets, hideDiff)
-	} else {
-		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets, hideDiff)
+		return b.String()
 	}
 
+	olds, news, include := stepDiffOperands(step)
+	diff, hidden := stepObjectDiff(step, olds, news, refresh, stepHidePaths(step))
+	if diff == nil && len(hidden) > 0 {
+		// We have hidden all the diffs, but there was a diff.
+		diff = &resource.ObjectDiff{}
+	}
+	if diff == nil {
+		// If there's no diff, report the op as Same - there's no diff to render so it should be
+		// rendered as if nothing changed. The detailed diff reports the old state; a structural
+		// diff has already established that the new state is equivalent.
+		props := new.Inputs
+		if step.DetailedDiff != nil {
+			props = old.Inputs
+		} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
+			props = new.Outputs
+		}
+		PrintObject(&b, props, planning, indent, deploy.OpSame, true, truncateOutput, debug, showSecrets)
+		return b.String()
+	}
+
+	PrintObjectDiff(&b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets, hidden)
 	return b.String()
 }
 
@@ -772,49 +855,6 @@ func shortHash(hash string) string {
 		return hash[:7]
 	}
 	return hash
-}
-
-func printOldNewDiffs(
-	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
-	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool, showSecrets bool,
-	hidePaths []resource.PropertyPath,
-) {
-	var hiddenDiffs []resource.PropertyPath
-
-	// Get the full diff structure between the two, and print it (recursively).
-	diff := olds.DiffWithOptions(news,
-		resource.IgnoreKeyFunc(resource.IsInternalPropertyKey),
-		resource.IgnorePathFunc(func(path resource.PropertyPath) bool {
-			for _, v := range hidePaths {
-				if v.Contains(path) {
-					hiddenDiffs = append(hiddenDiffs, v)
-					return true
-				}
-			}
-			return false
-		}),
-	)
-
-	// Ensure that our paths are unique and sorted
-	slices.SortFunc(hiddenDiffs, func(a, b resource.PropertyPath) int {
-		return cmp.Compare(a.String(), b.String())
-	})
-	hiddenDiffs = slices.CompactFunc(hiddenDiffs, func(a, b resource.PropertyPath) bool {
-		return a.String() == b.String()
-	})
-
-	// We have hidden all the diffs, but there was a diff.
-	if diff == nil && len(hiddenDiffs) > 0 {
-		diff = &resource.ObjectDiff{}
-	}
-
-	if diff != nil {
-		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets, hiddenDiffs)
-	} else {
-		// If there's no diff, report the op as Same - there's no diff to render
-		// so it should be rendered as if nothing changed.
-		PrintObject(b, news, planning, indent, deploy.OpSame, true, truncateOutput, debug, showSecrets)
-	}
 }
 
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
