@@ -194,7 +194,7 @@ func applyProviderUpdate(
 		return nil
 	}
 
-	diags, err := env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "Environment updated.")
+	diags, err := env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "Environment updated.", outputText)
 	if err != nil {
 		return err
 	}

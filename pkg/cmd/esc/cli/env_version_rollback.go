@@ -24,6 +24,7 @@ import (
 func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 	var draft string
 	var reason string
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "rollback [<org-name>/][<project-name>/]<environment-name>@<version>",
@@ -36,6 +37,11 @@ func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 			"definition at that version, creating a new revision.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -63,7 +69,7 @@ func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 				}
 			}
 
-			diags, err := env.esc.updateEnvironment(ctx, ref, draft, reason, yaml, "", "Environment updated.")
+			diags, err := env.esc.updateEnvironment(ctx, ref, draft, reason, yaml, "", "Environment updated.", format)
 			if err != nil {
 				return err
 			}
@@ -84,6 +90,7 @@ func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 	// Allow no value to be specified with the flag and create a new change request in that case
 	cmd.Flag("draft").NoOptDefVal = "new"
 	cmd.Flags().StringVar(&reason, "reason", "", "the description for the change request created by --draft")
+	addOutputFlag(cmd, &output)
 
 	return cmd
 }
