@@ -72,10 +72,6 @@ func newStackSelectCmd() *cobra.Command {
 				stack = args[0]
 			}
 
-			if stack == "" && !cmdutil.Interactive() {
-				return backenderr.NoStackSelectedError{}
-			}
-
 			if stack != "" {
 				// A stack was given, ask the backend about it.
 				stackRef, stackErr := b.ParseStackReference(stack)
@@ -86,7 +82,10 @@ func newStackSelectCmd() *cobra.Command {
 				s, stackErr := b.GetStack(ctx, stackRef)
 				if stackErr != nil {
 					if _, ok := errors.AsType[backenderr.NotFoundError](stackErr); ok {
-						return backenderr.StackNotFoundError{StackName: stackRef.String()}
+						return backenderr.StackNotFoundError{
+							StackName:   stackRef.String(),
+							OfferCreate: true,
+						}
 					}
 					return stackErr
 				} else if s != nil {
@@ -103,7 +102,10 @@ func newStackSelectCmd() *cobra.Command {
 					return state.SetCurrentStack(ws, state.BackendURLKey(b), s.Ref().FullyQualifiedName().String())
 				}
 
-				return backenderr.StackNotFoundError{StackName: stackRef.String()}
+				return backenderr.StackNotFoundError{
+					StackName:   stackRef.String(),
+					OfferCreate: true,
+				}
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.
