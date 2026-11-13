@@ -43,6 +43,8 @@ var Home = env.String("HOME", "The directory where Pulumi stores global configur
 // and publicly consumed.
 var Experimental = env.Bool("EXPERIMENTAL", "Enable experimental options and commands.")
 
+var AutomationAPI = env.Bool("AUTOMATION_API", "Set by the Automation API when it runs the CLI.")
+
 var SkipUpdateCheck = env.Bool("SKIP_UPDATE_CHECK", "Disable checking for a new version of pulumi.")
 
 var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself.")

@@ -1110,6 +1110,43 @@ func TestCreateStackDisplaysBackendMessages(t *testing.T) {
 	displayBackendMessages(nil)
 }
 
+func TestStaticConfigMessages(t *testing.T) {
+	t.Parallel()
+
+	notice := []apitype.Message{{
+		Severity: apitype.MessageSeverityInfo,
+		Message: "Stack dev keeps its configuration in its stack file, although the organization defaults to an " +
+			"ESC environment, because remote config is set.",
+	}}
+	for _, tt := range []struct {
+		name      string
+		reason    string
+		mode      apitype.StackConfigMode
+		err       error
+		want      []apitype.Message
+		wantCalls int
+	}{
+		{name: "ESC org", reason: "remote config is set", mode: apitype.StackConfigModeESC, want: notice, wantCalls: 1},
+		{name: "static org", reason: "remote config is set", mode: apitype.StackConfigModeStatic, wantCalls: 1},
+		{name: "no reported default", reason: "remote config is set", wantCalls: 1},
+		{name: "lookup error", reason: "remote config is set", err: errors.New("boom"), wantCalls: 1},
+		{name: "no reason", mode: apitype.StackConfigModeESC},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var calls int
+			got := staticConfigMessages(t.Context(), func(_ context.Context, org string) (apitype.StackConfigMode, error) {
+				calls++
+				assert.Equal(t, "acme", org)
+				return tt.mode, tt.err
+			}, "acme", "dev", tt.reason)
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.wantCalls, calls)
+		})
+	}
+}
+
 func TestImportDeploymentSchemaVersion(t *testing.T) {
 	t.Parallel()
 

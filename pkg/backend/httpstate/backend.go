@@ -1412,7 +1412,7 @@ func (b *cloudBackend) CreateStack(
 	b.downgradeUntypedDeploymentVersionIfNeeded(ctx, initialState)
 
 	apistack, details, err := b.client.CreateStack(
-		ctx, stackID, tags, opts.Teams, initialState, opts.Config, opts.ManagedEnvironment)
+		ctx, stackID, tags, opts.Teams, initialState, opts.Config, opts.ManagedEnvironment, opts.ConfigMode)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
@@ -1428,8 +1428,8 @@ func (b *cloudBackend) CreateStack(
 		return nil, b.enrichDefaultOrgError(ctx, stackID.Owner, err)
 	}
 
-	// Display messages from the backend if present.
-	displayBackendMessages(details.Messages)
+	displayBackendMessages(append(details.Messages, staticConfigMessages(ctx, b.client.GetDefaultStackConfigMode,
+		stackID.Owner, stackID.Stack.String(), opts.StaticConfigReason)...))
 
 	stack, err := newStack(ctx, apistack, b)
 	if err != nil {
@@ -3269,6 +3269,29 @@ func (b *cloudBackend) downgradeUntypedDeploymentVersionIfNeeded(
 		deployment.Version, deployment.Features = b.downgradeDeploymentVersionIfNeeded(
 			ctx, deployment.Version, deployment.Features)
 	}
+}
+
+func staticConfigMessages(
+	ctx context.Context,
+	getDefaultStackConfigMode func(context.Context, string) (apitype.StackConfigMode, error),
+	orgName, stackName, staticConfigReason string,
+) []apitype.Message {
+	if staticConfigReason == "" {
+		return nil
+	}
+	mode, err := getDefaultStackConfigMode(ctx, orgName)
+	if err != nil {
+		logging.V(7).Infof("looking up the default stack config mode of %s: %v", orgName, err)
+		return nil
+	}
+	if mode != apitype.StackConfigModeESC {
+		return nil
+	}
+	return []apitype.Message{{
+		Severity: apitype.MessageSeverityInfo,
+		Message: fmt.Sprintf("Stack %s keeps its configuration in its stack file, although the organization "+
+			"defaults to an ESC environment, because %s.", stackName, staticConfigReason),
+	}}
 }
 
 // displayBackendMessages renders backend-vended messages to the user via the default

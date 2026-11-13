@@ -541,6 +541,14 @@ type CreateStackOptions struct {
 	// ManagedEnvironment asks the backend to create an ESC environment that the stack manages.
 	// This is only used by the Service backend.
 	ManagedEnvironment bool
+
+	// ConfigMode asks the backend to choose where the stack's configuration lives; the created stack's
+	// ConfigLocation reports the outcome. This is only used by the Service backend.
+	ConfigMode apitype.CreateStackConfigMode
+
+	// StaticConfigReason says why the CLI sent a static ConfigMode in place of the organization default. The Service
+	// backend reports it when the organization defaults to ESC.
+	StaticConfigReason string
 }
 
 // TarReaderCloser is a [tar.Reader] that owns it's backing memory.

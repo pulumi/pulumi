@@ -341,6 +341,209 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 	}
 }
 
+func TestCreateStackConfigModeDefault(t *testing.T) {
+	t.Parallel()
+
+	const placeholder = "environment:\n  values:\n    pulumiConfig: {}\n"
+	tests := []struct {
+		name            string
+		stackFile       string
+		contents        string
+		secretsProvider string
+		remoteConfig    bool
+		managedEnv      string
+		wantMode        apitype.CreateStackConfigMode
+		wantReason      string
+		wantContents    string
+		wantNoFile      bool
+		wantOutput      string
+	}{
+		{
+			name:         "service created an environment",
+			stackFile:    "Pulumi.dev.yaml",
+			managedEnv:   "proj/renamed",
+			wantMode:     apitype.CreateStackConfigModeDefault,
+			wantContents: placeholder,
+			wantOutput:   "Created environment proj/renamed for stack configuration",
+		},
+		{
+			name:       "service created no environment",
+			stackFile:  "Pulumi.dev.yaml",
+			wantMode:   apitype.CreateStackConfigModeDefault,
+			wantNoFile: true,
+		},
+		{
+			name:            "default secrets provider",
+			stackFile:       "Pulumi.dev.yaml",
+			secretsProvider: "default",
+			wantMode:        apitype.CreateStackConfigModeDefault,
+			wantNoFile:      true,
+		},
+		{
+			name:       "JSON stack file",
+			stackFile:  "Pulumi.dev.json",
+			wantMode:   apitype.CreateStackConfigModeStatic,
+			wantReason: "its stack file is not YAML",
+			wantNoFile: true,
+		},
+		{
+			name:         "existing config",
+			stackFile:    "Pulumi.dev.yaml",
+			contents:     "config:\n  proj:a: b\n",
+			wantMode:     apitype.CreateStackConfigModeStatic,
+			wantReason:   "Pulumi.dev.yaml already has config or an environment",
+			wantContents: "config:\n  proj:a: b\n",
+		},
+		{
+			name:         "existing environment",
+			stackFile:    "Pulumi.dev.yaml",
+			contents:     "environment:\n  - other\n",
+			wantMode:     apitype.CreateStackConfigModeStatic,
+			wantReason:   "Pulumi.dev.yaml already has config or an environment",
+			wantContents: "environment:\n  - other\n",
+		},
+		{
+			name:         "existing passphrase salt",
+			stackFile:    "Pulumi.dev.yaml",
+			contents:     "encryptionsalt: v1:abc\n",
+			wantMode:     apitype.CreateStackConfigModeStatic,
+			wantReason:   "Pulumi.dev.yaml already has secrets provider settings",
+			wantContents: "encryptionsalt: v1:abc\n",
+		},
+		{
+			name:         "existing secrets provider",
+			stackFile:    "Pulumi.dev.yaml",
+			contents:     "secretsprovider: awskms://alias/x\n",
+			wantMode:     apitype.CreateStackConfigModeStatic,
+			wantReason:   "Pulumi.dev.yaml already has secrets provider settings",
+			wantContents: "secretsprovider: awskms://alias/x\n",
+		},
+		{
+			name:         "remote config",
+			stackFile:    "Pulumi.dev.yaml",
+			remoteConfig: true,
+			wantMode:     apitype.CreateStackConfigModeStatic,
+			wantReason:   "remote config is set",
+			wantNoFile:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+			stackFile := filepath.Join(dir, tt.stackFile)
+			if tt.contents != "" {
+				require.NoError(t, os.WriteFile(stackFile, []byte(tt.contents), 0o600))
+			}
+			ws := &pkgWorkspace.MockContext{
+				ReadProjectF: func(string) (*workspace.Project, string, error) {
+					return &workspace.Project{Name: "proj"}, filepath.Join(dir, "Pulumi.yaml"), nil
+				},
+			}
+			var out bytes.Buffer
+			sink := diag.DefaultSink(&out, io.Discard, diag.FormatOptions{Color: colors.Never})
+			var sentManaged bool
+			b := newManagedTestBackend(tt.managedEnv, &sentManaged)
+			var sent apitype.CreateStackConfigMode
+			var sentReason string
+			createStack := b.CreateStackF
+			b.CreateStackF = func(
+				ctx context.Context, ref backend.StackReference, root string, state *apitype.UntypedDeployment,
+				opts *backend.CreateStackOptions,
+			) (backend.Stack, error) {
+				sent = opts.ConfigMode
+				sentReason = opts.StaticConfigReason
+				return createStack(ctx, ref, root, state, opts)
+			}
+
+			_, err := CreateStack(t.Context(), sink, ws, b,
+				&backend.MockStackReference{
+					StringV: "dev", NameV: tokens.MustParseStackName("dev"), ProjectV: "proj",
+					FullyQualifiedNameV: "acme/proj/dev",
+				}, "",
+				CreateStackOptions{
+					ConfigFile:      stackFile,
+					ConfigMode:      apitype.CreateStackConfigModeDefault,
+					SecretsProvider: tt.secretsProvider,
+					UseRemoteConfig: tt.remoteConfig,
+				})
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantMode, sent)
+			assert.Equal(t, tt.wantReason, sentReason)
+			assert.False(t, sentManaged)
+			if tt.wantNoFile {
+				assert.NoFileExists(t, stackFile)
+			}
+			if tt.wantContents != "" {
+				contents, err := os.ReadFile(stackFile)
+				require.NoError(t, err)
+				assert.Equal(t, tt.wantContents, string(contents))
+			}
+			if tt.wantOutput != "" {
+				assert.Contains(t, out.String(), tt.wantOutput)
+			} else {
+				assert.NotContains(t, out.String(), "Created environment")
+			}
+		})
+	}
+}
+
+func TestCreateStackConfigModeDefaultSendsNothingToBackendWithoutManagedEnvironments(t *testing.T) {
+	t.Parallel()
+
+	var sent apitype.CreateStackConfigMode = "unset"
+	b := &backend.MockBackend{
+		NameF: func() string { return "diy" },
+		GetStackF: func(context.Context, backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+		DefaultSecretManagerF: func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		CreateStackF: func(
+			_ context.Context, ref backend.StackReference, _ string, _ *apitype.UntypedDeployment,
+			opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			sent = opts.ConfigMode
+			return &backend.MockStack{RefF: func() backend.StackReference { return ref }}, nil
+		},
+	}
+
+	_, err := CreateStack(t.Context(), diagtest.LogSink(t), &pkgWorkspace.MockContext{}, b,
+		&backend.MockStackReference{StringV: "dev", NameV: tokens.MustParseStackName("dev")}, "",
+		CreateStackOptions{
+			ConfigFile: filepath.Join(t.TempDir(), "Pulumi.dev.yaml"),
+			ConfigMode: apitype.CreateStackConfigModeDefault,
+		})
+
+	require.NoError(t, err)
+	assert.Empty(t, sent)
+}
+
+func TestCreateStackConfigModeDefaultSaveFailsNamesRecovery(t *testing.T) {
+	t.Parallel()
+
+	notADir := filepath.Join(t.TempDir(), "file")
+	require.NoError(t, os.WriteFile(notADir, nil, 0o600))
+	var sentManaged bool
+
+	_, err := CreateStack(t.Context(), diagtest.LogSink(t), &pkgWorkspace.MockContext{},
+		newManagedTestBackend("proj/renamed", &sentManaged),
+		&backend.MockStackReference{
+			StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "acme/proj/dev",
+		}, "",
+		CreateStackOptions{
+			ConfigFile: filepath.Join(notADir, "Pulumi.dev.yaml"),
+			ConfigMode: apitype.CreateStackConfigModeDefault,
+		})
+
+	require.ErrorIs(t, err, ErrSaveStackConfig)
+	assert.ErrorContains(t, err, "Stack acme/proj/dev and its ESC environment were created; remove them with "+
+		"`pulumi stack rm acme/proj/dev`")
+}
+
 func TestCreateStackManagedEnvironmentSaveFails(t *testing.T) {
 	t.Parallel()
 

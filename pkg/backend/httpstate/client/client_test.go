@@ -2723,7 +2723,7 @@ func TestCreateStackManagedEnvironment(t *testing.T) {
 		Owner:   "acme",
 		Project: "proj",
 		Stack:   tokens.MustParseStackName("dev"),
-	}, nil, nil, nil, nil, true)
+	}, nil, nil, nil, nil, true, "")
 	require.NoError(t, err)
 
 	assert.True(t, request.CreateManagedEnvironment)
@@ -2740,10 +2740,94 @@ func TestCreateStackUnmanagedEnvironment(t *testing.T) {
 		Owner:   "acme",
 		Project: "proj",
 		Stack:   tokens.MustParseStackName("dev"),
-	}, nil, nil, nil, nil, false)
+	}, nil, nil, nil, nil, false, "")
 	require.NoError(t, err)
 
 	assert.Nil(t, stack.ManagedEnvironment)
+}
+
+func TestCreateStackConfigMode(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name         string
+		mode         apitype.CreateStackConfigMode
+		wantInBody   string
+		absentInBody string
+	}{
+		{name: "default", mode: apitype.CreateStackConfigModeDefault, wantInBody: `"configMode":"default"`},
+		{name: "static", mode: apitype.CreateStackConfigModeStatic, wantInBody: `"configMode":"static"`},
+		{name: "unset", absentInBody: "configMode"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var body string
+			server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+				raw, err := io.ReadAll(req.Body)
+				require.NoError(t, err)
+				body = string(raw)
+				return `{}`
+			})
+			t.Cleanup(server.Close)
+
+			_, _, err := newMockClient(server).CreateStack(t.Context(), StackIdentifier{
+				Owner:   "acme",
+				Project: "proj",
+				Stack:   tokens.MustParseStackName("dev"),
+			}, nil, nil, nil, nil, false, tt.mode)
+			require.NoError(t, err)
+
+			if tt.wantInBody != "" {
+				assert.Contains(t, body, tt.wantInBody)
+			}
+			if tt.absentInBody != "" {
+				assert.NotContains(t, body, tt.absentInBody)
+			}
+		})
+	}
+}
+
+func TestGetDefaultStackConfigMode(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		status   int
+		response string
+		want     apitype.StackConfigMode
+		wantErr  bool
+	}{
+		{
+			name:     "esc",
+			status:   200,
+			response: `{"name":"acme","defaultStackConfigMode":"esc"}`,
+			want:     apitype.StackConfigModeESC,
+		},
+		{name: "static", status: 200, response: `{"defaultStackConfigMode":"static"}`, want: apitype.StackConfigModeStatic},
+		{name: "absent", status: 200, response: `{"name":"acme"}`},
+		{name: "error", status: 403, response: `{"code":403,"message":"forbidden"}`, wantErr: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var path string
+			server := newMockServerRequestProcessor(tt.status, func(req *http.Request) string {
+				path = req.URL.Path
+				return tt.response
+			})
+			t.Cleanup(server.Close)
+
+			got, err := newMockClient(server).GetDefaultStackConfigMode(t.Context(), "acme")
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, "/api/orgs/acme/metadata", path)
+		})
+	}
 }
 
 func TestListPolicyIssues_FilterAndSortModel(t *testing.T) {
