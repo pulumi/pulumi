@@ -531,7 +531,9 @@ func TestEventsHeldUntilBackend(t *testing.T) {
 	UseBackend(ctx, "https://app.pulumi.com")
 
 	require.Eventually(t, func() bool { return len(f.service.received()) == 1 }, 10*time.Second, 10*time.Millisecond)
-	require.Len(t, f.service.received()[0].Events, 1)
+	events := f.service.received()[0].Events
+	require.Len(t, events, 2)
+	require.Equal(t, map[string]any{"backend": "pulumi"}, events[1].Facts)
 }
 
 func TestIneligibleBackendDiscards(t *testing.T) {

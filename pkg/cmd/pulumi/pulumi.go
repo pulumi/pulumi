@@ -84,6 +84,7 @@ import (
 	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
 	backendlogging "github.com/pulumi/pulumi/pkg/v3/logging"
+	"github.com/pulumi/pulumi/pkg/v3/telemetry"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -383,6 +384,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
 			ctx = httpstate.ContextWithAgentCredentialUse(ctx)
 			ctx = httpstate.ContextWithCommandName(ctx, cmd.CommandPath())
+			telemetry.Emit(ctx, invocationTelemetry(cmd)...)
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
