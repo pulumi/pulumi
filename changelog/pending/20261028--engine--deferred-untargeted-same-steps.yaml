@@ -1,0 +1,3 @@
+component: engine
+kind: fix
+body: Hold back untargeted same steps until their old-state dependencies have steps of their own, so `--target` and `--exclude` updates whose programs removed a dependency edge no longer fail with a duplicate resource URN error or write an invalid snapshot ordering

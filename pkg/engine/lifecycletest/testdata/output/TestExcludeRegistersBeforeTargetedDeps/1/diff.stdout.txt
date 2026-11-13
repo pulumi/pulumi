@@ -1,0 +1,49 @@
+<{%reset%}>  pkgA:m:typC: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typC::outer]
+<{%reset%}><{%reset%}>    <{%reset%}>  pkgA:m:typC: (same)
+<{%reset%}>        [id=1]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC::inner]
+<{%reset%}><{%reset%}>        <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>            [id=3]
+<{%reset%}><{%reset%}>            [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::local]
+<{%reset%}><{%reset%}>        <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>            [id=4]
+<{%reset%}><{%reset%}>            [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::svc]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=5]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::sharedA]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>    [id=6]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typA::sharedB]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typC: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typC::delta]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::deltaData]
+<{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typC: (create)
+<{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typC::epsilon]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)
+<{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::epsilonData]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typC: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typC::alpha]
+<{%reset%}><{%reset%}>    <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>        [id=9]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::alphaData]
+<{%reset%}><{%reset%}><{%reset%}>  pkgA:m:typC: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:m:typC::beta]
+<{%reset%}><{%reset%}>    <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>        [id=10]
+<{%reset%}><{%reset%}>        [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typA::betaData]
+<{%reset%}><{%reset%}>        <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>            [id=11]
+<{%reset%}><{%reset%}>            [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::task]
+<{%reset%}><{%reset%}>        <{%reset%}>  pkgA:m:typA: (same)
+<{%reset%}>            [id=12]
+<{%reset%}><{%reset%}>            [urn=urn:pulumi:test::test::pkgA:m:typC$pkgA:m:typC$pkgA:m:typA::policy]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 4 created<{%reset%}>
+    12 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
