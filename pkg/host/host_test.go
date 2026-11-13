@@ -96,6 +96,27 @@ func TestHostManagedProviderCloseSignalsCancellation(t *testing.T) {
 	require.NotContains(t, host.resourcePlugins, plugin.Provider(mockProv))
 }
 
+// A provider handed out by the host must still offer CheckConfig2 to callers of [plugin.CheckConfig2].
+func TestHostManagedProviderForwardsCheckConfig2(t *testing.T) {
+	t.Parallel()
+
+	mockProv := &plugin.MockProvider{
+		CheckConfigF: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+			return plugin.CheckConfigResponse{Failures: []plugin.CheckFailure{{Reason: "from CheckConfig"}}}, nil
+		},
+		CheckConfig2F: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfig2Response, error) {
+			return plugin.CheckConfig2Response{
+				Failures: []plugin.CheckConfigFailure{{Reason: "from CheckConfig2"}},
+			}, nil
+		},
+	}
+
+	var managed plugin.Provider = hostManagedProvider{Provider: mockProv, host: newHost(t, nil)}
+	resp, err := plugin.CheckConfig2(t.Context(), managed, plugin.CheckConfigRequest{})
+	require.NoError(t, err)
+	require.Equal(t, []plugin.CheckConfigFailure{{Reason: "from CheckConfig2"}}, resp.Failures)
+}
+
 // TestContextCloseReleasesProviders locks in that closing a context releases the providers
 // booted on its behalf without touching providers booted for other contexts sharing the same
 // host. Release happens asynchronously once the context's base context is cancelled, so the
