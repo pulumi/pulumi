@@ -1052,12 +1052,16 @@ class CheckConfigRequest(google.protobuf.message.Message):
     URN_FIELD_NUMBER: builtins.int
     OLDS_FIELD_NUMBER: builtins.int
     NEWS_FIELD_NUMBER: builtins.int
+    RANDOMSEED_FIELD_NUMBER: builtins.int
     NAME_FIELD_NUMBER: builtins.int
     TYPE_FIELD_NUMBER: builtins.int
+    OLD_OUTPUTS_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """The URN of the provider resource whose configuration is being checked, which may or may not be a [default
     provider](default-providers).
     """
+    randomSeed: builtins.bytes
+    """A random but deterministically computed hash, intended to be used for generating globally unique names."""
     name: builtins.str
     """The name of the provider resource being checked. This must match the name specified by the `urn` field, and is
     passed so that providers do not have to implement URN parsing in order to extract the name of the resource.
@@ -1074,17 +1078,25 @@ class CheckConfigRequest(google.protobuf.message.Message):
     def news(self) -> google.protobuf.struct_pb2.Struct:
         """The new configuration for the provider."""
 
+    @property
+    def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The previously persisted output properties of the provider resource, if any. Providers must not assume this is
+        populated.
+        """
+
     def __init__(
         self,
         *,
         urn: builtins.str = ...,
         olds: google.protobuf.struct_pb2.Struct | None = ...,
         news: google.protobuf.struct_pb2.Struct | None = ...,
+        randomSeed: builtins.bytes = ...,
         name: builtins.str = ...,
         type: builtins.str = ...,
+        old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["news", b"news", "olds", b"olds"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["name", b"name", "news", b"news", "olds", b"olds", "type", b"type", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["news", b"news", "old_outputs", b"old_outputs", "olds", b"olds"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["name", b"name", "news", b"news", "old_outputs", b"old_outputs", "olds", b"olds", "randomSeed", b"randomSeed", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___CheckConfigRequest = CheckConfigRequest
 

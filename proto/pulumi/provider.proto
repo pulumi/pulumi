@@ -741,8 +741,12 @@ message CheckConfigRequest {
     // The new configuration for the provider.
     google.protobuf.Struct news = 3;
 
-    // These numbers are used by fields of `CheckRequest` that only apply to resources.
-    reserved 4, 5, 8, 9;
+    // 4 is reserved in `CheckRequest`, and 8 is used for its `autonaming` field, which does not apply to provider
+    // configuration.
+    reserved 4, 8;
+
+    // A random but deterministically computed hash, intended to be used for generating globally unique names.
+    bytes randomSeed = 5;
 
     // The name of the provider resource being checked. This must match the name specified by the `urn` field, and is
     // passed so that providers do not have to implement URN parsing in order to extract the name of the resource.
@@ -751,6 +755,10 @@ message CheckConfigRequest {
     // The type of the provider resource being checked. This must match the type specified by the `urn` field, and is
     // passed so that providers do not have to implement URN parsing in order to extract the type of the resource.
     string type = 7;
+
+    // The previously persisted output properties of the provider resource, if any. Providers must not assume this is
+    // populated.
+    google.protobuf.Struct old_outputs = 9;
 }
 
 // `CheckConfigResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig2) call. A
