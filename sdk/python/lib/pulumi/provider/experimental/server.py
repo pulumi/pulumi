@@ -488,6 +488,30 @@ class ProviderServicer(ResourceProviderServicer):
         )
 
     @_raise_with_traceback
+    async def CheckConfig2(
+        self, request: pulumi.runtime.proto.CheckConfigRequest, context
+    ):
+        resp = await self._provider.check_config(
+            provider.CheckRequest(
+                request.urn,
+                PropertyValue.unmarshal_map(request.olds),
+                PropertyValue.unmarshal_map(request.news),
+                request.randomSeed,
+            )
+        )
+        return proto.CheckConfigResponse(
+            inputs=PropertyValue.marshal_map(resp.inputs)
+            if resp.inputs is not None
+            else None,
+            failures=[
+                proto.CheckConfigFailure(property=f.property, reason=f.reason)
+                for f in resp.failures
+            ]
+            if resp.failures is not None
+            else None,
+        )
+
+    @_raise_with_traceback
     async def DiffConfig(self, request, context):
         resp = await self._provider.diff_config(
             provider.DiffRequest(

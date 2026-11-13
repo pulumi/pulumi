@@ -489,6 +489,14 @@ type hostManagedProvider struct {
 	host *defaultHost
 }
 
+// CheckConfig2 forwards to the wrapped provider, which the embedded Provider interface would otherwise hide from
+// callers looking for [plugin.ProviderWithCheckConfig2].
+func (pc hostManagedProvider) CheckConfig2(
+	ctx context.Context, req plugin.CheckConfigRequest,
+) (plugin.CheckConfig2Response, error) {
+	return plugin.CheckConfig2(ctx, pc.Provider, req)
+}
+
 // Overrides the wrapped provider's implementation of Provider.Close to ask the managing plugin host to close the
 // provider.
 func (pc hostManagedProvider) Close() error {

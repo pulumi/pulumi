@@ -38,6 +38,7 @@ const (
 	ResourceProvider_Parameterize_FullMethodName  = "/pulumirpc.ResourceProvider/Parameterize"
 	ResourceProvider_GetSchema_FullMethodName     = "/pulumirpc.ResourceProvider/GetSchema"
 	ResourceProvider_CheckConfig_FullMethodName   = "/pulumirpc.ResourceProvider/CheckConfig"
+	ResourceProvider_CheckConfig2_FullMethodName  = "/pulumirpc.ResourceProvider/CheckConfig2"
 	ResourceProvider_DiffConfig_FullMethodName    = "/pulumirpc.ResourceProvider/DiffConfig"
 	ResourceProvider_Configure_FullMethodName     = "/pulumirpc.ResourceProvider/Configure"
 	ResourceProvider_Invoke_FullMethodName        = "/pulumirpc.ResourceProvider/Invoke"
@@ -121,6 +122,13 @@ type ResourceProviderClient interface {
 	// thereof can negatively impact the end-user experience, as the provider inputs are used for detecting and
 	// rendering diffs.
 	CheckConfig(ctx context.Context, in *CheckRequest, opts ...grpc.CallOption) (*CheckResponse, error)
+	// `CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+	// uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+	//
+	// Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+	// provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+	// to implement `CheckConfig` for as long as they support callers that only know about the latter.
+	CheckConfig2(ctx context.Context, in *CheckConfigRequest, opts ...grpc.CallOption) (*CheckConfigResponse, error)
 	// `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
 	// difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
 	// is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
@@ -302,6 +310,16 @@ func (c *resourceProviderClient) CheckConfig(ctx context.Context, in *CheckReque
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CheckResponse)
 	err := c.cc.Invoke(ctx, ResourceProvider_CheckConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *resourceProviderClient) CheckConfig2(ctx context.Context, in *CheckConfigRequest, opts ...grpc.CallOption) (*CheckConfigResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CheckConfigResponse)
+	err := c.cc.Invoke(ctx, ResourceProvider_CheckConfig2_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -551,6 +569,13 @@ type ResourceProviderServer interface {
 	// thereof can negatively impact the end-user experience, as the provider inputs are used for detecting and
 	// rendering diffs.
 	CheckConfig(context.Context, *CheckRequest) (*CheckResponse, error)
+	// `CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+	// uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+	//
+	// Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+	// provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+	// to implement `CheckConfig` for as long as they support callers that only know about the latter.
+	CheckConfig2(context.Context, *CheckConfigRequest) (*CheckConfigResponse, error)
 	// `DiffConfig` compares an existing ("old") provider configuration with a new configuration and computes the
 	// difference (if any) between them. `DiffConfig` is to provider resources what [](pulumirpc.ResourceProvider.Diff)
 	// is to individual resources. `DiffConfig` should only be called with values that have at some point been validated
@@ -710,6 +735,9 @@ func (UnimplementedResourceProviderServer) GetSchema(context.Context, *GetSchema
 func (UnimplementedResourceProviderServer) CheckConfig(context.Context, *CheckRequest) (*CheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckConfig not implemented")
 }
+func (UnimplementedResourceProviderServer) CheckConfig2(context.Context, *CheckConfigRequest) (*CheckConfigResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckConfig2 not implemented")
+}
 func (UnimplementedResourceProviderServer) DiffConfig(context.Context, *DiffRequest) (*DiffResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiffConfig not implemented")
 }
@@ -850,6 +878,24 @@ func _ResourceProvider_CheckConfig_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ResourceProviderServer).CheckConfig(ctx, req.(*CheckRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ResourceProvider_CheckConfig2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceProviderServer).CheckConfig2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResourceProvider_CheckConfig2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceProviderServer).CheckConfig2(ctx, req.(*CheckConfigRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1175,6 +1221,10 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CheckConfig",
 			Handler:    _ResourceProvider_CheckConfig_Handler,
+		},
+		{
+			MethodName: "CheckConfig2",
+			Handler:    _ResourceProvider_CheckConfig2_Handler,
 		},
 		{
 			MethodName: "DiffConfig",

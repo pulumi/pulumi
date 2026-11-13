@@ -771,6 +771,106 @@ export namespace CheckFailure {
     }
 }
 
+export class CheckConfigRequest extends jspb.Message { 
+    getUrn(): string;
+    setUrn(value: string): CheckConfigRequest;
+
+    hasOlds(): boolean;
+    clearOlds(): void;
+    getOlds(): google_protobuf_struct_pb.Struct | undefined;
+    setOlds(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+
+    hasNews(): boolean;
+    clearNews(): void;
+    getNews(): google_protobuf_struct_pb.Struct | undefined;
+    setNews(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+    getRandomseed(): Uint8Array | string;
+    getRandomseed_asU8(): Uint8Array;
+    getRandomseed_asB64(): string;
+    setRandomseed(value: Uint8Array | string): CheckConfigRequest;
+    getName(): string;
+    setName(value: string): CheckConfigRequest;
+    getType(): string;
+    setType(value: string): CheckConfigRequest;
+
+    hasOldOutputs(): boolean;
+    clearOldOutputs(): void;
+    getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldOutputs(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CheckConfigRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: CheckConfigRequest): CheckConfigRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CheckConfigRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CheckConfigRequest;
+    static deserializeBinaryFromReader(message: CheckConfigRequest, reader: jspb.BinaryReader): CheckConfigRequest;
+}
+
+export namespace CheckConfigRequest {
+    export type AsObject = {
+        urn: string,
+        olds?: google_protobuf_struct_pb.Struct.AsObject,
+        news?: google_protobuf_struct_pb.Struct.AsObject,
+        randomseed: Uint8Array | string,
+        name: string,
+        type: string,
+        oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+    }
+}
+
+export class CheckConfigResponse extends jspb.Message { 
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): CheckConfigResponse;
+    clearFailuresList(): void;
+    getFailuresList(): Array<CheckConfigFailure>;
+    setFailuresList(value: Array<CheckConfigFailure>): CheckConfigResponse;
+    addFailures(value?: CheckConfigFailure, index?: number): CheckConfigFailure;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CheckConfigResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: CheckConfigResponse): CheckConfigResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CheckConfigResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CheckConfigResponse;
+    static deserializeBinaryFromReader(message: CheckConfigResponse, reader: jspb.BinaryReader): CheckConfigResponse;
+}
+
+export namespace CheckConfigResponse {
+    export type AsObject = {
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        failuresList: Array<CheckConfigFailure.AsObject>,
+    }
+}
+
+export class CheckConfigFailure extends jspb.Message { 
+    getProperty(): string;
+    setProperty(value: string): CheckConfigFailure;
+    getReason(): string;
+    setReason(value: string): CheckConfigFailure;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CheckConfigFailure.AsObject;
+    static toObject(includeInstance: boolean, msg: CheckConfigFailure): CheckConfigFailure.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CheckConfigFailure, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CheckConfigFailure;
+    static deserializeBinaryFromReader(message: CheckConfigFailure, reader: jspb.BinaryReader): CheckConfigFailure;
+}
+
+export namespace CheckConfigFailure {
+    export type AsObject = {
+        property: string,
+        reason: string,
+    }
+}
+
 export class DiffRequest extends jspb.Message { 
     getId(): string;
     setId(value: string): DiffRequest;
