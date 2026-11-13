@@ -674,6 +674,16 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 
 // CheckConfig validates the configuration for this resource provider.
 func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {
+	resp, err := p.CheckConfig2(ctx, req)
+	if err != nil {
+		return CheckConfigResponse{}, err
+	}
+	return CheckConfigResponse{Properties: resp.Properties, Failures: checkFailures(resp.Failures)}, nil
+}
+
+// CheckConfig2 validates the configuration for this resource provider. It calls the provider's CheckConfig2 method,
+// and falls back to CheckConfig for providers that predate it.
+func (p *provider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (CheckConfig2Response, error) {
 	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
 	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
 		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
@@ -689,7 +699,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		PropagateNil: true,
 	})
 	if err != nil {
-		return CheckConfigResponse{}, err
+		return CheckConfig2Response{}, err
 	}
 
 	mnews, err := MarshalProperties(req.News, MarshalOptions{
@@ -698,12 +708,11 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		PropagateNil: true,
 	})
 	if err != nil {
-		return CheckConfigResponse{}, err
+		return CheckConfig2Response{}, err
 	}
 
-	// Prefer CheckConfig2, and fall back to CheckConfig for providers that predate it.
 	var rpcInputs *structpb.Struct
-	var failures []CheckFailure
+	var failures []CheckConfigFailure
 	resp2, err := p.clientRaw.CheckConfig2(p.requestContext(), &pulumirpc.CheckConfigRequest{
 		Urn:  string(req.URN),
 		Name: req.URN.Name(),
@@ -714,9 +723,11 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	switch {
 	case err == nil:
 		rpcInputs = resp2.GetInputs()
-		failures = slice.Prealloc[CheckFailure](len(resp2.GetFailures()))
+		failures = slice.Prealloc[CheckConfigFailure](len(resp2.GetFailures()))
 		for _, failure := range resp2.GetFailures() {
-			failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+			failures = append(failures, CheckConfigFailure{
+				Property: resource.PropertyKey(failure.Property), Reason: failure.Reason,
+			})
 		}
 	case rpcerror.Convert(err).Code() == codes.Unimplemented:
 		logging.V(7).Infof("%s CheckConfig2 is unimplemented: falling back to CheckConfig", label)
@@ -733,22 +744,24 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 			if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, req.URN.Type()) {
 				// For backwards compatibility, just return the news as if the provider was okay with them.
 				logging.V(7).Infof("%s unimplemented rpc: returning news as is", label)
-				return CheckConfigResponse{Properties: req.News}, nil
+				return CheckConfig2Response{Properties: req.News}, nil
 			}
 			logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
 				rpcError.Message())
-			return CheckConfigResponse{}, err
+			return CheckConfig2Response{}, err
 		}
 		rpcInputs = resp.GetInputs()
-		failures = slice.Prealloc[CheckFailure](len(resp.GetFailures()))
+		failures = slice.Prealloc[CheckConfigFailure](len(resp.GetFailures()))
 		for _, failure := range resp.GetFailures() {
-			failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+			failures = append(failures, CheckConfigFailure{
+				Property: resource.PropertyKey(failure.Property), Reason: failure.Reason,
+			})
 		}
 	default:
 		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
 			rpcError.Message())
-		return CheckConfigResponse{}, err
+		return CheckConfig2Response{}, err
 	}
 
 	// Unmarshal the provider inputs.
@@ -763,14 +776,14 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 			PropagateNil:   true,
 		})
 		if err != nil {
-			return CheckConfigResponse{}, err
+			return CheckConfig2Response{}, err
 		}
 	}
 
 	// Copy over any secret annotations, since we could not pass any to the provider, and return.
 	annotateSecrets(inputs, req.News)
 	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
-	return CheckConfigResponse{Properties: inputs, Failures: failures}, nil
+	return CheckConfig2Response{Properties: inputs, Failures: failures}, nil
 }
 
 func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {

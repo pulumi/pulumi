@@ -266,7 +266,7 @@ func (p *providerServer) Cancel(ctx context.Context, req *emptypb.Empty) (*empty
 func (p *providerServer) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	rpcInputs, failures, err := p.checkConfig(ctx, req)
+	rpcInputs, failures, err := p.checkConfig(ctx, req, false /* checkConfig2 */)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +282,7 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 func (p *providerServer) CheckConfig2(ctx context.Context,
 	req *pulumirpc.CheckConfigRequest,
 ) (*pulumirpc.CheckConfigResponse, error) {
-	rpcInputs, failures, err := p.checkConfig(ctx, req)
+	rpcInputs, failures, err := p.checkConfig(ctx, req, true /* checkConfig2 */)
 	if err != nil {
 		return nil, err
 	}
@@ -304,9 +304,11 @@ type checkConfigRequest interface {
 	GetNews() *structpb.Struct
 }
 
+// checkConfig answers CheckConfig, or CheckConfig2 if checkConfig2 is set, in which case it prefers the provider's
+// CheckConfig2 method.
 func (p *providerServer) checkConfig(
-	ctx context.Context, req checkConfigRequest,
-) (*structpb.Struct, []CheckFailure, error) {
+	ctx context.Context, req checkConfigRequest, checkConfig2 bool,
+) (*structpb.Struct, []CheckConfigFailure, error) {
 	urn := resource.URN(req.GetUrn())
 
 	// To support old engines fill in Name/Type if the engine didn't send them
@@ -335,14 +337,22 @@ func (p *providerServer) checkConfig(
 		return nil, nil, err
 	}
 
-	resp, err := p.provider.CheckConfig(ctx, CheckConfigRequest{
+	checkReq := CheckConfigRequest{
 		URN:           urn,
 		Name:          name,
 		Type:          tokens.Type(typ),
 		Olds:          state,
 		News:          inputs,
 		AllowUnknowns: true,
-	})
+	}
+	var resp CheckConfig2Response
+	if checkConfig2 {
+		resp, err = CheckConfig2(ctx, p.provider, checkReq)
+	} else {
+		var r CheckConfigResponse
+		r, err = p.provider.CheckConfig(ctx, checkReq)
+		resp = CheckConfig2Response{Properties: r.Properties, Failures: checkConfigFailures(r.Failures)}
+	}
 	if err != nil {
 		return nil, nil, p.checkNYI("CheckConfig", err)
 	}

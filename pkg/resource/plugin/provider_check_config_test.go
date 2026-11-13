@@ -193,3 +193,40 @@ func TestProviderServer_CheckConfig2_matchesCheckConfig(t *testing.T) {
 	_, err = srv.CheckConfig2(t.Context(), &pulumirpc.CheckConfigRequest{Urn: urn, Name: "other", News: news})
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 }
+
+func TestProviderServer_CheckConfig2_prefersProviderCheckConfig2(t *testing.T) {
+	t.Parallel()
+
+	urn := "urn:pulumi:org/proj/dev::foo::pulumi:providers:pkg::default"
+	srv := NewProviderServer(&MockProvider{
+		CheckConfigF: func(context.Context, CheckConfigRequest) (CheckConfigResponse, error) {
+			return CheckConfigResponse{Failures: []CheckFailure{{Property: "region", Reason: "from CheckConfig"}}}, nil
+		},
+		CheckConfig2F: func(context.Context, CheckConfigRequest) (CheckConfig2Response, error) {
+			return CheckConfig2Response{
+				Failures: []CheckConfigFailure{{Property: "region", Reason: "from CheckConfig2"}},
+			}, nil
+		},
+	})
+
+	resp, err := srv.CheckConfig(t.Context(), &pulumirpc.CheckRequest{Urn: urn})
+	require.NoError(t, err)
+	require.Len(t, resp.GetFailures(), 1)
+	assert.Equal(t, "from CheckConfig", resp.GetFailures()[0].GetReason())
+
+	resp2, err := srv.CheckConfig2(t.Context(), &pulumirpc.CheckConfigRequest{Urn: urn})
+	require.NoError(t, err)
+	require.Len(t, resp2.GetFailures(), 1)
+	assert.Equal(t, "from CheckConfig2", resp2.GetFailures()[0].GetReason())
+}
+
+func TestCheckConfig2_fallsBackToCheckConfig(t *testing.T) {
+	t.Parallel()
+
+	// checkConfigProvider does not implement ProviderWithCheckConfig2.
+	req := checkConfigTestRequest()
+	resp, err := CheckConfig2(t.Context(), &checkConfigProvider{}, req)
+	require.NoError(t, err)
+	assert.Equal(t, req.News, resp.Properties)
+	assert.Equal(t, []CheckConfigFailure{{Property: "region", Reason: "/"}}, resp.Failures)
+}
