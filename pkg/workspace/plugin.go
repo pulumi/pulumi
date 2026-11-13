@@ -15,12 +15,15 @@
 package workspace
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/blang/semver"
@@ -83,7 +86,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 
 	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
 	err = InstallPluginContent(
-		ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false, newLoader, cloudCredentialEnv)
+		ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false, nil, newLoader, cloudCredentialEnv)
 	if err != nil {
 		return nil, &InstallPluginError{
 			Spec: pluginSpec,
@@ -204,6 +207,7 @@ func EnsureLanguageInstalled(ctx context.Context, runtime string, log func(sev d
 // installed.
 func InstallPluginContent(
 	ctx context.Context, spec workspace.PluginDescriptor, content pluginstorage.Content, reinstall bool,
+	out io.Writer,
 	newLoader plugin.NewLoaderFunc,
 	cloudCredentialEnv map[string]string,
 ) (err error) {
@@ -219,8 +223,30 @@ func InstallPluginContent(
 		}
 	}()
 
-	return installDependenciesForPluginSpec(ctx, spec,
-		os.Stderr /* redirect stdout to stderr */, os.Stderr, newLoader, cloudCredentialEnv)
+	if out != nil {
+		return installDependenciesForPluginSpec(ctx, spec, out, out, newLoader, cloudCredentialEnv)
+	}
+
+	var captured lockedBuffer
+	err = installDependenciesForPluginSpec(ctx, spec, &captured, &captured, newLoader, cloudCredentialEnv)
+	if err == nil {
+		return nil
+	}
+	if output := strings.TrimSpace(captured.String()); output != "" {
+		return fmt.Errorf("%w\n%s", err, output)
+	}
+	return err
+}
+
+type lockedBuffer struct {
+	mu sync.Mutex
+	bytes.Buffer
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.Buffer.Write(p)
 }
 
 func installDependenciesForPluginSpec(
@@ -243,16 +269,17 @@ func installDependenciesForPluginSpec(
 		return nil
 	}
 
+	sink := diag.DefaultSink(stdout, stderr, diag.FormatOptions{Color: diagutil.GetGlobalColorization()})
 	pluginHost, err := pkghost.New(
-		context.WithoutCancel(ctx), diagutil.Diag(), diagutil.Diag(), nil, EnsureLanguageInstalled,
+		context.WithoutCancel(ctx), sink, sink, nil, EnsureLanguageInstalled,
 		newLoader, convert.NewMapperServerFromContext, nil)
 	if err != nil {
 		return err
 	}
 
 	pctx, err := plugin.NewContextWithRoot(ctx,
-		diagutil.Diag(),
-		diagutil.Diag(),
+		sink,
+		sink,
 		pluginHost, // host
 		subdir,     // pwd
 		subdir,     // root

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"iter"
 	"os"
 	"path/filepath"
@@ -100,7 +101,7 @@ func TestGetLatestPluginIncludedVersion(t *testing.T) {
 		installPluginSpec: func(
 			_ context.Context, _ string,
 			install workspace.PluginDescriptor, file string,
-			_ diag.Sink, _ *progress.Group, _ colors.Colorization, _ bool,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
 		) error {
 			pluginWasInstalled = true
 			assert.Empty(t, file)
@@ -134,7 +135,7 @@ func TestInstallKnownLanguageRuntime(t *testing.T) {
 		installPluginSpec: func(
 			_ context.Context, _ string,
 			install workspace.PluginDescriptor, file string,
-			_ diag.Sink, _ *progress.Group, _ colors.Colorization, _ bool,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
 		) error {
 			pluginWasInstalled = true
 			assert.Empty(t, file)
@@ -188,7 +189,7 @@ func TestGetPluginDownloadURLFromRegistry(t *testing.T) {
 		installPluginSpec: func(
 			_ context.Context, _ string,
 			install workspace.PluginDescriptor, _ string,
-			_ diag.Sink, _ *progress.Group, _ colors.Colorization, _ bool,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
 		) error {
 			pluginWasInstalled = true
 			assert.Equal(t, workspace.PluginDescriptor{
@@ -252,7 +253,7 @@ func TestGetPluginDownloadFromKnownUnpublishedPackage(t *testing.T) {
 		installPluginSpec: func(
 			_ context.Context, _ string,
 			install workspace.PluginDescriptor, _ string,
-			_ diag.Sink, _ *progress.Group, _ colors.Colorization, _ bool,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
 		) error {
 			pluginWasInstalled = true
 			assert.Equal(t, workspace.PluginDescriptor{
@@ -347,7 +348,7 @@ func TestRegistryIsNotUsedWhenAFileIsSpecified(t *testing.T) {
 		installPluginSpec: func(
 			_ context.Context, _ string,
 			install workspace.PluginDescriptor, file string,
-			sink diag.Sink, _ *progress.Group, color colors.Colorization, reinstall bool,
+			sink diag.Sink, _ io.Writer, _ *progress.Group, color colors.Colorization, reinstall bool,
 		) error {
 			wasInstalled = true
 			assert.Equal(t, "./pulumi-resource-some-file.tar.gz", file)
@@ -395,7 +396,7 @@ packages:
 		},
 		installPluginSpec: func(
 			_ context.Context, _ string, install workspace.PluginDescriptor, _ string,
-			_ diag.Sink, _ *progress.Group, _ colors.Colorization, _ bool,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
 		) error {
 			require.Equal(t, "./my-provider", install.Name)
 			require.NotContains(t, install.PluginDownloadURL, "github.com/pulumi/pulumi-my-local-provider")
@@ -447,7 +448,7 @@ func TestSuggestedPackagesDisplay(t *testing.T) {
 		},
 		installPluginSpec: func(
 			_ context.Context, _ string, install workspace.PluginDescriptor, _ string,
-			_ diag.Sink, _ *progress.Group, _ colors.Colorization, _ bool,
+			_ diag.Sink, _ io.Writer, _ *progress.Group, _ colors.Colorization, _ bool,
 		) error {
 			assert.Fail(t, "installPluginSpec should not have been called")
 			return nil
