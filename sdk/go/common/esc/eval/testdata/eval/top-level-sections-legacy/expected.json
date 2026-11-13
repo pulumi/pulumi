@@ -1,0 +1,1448 @@
+{
+    "loadDiags": [
+        {
+            "Severity": 2,
+            "Summary": "\"environments\" is ignored: \"imports\" is also set",
+            "Detail": "",
+            "Subject": {
+                "Filename": "top-level-sections-legacy",
+                "Start": {
+                    "Line": 4,
+                    "Column": 1,
+                    "Byte": 102
+                },
+                "End": {
+                    "Line": 4,
+                    "Column": 13,
+                    "Byte": 114
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "environments"
+        },
+        {
+            "Severity": 2,
+            "Summary": "\"config\" is ignored: \"values.pulumiConfig\" is also set",
+            "Detail": "",
+            "Subject": {
+                "Filename": "top-level-sections-legacy",
+                "Start": {
+                    "Line": 12,
+                    "Column": 1,
+                    "Byte": 213
+                },
+                "End": {
+                    "Line": 12,
+                    "Column": 7,
+                    "Byte": 219
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "config"
+        },
+        {
+            "Severity": 2,
+            "Summary": "\"environmentVariables\" is ignored: \"values.environmentVariables\" is also set",
+            "Detail": "",
+            "Subject": {
+                "Filename": "top-level-sections-legacy",
+                "Start": {
+                    "Line": 14,
+                    "Column": 1,
+                    "Byte": 236
+                },
+                "End": {
+                    "Line": 14,
+                    "Column": 21,
+                    "Byte": 256
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "environmentVariables"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "environmentVariables": {
+                "range": {
+                    "environment": "top-level-sections-legacy",
+                    "begin": {
+                        "line": 11,
+                        "column": 5,
+                        "byte": 201
+                    },
+                    "end": {
+                        "line": 11,
+                        "column": 16,
+                        "byte": 212
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "FOO": {
+                            "type": "string",
+                            "const": "legacy"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "FOO"
+                    ]
+                },
+                "keyRanges": {
+                    "FOO": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 201
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 8,
+                            "byte": 204
+                        }
+                    }
+                },
+                "object": {
+                    "FOO": {
+                        "range": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 11,
+                                "column": 10,
+                                "byte": 206
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 16,
+                                "byte": 212
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "legacy"
+                        },
+                        "literal": "legacy"
+                    }
+                }
+            },
+            "files": {
+                "range": {
+                    "environment": "top-level-sections-legacy",
+                    "begin": {
+                        "line": 17,
+                        "column": 3,
+                        "byte": 282
+                    },
+                    "end": {
+                        "line": 17,
+                        "column": 21,
+                        "byte": 300
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "FOO": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "FOO"
+                    ]
+                },
+                "keyRanges": {
+                    "FOO": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 17,
+                            "column": 3,
+                            "byte": 282
+                        },
+                        "end": {
+                            "line": 17,
+                            "column": 6,
+                            "byte": 285
+                        }
+                    }
+                },
+                "object": {
+                    "FOO": {
+                        "range": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 17,
+                                "column": 8,
+                                "byte": 287
+                            },
+                            "end": {
+                                "line": 17,
+                                "column": 21,
+                                "byte": 300
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 10,
+                                        "byte": 289
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 16,
+                                        "byte": 295
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 16,
+                                        "byte": 295
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 20,
+                                        "byte": 299
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 8,
+                                        "byte": 137
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 140
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "foo": {
+                "range": {
+                    "environment": "top-level-sections-legacy",
+                    "begin": {
+                        "line": 7,
+                        "column": 8,
+                        "byte": 137
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 11,
+                        "byte": 140
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            },
+            "pulumiConfig": {
+                "range": {
+                    "environment": "top-level-sections-legacy",
+                    "begin": {
+                        "line": 9,
+                        "column": 5,
+                        "byte": 161
+                    },
+                    "end": {
+                        "line": 9,
+                        "column": 16,
+                        "byte": 172
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "legacy"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "keyRanges": {
+                    "foo": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 9,
+                            "column": 5,
+                            "byte": 161
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 8,
+                            "byte": 164
+                        }
+                    }
+                },
+                "object": {
+                    "foo": {
+                        "range": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 9,
+                                "column": 10,
+                                "byte": 166
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 16,
+                                "byte": 172
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "legacy"
+                        },
+                        "literal": "legacy"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "a": {
+                "value": "a",
+                "trace": {
+                    "def": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 1,
+                            "column": 13,
+                            "byte": 12
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 14,
+                            "byte": 13
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "FOO": {
+                        "value": "legacy",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-legacy",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 10,
+                                    "byte": 206
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 16,
+                                    "byte": 212
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 201
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 16,
+                            "byte": 212
+                        }
+                    }
+                }
+            },
+            "files": {
+                "value": {
+                    "FOO": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-legacy",
+                                "begin": {
+                                    "line": 17,
+                                    "column": 8,
+                                    "byte": 287
+                                },
+                                "end": {
+                                    "line": 17,
+                                    "column": 21,
+                                    "byte": 300
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 17,
+                            "column": 3,
+                            "byte": 282
+                        },
+                        "end": {
+                            "line": 17,
+                            "column": 21,
+                            "byte": 300
+                        }
+                    }
+                }
+            },
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 7,
+                            "column": 8,
+                            "byte": 137
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 11,
+                            "byte": 140
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "value": {
+                    "foo": {
+                        "value": "legacy",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-legacy",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 10,
+                                    "byte": 166
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 16,
+                                    "byte": 172
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 9,
+                            "column": 5,
+                            "byte": 161
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 16,
+                            "byte": 172
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "a": {
+                    "type": "string",
+                    "const": "a"
+                },
+                "environmentVariables": {
+                    "properties": {
+                        "FOO": {
+                            "type": "string",
+                            "const": "legacy"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "FOO"
+                    ]
+                },
+                "files": {
+                    "properties": {
+                        "FOO": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "FOO"
+                    ]
+                },
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "pulumiConfig": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "legacy"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "a",
+                "environmentVariables",
+                "files",
+                "foo",
+                "pulumiConfig"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-legacy",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "top-level-sections-legacy",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-legacy",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-legacy"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-legacy"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "a": "a",
+        "environmentVariables": {
+            "FOO": "legacy"
+        },
+        "files": {
+            "FOO": "bar"
+        },
+        "foo": "bar",
+        "pulumiConfig": {
+            "foo": "legacy"
+        }
+    },
+    "eval": {
+        "exprs": {
+            "environmentVariables": {
+                "range": {
+                    "environment": "top-level-sections-legacy",
+                    "begin": {
+                        "line": 11,
+                        "column": 5,
+                        "byte": 201
+                    },
+                    "end": {
+                        "line": 11,
+                        "column": 16,
+                        "byte": 212
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "FOO": {
+                            "type": "string",
+                            "const": "legacy"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "FOO"
+                    ]
+                },
+                "keyRanges": {
+                    "FOO": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 201
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 8,
+                            "byte": 204
+                        }
+                    }
+                },
+                "object": {
+                    "FOO": {
+                        "range": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 11,
+                                "column": 10,
+                                "byte": 206
+                            },
+                            "end": {
+                                "line": 11,
+                                "column": 16,
+                                "byte": 212
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "legacy"
+                        },
+                        "literal": "legacy"
+                    }
+                }
+            },
+            "files": {
+                "range": {
+                    "environment": "top-level-sections-legacy",
+                    "begin": {
+                        "line": 17,
+                        "column": 3,
+                        "byte": 282
+                    },
+                    "end": {
+                        "line": 17,
+                        "column": 21,
+                        "byte": 300
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "FOO": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "FOO"
+                    ]
+                },
+                "keyRanges": {
+                    "FOO": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 17,
+                            "column": 3,
+                            "byte": 282
+                        },
+                        "end": {
+                            "line": 17,
+                            "column": 6,
+                            "byte": 285
+                        }
+                    }
+                },
+                "object": {
+                    "FOO": {
+                        "range": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 17,
+                                "column": 8,
+                                "byte": 287
+                            },
+                            "end": {
+                                "line": 17,
+                                "column": 21,
+                                "byte": 300
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 10,
+                                        "byte": 289
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 16,
+                                        "byte": 295
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 16,
+                                        "byte": 295
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 20,
+                                        "byte": 299
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 7,
+                                        "column": 8,
+                                        "byte": 137
+                                    },
+                                    "end": {
+                                        "line": 7,
+                                        "column": 11,
+                                        "byte": 140
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "foo": {
+                "range": {
+                    "environment": "top-level-sections-legacy",
+                    "begin": {
+                        "line": 7,
+                        "column": 8,
+                        "byte": 137
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 11,
+                        "byte": 140
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            },
+            "pulumiConfig": {
+                "range": {
+                    "environment": "top-level-sections-legacy",
+                    "begin": {
+                        "line": 9,
+                        "column": 5,
+                        "byte": 161
+                    },
+                    "end": {
+                        "line": 9,
+                        "column": 16,
+                        "byte": 172
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "legacy"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "keyRanges": {
+                    "foo": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 9,
+                            "column": 5,
+                            "byte": 161
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 8,
+                            "byte": 164
+                        }
+                    }
+                },
+                "object": {
+                    "foo": {
+                        "range": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 9,
+                                "column": 10,
+                                "byte": 166
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 16,
+                                "byte": 172
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "legacy"
+                        },
+                        "literal": "legacy"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "a": {
+                "value": "a",
+                "trace": {
+                    "def": {
+                        "environment": "a",
+                        "begin": {
+                            "line": 1,
+                            "column": 13,
+                            "byte": 12
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 14,
+                            "byte": 13
+                        }
+                    }
+                }
+            },
+            "environmentVariables": {
+                "value": {
+                    "FOO": {
+                        "value": "legacy",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-legacy",
+                                "begin": {
+                                    "line": 11,
+                                    "column": 10,
+                                    "byte": 206
+                                },
+                                "end": {
+                                    "line": 11,
+                                    "column": 16,
+                                    "byte": 212
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 11,
+                            "column": 5,
+                            "byte": 201
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 16,
+                            "byte": 212
+                        }
+                    }
+                }
+            },
+            "files": {
+                "value": {
+                    "FOO": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-legacy",
+                                "begin": {
+                                    "line": 17,
+                                    "column": 8,
+                                    "byte": 287
+                                },
+                                "end": {
+                                    "line": 17,
+                                    "column": 21,
+                                    "byte": 300
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 17,
+                            "column": 3,
+                            "byte": 282
+                        },
+                        "end": {
+                            "line": 17,
+                            "column": 21,
+                            "byte": 300
+                        }
+                    }
+                }
+            },
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 7,
+                            "column": 8,
+                            "byte": 137
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 11,
+                            "byte": 140
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "value": {
+                    "foo": {
+                        "value": "legacy",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-legacy",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 10,
+                                    "byte": 166
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 16,
+                                    "byte": 172
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-legacy",
+                        "begin": {
+                            "line": 9,
+                            "column": 5,
+                            "byte": 161
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 16,
+                            "byte": 172
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "a": {
+                    "type": "string",
+                    "const": "a"
+                },
+                "environmentVariables": {
+                    "properties": {
+                        "FOO": {
+                            "type": "string",
+                            "const": "legacy"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "FOO"
+                    ]
+                },
+                "files": {
+                    "properties": {
+                        "FOO": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "FOO"
+                    ]
+                },
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "pulumiConfig": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "legacy"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "a",
+                "environmentVariables",
+                "files",
+                "foo",
+                "pulumiConfig"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-legacy",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "top-level-sections-legacy",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-legacy",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-legacy",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-legacy",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-legacy"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-legacy"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "a": "a",
+        "environmentVariables": {
+            "FOO": "legacy"
+        },
+        "files": {
+            "FOO": "bar"
+        },
+        "foo": "bar",
+        "pulumiConfig": {
+            "foo": "legacy"
+        }
+    },
+    "evalJSONRevealed": {
+        "a": "a",
+        "environmentVariables": {
+            "FOO": "legacy"
+        },
+        "files": {
+            "FOO": "bar"
+        },
+        "foo": "bar",
+        "pulumiConfig": {
+            "foo": "legacy"
+        }
+    }
+}

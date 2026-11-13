@@ -1,0 +1,193 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": {
+            "Elements": [
+                {
+                    "Environment": {
+                        "Value": "a"
+                    },
+                    "Meta": null
+                }
+            ]
+        },
+        "Values": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "pulumiConfig"
+                    },
+                    "Value": {
+                        "Entries": [
+                            {
+                                "Key": {
+                                    "Value": "foo"
+                                },
+                                "Value": {
+                                    "Value": "legacy"
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "files"
+                    },
+                    "Value": {
+                        "Entries": [
+                            {
+                                "Key": {
+                                    "Value": "FOO"
+                                },
+                                "Value": {
+                                    "Value": "legacy"
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        "Environments": {
+            "Elements": [
+                {
+                    "Environment": {
+                        "Value": "b"
+                    },
+                    "Meta": null
+                }
+            ]
+        },
+        "PulumiConfig": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "foo"
+                    },
+                    "Value": {
+                        "Value": "ignored"
+                    }
+                }
+            ]
+        },
+        "Config": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "foo"
+                    },
+                    "Value": {
+                        "Value": "ignored"
+                    }
+                }
+            ]
+        },
+        "Files": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "FOO"
+                    },
+                    "Value": {
+                        "Value": "ignored"
+                    }
+                }
+            ]
+        }
+    },
+    "diags": [
+        {
+            "Severity": 2,
+            "Summary": "\"environments\" is ignored: \"imports\" is also set",
+            "Detail": "",
+            "Subject": {
+                "Filename": "top-level-sections-conflict",
+                "Start": {
+                    "Line": 3,
+                    "Column": 1,
+                    "Byte": 15
+                },
+                "End": {
+                    "Line": 3,
+                    "Column": 13,
+                    "Byte": 27
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "environments"
+        },
+        {
+            "Severity": 2,
+            "Summary": "\"pulumiConfig\" is ignored: \"values.pulumiConfig\" is also set",
+            "Detail": "",
+            "Subject": {
+                "Filename": "top-level-sections-conflict",
+                "Start": {
+                    "Line": 10,
+                    "Column": 1,
+                    "Byte": 100
+                },
+                "End": {
+                    "Line": 10,
+                    "Column": 13,
+                    "Byte": 112
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "pulumiConfig"
+        },
+        {
+            "Severity": 1,
+            "Summary": "\"config\" is an alias for \"pulumiConfig\": only one of them may be set",
+            "Detail": "",
+            "Subject": {
+                "Filename": "top-level-sections-conflict",
+                "Start": {
+                    "Line": 12,
+                    "Column": 1,
+                    "Byte": 129
+                },
+                "End": {
+                    "Line": 12,
+                    "Column": 7,
+                    "Byte": 135
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "config"
+        },
+        {
+            "Severity": 2,
+            "Summary": "\"Files\" is ignored: \"values.files\" is also set",
+            "Detail": "",
+            "Subject": {
+                "Filename": "top-level-sections-conflict",
+                "Start": {
+                    "Line": 14,
+                    "Column": 1,
+                    "Byte": 152
+                },
+                "End": {
+                    "Line": 14,
+                    "Column": 6,
+                    "Byte": 157
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "Files"
+        }
+    ]
+}

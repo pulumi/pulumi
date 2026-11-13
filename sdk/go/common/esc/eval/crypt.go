@@ -24,6 +24,7 @@ import (
 	"hash/crc32"
 	"io"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/ast"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -145,6 +146,20 @@ func EncryptSecrets(ctx context.Context, filename string, source []byte, encrypt
 	})
 }
 
+// holdsValues returns true if the given top-level key of an environment definition holds values: either "values"
+// itself or one of the top-level sections.
+func holdsValues(key any) bool {
+	name, ok := key.(string)
+	if !ok {
+		return false
+	}
+	if name == "values" {
+		return true
+	}
+	_, ok = ast.TopLevelSectionName(name)
+	return ok
+}
+
 // DecryptSecrets decrypts any secrets in the given YAML document and returns the rewritten source. Decryption replaces
 // all ciphertext arguments to `fn::secret` with decrypted plaintext.
 func DecryptSecrets(ctx context.Context, filename string, source []byte, decrypter Decrypter) ([]byte, error) {
@@ -154,13 +169,13 @@ func DecryptSecrets(ctx context.Context, filename string, source []byte, decrypt
 			return n, nil, nil
 		}
 
-		// Don't attempt to decrypt secrets outside of "values"
+		// Don't attempt to decrypt secrets outside of "values" and the top-level sections.
 		path := n.Syntax().Path()
 		propertyPath, err := resource.ParsePropertyPath(path)
 		if err != nil {
 			return nil, nil, fmt.Errorf("parsing property path %q", path)
 		}
-		if propertyPath[0] != "values" {
+		if !holdsValues(propertyPath[0]) {
 			return n, nil, nil
 		}
 

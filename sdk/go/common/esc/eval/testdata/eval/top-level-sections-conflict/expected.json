@@ -1,0 +1,879 @@
+{
+    "loadDiags": [
+        {
+            "Severity": 1,
+            "Summary": "\"config\" is an alias for \"pulumiConfig\": only one of them may be set",
+            "Detail": "",
+            "Subject": {
+                "Filename": "top-level-sections-conflict",
+                "Start": {
+                    "Line": 5,
+                    "Column": 1,
+                    "Byte": 54
+                },
+                "End": {
+                    "Line": 5,
+                    "Column": 7,
+                    "Byte": 60
+                }
+            },
+            "Context": null,
+            "Expression": null,
+            "EvalContext": null,
+            "Extra": null,
+            "Path": "config"
+        }
+    ],
+    "check": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "top-level-sections-conflict",
+                    "begin": {
+                        "line": 2,
+                        "column": 8,
+                        "byte": 15
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 11,
+                        "byte": 18
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            },
+            "pulumiConfig": {
+                "range": {
+                    "environment": "top-level-sections-conflict",
+                    "begin": {
+                        "line": 4,
+                        "column": 3,
+                        "byte": 35
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 21,
+                        "byte": 53
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "keyRanges": {
+                    "foo": {
+                        "environment": "top-level-sections-conflict",
+                        "begin": {
+                            "line": 4,
+                            "column": 3,
+                            "byte": 35
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 6,
+                            "byte": 38
+                        }
+                    }
+                },
+                "object": {
+                    "foo": {
+                        "range": {
+                            "environment": "top-level-sections-conflict",
+                            "begin": {
+                                "line": 4,
+                                "column": 8,
+                                "byte": 40
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 21,
+                                "byte": 53
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 10,
+                                        "byte": 42
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 16,
+                                        "byte": 48
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 16,
+                                        "byte": 48
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 20,
+                                        "byte": 52
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 8,
+                                        "byte": 15
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-conflict",
+                        "begin": {
+                            "line": 2,
+                            "column": 8,
+                            "byte": 15
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "value": {
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-conflict",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 8,
+                                    "byte": 40
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 21,
+                                    "byte": 53
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-conflict",
+                        "begin": {
+                            "line": 4,
+                            "column": 3,
+                            "byte": 35
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 21,
+                            "byte": 53
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "pulumiConfig": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo",
+                "pulumiConfig"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-conflict",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-conflict",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "top-level-sections-conflict",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-conflict",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-conflict",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-conflict",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-conflict"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-conflict"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "foo": "bar",
+        "pulumiConfig": {
+            "foo": "bar"
+        }
+    },
+    "eval": {
+        "exprs": {
+            "foo": {
+                "range": {
+                    "environment": "top-level-sections-conflict",
+                    "begin": {
+                        "line": 2,
+                        "column": 8,
+                        "byte": 15
+                    },
+                    "end": {
+                        "line": 2,
+                        "column": 11,
+                        "byte": 18
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            },
+            "pulumiConfig": {
+                "range": {
+                    "environment": "top-level-sections-conflict",
+                    "begin": {
+                        "line": 4,
+                        "column": 3,
+                        "byte": 35
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 21,
+                        "byte": 53
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "keyRanges": {
+                    "foo": {
+                        "environment": "top-level-sections-conflict",
+                        "begin": {
+                            "line": 4,
+                            "column": 3,
+                            "byte": 35
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 6,
+                            "byte": 38
+                        }
+                    }
+                },
+                "object": {
+                    "foo": {
+                        "range": {
+                            "environment": "top-level-sections-conflict",
+                            "begin": {
+                                "line": 4,
+                                "column": 8,
+                                "byte": 40
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 21,
+                                "byte": 53
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 10,
+                                        "byte": 42
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 16,
+                                        "byte": 48
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 16,
+                                        "byte": 48
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 20,
+                                        "byte": 52
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 8,
+                                        "byte": 15
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "properties": {
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-conflict",
+                        "begin": {
+                            "line": 2,
+                            "column": 8,
+                            "byte": 15
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "value": {
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-conflict",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 8,
+                                    "byte": 40
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 21,
+                                    "byte": 53
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-conflict",
+                        "begin": {
+                            "line": 4,
+                            "column": 3,
+                            "byte": 35
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 21,
+                            "byte": 53
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "pulumiConfig": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo",
+                "pulumiConfig"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-conflict",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-conflict",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "top-level-sections-conflict",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-conflict",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-conflict",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-conflict",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-conflict",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-conflict"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-conflict"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "foo": "bar",
+        "pulumiConfig": {
+            "foo": "bar"
+        }
+    },
+    "evalJSONRevealed": {
+        "foo": "bar",
+        "pulumiConfig": {
+            "foo": "bar"
+        }
+    }
+}

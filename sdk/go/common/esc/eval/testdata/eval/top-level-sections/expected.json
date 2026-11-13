@@ -1,0 +1,4075 @@
+{
+    "check": {
+        "exprs": {
+            "environmentVariables": {
+                "range": {
+                    "environment": "top-level-sections",
+                    "begin": {
+                        "line": 14,
+                        "column": 3,
+                        "byte": 215
+                    },
+                    "end": {
+                        "line": 18,
+                        "column": 38,
+                        "byte": 386
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "BASE": {
+                            "type": "string",
+                            "const": "base"
+                        },
+                        "FROM_CONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "FROM_IMPORT": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "FROM_VALUES_CONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "Foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "PASSWORD": {
+                            "type": "string",
+                            "const": "hunter2"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "BASE",
+                        "FROM_CONFIG",
+                        "FROM_IMPORT",
+                        "FROM_VALUES_CONFIG",
+                        "Foo",
+                        "PASSWORD"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "base",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 98
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 15,
+                            "byte": 108
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "BASE": {
+                                "type": "string",
+                                "const": "base"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "BASE"
+                        ]
+                    },
+                    "keyRanges": {
+                        "BASE": {
+                            "environment": "base",
+                            "begin": {
+                                "line": 6,
+                                "column": 5,
+                                "byte": 98
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 9,
+                                "byte": 102
+                            }
+                        }
+                    },
+                    "object": {
+                        "BASE": {
+                            "range": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 11,
+                                    "byte": 104
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 15,
+                                    "byte": 108
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "base"
+                            },
+                            "literal": "base"
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "FROM_CONFIG": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 16,
+                            "column": 3,
+                            "byte": 267
+                        },
+                        "end": {
+                            "line": 16,
+                            "column": 14,
+                            "byte": 278
+                        }
+                    },
+                    "FROM_IMPORT": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 18,
+                            "column": 3,
+                            "byte": 351
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 14,
+                            "byte": 362
+                        }
+                    },
+                    "FROM_VALUES_CONFIG": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 17,
+                            "column": 3,
+                            "byte": 302
+                        },
+                        "end": {
+                            "line": 17,
+                            "column": 21,
+                            "byte": 320
+                        }
+                    },
+                    "Foo": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 14,
+                            "column": 3,
+                            "byte": 215
+                        },
+                        "end": {
+                            "line": 14,
+                            "column": 6,
+                            "byte": 218
+                        }
+                    },
+                    "PASSWORD": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 15,
+                            "column": 3,
+                            "byte": 236
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 11,
+                            "byte": 244
+                        }
+                    }
+                },
+                "object": {
+                    "FROM_CONFIG": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 16,
+                                "column": 16,
+                                "byte": 280
+                            },
+                            "end": {
+                                "line": 16,
+                                "column": 35,
+                                "byte": 299
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "pulumiConfig",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 18,
+                                        "byte": 282
+                                    },
+                                    "end": {
+                                        "line": 16,
+                                        "column": 30,
+                                        "byte": 294
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 3,
+                                        "byte": 88
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 33,
+                                        "byte": 190
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 30,
+                                        "byte": 294
+                                    },
+                                    "end": {
+                                        "line": 16,
+                                        "column": 34,
+                                        "byte": 298
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 8,
+                                        "byte": 93
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 21,
+                                        "byte": 106
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "FROM_IMPORT": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 18,
+                                "column": 16,
+                                "byte": 364
+                            },
+                            "end": {
+                                "line": 18,
+                                "column": 38,
+                                "byte": 386
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "symbol": [
+                            {
+                                "key": "imports",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 18,
+                                        "byte": 366
+                                    },
+                                    "end": {
+                                        "line": 18,
+                                        "column": 25,
+                                        "byte": 373
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "base",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 25,
+                                        "byte": 373
+                                    },
+                                    "end": {
+                                        "line": 18,
+                                        "column": 30,
+                                        "byte": 378
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "region",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 30,
+                                        "byte": 378
+                                    },
+                                    "end": {
+                                        "line": 18,
+                                        "column": 37,
+                                        "byte": 385
+                                    }
+                                },
+                                "value": {
+                                    "environment": "base",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 20,
+                                        "byte": 27
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "FROM_VALUES_CONFIG": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 17,
+                                "column": 23,
+                                "byte": 322
+                            },
+                            "end": {
+                                "line": 17,
+                                "column": 49,
+                                "byte": 348
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 25,
+                                        "byte": 324
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 31,
+                                        "byte": 330
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "pulumiConfig",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 31,
+                                        "byte": 330
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 44,
+                                        "byte": 343
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 3,
+                                        "byte": 88
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 33,
+                                        "byte": 190
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 44,
+                                        "byte": 343
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 48,
+                                        "byte": 347
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 8,
+                                        "byte": 93
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 21,
+                                        "byte": 106
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "Foo": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 14,
+                                "column": 8,
+                                "byte": 220
+                            },
+                            "end": {
+                                "line": 14,
+                                "column": 21,
+                                "byte": 233
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 10,
+                                        "byte": 222
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 16,
+                                        "byte": 228
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 16,
+                                        "byte": 228
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 20,
+                                        "byte": 232
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 8,
+                                        "byte": 38
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 11,
+                                        "byte": 41
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "PASSWORD": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 15,
+                                "column": 13,
+                                "byte": 246
+                            },
+                            "end": {
+                                "line": 15,
+                                "column": 31,
+                                "byte": 264
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "hunter2"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 15,
+                                        "byte": 248
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 21,
+                                        "byte": 254
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "password",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 21,
+                                        "byte": 254
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 30,
+                                        "byte": 263
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 5,
+                                        "byte": 58
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 24,
+                                        "byte": 77
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "files": {
+                "range": {
+                    "environment": "top-level-sections",
+                    "begin": {
+                        "line": 20,
+                        "column": 3,
+                        "byte": 396
+                    },
+                    "end": {
+                        "line": 20,
+                        "column": 28,
+                        "byte": 421
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "KUBECONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "KUBECONFIG"
+                    ]
+                },
+                "keyRanges": {
+                    "KUBECONFIG": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 20,
+                            "column": 3,
+                            "byte": 396
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 13,
+                            "byte": 406
+                        }
+                    }
+                },
+                "object": {
+                    "KUBECONFIG": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 20,
+                                "column": 15,
+                                "byte": 408
+                            },
+                            "end": {
+                                "line": 20,
+                                "column": 28,
+                                "byte": 421
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 17,
+                                        "byte": 410
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 23,
+                                        "byte": 416
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 23,
+                                        "byte": 416
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 27,
+                                        "byte": 420
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 8,
+                                        "byte": 38
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 11,
+                                        "byte": 41
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "foo": {
+                "range": {
+                    "environment": "top-level-sections",
+                    "begin": {
+                        "line": 4,
+                        "column": 8,
+                        "byte": 38
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 11,
+                        "byte": 41
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            },
+            "password": {
+                "range": {
+                    "environment": "top-level-sections",
+                    "begin": {
+                        "line": 6,
+                        "column": 5,
+                        "byte": 58
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 24,
+                        "byte": 77
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "hunter2"
+                },
+                "builtin": {
+                    "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 58
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 15,
+                            "byte": 68
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 6,
+                                "column": 17,
+                                "byte": 70
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 24,
+                                "byte": 77
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "hunter2"
+                        },
+                        "literal": "hunter2"
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "range": {
+                    "environment": "top-level-sections",
+                    "begin": {
+                        "line": 8,
+                        "column": 3,
+                        "byte": 88
+                    },
+                    "end": {
+                        "line": 12,
+                        "column": 33,
+                        "byte": 190
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "aws:region": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "bare": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "region": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "token": {
+                            "type": "string",
+                            "const": "top-level-secret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "aws:region",
+                        "bare",
+                        "foo",
+                        "region",
+                        "token"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "base",
+                        "begin": {
+                            "line": 4,
+                            "column": 5,
+                            "byte": 48
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 26,
+                            "byte": 69
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "aws:region": {
+                                "type": "string",
+                                "const": "us-west-2"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "aws:region"
+                        ]
+                    },
+                    "keyRanges": {
+                        "aws:region": {
+                            "environment": "base",
+                            "begin": {
+                                "line": 4,
+                                "column": 5,
+                                "byte": 48
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 15,
+                                "byte": 58
+                            }
+                        }
+                    },
+                    "object": {
+                        "aws:region": {
+                            "range": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 17,
+                                    "byte": 60
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 26,
+                                    "byte": 69
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "us-west-2"
+                            },
+                            "symbol": [
+                                {
+                                    "key": "region",
+                                    "range": {
+                                        "environment": "base",
+                                        "begin": {
+                                            "line": 4,
+                                            "column": 19,
+                                            "byte": 62
+                                        },
+                                        "end": {
+                                            "line": 4,
+                                            "column": 25,
+                                            "byte": 68
+                                        }
+                                    },
+                                    "value": {
+                                        "environment": "base",
+                                        "begin": {
+                                            "line": 2,
+                                            "column": 11,
+                                            "byte": 18
+                                        },
+                                        "end": {
+                                            "line": 2,
+                                            "column": 20,
+                                            "byte": 27
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "bare": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 9,
+                            "column": 3,
+                            "byte": 109
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 7,
+                            "byte": 113
+                        }
+                    },
+                    "foo": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 8,
+                            "column": 3,
+                            "byte": 88
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 6,
+                            "byte": 91
+                        }
+                    },
+                    "region": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 10,
+                            "column": 3,
+                            "byte": 124
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 9,
+                            "byte": 130
+                        }
+                    },
+                    "token": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 11,
+                            "column": 3,
+                            "byte": 151
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 8,
+                            "byte": 156
+                        }
+                    }
+                },
+                "object": {
+                    "bare": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 9,
+                                "column": 9,
+                                "byte": 115
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 15,
+                                "byte": 121
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 11,
+                                        "byte": 117
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 14,
+                                        "byte": 120
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 8,
+                                        "byte": 38
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 11,
+                                        "byte": 41
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "foo": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 8,
+                                "column": 8,
+                                "byte": 93
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 21,
+                                "byte": 106
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 10,
+                                        "byte": 95
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 16,
+                                        "byte": 101
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 16,
+                                        "byte": 101
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 20,
+                                        "byte": 105
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 8,
+                                        "byte": 38
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 11,
+                                        "byte": 41
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "region": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 10,
+                                "column": 11,
+                                "byte": 132
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 27,
+                                "byte": 148
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 13,
+                                        "byte": 134
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 19,
+                                        "byte": 140
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "region",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 19,
+                                        "byte": 140
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 26,
+                                        "byte": 147
+                                    }
+                                },
+                                "value": {
+                                    "environment": "base",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 20,
+                                        "byte": 27
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "token": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 12,
+                                "column": 5,
+                                "byte": 162
+                            },
+                            "end": {
+                                "line": 12,
+                                "column": 33,
+                                "byte": 190
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "top-level-secret"
+                        },
+                        "builtin": {
+                            "name": "fn::secret",
+                            "nameRange": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 162
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 15,
+                                    "byte": 172
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 17,
+                                        "byte": 174
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 33,
+                                        "byte": 190
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "top-level-secret"
+                                },
+                                "literal": "top-level-secret"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "environmentVariables": {
+                "value": {
+                    "BASE": {
+                        "value": "base",
+                        "trace": {
+                            "def": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 11,
+                                    "byte": 104
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 15,
+                                    "byte": 108
+                                }
+                            }
+                        }
+                    },
+                    "FROM_CONFIG": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 16,
+                                    "byte": 280
+                                },
+                                "end": {
+                                    "line": 16,
+                                    "column": 35,
+                                    "byte": 299
+                                }
+                            }
+                        }
+                    },
+                    "FROM_IMPORT": {
+                        "value": "us-west-2",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 18,
+                                    "column": 16,
+                                    "byte": 364
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 38,
+                                    "byte": 386
+                                }
+                            }
+                        }
+                    },
+                    "FROM_VALUES_CONFIG": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 17,
+                                    "column": 23,
+                                    "byte": 322
+                                },
+                                "end": {
+                                    "line": 17,
+                                    "column": 49,
+                                    "byte": 348
+                                }
+                            }
+                        }
+                    },
+                    "Foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 14,
+                                    "column": 8,
+                                    "byte": 220
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 21,
+                                    "byte": 233
+                                }
+                            }
+                        }
+                    },
+                    "PASSWORD": {
+                        "value": "hunter2",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 15,
+                                    "column": 13,
+                                    "byte": 246
+                                },
+                                "end": {
+                                    "line": 15,
+                                    "column": 31,
+                                    "byte": 264
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 14,
+                            "column": 3,
+                            "byte": 215
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 38,
+                            "byte": 386
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "BASE": {
+                                "value": "base",
+                                "trace": {
+                                    "def": {
+                                        "environment": "base",
+                                        "begin": {
+                                            "line": 6,
+                                            "column": 11,
+                                            "byte": 104
+                                        },
+                                        "end": {
+                                            "line": 6,
+                                            "column": 15,
+                                            "byte": 108
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 5,
+                                    "byte": 98
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 15,
+                                    "byte": 108
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "files": {
+                "value": {
+                    "KUBECONFIG": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 15,
+                                    "byte": 408
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 28,
+                                    "byte": 421
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 20,
+                            "column": 3,
+                            "byte": 396
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 28,
+                            "byte": 421
+                        }
+                    }
+                }
+            },
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 4,
+                            "column": 8,
+                            "byte": 38
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 11,
+                            "byte": 41
+                        }
+                    }
+                }
+            },
+            "password": {
+                "value": "hunter2",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 6,
+                            "column": 17,
+                            "byte": 70
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 24,
+                            "byte": 77
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "value": {
+                    "aws:region": {
+                        "value": "us-west-2",
+                        "trace": {
+                            "def": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 17,
+                                    "byte": 60
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 26,
+                                    "byte": 69
+                                }
+                            }
+                        }
+                    },
+                    "bare": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 9,
+                                    "byte": 115
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 15,
+                                    "byte": 121
+                                }
+                            }
+                        }
+                    },
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 8,
+                                    "byte": 93
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 21,
+                                    "byte": 106
+                                }
+                            }
+                        }
+                    },
+                    "region": {
+                        "value": "us-west-2",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 11,
+                                    "byte": 132
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 27,
+                                    "byte": 148
+                                }
+                            }
+                        }
+                    },
+                    "token": {
+                        "value": "top-level-secret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 17,
+                                    "byte": 174
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 33,
+                                    "byte": 190
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 8,
+                            "column": 3,
+                            "byte": 88
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 33,
+                            "byte": 190
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "aws:region": {
+                                "value": "us-west-2",
+                                "trace": {
+                                    "def": {
+                                        "environment": "base",
+                                        "begin": {
+                                            "line": 4,
+                                            "column": 17,
+                                            "byte": 60
+                                        },
+                                        "end": {
+                                            "line": 4,
+                                            "column": 26,
+                                            "byte": 69
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 5,
+                                    "byte": 48
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 26,
+                                    "byte": 69
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "region": {
+                "value": "us-west-2",
+                "trace": {
+                    "def": {
+                        "environment": "base",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 20,
+                            "byte": 27
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "environmentVariables": {
+                    "properties": {
+                        "BASE": {
+                            "type": "string",
+                            "const": "base"
+                        },
+                        "FROM_CONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "FROM_IMPORT": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "FROM_VALUES_CONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "Foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "PASSWORD": {
+                            "type": "string",
+                            "const": "hunter2"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "BASE",
+                        "FROM_CONFIG",
+                        "FROM_IMPORT",
+                        "FROM_VALUES_CONFIG",
+                        "Foo",
+                        "PASSWORD"
+                    ]
+                },
+                "files": {
+                    "properties": {
+                        "KUBECONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "KUBECONFIG"
+                    ]
+                },
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "password": {
+                    "type": "string",
+                    "const": "hunter2"
+                },
+                "pulumiConfig": {
+                    "properties": {
+                        "aws:region": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "bare": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "region": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "token": {
+                            "type": "string",
+                            "const": "top-level-secret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "aws:region",
+                        "bare",
+                        "foo",
+                        "region",
+                        "token"
+                    ]
+                },
+                "region": {
+                    "type": "string",
+                    "const": "us-west-2"
+                }
+            },
+            "type": "object",
+            "required": [
+                "environmentVariables",
+                "files",
+                "foo",
+                "password",
+                "pulumiConfig",
+                "region"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "top-level-sections",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "environmentVariables": {
+            "BASE": "base",
+            "FROM_CONFIG": "bar",
+            "FROM_IMPORT": "us-west-2",
+            "FROM_VALUES_CONFIG": "bar",
+            "Foo": "bar",
+            "PASSWORD": "[secret]"
+        },
+        "files": {
+            "KUBECONFIG": "bar"
+        },
+        "foo": "bar",
+        "password": "[secret]",
+        "pulumiConfig": {
+            "aws:region": "us-west-2",
+            "bare": "bar",
+            "foo": "bar",
+            "region": "us-west-2",
+            "token": "[secret]"
+        },
+        "region": "us-west-2"
+    },
+    "eval": {
+        "exprs": {
+            "environmentVariables": {
+                "range": {
+                    "environment": "top-level-sections",
+                    "begin": {
+                        "line": 14,
+                        "column": 3,
+                        "byte": 215
+                    },
+                    "end": {
+                        "line": 18,
+                        "column": 38,
+                        "byte": 386
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "BASE": {
+                            "type": "string",
+                            "const": "base"
+                        },
+                        "FROM_CONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "FROM_IMPORT": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "FROM_VALUES_CONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "Foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "PASSWORD": {
+                            "type": "string",
+                            "const": "hunter2"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "BASE",
+                        "FROM_CONFIG",
+                        "FROM_IMPORT",
+                        "FROM_VALUES_CONFIG",
+                        "Foo",
+                        "PASSWORD"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "base",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 98
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 15,
+                            "byte": 108
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "BASE": {
+                                "type": "string",
+                                "const": "base"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "BASE"
+                        ]
+                    },
+                    "keyRanges": {
+                        "BASE": {
+                            "environment": "base",
+                            "begin": {
+                                "line": 6,
+                                "column": 5,
+                                "byte": 98
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 9,
+                                "byte": 102
+                            }
+                        }
+                    },
+                    "object": {
+                        "BASE": {
+                            "range": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 11,
+                                    "byte": 104
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 15,
+                                    "byte": 108
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "base"
+                            },
+                            "literal": "base"
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "FROM_CONFIG": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 16,
+                            "column": 3,
+                            "byte": 267
+                        },
+                        "end": {
+                            "line": 16,
+                            "column": 14,
+                            "byte": 278
+                        }
+                    },
+                    "FROM_IMPORT": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 18,
+                            "column": 3,
+                            "byte": 351
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 14,
+                            "byte": 362
+                        }
+                    },
+                    "FROM_VALUES_CONFIG": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 17,
+                            "column": 3,
+                            "byte": 302
+                        },
+                        "end": {
+                            "line": 17,
+                            "column": 21,
+                            "byte": 320
+                        }
+                    },
+                    "Foo": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 14,
+                            "column": 3,
+                            "byte": 215
+                        },
+                        "end": {
+                            "line": 14,
+                            "column": 6,
+                            "byte": 218
+                        }
+                    },
+                    "PASSWORD": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 15,
+                            "column": 3,
+                            "byte": 236
+                        },
+                        "end": {
+                            "line": 15,
+                            "column": 11,
+                            "byte": 244
+                        }
+                    }
+                },
+                "object": {
+                    "FROM_CONFIG": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 16,
+                                "column": 16,
+                                "byte": 280
+                            },
+                            "end": {
+                                "line": 16,
+                                "column": 35,
+                                "byte": 299
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "pulumiConfig",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 18,
+                                        "byte": 282
+                                    },
+                                    "end": {
+                                        "line": 16,
+                                        "column": 30,
+                                        "byte": 294
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 3,
+                                        "byte": 88
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 33,
+                                        "byte": 190
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 16,
+                                        "column": 30,
+                                        "byte": 294
+                                    },
+                                    "end": {
+                                        "line": 16,
+                                        "column": 34,
+                                        "byte": 298
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 8,
+                                        "byte": 93
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 21,
+                                        "byte": 106
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "FROM_IMPORT": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 18,
+                                "column": 16,
+                                "byte": 364
+                            },
+                            "end": {
+                                "line": 18,
+                                "column": 38,
+                                "byte": 386
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "symbol": [
+                            {
+                                "key": "imports",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 18,
+                                        "byte": 366
+                                    },
+                                    "end": {
+                                        "line": 18,
+                                        "column": 25,
+                                        "byte": 373
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "base",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 25,
+                                        "byte": 373
+                                    },
+                                    "end": {
+                                        "line": 18,
+                                        "column": 30,
+                                        "byte": 378
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "region",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 18,
+                                        "column": 30,
+                                        "byte": 378
+                                    },
+                                    "end": {
+                                        "line": 18,
+                                        "column": 37,
+                                        "byte": 385
+                                    }
+                                },
+                                "value": {
+                                    "environment": "base",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 20,
+                                        "byte": 27
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "FROM_VALUES_CONFIG": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 17,
+                                "column": 23,
+                                "byte": 322
+                            },
+                            "end": {
+                                "line": 17,
+                                "column": 49,
+                                "byte": 348
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 25,
+                                        "byte": 324
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 31,
+                                        "byte": 330
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "pulumiConfig",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 31,
+                                        "byte": 330
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 44,
+                                        "byte": 343
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 3,
+                                        "byte": 88
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 33,
+                                        "byte": 190
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 17,
+                                        "column": 44,
+                                        "byte": 343
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 48,
+                                        "byte": 347
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 8,
+                                        "byte": 93
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 21,
+                                        "byte": 106
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "Foo": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 14,
+                                "column": 8,
+                                "byte": 220
+                            },
+                            "end": {
+                                "line": 14,
+                                "column": 21,
+                                "byte": 233
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 10,
+                                        "byte": 222
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 16,
+                                        "byte": 228
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 14,
+                                        "column": 16,
+                                        "byte": 228
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 20,
+                                        "byte": 232
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 8,
+                                        "byte": 38
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 11,
+                                        "byte": 41
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "PASSWORD": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 15,
+                                "column": 13,
+                                "byte": 246
+                            },
+                            "end": {
+                                "line": 15,
+                                "column": 31,
+                                "byte": 264
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "hunter2"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 15,
+                                        "byte": 248
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 21,
+                                        "byte": 254
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "password",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 15,
+                                        "column": 21,
+                                        "byte": 254
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 30,
+                                        "byte": 263
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 6,
+                                        "column": 5,
+                                        "byte": 58
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 24,
+                                        "byte": 77
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "files": {
+                "range": {
+                    "environment": "top-level-sections",
+                    "begin": {
+                        "line": 20,
+                        "column": 3,
+                        "byte": 396
+                    },
+                    "end": {
+                        "line": 20,
+                        "column": 28,
+                        "byte": 421
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "KUBECONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "KUBECONFIG"
+                    ]
+                },
+                "keyRanges": {
+                    "KUBECONFIG": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 20,
+                            "column": 3,
+                            "byte": 396
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 13,
+                            "byte": 406
+                        }
+                    }
+                },
+                "object": {
+                    "KUBECONFIG": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 20,
+                                "column": 15,
+                                "byte": 408
+                            },
+                            "end": {
+                                "line": 20,
+                                "column": 28,
+                                "byte": 421
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 17,
+                                        "byte": 410
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 23,
+                                        "byte": 416
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 20,
+                                        "column": 23,
+                                        "byte": 416
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 27,
+                                        "byte": 420
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 8,
+                                        "byte": 38
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 11,
+                                        "byte": 41
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "foo": {
+                "range": {
+                    "environment": "top-level-sections",
+                    "begin": {
+                        "line": 4,
+                        "column": 8,
+                        "byte": 38
+                    },
+                    "end": {
+                        "line": 4,
+                        "column": 11,
+                        "byte": 41
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "literal": "bar"
+            },
+            "password": {
+                "range": {
+                    "environment": "top-level-sections",
+                    "begin": {
+                        "line": 6,
+                        "column": 5,
+                        "byte": 58
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 24,
+                        "byte": 77
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "hunter2"
+                },
+                "builtin": {
+                    "name": "fn::secret",
+                    "nameRange": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 6,
+                            "column": 5,
+                            "byte": 58
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 15,
+                            "byte": 68
+                        }
+                    },
+                    "argSchema": true,
+                    "arg": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 6,
+                                "column": 17,
+                                "byte": 70
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 24,
+                                "byte": 77
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "hunter2"
+                        },
+                        "literal": "hunter2"
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "range": {
+                    "environment": "top-level-sections",
+                    "begin": {
+                        "line": 8,
+                        "column": 3,
+                        "byte": 88
+                    },
+                    "end": {
+                        "line": 12,
+                        "column": 33,
+                        "byte": 190
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "aws:region": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "bare": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "region": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "token": {
+                            "type": "string",
+                            "const": "top-level-secret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "aws:region",
+                        "bare",
+                        "foo",
+                        "region",
+                        "token"
+                    ]
+                },
+                "base": {
+                    "range": {
+                        "environment": "base",
+                        "begin": {
+                            "line": 4,
+                            "column": 5,
+                            "byte": 48
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 26,
+                            "byte": 69
+                        }
+                    },
+                    "schema": {
+                        "properties": {
+                            "aws:region": {
+                                "type": "string",
+                                "const": "us-west-2"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "aws:region"
+                        ]
+                    },
+                    "keyRanges": {
+                        "aws:region": {
+                            "environment": "base",
+                            "begin": {
+                                "line": 4,
+                                "column": 5,
+                                "byte": 48
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 15,
+                                "byte": 58
+                            }
+                        }
+                    },
+                    "object": {
+                        "aws:region": {
+                            "range": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 17,
+                                    "byte": 60
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 26,
+                                    "byte": 69
+                                }
+                            },
+                            "schema": {
+                                "type": "string",
+                                "const": "us-west-2"
+                            },
+                            "symbol": [
+                                {
+                                    "key": "region",
+                                    "range": {
+                                        "environment": "base",
+                                        "begin": {
+                                            "line": 4,
+                                            "column": 19,
+                                            "byte": 62
+                                        },
+                                        "end": {
+                                            "line": 4,
+                                            "column": 25,
+                                            "byte": 68
+                                        }
+                                    },
+                                    "value": {
+                                        "environment": "base",
+                                        "begin": {
+                                            "line": 2,
+                                            "column": 11,
+                                            "byte": 18
+                                        },
+                                        "end": {
+                                            "line": 2,
+                                            "column": 20,
+                                            "byte": 27
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                "keyRanges": {
+                    "bare": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 9,
+                            "column": 3,
+                            "byte": 109
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 7,
+                            "byte": 113
+                        }
+                    },
+                    "foo": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 8,
+                            "column": 3,
+                            "byte": 88
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 6,
+                            "byte": 91
+                        }
+                    },
+                    "region": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 10,
+                            "column": 3,
+                            "byte": 124
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 9,
+                            "byte": 130
+                        }
+                    },
+                    "token": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 11,
+                            "column": 3,
+                            "byte": 151
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 8,
+                            "byte": 156
+                        }
+                    }
+                },
+                "object": {
+                    "bare": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 9,
+                                "column": 9,
+                                "byte": 115
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 15,
+                                "byte": 121
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 9,
+                                        "column": 11,
+                                        "byte": 117
+                                    },
+                                    "end": {
+                                        "line": 9,
+                                        "column": 14,
+                                        "byte": 120
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 8,
+                                        "byte": 38
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 11,
+                                        "byte": 41
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "foo": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 8,
+                                "column": 8,
+                                "byte": 93
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 21,
+                                "byte": 106
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 10,
+                                        "byte": 95
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 16,
+                                        "byte": 101
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 16,
+                                        "byte": 101
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 20,
+                                        "byte": 105
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 4,
+                                        "column": 8,
+                                        "byte": 38
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 11,
+                                        "byte": 41
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "region": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 10,
+                                "column": 11,
+                                "byte": 132
+                            },
+                            "end": {
+                                "line": 10,
+                                "column": 27,
+                                "byte": 148
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 13,
+                                        "byte": 134
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 19,
+                                        "byte": 140
+                                    }
+                                },
+                                "value": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            },
+                            {
+                                "key": "region",
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 10,
+                                        "column": 19,
+                                        "byte": 140
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 26,
+                                        "byte": 147
+                                    }
+                                },
+                                "value": {
+                                    "environment": "base",
+                                    "begin": {
+                                        "line": 2,
+                                        "column": 11,
+                                        "byte": 18
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 20,
+                                        "byte": 27
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "token": {
+                        "range": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 12,
+                                "column": 5,
+                                "byte": 162
+                            },
+                            "end": {
+                                "line": 12,
+                                "column": 33,
+                                "byte": 190
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "top-level-secret"
+                        },
+                        "builtin": {
+                            "name": "fn::secret",
+                            "nameRange": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 5,
+                                    "byte": 162
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 15,
+                                    "byte": 172
+                                }
+                            },
+                            "argSchema": true,
+                            "arg": {
+                                "range": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 12,
+                                        "column": 17,
+                                        "byte": 174
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 33,
+                                        "byte": 190
+                                    }
+                                },
+                                "schema": {
+                                    "type": "string",
+                                    "const": "top-level-secret"
+                                },
+                                "literal": "top-level-secret"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "environmentVariables": {
+                "value": {
+                    "BASE": {
+                        "value": "base",
+                        "trace": {
+                            "def": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 11,
+                                    "byte": 104
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 15,
+                                    "byte": 108
+                                }
+                            }
+                        }
+                    },
+                    "FROM_CONFIG": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 16,
+                                    "column": 16,
+                                    "byte": 280
+                                },
+                                "end": {
+                                    "line": 16,
+                                    "column": 35,
+                                    "byte": 299
+                                }
+                            }
+                        }
+                    },
+                    "FROM_IMPORT": {
+                        "value": "us-west-2",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 18,
+                                    "column": 16,
+                                    "byte": 364
+                                },
+                                "end": {
+                                    "line": 18,
+                                    "column": 38,
+                                    "byte": 386
+                                }
+                            }
+                        }
+                    },
+                    "FROM_VALUES_CONFIG": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 17,
+                                    "column": 23,
+                                    "byte": 322
+                                },
+                                "end": {
+                                    "line": 17,
+                                    "column": 49,
+                                    "byte": 348
+                                }
+                            }
+                        }
+                    },
+                    "Foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 14,
+                                    "column": 8,
+                                    "byte": 220
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 21,
+                                    "byte": 233
+                                }
+                            }
+                        }
+                    },
+                    "PASSWORD": {
+                        "value": "hunter2",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 15,
+                                    "column": 13,
+                                    "byte": 246
+                                },
+                                "end": {
+                                    "line": 15,
+                                    "column": 31,
+                                    "byte": 264
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 14,
+                            "column": 3,
+                            "byte": 215
+                        },
+                        "end": {
+                            "line": 18,
+                            "column": 38,
+                            "byte": 386
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "BASE": {
+                                "value": "base",
+                                "trace": {
+                                    "def": {
+                                        "environment": "base",
+                                        "begin": {
+                                            "line": 6,
+                                            "column": 11,
+                                            "byte": 104
+                                        },
+                                        "end": {
+                                            "line": 6,
+                                            "column": 15,
+                                            "byte": 108
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 5,
+                                    "byte": 98
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 15,
+                                    "byte": 108
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "files": {
+                "value": {
+                    "KUBECONFIG": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 20,
+                                    "column": 15,
+                                    "byte": 408
+                                },
+                                "end": {
+                                    "line": 20,
+                                    "column": 28,
+                                    "byte": 421
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 20,
+                            "column": 3,
+                            "byte": 396
+                        },
+                        "end": {
+                            "line": 20,
+                            "column": 28,
+                            "byte": 421
+                        }
+                    }
+                }
+            },
+            "foo": {
+                "value": "bar",
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 4,
+                            "column": 8,
+                            "byte": 38
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 11,
+                            "byte": 41
+                        }
+                    }
+                }
+            },
+            "password": {
+                "value": "hunter2",
+                "secret": true,
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 6,
+                            "column": 17,
+                            "byte": 70
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 24,
+                            "byte": 77
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "value": {
+                    "aws:region": {
+                        "value": "us-west-2",
+                        "trace": {
+                            "def": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 17,
+                                    "byte": 60
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 26,
+                                    "byte": 69
+                                }
+                            }
+                        }
+                    },
+                    "bare": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 9,
+                                    "column": 9,
+                                    "byte": 115
+                                },
+                                "end": {
+                                    "line": 9,
+                                    "column": 15,
+                                    "byte": 121
+                                }
+                            }
+                        }
+                    },
+                    "foo": {
+                        "value": "bar",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 8,
+                                    "byte": 93
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 21,
+                                    "byte": 106
+                                }
+                            }
+                        }
+                    },
+                    "region": {
+                        "value": "us-west-2",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 11,
+                                    "byte": 132
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 27,
+                                    "byte": 148
+                                }
+                            }
+                        }
+                    },
+                    "token": {
+                        "value": "top-level-secret",
+                        "secret": true,
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections",
+                                "begin": {
+                                    "line": 12,
+                                    "column": 17,
+                                    "byte": 174
+                                },
+                                "end": {
+                                    "line": 12,
+                                    "column": 33,
+                                    "byte": 190
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections",
+                        "begin": {
+                            "line": 8,
+                            "column": 3,
+                            "byte": 88
+                        },
+                        "end": {
+                            "line": 12,
+                            "column": 33,
+                            "byte": 190
+                        }
+                    },
+                    "base": {
+                        "value": {
+                            "aws:region": {
+                                "value": "us-west-2",
+                                "trace": {
+                                    "def": {
+                                        "environment": "base",
+                                        "begin": {
+                                            "line": 4,
+                                            "column": 17,
+                                            "byte": 60
+                                        },
+                                        "end": {
+                                            "line": 4,
+                                            "column": 26,
+                                            "byte": 69
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "base",
+                                "begin": {
+                                    "line": 4,
+                                    "column": 5,
+                                    "byte": 48
+                                },
+                                "end": {
+                                    "line": 4,
+                                    "column": 26,
+                                    "byte": 69
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "region": {
+                "value": "us-west-2",
+                "trace": {
+                    "def": {
+                        "environment": "base",
+                        "begin": {
+                            "line": 2,
+                            "column": 11,
+                            "byte": 18
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 20,
+                            "byte": 27
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "environmentVariables": {
+                    "properties": {
+                        "BASE": {
+                            "type": "string",
+                            "const": "base"
+                        },
+                        "FROM_CONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "FROM_IMPORT": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "FROM_VALUES_CONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "Foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "PASSWORD": {
+                            "type": "string",
+                            "const": "hunter2"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "BASE",
+                        "FROM_CONFIG",
+                        "FROM_IMPORT",
+                        "FROM_VALUES_CONFIG",
+                        "Foo",
+                        "PASSWORD"
+                    ]
+                },
+                "files": {
+                    "properties": {
+                        "KUBECONFIG": {
+                            "type": "string",
+                            "const": "bar"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "KUBECONFIG"
+                    ]
+                },
+                "foo": {
+                    "type": "string",
+                    "const": "bar"
+                },
+                "password": {
+                    "type": "string",
+                    "const": "hunter2"
+                },
+                "pulumiConfig": {
+                    "properties": {
+                        "aws:region": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "bare": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "foo": {
+                            "type": "string",
+                            "const": "bar"
+                        },
+                        "region": {
+                            "type": "string",
+                            "const": "us-west-2"
+                        },
+                        "token": {
+                            "type": "string",
+                            "const": "top-level-secret"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "aws:region",
+                        "bare",
+                        "foo",
+                        "region",
+                        "token"
+                    ]
+                },
+                "region": {
+                    "type": "string",
+                    "const": "us-west-2"
+                }
+            },
+            "type": "object",
+            "required": [
+                "environmentVariables",
+                "files",
+                "foo",
+                "password",
+                "pulumiConfig",
+                "region"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "top-level-sections",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "environmentVariables": {
+            "BASE": "base",
+            "FROM_CONFIG": "bar",
+            "FROM_IMPORT": "us-west-2",
+            "FROM_VALUES_CONFIG": "bar",
+            "Foo": "bar",
+            "PASSWORD": "[secret]"
+        },
+        "files": {
+            "KUBECONFIG": "bar"
+        },
+        "foo": "bar",
+        "password": "[secret]",
+        "pulumiConfig": {
+            "aws:region": "us-west-2",
+            "bare": "bar",
+            "foo": "bar",
+            "region": "us-west-2",
+            "token": "[secret]"
+        },
+        "region": "us-west-2"
+    },
+    "evalJSONRevealed": {
+        "environmentVariables": {
+            "BASE": "base",
+            "FROM_CONFIG": "bar",
+            "FROM_IMPORT": "us-west-2",
+            "FROM_VALUES_CONFIG": "bar",
+            "Foo": "bar",
+            "PASSWORD": "hunter2"
+        },
+        "files": {
+            "KUBECONFIG": "bar"
+        },
+        "foo": "bar",
+        "password": "hunter2",
+        "pulumiConfig": {
+            "aws:region": "us-west-2",
+            "bare": "bar",
+            "foo": "bar",
+            "region": "us-west-2",
+            "token": "top-level-secret"
+        },
+        "region": "us-west-2"
+    }
+}

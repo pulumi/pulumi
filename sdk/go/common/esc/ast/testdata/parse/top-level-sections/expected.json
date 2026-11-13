@@ -1,0 +1,915 @@
+{
+    "decl": {
+        "Description": null,
+        "Imports": {
+            "Elements": [
+                {
+                    "Environment": {
+                        "Value": "base"
+                    },
+                    "Meta": null
+                }
+            ]
+        },
+        "Values": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "foo"
+                    },
+                    "Value": {
+                        "Value": "bar"
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "password"
+                    },
+                    "Value": {
+                        "Plaintext": {
+                            "Value": "hunter2"
+                        },
+                        "Ciphertext": null
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "pulumiConfig"
+                    },
+                    "Value": {
+                        "Entries": [
+                            {
+                                "Key": {
+                                    "Value": "foo"
+                                },
+                                "Value": {
+                                    "Property": {
+                                        "Accessors": [
+                                            {
+                                                "Name": "values",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 8,
+                                                        "Column": 10,
+                                                        "Byte": 95
+                                                    },
+                                                    "End": {
+                                                        "Line": 8,
+                                                        "Column": 16,
+                                                        "Byte": 101
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "Name": "foo",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 8,
+                                                        "Column": 16,
+                                                        "Byte": 101
+                                                    },
+                                                    "End": {
+                                                        "Line": 8,
+                                                        "Column": 20,
+                                                        "Byte": 105
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "Key": {
+                                    "Value": "bare"
+                                },
+                                "Value": {
+                                    "Property": {
+                                        "Accessors": [
+                                            {
+                                                "Name": "foo",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 9,
+                                                        "Column": 11,
+                                                        "Byte": 117
+                                                    },
+                                                    "End": {
+                                                        "Line": 9,
+                                                        "Column": 14,
+                                                        "Byte": 120
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "Key": {
+                                    "Value": "region"
+                                },
+                                "Value": {
+                                    "Property": {
+                                        "Accessors": [
+                                            {
+                                                "Name": "values",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 10,
+                                                        "Column": 13,
+                                                        "Byte": 134
+                                                    },
+                                                    "End": {
+                                                        "Line": 10,
+                                                        "Column": 19,
+                                                        "Byte": 140
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "Name": "region",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 10,
+                                                        "Column": 19,
+                                                        "Byte": 140
+                                                    },
+                                                    "End": {
+                                                        "Line": 10,
+                                                        "Column": 26,
+                                                        "Byte": 147
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "Key": {
+                                    "Value": "token"
+                                },
+                                "Value": {
+                                    "Plaintext": {
+                                        "Value": "top-level-secret"
+                                    },
+                                    "Ciphertext": null
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "environmentVariables"
+                    },
+                    "Value": {
+                        "Entries": [
+                            {
+                                "Key": {
+                                    "Value": "Foo"
+                                },
+                                "Value": {
+                                    "Property": {
+                                        "Accessors": [
+                                            {
+                                                "Name": "values",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 14,
+                                                        "Column": 10,
+                                                        "Byte": 222
+                                                    },
+                                                    "End": {
+                                                        "Line": 14,
+                                                        "Column": 16,
+                                                        "Byte": 228
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "Name": "foo",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 14,
+                                                        "Column": 16,
+                                                        "Byte": 228
+                                                    },
+                                                    "End": {
+                                                        "Line": 14,
+                                                        "Column": 20,
+                                                        "Byte": 232
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "Key": {
+                                    "Value": "PASSWORD"
+                                },
+                                "Value": {
+                                    "Property": {
+                                        "Accessors": [
+                                            {
+                                                "Name": "values",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 15,
+                                                        "Column": 15,
+                                                        "Byte": 248
+                                                    },
+                                                    "End": {
+                                                        "Line": 15,
+                                                        "Column": 21,
+                                                        "Byte": 254
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "Name": "password",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 15,
+                                                        "Column": 21,
+                                                        "Byte": 254
+                                                    },
+                                                    "End": {
+                                                        "Line": 15,
+                                                        "Column": 30,
+                                                        "Byte": 263
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "Key": {
+                                    "Value": "FROM_CONFIG"
+                                },
+                                "Value": {
+                                    "Property": {
+                                        "Accessors": [
+                                            {
+                                                "Name": "pulumiConfig",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 16,
+                                                        "Column": 18,
+                                                        "Byte": 282
+                                                    },
+                                                    "End": {
+                                                        "Line": 16,
+                                                        "Column": 30,
+                                                        "Byte": 294
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "Name": "foo",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 16,
+                                                        "Column": 30,
+                                                        "Byte": 294
+                                                    },
+                                                    "End": {
+                                                        "Line": 16,
+                                                        "Column": 34,
+                                                        "Byte": 298
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "Key": {
+                                    "Value": "FROM_VALUES_CONFIG"
+                                },
+                                "Value": {
+                                    "Property": {
+                                        "Accessors": [
+                                            {
+                                                "Name": "values",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 17,
+                                                        "Column": 25,
+                                                        "Byte": 324
+                                                    },
+                                                    "End": {
+                                                        "Line": 17,
+                                                        "Column": 31,
+                                                        "Byte": 330
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "Name": "pulumiConfig",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 17,
+                                                        "Column": 31,
+                                                        "Byte": 330
+                                                    },
+                                                    "End": {
+                                                        "Line": 17,
+                                                        "Column": 44,
+                                                        "Byte": 343
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "Name": "foo",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 17,
+                                                        "Column": 44,
+                                                        "Byte": 343
+                                                    },
+                                                    "End": {
+                                                        "Line": 17,
+                                                        "Column": 48,
+                                                        "Byte": 347
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "Key": {
+                                    "Value": "FROM_IMPORT"
+                                },
+                                "Value": {
+                                    "Property": {
+                                        "Accessors": [
+                                            {
+                                                "Name": "imports",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 18,
+                                                        "Column": 18,
+                                                        "Byte": 366
+                                                    },
+                                                    "End": {
+                                                        "Line": 18,
+                                                        "Column": 25,
+                                                        "Byte": 373
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "Name": "base",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 18,
+                                                        "Column": 25,
+                                                        "Byte": 373
+                                                    },
+                                                    "End": {
+                                                        "Line": 18,
+                                                        "Column": 30,
+                                                        "Byte": 378
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "Name": "region",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 18,
+                                                        "Column": 30,
+                                                        "Byte": 378
+                                                    },
+                                                    "End": {
+                                                        "Line": 18,
+                                                        "Column": 37,
+                                                        "Byte": 385
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "files"
+                    },
+                    "Value": {
+                        "Entries": [
+                            {
+                                "Key": {
+                                    "Value": "KUBECONFIG"
+                                },
+                                "Value": {
+                                    "Property": {
+                                        "Accessors": [
+                                            {
+                                                "Name": "values",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 20,
+                                                        "Column": 17,
+                                                        "Byte": 410
+                                                    },
+                                                    "End": {
+                                                        "Line": 20,
+                                                        "Column": 23,
+                                                        "Byte": 416
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "Name": "foo",
+                                                "AccessorRange": {
+                                                    "Filename": "top-level-sections",
+                                                    "Start": {
+                                                        "Line": 20,
+                                                        "Column": 23,
+                                                        "Byte": 416
+                                                    },
+                                                    "End": {
+                                                        "Line": 20,
+                                                        "Column": 27,
+                                                        "Byte": 420
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        "Environments": {
+            "Elements": [
+                {
+                    "Environment": {
+                        "Value": "base"
+                    },
+                    "Meta": null
+                }
+            ]
+        },
+        "Config": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "foo"
+                    },
+                    "Value": {
+                        "Property": {
+                            "Accessors": [
+                                {
+                                    "Name": "values",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 8,
+                                            "Column": 10,
+                                            "Byte": 95
+                                        },
+                                        "End": {
+                                            "Line": 8,
+                                            "Column": 16,
+                                            "Byte": 101
+                                        }
+                                    }
+                                },
+                                {
+                                    "Name": "foo",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 8,
+                                            "Column": 16,
+                                            "Byte": 101
+                                        },
+                                        "End": {
+                                            "Line": 8,
+                                            "Column": 20,
+                                            "Byte": 105
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "bare"
+                    },
+                    "Value": {
+                        "Property": {
+                            "Accessors": [
+                                {
+                                    "Name": "foo",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 9,
+                                            "Column": 11,
+                                            "Byte": 117
+                                        },
+                                        "End": {
+                                            "Line": 9,
+                                            "Column": 14,
+                                            "Byte": 120
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "region"
+                    },
+                    "Value": {
+                        "Property": {
+                            "Accessors": [
+                                {
+                                    "Name": "values",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 10,
+                                            "Column": 13,
+                                            "Byte": 134
+                                        },
+                                        "End": {
+                                            "Line": 10,
+                                            "Column": 19,
+                                            "Byte": 140
+                                        }
+                                    }
+                                },
+                                {
+                                    "Name": "region",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 10,
+                                            "Column": 19,
+                                            "Byte": 140
+                                        },
+                                        "End": {
+                                            "Line": 10,
+                                            "Column": 26,
+                                            "Byte": 147
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "token"
+                    },
+                    "Value": {
+                        "Plaintext": {
+                            "Value": "top-level-secret"
+                        },
+                        "Ciphertext": null
+                    }
+                }
+            ]
+        },
+        "EnvironmentVariables": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "Foo"
+                    },
+                    "Value": {
+                        "Property": {
+                            "Accessors": [
+                                {
+                                    "Name": "values",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 14,
+                                            "Column": 10,
+                                            "Byte": 222
+                                        },
+                                        "End": {
+                                            "Line": 14,
+                                            "Column": 16,
+                                            "Byte": 228
+                                        }
+                                    }
+                                },
+                                {
+                                    "Name": "foo",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 14,
+                                            "Column": 16,
+                                            "Byte": 228
+                                        },
+                                        "End": {
+                                            "Line": 14,
+                                            "Column": 20,
+                                            "Byte": 232
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "PASSWORD"
+                    },
+                    "Value": {
+                        "Property": {
+                            "Accessors": [
+                                {
+                                    "Name": "values",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 15,
+                                            "Column": 15,
+                                            "Byte": 248
+                                        },
+                                        "End": {
+                                            "Line": 15,
+                                            "Column": 21,
+                                            "Byte": 254
+                                        }
+                                    }
+                                },
+                                {
+                                    "Name": "password",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 15,
+                                            "Column": 21,
+                                            "Byte": 254
+                                        },
+                                        "End": {
+                                            "Line": 15,
+                                            "Column": 30,
+                                            "Byte": 263
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "FROM_CONFIG"
+                    },
+                    "Value": {
+                        "Property": {
+                            "Accessors": [
+                                {
+                                    "Name": "pulumiConfig",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 16,
+                                            "Column": 18,
+                                            "Byte": 282
+                                        },
+                                        "End": {
+                                            "Line": 16,
+                                            "Column": 30,
+                                            "Byte": 294
+                                        }
+                                    }
+                                },
+                                {
+                                    "Name": "foo",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 16,
+                                            "Column": 30,
+                                            "Byte": 294
+                                        },
+                                        "End": {
+                                            "Line": 16,
+                                            "Column": 34,
+                                            "Byte": 298
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "FROM_VALUES_CONFIG"
+                    },
+                    "Value": {
+                        "Property": {
+                            "Accessors": [
+                                {
+                                    "Name": "values",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 17,
+                                            "Column": 25,
+                                            "Byte": 324
+                                        },
+                                        "End": {
+                                            "Line": 17,
+                                            "Column": 31,
+                                            "Byte": 330
+                                        }
+                                    }
+                                },
+                                {
+                                    "Name": "pulumiConfig",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 17,
+                                            "Column": 31,
+                                            "Byte": 330
+                                        },
+                                        "End": {
+                                            "Line": 17,
+                                            "Column": 44,
+                                            "Byte": 343
+                                        }
+                                    }
+                                },
+                                {
+                                    "Name": "foo",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 17,
+                                            "Column": 44,
+                                            "Byte": 343
+                                        },
+                                        "End": {
+                                            "Line": 17,
+                                            "Column": 48,
+                                            "Byte": 347
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "Key": {
+                        "Value": "FROM_IMPORT"
+                    },
+                    "Value": {
+                        "Property": {
+                            "Accessors": [
+                                {
+                                    "Name": "imports",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 18,
+                                            "Column": 18,
+                                            "Byte": 366
+                                        },
+                                        "End": {
+                                            "Line": 18,
+                                            "Column": 25,
+                                            "Byte": 373
+                                        }
+                                    }
+                                },
+                                {
+                                    "Name": "base",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 18,
+                                            "Column": 25,
+                                            "Byte": 373
+                                        },
+                                        "End": {
+                                            "Line": 18,
+                                            "Column": 30,
+                                            "Byte": 378
+                                        }
+                                    }
+                                },
+                                {
+                                    "Name": "region",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 18,
+                                            "Column": 30,
+                                            "Byte": 378
+                                        },
+                                        "End": {
+                                            "Line": 18,
+                                            "Column": 37,
+                                            "Byte": 385
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        "Files": {
+            "Entries": [
+                {
+                    "Key": {
+                        "Value": "KUBECONFIG"
+                    },
+                    "Value": {
+                        "Property": {
+                            "Accessors": [
+                                {
+                                    "Name": "values",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 20,
+                                            "Column": 17,
+                                            "Byte": 410
+                                        },
+                                        "End": {
+                                            "Line": 20,
+                                            "Column": 23,
+                                            "Byte": 416
+                                        }
+                                    }
+                                },
+                                {
+                                    "Name": "foo",
+                                    "AccessorRange": {
+                                        "Filename": "top-level-sections",
+                                        "Start": {
+                                            "Line": 20,
+                                            "Column": 23,
+                                            "Byte": 416
+                                        },
+                                        "End": {
+                                            "Line": 20,
+                                            "Column": 27,
+                                            "Byte": 420
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}
