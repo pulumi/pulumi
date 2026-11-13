@@ -325,9 +325,11 @@ func newEnvChangeRequestGetCmd(cr *changeRequestCommand) *cobra.Command {
 		Short: "[EXPERIMENTAL] Show a change request.",
 		Long: "[EXPERIMENTAL] Show a change request\n" +
 			"\n" +
-			"This command shows a change request's status, description, and approvals, and the environment\n" +
-			"revision the draft is based on. If the environment has changed since then, use\n" +
-			"`env approvals rebase` to bring the draft up to date.\n",
+			"This command shows a change request's status, description, and approvals.\n" +
+			"\n" +
+			"For an update request, it also shows the environment revision the draft is based on. If the\n" +
+			"environment has changed since then, use `env approvals rebase` to bring the draft up to date.\n" +
+			"For an open request, it also shows the access duration and grant expiration.\n",
 		Example: fmt.Sprintf("  # Show a change request\n"+
 			"  %[1]s env approvals get <change-request-id>\n\n"+
 			"  # Show a change request as JSON\n"+
@@ -455,9 +457,10 @@ func newEnvChangeRequestApproveCmd(cr *changeRequestCommand) *cobra.Command {
 		Short: "[EXPERIMENTAL] Approve a change request.",
 		Long: "[EXPERIMENTAL] Approve a change request\n" +
 			"\n" +
-			"This command shows the change that the change request proposes and asks for confirmation,\n" +
-			"then approves its latest revision. Use `env approvals get` to see how many approvals\n" +
-			"are still required.\n",
+			"This command shows what the change request proposes and asks for confirmation, then approves\n" +
+			"its latest revision. For an update request, it shows the draft's diff. For an open request,\n" +
+			"it shows who is asking to open the environment and for how long. Use `env approvals get` to\n" +
+			"see how many approvals are still required.\n",
 		Example: fmt.Sprintf("  # Approve a change request\n"+
 			"  %[1]s env approvals approve <change-request-id>\n\n"+
 			"  # Approve with a comment\n"+
@@ -535,8 +538,9 @@ func newEnvChangeRequestApplyCmd(cr *changeRequestCommand) *cobra.Command {
 		Short: "[EXPERIMENTAL] Apply a change request.",
 		Long: "[EXPERIMENTAL] Apply a change request\n" +
 			"\n" +
-			"This command shows the change that the change request proposes and asks for confirmation,\n" +
-			"then applies it to the environment. The change request must have all required approvals.\n",
+			"This command shows what the change request proposes and asks for confirmation, then applies\n" +
+			"it. Applying an update request updates the environment. Applying an open request lets the\n" +
+			"requester open the environment. The change request must have all required approvals.\n",
 		Example: fmt.Sprintf("  # Apply a change request\n"+
 			"  %[1]s env approvals apply <change-request-id>\n\n"+
 			"  # Apply without a confirmation prompt\n"+
