@@ -3251,6 +3251,11 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 			}
 		}
 
+		// Properties marked secret in the schema must be wrapped, as genResource does for resource inputs.
+		if input && prop.Secret && prop.ConstValue == nil {
+			arg = fmt.Sprintf("pulumi.Output.secret(%s)", pname)
+		}
+
 		var indent string
 		if !prop.IsRequired() {
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
