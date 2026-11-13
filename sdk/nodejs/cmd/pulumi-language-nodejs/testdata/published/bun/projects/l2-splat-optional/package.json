@@ -1,0 +1,15 @@
+{
+	"name": "l2-splat-optional",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/splatoptional": "ROOT/artifacts/pulumi-splatoptional-1.0.0.tgz"
+	}
+}

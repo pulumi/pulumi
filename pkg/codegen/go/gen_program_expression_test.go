@@ -234,6 +234,24 @@ func TestArgumentTypeName(t *testing.T) {
 		model.NewOutputType(optionalStringTuple), false /*isInput*/))
 	assert.Equal(t, "[]*string", g.argumentTypeName(
 		model.NewTupleType(optionalString, optionalString), false /*isInput*/))
+
+	// A list of optional primitives is a plain slice. ApplyT has no output for
+	// []*string, so the closure returns []string (pulumi/pulumi#25356).
+	// The input name stays the typed array. Optional lists are unchanged.
+	assert.Equal(t, "[]string", g.argumentTypeName(
+		model.NewListType(optionalString), false /*isInput*/))
+	assert.Equal(t, "pulumi.StringArray", g.argumentTypeName(
+		model.NewListType(optionalString), true /*isInput*/))
+	assert.Equal(t, "[]float64", g.argumentTypeName(
+		model.NewListType(model.NewOptionalType(model.NumberType)), false /*isInput*/))
+	assert.Equal(t, "[]int", g.argumentTypeName(
+		model.NewListType(model.NewOptionalType(model.IntType)), false /*isInput*/))
+	assert.Equal(t, "[]bool", g.argumentTypeName(
+		model.NewListType(model.NewOptionalType(model.BoolType)), false /*isInput*/))
+	assert.Equal(t, "[][]float64", g.argumentTypeName(
+		model.NewListType(model.NewOptionalType(model.NewListType(model.NumberType))), false /*isInput*/))
+	assert.Equal(t, "pulumi.Float64ArrayArray", g.argumentTypeName(
+		model.NewListType(model.NewOptionalType(model.NewListType(model.NumberType))), true /*isInput*/))
 	nestedOptional := model.NewTupleType(optionalStringTuple, optionalStringTuple)
 	assert.Equal(t, "pulumi.ArrayArray", g.argumentTypeName(nestedOptional, true /*isInput*/))
 
