@@ -29,6 +29,8 @@ type MockTerminal struct {
 
 	keys chan string
 
+	paused chan struct{}
+
 	dest io.Writer
 }
 
@@ -44,6 +46,7 @@ func NewMockTerminal(dest io.Writer, width, height int, raw bool) *MockTerminal 
 		raw:    raw,
 		info:   mockTermInfo(0),
 		keys:   make(chan string),
+		paused: make(chan struct{}),
 		dest:   dest,
 	}
 }
@@ -132,11 +135,25 @@ func (t *MockTerminal) ShowCursor() {
 }
 
 func (t *MockTerminal) ReadKey() (string, error) {
-	k, ok := <-t.keys
-	if !ok {
+	select {
+	case k, ok := <-t.keys:
+		if !ok {
+			return "", io.EOF
+		}
+		return k, nil
+	case <-t.paused:
 		return "", io.EOF
 	}
-	return k, nil
+}
+
+func (t *MockTerminal) Suspend() error {
+	close(t.paused)
+	return nil
+}
+
+func (t *MockTerminal) Resume() error {
+	t.paused = make(chan struct{})
+	return nil
 }
 
 func (t *MockTerminal) SetSize(width, height int) {
