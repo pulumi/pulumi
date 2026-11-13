@@ -13711,6 +13711,7 @@ class API:
         verbose: Optional[int] = None,
         dest: Optional[str] = None,
         include_parents: bool = False,
+        parent: Optional[str] = None,
         source: Optional[str] = None,
         cwd: Optional[str] = None,
         additional_env: Optional[Mapping[str, str]] = None,
@@ -13732,6 +13733,7 @@ class API:
         :param verbose: Enable verbose logging (e.g., v=3); anything >3 is very verbose
         :param dest: The name of the stack to move resources to
         :param include_parents: Include all the parents of the moved resources as well
+        :param parent: URN of a resource in the destination stack to parent moved resources under. Mutually exclusive with --include-parents
         :param source: The name of the stack to move resources from
         :param cwd: Working directory to run the command in.
         :param additional_env: Additional environment variables to set when running the command.
@@ -13768,6 +13770,8 @@ class API:
             __flags.extend(["--dest", str(dest)])
         if include_parents:
             __flags.append("--include-parents")
+        if parent is not None:
+            __flags.extend(["--parent", str(parent)])
         if source is not None:
             __flags.extend(["--source", str(source)])
         __final.extend(__flags)
