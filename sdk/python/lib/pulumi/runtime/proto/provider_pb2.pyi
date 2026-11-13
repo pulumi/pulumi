@@ -1135,19 +1135,80 @@ class CheckConfigFailure(google.protobuf.message.Message):
 
     PROPERTY_FIELD_NUMBER: builtins.int
     REASON_FIELD_NUMBER: builtins.int
+    REMEDIATIONS_FIELD_NUMBER: builtins.int
     property: builtins.str
     """The provider configuration property that failed validation."""
     reason: builtins.str
     """The reason that the named property failed validation."""
+    @property
+    def remediations(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CommandRemediation]:
+        """Commands the user can run to resolve the failure, such as signing in to refresh expired credentials."""
+
     def __init__(
         self,
         *,
         property: builtins.str = ...,
         reason: builtins.str = ...,
+        remediations: collections.abc.Iterable[global___CommandRemediation] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["property", b"property", "reason", b"reason"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["property", b"property", "reason", b"reason", "remediations", b"remediations"]) -> None: ...
 
 global___CheckConfigFailure = CheckConfigFailure
+
+@typing.final
+class CommandRemediation(google.protobuf.message.Message):
+    """A `CommandRemediation` describes a command that the user can run to resolve a problem a provider reported, such as
+    missing or expired credentials. Providers return it in a [](pulumirpc.CheckConfigFailure) from
+    [](pulumirpc.ResourceProvider.CheckConfig2).
+
+    The engine must not run a remediation without showing its command to the user and getting their consent. Providers
+    should only offer a remediation that can run on the current machine, and should keep describing the fix in the
+    failure or error message itself for engines that do not support remediations.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class EnvEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    DESCRIPTION_FIELD_NUMBER: builtins.int
+    COMMAND_FIELD_NUMBER: builtins.int
+    ENV_FIELD_NUMBER: builtins.int
+    description: builtins.str
+    """A short, imperative summary of what the command does, such as "Sign in to AWS"."""
+    @property
+    def command(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """The command to run, as an argument vector. The first element is the program, which is looked up on `PATH`. The
+        command is run directly, without a shell, attached to the user's terminal so that it can prompt.
+        """
+
+    @property
+    def env(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """Environment variables to set for the command, in addition to the engine's own environment."""
+
+    def __init__(
+        self,
+        *,
+        description: builtins.str = ...,
+        command: collections.abc.Iterable[builtins.str] | None = ...,
+        env: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["command", b"command", "description", b"description", "env", b"env"]) -> None: ...
+
+global___CommandRemediation = CommandRemediation
 
 @typing.final
 class DiffRequest(google.protobuf.message.Message):

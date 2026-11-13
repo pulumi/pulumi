@@ -26,6 +26,9 @@ import (
 type CheckConfigFailure struct {
 	Property resource.PropertyKey // the provider configuration property that failed checking.
 	Reason   string               // the reason the property failed to check.
+
+	// Remediations are commands the user can run to resolve the failure.
+	Remediations []CommandRemediation
 }
 
 // CheckConfig2Response is the response to [ProviderWithCheckConfig2.CheckConfig2].
@@ -62,7 +65,7 @@ func checkConfigFailures(failures []CheckFailure) []CheckConfigFailure {
 	}
 	result := make([]CheckConfigFailure, len(failures))
 	for i, f := range failures {
-		result[i] = CheckConfigFailure(f)
+		result[i] = CheckConfigFailure{Property: f.Property, Reason: f.Reason}
 	}
 	return result
 }
@@ -75,7 +78,7 @@ func checkFailures(failures []CheckConfigFailure) []CheckFailure {
 	}
 	result := make([]CheckFailure, len(failures))
 	for i, f := range failures {
-		result[i] = CheckFailure(f)
+		result[i] = CheckFailure{Property: f.Property, Reason: f.Reason}
 	}
 	return result
 }

@@ -230,3 +230,36 @@ func TestCheckConfig2_fallsBackToCheckConfig(t *testing.T) {
 	assert.Equal(t, req.News, resp.Properties)
 	assert.Equal(t, []CheckConfigFailure{{Property: "region", Reason: "/"}}, resp.Failures)
 }
+
+func TestCheckConfig2_carriesRemediations(t *testing.T) {
+	t.Parallel()
+
+	failures := []CheckConfigFailure{{
+		Reason:       "credentials expired",
+		Remediations: []CommandRemediation{{Description: "Sign in", Command: []string{"cloud", "login"}}},
+	}}
+	srv := NewProviderServer(&MockProvider{
+		CheckConfig2F: func(context.Context, CheckConfigRequest) (CheckConfig2Response, error) {
+			return CheckConfig2Response{Failures: failures}, nil
+		},
+	})
+	client := &checkConfigClient{
+		checkConfig: func(*pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+			t.Error("CheckConfig should not be called when CheckConfig2 is implemented")
+			return nil, status.Error(codes.Internal, "unexpected")
+		},
+		checkConfig2: func(req *pulumirpc.CheckConfigRequest) (*pulumirpc.CheckConfigResponse, error) {
+			return srv.CheckConfig2(t.Context(), req)
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), client, false /* disablePreview */)
+	resp, err := CheckConfig2(t.Context(), p, checkConfigTestRequest())
+	require.NoError(t, err)
+	assert.Equal(t, failures, resp.Failures)
+
+	// CheckConfig reports the same failure without the remediation.
+	old, err := p.CheckConfig(t.Context(), checkConfigTestRequest())
+	require.NoError(t, err)
+	assert.Equal(t, []CheckFailure{{Reason: "credentials expired"}}, old.Failures)
+}
