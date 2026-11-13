@@ -2875,6 +2875,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// Make sure that an explicit provider which doesn't specify its plugin gets the
 		// same plugin as the default provider for the package.
 		defaultProvider, ok := rm.defaultProviders.defaultProviderInfo[sdkproviders.GetProviderPackage(t)]
+		if ok && req.GetPackageRef() != "" {
+			// The default provider of the package name can be another plugin than the package ref's.
+			packageReq, _ := rm.lookupPackageRef(req.GetPackageRef())
+			ok = describesRequest(defaultProvider, packageReq)
+		}
 		if ok && opts.GetVersion() == "" && opts.GetPluginDownloadUrl() == "" {
 			if defaultProvider.Version != nil {
 				providers.SetProviderVersion(legacyProps, defaultProvider.Version)
