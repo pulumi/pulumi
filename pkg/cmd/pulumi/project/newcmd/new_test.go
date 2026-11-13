@@ -1539,6 +1539,93 @@ func TestNewInstallsRequiredPackages(t *testing.T) {
 		filepath.Join(pulumiHome, "plugins", "resource-testpkg-v1.2.3", pluginBinaryName("testpkg")))
 }
 
+// TestNewWithRelativeLocalTemplatePath is a regression test for
+// https://github.com/pulumi/pulumi/issues/25705.
+// A relative local-template path should work the same as an absolute one.
+//
+//nolint:paralleltest // changes directory for process
+func TestNewWithRelativeLocalTemplatePath(t *testing.T) {
+	// Create two sibling directories under a common base:
+	//   base/my-template/   – the template directory
+	//   base/project/       – the starting working directory
+	base := t.TempDir()
+	templateDir := writeLocalTemplate(t, base, "my-template", localTemplateYAML)
+	projectDir := filepath.Join(base, "project")
+	require.NoError(t, os.MkdirAll(projectDir, 0o700))
+
+	t.Chdir(projectDir)
+
+	// Compute the relative path from projectDir to templateDir.
+	// Because they are siblings the result starts with "..".
+	relTemplatePath, err := filepath.Rel(projectDir, templateDir)
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(relTemplatePath, ".."),
+		"test requires a relative path starting with '..'")
+
+	t.Run("with --dir", func(t *testing.T) {
+		// Before the fix, the relative path was resolved against the target
+		// directory (after os.Chdir), so os.Stat failed and the CLI fell
+		// through to the named-template lookup and returned "not found".
+		outDir := filepath.Join(base, "out-with-dir")
+
+		args := newArgs{
+			generateOnly:      true,
+			interactive:       false,
+			yes:               true,
+			name:              "myproject",
+			secretsProvider:   "default",
+			dir:               outDir,
+			templateNameOrURL: relTemplatePath,
+			languageTemplate:  languageTemplateMock,
+		}
+
+		err := runNew(t.Context(), args)
+		require.NoError(t, err)
+
+		proj := loadProject(t, outDir)
+		assert.Equal(t, "myproject", proj.Name.String())
+	})
+
+	t.Run("without --dir", func(t *testing.T) {
+		// Before the fix, the relative template path was stored as-is in
+		// TemplateRepository.SubDirectory and later passed as the rootDirectory
+		// argument of plugin.NewProgramInfo (via promptTemplateRuntimeOptions →
+		// newProjectPluginContext), which panics on a non-absolute path.
+		// See TestRetrieveFileTemplatesAlwaysAbsolute in the templates package
+		// for a focused unit test of the absolutisation fix.
+		//
+		// Use a fresh project directory so the working directory is empty.
+		projectDir2 := filepath.Join(base, "project2")
+		require.NoError(t, os.MkdirAll(projectDir2, 0o700))
+		t.Chdir(projectDir2)
+
+		// Recompute the relative path from the new working directory.
+		relPath2, err := filepath.Rel(projectDir2, templateDir)
+		require.NoError(t, err)
+		require.True(t, strings.HasPrefix(relPath2, ".."),
+			"test requires a relative path starting with '..'")
+
+		args := newArgs{
+			generateOnly:      true,
+			interactive:       false,
+			yes:               true,
+			name:              "myproject",
+			secretsProvider:   "default",
+			templateNameOrURL: relPath2,
+			languageTemplate:  languageTemplateMock,
+			// promptRuntimeOptions is intentionally left nil so we do not
+			// require a real language-plugin binary in this test.  The panic
+			// fix is tested directly in TestRetrieveFileTemplatesAlwaysAbsolute.
+		}
+
+		err = runNew(t.Context(), args)
+		require.NoError(t, err)
+
+		proj := loadProject(t, projectDir2)
+		assert.Equal(t, "myproject", proj.Name.String())
+	})
+}
+
 //nolint:paralleltest
 func TestNewCmdYesDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
 	useTempFilestateBackend(t)
