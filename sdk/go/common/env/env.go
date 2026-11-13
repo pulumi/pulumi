@@ -45,6 +45,11 @@ var Experimental = env.Bool("EXPERIMENTAL", "Enable experimental options and com
 
 var SkipUpdateCheck = env.Bool("SKIP_UPDATE_CHECK", "Disable checking for a new version of pulumi.")
 
+var DisableHints = env.Bool("DISABLE_HINTS", "Disable product hints shown at the end of CLI commands.")
+
+var SkipHints = env.String("SKIP_HINTS", "A comma-separated list of the IDs of product hints not to show, "+
+	"for example \"esc-credentials,drift-detection\".")
+
 var Dev = env.Bool("DEV", "Enable features for hacking on pulumi itself.")
 
 var SkipCheckpoints = env.Bool("SKIP_CHECKPOINTS", "Skip saving state checkpoints and only save "+
