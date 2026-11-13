@@ -63,6 +63,7 @@ import (
 	cmdDo "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/do"
 	cmdEnv "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/insights"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
@@ -300,6 +301,11 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				parseRootPersistentFlags(cmd.Root().PersistentFlags(), args)
 			}
 
+			// Hints are human-facing, so don't mix them into machine-readable output.
+			if isMachineReadableOutput(cmd, args) {
+				hints.Suppress()
+			}
+
 			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
 			client.SetUserAgentCommand(commandPath)
 			client.SetUserAgentAIAgent(agentdetect.Detect(os.Getenv))
@@ -444,6 +450,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 					// The version didn't make it in time, so don't block the user
 				}
 			}
+
+			hints.Flush(cmd.ErrOrStderr())
 		},
 	}
 
@@ -643,6 +651,25 @@ func haveNewerDevVersion(devVersion semver.Version, curVersion semver.Version) b
 		return false
 	}
 	return devCommits > curCommits
+}
+
+// isMachineReadableOutput reports whether cmd was asked to write JSON, through `--json` or `--output json`.
+func isMachineReadableOutput(cmd *cobra.Command, args []string) bool {
+	flags := cmd.Flags()
+	if cmd.DisableFlagParsing {
+		// cobra hasn't parsed this command's flags, so read the output flags from the raw arguments.
+		flags = pflag.NewFlagSet("", pflag.ContinueOnError)
+		flags.ParseErrorsAllowlist.UnknownFlags = true
+		flags.Bool("json", false, "")
+		flags.StringP("output", "o", "", "")
+		flags.BoolP("help", "h", false, "")
+		_ = flags.Parse(args)
+	}
+	if f := flags.Lookup("json"); f != nil && f.Value.String() == "true" {
+		return true
+	}
+	f := flags.Lookup("output")
+	return f != nil && f.Value.String() == "json"
 }
 
 type updateCheckResult struct {

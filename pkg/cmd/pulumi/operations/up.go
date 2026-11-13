@@ -38,6 +38,7 @@ import (
 	cmdConfig "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/plan"
@@ -315,6 +316,7 @@ func NewUpCmd() *cobra.Command {
 		case expectNop && changes != nil && engine.HasChanges(changes):
 			return backenderr.NoChangesExpectedError{Operation: "update"}
 		default:
+			hints.RecordSuccessfulUpdate()
 			return nil
 		}
 	}
@@ -600,6 +602,7 @@ func NewUpCmd() *cobra.Command {
 		case expectNop && changes != nil && engine.HasChanges(changes):
 			return backenderr.NoChangesExpectedError{Operation: "update"}
 		default:
+			hints.RecordSuccessfulUpdate()
 			return nil
 		}
 	}
