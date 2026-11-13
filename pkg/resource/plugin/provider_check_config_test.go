@@ -168,7 +168,6 @@ func (p *checkConfigProvider) CheckConfig(_ context.Context, req CheckConfigRequ
 	}, nil
 }
 
-// CheckConfig and CheckConfig2 on the provider server must give the same answer.
 func TestProviderServer_CheckConfig2_matchesCheckConfig(t *testing.T) {
 	t.Parallel()
 
