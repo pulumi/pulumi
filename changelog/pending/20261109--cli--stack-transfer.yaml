@@ -1,0 +1,3 @@
+component: cli
+kind: feat
+body: Add `pulumi stack transfer` to move a stack to another organization

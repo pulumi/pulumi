@@ -127,6 +127,7 @@ func NewStackCmd() *cobra.Command {
 	cmd.AddCommand(newStackSelectCmd())
 	cmd.AddCommand(newStackTagCmd())
 	cmd.AddCommand(newStackRenameCmd())
+	cmd.AddCommand(newStackTransferCmd())
 	cmd.AddCommand(newStackChangeSecretsProviderCmd())
 	cmd.AddCommand(newStackHistoryCmd())
 	cmd.AddCommand(newStackUnselectCmd())
