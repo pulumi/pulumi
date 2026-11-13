@@ -114,6 +114,9 @@ func TestNewCancelLeavesNothingBehind(t *testing.T) {
 		template string
 		// stack is passed as --stack.
 		stack string
+		// secretsErr, when set, is returned by the backend's secrets manager, as a cancelled passphrase
+		// prompt returns io.EOF.
+		secretsErr error
 		// cancelAt is a substring of the text prompt to cancel at.
 		cancelAt string
 		// selects scripts the guided select prompts, including a terminal.InterruptErr to cancel one.
@@ -161,6 +164,12 @@ func TestNewCancelLeavesNothingBehind(t *testing.T) {
 			runtimeOptions: runtimeOptionsNone,
 		},
 		{
+			name:           "named template/passphrase",
+			template:       localTemplateYAML,
+			secretsErr:     io.EOF,
+			runtimeOptions: runtimeOptionsNone,
+		},
+		{
 			name:           "named template/runtime option",
 			template:       localTemplateYAML,
 			runtimeOptions: runtimeOptionsInterrupted,
@@ -187,6 +196,11 @@ func TestNewCancelLeavesNothingBehind(t *testing.T) {
 			}
 
 			b, created := guidedNewTestBackend(t)
+			if tc.secretsErr != nil {
+				b.DefaultSecretManagerF = func(context.Context, *workspace.ProjectStack) (secrets.Manager, error) {
+					return nil, tc.secretsErr
+				}
+			}
 			mockCurrentBackend(t, b)
 
 			selectOne, _ := scriptedSelect(t, tc.selects...)
@@ -380,4 +394,56 @@ func TestGuidedNewWithStackSavesConfigAskedUpFront(t *testing.T) {
 	got, err := v.Value(config.NopDecrypter)
 	require.NoError(t, err)
 	assert.Equal(t, "us-west-2", got)
+}
+
+// The secrets manager prepared with the other questions must still be recorded in the new stack's
+// config file.
+//
+//nolint:paralleltest // changes directory for process, sets environment variables
+func TestNewRecordsPassphraseAskedUpFront(t *testing.T) {
+	useTempFilestateBackend(t)
+	dir := t.TempDir()
+	t.Chdir(dir)
+	cmd := NewNewCmd()
+	cmd.SetArgs([]string{"-y", "--name", "my-project", "--stack", "dev"})
+
+	require.NoError(t, cmd.Execute())
+
+	proj := loadProject(t, dir)
+	projStack, err := workspace.LoadProjectStack(nil /*sink*/, proj, filepath.Join(dir, "Pulumi.dev.yaml"))
+	require.NoError(t, err)
+	assert.NotEmpty(t, projStack.EncryptionSalt, "the passphrase secrets manager must be saved with the stack")
+}
+
+// With --force, the stack's config file may already have secrets settings, so a secrets manager prepared
+// with the other questions would ask for a passphrase only to discard it.
+//
+//nolint:paralleltest // changes directory for process, mocks login manager
+func TestNewForceDoesNotPrepareSecretsEarly(t *testing.T) {
+	dir := tempProjectDir(t)
+	t.Chdir(dir)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "Pulumi.dev.yaml"), []byte("encryptionsalt: v1:abc\n"), 0o600))
+	templateArg := writeLocalTemplate(t, t.TempDir(), "template", localTemplateYAML)
+
+	b, created := guidedNewTestBackend(t)
+	secretsManagers := 0
+	b.DefaultSecretManagerF = func(ctx context.Context, ps *workspace.ProjectStack) (secrets.Manager, error) {
+		secretsManagers++
+		return nil, nil
+	}
+	mockCurrentBackend(t, b)
+
+	err := runNew(t.Context(), newArgs{
+		interactive:          true,
+		force:                true,
+		templateNameOrURL:    templateArg,
+		prompt:               cancellingPrompt("" /*cancelAt*/, 0, nil),
+		promptRuntimeOptions: runtimeOptionsNone,
+		languageTemplate:     languageTemplateMock,
+		secretsProvider:      "default",
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"my-org/dev"}, *created)
+	assert.Equal(t, 1, secretsManagers, "only stack creation, which reads Pulumi.dev.yaml, must create a secrets manager")
 }

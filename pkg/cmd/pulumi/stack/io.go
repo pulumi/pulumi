@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -353,6 +354,48 @@ type CreateStackOptions struct {
 	ManagedEnvironment bool
 	// Quiet suppresses the "Created stack" announcement so the caller can own the creation summary.
 	Quiet bool
+	// Secrets is a secrets manager prepared with PrepareNewStackSecrets, used unless the stack's config file
+	// already has secrets settings of its own.
+	Secrets *NewStackSecrets
+}
+
+// NewStackSecrets is a secrets manager prepared for a stack before it is created, with the stack config
+// settings that record it.
+type NewStackSecrets struct {
+	settings *workspace.ProjectStack
+	sm       secrets.Manager
+}
+
+// PrepareNewStackSecrets creates the secrets manager for a new stack, as CreateStack would for a stack
+// with no config file, so that a caller can ask for its passphrase before writing anything.
+func PrepareNewStackSecrets(
+	ctx context.Context, b backend.Backend, secretsProvider string,
+) (*NewStackSecrets, error) {
+	settings := &workspace.ProjectStack{}
+	_, sm, err := createSecretsManagerForNewStack(ctx, b, settings, secretsProvider)
+	if err != nil {
+		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
+	}
+	return &NewStackSecrets{settings: settings, sm: sm}, nil
+}
+
+// newStackSecretsManager creates the secrets manager for a new stack whose config is ps, recording its
+// settings in ps, or uses prepared when ps has no secrets settings of its own. It reports whether ps changed.
+func newStackSecretsManager(
+	ctx context.Context, b backend.Backend, ps *workspace.ProjectStack, secretsProvider string,
+	prepared *NewStackSecrets,
+) (bool, secrets.Manager, error) {
+	if prepared == nil || hasSecretsSettings(ps) {
+		return createSecretsManagerForNewStack(ctx, b, ps, secretsProvider)
+	}
+	ps.SecretsProvider = prepared.settings.SecretsProvider
+	ps.EncryptionSalt = prepared.settings.EncryptionSalt
+	ps.EncryptedKey = prepared.settings.EncryptedKey
+	return hasSecretsSettings(ps), prepared.sm, nil
+}
+
+func hasSecretsSettings(ps *workspace.ProjectStack) bool {
+	return ps.SecretsProvider != "" || ps.EncryptionSalt != "" || ps.EncryptedKey != ""
 }
 
 // InitStack creates the stack.
@@ -413,11 +456,11 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 			"sections, or the file, before creating a managed stack", managedStackFile)
 	}
 	// preview and up would load a stack secrets manager from these keys and ask for its passphrase or key.
-	if opts.ManagedEnvironment && (ps.SecretsProvider != "" || ps.EncryptionSalt != "" || ps.EncryptedKey != "") {
+	if opts.ManagedEnvironment && hasSecretsSettings(ps) {
 		return nil, fmt.Errorf("%s already has secrets provider settings; delete its `secretsprovider`, "+
 			"`encryptionsalt` and `encryptedkey` keys, or the file, before creating a managed stack", managedStackFile)
 	}
-	needsSave, sm, err := createSecretsManagerForNewStack(ctx, b, ps, opts.SecretsProvider)
+	needsSave, sm, err := newStackSecretsManager(ctx, b, ps, opts.SecretsProvider, opts.Secrets)
 	if err != nil {
 		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
 	}

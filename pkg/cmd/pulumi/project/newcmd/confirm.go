@@ -60,6 +60,9 @@ type setupAnswers struct {
 	config *askedConfig
 	// runtimeOptions answer the language runtime's questions, such as which package manager to use.
 	runtimeOptions map[string]any
+	// secrets is the new stack's secrets manager, prepared so its passphrase is asked with the other
+	// questions. Nil when no stack is created, or with --force.
+	secrets *cmdStack.NewStackSecrets
 }
 
 // askedConfig is template config gathered before the stack exists, held as plaintext until the
@@ -80,6 +83,7 @@ func (c *setupAnswers) createStack(
 		SecretsProvider:    args.secretsProvider,
 		UseRemoteConfig:    args.remoteStackConfig,
 		ManagedEnvironment: args.escConfig,
+		Secrets:            c.secrets,
 		// The confirmation already showed the stack name, and the summary repeats it and names any
 		// managed environment.
 		Quiet: c.guided && c.stackName != "",
@@ -159,6 +163,13 @@ func askSetupQuestions(
 	}
 	if answers.runtimeOptions, err = promptTemplateRuntimeOptions(ctx, ws, template, args, opts); err != nil {
 		return nil, err
+	}
+	// With --force the stack's config file may already exist, and its secrets settings win at stack
+	// creation, so a passphrase asked now would be thrown away.
+	if createsStack && !args.force {
+		if answers.secrets, err = cmdStack.PrepareNewStackSecrets(ctx, b, args.secretsProvider); err != nil {
+			return nil, err
+		}
 	}
 	return answers, nil
 }
