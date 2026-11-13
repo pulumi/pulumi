@@ -98,24 +98,26 @@ func mergeProviderIntoEnv(
 		return nil, false, fmt.Errorf("marshaling definition: %w", err)
 	}
 
-	valuesNode, ok := encoding.YAMLSyntax{Node: &docNode}.Get(resource.PropertyPath{"values"})
-	if !ok {
-		valuesNode, err = encoding.YAMLSyntax{Node: &docNode}.Set(nil, resource.PropertyPath{"values"}, yaml.Node{
-			Kind: yaml.MappingNode,
-		})
-		if err != nil {
-			return nil, false, fmt.Errorf("creating values node: %w", err)
-		}
+	parentNode, valuePath, err := valueParent(&docNode, path, true)
+	if err != nil {
+		return nil, false, fmt.Errorf("creating values node: %w", err)
 	}
-
-	if _, err := (encoding.YAMLSyntax{Node: valuesNode}).Set(nil, path, *providerNode); err != nil {
+	if _, err := (encoding.YAMLSyntax{Node: parentNode}).Set(nil, valuePath, *providerNode); err != nil {
 		return nil, false, fmt.Errorf("setting provider at %v: %w", path, err)
 	}
 
 	// Set each variable at its own key so existing entries under environmentVariables survive.
 	for _, ev := range envVars {
-		_, err := (encoding.YAMLSyntax{Node: valuesNode}).Set(nil,
+		parentNode, valuePath, err := valueParent(
+			&docNode,
 			resource.PropertyPath{"environmentVariables", ev.name},
+			true,
+		)
+		if err != nil {
+			return nil, false, fmt.Errorf("creating values node: %w", err)
+		}
+		_, err = (encoding.YAMLSyntax{Node: parentNode}).Set(nil,
+			valuePath,
 			yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: ev.value})
 		if err != nil {
 			return nil, false, fmt.Errorf("setting environment variable %s: %w", ev.name, err)

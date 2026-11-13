@@ -117,11 +117,14 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 			if docNode.Kind != yaml.DocumentNode {
 				return nil
 			}
-			valuesNode, ok := encoding.YAMLSyntax{Node: &docNode}.Get(resource.PropertyPath{"values"})
-			if !ok {
+			parentNode, valuePath, err := valueParent(&docNode, path, false)
+			if err != nil {
+				return err
+			}
+			if parentNode == nil {
 				return nil
 			}
-			err = encoding.YAMLSyntax{Node: valuesNode}.Delete(nil, path)
+			err = encoding.YAMLSyntax{Node: parentNode}.Delete(nil, valuePath)
 			if err != nil {
 				return err
 			}

@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/esc/cli/style"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -331,7 +332,7 @@ func (get *envGetCommand) getEnvironmentMember(
 	}
 
 	if len(path) != 0 && path[0] == "imports" {
-		node, _ := encoding.YAMLSyntax{Node: &docNode}.Get(path)
+		node, _ := encoding.YAMLSyntax{Node: &docNode}.Get(eval.DefinitionPath(&docNode, path))
 		if node == nil {
 			return nil, nil
 		}
@@ -368,8 +369,12 @@ func (get *envGetCommand) getEnvironmentMember(
 	}
 
 	definitionYAML := ""
-	if valuesNode, ok := (encoding.YAMLSyntax{Node: &docNode}.Get(resource.PropertyPath{"values"})); ok {
-		if node, _ := (encoding.YAMLSyntax{Node: valuesNode}.Get(path)); node != nil {
+	parentNode, valuePath, err := valueParent(&docNode, path, false)
+	if err != nil {
+		return nil, err
+	}
+	if parentNode != nil {
+		if node, _ := (encoding.YAMLSyntax{Node: parentNode}.Get(valuePath)); node != nil {
 			expr, ok := getEnvExpr(esc.Expr{Object: env.Exprs}, path)
 			if !ok {
 				return nil, fmt.Errorf("internal error: no expr for path %v", path)

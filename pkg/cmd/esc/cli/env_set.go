@@ -27,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -182,18 +183,13 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 			}
 
 			if path[0] == "imports" {
-				_, err = encoding.YAMLSyntax{Node: &docNode}.Set(nil, path, yamlValue)
+				_, err = encoding.YAMLSyntax{Node: &docNode}.Set(nil, eval.DefinitionPath(&docNode, path), yamlValue)
 			} else {
-				valuesNode, ok := encoding.YAMLSyntax{Node: &docNode}.Get(resource.PropertyPath{"values"})
-				if !ok {
-					valuesNode, err = encoding.YAMLSyntax{Node: &docNode}.Set(nil, resource.PropertyPath{"values"}, yaml.Node{
-						Kind: yaml.MappingNode,
-					})
-					if err != nil {
-						return fmt.Errorf("internal error: %w", err)
-					}
+				parentNode, valuePath, perr := valueParent(&docNode, path, true)
+				if perr != nil {
+					return perr
 				}
-				_, err = encoding.YAMLSyntax{Node: valuesNode}.Set(nil, path, yamlValue)
+				_, err = encoding.YAMLSyntax{Node: parentNode}.Set(nil, valuePath, yamlValue)
 			}
 			if err != nil {
 				return err

@@ -24,6 +24,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/ast"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/eval"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/esc/syntax/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -117,17 +119,22 @@ func childMapping(parent *yaml.Node, key string, create bool) (*yaml.Node, error
 	return child, nil
 }
 
-// pulumiConfigNode returns the definition's values.pulumiConfig mapping, creating it when create is set.
+// pulumiConfigNode returns the definition's pulumiConfig mapping, creating it when create is set. The mapping is
+// values.pulumiConfig unless the definition declares the section at the top level, as `pulumiConfig` or `config`.
 func pulumiConfigNode(def *yaml.Node, create bool) (*yaml.Node, error) {
 	root, err := rootMapping(def)
 	if err != nil {
 		return nil, err
 	}
-	values, err := childMapping(root, "values", create)
-	if err != nil || values == nil {
-		return nil, err
+	path := eval.DefinitionPath(root, resource.PropertyPath{ast.PulumiConfigKey})
+	parent := root
+	for _, key := range path {
+		parent, err = childMapping(parent, key.(string), create)
+		if err != nil || parent == nil {
+			return nil, err
+		}
 	}
-	return childMapping(values, "pulumiConfig", create)
+	return parent, nil
 }
 
 // matchingNames returns the names that are entries in pc.
@@ -420,7 +427,7 @@ func ImportsDefinition(def *yaml.Node) ([]byte, bool) {
 	if err != nil {
 		return nil, false
 	}
-	imports, ok := encoding.YAMLSyntax{Node: root}.Get(resource.PropertyPath{"imports"})
+	imports, ok := encoding.YAMLSyntax{Node: root}.Get(eval.DefinitionPath(root, resource.PropertyPath{"imports"}))
 	if !ok || imports.Kind != yaml.SequenceNode || len(imports.Content) == 0 {
 		return nil, false
 	}
