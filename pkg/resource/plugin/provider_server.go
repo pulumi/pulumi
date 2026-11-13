@@ -349,8 +349,9 @@ func (p *providerServer) CheckConfig2(ctx context.Context,
 // checkConfigFailureToRPC converts a failure to send in a CheckConfig2 response.
 func checkConfigFailureToRPC(failure CheckConfigFailure) *pulumirpc.CheckConfigFailure {
 	return &pulumirpc.CheckConfigFailure{
-		Property: string(failure.Property),
-		Reason:   failure.Reason,
+		Property:     string(failure.Property),
+		Reason:       failure.Reason,
+		Remediations: remediationsToRPC(failure.Remediations),
 	}
 }
 
