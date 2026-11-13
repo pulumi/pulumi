@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"slices"
 	"strings"
 	"unicode"
 
@@ -201,8 +202,167 @@ type EnvironmentDecl struct {
 	syntax syntax.Node
 
 	Description *StringExpr
-	Imports     ImportListDecl
-	Values      PropertyMapDecl
+
+	// Imports is the list of environments to import. It holds the elements of whichever of the top-level `imports`
+	// and `environments` keys is in effect.
+	Imports ImportListDecl
+
+	// Values holds the environment's values. Besides the entries of the top-level `values` key, it holds an entry
+	// for each top-level section (`pulumiConfig` or its alias `config`, `environmentVariables`, and `files`), keyed
+	// by the section's canonical name. The legacy spelling of a section, as a key inside `values`, and its top-level
+	// spelling are therefore indistinguishable to consumers of the declaration.
+	Values PropertyMapDecl
+
+	// Environments is the top-level `environments` key, an alias for `imports`. Consumers should read Imports.
+	Environments ImportListDecl `json:",omitempty"`
+
+	// PulumiConfig, Config, EnvironmentVariables, and Files are the top-level sections as written. Config is an
+	// alias for PulumiConfig. Consumers should read Values.
+	PulumiConfig         Expr `json:",omitempty"`
+	Config               Expr `json:",omitempty"`
+	EnvironmentVariables Expr `json:",omitempty"`
+	Files                Expr `json:",omitempty"`
+}
+
+const (
+	importsKey      = "imports"
+	environmentsKey = "environments"
+	valuesKey       = "values"
+
+	// PulumiConfigKey is the canonical name of the section that holds Pulumi stack configuration.
+	PulumiConfigKey = "pulumiConfig"
+	// ConfigKey is an alias for PulumiConfigKey that is only accepted at the top level of an environment.
+	ConfigKey = "config"
+	// EnvironmentVariablesKey is the name of the section that holds environment variables.
+	EnvironmentVariablesKey = "environmentVariables"
+	// FilesKey is the name of the section that holds files.
+	FilesKey = "files"
+)
+
+// topLevelSections maps each top-level section key to the canonical name of the section it declares.
+var topLevelSections = []struct {
+	key  string
+	name string
+}{
+	{PulumiConfigKey, PulumiConfigKey},
+	{ConfigKey, PulumiConfigKey},
+	{EnvironmentVariablesKey, EnvironmentVariablesKey},
+	{FilesKey, FilesKey},
+}
+
+// TopLevelSectionKeys returns the top-level keys that declare the section with the given canonical name, or nil if
+// the name is not that of a section.
+func TopLevelSectionKeys(name string) []string {
+	var keys []string
+	for _, section := range topLevelSections {
+		if section.name == name {
+			keys = append(keys, section.key)
+		}
+	}
+	return keys
+}
+
+// TopLevelSectionName returns the canonical name of the section a top-level key declares. Sections are the
+// well-known values (`pulumiConfig`, `environmentVariables`, and `files`) that may be written either as keys inside
+// `values` or as top-level keys of an environment. Like every top-level key, section keys are case-insensitive.
+func TopLevelSectionName(key string) (string, bool) {
+	for _, section := range topLevelSections {
+		if strings.EqualFold(section.key, key) {
+			return section.name, true
+		}
+	}
+	return "", false
+}
+
+// topLevelProperty returns the last top-level property whose key matches the given key. Matching is case-insensitive
+// and the last match wins, per parseRecord.
+func (d *EnvironmentDecl) topLevelProperty(key string) (syntax.ObjectPropertyDef, bool) {
+	obj, ok := d.syntax.(*syntax.ObjectNode)
+	if !ok {
+		return syntax.ObjectPropertyDef{}, false
+	}
+	for i := obj.Len() - 1; i >= 0; i-- {
+		if kvp := obj.Index(i); strings.EqualFold(kvp.Key.Value(), key) {
+			return kvp, true
+		}
+	}
+	return syntax.ObjectPropertyDef{}, false
+}
+
+// ignoredKeyWarning returns a warning that reports that a top-level key has no effect.
+func ignoredKeyWarning(key *syntax.StringNode, reason string) *syntax.Diagnostic {
+	diag := syntax.NodeError(key, fmt.Sprintf("%q is ignored: %s", key.Value(), reason))
+	diag.Severity = hcl.DiagWarning
+	return diag
+}
+
+// normalize folds the top-level aliases and sections into Imports and Values, so that the evaluator and every other
+// consumer of the declaration sees a single shape regardless of the spelling the author chose.
+//
+// Environments that predate these keys must keep their meaning. Until now an unrecognized top-level key was ignored
+// with a warning, so wherever the legacy spelling is also present the legacy spelling wins and the new key remains
+// ignored, with a warning that says why.
+func (d *EnvironmentDecl) normalize() syntax.Diagnostics {
+	var diags syntax.Diagnostics
+
+	if d.Environments != nil {
+		kvp, _ := d.topLevelProperty(environmentsKey)
+		if d.Imports == nil {
+			d.Imports = d.Environments
+		} else if kvp.Key != nil {
+			diags.Extend(ignoredKeyWarning(kvp.Key, fmt.Sprintf("%q is also set", importsKey)))
+		}
+	}
+
+	if d.PulumiConfig != nil && d.Config != nil {
+		if kvp, ok := d.topLevelProperty(ConfigKey); ok {
+			diags.Extend(syntax.NodeError(
+				kvp.Key,
+				fmt.Sprintf("%q is an alias for %q: only one of them may be set", ConfigKey, PulumiConfigKey),
+			))
+		}
+	}
+
+	for _, section := range []struct {
+		key   string
+		value Expr
+	}{
+		{PulumiConfigKey, d.PulumiConfig},
+		{ConfigKey, d.Config},
+		{EnvironmentVariablesKey, d.EnvironmentVariables},
+		{FilesKey, d.Files},
+	} {
+		if section.value == nil {
+			continue
+		}
+		kvp, ok := d.topLevelProperty(section.key)
+		if !ok {
+			continue
+		}
+		name, _ := TopLevelSectionName(section.key)
+
+		if slices.ContainsFunc(d.Values.GetEntries(), func(e PropertyMapEntry) bool {
+			return e.Key.GetValue() == name
+		}) {
+			// Either the legacy spelling is present, or this is `config` and `pulumiConfig` already claimed the
+			// section (which is reported above).
+			if section.key != ConfigKey || d.PulumiConfig == nil {
+				diags.Extend(ignoredKeyWarning(kvp.Key, fmt.Sprintf("\"%s.%s\" is also set", valuesKey, name)))
+			}
+			continue
+		}
+
+		if d.Values == nil {
+			d.Values = &MapDecl[Expr]{}
+		}
+		d.Values.Entries = append(d.Values.Entries, PropertyMapEntry{
+			syntax: kvp,
+			Key:    StringSyntaxValue(kvp.Key, name),
+			Value:  section.value,
+		})
+	}
+
+	return diags
 }
 
 func (d *EnvironmentDecl) Syntax() syntax.Node {
@@ -253,6 +413,7 @@ func ParseEnvironment(source []byte, node syntax.Node) (*EnvironmentDecl, syntax
 	environment := EnvironmentDecl{source: source}
 
 	diags := parseRecord("environment", &environment, node, true)
+	diags.Extend(environment.normalize()...)
 	return &environment, diags
 }
 

@@ -1,0 +1,6 @@
+values:
+  region: us-west-2
+  pulumiConfig:
+    aws:region: ${region}
+  environmentVariables:
+    BASE: base

@@ -1,0 +1,4 @@
+component: esc
+kind: feat
+body: Accept `pulumiConfig` (or its alias `config`), `environmentVariables` and `files` as top-level keys of an ESC environment, `environments` as an alias for `imports`, and `${values.…}` as a qualified reference to the environment's values
+time: 2026-11-12T00:00:00Z

@@ -153,6 +153,15 @@ func RotateEnvironment(
 	rotateDocPaths := make(map[string]bool, len(paths))
 	for _, path := range paths {
 		rotateDocPaths["values."+path.String()] = true
+
+		// A section may also be written at the top level of the environment, under any of its keys.
+		if len(path) != 0 {
+			if name, ok := path[0].(string); ok {
+				for _, key := range ast.TopLevelSectionKeys(name) {
+					rotateDocPaths[append(resource.PropertyPath{key}, path[1:]...).String()] = true
+				}
+			}
+		}
 	}
 	return evalEnvironment(
 		ctx,
@@ -889,6 +898,17 @@ func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor,
 		return e.evaluateEnvironmentReferenceAccess(x, accessors, accept)
 	}
 
+	// Check for a qualified reference to the environment's own values, e.g. ${values.foo}. An environment (or one
+	// of its imports) that defines a value named "values" keeps that meaning.
+	if ok && k == "values" && len(accessors) > 1 && !e.definesValue("values") {
+		accessors[0].value = &value{
+			def:    receiver,
+			base:   receiver.base,
+			schema: schema.Always().Schema(),
+		}
+		accessors = accessors[1:]
+	}
+
 	for len(accessors) > 0 {
 		accessor := accessors[0]
 		if receiver == nil {
@@ -940,6 +960,17 @@ func (e *evalContext) evaluateExprAccess(x *expr, accessors []*propertyAccessor,
 	}
 
 	return e.evaluateExpr(receiver, schema.Always())
+}
+
+// definesValue returns true if the environment or any environment it merges defines a top-level value with the
+// given name.
+func (e *evalContext) definesValue(name string) bool {
+	if root, ok := e.root.repr.(*objectExpr); ok {
+		if _, ok := root.properties[name]; ok {
+			return true
+		}
+	}
+	return slices.Contains(e.root.base.keys(), name)
 }
 
 // evaluateEnvironmentReferenceAccess performs an inline import of an environment.

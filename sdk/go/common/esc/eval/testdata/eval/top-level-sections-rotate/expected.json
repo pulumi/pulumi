@@ -1,0 +1,2875 @@
+{
+    "check": {
+        "exprs": {
+            "environmentVariables": {
+                "range": {
+                    "environment": "top-level-sections-rotate",
+                    "begin": {
+                        "line": 9,
+                        "column": 3,
+                        "byte": 121
+                    },
+                    "end": {
+                        "line": 14,
+                        "column": 13,
+                        "byte": 211
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "NOT_ROTATED": {
+                            "properties": {
+                                "a": {
+                                    "type": "string"
+                                },
+                                "b": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "NOT_ROTATED"
+                    ]
+                },
+                "keyRanges": {
+                    "NOT_ROTATED": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 9,
+                            "column": 3,
+                            "byte": 121
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 14,
+                            "byte": 132
+                        }
+                    }
+                },
+                "object": {
+                    "NOT_ROTATED": {
+                        "range": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 10,
+                                "column": 5,
+                                "byte": 138
+                            },
+                            "end": {
+                                "line": 14,
+                                "column": 13,
+                                "byte": 211
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "a": {
+                                    "type": "string"
+                                },
+                                "b": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        },
+                        "builtin": {
+                            "name": "fn::rotate::swap",
+                            "nameRange": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 138
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 21,
+                                    "byte": 154
+                                }
+                            },
+                            "argSchema": {
+                                "properties": {
+                                    "inputs": true,
+                                    "state": {
+                                        "oneOf": [
+                                            {
+                                                "properties": {
+                                                    "a": {
+                                                        "type": "string"
+                                                    },
+                                                    "b": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object",
+                                                "required": [
+                                                    "a",
+                                                    "b"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "inputs",
+                                    "state"
+                                ]
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "object": {
+                                    "inputs": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 11,
+                                                "column": 15,
+                                                "byte": 170
+                                            },
+                                            "end": {
+                                                "line": 11,
+                                                "column": 15,
+                                                "byte": 170
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "state": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 13,
+                                                "column": 9,
+                                                "byte": 194
+                                            },
+                                            "end": {
+                                                "line": 14,
+                                                "column": 13,
+                                                "byte": 211
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "a": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "b": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "a",
+                                                "b"
+                                            ]
+                                        },
+                                        "keyRanges": {
+                                            "a": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 13,
+                                                    "column": 9,
+                                                    "byte": 194
+                                                },
+                                                "end": {
+                                                    "line": 13,
+                                                    "column": 10,
+                                                    "byte": 195
+                                                }
+                                            },
+                                            "b": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 14,
+                                                    "column": 9,
+                                                    "byte": 207
+                                                },
+                                                "end": {
+                                                    "line": 14,
+                                                    "column": 10,
+                                                    "byte": 208
+                                                }
+                                            }
+                                        },
+                                        "object": {
+                                            "a": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 13,
+                                                        "column": 12,
+                                                        "byte": 197
+                                                    },
+                                                    "end": {
+                                                        "line": 13,
+                                                        "column": 13,
+                                                        "byte": 198
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "literal": "a"
+                                            },
+                                            "b": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 14,
+                                                        "column": 12,
+                                                        "byte": 210
+                                                    },
+                                                    "end": {
+                                                        "line": 14,
+                                                        "column": 13,
+                                                        "byte": 211
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                },
+                                                "literal": "b"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "range": {
+                    "environment": "top-level-sections-rotate",
+                    "begin": {
+                        "line": 2,
+                        "column": 3,
+                        "byte": 10
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 13,
+                        "byte": 96
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "rotated": {
+                            "properties": {
+                                "a": {
+                                    "type": "string"
+                                },
+                                "b": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "rotated"
+                    ]
+                },
+                "keyRanges": {
+                    "rotated": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 2,
+                            "column": 3,
+                            "byte": 10
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 10,
+                            "byte": 17
+                        }
+                    }
+                },
+                "object": {
+                    "rotated": {
+                        "range": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 3,
+                                "column": 5,
+                                "byte": 23
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 13,
+                                "byte": 96
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "a": {
+                                    "type": "string"
+                                },
+                                "b": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        },
+                        "builtin": {
+                            "name": "fn::rotate::swap",
+                            "nameRange": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 23
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 21,
+                                    "byte": 39
+                                }
+                            },
+                            "argSchema": {
+                                "properties": {
+                                    "inputs": true,
+                                    "state": {
+                                        "oneOf": [
+                                            {
+                                                "properties": {
+                                                    "a": {
+                                                        "type": "string"
+                                                    },
+                                                    "b": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object",
+                                                "required": [
+                                                    "a",
+                                                    "b"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "inputs",
+                                    "state"
+                                ]
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "object": {
+                                    "inputs": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 4,
+                                                "column": 15,
+                                                "byte": 55
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 15,
+                                                "byte": 55
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "state": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 6,
+                                                "column": 9,
+                                                "byte": 79
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 13,
+                                                "byte": 96
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "a": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "b": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "a",
+                                                "b"
+                                            ]
+                                        },
+                                        "keyRanges": {
+                                            "a": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 6,
+                                                    "column": 9,
+                                                    "byte": 79
+                                                },
+                                                "end": {
+                                                    "line": 6,
+                                                    "column": 10,
+                                                    "byte": 80
+                                                }
+                                            },
+                                            "b": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 7,
+                                                    "column": 9,
+                                                    "byte": 92
+                                                },
+                                                "end": {
+                                                    "line": 7,
+                                                    "column": 10,
+                                                    "byte": 93
+                                                }
+                                            }
+                                        },
+                                        "object": {
+                                            "a": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 6,
+                                                        "column": 12,
+                                                        "byte": 82
+                                                    },
+                                                    "end": {
+                                                        "line": 6,
+                                                        "column": 13,
+                                                        "byte": 83
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "literal": "a"
+                                            },
+                                            "b": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 7,
+                                                        "column": 12,
+                                                        "byte": 95
+                                                    },
+                                                    "end": {
+                                                        "line": 7,
+                                                        "column": 13,
+                                                        "byte": 96
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                },
+                                                "literal": "b"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "environmentVariables": {
+                "value": {
+                    "NOT_ROTATED": {
+                        "value": null,
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 138
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 13,
+                                    "byte": 211
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 9,
+                            "column": 3,
+                            "byte": 121
+                        },
+                        "end": {
+                            "line": 14,
+                            "column": 13,
+                            "byte": 211
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "value": {
+                    "rotated": {
+                        "value": null,
+                        "unknown": true,
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 23
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 13,
+                                    "byte": 96
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 2,
+                            "column": 3,
+                            "byte": 10
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 13,
+                            "byte": 96
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "environmentVariables": {
+                    "properties": {
+                        "NOT_ROTATED": {
+                            "properties": {
+                                "a": {
+                                    "type": "string"
+                                },
+                                "b": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "NOT_ROTATED"
+                    ]
+                },
+                "pulumiConfig": {
+                    "properties": {
+                        "rotated": {
+                            "properties": {
+                                "a": {
+                                    "type": "string"
+                                },
+                                "b": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "rotated"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "environmentVariables",
+                "pulumiConfig"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-rotate",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-rotate",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-rotate",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-rotate",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-rotate",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-rotate"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-rotate"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "environmentVariables": {
+            "NOT_ROTATED": "[unknown]"
+        },
+        "pulumiConfig": {
+            "rotated": "[unknown]"
+        }
+    },
+    "eval": {
+        "exprs": {
+            "environmentVariables": {
+                "range": {
+                    "environment": "top-level-sections-rotate",
+                    "begin": {
+                        "line": 9,
+                        "column": 3,
+                        "byte": 121
+                    },
+                    "end": {
+                        "line": 14,
+                        "column": 13,
+                        "byte": 211
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "NOT_ROTATED": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "a"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "b"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "NOT_ROTATED"
+                    ]
+                },
+                "keyRanges": {
+                    "NOT_ROTATED": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 9,
+                            "column": 3,
+                            "byte": 121
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 14,
+                            "byte": 132
+                        }
+                    }
+                },
+                "object": {
+                    "NOT_ROTATED": {
+                        "range": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 10,
+                                "column": 5,
+                                "byte": 138
+                            },
+                            "end": {
+                                "line": 14,
+                                "column": 13,
+                                "byte": 211
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "a"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "b"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        },
+                        "builtin": {
+                            "name": "fn::rotate::swap",
+                            "nameRange": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 138
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 21,
+                                    "byte": 154
+                                }
+                            },
+                            "argSchema": {
+                                "properties": {
+                                    "inputs": true,
+                                    "state": {
+                                        "oneOf": [
+                                            {
+                                                "properties": {
+                                                    "a": {
+                                                        "type": "string"
+                                                    },
+                                                    "b": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object",
+                                                "required": [
+                                                    "a",
+                                                    "b"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "inputs",
+                                    "state"
+                                ]
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "object": {
+                                    "inputs": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 11,
+                                                "column": 15,
+                                                "byte": 170
+                                            },
+                                            "end": {
+                                                "line": 11,
+                                                "column": 15,
+                                                "byte": 170
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "state": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 13,
+                                                "column": 9,
+                                                "byte": 194
+                                            },
+                                            "end": {
+                                                "line": 14,
+                                                "column": 13,
+                                                "byte": 211
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "a": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "b": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "a",
+                                                "b"
+                                            ]
+                                        },
+                                        "keyRanges": {
+                                            "a": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 13,
+                                                    "column": 9,
+                                                    "byte": 194
+                                                },
+                                                "end": {
+                                                    "line": 13,
+                                                    "column": 10,
+                                                    "byte": 195
+                                                }
+                                            },
+                                            "b": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 14,
+                                                    "column": 9,
+                                                    "byte": 207
+                                                },
+                                                "end": {
+                                                    "line": 14,
+                                                    "column": 10,
+                                                    "byte": 208
+                                                }
+                                            }
+                                        },
+                                        "object": {
+                                            "a": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 13,
+                                                        "column": 12,
+                                                        "byte": 197
+                                                    },
+                                                    "end": {
+                                                        "line": 13,
+                                                        "column": 13,
+                                                        "byte": 198
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "literal": "a"
+                                            },
+                                            "b": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 14,
+                                                        "column": 12,
+                                                        "byte": 210
+                                                    },
+                                                    "end": {
+                                                        "line": 14,
+                                                        "column": 13,
+                                                        "byte": 211
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                },
+                                                "literal": "b"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "range": {
+                    "environment": "top-level-sections-rotate",
+                    "begin": {
+                        "line": 2,
+                        "column": 3,
+                        "byte": 10
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 13,
+                        "byte": 96
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "rotated": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "a"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "b"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "rotated"
+                    ]
+                },
+                "keyRanges": {
+                    "rotated": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 2,
+                            "column": 3,
+                            "byte": 10
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 10,
+                            "byte": 17
+                        }
+                    }
+                },
+                "object": {
+                    "rotated": {
+                        "range": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 3,
+                                "column": 5,
+                                "byte": 23
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 13,
+                                "byte": 96
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "a"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "b"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        },
+                        "builtin": {
+                            "name": "fn::rotate::swap",
+                            "nameRange": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 23
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 21,
+                                    "byte": 39
+                                }
+                            },
+                            "argSchema": {
+                                "properties": {
+                                    "inputs": true,
+                                    "state": {
+                                        "oneOf": [
+                                            {
+                                                "properties": {
+                                                    "a": {
+                                                        "type": "string"
+                                                    },
+                                                    "b": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object",
+                                                "required": [
+                                                    "a",
+                                                    "b"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "inputs",
+                                    "state"
+                                ]
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "object": {
+                                    "inputs": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 4,
+                                                "column": 15,
+                                                "byte": 55
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 15,
+                                                "byte": 55
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "state": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 6,
+                                                "column": 9,
+                                                "byte": 79
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 13,
+                                                "byte": 96
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "a": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "b": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "a",
+                                                "b"
+                                            ]
+                                        },
+                                        "keyRanges": {
+                                            "a": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 6,
+                                                    "column": 9,
+                                                    "byte": 79
+                                                },
+                                                "end": {
+                                                    "line": 6,
+                                                    "column": 10,
+                                                    "byte": 80
+                                                }
+                                            },
+                                            "b": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 7,
+                                                    "column": 9,
+                                                    "byte": 92
+                                                },
+                                                "end": {
+                                                    "line": 7,
+                                                    "column": 10,
+                                                    "byte": 93
+                                                }
+                                            }
+                                        },
+                                        "object": {
+                                            "a": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 6,
+                                                        "column": 12,
+                                                        "byte": 82
+                                                    },
+                                                    "end": {
+                                                        "line": 6,
+                                                        "column": 13,
+                                                        "byte": 83
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "literal": "a"
+                                            },
+                                            "b": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 7,
+                                                        "column": 12,
+                                                        "byte": 95
+                                                    },
+                                                    "end": {
+                                                        "line": 7,
+                                                        "column": 13,
+                                                        "byte": 96
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                },
+                                                "literal": "b"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "environmentVariables": {
+                "value": {
+                    "NOT_ROTATED": {
+                        "value": {
+                            "a": {
+                                "value": "a",
+                                "trace": {
+                                    "def": {
+                                        "environment": "top-level-sections-rotate",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 5,
+                                            "byte": 138
+                                        },
+                                        "end": {
+                                            "line": 14,
+                                            "column": 13,
+                                            "byte": 211
+                                        }
+                                    }
+                                }
+                            },
+                            "b": {
+                                "value": "b",
+                                "trace": {
+                                    "def": {
+                                        "environment": "top-level-sections-rotate",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 5,
+                                            "byte": 138
+                                        },
+                                        "end": {
+                                            "line": 14,
+                                            "column": 13,
+                                            "byte": 211
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 138
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 13,
+                                    "byte": 211
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 9,
+                            "column": 3,
+                            "byte": 121
+                        },
+                        "end": {
+                            "line": 14,
+                            "column": 13,
+                            "byte": 211
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "value": {
+                    "rotated": {
+                        "value": {
+                            "a": {
+                                "value": "a",
+                                "trace": {
+                                    "def": {
+                                        "environment": "top-level-sections-rotate",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 23
+                                        },
+                                        "end": {
+                                            "line": 7,
+                                            "column": 13,
+                                            "byte": 96
+                                        }
+                                    }
+                                }
+                            },
+                            "b": {
+                                "value": "b",
+                                "trace": {
+                                    "def": {
+                                        "environment": "top-level-sections-rotate",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 23
+                                        },
+                                        "end": {
+                                            "line": 7,
+                                            "column": 13,
+                                            "byte": 96
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 23
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 13,
+                                    "byte": 96
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 2,
+                            "column": 3,
+                            "byte": 10
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 13,
+                            "byte": 96
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "environmentVariables": {
+                    "properties": {
+                        "NOT_ROTATED": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "a"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "b"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "NOT_ROTATED"
+                    ]
+                },
+                "pulumiConfig": {
+                    "properties": {
+                        "rotated": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "a"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "b"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "rotated"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "environmentVariables",
+                "pulumiConfig"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-rotate",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-rotate",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-rotate",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-rotate",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-rotate",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-rotate"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-rotate"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "environmentVariables": {
+            "NOT_ROTATED": {
+                "a": "a",
+                "b": "b"
+            }
+        },
+        "pulumiConfig": {
+            "rotated": {
+                "a": "a",
+                "b": "b"
+            }
+        }
+    },
+    "evalJSONRevealed": {
+        "environmentVariables": {
+            "NOT_ROTATED": {
+                "a": "a",
+                "b": "b"
+            }
+        },
+        "pulumiConfig": {
+            "rotated": {
+                "a": "a",
+                "b": "b"
+            }
+        }
+    },
+    "rotate": {
+        "exprs": {
+            "environmentVariables": {
+                "range": {
+                    "environment": "top-level-sections-rotate",
+                    "begin": {
+                        "line": 9,
+                        "column": 3,
+                        "byte": 121
+                    },
+                    "end": {
+                        "line": 14,
+                        "column": 13,
+                        "byte": 211
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "NOT_ROTATED": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "a"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "b"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "NOT_ROTATED"
+                    ]
+                },
+                "keyRanges": {
+                    "NOT_ROTATED": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 9,
+                            "column": 3,
+                            "byte": 121
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 14,
+                            "byte": 132
+                        }
+                    }
+                },
+                "object": {
+                    "NOT_ROTATED": {
+                        "range": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 10,
+                                "column": 5,
+                                "byte": 138
+                            },
+                            "end": {
+                                "line": 14,
+                                "column": 13,
+                                "byte": 211
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "a"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "b"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        },
+                        "builtin": {
+                            "name": "fn::rotate::swap",
+                            "nameRange": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 138
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 21,
+                                    "byte": 154
+                                }
+                            },
+                            "argSchema": {
+                                "properties": {
+                                    "inputs": true,
+                                    "state": {
+                                        "oneOf": [
+                                            {
+                                                "properties": {
+                                                    "a": {
+                                                        "type": "string"
+                                                    },
+                                                    "b": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object",
+                                                "required": [
+                                                    "a",
+                                                    "b"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "inputs",
+                                    "state"
+                                ]
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "object": {
+                                    "inputs": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 11,
+                                                "column": 15,
+                                                "byte": 170
+                                            },
+                                            "end": {
+                                                "line": 11,
+                                                "column": 15,
+                                                "byte": 170
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "state": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 13,
+                                                "column": 9,
+                                                "byte": 194
+                                            },
+                                            "end": {
+                                                "line": 14,
+                                                "column": 13,
+                                                "byte": 211
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "a": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "b": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "a",
+                                                "b"
+                                            ]
+                                        },
+                                        "keyRanges": {
+                                            "a": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 13,
+                                                    "column": 9,
+                                                    "byte": 194
+                                                },
+                                                "end": {
+                                                    "line": 13,
+                                                    "column": 10,
+                                                    "byte": 195
+                                                }
+                                            },
+                                            "b": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 14,
+                                                    "column": 9,
+                                                    "byte": 207
+                                                },
+                                                "end": {
+                                                    "line": 14,
+                                                    "column": 10,
+                                                    "byte": 208
+                                                }
+                                            }
+                                        },
+                                        "object": {
+                                            "a": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 13,
+                                                        "column": 12,
+                                                        "byte": 197
+                                                    },
+                                                    "end": {
+                                                        "line": 13,
+                                                        "column": 13,
+                                                        "byte": 198
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "literal": "a"
+                                            },
+                                            "b": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 14,
+                                                        "column": 12,
+                                                        "byte": 210
+                                                    },
+                                                    "end": {
+                                                        "line": 14,
+                                                        "column": 13,
+                                                        "byte": 211
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                },
+                                                "literal": "b"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "range": {
+                    "environment": "top-level-sections-rotate",
+                    "begin": {
+                        "line": 2,
+                        "column": 3,
+                        "byte": 10
+                    },
+                    "end": {
+                        "line": 7,
+                        "column": 13,
+                        "byte": 96
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "rotated": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "b"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "a"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "rotated"
+                    ]
+                },
+                "keyRanges": {
+                    "rotated": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 2,
+                            "column": 3,
+                            "byte": 10
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 10,
+                            "byte": 17
+                        }
+                    }
+                },
+                "object": {
+                    "rotated": {
+                        "range": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 3,
+                                "column": 5,
+                                "byte": 23
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 13,
+                                "byte": 96
+                            }
+                        },
+                        "schema": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "b"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "a"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        },
+                        "builtin": {
+                            "name": "fn::rotate::swap",
+                            "nameRange": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 23
+                                },
+                                "end": {
+                                    "line": 3,
+                                    "column": 21,
+                                    "byte": 39
+                                }
+                            },
+                            "argSchema": {
+                                "properties": {
+                                    "inputs": true,
+                                    "state": {
+                                        "oneOf": [
+                                            {
+                                                "properties": {
+                                                    "a": {
+                                                        "type": "string"
+                                                    },
+                                                    "b": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object",
+                                                "required": [
+                                                    "a",
+                                                    "b"
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "inputs",
+                                    "state"
+                                ]
+                            },
+                            "arg": {
+                                "range": {
+                                    "environment": "",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                },
+                                "object": {
+                                    "inputs": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 4,
+                                                "column": 15,
+                                                "byte": 55
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 15,
+                                                "byte": 55
+                                            }
+                                        },
+                                        "schema": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "state": {
+                                        "range": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 6,
+                                                "column": 9,
+                                                "byte": 79
+                                            },
+                                            "end": {
+                                                "line": 7,
+                                                "column": 13,
+                                                "byte": 96
+                                            }
+                                        },
+                                        "schema": {
+                                            "properties": {
+                                                "a": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "b": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                }
+                                            },
+                                            "type": "object",
+                                            "required": [
+                                                "a",
+                                                "b"
+                                            ]
+                                        },
+                                        "keyRanges": {
+                                            "a": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 6,
+                                                    "column": 9,
+                                                    "byte": 79
+                                                },
+                                                "end": {
+                                                    "line": 6,
+                                                    "column": 10,
+                                                    "byte": 80
+                                                }
+                                            },
+                                            "b": {
+                                                "environment": "top-level-sections-rotate",
+                                                "begin": {
+                                                    "line": 7,
+                                                    "column": 9,
+                                                    "byte": 92
+                                                },
+                                                "end": {
+                                                    "line": 7,
+                                                    "column": 10,
+                                                    "byte": 93
+                                                }
+                                            }
+                                        },
+                                        "object": {
+                                            "a": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 6,
+                                                        "column": 12,
+                                                        "byte": 82
+                                                    },
+                                                    "end": {
+                                                        "line": 6,
+                                                        "column": 13,
+                                                        "byte": 83
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "a"
+                                                },
+                                                "literal": "a"
+                                            },
+                                            "b": {
+                                                "range": {
+                                                    "environment": "top-level-sections-rotate",
+                                                    "begin": {
+                                                        "line": 7,
+                                                        "column": 12,
+                                                        "byte": 95
+                                                    },
+                                                    "end": {
+                                                        "line": 7,
+                                                        "column": 13,
+                                                        "byte": 96
+                                                    }
+                                                },
+                                                "schema": {
+                                                    "type": "string",
+                                                    "const": "b"
+                                                },
+                                                "literal": "b"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "properties": {
+            "environmentVariables": {
+                "value": {
+                    "NOT_ROTATED": {
+                        "value": {
+                            "a": {
+                                "value": "a",
+                                "trace": {
+                                    "def": {
+                                        "environment": "top-level-sections-rotate",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 5,
+                                            "byte": 138
+                                        },
+                                        "end": {
+                                            "line": 14,
+                                            "column": 13,
+                                            "byte": 211
+                                        }
+                                    }
+                                }
+                            },
+                            "b": {
+                                "value": "b",
+                                "trace": {
+                                    "def": {
+                                        "environment": "top-level-sections-rotate",
+                                        "begin": {
+                                            "line": 10,
+                                            "column": 5,
+                                            "byte": 138
+                                        },
+                                        "end": {
+                                            "line": 14,
+                                            "column": 13,
+                                            "byte": 211
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 10,
+                                    "column": 5,
+                                    "byte": 138
+                                },
+                                "end": {
+                                    "line": 14,
+                                    "column": 13,
+                                    "byte": 211
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 9,
+                            "column": 3,
+                            "byte": 121
+                        },
+                        "end": {
+                            "line": 14,
+                            "column": 13,
+                            "byte": 211
+                        }
+                    }
+                }
+            },
+            "pulumiConfig": {
+                "value": {
+                    "rotated": {
+                        "value": {
+                            "a": {
+                                "value": "b",
+                                "trace": {
+                                    "def": {
+                                        "environment": "top-level-sections-rotate",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 23
+                                        },
+                                        "end": {
+                                            "line": 7,
+                                            "column": 13,
+                                            "byte": 96
+                                        }
+                                    }
+                                }
+                            },
+                            "b": {
+                                "value": "a",
+                                "trace": {
+                                    "def": {
+                                        "environment": "top-level-sections-rotate",
+                                        "begin": {
+                                            "line": 3,
+                                            "column": 5,
+                                            "byte": 23
+                                        },
+                                        "end": {
+                                            "line": 7,
+                                            "column": 13,
+                                            "byte": 96
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 3,
+                                    "column": 5,
+                                    "byte": 23
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 13,
+                                    "byte": 96
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "top-level-sections-rotate",
+                        "begin": {
+                            "line": 2,
+                            "column": 3,
+                            "byte": 10
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 13,
+                            "byte": 96
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "environmentVariables": {
+                    "properties": {
+                        "NOT_ROTATED": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "a"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "b"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "NOT_ROTATED"
+                    ]
+                },
+                "pulumiConfig": {
+                    "properties": {
+                        "rotated": {
+                            "properties": {
+                                "a": {
+                                    "type": "string",
+                                    "const": "b"
+                                },
+                                "b": {
+                                    "type": "string",
+                                    "const": "a"
+                                }
+                            },
+                            "type": "object",
+                            "required": [
+                                "a",
+                                "b"
+                            ]
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "rotated"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "environmentVariables",
+                "pulumiConfig"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-rotate",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-rotate",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "top-level-sections-rotate",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-rotate",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "top-level-sections-rotate",
+                            "trace": {
+                                "def": {
+                                    "environment": "top-level-sections-rotate",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "top-level-sections-rotate",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-rotate"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "top-level-sections-rotate"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "rotateJson": {
+        "environmentVariables": {
+            "NOT_ROTATED": {
+                "a": "a",
+                "b": "b"
+            }
+        },
+        "pulumiConfig": {
+            "rotated": {
+                "a": "b",
+                "b": "a"
+            }
+        }
+    },
+    "rotatePatches": [
+        {
+            "DocPath": "config.rotated[\"fn::rotate::swap\"].state",
+            "Replacement": {
+                "value": {
+                    "a": {
+                        "value": "b",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 7,
+                                    "column": 12,
+                                    "byte": 95
+                                },
+                                "end": {
+                                    "line": 7,
+                                    "column": 13,
+                                    "byte": 96
+                                }
+                            }
+                        }
+                    },
+                    "b": {
+                        "value": "a",
+                        "trace": {
+                            "def": {
+                                "environment": "top-level-sections-rotate",
+                                "begin": {
+                                    "line": 6,
+                                    "column": 12,
+                                    "byte": 82
+                                },
+                                "end": {
+                                    "line": 6,
+                                    "column": 13,
+                                    "byte": 83
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "",
+                        "begin": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        },
+                        "end": {
+                            "line": 0,
+                            "column": 0,
+                            "byte": 0
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}

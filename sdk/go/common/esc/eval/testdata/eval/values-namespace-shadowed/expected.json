@@ -1,0 +1,1298 @@
+{
+    "check": {
+        "exprs": {
+            "environmentVariables": {
+                "range": {
+                    "environment": "values-namespace-shadowed",
+                    "begin": {
+                        "line": 8,
+                        "column": 3,
+                        "byte": 167
+                    },
+                    "end": {
+                        "line": 8,
+                        "column": 21,
+                        "byte": 185
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "REF": {
+                            "type": "string",
+                            "const": "nested"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "REF"
+                    ]
+                },
+                "keyRanges": {
+                    "REF": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 8,
+                            "column": 3,
+                            "byte": 167
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 6,
+                            "byte": 170
+                        }
+                    }
+                },
+                "object": {
+                    "REF": {
+                        "range": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 8,
+                                "column": 8,
+                                "byte": 172
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 21,
+                                "byte": 185
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "nested"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 10,
+                                        "byte": 174
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 16,
+                                        "byte": 180
+                                    }
+                                },
+                                "value": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 110
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 16,
+                                        "byte": 121
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 16,
+                                        "byte": 180
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 20,
+                                        "byte": 184
+                                    }
+                                },
+                                "value": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 10,
+                                        "byte": 115
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 16,
+                                        "byte": 121
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "foo": {
+                "range": {
+                    "environment": "values-namespace-shadowed",
+                    "begin": {
+                        "line": 3,
+                        "column": 8,
+                        "byte": 91
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 12,
+                        "byte": 95
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "root"
+                },
+                "literal": "root"
+            },
+            "ref": {
+                "range": {
+                    "environment": "values-namespace-shadowed",
+                    "begin": {
+                        "line": 6,
+                        "column": 8,
+                        "byte": 129
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 21,
+                        "byte": 142
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "nested"
+                },
+                "symbol": [
+                    {
+                        "key": "values",
+                        "range": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 6,
+                                "column": 10,
+                                "byte": 131
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 16,
+                                "byte": 137
+                            }
+                        },
+                        "value": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 5,
+                                "column": 5,
+                                "byte": 110
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 16,
+                                "byte": 121
+                            }
+                        }
+                    },
+                    {
+                        "key": "foo",
+                        "range": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 6,
+                                "column": 16,
+                                "byte": 137
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 20,
+                                "byte": 141
+                            }
+                        },
+                        "value": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 115
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 16,
+                                "byte": 121
+                            }
+                        }
+                    }
+                ]
+            },
+            "values": {
+                "range": {
+                    "environment": "values-namespace-shadowed",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 110
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 16,
+                        "byte": 121
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "nested"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "keyRanges": {
+                    "foo": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 110
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 8,
+                            "byte": 113
+                        }
+                    }
+                },
+                "object": {
+                    "foo": {
+                        "range": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 115
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 16,
+                                "byte": 121
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "nested"
+                        },
+                        "literal": "nested"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "environmentVariables": {
+                "value": {
+                    "REF": {
+                        "value": "nested",
+                        "trace": {
+                            "def": {
+                                "environment": "values-namespace-shadowed",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 8,
+                                    "byte": 172
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 21,
+                                    "byte": 185
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 8,
+                            "column": 3,
+                            "byte": 167
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 21,
+                            "byte": 185
+                        }
+                    }
+                }
+            },
+            "foo": {
+                "value": "root",
+                "trace": {
+                    "def": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 3,
+                            "column": 8,
+                            "byte": 91
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 12,
+                            "byte": 95
+                        }
+                    }
+                }
+            },
+            "ref": {
+                "value": "nested",
+                "trace": {
+                    "def": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 6,
+                            "column": 8,
+                            "byte": 129
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 21,
+                            "byte": 142
+                        }
+                    }
+                }
+            },
+            "values": {
+                "value": {
+                    "foo": {
+                        "value": "nested",
+                        "trace": {
+                            "def": {
+                                "environment": "values-namespace-shadowed",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 115
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 16,
+                                    "byte": 121
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 110
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 16,
+                            "byte": 121
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "environmentVariables": {
+                    "properties": {
+                        "REF": {
+                            "type": "string",
+                            "const": "nested"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "REF"
+                    ]
+                },
+                "foo": {
+                    "type": "string",
+                    "const": "root"
+                },
+                "ref": {
+                    "type": "string",
+                    "const": "nested"
+                },
+                "values": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "nested"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "environmentVariables",
+                "foo",
+                "ref",
+                "values"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "values-namespace-shadowed",
+                            "trace": {
+                                "def": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "values-namespace-shadowed",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "values-namespace-shadowed",
+                            "trace": {
+                                "def": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "values-namespace-shadowed"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "values-namespace-shadowed"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "checkJson": {
+        "environmentVariables": {
+            "REF": "nested"
+        },
+        "foo": "root",
+        "ref": "nested",
+        "values": {
+            "foo": "nested"
+        }
+    },
+    "eval": {
+        "exprs": {
+            "environmentVariables": {
+                "range": {
+                    "environment": "values-namespace-shadowed",
+                    "begin": {
+                        "line": 8,
+                        "column": 3,
+                        "byte": 167
+                    },
+                    "end": {
+                        "line": 8,
+                        "column": 21,
+                        "byte": 185
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "REF": {
+                            "type": "string",
+                            "const": "nested"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "REF"
+                    ]
+                },
+                "keyRanges": {
+                    "REF": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 8,
+                            "column": 3,
+                            "byte": 167
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 6,
+                            "byte": 170
+                        }
+                    }
+                },
+                "object": {
+                    "REF": {
+                        "range": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 8,
+                                "column": 8,
+                                "byte": 172
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 21,
+                                "byte": 185
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "nested"
+                        },
+                        "symbol": [
+                            {
+                                "key": "values",
+                                "range": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 10,
+                                        "byte": 174
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 16,
+                                        "byte": 180
+                                    }
+                                },
+                                "value": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 5,
+                                        "byte": 110
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 16,
+                                        "byte": 121
+                                    }
+                                }
+                            },
+                            {
+                                "key": "foo",
+                                "range": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 8,
+                                        "column": 16,
+                                        "byte": 180
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 20,
+                                        "byte": 184
+                                    }
+                                },
+                                "value": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 5,
+                                        "column": 10,
+                                        "byte": 115
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 16,
+                                        "byte": 121
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "foo": {
+                "range": {
+                    "environment": "values-namespace-shadowed",
+                    "begin": {
+                        "line": 3,
+                        "column": 8,
+                        "byte": 91
+                    },
+                    "end": {
+                        "line": 3,
+                        "column": 12,
+                        "byte": 95
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "root"
+                },
+                "literal": "root"
+            },
+            "ref": {
+                "range": {
+                    "environment": "values-namespace-shadowed",
+                    "begin": {
+                        "line": 6,
+                        "column": 8,
+                        "byte": 129
+                    },
+                    "end": {
+                        "line": 6,
+                        "column": 21,
+                        "byte": 142
+                    }
+                },
+                "schema": {
+                    "type": "string",
+                    "const": "nested"
+                },
+                "symbol": [
+                    {
+                        "key": "values",
+                        "range": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 6,
+                                "column": 10,
+                                "byte": 131
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 16,
+                                "byte": 137
+                            }
+                        },
+                        "value": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 5,
+                                "column": 5,
+                                "byte": 110
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 16,
+                                "byte": 121
+                            }
+                        }
+                    },
+                    {
+                        "key": "foo",
+                        "range": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 6,
+                                "column": 16,
+                                "byte": 137
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 20,
+                                "byte": 141
+                            }
+                        },
+                        "value": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 115
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 16,
+                                "byte": 121
+                            }
+                        }
+                    }
+                ]
+            },
+            "values": {
+                "range": {
+                    "environment": "values-namespace-shadowed",
+                    "begin": {
+                        "line": 5,
+                        "column": 5,
+                        "byte": 110
+                    },
+                    "end": {
+                        "line": 5,
+                        "column": 16,
+                        "byte": 121
+                    }
+                },
+                "schema": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "nested"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                },
+                "keyRanges": {
+                    "foo": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 110
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 8,
+                            "byte": 113
+                        }
+                    }
+                },
+                "object": {
+                    "foo": {
+                        "range": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 5,
+                                "column": 10,
+                                "byte": 115
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 16,
+                                "byte": 121
+                            }
+                        },
+                        "schema": {
+                            "type": "string",
+                            "const": "nested"
+                        },
+                        "literal": "nested"
+                    }
+                }
+            }
+        },
+        "properties": {
+            "environmentVariables": {
+                "value": {
+                    "REF": {
+                        "value": "nested",
+                        "trace": {
+                            "def": {
+                                "environment": "values-namespace-shadowed",
+                                "begin": {
+                                    "line": 8,
+                                    "column": 8,
+                                    "byte": 172
+                                },
+                                "end": {
+                                    "line": 8,
+                                    "column": 21,
+                                    "byte": 185
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 8,
+                            "column": 3,
+                            "byte": 167
+                        },
+                        "end": {
+                            "line": 8,
+                            "column": 21,
+                            "byte": 185
+                        }
+                    }
+                }
+            },
+            "foo": {
+                "value": "root",
+                "trace": {
+                    "def": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 3,
+                            "column": 8,
+                            "byte": 91
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 12,
+                            "byte": 95
+                        }
+                    }
+                }
+            },
+            "ref": {
+                "value": "nested",
+                "trace": {
+                    "def": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 6,
+                            "column": 8,
+                            "byte": 129
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 21,
+                            "byte": 142
+                        }
+                    }
+                }
+            },
+            "values": {
+                "value": {
+                    "foo": {
+                        "value": "nested",
+                        "trace": {
+                            "def": {
+                                "environment": "values-namespace-shadowed",
+                                "begin": {
+                                    "line": 5,
+                                    "column": 10,
+                                    "byte": 115
+                                },
+                                "end": {
+                                    "line": 5,
+                                    "column": 16,
+                                    "byte": 121
+                                }
+                            }
+                        }
+                    }
+                },
+                "trace": {
+                    "def": {
+                        "environment": "values-namespace-shadowed",
+                        "begin": {
+                            "line": 5,
+                            "column": 5,
+                            "byte": 110
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 16,
+                            "byte": 121
+                        }
+                    }
+                }
+            }
+        },
+        "schema": {
+            "properties": {
+                "environmentVariables": {
+                    "properties": {
+                        "REF": {
+                            "type": "string",
+                            "const": "nested"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "REF"
+                    ]
+                },
+                "foo": {
+                    "type": "string",
+                    "const": "root"
+                },
+                "ref": {
+                    "type": "string",
+                    "const": "nested"
+                },
+                "values": {
+                    "properties": {
+                        "foo": {
+                            "type": "string",
+                            "const": "nested"
+                        }
+                    },
+                    "type": "object",
+                    "required": [
+                        "foo"
+                    ]
+                }
+            },
+            "type": "object",
+            "required": [
+                "environmentVariables",
+                "foo",
+                "ref",
+                "values"
+            ]
+        },
+        "executionContext": {
+            "properties": {
+                "currentEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "values-namespace-shadowed",
+                            "trace": {
+                                "def": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "pulumi": {
+                    "value": {
+                        "user": {
+                            "value": {
+                                "id": {
+                                    "value": "USER_123",
+                                    "trace": {
+                                        "def": {
+                                            "environment": "values-namespace-shadowed",
+                                            "begin": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            },
+                                            "end": {
+                                                "line": 0,
+                                                "column": 0,
+                                                "byte": 0
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "trace": {
+                                "def": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                },
+                "rootEnvironment": {
+                    "value": {
+                        "name": {
+                            "value": "values-namespace-shadowed",
+                            "trace": {
+                                "def": {
+                                    "environment": "values-namespace-shadowed",
+                                    "begin": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    },
+                                    "end": {
+                                        "line": 0,
+                                        "column": 0,
+                                        "byte": 0
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "trace": {
+                        "def": {
+                            "environment": "values-namespace-shadowed",
+                            "begin": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            },
+                            "end": {
+                                "line": 0,
+                                "column": 0,
+                                "byte": 0
+                            }
+                        }
+                    }
+                }
+            },
+            "schema": {
+                "properties": {
+                    "currentEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "values-namespace-shadowed"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    },
+                    "pulumi": {
+                        "properties": {
+                            "user": {
+                                "properties": {
+                                    "id": {
+                                        "type": "string",
+                                        "const": "USER_123"
+                                    }
+                                },
+                                "type": "object",
+                                "required": [
+                                    "id"
+                                ]
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "user"
+                        ]
+                    },
+                    "rootEnvironment": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "const": "values-namespace-shadowed"
+                            }
+                        },
+                        "type": "object",
+                        "required": [
+                            "name"
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "currentEnvironment",
+                    "pulumi",
+                    "rootEnvironment"
+                ]
+            }
+        }
+    },
+    "evalJsonRedacted": {
+        "environmentVariables": {
+            "REF": "nested"
+        },
+        "foo": "root",
+        "ref": "nested",
+        "values": {
+            "foo": "nested"
+        }
+    },
+    "evalJSONRevealed": {
+        "environmentVariables": {
+            "REF": "nested"
+        },
+        "foo": "root",
+        "ref": "nested",
+        "values": {
+            "foo": "nested"
+        }
+    }
+}
