@@ -28,6 +28,11 @@ type CheckConfigFailure struct {
 
 	// Remediations are commands the user can run to resolve the failure.
 	Remediations []CommandRemediation
+
+	// Hint is a product hint relevant to the failure, if any, and HintMessage is its text, which the engine shows if
+	// it decides to show the hint.
+	Hint        Hint
+	HintMessage string
 }
 
 // CheckConfig2Response is the response to [ProviderWithCheckConfig2.CheckConfig2].

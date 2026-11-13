@@ -34,6 +34,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/hints"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageworkspace"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
@@ -195,6 +196,7 @@ func NewDoCmd(
 			contract.IgnoreClose(host)
 			return nil, nil, fmt.Errorf("create plugin context: %w", err)
 		}
+		pctx.HintRecorder = hints.Recorder()
 
 		p, err := pluginFromSource(ctx, pctx, wd, pkgargs[0])
 		if err != nil {

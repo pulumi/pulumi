@@ -265,6 +265,7 @@ func newDeployment(
 	if err != nil {
 		return nil, err
 	}
+	plugctx.HintRecorder = opts.HintRecorder
 
 	// Keep the plugin context open until the context is terminated, to allow for graceful provider cancellation.
 	go func() {
