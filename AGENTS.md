@@ -56,6 +56,7 @@ All commands assume you're at the repo root.
 - Integration tests need the CLI and SDKs built first. `bin/` must be on `PATH`.
 - Copyright headers for new files should always be stamped with the current year.
 - Use comments judiciously, only add them where they are necessary to explain why something is happening, and for exported methods.
+- Split changes into multiple PRs if possible, smaller PRs are preferred for reviewability. If a PR has more than one changelog it's doing too many things at once and should be split up.
 
 ## Forbidden actions
 
