@@ -203,7 +203,9 @@ func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDeta
 		if external {
 			prefix = pkgName
 		}
-		return prefix + modName + cgstrings.UppercaseFirst(name)
+		// Enum modules are generated in lower-cased directories, and so are the
+		// enum namespaces exported from types/enums/index.ts.
+		return prefix + strings.ToLower(modName) + cgstrings.UppercaseFirst(name)
 	}
 
 	if args && input && details != nil && details.usedInFunctionOutputVersionInputs {
@@ -2355,7 +2357,8 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 			if mod.mod == "" {
 				filePath = ""
 			} else {
-				filePath = "/" + mod.mod
+				// Enum modules are generated in lower-cased directories.
+				filePath = "/" + strings.ToLower(mod.mod)
 			}
 			fmt.Fprintf(w, "export * from \"%s/types/enums%s\";\n", rel, filePath)
 		}
