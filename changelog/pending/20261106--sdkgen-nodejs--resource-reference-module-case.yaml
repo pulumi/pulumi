@@ -1,4 +1,0 @@
-component: sdkgen/nodejs
-kind: fix
-body: Fix resource reference imports for modules with upper-case letters
-time: 2026-11-06T00:00:00Z
