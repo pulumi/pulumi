@@ -178,6 +178,7 @@ type MockProvider struct {
 	ParameterizeF       func(context.Context, ParameterizeRequest) (ParameterizeResponse, error)
 	GetSchemaF          func(context.Context, GetSchemaRequest) (GetSchemaResponse, error)
 	CheckConfigF        func(context.Context, CheckConfigRequest) (CheckConfigResponse, error)
+	CheckConfig2F       func(context.Context, CheckConfigRequest) (CheckConfig2Response, error)
 	DiffConfigF         func(context.Context, DiffConfigRequest) (DiffConfigResponse, error)
 	ConfigureF          func(context.Context, ConfigureRequest) (ConfigureResponse, error)
 	CheckF              func(context.Context, CheckRequest) (CheckResponse, error)
@@ -233,6 +234,17 @@ func (m *MockProvider) CheckConfig(ctx context.Context, req CheckConfigRequest) 
 		return m.CheckConfigF(ctx, req)
 	}
 	return CheckConfigResponse{}, status.Error(codes.Unimplemented, "CheckConfig not implemented")
+}
+
+func (m *MockProvider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (CheckConfig2Response, error) {
+	if m.CheckConfig2F != nil {
+		return m.CheckConfig2F(ctx, req)
+	}
+	resp, err := m.CheckConfig(ctx, req)
+	if err != nil {
+		return CheckConfig2Response{}, err
+	}
+	return CheckConfig2Response{Properties: resp.Properties, Failures: checkConfigFailures(resp.Failures)}, nil
 }
 
 func (m *MockProvider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffConfigResponse, error) {
