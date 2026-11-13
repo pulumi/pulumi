@@ -269,6 +269,14 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
+	output, err := os.CreateTemp(t.TempDir(), "project-name-prompt")
+	require.NoError(t, err)
+	stdout := os.Stdout
+	os.Stdout = output
+	t.Cleanup(func() {
+		os.Stdout = stdout
+		require.NoError(t, output.Close())
+	})
 
 	mockCurrentBackend(t, &backend.MockBackend{
 		DoesProjectExistF: func(ctx context.Context, org string, name string) (bool, error) {
@@ -285,8 +293,11 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 		languageTemplate:  languageTemplateMock,
 	}
 
-	err := runNew(t.Context(), args)
+	err = runNew(t.Context(), args)
 	assert.ErrorContains(t, err, "Try again")
+	promptOutput, err := os.ReadFile(output.Name())
+	require.NoError(t, err)
+	assert.Contains(t, string(promptOutput), "A project with the name `test_project` already exists.")
 }
 
 //nolint:paralleltest // changes directory for process, mocks login manager

@@ -10903,7 +10903,7 @@ class API:
         :param offline: Use locally cached templates without making any network requests
         :param remote_stack_config: Store stack configuration remotely
         :param runtime_options: Additional options for the language runtime (format: key1=value1,key2=value2)
-        :param secrets_provider: The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)
+        :param secrets_provider: The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault, ocikms)
         :param stack: The stack name; either an existing stack or stack to create; if not specified, a prompt will request it
         :param template_mode: Deprecated: template mode is now the only mode; this flag is a no-op
         :param cwd: Working directory to run the command in.
@@ -14829,7 +14829,7 @@ class API:
         :param refresh: Refresh the state of the stack's resources before this update
         :param replace: Specify a single resource URN to replace. Multiple resources can be specified using --replace urn1 --replace urn2. Wildcards (*, **) are also supported
         :param run_program: Run the program to determine up-to-date state for providers to refresh resources, this only applies if --refresh is set
-        :param secrets_provider: The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only used when creating a new stack from an existing template
+        :param secrets_provider: The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault, ocikms). Only used when creating a new stack from an existing template
         :param show_config: Show configuration keys and variables
         :param show_full_output: Display full length of inputs & outputs
         :param show_policy_exceptions: Show each exempted policy violation instead of a summary

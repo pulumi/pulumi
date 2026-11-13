@@ -100,7 +100,7 @@ type Options struct {
 	Replace []string
 	// Run the program to determine up-to-date state for providers to refresh resources, this only applies if --refresh is set
 	RunProgram bool
-	// The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only used when creating a new stack from an existing template
+	// The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault, ocikms). Only used when creating a new stack from an existing template
 	SecretsProvider string
 	// Show configuration keys and variables
 	ShowConfig bool

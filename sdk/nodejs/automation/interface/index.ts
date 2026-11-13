@@ -17628,7 +17628,7 @@ export interface PulumiNewOptions extends BaseOptions {
     remoteStackConfig?: boolean;
     /** Additional options for the language runtime (format: key1=value1,key2=value2) */
     runtimeOptions?: string[];
-    /** The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault) */
+    /** The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault, ocikms) */
     secretsProvider?: string;
     /** The stack name; either an existing stack or stack to create; if not specified, a prompt will request it */
     stack?: string;
@@ -19099,7 +19099,7 @@ export interface PulumiUpOptions extends BaseOptions {
     replace?: string[];
     /** Run the program to determine up-to-date state for providers to refresh resources, this only applies if --refresh is set */
     runProgram?: boolean;
-    /** The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault). Only used when creating a new stack from an existing template */
+    /** The type of the provider that should be used to encrypt and decrypt secrets (possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault, ocikms). Only used when creating a new stack from an existing template */
     secretsProvider?: string;
     /** Show configuration keys and variables */
     showConfig?: boolean;
