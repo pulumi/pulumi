@@ -385,6 +385,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
 			ctx = httpstate.ContextWithAgentCredentialUse(ctx)
 			ctx = httpstate.ContextWithCommandName(ctx, cmd.CommandPath())
+			ctx = initTelemetry(ctx, cmd)
 			telemetry.Emit(ctx, invocationTelemetry(cmd)...)
 			cmd.SetContext(ctx)
 
