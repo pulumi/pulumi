@@ -188,7 +188,9 @@ func TestPclSnippet(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	require.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[0].Type)
 	require.Equal(t, tokens.Type("pkgA:index:res"), snap.Resources[1].Type)
-	require.Equal(t, resource.PropertyMap{"propA": resource.NewProperty(true)}, snap.Resources[1].Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"propA": property.New(true),
+	}), snap.Resources[1].Inputs)
 }
 
 // TestPclInvalidSnippet checks that a snippet that does not type-check returns an error.
@@ -305,7 +307,9 @@ func TestPclSnippetUpdate(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, created, 1)
 	require.Empty(t, updated)
-	require.Equal(t, resource.PropertyMap{"propA": resource.NewProperty(true)}, snap.Resources[1].Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"propA": property.New(true),
+	}), snap.Resources[1].Inputs)
 
 	// Change the snippet code and rerun: we expect an Update, not a Create or Delete.
 	snap.Snippets[0].Code = `propA = false`
@@ -315,7 +319,9 @@ func TestPclSnippetUpdate(t *testing.T) {
 	require.Len(t, created, 1, "resource should not be recreated")
 	require.Len(t, updated, 1, "resource should be updated once")
 	require.Empty(t, deleted)
-	require.Equal(t, resource.PropertyMap{"propA": resource.NewProperty(false)}, snap.Resources[1].Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"propA": property.New(false),
+	}), snap.Resources[1].Inputs)
 }
 
 // TestPclSnippetDelete checks that removing a snippet from the snapshot causes the engine to
@@ -417,12 +423,12 @@ func TestPclMultipleSnippets(t *testing.T) {
 		}
 	}
 	require.Len(t, resourcesByName, 2)
-	require.Equal(t,
-		resource.PropertyMap{"propA": resource.NewProperty(true)},
-		resourcesByName["r1"].Inputs)
-	require.Equal(t,
-		resource.PropertyMap{"propA": resource.NewProperty(false)},
-		resourcesByName["r2"].Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"propA": property.New(true),
+	}), resourcesByName["r1"].Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"propA": property.New(false),
+	}), resourcesByName["r2"].Inputs)
 }
 
 // TestPclSnippetBuiltins checks that snippets can access deployment context (project, stack,
@@ -532,13 +538,13 @@ lengthValue = length(["a", "b", "c", "d"])`,
 		}
 	}
 	require.NotNil(t, res, "snippet resource should have been created")
-	require.Equal(t, resource.PropertyMap{
-		"projectName": resource.NewProperty("my-project"),
-		"stackName":   resource.NewProperty("my-stack"),
-		"orgName":     resource.NewProperty("my-org"),
-		"maxValue":    resource.NewProperty(7.0),
-		"lengthValue": resource.NewProperty(4.0),
-	}, res.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"projectName": property.New("my-project"),
+		"stackName":   property.New("my-stack"),
+		"orgName":     property.New("my-org"),
+		"maxValue":    property.New(7.0),
+		"lengthValue": property.New(4.0),
+	}), res.Inputs)
 }
 
 // TestPclSnippetDirectories checks that the cwd() and rootDirectory() builtins are wired through to
@@ -620,10 +626,10 @@ rootDir = rootDirectory()`,
 		}
 	}
 	require.NotNil(t, res, "snippet resource should have been created")
-	require.Equal(t, resource.PropertyMap{
-		"workingDir": resource.NewProperty("/"),
-		"rootDir":    resource.NewProperty("/"),
-	}, res.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"workingDir": property.New("/"),
+		"rootDir":    property.New("/"),
+	}), res.Inputs)
 }
 
 // TestPclSnippetInvoke checks that a snippet can invoke a provider function through the resource
@@ -730,9 +736,9 @@ func TestPclSnippetInvoke(t *testing.T) {
 		}
 	}
 	require.NotNil(t, res, "snippet resource should have been created")
-	require.Equal(t, resource.PropertyMap{
-		"message": resource.NewProperty("echoed: hi"),
-	}, res.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"message": property.New("echoed: hi"),
+	}), res.Inputs)
 }
 
 // TestPclSnippetResourceReference checks that a snippet can use an output from a custom resource
@@ -831,9 +837,9 @@ func TestPclSnippetResourceReference(t *testing.T) {
 		}
 	}
 	require.NotNil(t, res, "snippet resource should have been created")
-	require.Equal(t, resource.PropertyMap{
-		"message": resource.NewProperty("value-of-hello"),
-	}, res.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"message": property.New("value-of-hello"),
+	}), res.Inputs)
 
 	// Step 1: target-delete the producer and its dependent snippet resource. The snippet definition
 	// remains in the snapshot with a reference to the absent producer.
@@ -863,9 +869,9 @@ func TestPclSnippetResourceReference(t *testing.T) {
 		}
 	}
 	require.NotNil(t, res, "snippet resource should have been recreated")
-	require.Equal(t, resource.PropertyMap{
-		"message": resource.NewProperty("value-of-hello"),
-	}, res.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"message": property.New("value-of-hello"),
+	}), res.Inputs)
 }
 
 // TestPclSnippetReferenceLocalComponent checks that a snippet sees the final outputs of a local
@@ -957,9 +963,9 @@ func TestPclSnippetReferenceLocalComponent(t *testing.T) {
 		}
 	}
 	require.NotNil(t, res, "snippet resource should have been created")
-	require.Equal(t, resource.PropertyMap{
-		"message": resource.NewProperty("value-of-hello"),
-	}, res.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"message": property.New("value-of-hello"),
+	}), res.Inputs)
 }
 
 // TestPclSnippetMissingProgramReference checks that an update fails instead of hanging when the
@@ -1067,7 +1073,9 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 		}
 	}
 	require.NotNil(t, res, "snippet resource should have been created on the first run")
-	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("value-of-hello")}, res.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"message": property.New("value-of-hello"),
+	}), res.Inputs)
 
 	// Step 1: the program stops registering producer. Once all remaining sources are blocked, the
 	// observer rejects the unresolved reference and the update fails instead of hanging.
@@ -1181,7 +1189,9 @@ func TestPclSnippetMissingSnippetReference(t *testing.T) {
 		}
 	}
 	require.NotNil(t, consumer, "consumer snippet resource should have been created")
-	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("value-of-value-of-abc")}, consumer.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"message": property.New("value-of-value-of-abc"),
+	}), consumer.Inputs)
 
 	// Step 1: drop the first producer. Its old state remains at the start of the update, but snippet
 	// references resolve from current registrations, so the remaining sources become blocked.
@@ -1307,7 +1317,9 @@ func TestPclSnippetReferenceFollowsAlias(t *testing.T) {
 		}
 	}
 	require.NotNil(t, consumer, "consumer snippet resource should have been created on the first run")
-	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("hello")}, consumer.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"message": property.New("hello"),
+	}), consumer.Inputs)
 	require.Equal(t, aURN, snap.Snippets[0].References["comp"], "References should still point at A before the rename")
 
 	// Second update: rename A to B via an alias. The observer resolves the old reference through
@@ -1325,7 +1337,9 @@ func TestPclSnippetReferenceFollowsAlias(t *testing.T) {
 		}
 	}
 	require.NotNil(t, consumer, "consumer should survive the producer being aliased to a new name")
-	require.Equal(t, resource.PropertyMap{"message": resource.NewProperty("hello")}, consumer.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"message": property.New("hello"),
+	}), consumer.Inputs)
 
 	require.Len(t, snap.Snippets, 1)
 	require.Equal(t, bURN, snap.Snippets[0].References["comp"],
@@ -2041,7 +2055,9 @@ func TestPclSnippetTargetSkipsUntargetedProviders(t *testing.T) {
 	}
 	require.NotNil(t, byType["pulumi:providers:pkgB"], "pkgB provider should still be in the snapshot")
 	require.NotNil(t, byType["pkgB:index:res"], "pkgB resource should still be in the snapshot")
-	require.Equal(t, resource.PropertyMap{"propA": resource.NewProperty(false)}, byType["pkgA:index:res"].Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"propA": property.New(false),
+	}), byType["pkgA:index:res"].Inputs)
 }
 
 // TestPclSnippetTargetReferenceUntargetedSnippet checks that a targeted snippet that references a
@@ -2146,9 +2162,9 @@ func TestPclSnippetTargetReferenceUntargetedSnippet(t *testing.T) {
 		}
 	}
 	require.NotNil(t, consumer, "consumer resource should have been created")
-	require.Equal(t, resource.PropertyMap{
-		"message": resource.NewProperty("value-of-hello"),
-	}, consumer.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"message": property.New("value-of-hello"),
+	}), consumer.Inputs)
 }
 
 // TestPclSnippetTargetExplicitProviderFromState checks that a targeted snippet using an explicit
@@ -2269,7 +2285,9 @@ options {
 		}
 	}
 	require.NotNil(t, res)
-	require.Equal(t, resource.PropertyMap{"propA": resource.NewProperty(false)}, res.Inputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"propA": property.New(false),
+	}), res.Inputs)
 	require.Contains(t, res.Provider, providerURN, "the resource should still use the explicit provider")
 }
 

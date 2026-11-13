@@ -59,7 +59,7 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 
 					stack := RequireSingleResource(l, res.Snap.Resources, resource.RootStackType)
-					AssertPropertyMapMember(l, resource.FromResourcePropertyMap(stack.Outputs), "echoed", property.New("reachable"))
+					AssertPropertyMapMember(l, stack.Outputs, "echoed", property.New("reachable"))
 				},
 			},
 		},

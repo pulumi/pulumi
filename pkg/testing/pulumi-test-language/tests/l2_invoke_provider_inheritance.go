@@ -44,9 +44,8 @@ func init() {
 						"expected parent and child to have the same provider reference")
 
 					stack := RequireSingleResource(l, res.Snap.Resources, resource.RootStackType)
-					outputs := resource.FromResourcePropertyMap(stack.Outputs)
-					AssertPropertyMapMember(l, outputs, "parentResult", property.New("parent world"))
-					AssertPropertyMapMember(l, outputs, "childResult", property.New("child world"))
+					AssertPropertyMapMember(l, stack.Outputs, "parentResult", property.New("parent world"))
+					AssertPropertyMapMember(l, stack.Outputs, "childResult", property.New("child world"))
 				},
 			},
 		},

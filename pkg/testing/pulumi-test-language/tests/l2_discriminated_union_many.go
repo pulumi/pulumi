@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -95,7 +94,7 @@ func init() {
 					r := RequireSingleNamedResource(l, snapshot.Resources, e.name)
 					require.Equal(l, property.NewMap(map[string]property.Value{
 						"unionOf": property.New(e.m),
-					}), resource.FromResourcePropertyMap(r.Outputs), "resource %s", e.name)
+					}), r.Outputs, "resource %s", e.name)
 				}
 
 				// Sub-union assignment: subset1's output (a 3-variant union) is
@@ -108,12 +107,12 @@ func init() {
 				subset1 := RequireSingleNamedResource(l, snapshot.Resources, "subset1")
 				require.Equal(l, property.NewMap(map[string]property.Value{
 					"unionOf": property.New(subsetPayload),
-				}), resource.FromResourcePropertyMap(subset1.Outputs))
+				}), subset1.Outputs)
 
 				example11 := RequireSingleNamedResource(l, snapshot.Resources, "example11")
 				require.Equal(l, property.NewMap(map[string]property.Value{
 					"unionOf": property.New(subsetPayload),
-				}), resource.FromResourcePropertyMap(example11.Outputs))
+				}), example11.Outputs)
 			},
 		}},
 	}

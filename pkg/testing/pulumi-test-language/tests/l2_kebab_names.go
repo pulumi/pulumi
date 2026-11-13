@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,24 +42,24 @@ func init() {
 						"nested": property.New(map[string]property.Value{
 							"nested-value": property.New("nested"),
 						}),
-					}), resource.FromResourcePropertyMap(first.Inputs))
+					}), first.Inputs)
 
 					assert.Equal(l, property.NewMap(map[string]property.Value{
 						"the-output": property.New(map[string]property.Value{
 							"nested-output": property.New("nested"),
 						}),
-					}), resource.FromResourcePropertyMap(first.Outputs))
+					}), first.Outputs)
 
 					assert.Equal(l, property.NewMap(map[string]property.Value{
 						"the-input": property.New("nested"),
-					}), resource.FromResourcePropertyMap(second.Inputs))
+					}), second.Inputs)
 
 					assert.Equal(l, property.NewMap(map[string]property.Value{
 						"the-input": property.New("nested"),
-					}), resource.FromResourcePropertyMap(second.Outputs))
+					}), second.Outputs)
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					stackOutputs := stack.Outputs
 					AssertPropertyMapMember(l, stackOutputs, "theOutput", property.New(map[string]property.Value{
 						"nested-output": property.New("nested"),
 					}))

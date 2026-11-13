@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestDestroyWithPendingDelete(t *testing.T) {
@@ -64,16 +65,16 @@ func TestDestroyWithPendingDelete(t *testing.T) {
 				URN:     resURN,
 				Custom:  true,
 				ID:      "1",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 			{
 				Type:    resURN.Type(),
 				URN:     resURN,
 				Custom:  true,
 				ID:      "0",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 				Delete:  true,
 			},
 		},
@@ -141,16 +142,16 @@ func TestUpdateWithPendingDelete(t *testing.T) {
 				URN:     resURN,
 				Custom:  true,
 				ID:      "1",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 			{
 				Type:    resURN.Type(),
 				URN:     resURN,
 				Custom:  true,
 				ID:      "0",
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 				Delete:  true,
 			},
 		},
@@ -223,14 +224,14 @@ func TestDestroyWithUntargetedPendingDelete(t *testing.T) {
 			{
 				Type:    resAURN.Type(),
 				URN:     resAURN,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 			},
 			{
 				Type:    resBURN.Type(),
 				URN:     resBURN,
-				Inputs:  resource.PropertyMap{},
-				Outputs: resource.PropertyMap{},
+				Inputs:  property.Map{},
+				Outputs: property.Map{},
 				Delete:  true,
 			},
 		},

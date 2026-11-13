@@ -249,12 +249,14 @@ func TestTaintWithPendingDelete(t *testing.T) {
 				URN:    resURN,
 				Custom: true,
 				ID:     "current-id",
-				Inputs: resource.PropertyMap{
-					"foo": resource.NewProperty("bar"),
-				},
-				Outputs: resource.PropertyMap{
-					"foo": resource.NewProperty("bar"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"foo": property.New("bar"),
+				}),
+
+				Outputs: property.NewMap(map[string]property.Value{
+					"foo": property.New("bar"),
+				}),
+
 				Taint: true, // This resource is tainted and should be replaced
 			},
 			{
@@ -262,12 +264,14 @@ func TestTaintWithPendingDelete(t *testing.T) {
 				URN:    resURN,
 				Custom: true,
 				ID:     "old-id",
-				Inputs: resource.PropertyMap{
-					"foo": resource.NewProperty("old"),
-				},
-				Outputs: resource.PropertyMap{
-					"foo": resource.NewProperty("old"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"foo": property.New("old"),
+				}),
+
+				Outputs: property.NewMap(map[string]property.Value{
+					"foo": property.New("old"),
+				}),
+
 				Delete: true, // This resource is marked for deletion
 				Taint:  true, // Taint on deleted resource should be ignored
 			},

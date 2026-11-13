@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,13 +71,13 @@ func init() {
 						"booleanMap": property.New(adversarialMap),
 					})
 
-					primInputs := resource.FromResourcePropertyMap(primResource.Inputs)
+					primInputs := primResource.Inputs
 					assert.Equal(l, want, primInputs, "resource inputs should preserve adversarial map keys")
 					assert.Equal(l, primInputs,
-						resource.FromResourcePropertyMap(primResource.Outputs),
+						primResource.Outputs,
 						"expected inputs and outputs to match")
 
-					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					stackOutputs := stack.Outputs
 					AssertPropertyMapMember(l, stackOutputs,
 						"resourceBooleanMap", property.New(adversarialMap))
 					AssertPropertyMapMember(l, stackOutputs,

@@ -90,16 +90,13 @@ func MassageSecrets(m property.Map, showSecrets bool) property.Map {
 // stateForJSONOutput prepares some resource's state for JSON output. This includes filtering the output based
 // on the supplied options, in addition to massaging secret fields.
 func stateForJSONOutput(s *pkgresource.State, opts Options) *pkgresource.State {
-	var inputs resource.PropertyMap
-	var outputs resource.PropertyMap
+	var inputs property.Map
+	var outputs property.Map
+	// If we're suppressing outputs, don't show the root stack properties.
 	if !isRootURN(s.URN) || !opts.SuppressOutputs {
 		// For now, replace any secret properties as the string [secret] and then serialize what we have.
-		inputs = resource.ToResourcePropertyMap(MassageSecrets(resource.FromResourcePropertyMap(s.Inputs), false))
-		outputs = resource.ToResourcePropertyMap(MassageSecrets(resource.FromResourcePropertyMap(s.Outputs), false))
-	} else {
-		// If we're suppressing outputs, don't show the root stack properties.
-		inputs = resource.PropertyMap{}
-		outputs = resource.PropertyMap{}
+		inputs = MassageSecrets(s.Inputs, false)
+		outputs = MassageSecrets(s.Outputs, false)
 	}
 	return pkgresource.NewState{
 		Type:                    s.Type,

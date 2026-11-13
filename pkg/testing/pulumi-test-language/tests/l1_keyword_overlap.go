@@ -15,7 +15,6 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
@@ -31,7 +30,7 @@ func init() {
 					RequireStackResource(l, err, changes)
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 
-					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					outputs := stack.Outputs
 
 					AssertPropertyMapMember(l, outputs, "class", property.New("class_output_string"))
 					AssertPropertyMapMember(l, outputs, "export", property.New("export_output_string"))

@@ -292,7 +292,7 @@ func renderResource(t require.TestingT, r *pcl.Resource) *pkgresource.State {
 		Type:          token,
 		URN:           resource.NewURN("stack", "project", parentType, token, r.LogicalName()),
 		Custom:        true,
-		Inputs:        resource.ToResourcePropertyMap(property.NewMap(inputs)),
+		Inputs:        property.NewMap(inputs),
 		Parent:        parent,
 		Provider:      providerRef,
 		Protect:       protect,
@@ -413,7 +413,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 				assert.Equal(t, state.Provider, actualState.Provider)
 			}
 			assert.Equal(t, state.Protect, actualState.Protect)
-			if !assert.True(t, actualState.Inputs.DeepEquals(state.Inputs)) {
+			if !assert.True(t, actualState.Inputs.Equals(state.Inputs)) {
 				actual, _, err := stack.SerializeResource(t.Context(), actualState, config.NopEncrypter, false)
 				contract.IgnoreError(err)
 
@@ -444,9 +444,9 @@ func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
 		Type:     "pulumi:providers:importer",
 		Provider: "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
 		URN:      "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
-		Inputs: resource.PropertyMap{
-			"region": resource.NewProperty("us-west-2"),
-		},
+		Inputs: property.NewMap(map[string]property.Value{
+			"region": property.New("us-west-2"),
+		}),
 	}
 
 	importState := ImportState{
@@ -457,9 +457,9 @@ func TestGenerateHCL2DefinitionWithProviderDeclaration(t *testing.T) {
 				ImportID: "abc",
 				Type:     "pulumi:providers:importer",
 				URN:      "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
-				Inputs: resource.PropertyMap{
-					"region": resource.NewProperty("some-default-value"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"region": property.New("some-default-value"),
+				}),
 			},
 		},
 	}
@@ -511,10 +511,10 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 		URN:      "urn:pulumi:stack::project::importer:cloudformation/stack:Stack::Stack",
 		Custom:   true,
 		Provider: "urn:pulumi:stack::project::pulumi:providers:importer::default_123::123",
-		Inputs: resource.PropertyMap{
-			"name":         resource.NewProperty("foobar"),
-			"templateBody": resource.NewProperty("foobar"),
-		},
+		Inputs: property.NewMap(map[string]property.Value{
+			"name":         property.New("foobar"),
+			"templateBody": property.New("foobar"),
+		}),
 	}
 
 	importState := ImportState{
@@ -525,9 +525,9 @@ func TestGenerateHCL2DefinitionsWithVersionMismatches(t *testing.T) {
 				ID:     "123",
 				URN:    "urn:pulumi:stack::project::pulumi:providers:importer::default_123",
 				Custom: true,
-				Inputs: resource.PropertyMap{
-					"version": resource.NewProperty("4.26.0"),
-				},
+				Inputs: property.NewMap(map[string]property.Value{
+					"version": property.New("4.26.0"),
+				}),
 			},
 		},
 	}

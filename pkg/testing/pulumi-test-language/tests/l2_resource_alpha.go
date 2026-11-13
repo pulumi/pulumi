@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +43,7 @@ func init() {
 					alpha := RequireSingleResource(l, snap.Resources, "alpha:index:Resource")
 
 					want := property.NewMap(map[string]property.Value{"value": property.New(true)})
-					assert.Equal(l, want, resource.FromResourcePropertyMap(alpha.Inputs),
+					assert.Equal(l, want, alpha.Inputs,
 						"expected inputs to be {value: true}")
 					assert.Equal(l, alpha.Inputs, alpha.Outputs, "expected inputs and outputs to match")
 				},

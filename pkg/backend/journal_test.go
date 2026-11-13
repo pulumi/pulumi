@@ -181,12 +181,12 @@ func TestStateMigrationPatchesRewriteBeforeEncryptionAndReplayVerbatim(t *testin
 	successor := newState("successor")
 	successor.ID = predecessor.ID
 	consumer := newState("consumer")
-	consumer.Outputs = resource.PropertyMap{
+	consumer.Outputs = resource.FromResourcePropertyMap(resource.PropertyMap{
 		"payload": resource.MakeSecret(resource.NewProperty(resource.PropertyMap{
 			"nestedReference": resource.MakeCustomResourceReference(
 				predecessor.URN, predecessor.ID, "1.2.3"),
 		})),
-	}
+	})
 	operationConsumer := consumer.Copy()
 	operationConsumer.URN = resource.URN("urn:pulumi:test::test::pkgA:m:typA::operation-consumer")
 	operationConsumer.ID = "id-operation-consumer"
@@ -267,10 +267,10 @@ func TestStateMigrationPatchesRewriteBeforeEncryptionAndReplayVerbatim(t *testin
 
 		roundTripped, err := stack.DeserializeResource(replayed, secretsManager.Decrypter())
 		require.NoError(t, err)
-		payload := roundTripped.Outputs["payload"]
-		require.True(t, payload.IsSecret())
-		reference := payload.SecretValue().Element.ObjectValue()["nestedReference"].ResourceReferenceValue()
+		payload := roundTripped.Outputs.Get("payload")
+		require.True(t, payload.Secret())
+		reference := payload.AsMap().Get("nestedReference").AsResourceReference()
 		assert.Equal(t, successor.URN, reference.URN)
-		assert.Equal(t, string(successor.ID), reference.ID.StringValue())
+		assert.Equal(t, string(successor.ID), reference.ID.AsString())
 	}
 }

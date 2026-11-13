@@ -20,7 +20,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -42,14 +41,14 @@ func init() {
 					require.NoError(l, res.Snap.VerifyIntegrity(), "expected snapshot to be valid")
 
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
-					stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+					stackOutputs := stack.Outputs
 					recovered := stackOutputs.Get("recovered")
 					require.True(l, recovered.IsString(), "expected recovered stack output to be a string")
 					require.True(l, strings.HasPrefix(recovered.AsString(), "recovered: "), "expected recovered prefix")
 					require.NotEqual(l, "recovered: ", recovered.AsString(), "expected recovered error message")
 
 					recoveredValue := RequireSingleNamedResource(l, res.Snap.Resources, "recovered_value")
-					AssertPropertyMapMember(l, resource.FromResourcePropertyMap(recoveredValue.Outputs), "value",
+					AssertPropertyMapMember(l, recoveredValue.Outputs, "value",
 						property.New(true))
 				},
 			},

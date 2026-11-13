@@ -122,13 +122,13 @@ func TestRefreshTargetChildren(t *testing.T) {
 
 	require.Len(t, snap.Resources, 5)
 	assert.Equal(t, snap.Resources[1].URN, a)
-	assert.Equal(t, snap.Resources[1].Outputs["count"], null)
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["count"], null)
 	assert.Equal(t, snap.Resources[2].URN, b)
-	assert.NotEqual(t, snap.Resources[2].Outputs["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[2].Outputs)["count"], null)
 	assert.Equal(t, snap.Resources[3].URN, c)
-	assert.NotEqual(t, snap.Resources[3].Outputs["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[3].Outputs)["count"], null)
 	assert.Equal(t, snap.Resources[4].URN, d)
-	assert.NotEqual(t, snap.Resources[4].Outputs["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[4].Outputs)["count"], null)
 
 	assert.Equal(t, callCount, int32(3))
 }
@@ -558,13 +558,13 @@ func TestRefreshExcludeTarget(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, snap.Resources, 5)
-	assert.Equal(t, snap.Resources[2].Outputs["count"], null)
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[2].Outputs)["count"], null)
 
 	// Order isn't guaranteed because of parallelism, so we can't check that
 	// these are 1 + 2 + 3
-	assert.NotEqual(t, snap.Resources[1].Outputs["count"], null)
-	assert.NotEqual(t, snap.Resources[3].Outputs["count"], null)
-	assert.NotEqual(t, snap.Resources[4].Outputs["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[3].Outputs)["count"], null)
+	assert.NotEqual(t, resource.ToResourcePropertyMap(snap.Resources[4].Outputs)["count"], null)
 }
 
 // We should be able to build an `A > B > C > D` and refresh the `A` target by
@@ -639,10 +639,10 @@ func TestRefreshExcludeChildren(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, snap.Resources, 5)
-	assert.Equal(t, snap.Resources[1].Outputs["count"], resource.NewProperty(1.0))
-	assert.Equal(t, snap.Resources[2].Outputs["count"], null)
-	assert.Equal(t, snap.Resources[3].Outputs["count"], null)
-	assert.Equal(t, snap.Resources[4].Outputs["count"], null)
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["count"], resource.NewProperty(1.0))
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[2].Outputs)["count"], null)
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[3].Outputs)["count"], null)
+	assert.Equal(t, resource.ToResourcePropertyMap(snap.Resources[4].Outputs)["count"], null)
 }
 
 func destroySpecificTargets(
@@ -1875,8 +1875,8 @@ func newResource(urn, parent resource.URN, id resource.ID, provider string, depe
 		Custom:               custom,
 		Delete:               false,
 		ID:                   id,
-		Inputs:               inputs,
-		Outputs:              outputs,
+		Inputs:               resource.FromResourcePropertyMap(inputs),
+		Outputs:              resource.FromResourcePropertyMap(outputs),
 		Dependencies:         dependencies,
 		PropertyDependencies: propertyDeps,
 		Provider:             provider,
@@ -2138,7 +2138,7 @@ func TestUntargetedSameWithInFlightTargetedDependency(t *testing.T) {
 	require.Less(t, iA, iB, "resA must precede its dependent resB in the snapshot")
 
 	resA := finalSnap.Resources[iA]
-	require.Equal(t, resource.NewProperty("v2"), resA.Inputs["foo"])
+	require.Equal(t, resource.NewProperty("v2"), resource.ToResourcePropertyMap(resA.Inputs)["foo"])
 }
 
 // TestUntargetedSameWithDependencyRemovedFromProgram checks that when a dependency is removed
@@ -2225,9 +2225,9 @@ func TestUntargetedSameWithDependencyRemovedFromProgram(t *testing.T) {
 
 	require.Equal(t, origA, finalA)
 	require.Equal(t, origB, finalB)
-	require.Equal(t, resource.NewProperty("from-a"), finalB.Inputs["prop"])
+	require.Equal(t, resource.NewProperty("from-a"), resource.ToResourcePropertyMap(finalB.Inputs)["prop"])
 	require.Equal(t, []resource.URN{resAURN}, finalB.Dependencies)
-	require.Equal(t, resource.NewProperty("v2"), finalC.Inputs["foo"])
+	require.Equal(t, resource.NewProperty("v2"), resource.ToResourcePropertyMap(finalC.Inputs)["foo"])
 
 	iA := slices.Index(finalSnap.Resources, finalA)
 	iB := slices.Index(finalSnap.Resources, finalB)
@@ -2313,7 +2313,7 @@ func TestUntargetedSameWithReversedProgramDependency(t *testing.T) {
 
 	require.Equal(t, origA, finalA)
 	require.Empty(t, finalA.Dependencies)
-	require.Equal(t, resource.NewProperty("v2"), finalB.Inputs["prop"])
+	require.Equal(t, resource.NewProperty("v2"), resource.ToResourcePropertyMap(finalB.Inputs)["prop"])
 	require.Empty(t, finalB.Dependencies)
 }
 
@@ -2394,7 +2394,7 @@ func TestUntargetedSameWithReversedProgramDependencyTargetingDependent(t *testin
 	finalB := findResourceByURN(finalSnap.Resources, resBURN)
 	require.NotNil(t, finalA)
 	require.NotNil(t, finalB)
-	require.Equal(t, resource.NewProperty("v1"), finalA.Inputs["p"])
+	require.Equal(t, resource.NewProperty("v1"), resource.ToResourcePropertyMap(finalA.Inputs)["p"])
 	require.Less(t, slices.Index(finalSnap.Resources, finalA), slices.Index(finalSnap.Resources, finalB),
 		"resA must precede its dependent resB in the snapshot")
 }
@@ -5634,7 +5634,7 @@ func TestTargetedUpdateAppliesNewInputs_Issue24303(t *testing.T) {
 	for _, r := range snap.Resources {
 		if strings.HasPrefix(r.URN.Name(), "rollback-") {
 			found++
-			require.Equal(t, resource.NewProperty("updated"), r.Inputs["value"],
+			require.Equal(t, resource.NewProperty("updated"), resource.ToResourcePropertyMap(r.Inputs)["value"],
 				"rollback resource %s did not receive updated inputs", r.URN)
 		}
 	}
@@ -5700,7 +5700,7 @@ func TestTargetDependentsThroughReadResource(t *testing.T) {
 
 	for _, r := range snap.Resources {
 		if r.URN.Name() == "resC" {
-			assert.Equal(t, resource.NewProperty("new"), r.Inputs["foo"])
+			assert.Equal(t, resource.NewProperty("new"), resource.ToResourcePropertyMap(r.Inputs)["foo"])
 			return
 		}
 	}

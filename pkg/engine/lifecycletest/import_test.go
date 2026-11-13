@@ -164,8 +164,8 @@ func TestImportOption(t *testing.T) {
 		}, "0")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
-	assert.Equal(t, expectedOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, inputs, snap.Resources[1].Inputs)
+	assert.Equal(t, expectedOutputs, snap.Resources[1].Outputs)
 
 	// Run another update (from zero starting snapshot) after matching the inputs to the cloud. The import
 	// should succeed, and just import the resource (i.e. we don't bother Same'ing it).
@@ -187,8 +187,8 @@ func TestImportOption(t *testing.T) {
 		}, "1")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
-	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 	assert.Equal(t, resource.ID("id"), snap.Resources[1].ImportID)
 	assert.Equal(t, resource.ID("imported-id"), snap.Resources[1].ID)
 
@@ -206,8 +206,8 @@ func TestImportOption(t *testing.T) {
 			return err
 		}, "2")
 	require.NoError(t, err)
-	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
-	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 	assert.Equal(t, resource.ID("id"), snap.Resources[1].ImportID)
 	assert.Equal(t, resource.ID("imported-id"), snap.Resources[1].ID)
 
@@ -230,8 +230,8 @@ func TestImportOption(t *testing.T) {
 		}, "3")
 	require.NoError(t, err)
 	// This should call update not read, which just returns the passed inputs as outputs.
-	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
-	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, inputs, snap.Resources[1].Inputs)
+	assert.Equal(t, inputs, snap.Resources[1].Outputs)
 	assert.Equal(t, resource.ID("id"), snap.Resources[1].ImportID)
 	assert.Equal(t, resource.ID("imported-id"), snap.Resources[1].ID)
 
@@ -274,8 +274,8 @@ func TestImportOption(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
 	// This will have just called create which returns the inputs as outputs.
-	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
-	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, inputs, snap.Resources[1].Inputs)
+	assert.Equal(t, inputs, snap.Resources[1].Outputs)
 
 	// Set the import ID to the same ID as the existing resource and run an update. This should produce no changes.
 	for _, r := range snap.Resources {
@@ -297,8 +297,8 @@ func TestImportOption(t *testing.T) {
 		}, "7")
 	require.NoError(t, err)
 	// This will have 'same'd so the inputs and outputs will be the same as the lat run with create.
-	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
-	assert.Equal(t, inputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, inputs, snap.Resources[1].Inputs)
+	assert.Equal(t, inputs, snap.Resources[1].Outputs)
 
 	// Then set the import ID and run another update. The update should succeed and should show an import-replace and
 	// a delete-replaced.
@@ -325,8 +325,8 @@ func TestImportOption(t *testing.T) {
 			return err
 		}, "8")
 	require.NoError(t, err)
-	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
-	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 
 	// Change the program to read a resource rather than creating one.
 	readID = "id"
@@ -347,8 +347,8 @@ func TestImportOption(t *testing.T) {
 		}, "9")
 	require.NoError(t, err)
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
-	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 
 	// Now have the program import the resource. We should see an import-replace and a read-discard.
 	readID, importID = "", readID
@@ -373,8 +373,8 @@ func TestImportOption(t *testing.T) {
 			return err
 		}, "10")
 	require.NoError(t, err)
-	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
-	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 }
 
 // TestImportWithDifferingImportIdentifierFormat tests importing a resource that has a different format of identifier
@@ -798,8 +798,9 @@ func TestImportThenSecretValueDoesNotReplace(t *testing.T) {
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 			imported := findImportTestResourceByURN(snap, resURN)
 			require.NotNil(t, imported)
-			assert.False(t, imported.Inputs["foo"].IsSecret())
-			assert.False(t, imported.Inputs["fromOutput"].IsOutput())
+			importedInputs := resource.ToResourcePropertyMap(imported.Inputs)
+			assert.False(t, importedInputs["foo"].IsSecret())
+			assert.False(t, importedInputs["fromOutput"].IsOutput())
 
 			snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
 				func(_ workspace.Project, _ deploy.Target, entries JournalEntries, _ []Event, err error) error {
@@ -819,8 +820,9 @@ func TestImportThenSecretValueDoesNotReplace(t *testing.T) {
 			require.NotNil(t, snap)
 			updated := findImportTestResourceByURN(snap, resURN)
 			require.NotNil(t, updated)
-			assert.True(t, updated.Inputs["foo"].IsSecret())
-			fromOutput := resource.FromResourcePropertyValue(updated.Inputs["fromOutput"]).
+			updatedInputs := resource.ToResourcePropertyMap(updated.Inputs)
+			assert.True(t, updatedInputs["foo"].IsSecret())
+			fromOutput := resource.FromResourcePropertyValue(updatedInputs["fromOutput"]).
 				WithSecret(false).
 				WithDependencies(nil)
 			assert.True(t, property.New("output-value").Equals(fromOutput))
@@ -904,8 +906,8 @@ func TestImportPlan(t *testing.T) {
 
 	// Import should save the ID, inputs and outputs
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[3].ID)
-	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[3].Inputs))
-	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[3].Outputs))
+	assert.Equal(t, readInputs, snap.Resources[3].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[3].Outputs)
 
 	// Import should set Created and Modified timestamps on state.
 	for _, r := range snap.Resources {
@@ -970,7 +972,7 @@ func TestImportIgnoreChanges(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, resource.NewProperty("bar"), snap.Resources[1].Outputs["foo"])
+	assert.Equal(t, resource.NewProperty("bar"), resource.ToResourcePropertyMap(snap.Resources[1].Outputs)["foo"])
 }
 
 func TestImportPlanExistingImport(t *testing.T) {
@@ -1133,13 +1135,13 @@ func TestImportPlanSuppliedOutputs(t *testing.T) {
 	}
 
 	comp := byName("comp")
-	assert.Equal(t, componentInputs, resource.FromResourcePropertyMap(comp.Inputs))
-	assert.Equal(t, componentOutputs, resource.FromResourcePropertyMap(comp.Outputs))
+	assert.Equal(t, componentInputs, comp.Inputs)
+	assert.Equal(t, componentOutputs, comp.Outputs)
 
 	resB := byName("resB")
 	assert.Equal(t, resource.ID("imported-id"), resB.ID)
-	assert.Equal(t, suppliedInputs, resource.FromResourcePropertyMap(resB.Inputs))
-	assert.Equal(t, suppliedOutputs, resource.FromResourcePropertyMap(resB.Outputs))
+	assert.Equal(t, suppliedInputs, resB.Inputs)
+	assert.Equal(t, suppliedOutputs, resB.Outputs)
 }
 
 func TestImportPlanSuppliedInputsMerge(t *testing.T) {
@@ -1196,10 +1198,10 @@ func TestImportPlanSuppliedInputsMerge(t *testing.T) {
 	// The provider's Read wins where it returned a value, lifted to a secret where the supplied value
 	// was one; the supplied value fills the null.
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[2].ID)
-	assert.Equal(t, resource.PropertyMap{
-		"foo":  resource.NewProperty("supplied"),
-		"frob": resource.MakeSecret(resource.NewProperty(1.0)),
-	}, snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"foo":  property.New("supplied"),
+		"frob": property.New(1.0).WithSecret(true),
+	}), snap.Resources[2].Inputs)
 }
 
 func TestImportPlanEmptyState(t *testing.T) {
@@ -1477,8 +1479,8 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 
 	// We should still have the baz output but will be missing its input
-	assert.Equal(t, resource.NewProperty(2.0), snap.Resources[2].Outputs["baz"])
-	assert.NotContains(t, snap.Resources[2].Inputs, "baz")
+	assert.Equal(t, resource.NewProperty(2.0), resource.ToResourcePropertyMap(snap.Resources[2].Outputs)["baz"])
+	assert.NotContains(t, resource.ToResourcePropertyMap(snap.Resources[2].Inputs), "baz")
 }
 
 // Test that we can import one resource, then import another resource with the first one as a parent.
@@ -1762,8 +1764,8 @@ func TestImportInputDiff(t *testing.T) {
 
 	// Import should save the ID, inputs and outputs
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[2].ID)
-	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[2].Inputs))
-	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
+	assert.Equal(t, readInputs, snap.Resources[2].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[2].Outputs)
 
 	// Run an update that changes the input but the provider normalizes it.
 	snap, err = lt.TestOp(Update).RunStep(
@@ -1776,8 +1778,8 @@ func TestImportInputDiff(t *testing.T) {
 
 	// Update should have updated to the new inputs from the program.
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[1].ID)
-	assert.Equal(t, upInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
-	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, upInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 }
 
 // Test that the provider packages returned form the language runtime are used for setting the default provider
@@ -1850,12 +1852,12 @@ func TestImportDefaultProvider(t *testing.T) {
 
 	// The default provider should have been created with the expected version.
 	assert.Equal(t, tokens.Type("pulumi:providers:pkgA"), snap.Resources[1].URN.Type())
-	assert.Equal(t, "1.0.0", snap.Resources[1].Inputs["version"].StringValue())
+	assert.Equal(t, "1.0.0", resource.ToResourcePropertyMap(snap.Resources[1].Inputs)["version"].StringValue())
 
 	// Import should save the ID, inputs and outputs
 	assert.Equal(t, resource.ID("actual-id"), snap.Resources[2].ID)
-	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[2].Inputs))
-	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[2].Outputs))
+	assert.Equal(t, readInputs, snap.Resources[2].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[2].Outputs)
 
 	// Import should set Created and Modified timestamps on state.
 	for _, r := range snap.Resources {
@@ -1989,8 +1991,8 @@ func TestImportWithFailedUpdate(t *testing.T) {
 		}, "0")
 	assert.ErrorContains(t, err, "step application failed: update failed")
 	require.Len(t, snap.Resources, 2)
-	assert.Equal(t, readInputs, resource.FromResourcePropertyMap(snap.Resources[1].Inputs))
-	assert.Equal(t, readOutputs, resource.FromResourcePropertyMap(snap.Resources[1].Outputs))
+	assert.Equal(t, readInputs, snap.Resources[1].Inputs)
+	assert.Equal(t, readOutputs, snap.Resources[1].Outputs)
 }
 
 func TestImportFailedCreate(t *testing.T) {

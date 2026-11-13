@@ -64,14 +64,14 @@ func TestCommitStateMigrationPreservesLivePointers(t *testing.T) {
 		Custom:       true,
 		ID:           "consumer-id",
 		Dependencies: []resource.URN{oldURN},
-		Outputs:      resource.PropertyMap{"reference": reference(oldURN)},
+		Outputs:      resource.FromResourcePropertyMap(resource.PropertyMap{"reference": reference(oldURN)}),
 	}
 	current := &pkgresource.State{
 		URN:     currentURN,
 		Type:    currentURN.Type(),
 		Custom:  true,
 		ID:      "current-id",
-		Outputs: resource.PropertyMap{"reference": reference(oldURN)},
+		Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{"reference": reference(oldURN)}),
 	}
 	successor := &pkgresource.State{
 		URN: successorURN, Type: successorURN.Type(), Custom: true, ID: old.ID,
@@ -97,9 +97,9 @@ func TestCommitStateMigrationPreservesLivePointers(t *testing.T) {
 	assert.Same(t, consumer, d.prev.Resources[1])
 	assert.Equal(t, []resource.URN{successorURN}, consumer.Dependencies)
 	assert.Equal(t, successorURN,
-		consumer.Outputs["reference"].SecretValue().Element.ResourceReferenceValue().URN)
+		consumer.Outputs.Get("reference").AsResourceReference().URN)
 	assert.Equal(t, successorURN,
-		current.Outputs["reference"].SecretValue().Element.ResourceReferenceValue().URN)
+		current.Outputs.Get("reference").AsResourceReference().URN)
 	require.Len(t, d.stateMigrationRewrites, 1)
 	assert.Equal(t, successorURN, d.stateMigrationRewrites[0].successorURNs[oldURN])
 	assert.Equal(t, stateMigrationSuccessorIdentity{custom: true, id: "physical-id"},

@@ -39,14 +39,14 @@ func init() {
 					assert.Equal(l, "prov", provider.URN.Name(), "expected provider named 'prov'")
 
 					// Check that envVarMappings is set in the provider Inputs under __internal
-					internal := provider.Inputs["__internal"]
-					require.NotNil(l, internal, "expected __internal in provider inputs")
-					internalObj := internal.ObjectValue()
-					envVarMappings := internalObj["envVarMappings"]
-					require.NotNil(l, envVarMappings, "expected envVarMappings in __internal")
-					mappingsObj := envVarMappings.ObjectValue()
-					assert.Equal(l, "PROVIDER_VAR", mappingsObj["MY_VAR"].StringValue(), "expected MY_VAR mapping")
-					assert.Equal(l, "TARGET_VAR", mappingsObj["OTHER_VAR"].StringValue(), "expected OTHER_VAR mapping")
+					internal := provider.Inputs.Get("__internal")
+					require.True(l, internal.IsMap(), "expected __internal in provider inputs")
+					internalObj := internal.AsMap()
+					envVarMappings := internalObj.Get("envVarMappings")
+					require.True(l, envVarMappings.IsMap(), "expected envVarMappings in __internal")
+					mappingsObj := envVarMappings.AsMap()
+					assert.Equal(l, "PROVIDER_VAR", mappingsObj.Get("MY_VAR").AsString(), "expected MY_VAR mapping")
+					assert.Equal(l, "TARGET_VAR", mappingsObj.Get("OTHER_VAR").AsString(), "expected OTHER_VAR mapping")
 				},
 			},
 		},

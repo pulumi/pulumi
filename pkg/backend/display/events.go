@@ -120,9 +120,9 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		// Serialize properties, ignoring errors, as with other event types.
 		ctx := context.TODO()
 		encrypter := config.BlindingCrypter
-		before, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(p.Before), encrypter, showSecrets)
+		before, err := stack.SerializeProperties(ctx, p.Before, encrypter, showSecrets)
 		contract.IgnoreError(err)
-		after, err := stack.SerializeProperties(ctx, resource.ToResourcePropertyMap(p.After), encrypter, showSecrets)
+		after, err := stack.SerializeProperties(ctx, p.After, encrypter, showSecrets)
 		contract.IgnoreError(err)
 
 		apiEvent.PolicyRemediationEvent = &apitype.PolicyRemediationEvent{
@@ -345,10 +345,10 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 
 	ctx := context.TODO()
 	encrypter := config.BlindingCrypter
-	inputs, err := stack.SerializeProperties(ctx, md.Inputs, encrypter, showSecrets)
+	inputs, err := stack.SerializeProperties(ctx, resource.FromResourcePropertyMap(md.Inputs), encrypter, showSecrets)
 	contract.IgnoreError(err)
 
-	outputs, err := stack.SerializeProperties(ctx, md.Outputs, encrypter, showSecrets)
+	outputs, err := stack.SerializeProperties(ctx, resource.FromResourcePropertyMap(md.Outputs), encrypter, showSecrets)
 	contract.IgnoreError(err)
 
 	return &apitype.StepEventStateMetadata{
@@ -433,8 +433,8 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			PolicyName:        p.PolicyName,
 			PolicyPackName:    p.PolicyPackName,
 			PolicyPackVersion: p.PolicyPackVersion,
-			Before:            resource.FromResourcePropertyMap(before),
-			After:             resource.FromResourcePropertyMap(after),
+			Before:            before,
+			After:             after,
 		})
 
 	case apiEvent.PolicyAnalyzeSummaryEvent != nil:
@@ -637,8 +637,8 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Taint:          md.Taint,
 		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
-		Inputs:         inputs,
-		Outputs:        outputs,
+		Inputs:         resource.ToResourcePropertyMap(inputs),
+		Outputs:        resource.ToResourcePropertyMap(outputs),
 		InitErrors:     md.InitErrors,
 		HideDiffs:      md.HideDiffs,
 	}

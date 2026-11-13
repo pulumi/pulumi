@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -390,23 +391,24 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 		}
 		pkg := sdkproviders.GetProviderPackage(urn.Type())
 
-		name, err := providers.GetProviderName(pkg, res.Inputs)
+		inputs := resource.ToResourcePropertyMap(res.Inputs)
+		name, err := providers.GetProviderName(pkg, inputs)
 		if err != nil {
 			return set, err
 		}
-		version, err := providers.GetProviderVersion(res.Inputs)
+		version, err := providers.GetProviderVersion(inputs)
 		if err != nil {
 			return set, err
 		}
-		downloadURL, err := providers.GetProviderDownloadURL(res.Inputs)
+		downloadURL, err := providers.GetProviderDownloadURL(inputs)
 		if err != nil {
 			return set, err
 		}
-		checksums, err := providers.GetProviderChecksums(res.Inputs)
+		checksums, err := providers.GetProviderChecksums(inputs)
 		if err != nil {
 			return set, err
 		}
-		parameterization, err := providers.GetProviderParameterization(pkg, res.Inputs)
+		parameterization, err := providers.GetProviderParameterization(pkg, inputs)
 		if err != nil {
 			return set, err
 		}

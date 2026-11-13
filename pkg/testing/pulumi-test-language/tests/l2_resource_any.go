@@ -40,7 +40,7 @@ func init() {
 
 					assertValue := func(name string, want property.Value) {
 						r := RequireSingleNamedResource(l, res.Snap.Resources, name)
-						inputs := resource.FromResourcePropertyMap(r.Inputs)
+						inputs := r.Inputs
 						require.Equal(l, want, inputs.Get("value"), name)
 					}
 

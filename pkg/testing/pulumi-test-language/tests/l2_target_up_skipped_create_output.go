@@ -65,9 +65,9 @@ func init() {
 					// The stack output derived from the skipped resource's output must not have
 					// resolved to a known value.
 					stack := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
-					if out, has := stack.Outputs["skippedOutput"]; has {
+					if out, has := stack.Outputs.GetOk("skippedOutput"); has {
 						unknown := out.IsComputed() ||
-							(out.IsString() && out.StringValue() == plugin.UnknownStringValue)
+							(out.IsString() && out.AsString() == plugin.UnknownStringValue)
 						require.True(l, unknown,
 							"expected skippedOutput stack output to be unknown, got %v", out)
 					}

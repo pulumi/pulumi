@@ -30,12 +30,12 @@ func SerializePlanDiff(
 	showSecrets bool,
 ) (apitype.PlanDiffV1, error) {
 	ctx := context.TODO()
-	adds, err := SerializeProperties(ctx, diff.Adds, enc, showSecrets)
+	adds, err := SerializeProperties(ctx, resource.FromResourcePropertyMap(diff.Adds), enc, showSecrets)
 	if err != nil {
 		return apitype.PlanDiffV1{}, err
 	}
 
-	updates, err := SerializeProperties(ctx, diff.Updates, enc, showSecrets)
+	updates, err := SerializeProperties(ctx, resource.FromResourcePropertyMap(diff.Updates), enc, showSecrets)
 	if err != nil {
 		return apitype.PlanDiffV1{}, err
 	}
@@ -71,7 +71,11 @@ func DeserializePlanDiff(
 		deletes[i] = resource.PropertyKey(diff.Deletes[i])
 	}
 
-	return deploy.PlanDiff{Adds: adds, Updates: updates, Deletes: deletes}, nil
+	return deploy.PlanDiff{
+		Adds:    resource.ToResourcePropertyMap(adds),
+		Updates: resource.ToResourcePropertyMap(updates),
+		Deletes: deletes,
+	}, nil
 }
 
 func SerializeResourcePlan(
@@ -82,7 +86,7 @@ func SerializeResourcePlan(
 	var outputs map[string]any
 	if plan.Outputs != nil {
 		ctx := context.TODO()
-		outs, err := SerializeProperties(ctx, plan.Outputs, enc, showSecrets)
+		outs, err := SerializeProperties(ctx, resource.FromResourcePropertyMap(plan.Outputs), enc, showSecrets)
 		if err != nil {
 			return apitype.ResourcePlanV1{}, err
 		}
@@ -193,7 +197,7 @@ func DeserializeResourcePlan(
 		if err != nil {
 			return nil, err
 		}
-		outputs = outs
+		outputs = resource.ToResourcePropertyMap(outs)
 	}
 
 	ops := make([]display.StepOp, len(plan.Steps))

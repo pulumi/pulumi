@@ -59,8 +59,8 @@ type State struct {
 	Custom                  bool                  // true if the resource is custom, managed by a plugin.
 	Delete                  bool                  // true if this resource is pending deletion due to a replacement.
 	ID                      ID                    // the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
-	Inputs                  PropertyMap           // the resource's input properties (as specified by the program).
-	Outputs                 PropertyMap           // the resource's complete output state (as returned by the resource provider).
+	Inputs                  property.Map          // the resource's input properties (as specified by the program).
+	Outputs                 property.Map          // the resource's complete output state (as returned by the resource provider).
 	Parent                  URN                   // an optional parent URN that this resource belongs to.
 	Protect                 bool                  // true to "protect" this resource (protected resources cannot be deleted).
 	Taint                   bool                  // true to force replacement of this resource during the next update.
@@ -178,10 +178,10 @@ type NewState struct {
 	ID ID // required
 
 	// the resource's input properties (as specified by the program).
-	Inputs PropertyMap // required
+	Inputs property.Map // required
 
 	// the resource's complete output state (as returned by the resource provider).
-	Outputs PropertyMap // required
+	Outputs property.Map // required
 
 	// an optional parent URN that this resource belongs to.
 	Parent URN // required

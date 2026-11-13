@@ -28,7 +28,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
-	"unsafe"
 
 	fxs "github.com/pgavlin/fx/v2/slices"
 	"go.opentelemetry.io/otel"
@@ -46,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -188,28 +188,20 @@ func ApplyFeatures(res apitype.ResourceV3, encodedByteString bool, features map[
 // propertyValueNeedsByteString reports whether the value contains a string with bytes that are not
 // valid UTF-8. Such strings serialize with the byte string signature, which requires the
 // byteString feature so that older engines refuse to read state they would corrupt.
-func propertyValueNeedsByteString(v resource.PropertyValue) bool {
+func propertyValueNeedsByteString(v property.Value) bool {
 	switch {
 	case v.IsString():
-		return !utf8.ValidString(v.StringValue())
+		return !utf8.ValidString(v.AsString())
 	case v.IsArray():
-		if slices.ContainsFunc(v.ArrayValue(), propertyValueNeedsByteString) {
-			return true
-		}
-	case v.IsObject():
-		return propertyMapNeedsByteString(v.ObjectValue())
-	case v.IsSecret():
-		return propertyValueNeedsByteString(v.SecretValue().Element)
-	case v.IsOutput():
-		return propertyValueNeedsByteString(v.OutputValue().Element)
-	case v.IsComputed():
-		return propertyValueNeedsByteString(v.Input().Element)
+		return slices.ContainsFunc(v.AsArray().AsSlice(), propertyValueNeedsByteString)
+	case v.IsMap():
+		return propertyMapNeedsByteString(v.AsMap())
 	}
 	return false
 }
 
-func propertyMapNeedsByteString(m resource.PropertyMap) bool {
-	for _, v := range m {
+func propertyMapNeedsByteString(m property.Map) bool {
+	for _, v := range m.AsMap() {
 		if propertyValueNeedsByteString(v) {
 			return true
 		}
@@ -521,7 +513,7 @@ func DeserializeStackOutputs(
 	ctx context.Context,
 	deployment apitype.DeploymentV3,
 	secretsProv secrets.Provider,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	tracer := otel.Tracer("pulumi-cli")
 	ctx, span := cmdutil.StartSpan(ctx, tracer, "stack.DeserializeStackOutputs")
 	defer span.End()
@@ -536,7 +528,7 @@ func DeserializeStackOutputs(
 		}
 	}
 	if stackResource == nil {
-		return nil, nil
+		return property.Map{}, nil
 	}
 
 	return DecryptStackOutputs(ctx, stackResource.Outputs, deployment.SecretsProviders, secretsProv)
@@ -549,10 +541,10 @@ func DecryptStackOutputs(
 	outputs map[string]any,
 	secretsProviders *apitype.SecretsProvidersV1,
 	secretsProv secrets.Provider,
-) (resource.PropertyMap, error) {
+) (property.Map, error) {
 	secretsManager, err := initializeSecretsManager(ctx, secretsProviders, secretsProv)
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 
 	dec, err := primeDecrypter(ctx, secretsManager, func(ctx context.Context, dec BatchDecrypter) error {
@@ -564,7 +556,7 @@ func DecryptStackOutputs(
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return property.Map{}, err
 	}
 	return DeserializeProperties(outputs, dec)
 }
@@ -698,29 +690,27 @@ func SerializeResource(
 
 	encodedByteString := propertyMapNeedsByteString(res.Inputs) ||
 		propertyMapNeedsByteString(res.Outputs) ||
-		propertyValueNeedsByteString(resource.ToResourcePropertyValue(res.ReplacementTrigger))
+		propertyValueNeedsByteString(res.ReplacementTrigger)
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]any
-	if inp := res.Inputs; inp != nil {
-		sinp, err := SerializeProperties(ctx, inp, enc, showSecrets)
+	if res.Inputs.Len() > 0 {
+		sinp, err := SerializeProperties(ctx, res.Inputs, enc, showSecrets)
 		if err != nil {
 			return apitype.ResourceV3{}, false, err
 		}
 		inputs = sinp
 	}
 	var outputs map[string]any
-	if outp := res.Outputs; outp != nil {
-		soutp, err := SerializeProperties(ctx, outp, enc, showSecrets)
+	if res.Outputs.Len() > 0 {
+		soutp, err := SerializeProperties(ctx, res.Outputs, enc, showSecrets)
 		if err != nil {
 			return apitype.ResourceV3{}, false, err
 		}
 		outputs = soutp
 	}
 
-	trigger, err := SerializePropertyValue(
-		ctx, resource.ToResourcePropertyValue(res.ReplacementTrigger), enc, showSecrets,
-	)
+	trigger, err := SerializePropertyValue(ctx, res.ReplacementTrigger, enc, showSecrets)
 	if err != nil {
 		return apitype.ResourceV3{}, false, err
 	}
@@ -789,96 +779,40 @@ func SerializeOperation(
 }
 
 // SerializeProperties serializes a resource property bag so that it's suitable for serialization.
-func SerializeProperties(ctx context.Context, props resource.PropertyMap, enc config.Encrypter,
+func SerializeProperties(ctx context.Context, props property.Map, enc config.Encrypter,
 	showSecrets bool,
 ) (map[string]any, error) {
-	dst := make(map[string]any)
-	for _, k := range props.StableKeys() {
-		v, err := SerializePropertyValue(ctx, props[k], enc, showSecrets)
+	dst := make(map[string]any, props.Len())
+	var retErr error
+	props.AllStable(func(k string, v property.Value) bool {
+		sv, err := SerializePropertyValue(ctx, v, enc, showSecrets)
 		if err != nil {
-			return nil, err
+			retErr = err
+			return false
 		}
-		dst[string(k)] = v
+		dst[k] = sv
+		return true
+	})
+	if retErr != nil {
+		return nil, retErr
 	}
 	return dst, nil
 }
 
 // SerializePropertyValue serializes a resource property value so that it's suitable for serialization.
-func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, enc config.Encrypter,
+func SerializePropertyValue(ctx context.Context, prop property.Value, enc config.Encrypter,
 	showSecrets bool,
 ) (any, error) {
-	// Serialize nulls as nil.
-	if prop.IsNull() {
-		return nil, nil
-	}
-
-	// A computed value marks something that will be determined at a later time. (e.g. the result of
-	// a computation that we don't perform during a preview operation.) We serialize a magic constant
-	// to record its existence.
-	if prop.IsComputed() {
-		return computedValuePlaceholder, nil
-	}
-
-	// We can't currently serialize output values fully, we lose the dependency information. But we can
-	// at least serialize the inner value so that we can preserve the shape of the data.
-	if prop.IsOutput() {
-		o := prop.OutputValue()
-
-		element := o.Element
-		if !o.Known {
-			element = resource.MakeComputed(element)
+	// Secrets are a flag on the Value: produce a SecretV1 wrapping the plaintext serialization of the
+	// same value with the secret flag stripped. Nested secrets inside the plaintext are preserved as
+	// their own SecretV1 wrappers but need no further encryption.
+	if prop.Secret() {
+		inner := prop.WithSecret(false)
+		innerEnc := enc
+		if enc != config.NopEncrypter {
+			innerEnc = config.NopEncrypter
 		}
-		if o.Secret {
-			element = resource.MakeSecret(element)
-		}
-		return SerializePropertyValue(ctx, element, enc, showSecrets)
-	}
-
-	// For arrays, make sure to recurse.
-	if prop.IsArray() {
-		srcarr := prop.ArrayValue()
-		dstarr := make([]any, len(srcarr))
-		for i, elem := range prop.ArrayValue() {
-			selem, err := SerializePropertyValue(ctx, elem, enc, showSecrets)
-			if err != nil {
-				return nil, err
-			}
-			dstarr[i] = selem
-		}
-		return dstarr, nil
-	}
-
-	// Also for objects, recurse and use naked properties.
-	if prop.IsObject() {
-		return SerializeProperties(ctx, prop.ObjectValue(), enc, showSecrets)
-	}
-
-	// For assets, we need to serialize them a little carefully, so we can recover them afterwards.
-	if prop.IsAsset() {
-		return prop.AssetValue().Serialize(), nil
-	} else if prop.IsArchive() {
-		return prop.ArchiveValue().Serialize(), nil
-	}
-
-	// We serialize resource references using a map-based representation similar to assets, archives, and secrets.
-	if prop.IsResourceReference() {
-		ref := prop.ResourceReferenceValue()
-		serialized := map[string]any{
-			resource.SigKey:  resource.ResourceReferenceSig,
-			"urn":            string(ref.URN),
-			"packageVersion": ref.PackageVersion,
-		}
-		if id, hasID := ref.IDString(); hasID {
-			serialized["id"] = id
-		}
-		return serialized, nil
-	}
-
-	if prop.IsSecret() {
-		// Since we are going to encrypt property value, we can elide encrypting sub-elements. We'll mark them as
-		// "secret" so we retain that information when deserializing the overall structure, but there is no
-		// need to double encrypt everything.
-		value, err := SerializePropertyValue(ctx, prop.SecretValue().Element, config.NopEncrypter, showSecrets)
+		value, err := SerializePropertyValue(ctx, inner, innerEnc, showSecrets)
 		if err != nil {
 			return nil, err
 		}
@@ -897,9 +831,8 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		} else {
 			// If the encrypter is a batchEncrypter, use the Enqueue method to asynchronously encrypt the secret value.
 			if batchEncrypter, ok := enc.(BatchEncrypter); ok {
-				id := SecretID(uintptr(unsafe.Pointer(prop.SecretValue())))
-				err = batchEncrypter.Enqueue(ctx, id, plaintext, &secret)
-				if err != nil {
+				id := SecretID(prop.SecretID())
+				if err := batchEncrypter.Enqueue(ctx, id, plaintext, &secret); err != nil {
 					return nil, fmt.Errorf("enqueuing secret value for encryption: %w", err)
 				}
 			} else {
@@ -914,28 +847,72 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		return &secret, nil
 	}
 
-	// Strings containing bytes that are not valid UTF-8 would be corrupted by JSON encoding, so they are
-	// serialized with a signature carrying the base64 encoding of their bytes.
-	if prop.IsString() && !utf8.ValidString(prop.StringValue()) {
-		return map[string]any{
-			resource.SigKey: resource.ByteStringSig,
-			"value":         base64.StdEncoding.EncodeToString([]byte(prop.StringValue())),
-		}, nil
+	switch {
+	case prop.IsNull():
+		return nil, nil
+	case prop.IsComputed():
+		return computedValuePlaceholder, nil
+	case prop.IsBool():
+		return prop.AsBool(), nil
+	case prop.IsNumber():
+		n := prop.AsNumber()
+		if math.IsNaN(n) || math.IsInf(n, 0) {
+			// Floats need special handling for Inf and NaN. Save as hexadecimal to preserve precision.
+			bits := math.Float64bits(n)
+			return map[string]any{
+				resource.SigKey: floatSignature,
+				"value":         fmt.Sprintf("%016x", bits),
+			}, nil
+		}
+		return n, nil
+	case prop.IsString():
+		s := prop.AsString()
+		if !utf8.ValidString(s) {
+			// Strings containing bytes that are not valid UTF-8 would be corrupted by JSON encoding,
+			// so they are serialized with a signature carrying the base64 encoding of their bytes.
+			return map[string]any{
+				resource.SigKey: resource.ByteStringSig,
+				"value":         base64.StdEncoding.EncodeToString([]byte(s)),
+			}, nil
+		}
+		return s, nil
+	case prop.IsArray():
+		src := prop.AsArray()
+		dst := make([]any, src.Len())
+		var retErr error
+		src.All(func(i int, elem property.Value) bool {
+			selem, err := SerializePropertyValue(ctx, elem, enc, showSecrets)
+			if err != nil {
+				retErr = err
+				return false
+			}
+			dst[i] = selem
+			return true
+		})
+		if retErr != nil {
+			return nil, retErr
+		}
+		return dst, nil
+	case prop.IsMap():
+		return SerializeProperties(ctx, prop.AsMap(), enc, showSecrets)
+	case prop.IsAsset():
+		return prop.AsAsset().Serialize(), nil
+	case prop.IsArchive():
+		return prop.AsArchive().Serialize(), nil
+	case prop.IsResourceReference():
+		ref := prop.AsResourceReference()
+		serialized := map[string]any{
+			resource.SigKey:  resource.ResourceReferenceSig,
+			"urn":            string(ref.URN),
+			"packageVersion": ref.PackageVersion,
+		}
+		if id, hasID := ref.IDString(); hasID {
+			serialized["id"] = id
+		}
+		return serialized, nil
 	}
 
-	// Floats need special handling for Inf and NaN.
-	if prop.IsNumber() && (math.IsNaN(prop.NumberValue()) || math.IsInf(prop.NumberValue(), 0)) {
-		// We just save this as hexadecimal strings to preserve precision.
-		bits := math.Float64bits(prop.NumberValue())
-		hex := fmt.Sprintf("%016x", bits)
-		return map[string]any{
-			resource.SigKey: floatSignature,
-			"value":         hex,
-		}, nil
-	}
-
-	// All others are returned as-is.
-	return prop.V, nil
+	return nil, fmt.Errorf("unrecognized property value: %v", prop.GoString())
 }
 
 // DeserializeResource turns a serialized resource back into its usual form.
@@ -1003,7 +980,7 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*pkgreso
 			IgnoreChanges:           res.IgnoreChanges,
 			HideDiff:                res.HideDiff,
 			ReplaceOnChanges:        res.ReplaceOnChanges,
-			ReplacementTrigger:      resource.FromResourcePropertyValue(trigger),
+			ReplacementTrigger:      trigger,
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
 			ResourceHooks:           res.ResourceHooks,
@@ -1024,16 +1001,99 @@ func DeserializeOperation(op apitype.OperationV2, dec config.Decrypter,
 
 // DeserializeProperties deserializes an entire map of deploy properties into a resource property map.
 func DeserializeProperties(props map[string]any, dec config.Decrypter,
-) (resource.PropertyMap, error) {
-	result := make(resource.PropertyMap)
+) (property.Map, error) {
+	result := make(map[string]property.Value, len(props))
 	for k, prop := range props {
 		desprop, err := DeserializePropertyValue(prop, dec)
 		if err != nil {
-			return nil, err
+			return property.Map{}, err
 		}
-		result[resource.PropertyKey(k)] = desprop
+		result[k] = desprop
 	}
-	return result, nil
+	return property.NewMap(result), nil
+}
+
+// deserializeAsset is a property.Map-based variant of asset.Deserialize. It assumes the signature
+// has already been checked by the caller.
+func deserializeAsset(obj property.Map) (*asset.Asset, error) {
+	readString := func(key string) (string, error) {
+		v, has := obj.GetOk(key)
+		if !has {
+			return "", nil
+		}
+		if !v.IsString() {
+			return "", fmt.Errorf("unexpected asset %s of type %v", key, v.GoString())
+		}
+		return v.AsString(), nil
+	}
+	hash, err := readString(asset.AssetHashProperty)
+	if err != nil {
+		return nil, err
+	}
+	text, err := readString(asset.AssetTextProperty)
+	if err != nil {
+		return nil, err
+	}
+	path, err := readString(asset.AssetPathProperty)
+	if err != nil {
+		return nil, err
+	}
+	uri, err := readString(asset.AssetURIProperty)
+	if err != nil {
+		return nil, err
+	}
+	return &asset.Asset{Sig: asset.AssetSig, Hash: hash, Text: text, Path: path, URI: uri}, nil
+}
+
+// deserializeArchive is a property.Map-based variant of archive.Deserialize. It assumes the
+// signature has already been checked by the caller, and that any nested assets/archives have
+// already been recursively deserialized into property.Values holding *asset.Asset or *archive.Archive.
+func deserializeArchive(obj property.Map) (*archive.Archive, error) {
+	var hash string
+	if v, has := obj.GetOk(archive.ArchiveHashProperty); has {
+		if !v.IsString() {
+			return nil, fmt.Errorf("unexpected archive hash of type %v", v.GoString())
+		}
+		hash = v.AsString()
+	}
+
+	if v, has := obj.GetOk(archive.ArchivePathProperty); has {
+		if !v.IsString() {
+			return nil, fmt.Errorf("unexpected archive path of type %v", v.GoString())
+		}
+		if path := v.AsString(); path != "" {
+			return &archive.Archive{Sig: archive.ArchiveSig, Path: path, Hash: hash}, nil
+		}
+	}
+
+	if v, has := obj.GetOk(archive.ArchiveURIProperty); has {
+		if !v.IsString() {
+			return nil, fmt.Errorf("unexpected archive URI of type %v", v.GoString())
+		}
+		if uri := v.AsString(); uri != "" {
+			return &archive.Archive{Sig: archive.ArchiveSig, URI: uri, Hash: hash}, nil
+		}
+	}
+
+	if v, has := obj.GetOk(archive.ArchiveAssetsProperty); has {
+		if !v.IsMap() {
+			return nil, fmt.Errorf("unexpected archive contents of type %v", v.GoString())
+		}
+		assets := make(map[string]any)
+		for k, elem := range v.AsMap().AsMap() {
+			switch {
+			case elem.IsAsset():
+				assets[k] = elem.AsAsset()
+			case elem.IsArchive():
+				assets[k] = elem.AsArchive()
+			default:
+				return nil, fmt.Errorf("archive member '%v' is not an asset or archive", k)
+			}
+		}
+		return &archive.Archive{Sig: archive.ArchiveSig, Assets: assets, Hash: hash}, nil
+	}
+
+	return &archive.Archive{Sig: archive.ArchiveSig, Assets: make(map[string]any), Hash: hash}, nil
 }
 
 // enqueueCiphertexts walks the untyped serialised property tree v and enqueues every encrypted
@@ -1103,13 +1163,10 @@ func primeDecrypter(
 // deserializeSecret deserializes a secret value from its SecretV1 representation.
 func deserializeSecret(
 	ctx context.Context, secret *apitype.SecretV1, dec config.Decrypter,
-) (resource.PropertyValue, error) {
-	prop := resource.MakeSecret(resource.NewNullProperty())
-	propSecret := prop.SecretValue()
-
+) (property.Value, error) {
 	if (secret.Plaintext == "" && secret.Ciphertext == "") ||
 		(secret.Plaintext != "" && secret.Ciphertext != "") {
-		return resource.PropertyValue{}, errors.New(
+		return property.Value{}, errors.New(
 			"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied",
 		)
 	}
@@ -1121,168 +1178,168 @@ func deserializeSecret(
 		// is served from the batch's local cache without issuing another decrypt.
 		pt, err := dec.DecryptValue(ctx, secret.Ciphertext)
 		if err != nil {
-			return resource.PropertyValue{}, fmt.Errorf("decrypting secret value: %w", err)
+			return property.Value{}, fmt.Errorf("decrypting secret value: %w", err)
 		}
 		plaintext = pt
 	}
 
 	propertyValue, err := secretPropertyValueFromPlaintext(plaintext)
 	if err != nil {
-		return resource.PropertyValue{}, err
+		return property.Value{}, err
 	}
-	propSecret.Element = propertyValue
-
-	return prop, nil
+	return propertyValue.WithSecret(true), nil
 }
 
 // DeserializePropertyValue deserializes a single deploy property into a resource property value.
 func DeserializePropertyValue(v any, dec config.Decrypter,
-) (resource.PropertyValue, error) {
+) (property.Value, error) {
 	ctx := context.TODO()
 	if v != nil {
 		switch w := v.(type) {
 		case bool:
-			return resource.NewProperty(w), nil
+			return property.New(w), nil
 		case float64:
-			return resource.NewProperty(w), nil
+			return property.New(w), nil
 		case string:
 			if w == computedValuePlaceholder {
-				return resource.MakeComputed(resource.NewProperty("")), nil
+				return property.New(property.Computed), nil
 			}
-			return resource.NewProperty(w), nil
+			return property.New(w), nil
 		case []any:
-			arr := make([]resource.PropertyValue, len(w))
+			arr := make([]property.Value, len(w))
 			for i, elem := range w {
 				ev, err := DeserializePropertyValue(elem, dec)
 				if err != nil {
-					return resource.PropertyValue{}, err
+					return property.Value{}, err
 				}
 				arr[i] = ev
 			}
-			return resource.NewProperty(arr), nil
+			return property.New(arr), nil
 		case map[string]any:
 			obj, err := DeserializeProperties(w, dec)
 			if err != nil {
-				return resource.PropertyValue{}, err
+				return property.Value{}, err
 			}
 
 			// This could be an asset or archive; if so, recover its type.
-			objmap := obj.Mappable()
-			if sig, hasSig := objmap[resource.SigKey]; hasSig {
-				switch sig {
+			if sig, hasSig := obj.GetOk(resource.SigKey); hasSig && sig.IsString() {
+				switch sig.AsString() {
 				case asset.AssetSig:
-					asset, isasset, err := asset.Deserialize(objmap)
+					a, err := deserializeAsset(obj)
 					if err != nil {
-						return resource.PropertyValue{}, err
+						return property.Value{}, err
 					}
-					contract.Assertf(isasset, "resource with asset signature is not an asset")
-					return resource.NewProperty(asset), nil
+					return property.New(a), nil
 				case archive.ArchiveSig:
-					archive, isarchive, err := archive.Deserialize(objmap)
+					a, err := deserializeArchive(obj)
 					if err != nil {
-						return resource.PropertyValue{}, err
+						return property.Value{}, err
 					}
-					contract.Assertf(isarchive, "resource with archive signature is not an archive")
-					return resource.NewProperty(archive), nil
+					return property.New(a), nil
 				case resource.SecretSig:
-					ciphertext, cipherOk := objmap["ciphertext"].(string)
-					plaintext, plainOk := objmap["plaintext"].(string)
+					ctV, cipherOk := obj.GetOk("ciphertext")
+					ptV, plainOk := obj.GetOk("plaintext")
+					if cipherOk && !ctV.IsString() {
+						return property.Value{}, errors.New("malformed secret value: ciphertext must be a string")
+					}
+					if plainOk && !ptV.IsString() {
+						return property.Value{}, errors.New("malformed secret value: plaintext must be a string")
+					}
 					if (!cipherOk && !plainOk) || (plainOk && cipherOk) {
-						return resource.PropertyValue{}, errors.New(
+						return property.Value{}, errors.New(
 							"malformed secret value: exactly one of `ciphertext` or `plaintext` must be supplied",
 						)
 					}
-					secret := &apitype.SecretV1{
-						Sig:        resource.SecretSig,
-						Plaintext:  plaintext,
-						Ciphertext: ciphertext,
+					secret := &apitype.SecretV1{Sig: resource.SecretSig}
+					if plainOk {
+						secret.Plaintext = ptV.AsString()
+					} else {
+						secret.Ciphertext = ctV.AsString()
 					}
 					return deserializeSecret(ctx, secret, dec)
 				case resource.ResourceReferenceSig:
 					var packageVersion string
-					if packageVersionV, ok := objmap["packageVersion"]; ok {
-						packageVersion, ok = packageVersionV.(string)
-						if !ok {
-							return resource.PropertyValue{},
+					if pvV, ok := obj.GetOk("packageVersion"); ok {
+						if !pvV.IsString() {
+							return property.Value{},
 								errors.New("malformed resource reference: packageVersion must be a string")
 						}
+						packageVersion = pvV.AsString()
 					}
 
-					urnStr, ok := objmap["urn"].(string)
-					if !ok {
-						return resource.PropertyValue{}, errors.New("malformed resource reference: missing urn")
+					urnV, ok := obj.GetOk("urn")
+					if !ok || !urnV.IsString() {
+						return property.Value{}, errors.New("malformed resource reference: missing urn")
 					}
-					urn := resource.URN(urnStr)
+					urn := resource.URN(urnV.AsString())
 
-					// deserializeID handles two cases, one of which arose from a bug in a refactoring of resource.ResourceReference.
-					// This bug caused the raw ID PropertyValue to be serialized as a map[string]any. In the normal case, the
-					// ID is serialized as a string.
-					deserializeID := func() (string, bool, error) {
-						idV, ok := objmap["id"]
-						if !ok {
-							return "", false, nil
-						}
-
-						switch idV := idV.(type) {
-						case string:
-							return idV, true, nil
-						case map[string]any:
-							switch v := idV["V"].(type) {
-							case nil:
-								// This happens for component resource references, which do not have an associated ID.
-								return "", false, nil
-							case string:
-								// This happens for custom resource references, which do have an associated ID.
-								return v, true, nil
-							case map[string]any:
-								// This happens for custom resource references with an unknown ID. In this case, the ID should be
-								// deserialized as the empty string.
-								return "", true, nil
+					ref := property.ResourceReference{
+						URN:            urn,
+						PackageVersion: packageVersion,
+					}
+					if urn.IsValid() {
+						ref.Name = urn.Name()
+						ref.Type = string(urn.Type())
+					}
+					// deserializeID handles two cases, one of which arose from a bug in a refactoring of
+					// resource.ResourceReference that caused the raw ID PropertyValue to be serialized as a
+					// map[string]any. In the normal case, the ID is serialized as a string.
+					if idV, ok := obj.GetOk("id"); ok {
+						switch {
+						case idV.IsNull():
+							// Component resource reference: no ID.
+						case idV.IsString(), idV.IsComputed():
+							ref.ID = idV
+						case idV.IsMap():
+							legacy := idV.AsMap()
+							v, has := legacy.GetOk("V")
+							switch {
+							case !has || v.IsNull():
+								// Component resource reference: no ID.
+							case v.IsString():
+								ref.ID = v
+							case v.IsMap():
+								// Custom resource reference with an unknown ID.
+								ref.ID = property.New("")
+							default:
+								return property.Value{}, errors.New("malformed resource reference: id must be a string")
 							}
+						default:
+							return property.Value{}, errors.New("malformed resource reference: id must be a string")
 						}
-						return "", false, errors.New("malformed resource reference: id must be a string")
 					}
-
-					id, hasID, err := deserializeID()
-					if err != nil {
-						return resource.PropertyValue{}, err
-					}
-					if hasID {
-						return resource.MakeCustomResourceReference(urn, resource.ID(id), packageVersion), nil
-					}
-					return resource.MakeComponentResourceReference(urn, packageVersion), nil
+					return property.New(ref), nil
 				case resource.ByteStringSig:
-					encoded, ok := objmap["value"].(string)
-					if !ok {
-						return resource.PropertyValue{},
+					encodedV, ok := obj.GetOk("value")
+					if !ok || !encodedV.IsString() {
+						return property.Value{},
 							errors.New("malformed byte string: missing or non-string 'value' field")
 					}
-					decoded, err := base64.StdEncoding.DecodeString(encoded)
+					decoded, err := base64.StdEncoding.DecodeString(encodedV.AsString())
 					if err != nil {
-						return resource.PropertyValue{},
+						return property.Value{},
 							fmt.Errorf("malformed byte string: unable to parse 'value' field: %w", err)
 					}
-					return resource.NewProperty(string(decoded)), nil
+					return property.New(string(decoded)), nil
 				case floatSignature:
-					hex, ok := objmap["value"].(string)
-					if !ok {
-						return resource.PropertyValue{},
+					hexV, ok := obj.GetOk("value")
+					if !ok || !hexV.IsString() {
+						return property.Value{},
 							errors.New("malformed float value: missing or non-string 'value' field")
 					}
-					bits, err := strconv.ParseUint(hex, 16, 64)
+					bits, err := strconv.ParseUint(hexV.AsString(), 16, 64)
 					if err != nil {
-						return resource.PropertyValue{},
+						return property.Value{},
 							fmt.Errorf("malformed float value: unable to parse 'value' field: %w", err)
 					}
-					floatVal := math.Float64frombits(bits)
-					return resource.NewProperty(floatVal), nil
+					return property.New(math.Float64frombits(bits)), nil
 				default:
-					return resource.PropertyValue{}, fmt.Errorf("unrecognized signature '%v' in property map", sig)
+					return property.Value{}, fmt.Errorf("unrecognized signature '%v' in property map", sig.GoString())
 				}
 			}
 
 			// Otherwise, it's just a weakly typed object map.
-			return resource.NewProperty(obj), nil
+			return property.New(obj), nil
 		case *apitype.SecretV1:
 			return deserializeSecret(ctx, w, dec)
 		default:
@@ -1290,13 +1347,13 @@ func DeserializePropertyValue(v any, dec config.Decrypter,
 		}
 	}
 
-	return resource.NewNullProperty(), nil
+	return property.New(property.Null), nil
 }
 
-func secretPropertyValueFromPlaintext(plaintext string) (resource.PropertyValue, error) {
+func secretPropertyValueFromPlaintext(plaintext string) (property.Value, error) {
 	var elem any
 	if err := json.Unmarshal([]byte(plaintext), &elem); err != nil {
-		return resource.PropertyValue{}, err
+		return property.Value{}, err
 	}
 	return DeserializePropertyValue(elem, config.NopDecrypter)
 }

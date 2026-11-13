@@ -206,7 +206,7 @@ func newProviderState(pkg, name, id string, del bool, inputs resource.PropertyMa
 		Custom: true,
 		Delete: del,
 		ID:     resource.ID(id),
-		Inputs: inputs,
+		Inputs: resource.FromResourcePropertyMap(inputs),
 	}
 }
 
@@ -270,7 +270,7 @@ func TestNewRegistryOldState(t *testing.T) {
 
 		assert.Equal(t, providers.GetProviderPackage(old.Type), p.(*testProvider).pkg)
 
-		ver, err := GetProviderVersion(old.Inputs)
+		ver, err := GetProviderVersion(resource.ToResourcePropertyMap(old.Inputs))
 		require.NoError(t, err)
 		if ver != nil {
 			info, err := p.GetPluginInfo(t.Context())
@@ -374,11 +374,11 @@ func TestCRUD(t *testing.T) {
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:       urn,
-			OldInputs: resource.FromResourcePropertyMap(olds),
-			NewInputs: resource.FromResourcePropertyMap(news),
+			OldInputs: olds,
+			NewInputs: news,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
+		assert.Equal(t, resource.ToResourcePropertyMap(news), resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// Since this is not a preview, the provider should not yet be configured.
@@ -391,8 +391,8 @@ func TestCRUD(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: resource.FromResourcePropertyMap(olds),
-			NewInputs:  resource.FromResourcePropertyMap(news),
+			OldOutputs: olds,
+			NewInputs:  news,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
@@ -406,7 +406,7 @@ func TestCRUD(t *testing.T) {
 		update, err := r.Update(t.Context(), plugin.UpdateRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: resource.FromResourcePropertyMap(olds),
+			OldOutputs: olds,
 			NewInputs:  check.Properties,
 			Timeout:    timeout,
 		})
@@ -538,11 +538,11 @@ func TestCRUDPreview(t *testing.T) {
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:       urn,
-			OldInputs: resource.FromResourcePropertyMap(olds),
-			NewInputs: resource.FromResourcePropertyMap(news),
+			OldInputs: olds,
+			NewInputs: news,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
+		assert.Equal(t, resource.ToResourcePropertyMap(news), resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// The provider should remain unconfigured.
@@ -555,8 +555,8 @@ func TestCRUDPreview(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: resource.FromResourcePropertyMap(olds),
-			NewInputs:  resource.FromResourcePropertyMap(news),
+			OldOutputs: olds,
+			NewInputs:  news,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, plugin.DiffResult{Changes: plugin.DiffNone}, diff)
@@ -580,11 +580,11 @@ func TestCRUDPreview(t *testing.T) {
 		// Check
 		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:       urn,
-			OldInputs: resource.FromResourcePropertyMap(olds),
-			NewInputs: resource.FromResourcePropertyMap(news),
+			OldInputs: olds,
+			NewInputs: news,
 		})
 		require.NoError(t, err)
-		assert.Equal(t, news, resource.ToResourcePropertyMap(check.Properties))
+		assert.Equal(t, resource.ToResourcePropertyMap(news), resource.ToResourcePropertyMap(check.Properties))
 		assert.Empty(t, check.Failures)
 
 		// The provider should remain unconfigured.
@@ -597,8 +597,8 @@ func TestCRUDPreview(t *testing.T) {
 		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
-			OldOutputs: resource.FromResourcePropertyMap(olds),
-			NewInputs:  resource.FromResourcePropertyMap(news),
+			OldOutputs: olds,
+			NewInputs:  news,
 		})
 		require.NoError(t, err)
 		assert.True(t, diff.Replace())
@@ -1039,7 +1039,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		require.NotNil(t, p)
 
 		// Verify the mappings can be retrieved from the original inputs
-		retrieved, err := GetEnvironmentVariableMappings(old.Inputs)
+		retrieved, err := GetEnvironmentVariableMappings(resource.ToResourcePropertyMap(old.Inputs))
 		require.NoError(t, err)
 		assert.Equal(t, mappings, retrieved)
 	})

@@ -308,9 +308,10 @@ func TestStateMigrationWaitsForAsyncPlanning(t *testing.T) {
 		"version": resource.NewProperty("1.0.0"),
 		"value":   resource.NewProperty("new"),
 	}
+	providerProps := resource.FromResourcePropertyMap(oldProviderInputs)
 	providerState := &pkgresource.State{
 		Type: providerType, URN: providerURN, Custom: true, ID: providerID,
-		Inputs: oldProviderInputs, Outputs: oldProviderInputs,
+		Inputs: providerProps, Outputs: providerProps,
 	}
 	componentState := &pkgresource.State{
 		Type: componentType, URN: componentURN,

@@ -67,9 +67,9 @@ func init() {
 		require.ElementsMatch(l, expected, d.PropertyDependencies["text"],
 			"unexpected d.PropertyDependencies[text]")
 
-		assert.Equal(l, eTextSecret, e.Inputs["text"].IsSecret(),
+		assert.Equal(l, eTextSecret, e.Inputs.Get("text").Secret(),
 			"unexpected e.Inputs[text] secretness")
-		assert.True(l, f.Inputs["text"].IsSecret(),
+		assert.True(l, f.Inputs.Get("text").Secret(),
 			"f.Inputs[text] should always be secret")
 	}
 

@@ -61,7 +61,7 @@ func TestDeploymentSerialization(t *testing.T) {
 		Custom: true,
 		Delete: false,
 		ID:     resource.ID("test-resource-x"),
-		Inputs: resource.NewPropertyMapFromMap(map[string]any{
+		Inputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 			"in-nil":         nil,
 			"in-bool":        true,
 			"in-float64":     float64(1.5),
@@ -78,8 +78,8 @@ func TestDeploymentSerialization(t *testing.T) {
 			"in-component-resource-reference":         resource.MakeComponentResourceReference("urn", "1.2.3").V,
 			"in-custom-resource-reference":            resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
 			"in-custom-resource-reference-unknown-id": resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
-		}),
-		Outputs: resource.NewPropertyMapFromMap(map[string]any{
+		})),
+		Outputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 			"out-nil":         nil,
 			"out-bool":        false,
 			"out-float64":     float64(76),
@@ -92,7 +92,7 @@ func TestDeploymentSerialization(t *testing.T) {
 				"z": float64(999.9),
 			},
 			"out-empty-map": map[string]any{},
-		}),
+		})),
 		Parent:   "",
 		Protect:  false,
 		Taint:    false,
@@ -459,11 +459,14 @@ func TestResourceSnippetIDRoundTrip(t *testing.T) {
 
 	const snippetID = "89ed2ff3-1139-54c2-b53b-c3d9fb860da6"
 	res := &pkgresource.State{
-		Type:      tokens.Type("pkgA:index:res"),
-		URN:       resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
-		Custom:    true,
-		Inputs:    resource.PropertyMap{"propA": resource.NewProperty(true)},
-		Outputs:   resource.PropertyMap{},
+		Type:   tokens.Type("pkgA:index:res"),
+		URN:    resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
+		Custom: true,
+		Inputs: property.NewMap(map[string]property.Value{
+			"propA": property.New(true),
+		}),
+
+		Outputs:   property.Map{},
 		SnippetID: snippetID,
 	}
 
@@ -565,11 +568,11 @@ func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
 	deserialized, err := DeserializePropertyValue(serialized, config.NewPanicCrypter())
 	require.NoError(t, err)
 
-	assert.Equal(t, resource.NewPropertyValue(map[string]any{
-		"component-resource":         resource.MakeComponentResourceReference("urn", "1.2.3").V,
-		"custom-resource":            resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
-		"custom-resource-unknown-id": resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
-	}), deserialized)
+	assert.Equal(t, property.New(property.NewMap(map[string]property.Value{
+		"component-resource":         property.New(property.ResourceReference{URN: "urn", PackageVersion: "1.2.3"}),
+		"custom-resource":            property.New(property.ResourceReference{URN: "urn2", ID: property.New("id"), PackageVersion: "2.3.4"}),
+		"custom-resource-unknown-id": property.New(property.ResourceReference{URN: "urn3", ID: property.New(""), PackageVersion: "3.4.5"}),
+	})), deserialized)
 }
 
 func TestCustomSerialization(t *testing.T) {
@@ -675,7 +678,7 @@ func TestCustomSerialization(t *testing.T) {
 	t.Run("SerializeProperties", func(t *testing.T) {
 		t.Parallel()
 
-		serializedPropMap, err := SerializeProperties(t.Context(), propMap, config.BlindingCrypter, false /* showSecrets */)
+		serializedPropMap, err := SerializeProperties(t.Context(), resource.FromResourcePropertyMap(propMap), config.BlindingCrypter, false /* showSecrets */)
 		require.NoError(t, err)
 
 		// Now JSON encode the results?
@@ -830,8 +833,8 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 				Custom:       false,
 				Delete:       false,
 				ID:           "",
-				Inputs:       resource.PropertyMap{},
-				Outputs:      resource.PropertyMap{},
+				Inputs:       property.Map{},
+				Outputs:      property.Map{},
 				Parent:       "",
 				Protect:      false,
 				Dependencies: nil,
@@ -847,7 +850,7 @@ func TestSerializePropertyValue(t *testing.T) {
 	ctx := t.Context()
 	rapid.Check(t, func(t *rapid.T) {
 		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value")
-		_, err := SerializePropertyValue(ctx, v, config.NopEncrypter, false)
+		_, err := SerializePropertyValue(ctx, resource.FromResourcePropertyValue(v), config.NopEncrypter, false)
 		require.NoError(t, err)
 	})
 }
@@ -859,13 +862,13 @@ func TestSerializePropertyValue_ShowSecrets(t *testing.T) {
 	ctx := t.Context()
 	crypter := config.NewPanicCrypter()
 
-	secret := resource.MakeSecret(resource.NewProperty("secret"))
+	secret := property.New("secret").WithSecret(true)
 	_, err := SerializePropertyValue(ctx, secret, crypter, true)
 	require.NoError(t, err)
 
-	secret = resource.MakeSecret(resource.NewProperty([]resource.PropertyValue{
-		resource.MakeSecret(resource.NewProperty("secret")),
-	}))
+	secret = property.New([]property.Value{
+		property.New("secret").WithSecret(true),
+	}).WithSecret(true)
 	_, err = SerializePropertyValue(ctx, secret, crypter, true)
 	require.NoError(t, err)
 }
@@ -881,7 +884,7 @@ func TestDeserializePropertyValue(t *testing.T) {
 }
 
 func wireValue(ctx context.Context, v resource.PropertyValue) (any, error) {
-	object, err := SerializePropertyValue(ctx, v, config.NopEncrypter, false)
+	object, err := SerializePropertyValue(ctx, resource.FromResourcePropertyValue(v), config.NopEncrypter, false)
 	if err != nil {
 		return nil, err
 	}
@@ -958,7 +961,12 @@ func TestRoundTripPropertyValue(t *testing.T) {
 		deserialized, err := DeserializePropertyValue(wireObject, config.NopDecrypter)
 		require.NoError(t, err)
 
-		resource_testing.AssertEqualPropertyValues(t, replaceOutputsWithInner(original), deserialized)
+		// Normalize the expected tree through the property.Value model: that model collapses nested
+		// secrets and drops output metadata, so the round-trip is only expected to agree up to that
+		// normalization.
+		expected := resource.ToResourcePropertyValue(
+			resource.FromResourcePropertyValue(replaceOutputsWithInner(original)))
+		resource_testing.AssertEqualPropertyValues(t, expected, resource.ToResourcePropertyValue(deserialized))
 	})
 }
 
@@ -1131,10 +1139,10 @@ func TestSecretInputRoundTrip(t *testing.T) {
 	res := &pkgresource.State{
 		URN:  "urn:pulumi:stack::project::pkg:index:type::name",
 		Type: "pkg:index:type",
-		Inputs: resource.NewPropertyMapFromMap(map[string]any{
+		Inputs: resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 			"normal": "hello",
 			"secret": resource.MakeSecret(resource.NewProperty("there")),
-		}),
+		})),
 	}
 
 	sm := b64.NewBase64SecretsManager()
@@ -1144,10 +1152,10 @@ func TestSecretInputRoundTrip(t *testing.T) {
 
 	deserialized, err := DeserializeResource(serialized, sm.Decrypter())
 	require.NoError(t, err)
-	require.Equal(t, resource.NewPropertyMapFromMap(map[string]any{
+	require.Equal(t, resource.FromResourcePropertyMap(resource.NewPropertyMapFromMap(map[string]any{
 		"normal": "hello",
 		"secret": resource.MakeSecret(resource.NewProperty("there")),
-	}), deserialized.Inputs)
+	})), deserialized.Inputs)
 }
 
 // Tests that when a deployment has no root stack resource, DeserializeStackOutputs returns nil outputs.
@@ -1158,7 +1166,7 @@ func TestDeserializeStackOutputs_NoRootStackResource_ReturnsNil(t *testing.T) {
 
 	outputs, err := DeserializeStackOutputs(t.Context(), deployment, b64.Base64SecretsProvider)
 	require.NoError(t, err)
-	require.Nil(t, outputs)
+	require.Zero(t, outputs.Len())
 }
 
 // Tests that when there are secrets in the deployment, but not in the stack outputs, no decrypt calls are made
@@ -1210,10 +1218,10 @@ func TestDeserializeStackOutputs_SecretsInSnapshotButNotInStackOutputs_NoDecrypt
 
 	outputs, err := DeserializeStackOutputs(t.Context(), deployment, provider)
 	require.NoError(t, err)
-	assert.Equal(t, resource.PropertyMap{
-		"foo":   resource.NewProperty(42.0),
-		"hello": resource.NewProperty("world"),
-	}, outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"foo":   property.New(42.0),
+		"hello": property.New("world"),
+	}), outputs)
 }
 
 // Test that DeserializeStackOutputs correctly decrypts secrets found in the stack outputs.
@@ -1247,11 +1255,11 @@ func TestDeserializeStackOutputs_SecretsInStackOutputs_Decrypted(t *testing.T) {
 
 	outputs, err := DeserializeStackOutputs(t.Context(), deployment, b64.Base64SecretsProvider)
 	require.NoError(t, err)
-	assert.Equal(t, resource.PropertyMap{
-		"foo":    resource.NewProperty(42.0),
-		"hello":  resource.NewProperty("world"),
-		"secret": resource.MakeSecret(resource.NewProperty("super secret")),
-	}, outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"foo":    property.New(42.0),
+		"hello":  property.New("world"),
+		"secret": property.New("super secret").WithSecret(true),
+	}), outputs)
 }
 
 // Test that DecryptStackOutputs resolves a plaintext-form secret without a decrypt call.
@@ -1286,10 +1294,10 @@ func TestDecryptStackOutputs_PlaintextSecret_Resolved(t *testing.T) {
 
 	got, err := DecryptStackOutputs(t.Context(), outputs, &apitype.SecretsProvidersV1{Type: "mock"}, provider)
 	require.NoError(t, err)
-	assert.Equal(t, resource.PropertyMap{
-		"hello":  resource.NewProperty("world"),
-		"secret": resource.MakeSecret(resource.NewProperty("super secret")),
-	}, got)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"hello":  property.New("world"),
+		"secret": property.New("super secret").WithSecret(true),
+	}), got)
 }
 
 func TestSerializeByteString(t *testing.T) {
@@ -1298,7 +1306,7 @@ func TestSerializeByteString(t *testing.T) {
 
 	const raw = "\x00hello \x80\xfe\xff world\xf0\x28"
 
-	serialized, err := SerializePropertyValue(ctx, resource.NewProperty(raw), config.NopEncrypter, false)
+	serialized, err := SerializePropertyValue(ctx, property.New(raw), config.NopEncrypter, false)
 	require.NoError(t, err)
 	assert.Equal(t, map[string]any{
 		resource.SigKey: resource.ByteStringSig,
@@ -1313,7 +1321,7 @@ func TestSerializeByteString(t *testing.T) {
 
 	deserialized, err := DeserializePropertyValue(wire, config.NopDecrypter)
 	require.NoError(t, err)
-	assert.Equal(t, resource.NewProperty(raw), deserialized)
+	assert.Equal(t, property.New(raw), deserialized)
 }
 
 // TestByteStringDeploymentRoundTrip verifies that a resource with a property containing non-UTF8
@@ -1325,11 +1333,16 @@ func TestByteStringDeploymentRoundTrip(t *testing.T) {
 
 	const raw = "\x00hello \x80\xfe\xff world\xf0\x28"
 	res := &pkgresource.State{
-		Type:    tokens.Type("pkgA:index:res"),
-		URN:     resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
-		Custom:  true,
-		Inputs:  resource.PropertyMap{"propA": resource.NewProperty(raw)},
-		Outputs: resource.PropertyMap{"propA": resource.MakeSecret(resource.NewProperty(raw))},
+		Type:   tokens.Type("pkgA:index:res"),
+		URN:    resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
+		Custom: true,
+		Inputs: property.NewMap(map[string]property.Value{
+			"propA": property.New(raw),
+		}),
+
+		Outputs: property.NewMap(map[string]property.Value{
+			"propA": property.New(raw).WithSecret(true),
+		}),
 	}
 
 	snap := &deploy.Snapshot{
@@ -1569,8 +1582,8 @@ func TestDeserializeDeploymentV3_BatchesSecrets(t *testing.T) {
 			return out
 		}
 
-		expected := make([]resource.PropertyMap, len(plain.Resources)*2)
-		expectedTriggers := make([]resource.PropertyValue, len(plain.Resources))
+		expected := make([]property.Map, len(plain.Resources)*2)
+		expectedTriggers := make([]property.Value, len(plain.Resources))
 		for i := range plain.Resources {
 			res := &plain.Resources[i]
 			// Capture the plaintext-decoded form for the round-trip assertion before we encrypt.
@@ -1610,10 +1623,16 @@ func TestDeserializeDeploymentV3_BatchesSecrets(t *testing.T) {
 		// Round-trip equality: the deserialized tree must match the original plaintext tree.
 		// DeepEquals treats NaN as equal to NaN, which generated float values can produce.
 		for i, res := range snap.Resources {
-			require.True(t, propertyMapsNaNEqual(expected[i*2], res.Inputs), "resource %d inputs", i)
-			require.True(t, propertyMapsNaNEqual(expected[i*2+1], res.Outputs), "resource %d outputs", i)
-			if expectedTriggers[i].V != nil {
-				require.True(t, propertyValuesNaNEqual(expectedTriggers[i], resource.ToResourcePropertyValue(res.ReplacementTrigger)),
+			require.True(t, propertyMapsNaNEqual(
+				resource.ToResourcePropertyMap(expected[i*2]),
+				resource.ToResourcePropertyMap(res.Inputs)), "resource %d inputs", i)
+			require.True(t, propertyMapsNaNEqual(
+				resource.ToResourcePropertyMap(expected[i*2+1]),
+				resource.ToResourcePropertyMap(res.Outputs)), "resource %d outputs", i)
+			if !expectedTriggers[i].IsNull() {
+				require.True(t, propertyValuesNaNEqual(
+					resource.ToResourcePropertyValue(expectedTriggers[i]),
+					resource.ToResourcePropertyValue(res.ReplacementTrigger)),
 					"resource %d replacement trigger", i)
 			}
 		}
@@ -1631,8 +1650,8 @@ func TestSerializeResourceReportsByteString(t *testing.T) {
 			Type:    tokens.Type("pkgA:index:res"),
 			URN:     resource.NewURN("dev", "proj", "", tokens.Type("pkgA:index:res"), "r1"),
 			Custom:  true,
-			Inputs:  resource.PropertyMap{},
-			Outputs: outputs,
+			Inputs:  property.Map{},
+			Outputs: resource.FromResourcePropertyMap(outputs),
 		}
 	}
 

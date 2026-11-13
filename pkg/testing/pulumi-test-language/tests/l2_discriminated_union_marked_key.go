@@ -88,22 +88,22 @@ func init() {
 						"field2":           property.New("known"),
 					}),
 					"unionOut": secretUnion,
-				}), resource.FromResourcePropertyMap(first.Outputs))
+				}), first.Outputs)
 
 				// The secret discriminator flows through the program into second's input. SDKs may
 				// promote the nested secret to the whole union value, so compare with the secret
 				// markers stripped and assert secretness separately.
 				second := RequireSingleNamedResource(l, res.Snap.Resources, "second")
-				secondInputs := resource.FromResourcePropertyMap(second.Inputs)
+				secondInputs := second.Inputs
 				unionIn, has := secondInputs.GetOk("unionIn")
 				require.True(l, has, "expected second to have input unionIn")
 				assert.True(l, unionIn.HasSecrets(),
 					"expected second's unionIn input to be secret: %v", unionIn)
 				assert.Equal(l, plainUnion, stripSecrets(unionIn))
-				require.Equal(l, secretUnion, resource.FromResourcePropertyMap(second.Outputs).Get("unionOut"))
+				require.Equal(l, secretUnion, second.Outputs.Get("unionOut"))
 
 				stack := RequireSingleResource(l, res.Snap.Resources, resource.RootStackType)
-				stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+				stackOutputs := stack.Outputs
 				out, has := stackOutputs.GetOk("out")
 				require.True(l, has, "expected stack output out")
 				assert.True(l, out.HasSecrets(), "expected stack output out to be secret: %v", out)

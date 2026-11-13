@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -32,12 +31,12 @@ func init() {
 				err, snapshot, changes := res.Err, res.Snap, res.Changes
 				RequireStackResource(l, err, changes)
 				stack := RequireSingleResource(l, snapshot.Resources, "pulumi:pulumi:Stack")
-				stackOutputs := resource.FromResourcePropertyMap(stack.Outputs)
+				stackOutputs := stack.Outputs
 
 				l.Logf("# Checking Map[Map[Union]]")
 
 				mmu := RequireSingleNamedResource(l, snapshot.Resources, "mapMapUnionExample")
-				mmuOutputs := resource.FromResourcePropertyMap(mmu.Outputs)
+				mmuOutputs := mmu.Outputs
 
 				expected := property.New(map[string]property.Value{
 					"key1": property.New(map[string]property.Value{
@@ -54,10 +53,10 @@ func init() {
 				si2 := RequireSingleNamedResource(l, snapshot.Resources, "stringOrIntegerExample2")
 
 				require.Equal(l, property.New(42.0),
-					resource.FromResourcePropertyMap(si1.Outputs).Get("stringOrIntegerProperty"))
+					si1.Outputs.Get("stringOrIntegerProperty"))
 
 				require.Equal(l, property.New("forty two"),
-					resource.FromResourcePropertyMap(si2.Outputs).Get("stringOrIntegerProperty"))
+					si2.Outputs.Get("stringOrIntegerProperty"))
 
 				l.Logf("# Checking List<Union<String, Enum>>")
 
@@ -68,26 +67,26 @@ func init() {
 						property.New("Send"),
 						property.New("NotAnEnumValue"),
 					}),
-					resource.FromResourcePropertyMap(seul.Outputs).Get("stringEnumUnionListProperty"))
+					seul.Outputs.Get("stringEnumUnionListProperty"))
 
 				l.Logf("# Checking typed enum (safe)")
 
 				safeEnum := RequireSingleNamedResource(l, snapshot.Resources, "safeEnumExample")
 				require.Equal(l,
 					property.New("Block"),
-					resource.FromResourcePropertyMap(safeEnum.Outputs).Get("typedEnumProperty"))
+					safeEnum.Outputs.Get("typedEnumProperty"))
 
 				l.Logf("# Checking typed enum (output)")
 
 				enumOutputExample := RequireSingleNamedResource(l, snapshot.Resources, "enumOutputExample")
 				require.Equal(l,
 					property.New("Block"),
-					resource.FromResourcePropertyMap(enumOutputExample.Outputs).Get("type"))
+					enumOutputExample.Outputs.Get("type"))
 
 				outputEnum := RequireSingleNamedResource(l, snapshot.Resources, "outputEnumExample")
 				require.Equal(l,
 					property.New("Block"),
-					resource.FromResourcePropertyMap(outputEnum.Outputs).Get("typedEnumProperty"))
+					outputEnum.Outputs.Get("typedEnumProperty"))
 			},
 		}},
 	}

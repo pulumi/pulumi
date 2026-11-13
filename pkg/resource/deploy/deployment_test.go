@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func newResource(name string) *pkgresource.State {
@@ -36,8 +37,8 @@ func newResource(name string) *pkgresource.State {
 	return &pkgresource.State{
 		Type:    ty,
 		URN:     resource.NewURN(tokens.QName("teststack"), tokens.PackageName("pkg"), ty, ty, name),
-		Inputs:  make(resource.PropertyMap),
-		Outputs: make(resource.PropertyMap),
+		Inputs:  property.Map{},
+		Outputs: property.Map{},
 	}
 }
 

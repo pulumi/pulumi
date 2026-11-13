@@ -453,8 +453,8 @@ func (rs *resourceStatusServer) unmarshalViewStepState(
 		Parent:  viewOf,
 		URN:     stateURN,
 		Type:    stateType,
-		Inputs:  inputs,
-		Outputs: outputs,
+		Inputs:  resource.FromResourcePropertyMap(inputs),
+		Outputs: resource.FromResourcePropertyMap(outputs),
 	}, nil
 }
 

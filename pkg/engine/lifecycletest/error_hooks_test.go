@@ -2208,6 +2208,8 @@ func TestErrorHooks_RetryAfterInitErrorUpdatesInsteadOfCreating(t *testing.T) {
 	require.Len(t, snap.Resources, 2)
 	res := snap.Resources[1]
 	require.Equal(t, resource.ID("created-id"), res.ID)
-	require.Equal(t, resource.PropertyMap{"out": resource.NewProperty("ready")}, res.Outputs)
+	require.Equal(t, property.NewMap(map[string]property.Value{
+		"out": property.New("ready"),
+	}), res.Outputs)
 	require.Empty(t, res.InitErrors)
 }

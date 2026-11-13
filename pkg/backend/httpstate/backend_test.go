@@ -1391,9 +1391,9 @@ func TestRunEngineActionPropagatesSnapshotJournalerError(t *testing.T) {
 			URN: resource.NewURN(
 				stackName.Q(), tokens.PackageName("project"), "",
 				tokens.Type("test:index:Resource"), "resource"),
-			Outputs: resource.PropertyMap{
-				"secret": resource.MakeSecret(resource.NewProperty("value")),
-			},
+			Outputs: property.NewMap(map[string]property.Value{
+				"secret": property.New("value").WithSecret(true),
+			}),
 		}},
 	}
 	fx := newRunEngineActionFixture(t, snap, nil, mgr)
@@ -1597,7 +1597,7 @@ func TestRunEngineActionCoherenceWindow(t *testing.T) {
 				Resources: []*pkgresource.State{{
 					Type:    resource.RootStackType,
 					URN:     stackURN,
-					Outputs: resource.PropertyMap{"foo": resource.NewProperty("bar")},
+					Outputs: property.NewMap(map[string]property.Value{"foo": property.New("bar")}),
 				}},
 			}
 			fx := newRunEngineActionFixture(t, snap, provider, b64.NewBase64SecretsManager())

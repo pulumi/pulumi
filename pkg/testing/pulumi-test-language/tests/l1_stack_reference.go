@@ -15,7 +15,6 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +41,7 @@ func init() {
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:pulumi")
 					RequireSingleResource(l, snap.Resources, "pulumi:pulumi:StackReference")
 
-					outputs := resource.FromResourcePropertyMap(stack.Outputs)
+					outputs := stack.Outputs
 
 					require.Equal(l, 3, outputs.Len(), "expected 3 outputs")
 					AssertPropertyMapMember(l, outputs, "plain", property.New("plain"))

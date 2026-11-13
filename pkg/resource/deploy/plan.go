@@ -386,7 +386,7 @@ func checkMissingPlan(
 	}
 
 	rp := ResourcePlan{Goal: goal}
-	return rp.checkGoal(oldState.Inputs, newInputs, programGoal, showSecrets)
+	return rp.checkGoal(resource.ToResourcePropertyMap(oldState.Inputs), newInputs, programGoal, showSecrets)
 }
 
 func checkDiff(olds, news resource.PropertyMap, planDiff PlanDiff, showSecrets bool) error {

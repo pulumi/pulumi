@@ -162,9 +162,9 @@ func TestStateMigrationTransactionRewriteResources(t *testing.T) {
 	consumer := &pkgresource.State{
 		URN:      "urn:pulumi:test::test::pkg:m:Resource::consumer",
 		Provider: providerRef.String(),
-		Outputs: resource.PropertyMap{
+		Outputs: resource.FromResourcePropertyMap(resource.PropertyMap{
 			"reference": resource.MakeSecret(resource.MakeCustomResourceReference(oldURN, "old-id", "1.0.0")),
-		},
+		}),
 	}
 	unrelated := &pkgresource.State{URN: "urn:pulumi:test::test::pkg:m:Resource::unrelated"}
 	transaction := &StateMigrationTransaction{
@@ -177,9 +177,9 @@ func TestStateMigrationTransactionRewriteResources(t *testing.T) {
 	require.NotSame(t, consumer, rewritten[0])
 	require.Same(t, unrelated, rewritten[1])
 
-	ref := rewritten[0].Outputs["reference"].SecretValue().Element.ResourceReferenceValue()
+	ref := rewritten[0].Outputs.Get("reference").AsResourceReference()
 	assert.Equal(t, newURN, ref.URN)
-	assert.Equal(t, "new-id", ref.ID.StringValue())
+	assert.Equal(t, "new-id", ref.ID.AsString())
 	assert.Empty(t, ref.PackageVersion)
 	rewrittenProvider, err := sdkproviders.ParseReference(rewritten[0].Provider)
 	require.NoError(t, err)

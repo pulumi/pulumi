@@ -49,7 +49,7 @@ func init() {
 						"expected component type",
 					)
 					require.Equal(
-						l, "my-resource", comp.Outputs["label"].StringValue(),
+						l, "my-resource", comp.Outputs.Get("label").AsString(),
 						"expected label output",
 					)
 
@@ -59,7 +59,7 @@ func init() {
 						"expected child custom type",
 					)
 					require.Equal(
-						l, "my-resource", child.Outputs["value"].StringValue(),
+						l, "my-resource", child.Outputs.Get("value").AsString(),
 						"expected child value output",
 					)
 				},

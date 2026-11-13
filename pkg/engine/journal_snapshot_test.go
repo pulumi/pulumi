@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/require"
 )
 
@@ -123,24 +124,32 @@ func TestMustWrite(t *testing.T) {
 		{
 			name: "Inputs changed",
 			old: &pkgresource.State{
-				URN:    defaultURN,
-				Inputs: resource.PropertyMap{"key": resource.NewProperty("value1")},
+				URN: defaultURN,
+				Inputs: property.NewMap(map[string]property.Value{
+					"key": property.New("value1"),
+				}),
 			},
 			new: &pkgresource.State{
-				URN:    defaultURN,
-				Inputs: resource.PropertyMap{"key": resource.NewProperty("value2")},
+				URN: defaultURN,
+				Inputs: property.NewMap(map[string]property.Value{
+					"key": property.New("value2"),
+				}),
 			},
 			mustWrite: true,
 		},
 		{
 			name: "Outputs changed",
 			old: &pkgresource.State{
-				URN:     defaultURN,
-				Outputs: resource.PropertyMap{"key": resource.NewProperty("value1")},
+				URN: defaultURN,
+				Outputs: property.NewMap(map[string]property.Value{
+					"key": property.New("value1"),
+				}),
 			},
 			new: &pkgresource.State{
-				URN:     defaultURN,
-				Outputs: resource.PropertyMap{"key": resource.NewProperty("value2")},
+				URN: defaultURN,
+				Outputs: property.NewMap(map[string]property.Value{
+					"key": property.New("value2"),
+				}),
 			},
 			mustWrite: true,
 		},
@@ -253,10 +262,16 @@ func TestMustWrite(t *testing.T) {
 		{
 			name: "nothing changed",
 			old: &pkgresource.State{
-				URN:          defaultURN,
-				Type:         "pulumi:providers:aws",
-				Inputs:       resource.PropertyMap{"key": resource.NewProperty("value")},
-				Outputs:      resource.PropertyMap{"key": resource.NewProperty("value")},
+				URN:  defaultURN,
+				Type: "pulumi:providers:aws",
+				Inputs: property.NewMap(map[string]property.Value{
+					"key": property.New("value"),
+				}),
+
+				Outputs: property.NewMap(map[string]property.Value{
+					"key": property.New("value"),
+				}),
+
 				Dependencies: []resource.URN{"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 					"prop1": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
@@ -265,10 +280,16 @@ func TestMustWrite(t *testing.T) {
 				SourcePosition: "pos1",
 			},
 			new: &pkgresource.State{
-				URN:          defaultURN,
-				Type:         "pulumi:providers:aws",
-				Inputs:       resource.PropertyMap{"key": resource.NewProperty("value")},
-				Outputs:      resource.PropertyMap{"key": resource.NewProperty("value")},
+				URN:  defaultURN,
+				Type: "pulumi:providers:aws",
+				Inputs: property.NewMap(map[string]property.Value{
+					"key": property.New("value"),
+				}),
+
+				Outputs: property.NewMap(map[string]property.Value{
+					"key": property.New("value"),
+				}),
+
 				Dependencies: []resource.URN{"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},
 				PropertyDependencies: map[resource.PropertyKey][]resource.URN{
 					"prop1": {"urn:pulumi:test::stack::pulumi:pulumi:Stack::resource1"},

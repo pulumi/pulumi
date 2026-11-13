@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type MockRegisterResourceEvent struct {
@@ -76,18 +77,18 @@ func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *pkgresource.Sta
 	return &pkgresource.State{
 		Type:         tokens.Type("test"),
 		URN:          urn,
-		Inputs:       make(resource.PropertyMap),
-		Outputs:      make(resource.PropertyMap),
+		Inputs:       property.Map{},
+		Outputs:      property.Map{},
 		Dependencies: deps,
 	}
 }
 
-func NewResourceWithInputs(urn resource.URN, inputs resource.PropertyMap) *pkgresource.State {
+func NewResourceWithInputs(urn resource.URN, inputs property.Map) *pkgresource.State {
 	return &pkgresource.State{
 		Type:         tokens.Type("test"),
 		URN:          urn,
 		Inputs:       inputs,
-		Outputs:      make(resource.PropertyMap),
+		Outputs:      property.Map{},
 		Dependencies: []resource.URN{},
 	}
 }
@@ -180,12 +181,12 @@ func TestSamesWithEmptyArraysInInputs(t *testing.T) {
 	manager, sp := MockSetup(t, snap)
 
 	// Model passing into and back out of RPC layer (e.g. via `Check`)
-	marshalledInputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{})
+	marshalledInputs, err := plugin.MarshalProperties(resource.ToResourcePropertyMap(inputs), plugin.MarshalOptions{})
 	require.NoError(t, err)
 	inputsUpdated, err := plugin.UnmarshalProperties(marshalledInputs, plugin.MarshalOptions{})
 	require.NoError(t, err)
 
-	resUpdated := NewResourceWithInputs(res.URN, inputsUpdated)
+	resUpdated := NewResourceWithInputs(res.URN, resource.FromResourcePropertyMap(inputsUpdated))
 	same := deploy.NewSameStep(nil, nil, res, resUpdated)
 	mutation, err := manager.BeginMutation(same)
 	require.NoError(t, err)
@@ -275,9 +276,9 @@ func TestStateMigrationPersistenceFailureLeavesLiveStateUntouched(t *testing.T) 
 	predecessor.Custom = true
 	predecessor.ID = "resource-id"
 	consumer := NewResource(consumerURN)
-	consumer.Outputs = resource.PropertyMap{
+	consumer.Outputs = resource.FromResourcePropertyMap(resource.PropertyMap{
 		"reference": resource.MakeCustomResourceReference(predecessorURN, predecessor.ID, ""),
-	}
+	})
 	snap := NewSnapshot([]*pkgresource.State{predecessor, consumer})
 	manager, persister := MockSetup(t, snap)
 
@@ -290,9 +291,9 @@ func TestStateMigrationPersistenceFailureLeavesLiveStateUntouched(t *testing.T) 
 	successor := predecessor.Copy()
 	successor.URN = successorURN
 	preparedConsumer := consumer.Copy()
-	preparedConsumer.Outputs = resource.PropertyMap{
+	preparedConsumer.Outputs = resource.FromResourcePropertyMap(resource.PropertyMap{
 		"reference": resource.MakeCustomResourceReference(successorURN, successor.ID, ""),
-	}
+	})
 	transaction := &deploy.StateMigrationTransaction{
 		RootURN:                  predecessorURN,
 		PriorSubtree:             []*pkgresource.State{predecessor},
@@ -307,7 +308,7 @@ func TestStateMigrationPersistenceFailureLeavesLiveStateUntouched(t *testing.T) 
 	require.ErrorContains(t, err, "save failed")
 	require.Len(t, persister.SavedSnapshots, 1)
 	assert.Equal(t, predecessorURN,
-		currentConsumer.Outputs["reference"].ResourceReferenceValue().URN)
+		currentConsumer.Outputs.Get("reference").AsResourceReference().URN)
 	assert.Same(t, predecessor, snap.Resources[0])
 	assert.Same(t, consumer, snap.Resources[1])
 
@@ -405,7 +406,9 @@ func TestSamesWithOtherMeaningfulChanges(t *testing.T) {
 
 	// Change the resource outputs.
 	changes = append(changes, NewResource(resourceA.URN))
-	changes[3].Outputs = resource.PropertyMap{"foo": resource.NewProperty("bar")}
+	changes[3].Outputs = property.NewMap(map[string]property.Value{
+		"foo": property.New("bar"),
+	})
 
 	snap := NewSnapshot([]*pkgresource.State{
 		provider,
@@ -797,9 +800,9 @@ func TestRecordingUpdateSuccess(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
@@ -834,9 +837,9 @@ func TestRecordingUpdateFailure(t *testing.T) {
 	t.Parallel()
 
 	resourceA := NewResource("a")
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("a")
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
 	})
@@ -960,12 +963,12 @@ func TestRecordingReadSuccessPreviousResource(t *testing.T) {
 	resourceA.ID = "some-c"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("c")
 	resourceANew.ID = "some-other-c"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
@@ -1031,12 +1034,12 @@ func TestRecordingReadFailurePreviousResource(t *testing.T) {
 	resourceA.ID = "some-e"
 	resourceA.External = true
 	resourceA.Custom = true
-	resourceA.Inputs["key"] = resource.NewProperty("old")
+	resourceA.Inputs = resourceA.Inputs.Set("key", property.New("old"))
 	resourceANew := NewResource("e")
 	resourceANew.ID = "some-new-e"
 	resourceANew.External = true
 	resourceANew.Custom = true
-	resourceANew.Inputs["key"] = resource.NewProperty("new")
+	resourceANew.Inputs = resourceANew.Inputs.Set("key", property.New("new"))
 
 	snap := NewSnapshot([]*pkgresource.State{
 		resourceA,
@@ -1090,7 +1093,10 @@ func TestRegisterOutputs(t *testing.T) {
 
 	// Now, change the outputs and issue another RRO.
 	resourceA2 := NewResource("a")
-	resourceA2.Outputs = resource.PropertyMap{"hello": resource.NewProperty("world")}
+	resourceA2.Outputs = property.NewMap(map[string]property.Value{
+		"hello": property.New("world"),
+	})
+
 	step = deploy.NewSameStep(nil, nil, resourceA, resourceA2)
 	err = manager.RegisterResourceOutputs(step)
 	require.NoError(t, err)

@@ -17,7 +17,6 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -47,30 +46,30 @@ func init() {
 					wantInputs := property.NewMap(map[string]property.Value{
 						"theInput": property.New(true),
 					})
-					assert.Equal(l, wantInputs, resource.FromResourcePropertyMap(first.Inputs),
+					assert.Equal(l, wantInputs, first.Inputs,
 						"expected inputs to be %v", wantInputs)
-					assert.Equal(l, wantInputs, resource.FromResourcePropertyMap(second.Inputs),
+					assert.Equal(l, wantInputs, second.Inputs,
 						"expected inputs to be %v", wantInputs)
 
 					wantOutputs := property.NewMap(map[string]property.Value{
 						"theOutput": property.New(true),
 					})
-					assert.Equal(l, wantOutputs, resource.FromResourcePropertyMap(first.Outputs),
+					assert.Equal(l, wantOutputs, first.Outputs,
 						"expected outputs to be %v", wantOutputs)
-					assert.Equal(l, wantOutputs, resource.FromResourcePropertyMap(second.Outputs),
+					assert.Equal(l, wantOutputs, second.Outputs,
 						"expected outputs to be %v", wantOutputs)
 
 					wantThirdInputs := property.NewMap(map[string]property.Value{
 						"theInput":     property.New(true),
 						"resourceName": property.New("my-cluster"),
 					})
-					assert.Equal(l, wantThirdInputs, resource.FromResourcePropertyMap(third.Inputs))
+					assert.Equal(l, wantThirdInputs, third.Inputs)
 
 					wantThirdOutputs := property.NewMap(map[string]property.Value{
 						"theOutput":    property.New(true),
 						"resourceName": property.New("my-cluster"),
 					})
-					assert.Equal(l, wantThirdOutputs, resource.FromResourcePropertyMap(third.Outputs))
+					assert.Equal(l, wantThirdOutputs, third.Outputs)
 				},
 			},
 		},

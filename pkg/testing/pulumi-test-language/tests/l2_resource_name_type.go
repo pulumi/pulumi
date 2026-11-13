@@ -47,7 +47,7 @@ func init() {
 						"name": property.New("res1"),
 						"type": property.New("simple:index:Resource"),
 					})
-					assert.Equal(l, want, resource.FromResourcePropertyMap(stk.Outputs),
+					assert.Equal(l, want, stk.Outputs,
 						"expected stack outputs to be %v", want)
 				},
 			},

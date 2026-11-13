@@ -497,7 +497,7 @@ func (r *registrar) registerResource(ctx context.Context, res apitype.ResourceV3
 			if err != nil {
 				return "", "", fmt.Errorf("deserializing inputs for %v: %w", res.URN, err)
 			}
-			inputObject, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+			inputObject, err := plugin.MarshalProperties(resource.ToResourcePropertyMap(inputs), plugin.MarshalOptions{
 				KeepSecrets:   true,
 				KeepResources: true,
 			})
@@ -527,7 +527,7 @@ func (r *registrar) registerResource(ctx context.Context, res apitype.ResourceV3
 
 			var providerRef string
 			if res.Custom {
-				provider.outputs.Store(res.URN, outputs)
+				provider.outputs.Store(res.URN, resource.ToResourcePropertyMap(outputs))
 
 				if res.Provider != "" {
 					ref, err := providers.ParseReference(res.Provider)
@@ -590,7 +590,7 @@ func (r *registrar) registerResource(ctx context.Context, res apitype.ResourceV3
 			}
 
 			if !res.Custom {
-				outputObject, oerr := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
+				outputObject, oerr := plugin.MarshalProperties(resource.ToResourcePropertyMap(outputs), plugin.MarshalOptions{
 					KeepSecrets:   true,
 					KeepResources: true,
 				})

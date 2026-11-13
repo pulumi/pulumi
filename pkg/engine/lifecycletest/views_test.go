@@ -223,12 +223,12 @@ func TestViewsBasic(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	// Run a second update, should be same.
 	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient,
@@ -242,12 +242,12 @@ func TestViewsBasic(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	// Run a third update with a change, should update.
 	ins = property.NewMap(map[string]property.Value{
@@ -264,12 +264,12 @@ func TestViewsBasic(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("baz"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("baz"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("baz"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("baz"),
+	}), snap.Resources[2].Outputs)
 
 	// Run a fourth update, this time deleting the resource and its view.
 	creating = false
@@ -428,12 +428,12 @@ func TestViewsUpdateError(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	// Run a second update, we should get an error for the view.
 	expectError = true
@@ -581,12 +581,12 @@ func TestViewsUpdateDelete(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	// Run an update that will delete the view.
 	ins = property.NewMap(map[string]property.Value{
@@ -713,12 +713,12 @@ func TestViewsRefreshSame(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
@@ -728,12 +728,12 @@ func TestViewsRefreshSame(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 }
 
 // TestViews_RefreshBeforeUpdate_Same tests that same view steps work from a refresh operation.
@@ -848,12 +848,12 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap = p.Run(t, snap)
@@ -863,12 +863,12 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 }
 
 // TestViewsRefreshUpdate tests that an update view step works from a refresh operation.
@@ -985,12 +985,12 @@ func TestViewsRefreshUpdate(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
@@ -1000,12 +1000,12 @@ func TestViewsRefreshUpdate(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("baz"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("baz"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("baz"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("baz"),
+	}), snap.Resources[2].Outputs)
 }
 
 // TestViews_RefreshBeforeUpdate_Update tests that an update view step works from a refresh operation that happens
@@ -1125,12 +1125,12 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap = p.Run(t, snap)
@@ -1140,12 +1140,12 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("baz"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("baz"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("baz"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("baz"),
+	}), snap.Resources[2].Outputs)
 }
 
 // TestViewsRefreshDelete tests that a delete view step works from a refresh operation.
@@ -1252,12 +1252,12 @@ func TestViewsRefreshDelete(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	p.Steps = []lt.TestStep{{Op: Refresh}}
 	snap = p.Run(t, snap)
@@ -1373,12 +1373,12 @@ func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap = p.Run(t, snap)
@@ -1453,12 +1453,12 @@ func TestViewsImport(t *testing.T) {
 	assert.Equal(t, snap.Resources[2].URN, snap.Resources[3].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[3].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[3].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[3].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[3].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[3].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[3].Outputs)
 
 	// Import.
 	p.Steps = []lt.TestStep{{Op: lt.ImportOp([]deploy.Import{{
@@ -1473,12 +1473,12 @@ func TestViewsImport(t *testing.T) {
 	assert.Equal(t, snap.Resources[2].URN, snap.Resources[3].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[3].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[3].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[3].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[3].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[3].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[3].Outputs)
 	assert.Equal(t, "imported-id", snap.Resources[4].ID.String())
 }
 
@@ -1653,12 +1653,12 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	// Run another update, with a change, should update.
 	ins = property.NewMap(map[string]property.Value{
@@ -1676,12 +1676,12 @@ func TestViewsDeleteBeforeReplace(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("baz"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("baz"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("baz"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("baz"),
+	}), snap.Resources[2].Outputs)
 }
 
 // TestViewsCreateBeforeReplace tests that a sequence of CreateBeforeReplace view steps works as expected.
@@ -1861,12 +1861,12 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	// Run another update, with a change, should update.
 	ins = property.NewMap(map[string]property.Value{
@@ -1884,12 +1884,12 @@ func TestViewsCreateBeforeReplace(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("baz"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("baz"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("baz"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("baz"),
+	}), snap.Resources[2].Outputs)
 }
 
 // TestViewsRefreshDriftDeleteCreate_UpdateRefresh verifies that during a `pulumi up --refresh` operation, a view can be
@@ -2032,12 +2032,12 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	// Run `pulumi up --refresh`. In Read the view is deleted. In Update the view is recreated.
 	p.Steps = []lt.TestStep{{Op: Update}}
@@ -2049,12 +2049,12 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("baz"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("baz"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("baz"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("baz"),
+	}), snap.Resources[2].Outputs)
 }
 
 // TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate verifies that during a `pulumi up` operation, a view can be
@@ -2202,12 +2202,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	// Run `pulumi up`. The owner resource is marked RefreshBeforeUpdate, so it will be refreshed.
 	// In Read the view is deleted. In Update the view is recreated.
@@ -2220,12 +2220,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("baz"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("baz"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("baz"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("baz"),
+	}), snap.Resources[2].Outputs)
 }
 
 // TestViewsRefreshDriftDeleteCreate_RefreshProgram verifies that during a `pulumi up --refresh --run-program`
@@ -2368,12 +2368,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	// Run `pulumi up --refresh --run-program`. The owner resource will be refreshed.
 	// In Read the view is deleted. In Update the view is recreated.
@@ -2388,12 +2388,12 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("baz"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("baz"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("baz"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("baz"),
+	}), snap.Resources[2].Outputs)
 }
 
 // TestViewsDestroyPreview ensures delete steps for views are synthesized during
@@ -2464,12 +2464,12 @@ func TestViewsDestroyPreview(t *testing.T) {
 	assert.Equal(t, snap.Resources[1].URN, snap.Resources[2].ViewOf)
 	assert.Equal(t, "resA-child", snap.Resources[2].URN.Name())
 	assert.Equal(t, tokens.Type("pkgA:m:typAView"), snap.Resources[2].URN.Type())
-	assert.Equal(t, resource.PropertyMap{
-		"input": resource.NewProperty("bar"),
-	}, snap.Resources[2].Inputs)
-	assert.Equal(t, resource.PropertyMap{
-		"result": resource.NewProperty("bar"),
-	}, snap.Resources[2].Outputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"input": property.New("bar"),
+	}), snap.Resources[2].Inputs)
+	assert.Equal(t, property.NewMap(map[string]property.Value{
+		"result": property.New("bar"),
+	}), snap.Resources[2].Outputs)
 
 	// Run a destroy preview and ensure we got a delete event for the view.
 	_, err = lt.TestOp(Destroy).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient,

@@ -70,7 +70,7 @@ func makeStateMetadata(
 		Type:   typ,
 		Custom: custom,
 		Parent: parent,
-		Inputs: opts.Inputs,
+		Inputs: resource.FromResourcePropertyMap(opts.Inputs),
 	}
 
 	return engine.StepEventStateMetadata{
