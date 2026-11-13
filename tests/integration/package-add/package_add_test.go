@@ -165,3 +165,17 @@ func TestPackageAddLanguageRejectsEnclosingProject(t *testing.T) {
 	require.Contains(t, stderr, "--language is for use outside a Pulumi project or plugin")
 	require.Contains(t, stderr, "Pulumi.yaml")
 }
+
+// Test that a local Node.js SDK installs a second time when an object type has a resource reference property.
+func TestPackageAddNodeResourceReferenceReinstall(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("resource-reference")
+	e.CWD = filepath.Join(e.RootPath, "nodejs")
+
+	e.RunCommand("pulumi", "package", "add", "../schema.json")
+	// The first install compiles the SDK into sdks/example/bin. A clean install must compile it again.
+	e.RunCommand("npm", "ci")
+}
