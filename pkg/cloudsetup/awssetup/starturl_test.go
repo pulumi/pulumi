@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateSSOStartURL(t *testing.T) {
@@ -37,7 +38,8 @@ func TestValidateSSOStartURL(t *testing.T) {
 	}
 	for _, u := range valid {
 		t.Run("valid "+u, func(t *testing.T) {
-			assert.NoError(t, ValidateSSOStartURL(u))
+			t.Parallel()
+			require.NoError(t, ValidateSSOStartURL(u))
 		})
 	}
 
@@ -56,6 +58,7 @@ func TestValidateSSOStartURL(t *testing.T) {
 	}
 	for _, u := range invalid {
 		t.Run("invalid "+u, func(t *testing.T) {
+			t.Parallel()
 			assert.ErrorIs(t, ValidateSSOStartURL(u), ErrInvalidSSOStartURL)
 		})
 	}
