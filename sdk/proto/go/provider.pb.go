@@ -1669,9 +1669,6 @@ func (x *CheckFailure) GetReason() string {
 
 // `CheckConfigRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.CheckConfig2) calls. It
 // captures the URN and configuration of the provider resource being checked.
-//
-// The fields of `CheckConfigRequest` use the same numbers as their counterparts in `CheckRequest`, so that a
-// `CheckConfigRequest` can be decoded as a `CheckRequest`.
 type CheckConfigRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The URN of the provider resource whose configuration is being checked, which may or may not be a [default
