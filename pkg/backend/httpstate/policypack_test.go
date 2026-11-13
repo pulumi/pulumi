@@ -159,6 +159,12 @@ func (m *mockEnvironmentsBackend) OpenYAMLEnvironment(
 	return m.openYAMLEnvironmentF(ctx, org, yaml, duration, environmentOverrides)
 }
 
+func (m *mockEnvironmentsBackend) OpenEnvironmentRevision(
+	context.Context, string, string, string, int, time.Duration,
+) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+	return nil, nil, nil
+}
+
 func TestResolveEnvironments(t *testing.T) {
 	t.Parallel()
 

@@ -80,6 +80,12 @@ func TestEvaluateManagedEnvironmentReturnsPublishedDefinition(t *testing.T) {
 func runDestroyPreview(t *testing.T, notice string, jsonDisplay bool) []engine.Event {
 	t.Helper()
 
+	return runDestroyPreviewWith(t, backend.StackConfiguration{ManagedEnvironmentNotice: notice}, jsonDisplay)
+}
+
+func runDestroyPreviewWith(t *testing.T, cfg backend.StackConfiguration, jsonDisplay bool) []engine.Event {
+	t.Helper()
+
 	provider := (&secrets.MockProvider{}).Add(b64.Type, func(json.RawMessage) (secrets.Manager, error) {
 		return b64.NewBase64SecretsManager(), nil
 	})
@@ -87,7 +93,8 @@ func runDestroyPreview(t *testing.T, notice string, jsonDisplay bool) []engine.E
 		provider, b64.NewBase64SecretsManager())
 	fx.op.Scopes = backend.CancellationScopes
 	fx.op.Opts.Display.JSONDisplay = jsonDisplay
-	fx.op.StackConfiguration.ManagedEnvironmentNotice = notice
+	fx.op.StackConfiguration.ManagedEnvironmentNotice = cfg.ManagedEnvironmentNotice
+	fx.op.StackConfiguration.DeliveryEnvironmentNotice = cfg.DeliveryEnvironmentNotice
 
 	events := make(chan engine.Event)
 	collected := make(chan []engine.Event)
@@ -161,4 +168,21 @@ func TestRunEngineActionManagedEnvironmentNoticeJSON(t *testing.T) {
 		Message:  colors.Never.Colorize(logging.FilterString(managedEnvironmentNotice)),
 		Severity: diag.Info,
 	}}, digest.Diagnostics)
+}
+
+func TestRunEngineActionSendsDeliveryEnvironmentNotice(t *testing.T) {
+	t.Parallel()
+
+	delivery := "using config from Pulumi Delivery, revision 4\n"
+	events := runDestroyPreviewWith(t, backend.StackConfiguration{
+		ManagedEnvironmentNotice:  managedEnvironmentNotice,
+		DeliveryEnvironmentNotice: delivery,
+	}, false)
+	require.Greater(t, len(events), 3)
+	assert.Equal(t,
+		engine.StdoutEventPayload{Message: logging.FilterString(managedEnvironmentNotice), Color: colors.Never},
+		events[1].Payload())
+	assert.Equal(t,
+		engine.StdoutEventPayload{Message: logging.FilterString(delivery), Color: colors.Never},
+		events[2].Payload())
 }

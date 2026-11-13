@@ -1556,6 +1556,8 @@ type CreateUpdateDetails struct {
 type UpdateRequestOptions struct {
 	// Environment is the managed ESC environment content the update was evaluated against; nil is omitted.
 	Environment *apitype.UpdateProgramEnvironment
+	// DeliveryEnvironment is the Pulumi Delivery environment revision the config was composed with; nil is omitted.
+	DeliveryEnvironment *apitype.StackDeliveryEnvironment
 }
 
 // CreateUpdate creates a new update for the indicated stack with the given kind and assorted options. If the update
@@ -1599,9 +1601,10 @@ func (pc *Client) CreateUpdate(
 			ShowReplacementSteps: false, // This is a legacy option now, the engine will always emit this information
 			ShowSames:            false, // This is a legacy option now, the engine will always emit this information
 		},
-		Metadata:        m,
-		CoherenceWindow: coherenceWindow,
-		Environment:     reqOpts.Environment,
+		Metadata:            m,
+		CoherenceWindow:     coherenceWindow,
+		Environment:         reqOpts.Environment,
+		DeliveryEnvironment: reqOpts.DeliveryEnvironment,
 	}
 
 	// Create the initial update object.
@@ -1714,9 +1717,10 @@ func (pc *Client) BeginUpdate(
 			DryRun:               dryRun,
 			Parallel:             opts.Parallel,
 		},
-		Metadata:        m,
-		CoherenceWindow: coherenceWindow,
-		Environment:     reqOpts.Environment,
+		Metadata:            m,
+		CoherenceWindow:     coherenceWindow,
+		Environment:         reqOpts.Environment,
+		DeliveryEnvironment: reqOpts.DeliveryEnvironment,
 	}
 
 	req := apitype.BeginUpdateRequest{

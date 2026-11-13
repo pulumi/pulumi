@@ -1,0 +1,3 @@
+component: cli/config
+kind: feat
+body: Compose the config Pulumi Delivery admitted to a stack when loading the stack's configuration

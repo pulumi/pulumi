@@ -499,6 +499,29 @@ type MockEnvironmentsBackend struct {
 		duration time.Duration,
 		environmentOverrides map[string]string,
 	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+
+	OpenEnvironmentRevisionF func(
+		ctx context.Context,
+		org string,
+		project string,
+		name string,
+		revision int,
+		duration time.Duration,
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
+}
+
+func (be *MockEnvironmentsBackend) OpenEnvironmentRevision(
+	ctx context.Context,
+	org string,
+	project string,
+	name string,
+	revision int,
+	duration time.Duration,
+) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+	if be.OpenEnvironmentRevisionF != nil {
+		return be.OpenEnvironmentRevisionF(ctx, org, project, name, revision, duration)
+	}
+	panic("not implemented")
 }
 
 func (be *MockEnvironmentsBackend) CreateEnvironment(
