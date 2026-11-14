@@ -1,0 +1,4 @@
+component: cli
+kind: fix
+body: Fail `pulumi console` on backends other than Pulumi Cloud instead of exiting successfully, and link to the current state backends documentation
+time: 2026-10-13T10:41:52.117605+01:00
