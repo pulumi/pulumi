@@ -1,0 +1,4 @@
+component: cli/env
+kind: improvement
+body: Rename `pulumi env change-request` to `pulumi env approvals` and support environment open requests. `pulumi env change-request` is deprecated
+time: 2026-10-30T00:00:00Z
