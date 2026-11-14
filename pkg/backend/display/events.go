@@ -277,15 +277,9 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 }
 
 func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) apitype.StepEventMetadata {
-	keys := make([]string, len(md.Keys))
-	for i, v := range md.Keys {
-		keys[i] = string(v)
-	}
+	keys := slice.Cast[string](md.Keys)
 
-	diffs := slice.Prealloc[string](len(md.Diffs))
-	for _, v := range md.Diffs {
-		diffs = append(diffs, string(v))
-	}
+	diffs := slice.Cast[string](md.Diffs)
 
 	var detailedDiff map[string]apitype.PropertyDiff
 	if md.DetailedDiff != nil {
@@ -547,14 +541,8 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 }
 
 func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEventMetadata {
-	keys := make([]resource.PropertyKey, len(md.Keys))
-	for i, v := range md.Keys {
-		keys[i] = resource.PropertyKey(v)
-	}
-	diffs := slice.Prealloc[resource.PropertyKey](len(md.Diffs))
-	for _, v := range md.Diffs {
-		diffs = append(diffs, resource.PropertyKey(v))
-	}
+	keys := slice.Cast[resource.PropertyKey](md.Keys)
+	diffs := slice.Cast[resource.PropertyKey](md.Diffs)
 	var detailedDiff map[string]plugin.PropertyDiff
 	if md.DetailedDiff != nil {
 		detailedDiff = make(map[string]plugin.PropertyDiff)

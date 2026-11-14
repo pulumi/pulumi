@@ -2834,10 +2834,7 @@ func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, o
 	// Convert the property dependencies map for RPC and remove duplicates.
 	rpcPropertyDeps := make(map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies)
 	for k, deps := range propertyDeps {
-		urns := make([]string, len(deps))
-		for i, d := range deps {
-			urns[i] = string(d)
-		}
+		urns := slice.Cast[string](deps)
 		sort.Strings(urns)
 
 		rpcPropertyDeps[k] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{

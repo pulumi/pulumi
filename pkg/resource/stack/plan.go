@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
 func SerializePlanDiff(
@@ -89,10 +90,7 @@ func SerializeResourcePlan(
 		outputs = outs
 	}
 
-	steps := make([]apitype.OpType, len(plan.Ops))
-	for i, op := range plan.Ops {
-		steps[i] = apitype.OpType(op)
-	}
+	steps := slice.Cast[apitype.OpType](plan.Ops)
 
 	var goal *apitype.GoalV1
 	if plan.Goal != nil {
@@ -196,10 +194,7 @@ func DeserializeResourcePlan(
 		outputs = outs
 	}
 
-	ops := make([]display.StepOp, len(plan.Steps))
-	for i, op := range plan.Steps {
-		ops[i] = display.StepOp(op)
-	}
+	ops := slice.Cast[display.StepOp](plan.Steps)
 
 	return &deploy.ResourcePlan{
 		Goal:    goal,

@@ -1382,10 +1382,7 @@ func (rm *resmon) Call(ctx context.Context, req *pulumirpc.ResourceCallRequest) 
 
 	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
 	for name, deps := range ret.ReturnDependencies {
-		urns := make([]string, len(deps))
-		for i, urn := range deps {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](deps)
 		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
 	}
 
@@ -1481,10 +1478,7 @@ func (rm *resmon) ReadResource(ctx context.Context,
 		return nil, err
 	}
 
-	additionalSecretOutputs := slice.Prealloc[resource.PropertyKey](len(req.GetAdditionalSecretOutputs()))
-	for _, name := range req.GetAdditionalSecretOutputs() {
-		additionalSecretOutputs = append(additionalSecretOutputs, resource.PropertyKey(name))
-	}
+	additionalSecretOutputs := slice.Cast[resource.PropertyKey](req.GetAdditionalSecretOutputs())
 
 	sourcePosition, stackTrace := rm.sourcePositions.getFromRequest(req)
 
@@ -3107,17 +3101,11 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 		outputDeps = map[string]*pulumirpc.RegisterResourceResponse_PropertyDependencies{}
 		for k, deps := range constructResult.OutputDependencies {
-			urns := make([]string, len(deps))
-			for i, d := range deps {
-				urns[i] = string(d)
-			}
+			urns := slice.Cast[string](deps)
 			outputDeps[string(k)] = &pulumirpc.RegisterResourceResponse_PropertyDependencies{Urns: urns}
 		}
 	} else {
-		additionalSecretKeys := slice.Prealloc[resource.PropertyKey](len(additionalSecretOutputs))
-		for _, name := range additionalSecretOutputs {
-			additionalSecretKeys = append(additionalSecretKeys, resource.PropertyKey(name))
-		}
+		additionalSecretKeys := slice.Cast[resource.PropertyKey](additionalSecretOutputs)
 
 		var timeouts resource.CustomTimeouts
 		if customTimeouts != nil {

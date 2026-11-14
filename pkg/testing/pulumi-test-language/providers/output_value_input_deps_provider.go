@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
@@ -256,16 +257,9 @@ func (p *OutputValueInputDepsProvider) Construct(
 		marshalOpts.KeepOutputValues = true
 	} else {
 		childInputs = resource.PropertyMap{"foo": xVal, "bar": yVal}
-		urnStrs := func(urns []resource.URN) []string {
-			s := make([]string, len(urns))
-			for i, u := range urns {
-				s[i] = string(u)
-			}
-			return s
-		}
 		propDeps = map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies{
-			"foo": {Urns: urnStrs(xDeps)},
-			"bar": {Urns: urnStrs(yDeps)},
+			"foo": {Urns: slice.Cast[string](xDeps)},
+			"bar": {Urns: slice.Cast[string](yDeps)},
 		}
 	}
 	marshaled, err := plugin.MarshalProperties(childInputs, marshalOpts)

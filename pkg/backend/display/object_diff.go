@@ -29,6 +29,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/pgavlin/fx/v2"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"gopkg.in/yaml.v3"
 
@@ -37,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/iter"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -1093,13 +1095,10 @@ func (p *propertyPrinter) printAssetsDiff(oldAssets, newAssets map[string]any) {
 	i := 0
 	j := 0
 
-	keys := slice.Prealloc[resource.PropertyKey](len(oldNames) + len(newNames))
-	for _, name := range oldNames {
-		keys = append(keys, "\""+resource.PropertyKey(name)+"\"")
-	}
-	for _, name := range newNames {
-		keys = append(keys, "\""+resource.PropertyKey(name)+"\"")
-	}
+	keys := slices.Collect(iter.Cast[resource.PropertyKey](fx.Map(
+		fx.Concat(slices.Values(oldNames), slices.Values(newNames)),
+		func(name string) string { return "\"" + name + "\"" },
+	)))
 
 	maxkey := maxKey(keys)
 
