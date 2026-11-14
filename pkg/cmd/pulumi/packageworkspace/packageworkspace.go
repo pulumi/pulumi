@@ -474,8 +474,11 @@ func (w Workspace) RunPackage(
 		Color: diagutils.GetGlobalColorization(),
 	})
 
+	// The host owns the provider and stops it when the host closes, so the provider must not be tied to ctx. Callers
+	// such as `pulumi install` cancel ctx once the install walk finishes, which would otherwise kill a provider run by
+	// a language host before the host can shut it down, and the host would report it as having exited prematurely.
 	pctx, err := plugin.NewContextWithHost(
-		ctx, d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan, w.pctx.CloudCredentialEnv)
+		context.WithoutCancel(ctx), d, d, w.pctx.Host, rootDir, rootDir, w.parentSpan, w.pctx.CloudCredentialEnv)
 	if err != nil {
 		return nil, fmt.Errorf("could not start context for plugin at %q: %w", pluginPath, err)
 	}
