@@ -2006,7 +2006,7 @@ func TestPlannedUpdateStackOutputViolationIsReported(t *testing.T) {
 		return err
 	}
 	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "0")
-	require.Error(t, err)
+	require.ErrorContains(t, err, "resource violates plan: properties changed: ++out[{foo}!={bar}]")
 }
 
 // TestPlannedUpdateWithInternalKeys ensures that internal property keys (those starting with "__", such as "__defaults"
