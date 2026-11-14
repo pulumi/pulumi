@@ -44,8 +44,6 @@ type ObjectType struct {
 	s             atomic.Value // Value<string>
 
 	cache *typeCache
-	// Whether typechecking and traversal emit error or warning diagnostics. Non-strict mode returns warnings.
-	Strict bool
 }
 
 // NewObjectType creates a new object type with the given properties and annotations.
@@ -54,7 +52,6 @@ func NewObjectType(properties map[string]Type, annotations ...any) *ObjectType {
 		Properties:  properties,
 		Annotations: annotations,
 		cache:       &typeCache{},
-		Strict:      true,
 	}
 }
 
@@ -107,7 +104,7 @@ func (t *ObjectType) Pretty() pretty.Formatter {
 	return t.pretty(seenFormatters)
 }
 
-// Traverse attempts to traverse the optional type with the given traverser. The result type of
+// Traverse attempts to traverse the object type with the given traverser. The result type of
 // traverse(object({K_0 = T_0, ..., K_N = T_N})) is T_i if the traverser is the string literal K_i. If the traverser is
 // a string but not a literal, the result type is any.
 func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
@@ -115,9 +112,7 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 
 	if !InputType(StringType).ConversionFrom(keyType).Exists() {
 		diags := unsupportedObjectProperty(traverser.SourceRange())
-		if !t.Strict {
-			diags.Severity = hcl.DiagWarning
-		}
+		diags.Extra = &ObjectTraversalDiagnostic{Receiver: t}
 		return DynamicType, hcl.Diagnostics{diags}
 	}
 
@@ -162,9 +157,7 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 		}
 
 		diag := UnknownObjectProperty(propertyName, traverser.SourceRange(), props)
-		if !t.Strict {
-			diag.Severity = hcl.DiagWarning
-		}
+		diag.Extra = &ObjectTraversalDiagnostic{Receiver: t}
 
 		return DynamicType, hcl.Diagnostics{diag}
 	}
