@@ -1,0 +1,4 @@
+component: sdk/go
+kind: fix
+body: Fix `pulumi policy publish` crashing for Go policy packs
+time: 2026-09-14T04:48:30.426745177Z
