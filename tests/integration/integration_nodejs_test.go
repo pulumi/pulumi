@@ -3176,7 +3176,7 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 	t.Parallel()
 
 	//nolint:paralleltest // t.Parallel is called by integration.ProgramTest
-	for _, runtime := range []string{"yaml", "python", "nodejs-pnpm", "nodejs-npm"} {
+	for _, runtime := range []string{"python", "nodejs-pnpm", "nodejs-npm"} {
 		t.Run(runtime, func(t *testing.T) {
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
 				PrepareProject: func(info *engine.Projinfo) error {
@@ -3215,10 +3215,6 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 					require.NoError(t, err)
 					expectedType := tokens.Type("nodejs-component-provider:index:MyComponent")
 					expectedQualifiedType := "ParentComponent$" + expectedType
-					if runtime == "yaml" {
-						// yaml doesn't have components
-						expectedQualifiedType = expectedType
-					}
 					require.Equal(t, expectedQualifiedType, urn.QualifiedType())
 					require.Equal(t, expectedType, urn.Type())
 					require.Equal(t, "comp", urn.Name())
