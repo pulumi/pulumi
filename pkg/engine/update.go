@@ -888,15 +888,26 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 		}
 	}
 
+	type loadedAnalyzer struct {
+		analyzer plugin.Analyzer
+		name     string
+		version  string
+		local    bool
+	}
 	var (
 		wg               sync.WaitGroup
 		analyzersMu      sync.Mutex
-		loadedAnalyzers  []plugin.Analyzer
+		loadedAnalyzers  []loadedAnalyzer
 		policyExceptions = map[plugin.Analyzer]resourceanalyzer.PolicyExceptions{}
 	)
-	addAnalyzer := func(a plugin.Analyzer) {
+	addAnalyzer := func(a plugin.Analyzer, info plugin.AnalyzerInfo, version string, local bool) {
 		analyzersMu.Lock()
-		loadedAnalyzers = append(loadedAnalyzers, a)
+		loadedAnalyzers = append(loadedAnalyzers, loadedAnalyzer{
+			analyzer: a,
+			name:     info.Name,
+			version:  version,
+			local:    local,
+		})
 		analyzersMu.Unlock()
 	}
 	errs := make(chan error, len(deployOpts.RequiredPolicies)+len(deployOpts.LocalPolicyPacks))
@@ -946,6 +957,12 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
+			// Prefer the analyzer's own version, falling back to the version the service recorded for the pack.
+			policyPackVersion := analyzerInfo.Version
+			if policyPackVersion == "" {
+				policyPackVersion = policy.Version()
+			}
+
 			// Invalid exceptions from the service are skipped, so the violations they match still fail the run.
 			exceptions, parseErrs := resourceanalyzer.ParsePolicyExceptions(policy.Exceptions())
 			for _, err := range parseErrs {
@@ -967,7 +984,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				if len(mergedConfig) > 0 {
 					logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
 				}
-				addAnalyzer(analyzer)
+				addAnalyzer(analyzer, analyzerInfo, policyPackVersion, false)
 				return
 			}
 			configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(mergedConfig)
@@ -986,7 +1003,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				errs <- fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
 				return
 			}
-			addAnalyzer(analyzer)
+			addAnalyzer(analyzer, analyzerInfo, policyPackVersion, false)
 		}(policy)
 	}
 
@@ -1076,7 +1093,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 					errs <- fmt.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
 					return
 				}
-				addAnalyzer(analyzer)
+				addAnalyzer(analyzer, analyzerInfo, analyzerInfo.Version, true)
 				return
 			}
 
@@ -1106,7 +1123,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
 				return
 			}
-			addAnalyzer(analyzer)
+			addAnalyzer(analyzer, analyzerInfo, analyzerInfo.Version, true)
 		}(i, pack)
 	}
 
@@ -1127,8 +1144,30 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 		return errors.New("validating policy config")
 	}
 
-	deployOpts.LoadedAnalyzers = loadedAnalyzers
-	deployOpts.PolicyExceptions = policyExceptions
+	// A local pack shadows a required pack with the same name and version, so run only the local copy.
+	type packKey struct {
+		name    string
+		version string
+	}
+	localPacks := map[packKey]struct{}{}
+	for _, a := range loadedAnalyzers {
+		if a.local && a.version != "" {
+			localPacks[packKey{a.name, a.version}] = struct{}{}
+		}
+	}
+	deployOpts.LoadedAnalyzers = make([]plugin.Analyzer, 0, len(loadedAnalyzers))
+	deployOpts.PolicyExceptions = make(map[plugin.Analyzer]resourceanalyzer.PolicyExceptions, len(policyExceptions))
+	for _, a := range loadedAnalyzers {
+		if !a.local && a.version != "" {
+			if _, shadowed := localPacks[packKey{a.name, a.version}]; shadowed {
+				continue
+			}
+		}
+		deployOpts.LoadedAnalyzers = append(deployOpts.LoadedAnalyzers, a.analyzer)
+		if exceptions, ok := policyExceptions[a.analyzer]; ok {
+			deployOpts.PolicyExceptions[a.analyzer] = exceptions
+		}
+	}
 	return nil
 }
 
