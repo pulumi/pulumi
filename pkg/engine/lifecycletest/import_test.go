@@ -89,11 +89,11 @@ func TestImportOption(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					assert.Equal(t, expectedInputs, req.Inputs)
-					assert.Equal(t, expectedState, req.State)
+					assert.Equal(t, expectedState, req.Inputs)
 
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs:  &readInputs,
 							Outputs: &readOutputs,
@@ -404,8 +404,8 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							// This ID is deliberately not the same as the ID used to import.
 							ID: "id",
@@ -490,8 +490,8 @@ func TestImportUpdatedID(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      actualID,
 							Outputs: new(property.Map{}),
@@ -570,13 +570,13 @@ func TestImportExtensionParameterizedResource(t *testing.T) {
 					return plugin.ParameterizeResponse{Name: value.Name, Version: value.Version}, nil
 				},
 				DiffF: diffImportResource,
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					// The extension must have been applied to the provider before it is asked to read.
 					paramLock.Lock()
 					witnessed := len(paramNames)
 					paramLock.Unlock()
 					assert.NotZero(t, witnessed, "Parameterize must run before Read on the extension provider")
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
@@ -746,8 +746,8 @@ func TestImportThenSecretValueDoesNotReplace(t *testing.T) {
 								Status:     resource.StatusOK,
 							}, nil
 						},
-						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-							return plugin.ReadResponse{
+						ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+							return plugin.ImportResponse{
 								ReadResult: plugin.ReadResult{
 									ID:      "imported-id",
 									Inputs:  &readInputs,
@@ -862,8 +862,8 @@ func TestImportPlan(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      "actual-id",
 							Inputs:  &readInputs,
@@ -928,9 +928,10 @@ func TestImportIgnoreChanges(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -990,9 +991,10 @@ func TestImportPlanExistingImport(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1082,9 +1084,9 @@ func TestImportPlanSuppliedOutputs(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
 				DiffF: diffImportResource,
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
 					t.Fatal("Read should not be called when outputs are supplied")
-					return plugin.ReadResponse{}, nil
+					return plugin.ImportResponse{}, nil
 				},
 			}, nil
 		}),
@@ -1152,10 +1154,10 @@ func TestImportPlanSuppliedInputsMerge(t *testing.T) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
 				DiffF: diffImportResource,
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
 					// "foo" is a write-only attribute the importer cannot return; "frob" comes back
 					// in plain text even though it was supplied as a secret.
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "actual-id",
 							Inputs: new(property.NewMap(map[string]property.Value{
@@ -1219,9 +1221,10 @@ func TestImportPlanEmptyState(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1267,12 +1270,12 @@ func TestImportCheckFailureRedactsSecrets(t *testing.T) {
 						Failures: []plugin.CheckFailure{{Property: "foo", Reason: "bad foo"}},
 					}, nil
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					inputs := property.NewMap(map[string]property.Value{
 						"foo": property.New("secret-input-value").WithSecret(true),
 					})
-					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{Inputs: &inputs, Outputs: &inputs},
+					return plugin.ImportResponse{
+						ReadResult: plugin.ReadResult{ID: req.ID, Inputs: &inputs, Outputs: &inputs},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1348,9 +1351,10 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1411,9 +1415,10 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1498,9 +1503,10 @@ func TestImportIntoParent(t *testing.T) {
 						Status:     resource.StatusUnknown,
 					}, errors.New("not implemented")
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1556,9 +1562,10 @@ func TestImportComponent(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("not implemented")
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1629,9 +1636,10 @@ func TestImportRemoteComponent(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("not implemented")
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1717,8 +1725,8 @@ func TestImportInputDiff(t *testing.T) {
 						},
 					}, nil
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      "actual-id",
 							Inputs:  &readInputs,
@@ -1808,8 +1816,8 @@ func TestImportDefaultProvider(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      "actual-id",
 							Inputs:  &readInputs,
@@ -1926,11 +1934,11 @@ func TestImportWithFailedUpdate(t *testing.T) {
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{}, errors.New("update failed")
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					assert.Equal(t, expectedInputs, req.Inputs)
-					assert.Equal(t, expectedState, req.State)
+					assert.Equal(t, expectedState, req.Inputs)
 
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs:  &readInputs,
 							Outputs: &readOutputs,
@@ -2002,8 +2010,8 @@ func TestImportFailedCreate(t *testing.T) {
 				GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 					return plugin.GetSchemaResponse{Schema: []byte(importSchema)}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{}, errors.New("not implemented")
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{}, errors.New("not implemented")
 				},
 			}, nil
 		}),
@@ -2035,10 +2043,10 @@ func TestImportDeleteBeforeReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					assert.Equal(t, "import-id", string(req.ID))
 
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo": property.New("bar"),
@@ -2106,10 +2114,10 @@ func TestImportIDPreservedAcrossUpdate(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					// The live resource's inputs differ from the program's inputs,
 					// so the engine will schedule an Update after the Import.
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo": property.New("live"),

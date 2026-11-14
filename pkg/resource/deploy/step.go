@@ -1358,12 +1358,15 @@ type ReadStep struct {
 	replacing    bool               // whether or not the new resource is replacing the old resource
 	provider     plugin.Provider    // the optional provider to use.
 	skipProvider bool               // if true, do not call the provider's Read; outputs are unknown.
+	oldViews     []plugin.View      // the old views for this resource.
 }
 
 // NewReadStep creates a new Read step. If skipProvider is true, the provider's Read is not called
 // and the resulting outputs are signaled as unknown; this is used in preview when a dependsOn
 // target is being newly created or replaced and so the read cannot be meaningfully performed.
-func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State, skipProvider bool) Step {
+func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State,
+	oldViews []plugin.View, skipProvider bool,
+) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
 	contract.Requiref(new.ID != "", "new", "must have an ID")
@@ -1387,13 +1390,15 @@ func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *pkgr
 		new:          new,
 		replacing:    false,
 		skipProvider: skipProvider,
+		oldViews:     oldViews,
 	}
 }
 
 // NewReadReplacementStep creates a new Read step with the `replacing` flag set. When executed,
 // it will pend deletion of the "old" resource, which must not be an external resource.
 func NewReadReplacementStep(
-	deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State, skipProvider bool,
+	deployment *Deployment, event ReadResourceEvent, old, new *pkgresource.State,
+	oldViews []plugin.View, skipProvider bool,
 ) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
@@ -1414,6 +1419,7 @@ func NewReadReplacementStep(
 		new:          new,
 		replacing:    true,
 		skipProvider: skipProvider,
+		oldViews:     oldViews,
 	}
 }
 
@@ -1468,19 +1474,16 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			return resource.StatusOK, nil, err
 		}
 
-		// Technically the only data we have at this point is "inputs", but we've been passing that as "state" to
-		// providers since forever and it would probably break things to stop sending that now. Thus this strange double
-		// send of inputs as both "inputs" and "state". Something to break to tidy up in V4.
-		result, err := prov.Read(context.TODO(), plugin.ReadRequest{
+		result, err := prov.Import(context.TODO(), plugin.ImportRequest{
 			URN:                   urn,
 			Name:                  urn.Name(),
 			Type:                  urn.Type(),
 			ID:                    id,
 			Inputs:                resource.FromResourcePropertyMap(s.new.Inputs),
-			State:                 resource.FromResourcePropertyMap(s.new.Inputs),
 			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
+			OldViews:              s.oldViews,
 		})
 
 		s.new.Lock.Lock()
@@ -1500,14 +1503,13 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		// If there is no such resource, return an error indicating as such.
-		if result.Outputs == nil {
+		if result.ID == "" {
 			return resource.StatusOK, nil, fmt.Errorf("resource '%s' does not exist", id)
 		}
-		s.new.Outputs = resource.ToResourcePropertyMap(*result.Outputs)
-
-		if result.ID != "" {
-			s.new.ID = result.ID
+		if result.Outputs != nil {
+			s.new.Outputs = resource.ToResourcePropertyMap(*result.Outputs)
 		}
+		s.new.ID = result.ID
 	}
 
 	// If we were asked to replace an existing, non-External resource, pend the
@@ -1716,7 +1718,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 	resourceStatusAddress := s.deployment.resourceStatus.Address()
 	resourceStatusToken, err := s.deployment.resourceStatus.ReserveToken(
-		s.URN(), true /*refresh*/, s.Persisted(), /* persisted */
+		s.URN(), true /*refresh*/, s.Persisted(),
 	)
 	if err != nil {
 		if s.cts != nil {
@@ -1726,13 +1728,13 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	}
 
 	var initErrors []string
-	refreshed, err := prov.Read(context.TODO(), plugin.ReadRequest{
+	refreshed, err := prov.Refresh(context.TODO(), plugin.RefreshRequest{
 		URN:                   s.new.URN,
 		Name:                  s.new.URN.Name(),
 		Type:                  s.new.URN.Type(),
 		ID:                    resourceID,
 		Inputs:                resource.FromResourcePropertyMap(s.old.Inputs),
-		State:                 resource.FromResourcePropertyMap(s.old.Outputs),
+		Outputs:               resource.FromResourcePropertyMap(s.old.Outputs),
 		Timeout:               s.old.CustomTimeouts.Read,
 		ResourceStatusAddress: resourceStatusAddress,
 		ResourceStatusToken:   resourceStatusToken,
@@ -1970,6 +1972,7 @@ type ImportStep struct {
 	ignoreChanges []string              // a list of property paths to ignore when updating.
 	randomSeed    []byte                // the random seed to use for Check.
 	provider      plugin.Provider       // the optional provider to use.
+	oldViews      []plugin.View         // the old views for this resource.
 
 	// true if this import is from an import deployment, i.e. the `pulumi import` command.
 	planned bool
@@ -1979,7 +1982,8 @@ type ImportStep struct {
 }
 
 func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *pkgresource.State,
-	ignoreChanges []string, randomSeed []byte, cts *promise.CompletionSource[*pkgresource.State],
+	ignoreChanges []string, randomSeed []byte, oldViews []plugin.View,
+	cts *promise.CompletionSource[*pkgresource.State],
 ) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
@@ -1998,12 +2002,14 @@ func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *pkgre
 		new:           new,
 		ignoreChanges: ignoreChanges,
 		randomSeed:    randomSeed,
+		oldViews:      oldViews,
 		cts:           cts,
 	}
 }
 
 func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent, original, new *pkgresource.State,
-	ignoreChanges []string, randomSeed []byte, cts *promise.CompletionSource[*pkgresource.State],
+	ignoreChanges []string, randomSeed []byte, oldViews []plugin.View,
+	cts *promise.CompletionSource[*pkgresource.State],
 ) Step {
 	contract.Requiref(original != nil, "original", "must not be nil")
 
@@ -2027,6 +2033,7 @@ func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent,
 		replacing:     true,
 		ignoreChanges: ignoreChanges,
 		randomSeed:    randomSeed,
+		oldViews:      oldViews,
 		cts:           cts,
 	}
 }
@@ -2171,7 +2178,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			return resource.StatusOK, nil, err
 		}
 
-		read, err := prov.Read(context.TODO(), plugin.ReadRequest{
+		read, err := prov.Import(context.TODO(), plugin.ImportRequest{
 			URN:                   s.new.URN,
 			Name:                  s.new.URN.Name(),
 			Type:                  s.new.URN.Type(),
@@ -2179,6 +2186,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 			Timeout:               s.new.CustomTimeouts.Read,
 			ResourceStatusAddress: resourceStatusAddress,
 			ResourceStatusToken:   resourceStatusToken,
+			OldViews:              s.oldViews,
 		})
 		rst = read.Status
 
@@ -2192,7 +2200,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 				return rst, nil, err
 			}
 		}
-		if read.Outputs == nil {
+		if read.ID == "" {
 			resourceID := s.new.ID
 			if resourceID == "" {
 				resourceID = s.new.ImportID

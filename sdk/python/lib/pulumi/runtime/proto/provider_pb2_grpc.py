@@ -80,6 +80,16 @@ class ResourceProviderStub(object):
                 request_serializer=pulumi_dot_provider__pb2.ReadRequest.SerializeToString,
                 response_deserializer=pulumi_dot_provider__pb2.ReadResponse.FromString,
                 )
+        self.Import = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/Import',
+                request_serializer=pulumi_dot_provider__pb2.ImportRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.ImportResponse.FromString,
+                )
+        self.Refresh = channel.unary_unary(
+                '/pulumirpc.ResourceProvider/Refresh',
+                request_serializer=pulumi_dot_provider__pb2.RefreshRequest.SerializeToString,
+                response_deserializer=pulumi_dot_provider__pb2.RefreshResponse.FromString,
+                )
         self.List = channel.unary_stream(
                 '/pulumirpc.ResourceProvider/List',
                 request_serializer=pulumi_dot_provider__pb2.ListRequest.SerializeToString,
@@ -319,6 +329,31 @@ class ResourceProviderServicer(object):
         """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
         must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
         include other properties.
+
+        Deprecated: prefer [](pulumirpc.ResourceProvider.Import) and [](pulumirpc.ResourceProvider.Refresh), which split
+        `Read` into the two distinct operations it was previously overloaded to serve. New providers should implement
+        `Import` and `Refresh`; engines should prefer those methods when the provider advertises support for them.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Import(self, request, context):
+        """`Import` reads the current live state associated with a resource identified by the supplied ID (and any
+        additional identifying properties required by the provider), as part of importing an existing resource into
+        Pulumi management. Unlike [](pulumirpc.ResourceProvider.Refresh), `Import` is not given any prior state or inputs
+        for the resource -- the resource is not yet known to Pulumi, so the provider must derive the resource's inputs
+        and outputs purely from the live environment.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Refresh(self, request, context):
+        """`Refresh` reads the current live state associated with a resource that is already known to Pulumi, updating the
+        engine's view of the resource. Unlike [](pulumirpc.ResourceProvider.Import), `Refresh` is given the resource's
+        prior state, inputs, and (optionally) views so that the provider can correlate the live state with what Pulumi
+        previously recorded.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -496,6 +531,16 @@ def add_ResourceProviderServicer_to_server(servicer, server):
                     servicer.Read,
                     request_deserializer=pulumi_dot_provider__pb2.ReadRequest.FromString,
                     response_serializer=pulumi_dot_provider__pb2.ReadResponse.SerializeToString,
+            ),
+            'Import': grpc.unary_unary_rpc_method_handler(
+                    servicer.Import,
+                    request_deserializer=pulumi_dot_provider__pb2.ImportRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.ImportResponse.SerializeToString,
+            ),
+            'Refresh': grpc.unary_unary_rpc_method_handler(
+                    servicer.Refresh,
+                    request_deserializer=pulumi_dot_provider__pb2.RefreshRequest.FromString,
+                    response_serializer=pulumi_dot_provider__pb2.RefreshResponse.SerializeToString,
             ),
             'List': grpc.unary_stream_rpc_method_handler(
                     servicer.List,
@@ -757,6 +802,40 @@ class ResourceProvider(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Read',
             pulumi_dot_provider__pb2.ReadRequest.SerializeToString,
             pulumi_dot_provider__pb2.ReadResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Import(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Import',
+            pulumi_dot_provider__pb2.ImportRequest.SerializeToString,
+            pulumi_dot_provider__pb2.ImportResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Refresh(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceProvider/Refresh',
+            pulumi_dot_provider__pb2.RefreshRequest.SerializeToString,
+            pulumi_dot_provider__pb2.RefreshResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

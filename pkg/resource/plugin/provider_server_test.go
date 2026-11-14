@@ -22,6 +22,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -66,9 +67,12 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 type stubProvider struct {
 	Provider
 
-	ReadFunc func(
+	ImportFunc func(
+		urn resource.URN, id resource.ID, inputs property.Map,
+	) (ReadResult, resource.Status, error)
+	RefreshFunc func(
 		urn resource.URN, id resource.ID,
-		inputs, state property.Map,
+		inputs, outputs property.Map,
 	) (ReadResult, resource.Status, error)
 
 	ConfigureFunc func(property.Map) error
@@ -84,25 +88,30 @@ func (p *stubProvider) Configure(ctx context.Context, req ConfigureRequest) (Con
 	return p.Provider.Configure(ctx, req)
 }
 
-func (p *stubProvider) Read(ctx context.Context, req ReadRequest) (ReadResponse, error) {
-	if p.ReadFunc != nil {
-		props, status, err := p.ReadFunc(req.URN, req.ID, req.Inputs, req.State)
-		return ReadResponse{
-			ReadResult: props,
-			Status:     status,
-		}, err
+func (p *stubProvider) Import(ctx context.Context, req ImportRequest) (ImportResponse, error) {
+	if p.ImportFunc != nil {
+		props, status, err := p.ImportFunc(req.URN, req.ID, req.Inputs)
+		return ImportResponse{ReadResult: props, Status: status}, err
 	}
-	return p.Provider.Read(ctx, req)
+	return p.Provider.Import(ctx, req)
+}
+
+func (p *stubProvider) Refresh(ctx context.Context, req RefreshRequest) (RefreshResponse, error) {
+	if p.RefreshFunc != nil {
+		props, status, err := p.RefreshFunc(req.URN, req.ID, req.Inputs, req.Outputs)
+		return RefreshResponse{ReadResult: props, Status: status}, err
+	}
+	return p.Provider.Refresh(ctx, req)
 }
 
 // When importing random passwords, the secret passed as "ID" should not leak in plain text into the final ID.
+// The legacy Read RPC with no prior inputs routes through Import on the server.
 func TestProviderServer_Read_respects_ID(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
 	provider := stubProvider{
-		ReadFunc: func(
-			urn resource.URN, id resource.ID,
-			inputs, state property.Map,
+		ImportFunc: func(
+			urn resource.URN, id resource.ID, inputs property.Map,
 		) (ReadResult, resource.Status, error) {
 			return ReadResult{
 				ID: resource.ID("none"),
@@ -114,12 +123,108 @@ func TestProviderServer_Read_respects_ID(t *testing.T) {
 	}
 	secret := "supersecretpassword"
 	srv := NewProviderServer(&provider)
-	resp, err := srv.Read(ctx, &pulumirpc.ReadRequest{
+	resp, err := srv.Read(ctx, &pulumirpc.ReadRequest{ //nolint:staticcheck // test exercises deprecated Read RPC
 		Urn: "urn:pulumi:v2::re::random:index/randomPassword:RandomPassword::newPassword",
 		Id:  secret,
 	})
 	require.NoError(t, err)
 	require.NotEqual(t, secret, resp.Id)
+}
+
+// The legacy Read RPC with prior inputs should route through Refresh on the server.
+func TestProviderServer_Read_routesToRefresh(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	importCalled, refreshCalled := false, false
+	provider := stubProvider{
+		ImportFunc: func(
+			urn resource.URN, id resource.ID, inputs property.Map,
+		) (ReadResult, resource.Status, error) {
+			importCalled = true
+			return ReadResult{ID: id}, resource.StatusOK, nil
+		},
+		RefreshFunc: func(
+			urn resource.URN, id resource.ID,
+			inputs, outputs property.Map,
+		) (ReadResult, resource.Status, error) {
+			refreshCalled = true
+			return ReadResult{ID: id, Inputs: &inputs, Outputs: &outputs}, resource.StatusOK, nil
+		},
+	}
+	srv := NewProviderServer(&provider)
+
+	inputs, err := structpb.NewStruct(map[string]any{"k": "v"})
+	require.NoError(t, err)
+
+	_, err = srv.Read(ctx, &pulumirpc.ReadRequest{ //nolint:staticcheck // test exercises deprecated Read RPC
+		Urn:    "urn:pulumi:v2::re::test:index:Thing::name",
+		Id:     "some-id",
+		Inputs: inputs,
+	})
+	require.NoError(t, err)
+	require.False(t, importCalled, "Import must not be called when prior inputs are supplied")
+	require.True(t, refreshCalled, "Refresh must be called when prior inputs are supplied")
+}
+
+// The dedicated Import RPC should route through Provider.Import.
+func TestProviderServer_Import(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	provider := stubProvider{
+		ImportFunc: func(
+			urn resource.URN, id resource.ID, inputs property.Map,
+		) (ReadResult, resource.Status, error) {
+			outs := property.NewMap(map[string]property.Value{"out": property.New("v")})
+			return ReadResult{
+				ID:      id + "-canonical",
+				Outputs: &outs,
+				Inputs:  &inputs,
+			}, resource.StatusOK, nil
+		},
+	}
+	srv := NewProviderServer(&provider)
+
+	resp, err := srv.Import(ctx, &pulumirpc.ImportRequest{
+		Urn:      "urn:pulumi:v2::re::test:index:Thing::name",
+		ImportId: "some-id",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "some-id-canonical", resp.GetId())
+	require.NotNil(t, resp.GetOutputs())
+}
+
+// The dedicated Refresh RPC should route through Provider.Refresh.
+func TestProviderServer_Refresh(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+
+	provider := stubProvider{
+		RefreshFunc: func(
+			urn resource.URN, id resource.ID,
+			inputs, outputs property.Map,
+		) (ReadResult, resource.Status, error) {
+			return ReadResult{
+				ID:      id,
+				Outputs: &outputs,
+				Inputs:  &inputs,
+			}, resource.StatusOK, nil
+		},
+	}
+	srv := NewProviderServer(&provider)
+
+	outputs, err := structpb.NewStruct(map[string]any{"out": "v"})
+	require.NoError(t, err)
+
+	resp, err := srv.Refresh(ctx, &pulumirpc.RefreshRequest{
+		Urn:     "urn:pulumi:v2::re::test:index:Thing::name",
+		Id:      "some-id",
+		Outputs: outputs,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "some-id", resp.GetId())
+	require.NotNil(t, resp.GetOutputs())
 }
 
 func (p *stubProvider) List(ctx context.Context, req ListRequest) (*ListStream, error) {

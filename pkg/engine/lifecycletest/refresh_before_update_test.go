@@ -75,17 +75,32 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					freshInput := property.New(fmt.Sprintf("<FRESH-INPUT-%d>", readToken))
 					inputs := req.Inputs.Set("input", freshInput)
 					freshResult := property.New(fmt.Sprintf("<FRESH-RESULT-%d>", readToken))
-					props := req.State.Set("input", freshInput).Set("result", freshResult)
-					return plugin.ReadResponse{
+					props := req.Outputs.Set("input", freshInput).Set("result", freshResult)
+					return plugin.RefreshResponse{
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
 							ID:                  "new-id",
 							Inputs:              &inputs,
 							Outputs:             &props,
+							RefreshBeforeUpdate: true,
+						},
+					}, nil
+				},
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					freshInput := property.New(fmt.Sprintf("<FRESH-INPUT-%d>", readToken))
+					inputs := req.Inputs.Set("input", freshInput)
+					freshResult := property.New(fmt.Sprintf("<FRESH-RESULT-%d>", readToken))
+					outputs := inputs.Set("result", freshResult)
+					return plugin.ImportResponse{
+						Status: resource.StatusOK,
+						ReadResult: plugin.ReadResult{
+							ID:                  "new-id",
+							Inputs:              &inputs,
+							Outputs:             &outputs,
 							RefreshBeforeUpdate: true,
 						},
 					}, nil
@@ -252,9 +267,9 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					if req.Name == "res0" {
-						return plugin.ReadResponse{
+						return plugin.RefreshResponse{
 							Status: resource.StatusOK,
 							ReadResult: plugin.ReadResult{
 								ID: "",
@@ -262,12 +277,12 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 						}, nil
 					}
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
 							ID:                  "new-id",
 							Inputs:              &req.Inputs,
-							Outputs:             &req.State,
+							Outputs:             &req.Outputs,
 							RefreshBeforeUpdate: true,
 						},
 					}, nil

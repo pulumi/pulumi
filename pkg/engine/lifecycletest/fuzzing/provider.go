@@ -62,11 +62,12 @@ func (ps *ProviderSpec) AsProviderLoaders() []*deploytest.ProviderLoader {
 	// register for all packages.
 	load := func() (plugin.Provider, error) {
 		return &deploytest.Provider{
-			CreateF: ps.Create.AsCreateF(),
-			DeleteF: ps.Delete.AsDeleteF(),
-			DiffF:   ps.Diff.AsDiffF(),
-			ReadF:   ps.Read.AsReadF(),
-			UpdateF: ps.Update.AsUpdateF(),
+			CreateF:  ps.Create.AsCreateF(),
+			DeleteF:  ps.Delete.AsDeleteF(),
+			DiffF:    ps.Diff.AsDiffF(),
+			ImportF:  ps.Read.AsImportF(),
+			RefreshF: ps.Read.AsRefreshF(),
+			UpdateF:  ps.Update.AsUpdateF(),
 		}, nil
 	}
 
@@ -333,19 +334,41 @@ func (prs ProviderReadSpec) Pretty(indent string) string {
 	return rendered.String()
 }
 
-// Returns a ReadF-compatible callback that implements this ProviderReadSpec.
-func (prs ProviderReadSpec) AsReadF() func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-	return func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+// Returns an ImportF-compatible callback that implements this ProviderReadSpec.
+func (prs ProviderReadSpec) AsImportF() func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+	return func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 		if action, ok := prs[req.URN]; ok {
 			switch action {
 			case ProviderReadDeleted:
-				return plugin.ReadResponse{}, nil
+				return plugin.ImportResponse{}, nil
 			case ProviderReadFailure:
-				return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("read failure for %s", req.URN)
+				return plugin.ImportResponse{Status: resource.StatusUnknown}, fmt.Errorf("read failure for %s", req.URN)
 			}
 		}
 
-		return plugin.ReadResponse{
+		return plugin.ImportResponse{
+			ReadResult: plugin.ReadResult{
+				ID:      req.ID,
+				Outputs: new(property.Map{}),
+			},
+			Status: resource.StatusOK,
+		}, nil
+	}
+}
+
+// Returns a RefreshF-compatible callback that implements this ProviderReadSpec.
+func (prs ProviderReadSpec) AsRefreshF() func(context.Context, plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+	return func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+		if action, ok := prs[req.URN]; ok {
+			switch action {
+			case ProviderReadDeleted:
+				return plugin.RefreshResponse{}, nil
+			case ProviderReadFailure:
+				return plugin.RefreshResponse{Status: resource.StatusUnknown}, fmt.Errorf("read failure for %s", req.URN)
+			}
+		}
+
+		return plugin.RefreshResponse{
 			ReadResult: plugin.ReadResult{
 				Outputs: new(property.Map{}),
 			},

@@ -376,10 +376,18 @@ func (p *SnakeNamesProvider) Delete(
 	return plugin.DeleteResponse{}, nil
 }
 
-func (p *SnakeNamesProvider) Read(
-	_ context.Context, req plugin.ReadRequest,
-) (plugin.ReadResponse, error) {
-	return plugin.ReadResponse{
+func (p *SnakeNamesProvider) Import(
+	_ context.Context, req plugin.ImportRequest,
+) (plugin.ImportResponse, error) {
+	return plugin.ImportResponse{
+		Status: resource.StatusUnknown,
+	}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+}
+
+func (p *SnakeNamesProvider) Refresh(
+	_ context.Context, req plugin.RefreshRequest,
+) (plugin.RefreshResponse, error) {
+	return plugin.RefreshResponse{
 		Status: resource.StatusUnknown,
 	}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 }

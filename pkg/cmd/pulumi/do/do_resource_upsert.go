@@ -142,13 +142,12 @@ func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource
 			}
 			urn := resourceURN(res)
 			id := resource.ID(args[0])
-			read, err := pc.provider.Read(ctx, plugin.ReadRequest{
+			read, err := pc.provider.Import(ctx, plugin.ImportRequest{
 				URN:    urn,
 				Name:   urn.Name(),
 				Type:   urn.Type(),
 				ID:     id,
 				Inputs: property.Map{},
-				State:  property.Map{},
 			})
 			if err != nil {
 				return err
@@ -161,7 +160,7 @@ func (pc *packageCommand) newStatelessResourceUpsertCommand(res *schema.Resource
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
 			}
-			if readNotFound(read) {
+			if readNotFound(read.ReadResult) {
 				return pc.runStatelessCreate(cmd, res, yes, func() (property.Map, error) {
 					return inputs, nil
 				})

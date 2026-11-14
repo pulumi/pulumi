@@ -212,8 +212,13 @@ func writeSnapshotTestFunction(
 				"}",
 			)
 			g.writeBlock(
-				"readF := func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {",
-				writeReadFStatements(provSpec),
+				"importF := func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {",
+				writeImportFStatements(provSpec),
+				"}",
+			)
+			g.writeBlock(
+				"refreshF := func(ctx context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {",
+				writeRefreshFStatements(provSpec),
 				"}",
 			)
 			g.writeBlock(
@@ -376,8 +381,13 @@ func writeFrameworkTestFunction(
 				"}",
 			)
 			g.writeBlock(
-				"readF := func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {",
-				writeReadFStatements(provSpec),
+				"importF := func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {",
+				writeImportFStatements(provSpec),
+				"}",
+			)
+			g.writeBlock(
+				"refreshF := func(ctx context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {",
+				writeRefreshFStatements(provSpec),
 				"}",
 			)
 			g.writeBlock(
@@ -955,7 +965,15 @@ func writeDiffFStatements(provSpec *ProviderSpec) func(g *generator) {
 	}
 }
 
-func writeReadFStatements(provSpec *ProviderSpec) func(g *generator) {
+func writeImportFStatements(provSpec *ProviderSpec) func(g *generator) {
+	return writeReadLikeFStatements(provSpec, "ImportResponse")
+}
+
+func writeRefreshFStatements(provSpec *ProviderSpec) func(g *generator) {
+	return writeReadLikeFStatements(provSpec, "RefreshResponse")
+}
+
+func writeReadLikeFStatements(provSpec *ProviderSpec, responseType string) func(g *generator) {
 	return func(g *generator) {
 		if len(provSpec.Read) > 0 {
 			g.writeLine("switch req.URN {")
@@ -965,10 +983,10 @@ func writeReadFStatements(provSpec *ProviderSpec) func(g *generator) {
 					func(g *generator) {
 						switch action {
 						case ProviderReadDeleted:
-							g.writeLine("return plugin.ReadResponse{}, nil")
+							g.writeLinef("return plugin.%s{}, nil", responseType)
 						case ProviderReadFailure:
 							g.writeBlock(
-								"return plugin.ReadResponse{",
+								fmt.Sprintf("return plugin.%s{", responseType),
 								func(g *generator) {
 									g.writeLine("Status: resource.StatusUnknown,")
 								},
@@ -983,7 +1001,7 @@ func writeReadFStatements(provSpec *ProviderSpec) func(g *generator) {
 		}
 
 		g.writeBlock(
-			"return plugin.ReadResponse{",
+			fmt.Sprintf("return plugin.%s{", responseType),
 			func(g *generator) {
 				g.writeLine("ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},")
 				g.writeLine("Status: resource.StatusOK,")
@@ -1043,7 +1061,8 @@ func writeReproLoaderElements(provSpec *ProviderSpec) func(g *generator) {
 							g.writeLine("CreateF: createF,")
 							g.writeLine("DeleteF: deleteF,")
 							g.writeLine("DiffF: diffF,")
-							g.writeLine("ReadF: readF,")
+							g.writeLine("ImportF: importF,")
+							g.writeLine("RefreshF: refreshF,")
 							g.writeLine("UpdateF: updateF,")
 						},
 						"}, nil",

@@ -303,11 +303,12 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -397,11 +398,12 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 							Status:     resource.StatusOK,
 						}, nil
 					},
-					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-						return plugin.ReadResponse{
+					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Inputs:  &req.Inputs,
-								Outputs: &req.State,
+								Outputs: &req.Inputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -538,11 +540,12 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 							Status:     resource.StatusOK,
 						}, nil
 					},
-					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-						return plugin.ReadResponse{
+					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Inputs:  &req.Inputs,
-								Outputs: &req.State,
+								Outputs: &req.Inputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -672,11 +675,12 @@ func TestConstructCallSendDependencies(t *testing.T) {
 							Status:     resource.StatusOK,
 						}, nil
 					},
-					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-						return plugin.ReadResponse{
+					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Inputs:  &req.Inputs,
-								Outputs: &req.State,
+								Outputs: &req.Inputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -828,11 +832,12 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 							Status:     resource.StatusOK,
 						}, nil
 					},
-					ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-						return plugin.ReadResponse{
+					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Inputs:  &req.Inputs,
-								Outputs: &req.State,
+								Outputs: &req.Inputs,
 							},
 							Status: resource.StatusOK,
 						}, nil
@@ -1416,9 +1421,9 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 			return &deploytest.Provider{
 				// This Read implementation will be called as a result of the custom resource read (of type pkgA:index:Custom)
 				// in the Component Construct implementation.
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					if req.URN.Type() == "pkgA:index:Custom" {
-						return plugin.ReadResponse{
+						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
 								Outputs: &req.Inputs,
@@ -1427,7 +1432,7 @@ func TestComponentReadResourceOutputCanBeHydratedByProgram(t *testing.T) {
 						}, nil
 					}
 
-					return plugin.ReadResponse{}, fmt.Errorf("unexpected resource type %s", req.Type)
+					return plugin.ImportResponse{}, fmt.Errorf("unexpected resource type %s", req.Type)
 				},
 
 				// Construct will be called as a result of the program registering a remote component of type
@@ -1542,9 +1547,9 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 			return &deploytest.Provider{
 				// This Read implementation will be called as a result of the custom resource read (of type pkgA:index:Custom)
 				// in the Component Construct implementation.
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					if req.URN.Type() == "pkgA:index:Custom" {
-						return plugin.ReadResponse{
+						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
 								ID:      req.ID,
 								Outputs: &req.Inputs,
@@ -1553,7 +1558,7 @@ func TestComponentReadResourceOutputCanBeHydratedByComponent(t *testing.T) {
 						}, nil
 					}
 
-					return plugin.ReadResponse{}, fmt.Errorf("unexpected resource type %s", req.Type)
+					return plugin.ImportResponse{}, fmt.Errorf("unexpected resource type %s", req.Type)
 				},
 
 				// Construct will be called as a result of the program registering remote components of type

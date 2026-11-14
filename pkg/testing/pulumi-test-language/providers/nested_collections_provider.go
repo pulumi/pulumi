@@ -214,14 +214,27 @@ func (p *NestedCollectionsProvider) Delete(
 	return plugin.DeleteResponse{}, nil
 }
 
-func (p *NestedCollectionsProvider) Read(
-	_ context.Context, req plugin.ReadRequest,
-) (plugin.ReadResponse, error) {
-	return plugin.ReadResponse{
+func (p *NestedCollectionsProvider) Import(
+	_ context.Context, req plugin.ImportRequest,
+) (plugin.ImportResponse, error) {
+	return plugin.ImportResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
 			Inputs:  &req.Inputs,
-			Outputs: &req.State,
+			Outputs: coalesceImportOutputs(req),
+		},
+		Status: resource.StatusOK,
+	}, nil
+}
+
+func (p *NestedCollectionsProvider) Refresh(
+	_ context.Context, req plugin.RefreshRequest,
+) (plugin.RefreshResponse, error) {
+	return plugin.RefreshResponse{
+		ReadResult: plugin.ReadResult{
+			ID:      req.ID,
+			Inputs:  &req.Inputs,
+			Outputs: coalesceRefreshOutputs(req),
 		},
 		Status: resource.StatusOK,
 	}, nil

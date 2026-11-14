@@ -639,7 +639,7 @@ func TestViewsRefreshSame(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					// Check that the old view is expected.
 					assert.Equal(t, []plugin.View{
 						{
@@ -678,11 +678,11 @@ func TestViewsRefreshSame(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Outputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -773,7 +773,7 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					// Check that the old view is expected.
 					assert.Equal(t, []plugin.View{
 						{
@@ -812,11 +812,11 @@ func TestViews_RefreshBeforeUpdate_Same(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:                  req.ID,
 							Inputs:              &req.Inputs,
-							Outputs:             &req.State,
+							Outputs:             &req.Outputs,
 							RefreshBeforeUpdate: true,
 						},
 						Status: resource.StatusOK,
@@ -907,7 +907,7 @@ func TestViewsRefreshUpdate(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					// Check that the old view is expected.
 					assert.Equal(t, []plugin.View{
 						{
@@ -950,11 +950,11 @@ func TestViewsRefreshUpdate(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Outputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1046,7 +1046,7 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					// Check that the old view is expected.
 					assert.Equal(t, []plugin.View{
 						{
@@ -1089,11 +1089,11 @@ func TestViews_RefreshBeforeUpdate_Update(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:                  req.ID,
 							Inputs:              &req.Inputs,
-							Outputs:             &req.State,
+							Outputs:             &req.Outputs,
 							RefreshBeforeUpdate: true,
 						},
 						Status: resource.StatusOK,
@@ -1184,7 +1184,7 @@ func TestViewsRefreshDelete(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					// Check that the old view is expected.
 					assert.Equal(t, []plugin.View{
 						{
@@ -1217,11 +1217,11 @@ func TestViewsRefreshDelete(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Outputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -1304,7 +1304,7 @@ func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					// Check that the old view is expected.
 					assert.Equal(t, []plugin.View{
 						{
@@ -1337,11 +1337,11 @@ func TestViews_RefreshBeforeUpdate_Delete(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:                  req.ID,
 							Inputs:              &req.Inputs,
-							Outputs:             &req.State,
+							Outputs:             &req.Outputs,
 							RefreshBeforeUpdate: true,
 						},
 						Status: resource.StatusOK,
@@ -1930,7 +1930,7 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					// Check that the old view is expected.
 					assert.Equal(t, []plugin.View{
 						{
@@ -1963,11 +1963,11 @@ func TestViewsRefreshDriftDeleteCreate_UpdateRefresh(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Outputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -2096,7 +2096,7 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					// Check that the old view is expected.
 					assert.Equal(t, []plugin.View{
 						{
@@ -2129,11 +2129,11 @@ func TestViewsRefreshDriftDeleteCreate_RefreshBeforeUpdate(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:                  req.ID,
 							Inputs:              &req.Inputs,
-							Outputs:             &req.State,
+							Outputs:             &req.Outputs,
 							RefreshBeforeUpdate: true,
 						},
 						Status: resource.StatusOK,
@@ -2266,7 +2266,7 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					// Check that the old view is expected.
 					assert.Equal(t, []plugin.View{
 						{
@@ -2299,11 +2299,11 @@ func TestViewsRefreshDriftDeleteCreate_RefreshProgram(t *testing.T) {
 					})
 					require.NoError(t, err)
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Outputs,
 						},
 						Status: resource.StatusOK,
 					}, nil

@@ -1,0 +1,4 @@
+component: engine
+kind: feat
+body: Split the provider `Read` interface into separate `Import` and `Refresh` methods
+time: 2026-11-10T00:00:00Z
