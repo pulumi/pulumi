@@ -174,6 +174,9 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		name := args[0]
 		v, has := outputs[name]
 		if has {
+			if !cmd.showSecrets && snapshotStackOutputsMap[resource.PropertyKey(name)].IsSecret() {
+				return fmt.Errorf("output property '%v' is a secret; pass --show-secrets to display it", name)
+			}
 			if err := outw.WriteOne(name, v); err != nil {
 				return err
 			}
