@@ -130,6 +130,11 @@ func init() {
 						property.New("hello"),
 						property.New(property.Null),
 					}))
+
+					// A for expression over a tuple of outputs maps each element.
+					AssertPropertyMapMember(l, outputs, "forOverTuple", property.New([]property.Value{
+						property.New("hello"),
+					}))
 				},
 			},
 		},

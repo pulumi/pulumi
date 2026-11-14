@@ -42,6 +42,7 @@ pulumi.export("tupleOfOptional", [
     set_res.data.string,
     unset_res.data.string,
 ])
+pulumi.export("forOverTuple", [v.string for v in [set_res.data]])
 optional_lists = [
     set_res.data.number_array,
     unset_res.data.number_array,
