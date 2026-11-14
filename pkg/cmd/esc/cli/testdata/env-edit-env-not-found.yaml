@@ -11,4 +11,4 @@ process:
 
 ---
 > esc env edit default/test
-Error: getting environment definition: not found
+Error: getting environment metadata: not found
