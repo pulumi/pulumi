@@ -1748,8 +1748,14 @@ func (p *provider) readLegacy(
 	})
 	var adapted *pulumirpc.ImportResponse
 	if resp != nil {
+		// Legacy Read signalled a missing resource via nil Outputs; new Import/Refresh callers
+		// signal it via an empty ID. Normalize so downstream code only has to check the ID.
+		adaptedID := resp.GetId()
+		if resp.GetProperties() == nil {
+			adaptedID = ""
+		}
 		adapted = &pulumirpc.ImportResponse{
-			Id:                  resp.GetId(),
+			Id:                  adaptedID,
 			Outputs:             resp.GetProperties(),
 			Inputs:              resp.GetInputs(),
 			RefreshBeforeUpdate: resp.GetRefreshBeforeUpdate(),

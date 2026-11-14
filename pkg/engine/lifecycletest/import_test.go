@@ -928,9 +928,10 @@ func TestImportIgnoreChanges(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -990,9 +991,10 @@ func TestImportPlanExistingImport(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1219,9 +1221,10 @@ func TestImportPlanEmptyState(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1267,12 +1270,12 @@ func TestImportCheckFailureRedactsSecrets(t *testing.T) {
 						Failures: []plugin.CheckFailure{{Property: "foo", Reason: "bad foo"}},
 					}, nil
 				},
-				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					inputs := property.NewMap(map[string]property.Value{
 						"foo": property.New("secret-input-value").WithSecret(true),
 					})
 					return plugin.ImportResponse{
-						ReadResult: plugin.ReadResult{Inputs: &inputs, Outputs: &inputs},
+						ReadResult: plugin.ReadResult{ID: req.ID, Inputs: &inputs, Outputs: &inputs},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -1348,9 +1351,10 @@ func TestImportPlanSpecificProvider(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1411,9 +1415,10 @@ func TestImportPlanSpecificProperties(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1498,9 +1503,10 @@ func TestImportIntoParent(t *testing.T) {
 						Status:     resource.StatusUnknown,
 					}, errors.New("not implemented")
 				},
-				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1556,9 +1562,10 @@ func TestImportComponent(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("not implemented")
 				},
-				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),
@@ -1629,9 +1636,10 @@ func TestImportRemoteComponent(t *testing.T) {
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{Status: resource.StatusUnknown}, errors.New("not implemented")
 				},
-				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{
 								"foo":  property.New("bar"),
 								"frob": property.New(1.0),

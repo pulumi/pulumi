@@ -1503,14 +1503,13 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		// If there is no such resource, return an error indicating as such.
-		if result.Outputs == nil {
+		if result.ID == "" {
 			return resource.StatusOK, nil, fmt.Errorf("resource '%s' does not exist", id)
 		}
-		s.new.Outputs = resource.ToResourcePropertyMap(*result.Outputs)
-
-		if result.ID != "" {
-			s.new.ID = result.ID
+		if result.Outputs != nil {
+			s.new.Outputs = resource.ToResourcePropertyMap(*result.Outputs)
 		}
+		s.new.ID = result.ID
 	}
 
 	// If we were asked to replace an existing, non-External resource, pend the
@@ -2201,7 +2200,7 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 				return rst, nil, err
 			}
 		}
-		if read.Outputs == nil {
+		if read.ID == "" {
 			resourceID := s.new.ID
 			if resourceID == "" {
 				resourceID = s.new.ImportID

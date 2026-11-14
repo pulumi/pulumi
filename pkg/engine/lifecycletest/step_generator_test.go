@@ -197,7 +197,7 @@ func TestReadReplaceStep(t *testing.T) {
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 						return plugin.ImportResponse{
-							ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
+							ReadResult: plugin.ReadResult{ID: req.ID, Outputs: new(property.Map{})},
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -250,7 +250,7 @@ func TestRelinquishStep(t *testing.T) {
 				WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 						return plugin.ImportResponse{
-							ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
+							ReadResult: plugin.ReadResult{ID: req.ID, Outputs: new(property.Map{})},
 							Status:     resource.StatusOK,
 						}, nil
 					},
@@ -279,7 +279,7 @@ func TestTakeOwnershipStep(t *testing.T) {
 		WithProvider("pkgA", "1.0.0", &deploytest.Provider{
 			ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 				return plugin.ImportResponse{
-					ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
+					ReadResult: plugin.ReadResult{ID: req.ID, Outputs: new(property.Map{})},
 					Status:     resource.StatusOK,
 				}, nil
 			},
@@ -472,7 +472,7 @@ func TestExternalEventMetadata(t *testing.T) {
 				},
 				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
-						ReadResult: plugin.ReadResult{Outputs: new(property.Map{})},
+						ReadResult: plugin.ReadResult{ID: req.ID, Outputs: new(property.Map{})},
 						Status:     resource.StatusOK,
 					}, nil
 				},
@@ -544,6 +544,7 @@ func TestExistsResourceTrue(t *testing.T) {
 				})
 				return plugin.ImportResponse{
 					ReadResult: plugin.ReadResult{
+						ID:      req.ID,
 						Outputs: &outputs,
 					},
 					Status: resource.StatusOK,
@@ -638,6 +639,7 @@ func TestExistsResourceWithProperties(t *testing.T) {
 				}
 				return plugin.ImportResponse{
 					ReadResult: plugin.ReadResult{
+						ID:      req.ID,
 						Outputs: &req.Inputs,
 					},
 					Status: resource.StatusOK,

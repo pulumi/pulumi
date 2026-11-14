@@ -146,6 +146,7 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
 							Outputs: &req.Inputs,
 						},
@@ -349,6 +350,7 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 					assert.Equal(t, resource.ID("someId"), req.ID)
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
 							Outputs: &req.Inputs,
 						},
@@ -435,6 +437,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
 							Outputs: &req.Inputs,
 						},
@@ -460,6 +463,7 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
 							Outputs: &req.Inputs,
 						},

@@ -348,6 +348,7 @@ func (prs ProviderReadSpec) AsImportF() func(context.Context, plugin.ImportReque
 
 		return plugin.ImportResponse{
 			ReadResult: plugin.ReadResult{
+				ID:      req.ID,
 				Outputs: new(property.Map{}),
 			},
 			Status: resource.StatusOK,

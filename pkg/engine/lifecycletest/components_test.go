@@ -306,6 +306,7 @@ func TestConstructCallSecretsUnknowns(t *testing.T) {
 				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
 							Outputs: &req.Inputs,
 						},
@@ -400,6 +401,7 @@ func TestConstructCallReturnDependencies(t *testing.T) {
 					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Inputs:  &req.Inputs,
 								Outputs: &req.Inputs,
 							},
@@ -541,6 +543,7 @@ func TestConstructCallReturnOutputs(t *testing.T) {
 					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Inputs:  &req.Inputs,
 								Outputs: &req.Inputs,
 							},
@@ -675,6 +678,7 @@ func TestConstructCallSendDependencies(t *testing.T) {
 					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Inputs:  &req.Inputs,
 								Outputs: &req.Inputs,
 							},
@@ -831,6 +835,7 @@ func TestConstructCallDependencyDedeuplication(t *testing.T) {
 					ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
+								ID:      req.ID,
 								Inputs:  &req.Inputs,
 								Outputs: &req.Inputs,
 							},

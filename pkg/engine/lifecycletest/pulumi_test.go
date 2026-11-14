@@ -4353,6 +4353,7 @@ func TestSourcePositions(t *testing.T) {
 				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
 							Outputs: &req.Inputs,
 						},
