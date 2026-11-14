@@ -16,8 +16,11 @@ package logging
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -527,4 +530,60 @@ func TestSerializedOutputValueSecretsRedacted(t *testing.T) {
 		sig.Key: sig.OutputValue,
 		"value": "public",
 	}))
+}
+
+// TestSecretFilterAppliesToNonStringArgs verifies that registered secrets are filtered when they
+// reach the log through an error, a Stringer or another non-string value, either as a format
+// argument or as an attribute.
+//
+//nolint:paralleltest // mutates global logging state and os.Stderr
+func TestSecretFilterAppliesToNonStringArgs(t *testing.T) {
+	prevLog, prevV, prevFlow := LogToStderr, Verbose, LogFlow
+	t.Cleanup(func() {
+		SetSinkHandler(nil)
+		handlerMu.Lock()
+		primary = discardHandler{}
+		rebuildLogger()
+		handlerMu.Unlock()
+		LogToStderr, Verbose, LogFlow = prevLog, prevV, prevFlow
+	})
+
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	oldStderr := os.Stderr
+	os.Stderr = w
+	InitLogging(true, 1, false)
+	os.Stderr = oldStderr
+
+	sink := &recordingAttrHandler{}
+	SetSinkHandler(sink)
+
+	AddGlobalSecretFilter([]string{"claimtok-7f3a9c"}, "[credential]")
+	callErr := fmt.Errorf("performing HTTP request: %w",
+		errors.New(`Get "https://api.example.com/api/agents/signup/validate/claimtok-7f3a9c": connection refused`))
+	u, err := url.Parse("https://user:claimtok-7f3a9c@example.com/repo.git")
+	require.NoError(t, err)
+
+	V(1).Infof("validate failed: %v", callErr)
+	V(1).Infof("cloning %s", u)
+	slog.Info("could not validate claim", "err", callErr)
+	slog.Info("unrelated error", "err", errors.New("no secret here"))
+
+	// Other argument types reach the sink unchanged, but the formatted primary output is filtered.
+	SetSinkHandler(nil)
+	V(1).Infof("args: %v", []string{"--token", "claimtok-7f3a9c"})
+
+	require.NoError(t, w.Close())
+	out, err := io.ReadAll(r)
+	require.NoError(t, err)
+
+	assert.Contains(t, string(out), "[credential]")
+	assert.NotContains(t, string(out), "claimtok-7f3a9c")
+	assert.Contains(t, string(out), "no secret here")
+
+	sink.mu.Lock()
+	defer sink.mu.Unlock()
+	for _, a := range sink.attrs {
+		assert.NotContains(t, a.Value.String(), "claimtok-7f3a9c", "sink attribute %q", a.Key)
+	}
 }
