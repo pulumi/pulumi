@@ -36,10 +36,10 @@ require (
 	github.com/zclconf/go-cty v1.16.3
 	gocloud.dev v0.46.1-0.20260810195832-b5401c07b5f1
 	gocloud.dev/secrets/hashivault v0.46.0
-	golang.org/x/crypto v0.58.0 // indirect
+	golang.org/x/crypto v0.59.0 // indirect
 	golang.org/x/net v0.62.0
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/sync v0.24.0
+	golang.org/x/sync v0.25.0
 	google.golang.org/api v0.290.0
 	google.golang.org/genproto v0.0.0-20260724162435-b2f20204f0df // indirect
 	google.golang.org/grpc v1.85.0
@@ -114,9 +114,9 @@ require (
 	go.uber.org/automaxprocs v1.6.0
 	go.yaml.in/yaml/v4 v4.0.0-rc.4
 	golang.org/x/mod v0.42.0
-	golang.org/x/sys v0.49.0
-	golang.org/x/term v0.47.0
-	golang.org/x/text v0.43.0
+	golang.org/x/sys v0.50.0
+	golang.org/x/term v0.48.0
+	golang.org/x/text v0.44.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v2 v2.4.0
 	lukechampine.com/frand v1.5.1
