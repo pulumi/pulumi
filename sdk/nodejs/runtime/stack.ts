@@ -18,7 +18,7 @@ import { getProject, getStack } from "../metadata";
 import { Inputs, Output, output } from "../output";
 import { ComponentResource, Resource, ResourceTransform, ResourceTransformation } from "../resource";
 import { InvokeTransform } from "../invoke";
-import { getCallbacks, isDryRun, setRootResource } from "./settings";
+import { getCallbacks, setRootResource } from "./settings";
 import { getStore, setStackResource, getStackResource as stateGetStackResource } from "./state";
 import { ensureNotInStateMigration } from "./stateMigration";
 
@@ -162,12 +162,9 @@ async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
         // Emit a resource as a normal pojo.  But filter out all our internal properties so that
         // they don't clutter the display/checkpoint with values not relevant to the application.
         //
-        // In preview only, we mark the POJO with "@isPulumiResource" to indicate that it is derived
-        // from a resource. This allows the engine to perform resource-specific filtering of unknowns
-        // from output diffs during a preview. This filtering is not necessary during an update because
-        // all property values are known.
-        const pojo = await serializeAllKeys((n) => !n.startsWith("__"));
-        return !isDryRun() ? pojo : { ...pojo, "@isPulumiResource": true };
+        // The POJO must be the same shape in previews and updates, otherwise the stack outputs recorded
+        // in an update plan will never match the outputs of the update that executes it.
+        return await serializeAllKeys((n) => !n.startsWith("__"));
     }
 
     if (prop instanceof Array) {

@@ -1946,6 +1946,67 @@ func TestStackOutputsWithTargetedPlan(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestPlannedUpdateStackOutputViolationIsReported checks that a plan violation found while finalizing the stack
+// outputs is reported as an error diagnostic rather than failing the update silently.
+func TestPlannedUpdateStackOutputViolationIsReported(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	outputValue := "foo"
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		stack, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test-test", false)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+
+		err = monitor.RegisterResourceOutputs(stack.URN, resource.PropertyMap{
+			"out": resource.NewProperty(outputValue),
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T:             t,
+			HostF:         hostF,
+			UpdateOptions: UpdateOptions{GeneratePlan: true, Experimental: true},
+		},
+	}
+	project := p.GetProject()
+
+	plan, err := lt.TestOp(Update).Plan(project, p.GetTarget(t, nil), p.Options, p.BackendClient, nil)
+	require.NoError(t, err)
+
+	// Change the stack output so that it no longer matches the plan.
+	outputValue = "bar"
+	p.Options.Plan = plan.Clone()
+	validate := func(
+		project workspace.Project, target deploy.Target, entries JournalEntries, events []Event, err error,
+	) error {
+		sawViolation := false
+		for _, e := range events {
+			if e.Type == DiagEvent {
+				payload := e.Payload().(DiagEventPayload)
+				if payload.Severity == "error" && strings.Contains(payload.Message, "resource violates plan") {
+					sawViolation = true
+				}
+			}
+		}
+		assert.True(t, sawViolation, "expected the stack output plan violation to be reported")
+		return err
+	}
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, validate, "0")
+	require.ErrorContains(t, err, "resource violates plan: properties changed: ++out[{foo}!={bar}]")
+}
+
 // TestPlannedUpdateWithInternalKeys ensures that internal property keys (those starting with "__", such as "__defaults"
 // that providers inject during Check) are not treated as plan constraints. Differences in these internal keys between
 // preview and update must not raise plan violations.
