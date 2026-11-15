@@ -1965,9 +1965,9 @@ func TestPlannedUpdateStackOutputViolationIsReported(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		require.NoError(t, err)
 
-		err = monitor.RegisterResourceOutputs(stack.URN, resource.PropertyMap{
-			"out": resource.NewProperty(outputValue),
-		})
+		err = monitor.RegisterResourceOutputs(stack.URN, property.NewMap(map[string]property.Value{
+			"out": property.New(outputValue),
+		}))
 		require.NoError(t, err)
 		return nil
 	})
