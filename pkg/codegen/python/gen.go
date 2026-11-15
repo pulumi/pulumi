@@ -123,6 +123,10 @@ type modContext struct {
 	extraSourceFiles []string
 	isConfig         bool
 
+	// typesFile is true while generating _inputs.py or outputs.py. These files import resources
+	// of their own module as modules, at the end of the file, to avoid a circular import.
+	typesFile bool
+
 	// Name overrides set in PackageInfo
 	modNameOverrides map[string]string // Optional overrides for Pulumi module names
 	compatibility    string            // Toggle compatibility mode for a specified target.
@@ -322,7 +326,12 @@ func (mod *modContext) enumType(enum *schema.EnumType) string {
 
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	if r.Resource == nil || codegen.PkgEquals(r.Resource.PackageReference, mod.pkg) {
-		return mod.tokenToResource(r.Token)
+		name := mod.tokenToResource(r.Token)
+		if mod.typesFile && mod.isLocalResource(r) {
+			// importResourceType imports the module of this resource as `_<file>`.
+			return "_" + mod.resourceFileName(r) + "." + name
+		}
+		return name
 	}
 
 	// Is it a provider resource?
@@ -334,6 +343,13 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	pkg := r.Resource.PackageReference
 	modName, name := mod.modNameAndName(pkg, r, false)
 	return fmt.Sprintf("%s.%s%s", PyPack(pkg.Namespace(), pkg.Name()), modName, name)
+}
+
+// isLocalResource returns true for a resource that this module imports from a relative path, as in
+// `from .widget import Widget`, and refers to by its bare class name.
+func (mod *modContext) isLocalResource(r *schema.ResourceType) bool {
+	return (r.Resource == nil || codegen.PkgEquals(r.Resource.PackageReference, mod.pkg)) &&
+		!strings.Contains(mod.tokenToResource(r.Token), ".")
 }
 
 func (mod *modContext) tokenToResource(tok string) string {
@@ -1041,18 +1057,10 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 	if mod.mod == modName || modName == "" {
 		// We want a relative import if we're in the same module: from .some_member import SomeMember
 		importPath := mod.getRelImportFromRoot(modName)
+		name := mod.resourceFileName(r)
 
-		name := PyName(tokenToName(r.Token))
-		if mod.compatibility == kubernetes20 {
-			// To maintain backward compatibility for kubernetes, the file names
-			// need to be CamelCase instead of the standard snake_case.
-			name = tokenToName(r.Token)
-		}
-		if r.Resource != nil && r.Resource.IsProvider {
-			name = "provider"
-		}
-		if mod.conflictsWithChildModule(name) {
-			name = name + "_"
+		if mod.typesFile {
+			return fmt.Sprintf("from %s import %[2]s as _%[2]s", importPath, name)
 		}
 
 		if strings.HasSuffix(importPath, ".") {
@@ -1068,6 +1076,23 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 
 	components := strings.Split(modName, "/")
 	return fmt.Sprintf("from %s import %[2]s as _%[2]s", mod.getRelImportFromRoot(""), components[0])
+}
+
+// resourceFileName returns the name of the file that defines a resource of this package.
+func (mod *modContext) resourceFileName(r *schema.ResourceType) string {
+	name := PyName(tokenToName(r.Token))
+	if mod.compatibility == kubernetes20 {
+		// To maintain backward compatibility for kubernetes, the file names
+		// need to be CamelCase instead of the standard snake_case.
+		name = tokenToName(r.Token)
+	}
+	if r.Resource != nil && r.Resource.IsProvider {
+		name = "provider"
+	}
+	if mod.conflictsWithChildModule(name) {
+		name = name + "_"
+	}
+	return name
 }
 
 // genConfig emits all config variables in the given module, returning the resulting file.
@@ -1197,6 +1222,9 @@ func allTypesAreOverlays(types []*schema.ObjectType) bool {
 }
 
 func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
+	mod.typesFile = true
+	defer func() { mod.typesFile = false }()
+
 	genTypes := func(file string, input bool) error {
 		w := &bytes.Buffer{}
 
@@ -1206,6 +1234,8 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 		}
 
 		imports := newImports()
+		// Resource modules of this module import this file, so these imports go at the end of the file.
+		resourceImports := newImports()
 		var emitted [][]*schema.Property
 		for _, t := range mod.types {
 			if t.IsOverlay {
@@ -1214,6 +1244,11 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 			}
 			if (input && mod.details(t).inputType) || (!input && mod.details(t).outputType) {
 				emitted = append(emitted, t.Properties)
+				codegen.VisitTypeClosure(t.Properties, func(t schema.Type) {
+					if r, ok := t.(*schema.ResourceType); ok && mod.isLocalResource(r) {
+						resourceImports.addResource(mod, r)
+					}
+				})
 			}
 
 			if input && mod.details(t).inputType {
@@ -1238,6 +1273,7 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 		for _, e := range mod.enums {
 			imports.addEnum(mod, e)
 		}
+		imports.Set = imports.Difference(resourceImports.Set)
 
 		mod.genHeader(w, true /*needsSDK*/, imports, literalTyping(emitted...))
 
@@ -1277,6 +1313,9 @@ func (mod *modContext) genTypes(dir string, fs codegen.Fs) error {
 				}
 				hasTypes = true
 			}
+		}
+		for _, imp := range resourceImports.strings() {
+			fmt.Fprintf(w, "%s\n", imp)
 		}
 		if hasTypes {
 			fs.Add(path.Join(dir, file), w.Bytes())

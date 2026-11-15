@@ -142,7 +142,7 @@ func TestLegacyReferenceStore_ParseReference_errors(t *testing.T) {
 			t.Parallel()
 
 			_, err := store.ParseReference(tt.give)
-			assert.Error(t, err)
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 			// If we ever make error messages here more specific,
 			// we can add assert.ErrorContains here.
 		})

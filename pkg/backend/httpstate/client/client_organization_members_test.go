@@ -129,6 +129,6 @@ func TestListOrganizationMembers(t *testing.T) {
 
 		c := newMockClient(server)
 		_, err := c.ListOrganizationMembers(t.Context(), "acme", "nope", nil)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }

@@ -365,7 +365,7 @@ func TestOrgMemberList_NegativeCount(t *testing.T) {
 	args := defaultMemberListArgs()
 	args.count = -1
 	err := runOrgMemberList(t.Context(), &buf, stubMemberFactory(c, "acme"), args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--count must be non-negative")
 }
 
@@ -375,7 +375,7 @@ func TestOrgMemberList_ClientError(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockOrgMemberListClient{err: errors.New("server boom")}
 	err := runOrgMemberList(t.Context(), &buf, stubMemberFactory(c, "acme"), defaultMemberListArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "listing organization members")
 	assert.Contains(t, err.Error(), "server boom")
 }
@@ -386,7 +386,7 @@ func TestOrgMemberList_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgMemberList(t.Context(), &buf, failingMemberFactory(errors.New("not logged in")),
 		defaultMemberListArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
@@ -446,5 +446,5 @@ func TestNewOrgMemberListCmd_CountAndAllAreMutuallyExclusive(t *testing.T) {
 	cmd.SetErr(&buf)
 	cmd.SetArgs([]string{"--count", "5", "--all"})
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }

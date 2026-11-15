@@ -142,7 +142,7 @@ func TestPolicyGroupNew_CreateError(t *testing.T) {
 	err := runPolicyGroupNew(t.Context(), buf,
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
 		policyGroupNewArgs{mode: "preventative", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "creating policy group: already exists", err.Error())
 	assert.Equal(t, 1, c.createCalls)
 	assert.Equal(t, 0, c.getCalls)
@@ -156,7 +156,7 @@ func TestPolicyGroupNew_GetAfterCreateError(t *testing.T) {
 	err := runPolicyGroupNew(t.Context(), buf,
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
 		policyGroupNewArgs{mode: "preventative", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "reading policy group after create: not found", err.Error())
 	assert.Equal(t, 1, c.createCalls)
 	assert.Equal(t, 1, c.getCalls)
@@ -172,7 +172,7 @@ func TestPolicyGroupNew_FactoryError(t *testing.T) {
 			mode: "preventative", yes: true,
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "not logged in", err.Error())
 }
 
@@ -246,7 +246,7 @@ func TestPolicyGroupNew_ModeRequired(t *testing.T) {
 	err := runPolicyGroupNew(t.Context(), &bytes.Buffer{},
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
 		policyGroupNewArgs{yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "--mode is required (use --mode preventative or --mode audit)", err.Error())
 	assert.Equal(t, 0, c.createCalls)
 }
@@ -302,7 +302,7 @@ func TestPolicyGroupNew_AccountRuleRequiresAudit(t *testing.T) {
 		c := &mockPolicyGroupNewClient{}
 		err := runPolicyGroupNew(t.Context(), &bytes.Buffer{},
 			stubPolicyGroupNewFactory(c, "acme"), "prod-policies", args)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Equal(t, cmdCmd.ConfigurationError{Message: "--account-rule requires --mode audit"}, err)
 		assert.Equal(t, 0, c.createCalls)
 	}
@@ -338,7 +338,7 @@ func TestPolicyGroupNew_InvalidRuleFailsBeforeLogin(t *testing.T) {
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
 			changed:      map[string]bool{"stack-rule": true},
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.IsType(t, cmdCmd.ConfigurationError{}, err)
 	assert.Contains(t, err.Error(), "invalid --stack-rule")
 }

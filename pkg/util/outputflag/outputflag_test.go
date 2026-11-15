@@ -90,7 +90,7 @@ func TestVarWithJSONAlias(t *testing.T) {
 			cmd, _ := newAliasCmd()
 			cmd.SetArgs(args)
 			err := cmd.Execute()
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.ErrorContains(t, err, "none of the others can be")
 		})
 	}
@@ -170,7 +170,7 @@ func TestOutputFlag_UnconfiguredFormatRejected(t *testing.T) {
 			// Empty OutputFlag has only `default` available.
 			var f OutputFlag[string]
 			err := f.Set(tc.input)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Equal(t,
 				`output "`+tc.input+`" not supported, valid values are: default`,
 				err.Error())
@@ -183,7 +183,7 @@ func TestOutputFlag_UnknownFormatRejected(t *testing.T) {
 
 	f := allFormats()
 	err := f.Set("xml")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t,
 		`output "xml" not supported, valid values are: default, json, markdown, yaml or csv`,
 		err.Error())
@@ -196,7 +196,7 @@ func TestOutputFlag_PartialConfigurationListsOnlyAvailable(t *testing.T) {
 	// but always include "default".
 	f := OutputFlag[string]{RenderJSON: "json"}
 	err := f.Set("yaml")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t,
 		`output "yaml" not supported, valid values are: default or json`,
 		err.Error())
@@ -220,7 +220,7 @@ func TestOutputFlag_FailedSetLeavesPriorValue(t *testing.T) {
 
 	f := allFormats()
 	require.NoError(t, f.Set("json"))
-	require.Error(t, f.Set("xml"))
+	require.Error(t, f.Set("xml")) //nolint:forbidigo // pre-existing
 
 	assert.Equal(t, "json", f.Get(), "rejected Set must not overwrite the prior renderer")
 	assert.Equal(t, "json", f.String(), "rejected Set must not overwrite the prior String()")
@@ -243,7 +243,7 @@ func TestOutputFlag_ImplementsPflagValue(t *testing.T) {
 	fs.SetOutput(discard{}) // silence pflag's default usage dump on error
 	fs.Var(&f, "output", "")
 	err := fs.Parse([]string{"--output=xml"})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, `output "xml" not supported`)
 }
 
@@ -262,7 +262,7 @@ func TestOutputFlag_FunctionRenderer(t *testing.T) {
 	require.NoError(t, f.Set("json"))
 	assert.Equal(t, "json", f.Get()())
 
-	require.Error(t, f.Set("yaml"), "yaml must be rejected because RenderYAML is nil")
+	require.Error(t, f.Set("yaml"), "yaml must be rejected because RenderYAML is nil") //nolint:forbidigo // pre-existing
 }
 
 // discard is an io.Writer that swallows writes, used to silence pflag's

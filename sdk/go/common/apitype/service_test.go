@@ -325,7 +325,7 @@ func TestCapabilities(t *testing.T) {
 					},
 				}
 				_, err := response.Parse()
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tc.errSub)
 			})
 		}
@@ -362,7 +362,7 @@ func TestCapabilities(t *testing.T) {
 			},
 		}
 		_, err := response.Parse()
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 
 	t.Run("parse neo-cli-mode with newer version ignored", func(t *testing.T) {

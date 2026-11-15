@@ -105,7 +105,7 @@ func TestMatchPath_SegmentLengthMismatch(t *testing.T) {
 		&Operation{Method: "GET", Path: "/api/stacks/{orgName}"},
 	)
 	_, err := MatchPath(idx, "GET", "/api/stacks/acme/extra")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestMatchPath_PrefersMoreSpecific(t *testing.T) {
@@ -127,7 +127,7 @@ func TestMatchPath_UserTemplateAgainstLiteralSegmentFails(t *testing.T) {
 		&Operation{Method: "GET", Path: "/api/users/me"},
 	)
 	_, err := MatchPath(idx, "GET", "/api/users/{x}")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestMatchByOperationID_Exact(t *testing.T) {
@@ -157,7 +157,7 @@ func TestMatchByOperationID_NoMatch(t *testing.T) {
 		&Operation{Method: "GET", Path: "/api/user", OperationID: "GetCurrentUser"},
 	)
 	_, err := MatchByOperationID(idx, "Nonexistent")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	apiErr, ok := errors.AsType[*APIError](err)
 	require.True(t, ok)
 	assert.Equal(t, ErrNoMatch, apiErr.Envelope.Error.Code)
@@ -171,7 +171,7 @@ func TestMatchByOperationID_Ambiguous(t *testing.T) {
 		&Operation{Method: "POST", Path: "/api/b", OperationID: "Dup"},
 	)
 	_, err := MatchByOperationID(idx, "Dup")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestLooksLikeOperationID(t *testing.T) {
@@ -341,7 +341,7 @@ func TestMatchPath_SuggestsOperationIDWhenInputLooksLikeOne(t *testing.T) {
 		&Operation{Method: "GET", Path: "/api/user", OperationID: "GetCurrentUser"},
 	)
 	_, err := MatchPath(idx, "GET", "ListAccounts")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	apiErr, ok := errors.AsType[*APIError](err)
 	require.True(t, ok)
 	// The suggestion mentioning operation-ID usage should be present.

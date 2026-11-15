@@ -60,7 +60,7 @@ func TestInvalidSchema(t *testing.T) {
 		Token: prepareResponse.Token,
 		Test:  "internal-bad-schema",
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "error loading resource type 'bad:index:Resource':")
 	assert.ErrorContains(t, err, "#/resources/bad:index:Resource/properties/value/type: unknown type kind not a type")
 }

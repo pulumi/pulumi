@@ -274,7 +274,7 @@ func TestScanLog_AllAndCountMutuallyExclusive(t *testing.T) {
 	cmd.SetArgs([]string{"--all", "--count", "5", "prod-aws", "scan-123"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "[all count]")
 	assert.Empty(t, client.calls)
 }
@@ -357,7 +357,7 @@ func TestScanLog_StepWithoutJobRejectsStep(t *testing.T) {
 	cmd.step = 2
 	err := cmd.run(t.Context(), stubScanLogFactory(client, "acme"),
 		"prod-aws", "scan-123")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--step requires --job")
 	assert.Empty(t, client.calls)
 }
@@ -424,7 +424,7 @@ func TestScanLog_InvalidOutput(t *testing.T) {
 
 	cmd, _ := newTestScanLogCmd()
 	err := cmd.output.Set("yaml")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `"yaml" not supported`)
 }
 
@@ -435,7 +435,7 @@ func TestScanLog_ClientError(t *testing.T) {
 	cmd, _ := newTestScanLogCmd()
 	err := cmd.run(t.Context(), stubScanLogFactory(client, "acme"),
 		"prod-aws", "missing-scan")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "reading insights scan logs")
 	assert.Contains(t, err.Error(), "404 not found")
 }
@@ -446,7 +446,7 @@ func TestScanLog_FactoryError(t *testing.T) {
 	cmd, _ := newTestScanLogCmd()
 	err := cmd.run(t.Context(), failingScanLogFactory(errors.New("not logged in")),
 		"prod-aws", "scan-123")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
@@ -518,7 +518,7 @@ func TestNewInsightsAccountScanLogCmd_RequiresAccountAndScanID(t *testing.T) {
 	cmd.SetOut(&out)
 	cmd.SetErr(&out)
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestNewInsightsAccountScanLogCmd_NilFactoryUsesDefault(t *testing.T) {

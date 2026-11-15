@@ -1,3 +1,0 @@
-component: cli
-kind: fix
-body: Correct the `pulumi whoami` help text, which said a team token returns the organization name; it returns the team's service principal login

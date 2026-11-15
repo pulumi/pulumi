@@ -342,6 +342,6 @@ func TestDeploymentList_AllAndCountMutuallyExclusive(t *testing.T) {
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--all and --count are mutually exclusive")
 }

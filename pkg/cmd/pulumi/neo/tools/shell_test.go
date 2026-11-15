@@ -54,6 +54,7 @@ func TestShell_ExecuteHonorsTimeout(t *testing.T) {
 	require.NoError(t, err)
 	sh.DefaultTimeout = 50 * time.Millisecond
 	res, err := sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":"sleep 5"}`))
+	//nolint:forbidigo // pre-existing
 	require.Error(t, err, "timeout must surface as a non-nil error so the TUI marks the call failed")
 	assert.Contains(t, err.Error(), "timed out")
 	require.NotNil(t, res, "partial result must still be returned alongside the timeout error")
@@ -95,7 +96,7 @@ func TestShell_ExecuteHonorsAgentTimeout(t *testing.T) {
 	start := time.Now()
 	res, err := sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(`{"command":"sleep 5","timeout":0.1}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, res)
 	assert.True(t, res.(ShellResult).TimedOut)
 	assert.Less(t, time.Since(start), 5*time.Second, "agent-supplied timeout was ignored")
@@ -113,7 +114,7 @@ func TestShell_ExecuteAgentTimeoutOverridesDefault(t *testing.T) {
 	start := time.Now()
 	res, err := sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(`{"command":"sleep 5","timeout":0.1}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, res)
 	assert.True(t, res.(ShellResult).TimedOut)
 	assert.Less(t, time.Since(start), 5*time.Second, "agent timeout did not override DefaultTimeout")
@@ -134,7 +135,7 @@ func TestShell_ExecuteUnblocksOnOrphanedChild(t *testing.T) {
 	start := time.Now()
 	res, err := sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(`{"command":"sleep 30 & wait","timeout":0.2}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotNil(t, res)
 	assert.True(t, res.(ShellResult).TimedOut)
 	// Allow generous slack for the WaitDelay grace period (5s) plus CI noise.
@@ -148,7 +149,7 @@ func TestShell_ExecuteRejectsNegativeTimeout(t *testing.T) {
 	require.NoError(t, err)
 	_, err = sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(`{"command":"echo hi","timeout":-1}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "non-negative")
 }
 
@@ -195,7 +196,7 @@ func TestShell_ExecuteRejectsCwdOutsideRoot(t *testing.T) {
 	outside := t.TempDir()
 	_, err = sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, outside)))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
@@ -205,7 +206,7 @@ func TestShell_ExecuteRejectsEmptyCommand(t *testing.T) {
 	sh, err := NewShell(t.TempDir())
 	require.NoError(t, err)
 	_, err = sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":""}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "non-empty command")
 }
 
@@ -221,7 +222,7 @@ func TestShell_RejectsCwdSymlinkEscape(t *testing.T) {
 	require.NoError(t, err)
 	_, err = sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, link)))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
@@ -248,7 +249,7 @@ func TestShell_RejectsUnknownMethod(t *testing.T) {
 	sh, err := NewShell(t.TempDir())
 	require.NoError(t, err)
 	_, err = sh.Invoke(t.Context(), "run", json.RawMessage(`{"command":"echo"}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "unknown shell method")
 }
 
@@ -286,7 +287,7 @@ func TestShell_RejectsCwdOutsideRootAndExtras(t *testing.T) {
 	other := t.TempDir()
 	_, err = sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, other)))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
@@ -295,7 +296,7 @@ func TestNewShell_RejectsMissingExtraRoot(t *testing.T) {
 
 	missing := filepath.Join(t.TempDir(), "nope")
 	_, err := NewShell(t.TempDir(), missing)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "extra root")
 }
 
@@ -307,7 +308,7 @@ func TestNewShell_RejectsExtraRootThatIsAFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(notADir, nil, 0o600))
 
 	_, err := NewShell(t.TempDir(), notADir)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "is not a directory")
 }
 

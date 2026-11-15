@@ -162,7 +162,7 @@ func (c *loginCmd) newCommand(ws pkgWorkspace.Context, lm backend.LoginManager, 
 					"warning: existing stored credentials can no longer be decrypted: %v\n", err)
 				if cmdutil.Interactive() {
 					replace := false
-					if err := survey.AskOne(&survey.Confirm{
+					if err := ui.AskOne(&survey.Confirm{
 						Message: "Replace the stored credentials with the ones from this login?",
 						Default: false,
 					}, &replace, ui.SurveyIcons(displayOptions.Color)); err != nil || !replace {
@@ -517,7 +517,7 @@ func chooseAccount(accounts map[string]workspace.Account, opts display.Options) 
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 	var option string
-	if err := survey.AskOne(&survey.Select{
+	if err := ui.AskOne(&survey.Select{
 		Message:  message,
 		Options:  acts,
 		PageSize: pageSize,

@@ -617,7 +617,7 @@ func TestPluginDownload(t *testing.T) {
 			r, l, err := source.Download(t.Context(), *spec.Version, "darwin", "amd64", getHTTPResponse)
 			require.NoError(t, err)
 			readBytes, err := io.ReadAll(r)
-			assert.Error(t, err, "invalid checksum, expected 00, actual "+chksum)
+			assert.Error(t, err, "invalid checksum, expected 00, actual "+chksum) //nolint:forbidigo // pre-existing
 			assert.Equal(t, int(l), len(readBytes))
 			assert.Equal(t, expectedBytes, readBytes)
 		})

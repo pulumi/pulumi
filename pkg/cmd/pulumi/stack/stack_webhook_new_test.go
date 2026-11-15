@@ -153,7 +153,7 @@ func TestStackWebhookNew_ClientError(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runStackWebhookNew(t.Context(), &buf, stubNewFactory(c), "", args, renderWebhookGetText)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "creating stack webhook")
 	assert.Contains(t, err.Error(), "409 conflict")
 }
@@ -169,7 +169,7 @@ func TestStackWebhookNew_FactoryError(t *testing.T) {
 	err := runStackWebhookNew(
 		t.Context(), &buf, failingNewFactory(errors.New("not logged in")),
 		"", args, renderWebhookGetText)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
@@ -213,7 +213,7 @@ func TestStackWebhookNew_ResolveArgs_YesNoName(t *testing.T) {
 	// With skipPrompts=true but no name, should error because name is required.
 	_, err := resolveNewArgs(io.Discard, true, "", "https://example.com", "raw",
 		nil, nil, display.Options{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "webhook name is required")
 	assert.Contains(t, err.Error(), "--name")
 }
@@ -224,7 +224,7 @@ func TestStackWebhookNew_ResolveArgs_YesNoURL(t *testing.T) {
 	// With skipPrompts=true but no URL, should error because URL is required.
 	_, err := resolveNewArgs(io.Discard, true, "My Hook", "", "raw",
 		nil, nil, display.Options{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "payload URL is required")
 	assert.Contains(t, err.Error(), "--url")
 }

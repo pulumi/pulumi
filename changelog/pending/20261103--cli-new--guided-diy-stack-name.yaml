@@ -1,3 +1,0 @@
-component: cli/new
-kind: fix
-body: Fix guided `pulumi new` rejecting stack names with "no Pulumi.yaml project file found" on DIY backends

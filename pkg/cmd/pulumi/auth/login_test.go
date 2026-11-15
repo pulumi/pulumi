@@ -252,7 +252,7 @@ func TestLoginURLResolution(t *testing.T) {
 			err := cmd.Execute()
 
 			if tt.expectError {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Zero(t, captured.calls)
 				if tt.expectedError != "" {
 					require.ErrorContains(t, err, tt.expectedError)
@@ -472,7 +472,7 @@ func TestExtractOIDCDefaults(t *testing.T) {
 			)
 
 			if tt.wantErr {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				if tt.errContains != "" {
 					require.ErrorContains(t, err, tt.errContains)
 				}
@@ -726,7 +726,7 @@ func TestLoginErrorMessage(t *testing.T) {
 			cmd.SetArgs(tt.args)
 
 			err := cmd.Execute()
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			for _, want := range tt.contains {
 				require.ErrorContains(t, err, want)
 			}

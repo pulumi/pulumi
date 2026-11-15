@@ -228,7 +228,7 @@ func TestSignupAgentReturnsInitialSignupError(t *testing.T) {
 	defer server.Close()
 
 	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{Name: "codex"})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestSignupAgentReturnsChallengeError(t *testing.T) {
@@ -271,7 +271,7 @@ func TestSignupAgentReturnsFinalSignupError(t *testing.T) {
 	defer server.Close()
 
 	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{Name: "codex"})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, 2, requestCount)
 }
 
@@ -421,7 +421,7 @@ func TestValidateAgentClaim(t *testing.T) {
 				ValidateAgentClaim(t.Context(), "claim-token")
 
 			if tt.wantErr {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 			}
@@ -449,27 +449,27 @@ func TestParseAgentSignupChallengeDifficulty(t *testing.T) {
 		{
 			name:      "invalid version",
 			data:      "v2:abcdef:8",
-			assertErr: require.Error,
+			assertErr: require.Error, //nolint:forbidigo // pre-existing
 		},
 		{
 			name:      "missing part",
 			data:      "v1:abcdef",
-			assertErr: require.Error,
+			assertErr: require.Error, //nolint:forbidigo // pre-existing
 		},
 		{
 			name:      "invalid difficulty",
 			data:      "v1:abcdef:nope",
-			assertErr: require.Error,
+			assertErr: require.Error, //nolint:forbidigo // pre-existing
 		},
 		{
 			name:      "zero difficulty",
 			data:      "v1:abcdef:0",
-			assertErr: require.Error,
+			assertErr: require.Error, //nolint:forbidigo // pre-existing
 		},
 		{
 			name:      "excessive difficulty",
 			data:      "v1:abcdef:257",
-			assertErr: require.Error,
+			assertErr: require.Error, //nolint:forbidigo // pre-existing
 		},
 	}
 	for _, tt := range tests {
@@ -540,7 +540,7 @@ func TestAPIErrorResponses(t *testing.T) {
 		defaultErrorClient := newMockClient(defaultErrorServer)
 		_, _, _, defaultErrorErr := defaultErrorClient.GetCLIVersionInfo(t.Context(), nil)
 
-		assert.Error(t, defaultErrorErr)
+		assert.Error(t, defaultErrorErr) //nolint:forbidigo // pre-existing
 	})
 }
 
@@ -1315,7 +1315,7 @@ func TestCreateNeoTask(t *testing.T) {
 		resp, err := client.CreateNeoTask(
 			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", CreateNeoTaskOptions{})
 
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Nil(t, resp)
 		assert.Contains(t, err.Error(), "creating Neo task")
 	})
@@ -1330,7 +1330,7 @@ func TestCreateNeoTask(t *testing.T) {
 		resp, err := client.CreateNeoTask(
 			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", CreateNeoTaskOptions{})
 
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.Nil(t, resp)
 	})
 
@@ -1656,7 +1656,7 @@ func TestUpdateNeoTask(t *testing.T) {
 		err := c.UpdateNeoTask(t.Context(), "my-org", "task_x", UpdateNeoTaskOptions{
 			ApprovalMode: &mode,
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "updating Neo task")
 	})
 }
@@ -1823,7 +1823,7 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 
 		client := newMockClient(server)
 		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, stream)
 		assert.Contains(t, err.Error(), "401")
 	})
@@ -1974,7 +1974,7 @@ func TestRefreshAccessToken(t *testing.T) {
 		defer server.Close()
 
 		_, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "refresh token is required")
 	})
 
@@ -1991,7 +1991,7 @@ func TestRefreshAccessToken(t *testing.T) {
 		defer server.Close()
 
 		_, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "rt-revoked")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		// Caller must see both the status and the original error_description so they can branch
 		// on invalid_grant (give up, prompt for login) vs unsupported_grant_type (LD kill switch,
 		// retry later).
@@ -2010,7 +2010,7 @@ func TestRefreshAccessToken(t *testing.T) {
 		defer server.Close()
 
 		_, err := NewClient(server.URL, "", true, nil).RefreshAccessToken(t.Context(), "rt-value")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "empty access_token")
 	})
 }
@@ -2085,7 +2085,7 @@ func TestRefreshableAPIAccessToken(t *testing.T) {
 		}
 
 		err := tok.Refresh(t.Context(), "original-access")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "invalid_grant")
 		assert.False(t, writebackCalled, "writeback must not fire when the refresh attempt fails")
 
@@ -2107,7 +2107,7 @@ func TestRefreshableAPIAccessToken(t *testing.T) {
 		}
 
 		err := tok.Refresh(t.Context(), "original-access")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "disk full")
 	})
 }

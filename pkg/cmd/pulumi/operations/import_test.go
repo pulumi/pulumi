@@ -353,7 +353,7 @@ func TestParseImportFile_errors(t *testing.T) {
 			require.NotEmpty(t, tt.wantErrs, "invalid test: wantErrs must not be empty")
 
 			_, _, err := parseImportFile(tt.give, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			for _, wantErr := range tt.wantErrs {
 				assert.ErrorContains(t, err, wantErr)
 			}
@@ -994,7 +994,7 @@ func TestImportCmd_OutputAndJSONMutuallyExclusive(t *testing.T) {
 	cmd.SetErr(io.Discard)
 
 	err := cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "none of the others can be",
 		"expected cobra's mutually-exclusive error, got: %v", err)
 }
@@ -1018,6 +1018,48 @@ func TestImportCmd_TerraformConverterRejectedInHclProject(t *testing.T) {
 	cmd.SetErr(io.Discard)
 
 	err = cmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "pulumi import --from hcl")
+}
+
+func TestWriteGeneratedProgram(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		files map[string][]byte
+		want  string
+	}{
+		{"single file", map[string][]byte{"index.ts": []byte("code\n")}, "code\n"},
+		{
+			"skips local SDK metadata",
+			map[string][]byte{"main.tf": []byte("code\n"), "sdks/random/hcl.sdk.json": []byte("{}")},
+			"code\n",
+		},
+		{
+			"keeps a nested program file",
+			map[string][]byte{"src/main/java/myproject/App.java": []byte("code\n")},
+			"code\n",
+		},
+		{
+			"joins files in a stable order",
+			map[string][]byte{"b.tf": []byte("b\n"), "a.tf": []byte("a\n")},
+			"a\nb\n",
+		},
+		{
+			"ends each file with a newline",
+			map[string][]byte{"b.tf": []byte("b"), "a.tf": []byte("a")},
+			"a\nb\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			require.NoError(t, writeGeneratedProgram(&buf, tt.files))
+			assert.Equal(t, tt.want, buf.String())
+		})
+	}
 }

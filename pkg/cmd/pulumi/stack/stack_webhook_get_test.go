@@ -175,7 +175,7 @@ func TestStackWebhookGet_ClientError(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockWebhookGetClient{err: errors.New("not found")}
 	err := newTestGetCmd(c, renderWebhookGetText).run(t.Context(), &buf, "no-such")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "reading stack webhook")
 	assert.Contains(t, err.Error(), "not found")
 }

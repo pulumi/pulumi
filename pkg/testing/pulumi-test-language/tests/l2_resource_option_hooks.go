@@ -50,7 +50,7 @@ func init() {
 
 					testFile := filepath.Join(res.ProjectDirectory, "hook-test.txt")
 					_, err = os.Stat(testFile)
-					require.Error(l, err,
+					require.Error(l, err, //nolint:forbidigo // pre-existing
 						"expected non-preview hook NOT to have created file during preview at %s", testFile)
 				},
 				Assert: func(l *L, res AssertArgs) {

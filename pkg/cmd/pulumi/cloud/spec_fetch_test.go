@@ -224,7 +224,7 @@ func TestEnsureSpec_RefreshFlagFailsHardOnFetchError(t *testing.T) {
 
 	var warnings bytes.Buffer
 	_, err := ensureSpec(t.Context(), resolveTestContext(t), &warnings, true)
-	require.Error(t, err, "refresh=true must fail hard rather than serve stale")
+	require.Error(t, err, "refresh=true must fail hard rather than serve stale") //nolint:forbidigo // pre-existing
 	assert.Empty(t, warnings.String(), "no fallback warning when refresh=true")
 }
 
@@ -242,7 +242,7 @@ func TestFetchSpec_Unauthorized(t *testing.T) {
 		CloudURL: srv.URL,
 	}
 	_, err := fetchSpec(t.Context(), resolved)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	var apiErr *APIError
 	require.ErrorAs(t, err, &apiErr)
 	assert.Equal(t, cmdutil.ExitAuthenticationError, apiErr.ExitCode)

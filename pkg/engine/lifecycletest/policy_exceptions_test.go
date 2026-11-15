@@ -250,11 +250,11 @@ func TestPolicyExceptionMandatoryViolationWithoutException(t *testing.T) {
 	resB := p.NewURN("pkgA:m:typA", "resB", "")
 
 	result := policyExceptionTest{}.run(t, p)
-	require.Error(t, result.err)
+	require.Error(t, result.err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, map[resource.URN][]apitype.PolicyEventException{resA: nil}, result.violations)
 
 	result = policyExceptionTest{dryRun: true}.run(t, p)
-	require.Error(t, result.err)
+	require.Error(t, result.err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, map[resource.URN][]apitype.PolicyEventException{resA: nil, resB: nil}, result.violations)
 }
 
@@ -314,7 +314,7 @@ func TestPolicyExceptionMalformedFromServiceIgnored(t *testing.T) {
 		"all-policies": {"reason": "r", "match": [{"policies": ["all"], "targets": ["`+string(resB)+`"]}]}
 	}`)
 	result := policyExceptionTest{exceptions: exceptions}.run(t, p)
-	require.Error(t, result.err)
+	require.Error(t, result.err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, map[resource.URN][]apitype.PolicyEventException{
 		resA: {{ID: "valid", Reason: "r"}},
 		resB: nil,
@@ -394,7 +394,7 @@ func TestPolicyExceptionsSameNamePacks(t *testing.T) {
 		return err
 	}
 	_, err = lt.TestOp(Update).Run(p.GetProject(), p.GetTarget(t, nil), p.Options, true, p.BackendClient, validate)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, map[string][]apitype.PolicyEventException{
 		"required": nil,
 		"local":    {{ID: "local", Reason: "r"}},

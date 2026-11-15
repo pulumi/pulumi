@@ -295,7 +295,7 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 			t.Parallel()
 			org, err := inferOrg(t.Context(), tt.getDefaultOrg, tt.getUserOrg)
 			if tt.wantErr {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				require.NoError(t, err)
 			}
@@ -361,7 +361,7 @@ func TestCreateStackInaccessibleDefaultOrg(t *testing.T) {
 		project: "proj",
 		name:    tokens.MustParseStackName("dev"),
 	}, t.TempDir(), nil, nil)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.NotContains(t, err.Error(), "set-default")
 }
 
@@ -1297,7 +1297,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			d:      diagtest.LogSink(t),
 		}
 		resp, err := b.createNeoTaskOnError(t.Context(), "some error", nil, display.Options{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, resp)
 	})
 
@@ -1374,7 +1374,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 		}
 
 		resp, err := b.createNeoTaskOnError(t.Context(), "something broke", stackRef, display.Options{})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Nil(t, resp)
 	})
 }
@@ -1412,7 +1412,7 @@ func TestRunEngineActionPropagatesSnapshotJournalerError(t *testing.T) {
 			"lease-token", "", updateStartedEvent, callerEvents, false, 0,
 		)
 	})
-	require.Error(t, runErr)
+	require.Error(t, runErr) //nolint:forbidigo // pre-existing
 	require.ErrorContains(t, runErr, "encrypt boom")
 
 	// The event reaches the caller synchronously as the first thing runEngineAction does, so
@@ -1443,7 +1443,7 @@ func TestRunEngineActionDeliversUpdateStartedEventWhenNewUpdateFails(t *testing.
 			"lease-token", "", updateStartedEvent, callerEvents, false, 0,
 		)
 	})
-	require.Error(t, runErr)
+	require.Error(t, runErr) //nolint:forbidigo // pre-existing
 
 	// newUpdate fails before the display goroutine ever starts; the caller is the only
 	// path left that still hears about the operation having started.
@@ -1511,7 +1511,7 @@ func TestRunEngineActionPropagatesJournalManagerError(t *testing.T) {
 					"lease-token", "", engine.NewEvent(engine.UpdateStartedEventPayload{}), nil, false, tc.journalVersion,
 				)
 			})
-			require.Error(t, runErr)
+			require.Error(t, runErr) //nolint:forbidigo // pre-existing
 			require.ErrorContains(t, runErr, "batch boom")
 			require.ErrorContains(t, runErr, tc.wantWrap)
 		})
@@ -1744,7 +1744,7 @@ func TestCreateAndStartUpdateSendsManagedEnvironment(t *testing.T) {
 
 			stk := &cloudStack{ref: fx.stackRef, b: fx.backend}
 			_, _, err := fx.backend.createAndStartUpdate(t.Context(), apitype.PreviewUpdate, stk, &fx.op, true)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 
 			mu.Lock()
 			defer mu.Unlock()

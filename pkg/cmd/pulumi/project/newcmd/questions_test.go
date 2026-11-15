@@ -86,7 +86,7 @@ func runtimeOptionsInterrupted(ctx *plugin.Context, language plugin.LanguageRunt
 func assertCancelled(t *testing.T, err error, dir string, created []string) {
 	t.Helper()
 
-	require.Error(t, err, "a cancelled `pulumi new` must fail")
+	require.Error(t, err, "a cancelled `pulumi new` must fail") //nolint:forbidigo // pre-existing
 
 	t.Run("nothing left behind", func(t *testing.T) {
 		entries, readErr := os.ReadDir(dir)

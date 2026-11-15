@@ -81,7 +81,7 @@ func TestErrorIfNotEmptyDirectory(t *testing.T) {
 			if tt.ok {
 				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			}
 		})
 	}

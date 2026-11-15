@@ -162,7 +162,7 @@ func TestProtocolValidation(t *testing.T) {
 			if test.valid {
 				require.NoError(t, err)
 			} else {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.NotContains(t, err.Error(), "secret")
 			}
 		})
@@ -643,7 +643,7 @@ func TestRefreshResponseRules(t *testing.T) {
 		r, err := s.Resolve(ctx, "https://api.example.com")
 		require.NoError(t, err)
 		err = r.refresh(ctx, r.snapshot(), "expired")
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	}
 }
 
@@ -741,7 +741,7 @@ func TestDiscoveryWithUnreadableCredentials(t *testing.T) {
 				require.NoError(t, err)
 				assert.Nil(t, r.Helper)
 			} else {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 			}
 		})
 	}

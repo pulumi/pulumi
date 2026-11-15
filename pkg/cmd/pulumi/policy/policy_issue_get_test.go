@@ -148,7 +148,7 @@ func TestPolicyIssueGet_ClientError(t *testing.T) {
 	err := runPolicyIssueGet(t.Context(), buf,
 		stubPolicyIssueGetFactory(c, "acme"), "missing",
 		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "not found", err.Error())
 }
 
@@ -159,7 +159,7 @@ func TestPolicyIssueGet_FactoryError(t *testing.T) {
 	err := runPolicyIssueGet(t.Context(), buf,
 		failingPolicyIssueGetFactory(errors.New("not logged in")),
 		"issue-1", policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "not logged in", err.Error())
 }
 

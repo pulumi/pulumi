@@ -30,6 +30,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	"github.com/pulumi/pulumi/sdk/v3/go/propertyrpc"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -183,7 +185,7 @@ type ResourceHookFunc func(
 	typ tokens.Type,
 	oldOptions *pulumirpc.ResourceOptions,
 	newOptions *pulumirpc.ResourceOptions,
-	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	newInputs, oldInputs, newOutputs, oldOutputs *property.Map,
 ) error
 
 type ErrorHookFunc func(
@@ -194,7 +196,7 @@ type ErrorHookFunc func(
 	typ tokens.Type,
 	oldOptions *pulumirpc.ResourceOptions,
 	newOptions *pulumirpc.ResourceOptions,
-	newInputs, oldInputs, oldOutputs resource.PropertyMap,
+	newInputs, oldInputs, oldOutputs *property.Map,
 	failedOperation string,
 	errors []string,
 ) (retry bool, err error)
@@ -251,33 +253,44 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
-		var newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap
-		mOpts := plugin.MarshalOptions{
+		var newInputs, oldInputs, newOutputs, oldOutputs *property.Map
+		filterOpts := plugin.FilterOptions{
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
 			KeepResources:    true,
-			KeepOutputValues: true,
+			KeepDependencies: true,
+		}
+		unmarshal := func(s *structpb.Struct) (*property.Map, error) {
+			raw, err := propertyrpc.Unmarshal(s)
+			if err != nil {
+				return nil, err
+			}
+			filtered, err := plugin.FilterProperties(raw, filterOpts)
+			if err != nil {
+				return nil, err
+			}
+			return &filtered, nil
 		}
 		if req.NewInputs != nil {
-			newInputs, err = plugin.UnmarshalProperties(req.NewInputs, mOpts)
+			newInputs, err = unmarshal(req.NewInputs)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling new inputs: %w", err)
 			}
 		}
 		if req.OldInputs != nil {
-			oldInputs, err = plugin.UnmarshalProperties(req.OldInputs, mOpts)
+			oldInputs, err = unmarshal(req.OldInputs)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
 			}
 		}
 		if req.NewOutputs != nil {
-			newOutputs, err = plugin.UnmarshalProperties(req.NewOutputs, mOpts)
+			newOutputs, err = unmarshal(req.NewOutputs)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling new outputs: %w", err)
 			}
 		}
 		if req.OldOutputs != nil {
-			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
+			oldOutputs, err = unmarshal(req.OldOutputs)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
@@ -343,28 +356,39 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 		if err != nil {
 			return nil, fmt.Errorf("unmarshaling request: %w", err)
 		}
-		var newInputs, oldInputs, oldOutputs resource.PropertyMap
+		var newInputs, oldInputs, oldOutputs *property.Map
 		var failedOperation string
-		mOpts := plugin.MarshalOptions{
+		filterOpts := plugin.FilterOptions{
 			KeepUnknowns:     true,
 			KeepSecrets:      true,
 			KeepResources:    true,
-			KeepOutputValues: true,
+			KeepDependencies: true,
+		}
+		unmarshal := func(s *structpb.Struct) (*property.Map, error) {
+			raw, err := propertyrpc.Unmarshal(s)
+			if err != nil {
+				return nil, err
+			}
+			filtered, err := plugin.FilterProperties(raw, filterOpts)
+			if err != nil {
+				return nil, err
+			}
+			return &filtered, nil
 		}
 		if req.NewInputs != nil {
-			newInputs, err = plugin.UnmarshalProperties(req.NewInputs, mOpts)
+			newInputs, err = unmarshal(req.NewInputs)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling new inputs: %w", err)
 			}
 		}
 		if req.OldInputs != nil {
-			oldInputs, err = plugin.UnmarshalProperties(req.OldInputs, mOpts)
+			oldInputs, err = unmarshal(req.OldInputs)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling old inputs: %w", err)
 			}
 		}
 		if req.OldOutputs != nil {
-			oldOutputs, err = plugin.UnmarshalProperties(req.OldOutputs, mOpts)
+			oldOutputs, err = unmarshal(req.OldOutputs)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
@@ -418,7 +442,7 @@ type ResourceOptions struct {
 	Protect                 *bool
 	Dependencies            []resource.URN
 	Provider                string
-	Inputs                  resource.PropertyMap
+	Inputs                  property.Map
 	PropertyDeps            map[resource.PropertyKey][]resource.URN
 	DeleteBeforeReplace     *bool
 	Version                 string
@@ -427,7 +451,7 @@ type ResourceOptions struct {
 	PluginChecksums         map[string][]byte
 	IgnoreChanges           []string
 	ReplaceOnChanges        []string
-	ReplacementTrigger      resource.PropertyValue
+	ReplacementTrigger      property.Value
 	AliasURNs               []resource.URN
 	Aliases                 []*pulumirpc.Alias
 	ImportID                resource.ID
@@ -468,22 +492,26 @@ type ResourceOptions struct {
 	EnvVarMappings          map[string]string
 }
 
-func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
+func (rm *ResourceMonitor) unmarshalProperties(props *structpb.Struct) (property.Map, error) {
 	// Note that `Keep*` flags are set to `true` so the caller can detect secrets, resource refs, etc that are
 	// erroneously returned (e.g. secrets/resource refs that are returned even though the caller has not set
 	// the relevant `Accept*` to `true` above).
-	return plugin.UnmarshalProperties(props, plugin.MarshalOptions{
+	raw, err := propertyrpc.Unmarshal(props)
+	if err != nil {
+		return property.Map{}, err
+	}
+	return plugin.FilterProperties(raw, plugin.FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      true,
 		KeepResources:    true,
-		KeepOutputValues: true,
+		KeepDependencies: true,
 	})
 }
 
 type RegisterResourceResponse struct {
 	URN          resource.URN
 	ID           resource.ID
-	Outputs      resource.PropertyMap
+	Outputs      property.Map
 	Dependencies map[resource.PropertyKey][]resource.URN
 	Result       pulumirpc.Result
 	Unknown      bool
@@ -496,30 +524,30 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	if len(options) > 0 {
 		opts = options[0]
 	}
-	if opts.Inputs == nil {
-		opts.Inputs = resource.PropertyMap{}
-	}
-
 	// marshal inputs
-	ins, err := plugin.MarshalProperties(opts.Inputs, plugin.MarshalOptions{
+	filteredInputs, err := plugin.FilterProperties(opts.Inputs, plugin.FilterOptions{
 		KeepUnknowns:     true,
 		KeepSecrets:      rm.supportsSecrets,
 		KeepResources:    rm.supportsResourceReferences,
-		KeepOutputValues: opts.Remote || opts.KeepOutputValues || opts.UsesOutputValues,
-		KeepByteString:   true,
+		KeepDependencies: opts.Remote || opts.KeepOutputValues || opts.UsesOutputValues,
 	})
 	if err != nil {
 		return nil, err
 	}
+	ins := propertyrpc.Marshal(filteredInputs)
 
-	trigger, err := plugin.MarshalPropertyValue("replacementTrigger", opts.ReplacementTrigger, plugin.MarshalOptions{
-		KeepUnknowns:     true,
-		KeepSecrets:      rm.supportsSecrets,
-		KeepResources:    rm.supportsResourceReferences,
-		KeepOutputValues: true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("marshaling replacement trigger: %w", err)
+	var trigger *structpb.Value
+	if !opts.ReplacementTrigger.IsNull() {
+		filteredTrigger, _, err := plugin.FilterPropertyValue(opts.ReplacementTrigger, plugin.FilterOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      rm.supportsSecrets,
+			KeepResources:    rm.supportsResourceReferences,
+			KeepDependencies: true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("marshaling replacement trigger: %w", err)
+		}
+		trigger = propertyrpc.MarshalValue(filteredTrigger)
 	}
 
 	// marshal dependencies
@@ -667,9 +695,9 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	}, nil
 }
 
-func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs resource.PropertyMap) error {
+func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs property.Map) error {
 	// marshal outputs
-	outs, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
+	filtered, err := plugin.FilterProperties(outputs, plugin.FilterOptions{
 		KeepUnknowns:  true,
 		KeepResources: rm.supportsResourceReferences,
 	})
@@ -680,7 +708,7 @@ func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs res
 	// submit request
 	_, err = rm.resmon.RegisterResourceOutputs(context.Background(), &pulumirpc.RegisterResourceOutputsRequest{
 		Urn:     string(urn),
-		Outputs: outs,
+		Outputs: propertyrpc.Marshal(filtered),
 	})
 	return err
 }
@@ -690,26 +718,27 @@ func (rm *ResourceMonitor) ReadResource(
 	name string,
 	id resource.ID,
 	parent resource.URN,
-	inputs resource.PropertyMap,
+	inputs property.Map,
 	provider,
 	version,
 	sourcePosition string,
 	stackTrace []pkgresource.StackFrame,
 	parentStackTraceHandle string,
 	packageRef string,
-) (resource.URN, resource.PropertyMap, error) {
+) (resource.URN, property.Map, error) {
 	// marshal inputs
-	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+	filteredInputs, err := plugin.FilterProperties(inputs, plugin.FilterOptions{
 		KeepUnknowns:  true,
 		KeepResources: true,
 	})
 	if err != nil {
-		return "", nil, err
+		return "", property.Map{}, err
 	}
+	ins := propertyrpc.Marshal(filteredInputs)
 
 	sourcePos, stack, err := marshalSourceInfo(sourcePosition, stackTrace)
 	if err != nil {
-		return "", nil, err
+		return "", property.Map{}, err
 	}
 
 	// submit request
@@ -727,13 +756,13 @@ func (rm *ResourceMonitor) ReadResource(
 		PackageRef:             packageRef,
 	})
 	if err != nil {
-		return "", nil, err
+		return "", property.Map{}, err
 	}
 
 	// unmarshal outputs
 	outs, err := rm.unmarshalProperties(resp.Properties)
 	if err != nil {
-		return "", nil, err
+		return "", property.Map{}, err
 	}
 
 	return resource.URN(resp.Urn), outs, nil
@@ -755,7 +784,7 @@ type InvokeOptions struct {
 
 // InvokeResult is the full result of an invoke, including the unknown marker that the plain Invoke wrapper discards.
 type InvokeResult struct {
-	Return   resource.PropertyMap
+	Return   property.Map
 	Failures []*pulumirpc.CheckFailure
 	Unknown  bool
 }
@@ -764,19 +793,20 @@ func (rm *ResourceMonitor) ExistsResource(
 	t tokens.Type,
 	id resource.ID,
 	parent resource.URN,
-	inputs resource.PropertyMap,
+	inputs property.Map,
 	provider,
 	version,
 	packageRef string,
 ) (bool, error) {
 	// marshal inputs
-	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+	filteredInputs, err := plugin.FilterProperties(inputs, plugin.FilterOptions{
 		KeepUnknowns:  true,
 		KeepResources: true,
 	})
 	if err != nil {
 		return false, err
 	}
+	ins := propertyrpc.Marshal(filteredInputs)
 
 	// submit request
 	resp, err := rm.resmon.ExistsResource(context.Background(), &pulumirpc.ExistsResourceRequest{
@@ -795,20 +825,20 @@ func (rm *ResourceMonitor) ExistsResource(
 	return resp.Exists, nil
 }
 
-func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs resource.PropertyMap,
+func (rm *ResourceMonitor) Invoke(tok tokens.ModuleMember, inputs property.Map,
 	provider string, version string, packageRef string, options ...InvokeOptions,
-) (resource.PropertyMap, []*pulumirpc.CheckFailure, error) {
+) (property.Map, []*pulumirpc.CheckFailure, error) {
 	result, err := rm.InvokeWithResult(tok, inputs, provider, version, packageRef, options...)
 	if err != nil {
-		return nil, nil, err
+		return property.Map{}, nil, err
 	}
 	if len(result.Failures) != 0 {
-		return nil, result.Failures, nil
+		return property.Map{}, result.Failures, nil
 	}
 	return result.Return, nil, nil
 }
 
-func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs resource.PropertyMap,
+func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs property.Map,
 	provider string, version string, packageRef string, options ...InvokeOptions,
 ) (*InvokeResult, error) {
 	opts := InvokeOptions{}
@@ -828,15 +858,16 @@ func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs reso
 	}
 
 	// marshal inputs
-	ins, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+	filteredInputs, err := plugin.FilterProperties(inputs, plugin.FilterOptions{
 		KeepUnknowns:     true,
 		KeepResources:    true,
 		KeepSecrets:      true,
-		KeepOutputValues: opts.KeepArgOutputValues,
+		KeepDependencies: opts.KeepArgOutputValues,
 	})
 	if err != nil {
 		return nil, err
 	}
+	ins := propertyrpc.Marshal(filteredInputs)
 
 	dependsOn := make([]string, len(opts.DependsOn))
 	for i, urn := range opts.DependsOn {
@@ -873,7 +904,7 @@ func (rm *ResourceMonitor) InvokeWithResult(tok tokens.ModuleMember, inputs reso
 
 func (rm *ResourceMonitor) Call(
 	tok tokens.ModuleMember,
-	args resource.PropertyMap,
+	args property.Map,
 	argDependencies map[resource.PropertyKey][]resource.URN,
 	provider string,
 	version string,
@@ -881,22 +912,23 @@ func (rm *ResourceMonitor) Call(
 	sourcePosition string,
 	stackTrace []pkgresource.StackFrame,
 	parentStackTraceHandle string,
-) (resource.PropertyMap, map[resource.PropertyKey][]resource.URN, []*pulumirpc.CheckFailure, error) {
+) (property.Map, map[resource.PropertyKey][]resource.URN, []*pulumirpc.CheckFailure, error) {
 	sourcePos, stack, err := marshalSourceInfo(sourcePosition, stackTrace)
 	if err != nil {
-		return nil, nil, nil, err
+		return property.Map{}, nil, nil, err
 	}
 
 	// marshal inputs
-	mArgs, err := plugin.MarshalProperties(args, plugin.MarshalOptions{
+	filteredArgs, err := plugin.FilterProperties(args, plugin.FilterOptions{
 		KeepUnknowns:     true,
 		KeepResources:    true,
 		KeepSecrets:      true,
-		KeepOutputValues: true,
+		KeepDependencies: true,
 	})
 	if err != nil {
-		return nil, nil, nil, err
+		return property.Map{}, nil, nil, err
 	}
+	mArgs := propertyrpc.Marshal(filteredArgs)
 
 	mArgDependencies := make(map[string]*pulumirpc.ResourceCallRequest_ArgumentDependencies)
 	for k, p := range argDependencies {
@@ -922,18 +954,18 @@ func (rm *ResourceMonitor) Call(
 		ParentStackTraceHandle: parentStackTraceHandle,
 	})
 	if err != nil {
-		return nil, nil, nil, err
+		return property.Map{}, nil, nil, err
 	}
 
 	// handle failures
 	if len(resp.Failures) != 0 {
-		return nil, nil, resp.Failures, nil
+		return property.Map{}, nil, resp.Failures, nil
 	}
 
 	// unmarshal outputs
 	outs, err := rm.unmarshalProperties(resp.Return)
 	if err != nil {
-		return nil, nil, nil, err
+		return property.Map{}, nil, nil, err
 	}
 
 	// unmarshal return deps

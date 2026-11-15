@@ -50,7 +50,7 @@ func TestPulumi_NewPulumiRejectsMissingWorkspace(t *testing.T) {
 	t.Parallel()
 
 	_, err := NewPulumi(t.TempDir(), nil, nil)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "workspace")
 }
 
@@ -81,7 +81,7 @@ func TestPulumi_InvokeUnknownMethod(t *testing.T) {
 
 	p := &Pulumi{Cwd: t.TempDir()}
 	_, err := p.Invoke(t.Context(), "pulumi_destroy", json.RawMessage(`{}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "unknown pulumi method")
 }
 
@@ -90,7 +90,7 @@ func TestPulumi_InvokeRejectsBadJSON(t *testing.T) {
 
 	p := &Pulumi{Cwd: t.TempDir()}
 	_, err := p.Invoke(t.Context(), "pulumi_preview", json.RawMessage(`not json`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "decoding")
 }
 
@@ -110,7 +110,7 @@ func TestPulumi_RunRejectsMissingStackName(t *testing.T) {
 	p := &Pulumi{Cwd: t.TempDir()}
 	value, err := p.Invoke(t.Context(), "pulumi_preview",
 		json.RawMessage(`{"project_name":"p","local_pulumi_dir":"/tmp"}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assertFailedResult(t, value, "stack_name is required")
 }
 
@@ -120,7 +120,7 @@ func TestPulumi_RunRejectsMissingLocalDir(t *testing.T) {
 	p := &Pulumi{Cwd: t.TempDir()}
 	value, err := p.Invoke(t.Context(), "pulumi_preview",
 		json.RawMessage(`{"project_name":"p","stack_name":"dev"}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assertFailedResult(t, value, "local_pulumi_dir is required")
 }
 
@@ -130,7 +130,7 @@ func TestPulumi_RunRejectsRelativeLocalDir(t *testing.T) {
 	p := &Pulumi{Cwd: t.TempDir()}
 	value, err := p.Invoke(t.Context(), "pulumi_preview",
 		json.RawMessage(`{"project_name":"p","stack_name":"dev","local_pulumi_dir":"relative/path"}`))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assertFailedResult(t, value, "must be an absolute path")
 }
 
@@ -151,7 +151,7 @@ func TestPulumi_RunRejectsEscapingLocalDir(t *testing.T) {
 	})
 	require.NoError(t, err)
 	value, err := p.Invoke(t.Context(), "pulumi_preview", args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assertFailedResult(t, value, "outside")
 }
 
@@ -169,7 +169,7 @@ func TestPulumi_RunRejectsMissingPulumiYaml(t *testing.T) {
 	})
 	require.NoError(t, err)
 	value, err := p.Invoke(t.Context(), "pulumi_preview", args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assertFailedResult(t, value, "Pulumi.yaml not found")
 }
 
@@ -210,7 +210,7 @@ func TestEnvValUnmarshal(t *testing.T) {
 			var got envVal
 			err := json.Unmarshal([]byte(tc.input), &got)
 			if tc.wantErr {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				return
 			}
 			require.NoError(t, err)
@@ -350,7 +350,7 @@ func TestPulumi_InvokeRoutesPreviewAndUp(t *testing.T) {
 			p := &Pulumi{Cwd: t.TempDir()}
 			value, err := p.Invoke(t.Context(), method,
 				json.RawMessage(`{"project_name":"p","stack_name":"dev"}`))
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assertFailedResult(t, value, "local_pulumi_dir is required")
 		})
 	}
@@ -425,7 +425,7 @@ func TestPulumi_Run_ResolvesBackendFromLiveEnv(t *testing.T) {
 	require.NoError(t, err)
 
 	value, err := p.Invoke(t.Context(), "pulumi_preview", args)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.True(t, resolved, "freshly resolved backend was never consulted")
 	assert.Equal(t, "live-token", capturedToken)
 	assertFailedResult(t, value, "parsing stack reference")
@@ -483,7 +483,7 @@ func TestPulumi_Run_PreviewAndUpResolveBackend(t *testing.T) {
 			require.NoError(t, err)
 
 			value, err := p.Invoke(t.Context(), method, args)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.True(t, resolved, "backend was not resolved via CurrentBackend")
 			assertFailedResult(t, value, "parsing stack reference")
 		})
@@ -594,7 +594,7 @@ func TestPulumi_Run_PreviewRefresh(t *testing.T) {
 			require.NoError(t, cwdErr)
 			assert.Equal(t, beforeDir, afterDir)
 			if tt.wantError {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assertFailedResult(t, result, "unable to determine value for --refresh")
 				assert.NotContains(t, result.Logs, tt.value.Value())
 				assert.Empty(t, invoked)

@@ -407,7 +407,7 @@ pulumi:autonaming:
 			autonamer, err := ParseAutonamingConfig(stack, cfg, decrypter)
 
 			if tt.wantErr != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.Contains(t, err.Error(), tt.wantErr)
 				return
 			}

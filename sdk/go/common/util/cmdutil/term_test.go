@@ -113,7 +113,7 @@ func TestTerminate_gracefulShutdown_exitError(t *testing.T) {
 
 	ok, err := TerminateProcessGroup(cmd.Process, 1*time.Second)
 	assert.True(t, ok, "child process did not exit gracefully")
-	require.Error(t, err, "child process must exit with non-zero code")
+	require.Error(t, err, "child process must exit with non-zero code") //nolint:forbidigo // pre-existing
 
 	var exitErr *exec.ExitError
 	if assert.ErrorAs(t, err, &exitErr, "expected ExitError from child process") {
@@ -284,7 +284,7 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 
 				ok, err := TerminateProcessGroup(cmd.Process, 1*time.Second)
 				assert.True(t, ok, "child process did not exit gracefully")
-				assert.Error(t, err, "child process should have exited with an error")
+				assert.Error(t, err, "child process should have exited with an error") //nolint:forbidigo // pre-existing
 			}()
 
 			select {

@@ -66,30 +66,26 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 					return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
 				},
 				UpdateF: func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
-					oldInputs := resource.ToResourcePropertyMap(req.OldInputs)
-					oldOutputs := resource.ToResourcePropertyMap(req.OldOutputs)
-					assert.Equal(t, fmt.Sprintf("<FRESH-INPUT-%d>", readToken), oldInputs["input"].StringValue())
-					assert.Equal(t, fmt.Sprintf("<FRESH-RESULT-%d>", readToken), oldOutputs["result"].StringValue())
+					assert.Equal(t, fmt.Sprintf("<FRESH-INPUT-%d>", readToken), req.OldInputs.Get("input").AsString())
+					assert.Equal(t, fmt.Sprintf("<FRESH-RESULT-%d>", readToken), req.OldOutputs.Get("result").AsString())
 
-					props := resource.ToResourcePropertyMap(req.NewInputs)
-					props["result"] = props["input"]
+					props := req.NewInputs.Set("result", req.NewInputs.Get("input"))
 					return plugin.UpdateResponse{
-						Properties:          resource.FromResourcePropertyMap(props),
+						Properties:          props,
 						RefreshBeforeUpdate: true,
 					}, nil
 				},
 				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					inputs := resource.ToResourcePropertyMap(req.Inputs)
-					inputs["input"] = resource.NewProperty(fmt.Sprintf("<FRESH-INPUT-%d>", readToken))
-					props := resource.ToResourcePropertyMap(req.State)
-					props["input"] = inputs["input"]
-					props["result"] = resource.NewProperty(fmt.Sprintf("<FRESH-RESULT-%d>", readToken))
+					freshInput := property.New(fmt.Sprintf("<FRESH-INPUT-%d>", readToken))
+					inputs := req.Inputs.Set("input", freshInput)
+					freshResult := property.New(fmt.Sprintf("<FRESH-RESULT-%d>", readToken))
+					props := req.State.Set("input", freshInput).Set("result", freshResult)
 					return plugin.ReadResponse{
 						Status: resource.StatusOK,
 						ReadResult: plugin.ReadResult{
 							ID:                  "new-id",
-							Inputs:              ptrMap(inputs),
-							Outputs:             ptrMap(props),
+							Inputs:              &inputs,
+							Outputs:             &props,
 							RefreshBeforeUpdate: true,
 						},
 					}, nil
@@ -98,9 +94,9 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 		}, deploytest.WithHandshake),
 	}
 
-	inputs := resource.PropertyMap{
-		"input": resource.NewProperty("value-1"),
-	}
+	inputs := property.NewMap(map[string]property.Value{
+		"input": property.New("value-1"),
+	})
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pulumi:pulumi:Stack", "test", false)
@@ -139,9 +135,9 @@ func TestRefreshBeforeUpdate(t *testing.T) {
 	assert.True(t, snap.Resources[2].RefreshBeforeUpdate)
 
 	// Second update.
-	inputs = resource.PropertyMap{
-		"input": resource.NewProperty("value-2"),
-	}
+	inputs = property.NewMap(map[string]property.Value{
+		"input": property.New("value-2"),
+	})
 	p.Steps = []lt.TestStep{{Op: Update}}
 	snap = p.Run(t, snap)
 	require.Len(t, snap.Resources, 3)
@@ -285,16 +281,16 @@ func TestRefreshBeforeUpdateDeletedResource(t *testing.T) {
 		require.NoError(t, err)
 
 		resp, err := monitor.RegisterResource("pkgA:m:typA", "res0", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"input": resource.NewProperty("value"),
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"input": property.New("value"),
+			}),
 		})
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"input": resp.Outputs["result"],
-			},
+			Inputs: property.NewMap(map[string]property.Value{
+				"input": resp.Outputs.Get("result"),
+			}),
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{
 				"input": {resp.URN},
 			},

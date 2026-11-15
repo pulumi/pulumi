@@ -43,15 +43,14 @@ import (
 
 // makeArgsWithOutputValue builds an args map containing a single OutputValue with the given dependencies and
 // underlying value. Used to simulate an SDK sending OutputValues in Invoke args.
-func makeArgsWithOutputValue(deps []resource.URN, element resource.PropertyValue, known bool) resource.PropertyMap {
-	return resource.PropertyMap{
-		"in": resource.NewProperty(resource.Output{
-			Element:      element,
-			Known:        known,
-			Secret:       false,
-			Dependencies: deps,
-		}),
+func makeArgsWithOutputValue(deps []resource.URN, element property.Value, known bool) property.Map {
+	v := element.WithDependencies(deps)
+	if !known {
+		v = property.New(property.Computed).WithDependencies(deps)
 	}
+	return property.NewMap(map[string]property.Value{
+		"in": v,
+	})
 }
 
 // TestInvokeArgsOutputValuesForwardedToAcceptingProvider verifies that when the provider advertises
@@ -92,7 +91,7 @@ func TestInvokeArgsOutputValuesForwardedToAcceptingProvider(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:A", "a", true, deploytest.ResourceOptions{})
 		require.NoError(t, err)
 
-		args := makeArgsWithOutputValue([]resource.URN{resp.URN}, resource.NewProperty("v"), true /*known*/)
+		args := makeArgsWithOutputValue([]resource.URN{resp.URN}, property.New("v"), true /*known*/)
 		_, _, err = monitor.Invoke("pkgA:index:f", args, "", "", "",
 			deploytest.InvokeOptions{KeepArgOutputValues: true})
 		require.NoError(t, err)
@@ -141,7 +140,7 @@ func TestInvokeArgsOutputValuesDowngradedForLegacyProvider(t *testing.T) {
 		resp, err := monitor.RegisterResource("pkgA:m:A", "a", true, deploytest.ResourceOptions{})
 		require.NoError(t, err)
 
-		args := makeArgsWithOutputValue([]resource.URN{resp.URN}, resource.NewProperty("v"), true)
+		args := makeArgsWithOutputValue([]resource.URN{resp.URN}, property.New("v"), true)
 		_, _, err = monitor.Invoke("pkgA:index:f", args, "", "", "",
 			deploytest.InvokeOptions{KeepArgOutputValues: true})
 		require.NoError(t, err)
@@ -190,17 +189,15 @@ func TestInvokeReturnOutputValuesToAcceptingSDK(t *testing.T) {
 		require.NoError(t, err)
 		providerURN = resp.URN
 
-		ret, _, err := monitor.Invoke("pkgA:index:f", nil, "", "", "",
+		ret, _, err := monitor.Invoke("pkgA:index:f", property.Map{}, "", "", "",
 			deploytest.InvokeOptions{AcceptOutputValues: true})
 		require.NoError(t, err)
 
-		got, ok := ret["out"]
+		got, ok := ret.GetOk("out")
 		require.True(t, ok)
-		require.True(t, got.IsOutput(), "expected the SDK to receive an OutputValue in the response")
-		output := got.OutputValue()
-		assert.Equal(t, []resource.URN{providerURN}, output.Dependencies)
-		assert.True(t, output.Element.IsString())
-		assert.Equal(t, "hello", output.Element.StringValue())
+		assert.Equal(t, []resource.URN{providerURN}, got.Dependencies())
+		assert.True(t, got.IsString())
+		assert.Equal(t, "hello", got.AsString())
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -236,15 +233,16 @@ func TestInvokeReturnOutputValuesDowngradedForLegacySDK(t *testing.T) {
 	}
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		ret, _, err := monitor.Invoke("pkgA:index:f", nil, "", "", "" /* no InvokeOptions => AcceptOutputValues=false */)
+		// no InvokeOptions => AcceptOutputValues=false
+		ret, _, err := monitor.Invoke("pkgA:index:f", property.Map{}, "", "", "")
 		require.NoError(t, err)
 
-		got, ok := ret["out"]
+		got, ok := ret.GetOk("out")
 		require.True(t, ok)
-		assert.False(t, got.IsOutput(),
+		assert.Empty(t, got.Dependencies(),
 			"the SDK should not receive an OutputValue when AcceptOutputValues is false")
 		require.True(t, got.IsString())
-		assert.Equal(t, "hello", got.StringValue())
+		assert.Equal(t, "hello", got.AsString())
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)
@@ -287,30 +285,21 @@ func TestInvokeLegacyProviderRehydratesReturnDependencies(t *testing.T) {
 		respB, err := monitor.RegisterResource("pkgA:m:B", "b", true, deploytest.ResourceOptions{})
 		require.NoError(t, err)
 
-		args := resource.PropertyMap{
-			"a": resource.NewProperty(resource.Output{
-				Element:      resource.NewProperty("a-val"),
-				Known:        true,
-				Dependencies: []resource.URN{respA.URN},
-			}),
-			"b": resource.NewProperty(resource.Output{
-				Element:      resource.NewProperty("b-val"),
-				Known:        true,
-				Dependencies: []resource.URN{respB.URN},
-			}),
-		}
+		args := property.NewMap(map[string]property.Value{
+			"a": property.New("a-val").WithDependencies([]resource.URN{respA.URN}),
+			"b": property.New("b-val").WithDependencies([]resource.URN{respB.URN}),
+		})
 		ret, _, err := monitor.Invoke("pkgA:index:f", args, "", "", "",
 			deploytest.InvokeOptions{KeepArgOutputValues: true, AcceptOutputValues: true})
 		require.NoError(t, err)
 
-		got, ok := ret["out"]
+		got, ok := ret.GetOk("out")
 		require.True(t, ok)
-		require.True(t, got.IsOutput(),
+		require.NotEmpty(t, got.Dependencies(),
 			"engine should have re-hydrated the return as an OutputValue because the provider did not preserve deps")
-		output := got.OutputValue()
-		require.ElementsMatch(t, []resource.URN{respA.URN, respB.URN}, output.Dependencies,
+		require.ElementsMatch(t, []resource.URN{respA.URN, respB.URN}, got.Dependencies(),
 			"re-hydrated OutputValue should carry the union of arg dependencies")
-		assert.Equal(t, "computed", output.Element.StringValue())
+		assert.Equal(t, "computed", got.AsString())
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, nil, nil, loaders...)

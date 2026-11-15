@@ -180,7 +180,7 @@ func TestPumpBoundaryReasons(t *testing.T) {
 			assert.Equal(t, acp.StopCancelled, tr.reason)
 		}},
 		{"error", UIError{Message: "boom"}, func(t *testing.T, tr turnResult) {
-			require.Error(t, tr.err)
+			require.Error(t, tr.err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, tr.err.Error(), "boom")
 		}},
 	}
@@ -225,7 +225,7 @@ func TestPumpTeardownResolvesActiveTurn(t *testing.T) {
 
 	select {
 	case tr := <-done:
-		require.Error(t, tr.err)
+		require.Error(t, tr.err) //nolint:forbidigo // pre-existing
 		assert.ErrorContains(t, tr.err, "event stream lost")
 	case <-time.After(2 * time.Second):
 		t.Fatal("session teardown did not resolve the waiting turn")

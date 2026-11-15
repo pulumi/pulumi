@@ -328,7 +328,7 @@ func TestInsightsAccountScanCmd_ClientError(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, "missing", defaultScanArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "starting insights scan")
 	assert.Contains(t, err.Error(), "404 not found")
 }
@@ -340,7 +340,7 @@ func TestInsightsAccountScanCmd_FactoryError(t *testing.T) {
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, "prod-aws", defaultScanArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
@@ -396,7 +396,7 @@ func TestNewInsightsAccountScanCmd_RejectsUnsupportedOutput(t *testing.T) {
 	cmd.SetOut(&out)
 	cmd.SetErr(&out)
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `output "yaml" not supported`)
 }
 

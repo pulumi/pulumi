@@ -475,7 +475,7 @@ func TestEnums(t *testing.T) {
 				AllowDanglingReferences: true,
 			})
 			if tt.shouldError {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			} else {
 				if err != nil {
 					t.Error(err)
@@ -1026,7 +1026,7 @@ func TestUsingReservedWordInFunctionsEmitsError(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagError)
@@ -1092,7 +1092,7 @@ func TestUsingReservedWordInFunctionParamsIsNotOk(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Nil(t, pkg)
 }
@@ -1122,7 +1122,7 @@ func TestUsingReservedWordInTypesEmitsError(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	for _, diag := range diags {
 		assert.Equal(t, diag.Severity, hcl.DiagError)
@@ -1189,7 +1189,7 @@ func TestUsingReservedWordPropertyNameIsNotOk(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Nil(t, pkg)
 }
@@ -2366,7 +2366,7 @@ func TestResourceListInputsReservedNames(t *testing.T) {
 		_, diags, err := BindSpec(spec, noOpLoader{}, ValidationOptions{
 			AllowDanglingReferences: true,
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		require.True(t, diags.HasErrors())
 		assert.Contains(t, diags.Error(), "pulumi is a reserved property name")
 	})
@@ -2782,7 +2782,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.True(t, diags.HasErrors())
 	assert.Equal(t, diags[0].Summary, "#/config/variables/pulumi: pulumi is a reserved property name")
 
@@ -2804,7 +2804,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	_, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.True(t, diags.HasErrors())
 	assert.Equal(t, diags[0].Summary, "#/provider/inputProperties/pulumi: pulumi is a reserved property name")
 
@@ -2825,7 +2825,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	_, diags, err = BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.True(t, diags.HasErrors())
 	assert.Equal(t, diags[0].Summary, "#/provider/properties/version: version is a reserved provider input property name")
 
@@ -2849,7 +2849,7 @@ func TestProviderReservedKeywordsIsAnError(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.True(t, diags.HasErrors())
 	assert.Nil(t, pkg)
 
@@ -2948,7 +2948,7 @@ func TestResourceWithKeynameOverlapType(t *testing.T) {
 	}
 
 	_, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Len(t, diags, 1)
 	assert.Contains(t, diags[0].Summary, "pulumi is a reserved name, cannot name type")
 }
@@ -3589,7 +3589,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 		}
 
 		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:thing")
 	})
 
@@ -3609,7 +3609,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 		}
 
 		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1_v2:a")
 	})
 
@@ -3653,7 +3653,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 		}
 
 		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1:a")
 	})
 
@@ -3673,7 +3673,7 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 		}
 
 		_, err := ImportSpec(spec, nil, NewNullLoader(), ValidationOptions{AllowDanglingReferences: true})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:a")
 	})
 

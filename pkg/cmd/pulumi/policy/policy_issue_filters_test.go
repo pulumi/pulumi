@@ -140,16 +140,16 @@ func TestBuildPolicyIssueFilter_AssignedTo(t *testing.T) {
 func TestBuildPolicyIssueFilter_InvalidEnum(t *testing.T) {
 	t.Parallel()
 	_, _, err := buildPolicyIssueGrid(parseIssueFilters(t, "--severity", "urgent"))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "--severity")
 	assert.Contains(t, err.Error(), "low, medium, high, critical")
 
 	_, _, err = buildPolicyIssueGrid(parseIssueFilters(t, "--status", "nope"))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "open, in_progress, by_design, fixed, ignored")
 
 	_, _, err = buildPolicyIssueGrid(parseIssueFilters(t, "--priority", "p9"))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "p0, p1, p2, p3, p4")
 }
 
@@ -165,11 +165,11 @@ func TestBuildPolicyIssueSort(t *testing.T) {
 	assert.JSONEq(t, `[{"colId":"severity","sort":"desc"},{"colId":"observedAt","sort":"asc"}]`, string(got))
 
 	_, _, err = buildPolicyIssueGrid(parseIssueFilters(t, "--sort", "message"))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "severity, priority, status, observedAt")
 
 	_, _, err = buildPolicyIssueGrid(parseIssueFilters(t, "--sort", "severity:down"))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "asc, desc")
 }
 

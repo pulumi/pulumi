@@ -1,4 +1,0 @@
-component: cli
-kind: fix
-body: Fix the first stateful `pulumi do` command failing outside a project on backends that store stack config locally
-time: 2026-11-05T17:08:55.761548-08:00

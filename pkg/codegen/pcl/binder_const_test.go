@@ -117,7 +117,7 @@ func TestBindConstantAndEnumLiterals(t *testing.T) {
 				assert.Empty(t, diags)
 				return
 			}
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			require.Len(t, diags, 1)
 			assert.Equal(t, hcl.DiagError, diags[0].Severity)
 			assert.Equal(t, c.detail, diags[0].Detail)

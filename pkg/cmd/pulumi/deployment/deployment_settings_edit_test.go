@@ -213,7 +213,7 @@ func TestDeploymentSettingsEdit_NoInput(t *testing.T) {
 	err := runDeploymentSettingsEdit(t.Context(), &buf,
 		stubSettingsEditFactory(c),
 		deploymentSettingsEditArgs{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "nothing to do")
 }
 
@@ -225,7 +225,7 @@ func TestDeploymentSettingsEdit_PatchError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf,
 		stubSettingsEditFactory(c), branchArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "editing deployment settings")
 	assert.Contains(t, err.Error(), "boom")
 }
@@ -238,7 +238,7 @@ func TestDeploymentSettingsEdit_GetAfterPatchError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf,
 		stubSettingsEditFactory(c), branchArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "getting deployment settings")
 	assert.Contains(t, err.Error(), "get boom")
 }
@@ -249,7 +249,7 @@ func TestDeploymentSettingsEdit_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf,
 		failingSettingsEditFactory(errors.New("not logged in")), branchArgs())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
@@ -409,7 +409,7 @@ func TestDeploymentSettingsEdit_DuplicateEnvKey(t *testing.T) {
 			flagsChanged: flagsSet(flagEnv, flagRemoveEnv),
 			outputFormat: defaultDeploymentSettingsGetOutputFormat(),
 		})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "FOO")
 }
 
@@ -522,7 +522,7 @@ func TestDeploymentSettingsEdit_OIDCClearConflictsWithSetters(t *testing.T) {
 			var buf bytes.Buffer
 			err := runDeploymentSettingsEdit(t.Context(), &buf,
 				stubSettingsEditFactory(c), args)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "cannot be combined")
 		})
 	}
@@ -736,7 +736,7 @@ func TestDeploymentSettingsEdit_GitAuthModesAreMutuallyExclusive(t *testing.T) {
 			t.Parallel()
 			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
 				"--git-auth-access-token", "tok", other, "value")
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), flagGitAuthToken)
 		})
 	}
@@ -746,7 +746,7 @@ func TestDeploymentSettingsEdit_GitAuthSSHKeyAndPathAreMutuallyExclusive(t *test
 	t.Parallel()
 	_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
 		"--"+flagGitAuthSSHKey, "key", "--"+flagGitAuthSSHKeyPath, "/tmp/key")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), flagGitAuthSSHKeyPath)
 }
 
@@ -781,7 +781,7 @@ func TestDeploymentSettingsEdit_GuardRejectsProviderChange(t *testing.T) {
 				}),
 			}
 			err := runEditArgs(t, tc.args, c)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "gitlab")
 			assert.Nil(t, c.captured.patch)
 		})
@@ -861,7 +861,7 @@ func TestDeploymentSettingsEdit_AdoptingAProviderRefusesStoredGitCredentials(t *
 				vcsProvider:  "gitlab",
 				flagsChanged: flagsSet(flagRepo, flagVCSProvider),
 			}, c)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "https://git.acme.example/infra.git")
 			assert.Contains(t, err.Error(), flagRemoveGitAuth)
 			assert.Nil(t, c.captured.patch)
@@ -955,7 +955,7 @@ func TestDeploymentSettingsEdit_ReviewStackLabelsAreGitHubOnly(t *testing.T) {
 	err := runEditArgs(t, args, &mockDeploymentSettingsEditClient{
 		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab}),
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), flagReviewStackLabel)
 }
 
@@ -965,7 +965,7 @@ func TestDeploymentSettingsEdit_VCSFlagNeedsAProvider(t *testing.T) {
 		previewPRs:   true,
 		flagsChanged: flagsSet(flagPreviewPRs),
 	}, &mockDeploymentSettingsEditClient{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), flagVCSProvider)
 }
 
@@ -975,7 +975,7 @@ func TestDeploymentSettingsEdit_UnknownVCSProvider(t *testing.T) {
 		vcsProvider:  "svn",
 		flagsChanged: flagsSet(flagVCSProvider),
 	}, &mockDeploymentSettingsEditClient{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "svn")
 }
 
@@ -1017,7 +1017,7 @@ func TestDeploymentSettingsEdit_DeployCommitsAndDeployTagsConflict(t *testing.T)
 			err := runEditArgs(t, tc.args, &mockDeploymentSettingsEditClient{
 				getResp: storedVCSSettings(tc.stored),
 			})
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tc.want)
 		})
 	}
@@ -1037,7 +1037,7 @@ func TestDeploymentSettingsEdit_StoredBothTriggersNamesTheStoredState(t *testing
 		repo:         "acme/other",
 		flagsChanged: flagsSet(flagRepo),
 	}, &mockDeploymentSettingsEditClient{getResp: both})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "stores both commit and tag triggers")
 
 	// Turning one off in the same command resolves it.
@@ -1113,7 +1113,7 @@ func TestDeploymentSettingsEdit_GetBeforePatchError(t *testing.T) {
 		previewPRs:   true,
 		flagsChanged: flagsSet(flagPreviewPRs),
 	}, &mockDeploymentSettingsEditClient{getErr: errors.New("get boom")})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "reading deployment settings")
 }
 
@@ -1127,7 +1127,7 @@ func TestDeploymentSettingsEdit_GetBeforePatchNonNotFoundIsFatal(t *testing.T) {
 	}, &mockDeploymentSettingsEditClient{
 		getErr: &apitype.ErrorResponse{Code: http.StatusInternalServerError, Message: "boom"},
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "reading deployment settings")
 }
 
@@ -1178,7 +1178,7 @@ func TestDeploymentSettingsEdit_VCSNeedsARepository(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			err := runEditArgs(t, tc.args, tc.c)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "needs a repository")
 		})
 	}
@@ -1262,7 +1262,7 @@ func TestDeploymentSettingsEdit_ClearReviewStackLabelsIsGitHubOnly(t *testing.T)
 	}, &mockDeploymentSettingsEditClient{
 		getResp: storedVCSSettings(apitype.DeploymentSettingsVCS{Provider: apitype.VCSProviderGitLab}),
 	})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), flagReviewStackLabel)
 }
 
@@ -1304,7 +1304,7 @@ func TestDeploymentSettingsEdit_ClearFlagsRejectFalse(t *testing.T) {
 			t.Parallel()
 			err := runEditArgs(t, deploymentSettingsEditArgs{flagsChanged: flagsSet(flag)},
 				&mockDeploymentSettingsEditClient{})
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), flag)
 		})
 	}
@@ -1329,7 +1329,7 @@ func TestDeploymentSettingsEdit_ListFlagEmptyStringRejectsCompanions(t *testing.
 			t.Parallel()
 			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
 				"--"+tc.flag, tc.value, "--"+tc.flag, "")
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "cannot be combined with other values")
 		})
 	}
@@ -1462,7 +1462,7 @@ func TestDeploymentSettingsEdit_GitAuthSSHKeyPasswordNeedsAKey(t *testing.T) {
 		gitAuthSSHPrivateKeyPassword: "pw",
 		flagsChanged:                 flagsSet(flagGitAuthSSHKeyPassword),
 	}, &mockDeploymentSettingsEditClient{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), flagGitAuthSSHKey)
 }
 
@@ -1490,7 +1490,7 @@ func TestDeploymentSettingsEdit_GitAuthSSHKeyPathMustExist(t *testing.T) {
 		gitAuthSSHPrivateKeyPath: filepath.Join(t.TempDir(), "missing"),
 		flagsChanged:             flagsSet(flagGitAuthSSHKeyPath),
 	}, &mockDeploymentSettingsEditClient{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "reading SSH private key")
 }
 
@@ -1502,7 +1502,7 @@ func TestDeploymentSettingsEdit_GitAuthSSHKeyPathRejectsEmpty(t *testing.T) {
 	err := runEditArgs(t, deploymentSettingsEditArgs{
 		flagsChanged: flagsSet(flagGitAuthSSHKeyPath),
 	}, &mockDeploymentSettingsEditClient{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), flagGitAuthSSHKeyPath)
 }
 
@@ -1526,7 +1526,7 @@ func TestDeploymentSettingsEdit_GitAuthSSHKeyPathRejectsAnEmptyFile(t *testing.T
 				gitAuthSSHPrivateKeyPath: path,
 				flagsChanged:             flagsSet(flagGitAuthSSHKeyPath),
 			}, c)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "no key material")
 			assert.False(t, c.patched, "the stored credentials must survive an unreadable key")
 		})
@@ -1541,14 +1541,14 @@ func TestDeploymentSettingsEdit_GitAuthUsernameNeedsAPassword(t *testing.T) {
 		gitAuthUsername: "deploy",
 		flagsChanged:    flagsSet(flagGitAuthUsername),
 	}, &mockDeploymentSettingsEditClient{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), flagGitAuthPassword)
 
 	err = runEditArgs(t, deploymentSettingsEditArgs{
 		gitAuthPassword: "pw",
 		flagsChanged:    flagsSet(flagGitAuthPassword),
 	}, &mockDeploymentSettingsEditClient{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), flagGitAuthUsername)
 }
 
@@ -1566,7 +1566,7 @@ func TestDeploymentSettingsEdit_EmptyCredentialIsRefused(t *testing.T) {
 		t.Run(strings.Join(argv, " "), func(t *testing.T) {
 			t.Parallel()
 			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, argv...)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "must not be empty")
 			assert.Contains(t, err.Error(), flagRemoveGitAuth)
 		})
@@ -1579,7 +1579,7 @@ func TestDeploymentSettingsEdit_EmptySSHKeyPasswordIsRefused(t *testing.T) {
 	t.Parallel()
 	_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{},
 		"--git-auth-ssh-private-key", "PRIVATE KEY", "--git-auth-ssh-private-key-password", "")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "must not be empty")
 	assert.Contains(t, err.Error(), "omit it to store the key without a passphrase")
 }
@@ -1673,7 +1673,7 @@ func TestDeploymentSettingsEdit_MutuallyExclusiveFlags(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, tc.argv...)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), tc.want)
 		})
 	}
@@ -1689,7 +1689,7 @@ func TestDeploymentSettingsEdit_ClearFlagsArePresenceOnly(t *testing.T) {
 		t.Run(flag+" rejects false", func(t *testing.T) {
 			t.Parallel()
 			_, err := runEditCmd(t, &mockDeploymentSettingsEditClient{}, "--"+flag+"=false")
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			assert.Contains(t, err.Error(), "does not accept a false value")
 		})
 		t.Run(flag+" accepts true", func(t *testing.T) {

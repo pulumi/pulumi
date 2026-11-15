@@ -274,8 +274,8 @@ func TestDeploymentRejectsStateMigrationPredecessorURN(t *testing.T) {
 			[]*pkgresource.State{{URN: cURN}}),
 	}}
 
-	require.Error(t, d.rejectStateMigrationPredecessorURN(aURN))
-	require.Error(t, d.rejectStateMigrationPredecessorURN(bURN))
+	require.Error(t, d.rejectStateMigrationPredecessorURN(aURN)) //nolint:forbidigo // pre-existing
+	require.Error(t, d.rejectStateMigrationPredecessorURN(bURN)) //nolint:forbidigo // pre-existing
 	require.NoError(t, d.rejectStateMigrationPredecessorURN(cURN), "a canonical successor URN remains claimable")
 	require.NoError(t, d.rejectStateMigrationPredecessorURN(unrelated))
 }

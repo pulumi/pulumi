@@ -37,7 +37,7 @@ func TestParseReferenceInvalidURN(t *testing.T) {
 
 	str := "not::a:valid:urn::id"
 	_, err := ParseReference(str)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestParseReferenceInvalidModule(t *testing.T) {
@@ -46,19 +46,19 @@ func TestParseReferenceInvalidModule(t *testing.T) {
 	// Wrong package and module
 	str := string(resource.NewURN("test", "test", "", "some:invalid:type", "test")) + "::id"
 	ref, err := ParseReference(str)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, Reference{}, ref)
 
 	// Right package, wrong module
 	str = string(resource.NewURN("test", "test", "", "pulumi:invalid:type", "test")) + "::id"
 	ref, err = ParseReference(str)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, Reference{}, ref)
 
 	// Right module, wrong package
 	str = string(resource.NewURN("test", "test", "", "invalid:providers:type", "test")) + "::id"
 	ref, err = ParseReference(str)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, Reference{}, ref)
 }
 

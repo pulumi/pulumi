@@ -222,5 +222,5 @@ func TestRunError(t *testing.T) {
 	})
 
 	_, err := result.Result(t.Context())
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }

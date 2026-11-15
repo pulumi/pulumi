@@ -1033,7 +1033,7 @@ func TestGroupCommandsBareInvocationExitsNonZero(t *testing.T) {
 	pulumiCmd.SetArgs([]string{"env"})
 
 	err := pulumiCmd.Execute()
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.True(t, result.IsBail(err), "expected a bail error so no message is printed after the help text")
 	assert.Equal(t, cmd.ExitCodeError, cmd.ExitCodeFor(err))
 	assert.Contains(t, stdout.String(), "Usage:", "help text should still be printed")

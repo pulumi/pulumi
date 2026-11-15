@@ -284,7 +284,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	message = opts.Color.Colorize(colors.SpecPrompt + message + colors.Reset)
 
 	var option string
-	if err = survey.AskOne(&survey.Select{
+	if err = ui.AskOne(&survey.Select{
 		Message: message,
 		Options: options,
 		Default: defaultOption,

@@ -800,7 +800,7 @@ func promptRuntimeOptions(ctx *plugin.Context, language plugin.LanguageRuntime, 
 
 				var response string
 				message := opts.Color.Colorize(colors.SpecPrompt + "\r" + optionPrompt.Description + colors.Reset)
-				if err := survey.AskOne(&survey.Select{
+				if err := ui.AskOne(&survey.Select{
 					Message: message,
 					Options: choices,
 				}, &response, ui.SurveyIcons(opts.Color), nil); err != nil {

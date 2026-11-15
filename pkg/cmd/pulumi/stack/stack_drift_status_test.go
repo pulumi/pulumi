@@ -146,6 +146,6 @@ func TestDriftStatus_ClientError(t *testing.T) {
 	c := &mockDriftStatusClient{err: errors.New("server error")}
 	dscmd, _ := newTestDriftStatusCmd()
 	err := dscmd.run(t.Context(), stubDriftStatusFactory(c))
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "getting drift status")
 }

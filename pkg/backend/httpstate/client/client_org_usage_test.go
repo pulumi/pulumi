@@ -120,6 +120,6 @@ func TestGetOrgUsageSummary(t *testing.T) {
 		_, err := c.GetOrgUsageSummary(t.Context(), "acme", apitype.OrgUsageSummaryParams{
 			LookbackDays: -1,
 		})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 	})
 }

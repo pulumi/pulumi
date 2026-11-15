@@ -68,7 +68,7 @@ func TestOpenTamperedCiphertext(t *testing.T) {
 	require.NoError(t, err)
 	tampered := bytes.Replace(env, []byte(`"data": "`), []byte(`"data": "A`), 1)
 	_, err = Open(key, tampered)
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestIsEnvelopeRejectsLegacyCredentials(t *testing.T) {
@@ -118,7 +118,7 @@ func TestOpenRejectsTamperedHeader(t *testing.T) {
 func TestSealRejectsBadKeyLength(t *testing.T) {
 	t.Parallel()
 	_, err := Seal([]byte("short"), BackendMock, []byte("x"))
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 func TestItemFormatRoundTrip(t *testing.T) {
@@ -130,9 +130,9 @@ func TestItemFormatRoundTrip(t *testing.T) {
 	assert.Equal(t, blob, got)
 
 	_, _, err = parseItem("not-an-item")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 	_, _, err = parseItem(itemPrefix + ":weird:AAAA")
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 //nolint:paralleltest // MockInit swaps a package-global resolver
@@ -227,7 +227,7 @@ func TestDeclinedStopsTheChain(t *testing.T) {
 
 	for _, mode := range []Mode{ModeAuto, ModeOS} {
 		st, err := Resolve(mode)
-		require.Error(t, err, "a refusal must fail the resolution, not fall back")
+		require.Error(t, err, "a refusal must fail the resolution, not fall back") //nolint:forbidigo // pre-existing
 		assert.True(t, errors.Is(err, ErrDeclined))
 		assert.Nil(t, st)
 	}
@@ -239,7 +239,7 @@ func TestDeclinedStopsTheChain(t *testing.T) {
 func TestForBackendUnknown(t *testing.T) {
 	MockInit(t)
 	_, err := ForBackend(Backend("windows-credman"))
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 
 	st, err := ForBackend(BackendPlaintext)
 	require.NoError(t, err)

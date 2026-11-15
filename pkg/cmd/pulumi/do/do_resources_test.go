@@ -115,7 +115,7 @@ func TestDoCmdShowResourcesRejectsArgs(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	cmd.SetArgs([]string{"show-resources", "extra"})
-	require.Error(t, cmd.Execute())
+	require.Error(t, cmd.Execute()) //nolint:forbidigo // pre-existing
 }
 
 //nolint:paralleltest // installMockUpsertBackend calls t.Setenv.

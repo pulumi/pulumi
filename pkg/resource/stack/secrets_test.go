@@ -460,7 +460,7 @@ func TestBatchEncrypter(t *testing.T) {
 
 		assert.Panics(t, func() {
 			err := enc.Enqueue(ctx, secretID(&resource.Secret{}), "plaintext", &apitype.SecretV1{})
-			assert.Error(t, err) // Make lint happy
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 		}, "can't write to completed batch")
 	})
 }
@@ -579,7 +579,7 @@ func TestBatchDecrypter(t *testing.T) {
 
 		assert.Panics(t, func() {
 			err := dec.Enqueue(ctx, "1-1:\"plaintext\"")
-			assert.Error(t, err) // Make lint happy
+			assert.Error(t, err) //nolint:forbidigo // pre-existing
 		}, "can't write to completed batch")
 	})
 }

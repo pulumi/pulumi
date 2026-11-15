@@ -878,7 +878,7 @@ func TestConfigSetAll(t *testing.T) {
 
 			// Check for expected error
 			if c.expectError != "" {
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				require.Contains(t, err.Error(), c.expectError)
 				return
 			}
@@ -1455,7 +1455,7 @@ func TestConfigPathOperations(t *testing.T) {
 
 				err := configSetCmd.Run(t.Context(), ws, []string{operation.Key, operation.Value}, &project, &s, configFile)
 				if operation.ExpectFailure {
-					require.Error(t, err)
+					require.Error(t, err) //nolint:forbidigo // pre-existing
 					continue
 				}
 				require.NoError(t, err)
@@ -1562,7 +1562,7 @@ env:value   envVal1
 
 			ssml := cmdStack.SecretsManagerLoader{}
 			_, _, err := ssml.GetSecretsManager(t.Context(), s, ps)
-			require.Error(t, err, "the stack secrets provider must fail if loaded")
+			require.Error(t, err, "the stack secrets provider must fail if loaded") //nolint:forbidigo // pre-existing
 
 			before, err := os.ReadFile(stackFile)
 			require.NoError(t, err)
@@ -1634,7 +1634,7 @@ func TestGetConfigManagedDoesNotLoadSecretsManager(t *testing.T) {
 
 			ssml := cmdStack.SecretsManagerLoader{}
 			_, _, err := ssml.GetSecretsManager(t.Context(), s, ps)
-			require.Error(t, err, "the stack secrets provider must fail if loaded")
+			require.Error(t, err, "the stack secrets provider must fail if loaded") //nolint:forbidigo // pre-existing
 
 			before, err := os.ReadFile(stackFile)
 			require.NoError(t, err)

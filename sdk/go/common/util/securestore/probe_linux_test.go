@@ -31,7 +31,7 @@ func TestSecretServicePrecheckNoSessionBus(t *testing.T) {
 
 	outcome, err := secretServicePrecheck(false)
 	assert.Equal(t, Absent, outcome)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, ErrUnavailable)
 	assert.Contains(t, err.Error(), "no D-Bus session bus")
 }
@@ -97,6 +97,6 @@ func TestSecretServicePrecheckNoRuntimeDir(t *testing.T) {
 
 	outcome, err := secretServicePrecheck(false)
 	assert.Equal(t, Absent, outcome)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.ErrorIs(t, err, ErrUnavailable)
 }

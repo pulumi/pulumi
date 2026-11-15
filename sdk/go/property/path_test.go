@@ -299,7 +299,7 @@ func TestAlter(t *testing.T) {
 
 			result, err := tt.path.Alter(tt.v, tt.f)
 			if tt.expectErr {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				return
 			}
 			require.NoError(t, err)

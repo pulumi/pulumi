@@ -181,7 +181,7 @@ func TestParseRegistryURL(t *testing.T) {
 			result, err := ParseRegistryURL(tt.url)
 
 			if tt.expectError {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				if tt.errorMsg != "" {
 					assert.Contains(t, err.Error(), tt.errorMsg)
 				}
@@ -461,7 +461,7 @@ func TestParsePartialRegistryURL(t *testing.T) {
 			result, err := ParsePartialRegistryURL(tt.registryURL, "templates")
 
 			if tt.expectError {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				if tt.errorMsg != "" {
 					assert.Contains(t, err.Error(), tt.errorMsg)
 				}

@@ -65,7 +65,7 @@ func TestOrgRoleAssign_MissingTeamArg(t *testing.T) {
 	cmd := newOrgRoleAssignCmdWith(stubRoleFactory(c, "my-org"))
 	cmd.SetArgs([]string{"role-123"})
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "accepts 2 arg(s), received 1")
 }
 
@@ -76,7 +76,7 @@ func TestOrgRoleAssign_InvalidOutput(t *testing.T) {
 	cmd := newOrgRoleAssignCmdWith(stubRoleFactory(c, "my-org"))
 	cmd.SetArgs([]string{"role-123", "platform", "--output", "xml"})
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `output "xml" not supported`)
 }
 
@@ -88,7 +88,7 @@ func TestOrgRoleAssign_AssignError(t *testing.T) {
 	cmd.SetArgs([]string{"role-123", "platform"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "forbidden")
 }
 
@@ -98,7 +98,7 @@ func TestOrgRoleAssign_FactoryError(t *testing.T) {
 	cmd := newOrgRoleAssignCmdWith(failingRoleFactory(errors.New("not logged in")))
 	cmd.SetArgs([]string{"role-123", "platform"})
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 

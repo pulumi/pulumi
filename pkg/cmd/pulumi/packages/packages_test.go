@@ -322,7 +322,7 @@ func TestBindSpecReportsAllDiagnostics(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(invalid), &spec))
 
 	_, err := BindSpec(spec, schema.NewNullLoader())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.NotContains(t, err.Error(), "other diagnostic(s)")
 	assert.Contains(t, err.Error(), "#/resources/bad:index:One/properties/a/type: unknown type kind bogus")
 	assert.Contains(t, err.Error(), "#/resources/bad:index:Two/properties/b/type: unknown type kind alsoBogus")

@@ -447,7 +447,7 @@ read provider "pulumi:providers:random" {
 
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
 	require.Nil(t, program)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.True(t, diags.HasErrors())
 	assert.Equal(t, "provider resources cannot be read: 'pulumi:providers:random'", diags[0].Summary)
 }
@@ -1446,7 +1446,7 @@ output "result" {
 }
 `
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.Equal(t, hcl.Diagnostics{{
 		Severity: hcl.DiagError,
 		Summary:  "cannot assign expression of type list(string) to location of type int | output(int): ",

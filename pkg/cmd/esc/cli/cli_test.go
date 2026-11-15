@@ -2413,7 +2413,7 @@ func TestCLI(t *testing.T) {
 			if def.Error == "" {
 				require.NoError(t, err)
 			} else {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 			}
 
 			assert.Equal(t, testcase.expectedStdout, stdout.String())
@@ -2509,7 +2509,7 @@ func TestEnvChangeRequestRejectsNonEnvironment(t *testing.T) {
 
 	for _, cmd := range []string{"get", "diff", "rebase"} {
 		stderr, err := run("esc env change-request " + cmd + " " + id + "\n")
-		assert.Error(t, err, cmd)
+		assert.Error(t, err, cmd) //nolint:forbidigo // pre-existing
 		assert.Contains(t, stderr, "is not an environment draft", cmd)
 	}
 }

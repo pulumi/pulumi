@@ -182,8 +182,8 @@ func TestRegisterResourceMarshalErrorLogged(t *testing.T) {
 		return ctx.RegisterResource("test:index:res", "test", Map{"badProp": out}, &res)
 	}, logError, WithMocks("project", "stack", mocks))
 
-	require.Error(t, err)
-	require.Error(t, loggedErr)
+	require.Error(t, err)       //nolint:forbidigo // pre-existing
+	require.Error(t, loggedErr) //nolint:forbidigo // pre-existing
 	assert.Contains(t, loggedErr.Error(), "marshaling properties")
 	assert.Contains(t, loggedErr.Error(), "badProp")
 }

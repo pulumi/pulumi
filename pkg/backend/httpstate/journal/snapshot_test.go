@@ -181,7 +181,7 @@ func TestJournalerSendAfterClose(t *testing.T) {
 
 	// Attempt to send an entry. This should fail.
 	err = journaler.AddJournalEntry(engine.JournalEntry{})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 // TestJournalerCloseAfterClose tests that Close() after Close() does not fail.
@@ -251,7 +251,7 @@ func TestJournalerErrorHandling(t *testing.T) {
 
 	// Check the errors
 	for _, err := range errors {
-		assert.Error(t, err, "Expected a non-nil error")
+		assert.Error(t, err, "Expected a non-nil error") //nolint:forbidigo // pre-existing
 	}
 }
 
@@ -336,7 +336,7 @@ func TestJournaler413MinimumBatchSize(t *testing.T) {
 			defer wg.Done()
 			entry := engine.JournalEntry{SequenceID: int64(i)}
 			err := journaler.AddJournalEntry(entry)
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 		}()
 	}
 	wg.Wait()

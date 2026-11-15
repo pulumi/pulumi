@@ -36,14 +36,14 @@ func TestValidateOrgGroupsAndEvents(t *testing.T) {
 	t.Run("invalid group", func(t *testing.T) {
 		t.Parallel()
 		err := validateOrgGroupsAndEvents([]string{"bogus"}, nil)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), `invalid group "bogus"`)
 	})
 
 	t.Run("invalid event", func(t *testing.T) {
 		t.Parallel()
 		err := validateOrgGroupsAndEvents(nil, []string{"not_real"})
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), `invalid event "not_real"`)
 	})
 
@@ -52,7 +52,7 @@ func TestValidateOrgGroupsAndEvents(t *testing.T) {
 		err := validateOrgGroupsAndEvents(
 			[]string{"stacks"}, []string{"update_succeeded"},
 		)
-		require.Error(t, err)
+		require.Error(t, err) //nolint:forbidigo // pre-existing
 		assert.Contains(t, err.Error(), `already included by group "stacks"`)
 	})
 

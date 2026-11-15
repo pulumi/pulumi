@@ -34,7 +34,7 @@ func TestTPMUnwrapRejectsMalformedBlob(t *testing.T) {
 	t.Parallel()
 	for _, blob := range [][]byte{nil, {0x01}, {0xFF, 0xFF, 0x00}} {
 		_, err := tpmWrapper{}.unwrap(blob)
-		assert.Error(t, err)
+		assert.Error(t, err) //nolint:forbidigo // pre-existing
 	}
 }
 

@@ -226,7 +226,7 @@ func TestResolveContextRejectedToken(t *testing.T) {
 			t.Setenv("PULUMI_BACKEND_URL", server.URL)
 
 			_, err := ResolveContext(t.Context())
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 
 			apiErr := resolveContextError(err)
 			assert.Equal(t, cmdutil.ExitAuthenticationError, apiErr.ExitCode, "error: %v", err)

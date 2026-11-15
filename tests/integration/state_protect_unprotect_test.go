@@ -120,7 +120,7 @@ description: A test for protecting and unprotecting resources
 
 	// Try to destroy - should fail because resources are now protected
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
-	assert.Error(t, err, "expect error from pulumi destroy after protect")
+	assert.Error(t, err, "expect error from pulumi destroy after protect") //nolint:forbidigo // pre-existing
 	assert.ErrorContains(t, err, "exit status 1")
 
 	// STEP 2: Unprotect a subset of resources to verify partial unprotect works
@@ -133,7 +133,7 @@ description: A test for protecting and unprotecting resources
 
 	// Try to destroy - should still fail because one resource is still protected
 	_, _, err = e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
-	assert.Error(t, err, "expect error from pulumi destroy after partial unprotect")
+	assert.Error(t, err, "expect error from pulumi destroy after partial unprotect") //nolint:forbidigo // pre-existing
 
 	// STEP 3: Unprotect the remaining protected resource
 	unprotectArgs := append([]string{"pulumi", "state", "unprotect", "--yes"}, urns[1])
@@ -198,7 +198,7 @@ let d = new Resource("resource4", { state: 4 });
 
 	// Try to destroy - should fail because all resources are now protected
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
-	assert.Error(t, err, "expect error from pulumi destroy after protect all")
+	assert.Error(t, err, "expect error from pulumi destroy after protect all") //nolint:forbidigo // pre-existing
 
 	// STEP 2: Unprotect all resources using the --all flag
 	unprotectOutput, _ := e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
@@ -253,7 +253,7 @@ let eternal = new Resource("eternal", { state: 42 });
 
 	// Try to destroy - should fail because the resource is protected
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
-	assert.Error(t, err, "expect error from pulumi destroy after protect")
+	assert.Error(t, err, "expect error from pulumi destroy after protect") //nolint:forbidigo // pre-existing
 
 	// STEP 2: Unprotect the specific resource by URN
 	e.RunCommand("pulumi", "state", "unprotect", urn, "--yes")

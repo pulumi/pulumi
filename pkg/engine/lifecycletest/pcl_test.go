@@ -792,7 +792,7 @@ func TestPclSnippetResourceReference(t *testing.T) {
 
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		_, err := monitor.RegisterResource("pkgA:index:producer", "producer", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"seed": resource.NewProperty("hello")},
+			Inputs: property.NewMap(map[string]property.Value{"seed": property.New("hello")}),
 		})
 		return err
 	})
@@ -912,14 +912,14 @@ func TestPclSnippetReferenceLocalComponent(t *testing.T) {
 	// registration.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:index:Comp", "comp", false, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"seed": resource.NewProperty("hello")},
+			Inputs: property.NewMap(map[string]property.Value{"seed": property.New("hello")}),
 		})
 		if err != nil {
 			return err
 		}
-		return monitor.RegisterResourceOutputs(resp.URN, resource.PropertyMap{
-			"value": resource.NewProperty("value-of-hello"),
-		})
+		return monitor.RegisterResourceOutputs(resp.URN, property.NewMap(map[string]property.Value{
+			"value": property.New("value-of-hello"),
+		}))
 	})
 
 	p := &lt.TestPlan{
@@ -1028,7 +1028,7 @@ func TestPclSnippetMissingProgramReference(t *testing.T) {
 			return nil
 		}
 		_, err := monitor.RegisterResource("pkgA:index:producer", "producer", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"seed": resource.NewProperty("hello")},
+			Inputs: property.NewMap(map[string]property.Value{"seed": property.New("hello")}),
 		})
 		return err
 	})
@@ -1267,7 +1267,7 @@ func TestPclSnippetReferenceFollowsAlias(t *testing.T) {
 		}
 		_, err := monitor.RegisterResource("pkgA:index:Producer", name, true, deploytest.ResourceOptions{
 			AliasURNs: aliases,
-			Inputs:    resource.PropertyMap{"value": resource.NewProperty("hello")},
+			Inputs:    property.NewMap(map[string]property.Value{"value": property.New("hello")}),
 		})
 		return err
 	})
@@ -1411,7 +1411,7 @@ func TestPclSnippetResourceOptionsResourceRefs(t *testing.T) {
 	var targetURN resource.URN
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:index:res", "target", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"propA": resource.NewProperty(true)},
+			Inputs: property.NewMap(map[string]property.Value{"propA": property.New(true)}),
 		})
 		if err != nil {
 			return err
@@ -1477,7 +1477,7 @@ func TestPclSnippetResourceOptionsParent(t *testing.T) {
 	var parentURN resource.URN
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		resp, err := monitor.RegisterResource("pkgA:index:res", "parent", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{"propA": resource.NewProperty(true)},
+			Inputs: property.NewMap(map[string]property.Value{"propA": property.New(true)}),
 		})
 		if err != nil {
 			return err

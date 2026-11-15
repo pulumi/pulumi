@@ -215,7 +215,7 @@ func TestDeploymentGet_ClientError(t *testing.T) {
 	c := &mockDeploymentGetClient{err: errors.New("not found")}
 	err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c), "dep-missing",
 		deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "getting deployment")
 	assert.Contains(t, err.Error(), "not found")
 }
@@ -227,7 +227,7 @@ func TestDeploymentGet_FactoryError(t *testing.T) {
 	err := runDeploymentGet(t.Context(), &buf,
 		failingGetFactory(errors.New("not logged in")), "dep-1",
 		deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
@@ -287,7 +287,7 @@ func TestDeploymentGet_VersionLookupError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c), "#9410",
 		deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()})
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "getting deployment")
 	assert.Contains(t, err.Error(), "not found")
 	assert.Equal(t, "", c.gotID, "by-id endpoint must not be called when resolution fails")

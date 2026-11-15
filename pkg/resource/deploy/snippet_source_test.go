@@ -220,7 +220,7 @@ func TestMuxSource_MultipleErrorsJoin(t *testing.T) {
 	bCS.Reject(bErr)
 
 	_, err := out.Result(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	require.ErrorIs(t, err, mainErr)
 	require.ErrorIs(t, err, bErr)
 }

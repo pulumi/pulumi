@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -732,14 +733,14 @@ func TestRemoteComponentGolang(t *testing.T) {
 					resp, err := monitor.RegisterResource("pkgB:index:component", "componentA", false)
 					require.NoError(t, err)
 
-					outs := resource.PropertyMap{}
+					outs := property.Map{}
 
 					err = monitor.RegisterResourceOutputs(resp.URN, outs)
 					require.NoError(t, err)
 
 					return plugin.ConstructResponse{
 						URN:     resp.URN,
-						Outputs: resource.FromResourcePropertyMap(outs),
+						Outputs: outs,
 					}, nil
 				},
 			}, nil

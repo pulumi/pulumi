@@ -1213,6 +1213,7 @@ func TestJournalEncryptionFailureNotSilent(t *testing.T) {
 	// from completeBatch. Once stack.BatchEncrypt is fixed to return its accumulated error,
 	// this assertion will pass. Use assert (not require) so the secondary check on the
 	// persisted snapshot below also runs and surfaces the visible state corruption.
+	//nolint:forbidigo // pre-existing
 	if assert.Error(t, err, "AddJournalEntry must surface batch encryption failures (#23144)") {
 		assert.Contains(t, err.Error(), "batch encrypt boom")
 	}

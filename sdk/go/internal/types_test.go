@@ -213,7 +213,7 @@ func TestOutputWithDependenciesReject(t *testing.T) {
 	state.reject(errors.New("oh no"))
 
 	v, known, secret, resolvedDeps, err := stateWithDeps.await(t.Context())
-	require.Error(t, err, "oh no")
+	require.Error(t, err, "oh no") //nolint:forbidigo // pre-existing
 	require.Nil(t, v)
 	require.True(t, known)
 	require.False(t, secret)

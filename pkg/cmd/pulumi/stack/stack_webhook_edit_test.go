@@ -331,7 +331,7 @@ func TestEdit_WebhookNotFound(t *testing.T) {
 	cmd.SetArgs([]string{"bad-hook", "--active=false"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `reading webhook "bad-hook"`)
 }
 
@@ -351,7 +351,7 @@ func TestEdit_UpdateError(t *testing.T) {
 	cmd.SetArgs([]string{"my-hook", "--url", "https://x.com"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `updating webhook "my-hook"`)
 }
 
@@ -368,7 +368,7 @@ func TestEdit_InvalidGroup(t *testing.T) {
 	cmd.SetArgs([]string{"my-hook", "--add-group", "bogus"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `invalid group "bogus"`)
 }
 
@@ -385,7 +385,7 @@ func TestEdit_InvalidEvent(t *testing.T) {
 	cmd.SetArgs([]string{"my-hook", "--add-event", "not_a_real_event"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `invalid event "not_a_real_event"`)
 }
 
@@ -409,7 +409,7 @@ func TestEdit_EventCoveredByGroup(t *testing.T) {
 	})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `event "update_succeeded" is already included by group "stacks"`)
 }
 

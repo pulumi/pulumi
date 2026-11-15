@@ -71,7 +71,7 @@ func TestCancelSignal(t *testing.T) {
 			err = cmd.Wait()
 
 			// We should exit with a non 0 code and the output should contain `update canceled`.
-			require.Error(t, err)
+			require.Error(t, err) //nolint:forbidigo // pre-existing
 			if exiterr, ok := err.(*exec.ExitError); ok {
 				require.NotEqual(t, 0, exiterr.ExitCode())
 			} else {

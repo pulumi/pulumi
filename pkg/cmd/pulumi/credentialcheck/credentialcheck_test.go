@@ -114,7 +114,7 @@ func TestCheckSchema(t *testing.T) {
 			case tt.unsupported:
 				require.ErrorIs(t, err, ErrUnsupported)
 			case tt.wantErr:
-				require.Error(t, err)
+				require.Error(t, err) //nolint:forbidigo // pre-existing
 				assert.NotErrorIs(t, err, ErrUnsupported)
 			default:
 				require.NoError(t, err)

@@ -42,7 +42,7 @@ func TestRegisterResourceErrorsOnMissingPendingNew(t *testing.T) {
 		urn: urn,
 	})
 	// Should error, but not panic since the resource is being registered twice.
-	assert.Error(t, err)
+	assert.Error(t, err) //nolint:forbidigo // pre-existing
 }
 
 type stepGate struct {

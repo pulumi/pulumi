@@ -140,7 +140,7 @@ func TestOrgRoleNew_MissingDetailsArg(t *testing.T) {
 	cmd.SetArgs([]string{"R"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "accepts 2 arg(s), received 1")
 }
 
@@ -153,7 +153,7 @@ func TestOrgRoleNew_InvalidDetailsJSON(t *testing.T) {
 	cmd.SetArgs([]string{"R", detailsPath})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not valid JSON")
 }
 
@@ -166,7 +166,7 @@ func TestOrgRoleNew_InvalidOutput(t *testing.T) {
 	cmd.SetArgs([]string{"R", detailsPath, "--output", "xml"})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), `output "xml" not supported`)
 }
 
@@ -179,7 +179,7 @@ func TestOrgRoleNew_ClientError(t *testing.T) {
 	cmd.SetArgs([]string{"R", detailsPath})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "creating organization role")
 	assert.Contains(t, err.Error(), "server error")
 }
@@ -192,6 +192,6 @@ func TestOrgRoleNew_FactoryError(t *testing.T) {
 	cmd.SetArgs([]string{"R", detailsPath})
 
 	err := cmd.ExecuteContext(t.Context())
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }

@@ -72,7 +72,7 @@ func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *t
 	require.NoError(t, err)
 
 	account, _, err := getBackendAccount(t.Context(), "https://api.example.com")
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Empty(t, account.AccessToken)
 }
 
@@ -98,7 +98,7 @@ func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Nil(t, account)
 
 	agentAccount, err := workspace.GetAgentAccount(server.URL)
@@ -218,7 +218,7 @@ func TestGetAccountDetails(t *testing.T) {
 			)
 
 			if tt.wantErr {
-				assert.Error(t, err)
+				assert.Error(t, err) //nolint:forbidigo // pre-existing
 				if tt.checkErr != nil {
 					tt.checkErr(t, err)
 				}
@@ -260,7 +260,7 @@ func TestCurrentSurfacesUndecryptableCredentials(t *testing.T) {
 	require.NoError(t, os.WriteFile(credsFile, envelope, 0o600))
 
 	_, err = defaultLoginManager{}.Current(t.Context(), cloudURL, false, false)
-	require.Error(t, err, "Current must not treat an undecryptable file as logged-out")
+	require.Error(t, err, "Current must not treat an undecryptable file as logged-out") //nolint:forbidigo // pre-existing
 	assert.True(t, workspace.IsUndecryptableCredentials(err))
 	assert.Contains(t, err.Error(), "pulumi login")
 }
@@ -289,7 +289,7 @@ func TestCurrentEnvTokenDoesNotBypassUndecryptableCredentials(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Nil(t, account)
 	assert.True(t, workspace.IsUndecryptableCredentials(err),
 		"the typed error must surface so callers can point at recovery, got: %v", err)

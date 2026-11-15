@@ -167,7 +167,7 @@ func TestDeploymentLog_StepRequiresJob(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1", args, renderDeploymentLogText)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Equal(t, "--step requires --job to also be set (>= 0)", err.Error())
 }
 
@@ -178,7 +178,7 @@ func TestDeploymentLog_ClientError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-missing",
 		defaultDeploymentLogArgs(), renderDeploymentLogText)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "getting deployment logs")
 	assert.Contains(t, err.Error(), "not found")
 }
@@ -190,7 +190,7 @@ func TestDeploymentLog_FactoryError(t *testing.T) {
 	err := runDeploymentLog(t.Context(), &buf,
 		failingLogFactory(errors.New("not logged in")), "dep-1", defaultDeploymentLogArgs(),
 		renderDeploymentLogText)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "not logged in")
 }
 
@@ -280,7 +280,7 @@ func TestDeploymentLog_VersionLookupError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "#9410",
 		defaultDeploymentLogArgs(), renderDeploymentLogText)
-	require.Error(t, err)
+	require.Error(t, err) //nolint:forbidigo // pre-existing
 	assert.Contains(t, err.Error(), "resolving deployment version 9410")
 	assert.Contains(t, err.Error(), "not found")
 	assert.Equal(t, "", c.gotID, "logs endpoint must not be called when resolution fails")

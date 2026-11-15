@@ -82,7 +82,7 @@ func TestPromptAndCreateStackNamedStackHardErrors(t *testing.T) {
 	_, err := PromptAndCreateStack(t.Context(), cmdutil.Diag(), pkgWorkspace.Instance,
 		b, prompt, "named", t.TempDir(), false, false, display.Options{}, "default", false, "")
 
-	assert.Error(t, err, "a pre-decided stack name must not retry")
+	assert.Error(t, err, "a pre-decided stack name must not retry") //nolint:forbidigo // pre-existing
 	assert.Equal(t, 0, prompts, "a pre-decided stack name must not prompt")
 	assert.Equal(t, []string{"named"}, created)
 }
@@ -131,7 +131,7 @@ func TestCreateStackWithRetryDefaultOrgFailureIsFatal(t *testing.T) {
 		b, prompt, "first", t.TempDir(), false, display.Options{},
 		cmdStack.CreateStackOptions{SecretsProvider: "default", Quiet: true})
 
-	assert.Error(t, err, "a buildStackName failure must be fatal")
+	assert.Error(t, err, "a buildStackName failure must be fatal") //nolint:forbidigo // pre-existing
 	assert.Empty(t, created, "CreateStack must not be attempted when buildStackName fails")
 	assert.Empty(t, resolved)
 	assert.Nil(t, s)

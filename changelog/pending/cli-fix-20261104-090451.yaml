@@ -1,4 +1,0 @@
-component: cli
-kind: fix
-body: Update outdated documentation links in CLI help text and output
-time: 2026-11-04T09:04:51+09:00
