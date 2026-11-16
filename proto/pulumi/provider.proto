@@ -745,12 +745,12 @@ message CheckConfigRequest {
     // The new input configuration for the provider.
     google.protobuf.Struct new_inputs = 5;
 
-    // A random but deterministically computed hash, intended to be used for generating globally unique names.
-    bytes random_seed = 6;
-
     // The previously persisted output properties of the provider resource, if any. Providers must not assume this is
     // populated.
-    google.protobuf.Struct old_outputs = 7;
+    google.protobuf.Struct old_outputs = 6;
+
+    // A random but deterministically computed hash, intended to be used for generating globally unique names.
+    bytes random_seed = 7;
 }
 
 // `CheckConfigResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig2) call. It

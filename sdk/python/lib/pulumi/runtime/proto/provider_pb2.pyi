@@ -1049,8 +1049,8 @@ class CheckConfigRequest(google.protobuf.message.Message):
     TYPE_FIELD_NUMBER: builtins.int
     OLD_INPUTS_FIELD_NUMBER: builtins.int
     NEW_INPUTS_FIELD_NUMBER: builtins.int
-    RANDOM_SEED_FIELD_NUMBER: builtins.int
     OLD_OUTPUTS_FIELD_NUMBER: builtins.int
+    RANDOM_SEED_FIELD_NUMBER: builtins.int
     urn: builtins.str
     """The URN of the provider resource whose configuration is being checked, which may or may not be a [default
     provider](default-providers).
@@ -1087,8 +1087,8 @@ class CheckConfigRequest(google.protobuf.message.Message):
         type: builtins.str = ...,
         old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
         new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
-        random_seed: builtins.bytes = ...,
         old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        random_seed: builtins.bytes = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing.Literal["name", b"name", "new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "random_seed", b"random_seed", "type", b"type", "urn", b"urn"]) -> None: ...

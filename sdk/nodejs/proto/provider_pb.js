@@ -6868,8 +6868,8 @@ name: jspb.Message.getFieldWithDefault(msg, 2, ""),
 type: jspb.Message.getFieldWithDefault(msg, 3, ""),
 oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 newInputs: (f = msg.getNewInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-randomSeed: msg.getRandomSeed_asB64(),
-oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+randomSeed: msg.getRandomSeed_asB64()
   };
 
   if (includeInstance) {
@@ -6929,13 +6929,13 @@ proto.pulumirpc.CheckConfigRequest.deserializeBinaryFromReader = function(msg, r
       msg.setNewInputs(value);
       break;
     case 6:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setRandomSeed(value);
-      break;
-    case 7:
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setOldOutputs(value);
+      break;
+    case 7:
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
+      msg.setRandomSeed(value);
       break;
     default:
       reader.skipField();
@@ -7003,19 +7003,19 @@ proto.pulumirpc.CheckConfigRequest.serializeBinaryToWriter = function(message, w
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
-  f = message.getRandomSeed_asU8();
-  if (f.length > 0) {
-    writer.writeBytes(
-      6,
-      f
-    );
-  }
   f = message.getOldOutputs();
   if (f != null) {
     writer.writeMessage(
-      7,
+      6,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getRandomSeed_asU8();
+  if (f.length > 0) {
+    writer.writeBytes(
+      7,
+      f
     );
   }
 };
@@ -7150,54 +7150,12 @@ proto.pulumirpc.CheckConfigRequest.prototype.hasNewInputs = function() {
 
 
 /**
- * optional bytes random_seed = 6;
- * @return {!(string|Uint8Array)}
- */
-proto.pulumirpc.CheckConfigRequest.prototype.getRandomSeed = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
-};
-
-
-/**
- * optional bytes random_seed = 6;
- * This is a type-conversion wrapper around `getRandomSeed()`
- * @return {string}
- */
-proto.pulumirpc.CheckConfigRequest.prototype.getRandomSeed_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getRandomSeed()));
-};
-
-
-/**
- * optional bytes random_seed = 6;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getRandomSeed()`
- * @return {!Uint8Array}
- */
-proto.pulumirpc.CheckConfigRequest.prototype.getRandomSeed_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getRandomSeed()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.pulumirpc.CheckConfigRequest} returns this
- */
-proto.pulumirpc.CheckConfigRequest.prototype.setRandomSeed = function(value) {
-  return jspb.Message.setProto3BytesField(this, 6, value);
-};
-
-
-/**
- * optional google.protobuf.Struct old_outputs = 7;
+ * optional google.protobuf.Struct old_outputs = 6;
  * @return {?proto.google.protobuf.Struct}
  */
 proto.pulumirpc.CheckConfigRequest.prototype.getOldOutputs = function() {
   return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 7));
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 6));
 };
 
 
@@ -7206,7 +7164,7 @@ proto.pulumirpc.CheckConfigRequest.prototype.getOldOutputs = function() {
  * @return {!proto.pulumirpc.CheckConfigRequest} returns this
 */
 proto.pulumirpc.CheckConfigRequest.prototype.setOldOutputs = function(value) {
-  return jspb.Message.setWrapperField(this, 7, value);
+  return jspb.Message.setWrapperField(this, 6, value);
 };
 
 
@@ -7224,7 +7182,49 @@ proto.pulumirpc.CheckConfigRequest.prototype.clearOldOutputs = function() {
  * @return {boolean}
  */
 proto.pulumirpc.CheckConfigRequest.prototype.hasOldOutputs = function() {
-  return jspb.Message.getField(this, 7) != null;
+  return jspb.Message.getField(this, 6) != null;
+};
+
+
+/**
+ * optional bytes random_seed = 7;
+ * @return {!(string|Uint8Array)}
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.getRandomSeed = function() {
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+};
+
+
+/**
+ * optional bytes random_seed = 7;
+ * This is a type-conversion wrapper around `getRandomSeed()`
+ * @return {string}
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.getRandomSeed_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getRandomSeed()));
+};
+
+
+/**
+ * optional bytes random_seed = 7;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getRandomSeed()`
+ * @return {!Uint8Array}
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.getRandomSeed_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getRandomSeed()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
+ * @return {!proto.pulumirpc.CheckConfigRequest} returns this
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.setRandomSeed = function(value) {
+  return jspb.Message.setProto3BytesField(this, 7, value);
 };
 
 

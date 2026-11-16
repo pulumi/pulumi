@@ -1683,11 +1683,11 @@ type CheckConfigRequest struct {
 	OldInputs *structpb.Struct `protobuf:"bytes,4,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`
 	// The new input configuration for the provider.
 	NewInputs *structpb.Struct `protobuf:"bytes,5,opt,name=new_inputs,json=newInputs,proto3" json:"new_inputs,omitempty"`
-	// A random but deterministically computed hash, intended to be used for generating globally unique names.
-	RandomSeed []byte `protobuf:"bytes,6,opt,name=random_seed,json=randomSeed,proto3" json:"random_seed,omitempty"`
 	// The previously persisted output properties of the provider resource, if any. Providers must not assume this is
 	// populated.
-	OldOutputs    *structpb.Struct `protobuf:"bytes,7,opt,name=old_outputs,json=oldOutputs,proto3" json:"old_outputs,omitempty"`
+	OldOutputs *structpb.Struct `protobuf:"bytes,6,opt,name=old_outputs,json=oldOutputs,proto3" json:"old_outputs,omitempty"`
+	// A random but deterministically computed hash, intended to be used for generating globally unique names.
+	RandomSeed    []byte `protobuf:"bytes,7,opt,name=random_seed,json=randomSeed,proto3" json:"random_seed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1757,16 +1757,16 @@ func (x *CheckConfigRequest) GetNewInputs() *structpb.Struct {
 	return nil
 }
 
-func (x *CheckConfigRequest) GetRandomSeed() []byte {
+func (x *CheckConfigRequest) GetOldOutputs() *structpb.Struct {
 	if x != nil {
-		return x.RandomSeed
+		return x.OldOutputs
 	}
 	return nil
 }
 
-func (x *CheckConfigRequest) GetOldOutputs() *structpb.Struct {
+func (x *CheckConfigRequest) GetRandomSeed() []byte {
 	if x != nil {
-		return x.OldOutputs
+		return x.RandomSeed
 	}
 	return nil
 }
@@ -4801,11 +4801,11 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\n" +
 	"old_inputs\x18\x04 \x01(\v2\x17.google.protobuf.StructR\toldInputs\x126\n" +
 	"\n" +
-	"new_inputs\x18\x05 \x01(\v2\x17.google.protobuf.StructR\tnewInputs\x12\x1f\n" +
-	"\vrandom_seed\x18\x06 \x01(\fR\n" +
-	"randomSeed\x128\n" +
-	"\vold_outputs\x18\a \x01(\v2\x17.google.protobuf.StructR\n" +
-	"oldOutputs\"\x81\x01\n" +
+	"new_inputs\x18\x05 \x01(\v2\x17.google.protobuf.StructR\tnewInputs\x128\n" +
+	"\vold_outputs\x18\x06 \x01(\v2\x17.google.protobuf.StructR\n" +
+	"oldOutputs\x12\x1f\n" +
+	"\vrandom_seed\x18\a \x01(\fR\n" +
+	"randomSeed\"\x81\x01\n" +
 	"\x13CheckConfigResponse\x12/\n" +
 	"\x06inputs\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06inputs\x129\n" +
 	"\bfailures\x18\x02 \x03(\v2\x1d.pulumirpc.CheckConfigFailureR\bfailures\"H\n" +

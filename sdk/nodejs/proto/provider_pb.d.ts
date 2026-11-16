@@ -788,15 +788,15 @@ export class CheckConfigRequest extends jspb.Message {
     clearNewInputs(): void;
     getNewInputs(): google_protobuf_struct_pb.Struct | undefined;
     setNewInputs(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
-    getRandomSeed(): Uint8Array | string;
-    getRandomSeed_asU8(): Uint8Array;
-    getRandomSeed_asB64(): string;
-    setRandomSeed(value: Uint8Array | string): CheckConfigRequest;
 
     hasOldOutputs(): boolean;
     clearOldOutputs(): void;
     getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldOutputs(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+    getRandomSeed(): Uint8Array | string;
+    getRandomSeed_asU8(): Uint8Array;
+    getRandomSeed_asB64(): string;
+    setRandomSeed(value: Uint8Array | string): CheckConfigRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckConfigRequest.AsObject;
@@ -815,8 +815,8 @@ export namespace CheckConfigRequest {
         type: string,
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
         newInputs?: google_protobuf_struct_pb.Struct.AsObject,
-        randomSeed: Uint8Array | string,
         oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+        randomSeed: Uint8Array | string,
     }
 }
 
