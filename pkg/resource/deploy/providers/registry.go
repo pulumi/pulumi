@@ -682,7 +682,11 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	})
 	if len(resp.Failures) != 0 || err != nil {
 		contract.IgnoreClose(provider)
-		return plugin.CheckResponse{Failures: resp.Failures}, err
+		var failures []plugin.CheckFailure
+		for _, f := range resp.Failures {
+			failures = append(failures, plugin.CheckFailure(f))
+		}
+		return plugin.CheckResponse{Failures: failures}, err
 	}
 
 	// Create a provider reference using the URN and the unconfigured ID and register the provider.

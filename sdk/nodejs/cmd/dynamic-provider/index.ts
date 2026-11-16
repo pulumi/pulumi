@@ -192,6 +192,16 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
         );
     }
 
+    checkConfig2(call: any, callback: any): void {
+        callback(
+            {
+                code: grpc.status.UNIMPLEMENTED,
+                details: "CheckConfig2 is not implemented by the dynamic provider",
+            },
+            undefined,
+        );
+    }
+
     async diff(call: any, callback: any): Promise<void> {
         try {
             const req: any = call.request;

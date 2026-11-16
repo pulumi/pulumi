@@ -315,64 +315,103 @@ func (p *providerServer) Cancel(ctx context.Context, req *emptypb.Empty) (*empty
 func (p *providerServer) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	urn := resource.URN(req.GetUrn())
-
-	// To support old engines fill in Name/Type if the engine didn't send them
-	if req.Name == "" {
-		req.Name = urn.Name()
-	}
-	if req.Name != urn.Name() {
-		return nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
-	}
-	if req.Type == "" {
-		req.Type = string(urn.Type())
-	}
-	if req.Type != string(urn.Type()) {
-		return nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
-	}
-
-	rawState, err := propertyrpc.Unmarshal(req.GetOlds())
+	rpcInputs, failures, err := p.checkConfig(ctx,
+		req.GetUrn(), req.GetName(), req.GetType(), req.GetOlds(), req.GetNews())
 	if err != nil {
 		return nil, err
+	}
+
+	rpcFailures := make([]*pulumirpc.CheckFailure, len(failures))
+	for i, f := range failures {
+		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+	}
+
+	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+}
+
+func (p *providerServer) CheckConfig2(ctx context.Context,
+	req *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	rpcInputs, failures, err := p.checkConfig(ctx,
+		req.GetUrn(), req.GetName(), req.GetType(), req.GetOldInputs(), req.GetNewInputs())
+	if err != nil {
+		return nil, err
+	}
+
+	rpcFailures := make([]*pulumirpc.CheckConfigFailure, len(failures))
+	for i, f := range failures {
+		rpcFailures[i] = checkConfigFailureToRPC(f)
+	}
+
+	return &pulumirpc.CheckConfigResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+}
+
+// checkConfigFailureToRPC converts a failure to send in a CheckConfig2 response.
+func checkConfigFailureToRPC(failure CheckConfigFailure) *pulumirpc.CheckConfigFailure {
+	return &pulumirpc.CheckConfigFailure{
+		Property: string(failure.Property),
+		Reason:   failure.Reason,
+	}
+}
+
+// checkConfig is the part of CheckConfig and CheckConfig2 that does not depend on their wire types.
+func (p *providerServer) checkConfig(
+	ctx context.Context,
+	rawURN, name, typ string,
+	olds, news *structpb.Struct,
+) (*structpb.Struct, []CheckConfigFailure, error) {
+	urn := resource.URN(rawURN)
+
+	// To support old engines fill in Name/Type if the engine didn't send them
+	if name == "" {
+		name = urn.Name()
+	}
+	if name != urn.Name() {
+		return nil, nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
+	}
+	if typ == "" {
+		typ = string(urn.Type())
+	}
+	if typ != string(urn.Type()) {
+		return nil, nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
+	}
+
+	rawState, err := propertyrpc.Unmarshal(olds)
+	if err != nil {
+		return nil, nil, err
 	}
 	state, err := FilterProperties(rawState, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	rawInputs, err := propertyrpc.Unmarshal(req.GetNews())
+	rawInputs, err := propertyrpc.Unmarshal(news)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	inputs, err := FilterProperties(rawInputs, p.unmarshalFilterOptions(false /* keepDependencies */))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	resp, err := p.provider.CheckConfig(ctx, CheckConfigRequest{
 		URN:           urn,
-		Name:          req.Name,
-		Type:          tokens.Type(req.Type),
+		Name:          name,
+		Type:          tokens.Type(typ),
 		Olds:          state,
 		News:          inputs,
 		AllowUnknowns: true,
 	})
 	if err != nil {
-		return nil, p.checkNYI("CheckConfig", err)
+		return nil, nil, p.checkNYI("CheckConfig", err)
 	}
 
 	filteredInputs, err := FilterProperties(resp.Properties, p.marshalFilterOptions())
 	if err != nil {
-		return nil, err
-	}
-	rpcInputs := propertyrpc.Marshal(filteredInputs)
-
-	rpcFailures := make([]*pulumirpc.CheckFailure, len(resp.Failures))
-	for i, f := range resp.Failures {
-		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
+		return nil, nil, err
 	}
 
-	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+	return propertyrpc.Marshal(filteredInputs), resp.Failures, nil
 }
 
 func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {

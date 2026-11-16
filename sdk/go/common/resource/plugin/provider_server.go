@@ -316,6 +316,12 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
 }
 
+// CheckConfig2 is not supported by this package, so callers fall back to CheckConfig.
+func (p *providerServer) CheckConfig2(context.Context, *pulumirpc.CheckConfigRequest,
+) (*pulumirpc.CheckConfigResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "CheckConfig2 is not yet implemented")
+}
+
 func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
 	urn := resource.URN(req.GetUrn())
 

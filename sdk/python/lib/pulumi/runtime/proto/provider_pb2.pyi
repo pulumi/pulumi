@@ -1039,6 +1039,117 @@ class CheckFailure(google.protobuf.message.Message):
 global___CheckFailure = CheckFailure
 
 @typing.final
+class CheckConfigRequest(google.protobuf.message.Message):
+    """`CheckConfigRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.CheckConfig2) calls."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    URN_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    OLD_INPUTS_FIELD_NUMBER: builtins.int
+    NEW_INPUTS_FIELD_NUMBER: builtins.int
+    OLD_OUTPUTS_FIELD_NUMBER: builtins.int
+    RANDOM_SEED_FIELD_NUMBER: builtins.int
+    urn: builtins.str
+    """The URN of the provider resource whose configuration is being checked, which may or may not be a [default
+    provider](default-providers).
+    """
+    name: builtins.str
+    """The name of the provider resource being checked. This must match the name specified by the `urn` field, and is
+    passed so that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
+    type: builtins.str
+    """The type of the provider resource being checked. This must match the type specified by the `urn` field, and is
+    passed so that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
+    random_seed: builtins.bytes
+    """A random but deterministically computed hash, intended to be used for generating globally unique names."""
+    @property
+    def old_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The old input configuration for the provider, if any."""
+
+    @property
+    def new_inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The new input configuration for the provider."""
+
+    @property
+    def old_outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The previously persisted output properties of the provider resource, if any. Providers must not assume this is
+        populated.
+        """
+
+    def __init__(
+        self,
+        *,
+        urn: builtins.str = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
+        old_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        new_inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        random_seed: builtins.bytes = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["name", b"name", "new_inputs", b"new_inputs", "old_inputs", b"old_inputs", "old_outputs", b"old_outputs", "random_seed", b"random_seed", "type", b"type", "urn", b"urn"]) -> None: ...
+
+global___CheckConfigRequest = CheckConfigRequest
+
+@typing.final
+class CheckConfigResponse(google.protobuf.message.Message):
+    """`CheckConfigResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.CheckConfig2) call. It
+    contains either checked `inputs`, which may subsequently be passed to [](pulumirpc.ResourceProvider.DiffConfig)
+    and [](pulumirpc.ResourceProvider.Configure), or a set of `failures` detailing invalid inputs.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    INPUTS_FIELD_NUMBER: builtins.int
+    FAILURES_FIELD_NUMBER: builtins.int
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """A valid, checked set of inputs. May contain defaults."""
+
+    @property
+    def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CheckConfigFailure]:
+        """Any validation failures that occurred."""
+
+    def __init__(
+        self,
+        *,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        failures: collections.abc.Iterable[global___CheckConfigFailure] | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["inputs", b"inputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["failures", b"failures", "inputs", b"inputs"]) -> None: ...
+
+global___CheckConfigResponse = CheckConfigResponse
+
+@typing.final
+class CheckConfigFailure(google.protobuf.message.Message):
+    """A `CheckConfigFailure` describes a single validation error that arose as part of a
+    [](pulumirpc.ResourceProvider.CheckConfig2) call.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PROPERTY_FIELD_NUMBER: builtins.int
+    REASON_FIELD_NUMBER: builtins.int
+    property: builtins.str
+    """The provider configuration property that failed validation."""
+    reason: builtins.str
+    """The reason that the named property failed validation."""
+    def __init__(
+        self,
+        *,
+        property: builtins.str = ...,
+        reason: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["property", b"property", "reason", b"reason"]) -> None: ...
+
+global___CheckConfigFailure = CheckConfigFailure
+
+@typing.final
 class DiffRequest(google.protobuf.message.Message):
     """`DiffRequest` is the type of requests sent as part of [](pulumirpc.ResourceProvider.DiffConfig) and
     [](pulumirpc.ResourceProvider.Diff) calls. A `DiffRequest` primarily captures:

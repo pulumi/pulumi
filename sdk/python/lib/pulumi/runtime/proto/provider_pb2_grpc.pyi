@@ -116,6 +116,18 @@ class ResourceProviderStub:
     rendering diffs.
     """
 
+    CheckConfig2: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.CheckConfigRequest,
+        pulumi.provider_pb2.CheckConfigResponse,
+    ]
+    """`CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+    uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+
+    Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+    provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+    to implement `CheckConfig` for as long as they support callers that only know about the latter.
+    """
+
     DiffConfig: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.DiffRequest,
         pulumi.provider_pb2.DiffResponse,
@@ -415,6 +427,18 @@ class ResourceProviderAsyncStub:
     the properties as present in the program inputs. Though this rule is not required for correctness, violations
     thereof can negatively impact the end-user experience, as the provider inputs are used for detecting and
     rendering diffs.
+    """
+
+    CheckConfig2: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.CheckConfigRequest,
+        pulumi.provider_pb2.CheckConfigResponse,
+    ]
+    """`CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+    uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+
+    Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+    provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+    to implement `CheckConfig` for as long as they support callers that only know about the latter.
     """
 
     DiffConfig: grpc.aio.UnaryUnaryMultiCallable[
@@ -724,6 +748,20 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         the properties as present in the program inputs. Though this rule is not required for correctness, violations
         thereof can negatively impact the end-user experience, as the provider inputs are used for detecting and
         rendering diffs.
+        """
+
+    
+    def CheckConfig2(
+        self,
+        request: pulumi.provider_pb2.CheckConfigRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.provider_pb2.CheckConfigResponse, collections.abc.Awaitable[pulumi.provider_pb2.CheckConfigResponse]]:
+        """`CheckConfig2` is the successor to [](pulumirpc.ResourceProvider.CheckConfig). It has the same semantics, but
+        uses request and response types of its own rather than sharing them with [](pulumirpc.ResourceProvider.Check).
+
+        Callers (typically the Pulumi engine) should call `CheckConfig2` first, and fall back to `CheckConfig` if the
+        provider reports that `CheckConfig2` is unimplemented. Providers that implement `CheckConfig2` should continue
+        to implement `CheckConfig` for as long as they support callers that only know about the latter.
         """
 
     
