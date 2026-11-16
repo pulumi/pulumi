@@ -115,20 +115,6 @@ func (prov *Provider) CheckConfig(
 	return prov.CheckConfigF(ctx, req)
 }
 
-func (prov *Provider) CheckConfig2(
-	ctx context.Context, req plugin.CheckConfigRequest,
-) (plugin.CheckConfig2Response, error) {
-	resp, err := prov.CheckConfig(ctx, req)
-	if err != nil {
-		return plugin.CheckConfig2Response{}, err
-	}
-	var failures []plugin.CheckConfigFailure
-	for _, f := range resp.Failures {
-		failures = append(failures, plugin.CheckConfigFailure(f))
-	}
-	return plugin.CheckConfig2Response{Properties: resp.Properties, Failures: failures}, nil
-}
-
 func (prov *Provider) DiffConfig(ctx context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
 	if prov.DiffConfigF == nil {
 		return plugin.DiffResult{}, nil

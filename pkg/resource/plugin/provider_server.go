@@ -315,11 +315,7 @@ func (p *providerServer) Cancel(ctx context.Context, req *emptypb.Empty) (*empty
 func (p *providerServer) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	check := func(ctx context.Context, req CheckConfigRequest) (CheckConfig2Response, error) {
-		resp, err := p.provider.CheckConfig(ctx, req)
-		return CheckConfig2Response{Properties: resp.Properties, Failures: checkConfigFailures(resp.Failures)}, err
-	}
-	rpcInputs, failures, err := p.checkConfig(ctx, "CheckConfig", check,
+	rpcInputs, failures, err := p.checkConfig(ctx,
 		req.GetUrn(), req.GetName(), req.GetType(), req.GetOlds(), req.GetNews())
 	if err != nil {
 		return nil, err
@@ -336,7 +332,7 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 func (p *providerServer) CheckConfig2(ctx context.Context,
 	req *pulumirpc.CheckConfigRequest,
 ) (*pulumirpc.CheckConfigResponse, error) {
-	rpcInputs, failures, err := p.checkConfig(ctx, "CheckConfig2", p.provider.CheckConfig2,
+	rpcInputs, failures, err := p.checkConfig(ctx,
 		req.GetUrn(), req.GetName(), req.GetType(), req.GetOldInputs(), req.GetNewInputs())
 	if err != nil {
 		return nil, err
@@ -350,12 +346,17 @@ func (p *providerServer) CheckConfig2(ctx context.Context,
 	return &pulumirpc.CheckConfigResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
 }
 
-// checkConfig is the part of CheckConfig and CheckConfig2 that does not depend on their wire types. check is the
-// provider method to call.
+// checkConfigFailureToRPC converts a failure to send in a CheckConfig2 response.
+func checkConfigFailureToRPC(failure CheckConfigFailure) *pulumirpc.CheckConfigFailure {
+	return &pulumirpc.CheckConfigFailure{
+		Property: string(failure.Property),
+		Reason:   failure.Reason,
+	}
+}
+
+// checkConfig is the part of CheckConfig and CheckConfig2 that does not depend on their wire types.
 func (p *providerServer) checkConfig(
 	ctx context.Context,
-	method string,
-	check func(context.Context, CheckConfigRequest) (CheckConfig2Response, error),
 	rawURN, name, typ string,
 	olds, news *structpb.Struct,
 ) (*structpb.Struct, []CheckConfigFailure, error) {
@@ -393,7 +394,7 @@ func (p *providerServer) checkConfig(
 		return nil, nil, err
 	}
 
-	resp, err := check(ctx, CheckConfigRequest{
+	resp, err := p.provider.CheckConfig(ctx, CheckConfigRequest{
 		URN:           urn,
 		Name:          name,
 		Type:          tokens.Type(typ),
@@ -402,7 +403,7 @@ func (p *providerServer) checkConfig(
 		AllowUnknowns: true,
 	})
 	if err != nil {
-		return nil, nil, p.checkNYI(method, err)
+		return nil, nil, p.checkNYI("CheckConfig", err)
 	}
 
 	filteredInputs, err := FilterProperties(resp.Properties, p.marshalFilterOptions())

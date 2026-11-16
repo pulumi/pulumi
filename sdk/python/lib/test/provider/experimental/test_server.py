@@ -143,3 +143,65 @@ async def test_not_implemented_passes_through():
         except grpc.aio.AioRpcError as e:
             assert "The method 'delete' is not implemented" in e.details()
             assert "Traceback" not in e.details()
+
+
+class CheckConfigProvider(provider.Provider):
+    def __init__(self):
+        super().__init__()
+        self.requests: list[provider.CheckConfigRequest] = []
+
+    async def check_config(
+        self, request: provider.CheckConfigRequest
+    ) -> provider.CheckConfigResponse:
+        self.requests.append(request)
+        return provider.CheckConfigResponse(
+            inputs=request.new_inputs,
+            failures=[provider.CheckConfigFailure("region", "bad region")],
+        )
+
+
+@pytest.mark.asyncio
+async def test_check_config_and_check_config2_give_the_same_answer():
+    test_provider = CheckConfigProvider()
+    servicer = ProviderServicer([], "1.0.0", test_provider, "")
+    urn = "urn:pulumi:dev::proj::pulumi:providers:pkg::default"
+    olds = PropertyValue.marshal_map({"region": PropertyValue("us-east-1")})
+    news = PropertyValue.marshal_map({"region": PropertyValue("us-west-2")})
+
+    async with provider_servicer_stub(servicer) as stub:
+        resp = await stub.CheckConfig(proto.CheckRequest(urn=urn, olds=olds, news=news))
+        resp2 = await stub.CheckConfig2(
+            proto.CheckConfigRequest(urn=urn, old_inputs=olds, new_inputs=news)
+        )
+
+    assert len(test_provider.requests) == 2
+    for request in test_provider.requests:
+        assert request.urn == urn
+        assert request.name == "default"
+        assert request.type == "pulumi:providers:pkg"
+        assert request.old_inputs == {"region": PropertyValue("us-east-1")}
+        assert request.new_inputs == {"region": PropertyValue("us-west-2")}
+
+    assert resp.inputs == news
+    assert resp2.inputs == news
+    assert [(f.property, f.reason) for f in resp.failures] == [("region", "bad region")]
+    assert [(f.property, f.reason) for f in resp2.failures] == [
+        ("region", "bad region")
+    ]
+
+
+@pytest.mark.asyncio
+async def test_check_config2_defaults_to_accepting_the_inputs():
+    servicer = ProviderServicer([], "1.0.0", provider.Provider(), "")
+    news = PropertyValue.marshal_map({"region": PropertyValue("us-west-2")})
+
+    async with provider_servicer_stub(servicer) as stub:
+        resp = await stub.CheckConfig2(
+            proto.CheckConfigRequest(
+                urn="urn:pulumi:dev::proj::pulumi:providers:pkg::default",
+                new_inputs=news,
+            )
+        )
+
+    assert resp.inputs == news
+    assert len(resp.failures) == 0

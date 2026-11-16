@@ -702,18 +702,17 @@ func (p *provider) GetSchema(ctx context.Context, req GetSchemaRequest) (GetSche
 	return GetSchemaResponse{schema}, nil
 }
 
-// CheckConfig validates the configuration for this resource provider.
-func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {
-	resp, err := p.CheckConfig2(ctx, req)
-	if err != nil {
-		return CheckConfigResponse{}, err
+// checkConfigFailureFromRPC converts a CheckConfig2 failure received from a provider.
+func checkConfigFailureFromRPC(failure *pulumirpc.CheckConfigFailure) CheckConfigFailure {
+	return CheckConfigFailure{
+		Property: resource.PropertyKey(failure.GetProperty()),
+		Reason:   failure.GetReason(),
 	}
-	return CheckConfigResponse{Properties: resp.Properties, Failures: checkFailures(resp.Failures)}, nil
 }
 
-// CheckConfig2 validates the configuration for this resource provider. It calls the provider's CheckConfig2 method,
-// and falls back to CheckConfig for providers that predate it.
-func (p *provider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (CheckConfig2Response, error) {
+// CheckConfig validates the configuration for this resource provider.
+// It calls the provider's CheckConfig2 method, and falls back to CheckConfig for providers that predate it.
+func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {
 	// We either leave Name&Type empty and fill them in from the URN, or they must match the URN.
 	contract.Assertf(req.Name == "" || req.Name == req.URN.Name(),
 		"req.Name (%s) != req.URN.Name() (%s)", req.Name, req.URN.Name())
@@ -727,7 +726,7 @@ func (p *provider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (Ch
 		KeepUnknowns: req.AllowUnknowns,
 	})
 	if err != nil {
-		return CheckConfig2Response{}, err
+		return CheckConfigResponse{}, err
 	}
 	molds := propertyrpc.Marshal(filteredOlds)
 
@@ -735,7 +734,7 @@ func (p *provider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (Ch
 		KeepUnknowns: req.AllowUnknowns,
 	})
 	if err != nil {
-		return CheckConfig2Response{}, err
+		return CheckConfigResponse{}, err
 	}
 	mnews := propertyrpc.Marshal(filteredNews)
 
@@ -770,11 +769,11 @@ func (p *provider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (Ch
 			if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, req.URN.Type()) {
 				// For backwards compatibility, just return the news as if the provider was okay with them.
 				logging.V(7).Infof("%s unimplemented rpc: returning news as is", label)
-				return CheckConfig2Response{Properties: req.News}, nil
+				return CheckConfigResponse{Properties: req.News}, nil
 			}
 			logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
 				rpcError.Message())
-			return CheckConfig2Response{}, err
+			return CheckConfigResponse{}, err
 		}
 		rpcInputs = resp.GetInputs()
 		failures = slice.Prealloc[CheckConfigFailure](len(resp.GetFailures()))
@@ -787,7 +786,7 @@ func (p *provider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (Ch
 		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
 			rpcError.Message())
-		return CheckConfig2Response{}, err
+		return CheckConfigResponse{}, err
 	}
 
 	// Unmarshal the provider inputs.
@@ -795,7 +794,7 @@ func (p *provider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (Ch
 	if ins := rpcInputs; ins != nil {
 		raw, err := propertyrpc.Unmarshal(ins)
 		if err != nil {
-			return CheckConfig2Response{}, err
+			return CheckConfigResponse{}, err
 		}
 		inputs, err = FilterProperties(raw, FilterOptions{
 			KeepUnknowns:   req.AllowUnknowns,
@@ -804,14 +803,14 @@ func (p *provider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (Ch
 			KeepResources:  true,
 		})
 		if err != nil {
-			return CheckConfig2Response{}, err
+			return CheckConfigResponse{}, err
 		}
 	}
 
 	// Copy over any secret annotations, since we could not pass any to the provider, and return.
 	inputs = annotateSecrets(inputs, req.News)
 	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, inputs.Len(), len(failures))
-	return CheckConfig2Response{
+	return CheckConfigResponse{
 		Properties: inputs,
 		Failures:   failures,
 	}, nil

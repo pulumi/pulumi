@@ -103,13 +103,6 @@ func (p *builtinProvider) CheckConfig(context.Context, plugin.CheckConfigRequest
 	return plugin.CheckConfigResponse{}, nil
 }
 
-// CheckConfig2 validates the configuration for this resource provider.
-func (p *builtinProvider) CheckConfig2(
-	context.Context, plugin.CheckConfigRequest,
-) (plugin.CheckConfig2Response, error) {
-	return plugin.CheckConfig2Response{}, nil
-}
-
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 func (p *builtinProvider) DiffConfig(context.Context, plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
 	return plugin.DiffResult{Changes: plugin.DiffNone}, nil
