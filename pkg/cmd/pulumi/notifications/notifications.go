@@ -40,7 +40,7 @@ import (
 )
 
 // StaticURL is where the notifications sent to every CLI user are published.
-const StaticURL = "https://static.pulumi.com/notifications.json"
+const StaticURL = "https://docs.pulumi.com/cli-notifications.json"
 
 const (
 	staticSource  = "static"
