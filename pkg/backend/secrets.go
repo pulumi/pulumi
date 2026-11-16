@@ -107,6 +107,10 @@ func (m *errorCatchingSecretsManager) Decrypter() config.Decrypter {
 	return m
 }
 
+func (m *errorCatchingSecretsManager) Equivalent(otherState json.RawMessage) bool {
+	return m.delegateManager.Equivalent(otherState)
+}
+
 func (m *errorCatchingSecretsManager) EncryptValue(ctx context.Context, plaintext string) (string, error) {
 	return "", errors.New("error catching secrets manager does not support encryption")
 }

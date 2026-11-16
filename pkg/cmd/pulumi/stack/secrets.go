@@ -16,6 +16,7 @@ package stack
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -37,6 +38,52 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// VerifyingSecretsProvider wraps an underlying secrets.Provider. On `OfType` it builds the
+// state-side manager as usual and additionally compares it against `expected` — the manager
+// built from stack config. If the two diverge, `OfType` returns an error wrapping
+// secrets.ErrManagerMismatch, which `FormatDeploymentDeserializationError` surfaces as a clear,
+// actionable message. The check runs during the deployment load the engine already performs,
+// so it does not add any extra backend fetches.
+//
+// If `expected` is nil, verification is skipped and the wrapper is a pass-through. Callers that
+// intentionally change the secrets manager (e.g. `stack change-secrets-provider`) should not
+// wrap their provider.
+func VerifyingSecretsProvider(delegate secrets.Provider, expected secrets.Manager) secrets.Provider {
+	if expected == nil {
+		return delegate
+	}
+	return &verifyingSecretsProvider{delegate: delegate, expected: expected}
+}
+
+type verifyingSecretsProvider struct {
+	delegate secrets.Provider
+	expected secrets.Manager
+}
+
+// Unwrap returns the underlying delegate provider, bypassing the mismatch check. Callers that
+// know they do not need the check (e.g. the deployment carries no resources whose ciphertexts
+// could fail to decrypt) can use this to avoid false positives.
+func (v *verifyingSecretsProvider) Unwrap() secrets.Provider { return v.delegate }
+
+func (v *verifyingSecretsProvider) OfType(
+	ctx context.Context, ty string, state json.RawMessage,
+) (secrets.Manager, error) {
+	stateMgr, err := v.delegate.OfType(ctx, ty, state)
+	if err != nil {
+		return nil, err
+	}
+	if v.expected.Type() != ty {
+		return nil, fmt.Errorf("%w: config specifies %q but state was encrypted with %q",
+			secrets.ErrManagerMismatch, v.expected.Type(), ty)
+	}
+	if !v.expected.Equivalent(state) {
+		return nil, fmt.Errorf("%w: config and state carry different %s provider configuration "+
+			"(e.g. encryption salt or key id). Restore the matching stack configuration",
+			secrets.ErrManagerMismatch, ty)
+	}
+	return stateMgr, nil
+}
 
 // Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any
 // changes back to the stack's configuration where applicable.

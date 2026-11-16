@@ -24,3 +24,12 @@ type Provider interface {
 	// OfType returns a secrets manager for the given type, initialized with its previous state.
 	OfType(ctx context.Context, ty string, state json.RawMessage) (Manager, error)
 }
+
+// UnwrappingProvider is implemented by Provider decorators (e.g. one that compares state's
+// manager against a known-good manager) to expose their underlying delegate. Callers that know
+// they do not want the decorator's behaviour for a particular load — most importantly a load of
+// a deployment with no resources to decrypt — can obtain the inner Provider via Unwrap.
+type UnwrappingProvider interface {
+	Provider
+	Unwrap() Provider
+}

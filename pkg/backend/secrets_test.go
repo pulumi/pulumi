@@ -597,6 +597,8 @@ func (m *MockProviderManager) Decrypter() config.Decrypter {
 	return nil
 }
 
+func (m *MockProviderManager) Equivalent(_ json.RawMessage) bool { return true }
+
 func (m *MockProviderManager) OfType(_ context.Context, ty string, state json.RawMessage) (secrets.Manager, error) {
 	m.ofTypeCalled = true
 	if m.ofTypeErr != nil {

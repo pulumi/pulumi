@@ -629,9 +629,10 @@ func NewPreviewCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
-				Scopes:             backend.CancellationScopes,
-				CoherenceWindow:    coherenceWindow,
+				SecretsProvider: cmdStack.VerifyingSecretsProvider(
+					cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), sm),
+				Scopes:          backend.CancellationScopes,
+				CoherenceWindow: coherenceWindow,
 			}, events)
 			// If we made an events channel then we need to close it to trigger the exit of the import goroutine above.
 			// The engine doesn't close the channel for us, but once its returned here we know it won't append any more

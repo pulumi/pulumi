@@ -303,9 +303,10 @@ func NewUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
-			SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
-			Scopes:             backend.CancellationScopes,
-			CoherenceWindow:    coherenceWindow,
+			SecretsProvider: cmdStack.VerifyingSecretsProvider(
+				cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), sm),
+			Scopes:          backend.CancellationScopes,
+			CoherenceWindow: coherenceWindow,
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
@@ -588,9 +589,10 @@ func NewUpCmd() *cobra.Command {
 			Opts:               opts,
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
-			SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
-			Scopes:             backend.CancellationScopes,
-			CoherenceWindow:    coherenceWindow,
+			SecretsProvider: cmdStack.VerifyingSecretsProvider(
+				cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), sm),
+			Scopes:          backend.CancellationScopes,
+			CoherenceWindow: coherenceWindow,
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:

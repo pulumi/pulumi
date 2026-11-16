@@ -51,6 +51,8 @@ func (t *testSecretsManager) Decrypter() config.Decrypter {
 	return t
 }
 
+func (t *testSecretsManager) Equivalent(_ json.RawMessage) bool { return true }
+
 func (t *testSecretsManager) EncryptValue(
 	ctx context.Context, plaintext string,
 ) (string, error) {

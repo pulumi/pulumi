@@ -81,10 +81,11 @@ type blindingManager struct {
 	state json.RawMessage
 }
 
-func (m blindingManager) Type() string                { return m.ty }
-func (m blindingManager) State() json.RawMessage      { return m.state }
-func (m blindingManager) Encrypter() config.Encrypter { return config.BlindingCrypter }
-func (m blindingManager) Decrypter() config.Decrypter { return redactingDecrypter{} }
+func (m blindingManager) Type() string                      { return m.ty }
+func (m blindingManager) State() json.RawMessage            { return m.state }
+func (m blindingManager) Encrypter() config.Encrypter       { return config.BlindingCrypter }
+func (m blindingManager) Decrypter() config.Decrypter       { return redactingDecrypter{} }
+func (m blindingManager) Equivalent(_ json.RawMessage) bool { return true }
 
 type redactingDecrypter struct{}
 

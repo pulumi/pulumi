@@ -18,9 +18,18 @@ package secrets
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
+
+// ErrManagerMismatch signals that a stack's configured secrets manager does not match the one
+// recorded in its latest snapshot. This indicates that stack configuration and deployment state
+// have drifted apart — e.g. the config was copied from another stack, the encryption salt was
+// regenerated, or a `change-secrets-provider` operation was interrupted — and continuing would
+// produce ciphertexts that cannot be decrypted on the next load.
+var ErrManagerMismatch = errors.New(
+	"the stack's configured secrets provider does not match the one recorded in its state")
 
 // Manager provides the interface for providing stack encryption.
 type Manager interface {
@@ -37,19 +46,51 @@ type Manager interface {
 	// Decrypter returns a `config.Decrypter` that can be used to decrypt values when deserializing a snapshot from a
 	// deployment.
 	Decrypter() config.Decrypter
+	// Equivalent reports whether this manager would produce and consume the same ciphertexts as a
+	// manager constructed from `otherState` (of the same Type). Providers decide which fields of
+	// their State are semantically load-bearing, so that inconsequential differences (formatting,
+	// cached derived fields) do not cause spurious mismatches. The caller is responsible for
+	// checking that Type matches before calling.
+	Equivalent(otherState json.RawMessage) bool
 }
 
-// AreCompatible returns true if the two Managers are of the same type and have the same state.
+// AreCompatible returns true if the two Managers are of the same type and would produce and
+// consume identical ciphertexts.
 func AreCompatible(a, b Manager) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
 	}
-
 	if a.Type() != b.Type() {
 		return false
 	}
+	return a.Equivalent(b.State())
+}
 
-	as := a.State()
-	bs := b.State()
-	return bytes.Equal(as, bs)
+// StateJSONEqual is a helper for providers whose Equivalent is defined by byte-wise equality of canonicalized JSON
+// (i.e., every field in State is semantically meaningful). Those providers can implement Equivalent as `return
+// secrets.StateJSONEqual(m.state, otherState)`.
+func StateJSONEqual(a, b json.RawMessage) bool {
+	canon := func(raw json.RawMessage) ([]byte, bool) {
+		if len(raw) == 0 {
+			return nil, true
+		}
+		var v any
+		if err := json.Unmarshal(raw, &v); err != nil {
+			return nil, false
+		}
+		out, err := json.Marshal(v)
+		if err != nil {
+			return nil, false
+		}
+		return out, true
+	}
+	ca, ok := canon(a)
+	if !ok {
+		return false
+	}
+	cb, ok := canon(b)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(ca, cb)
 }
