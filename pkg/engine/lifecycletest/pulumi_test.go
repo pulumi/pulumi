@@ -22,6 +22,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -48,10 +49,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/iter"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
@@ -2104,10 +2105,7 @@ func TestProviderDiffMissingOldOutputs(t *testing.T) {
 				) (plugin.DiffResult, error) {
 					// Always require replacement if any diff exists.
 					if !req.OldOutputs.Equals(req.NewInputs) {
-						keys := slice.Prealloc[resource.PropertyKey](req.NewInputs.Len())
-						for k := range req.NewInputs.All {
-							keys = append(keys, resource.PropertyKey(k))
-						}
+						keys := slices.Collect(iter.Cast[resource.PropertyKey](req.NewInputs.Keys()))
 						return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: keys}, nil
 					}
 					return plugin.DiffResult{Changes: plugin.DiffNone}, nil

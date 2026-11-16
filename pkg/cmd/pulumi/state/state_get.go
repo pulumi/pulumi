@@ -37,6 +37,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
@@ -172,10 +173,7 @@ func resolveResourceRef(snap *deploy.Snapshot, arg string, warn io.Writer) (*pkg
 	case 1:
 		return resolveResourceRef(snap, string(named[0]), warn)
 	default:
-		urns := make([]string, len(named))
-		for i, urn := range named {
-			urns[i] = string(urn)
-		}
+		urns := slice.Cast[string](named)
 		return nil, fmt.Errorf("%d resources in the stack are named %q:\n    %s\n"+
 			"specify one by URN",
 			len(named), arg, strings.Join(urns, "\n    "))

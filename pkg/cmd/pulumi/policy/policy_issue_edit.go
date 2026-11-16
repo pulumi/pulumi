@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -163,10 +164,7 @@ func policyIssueEditClientForOrg(
 }
 
 func joinPolicyIssueValues[T ~string](values []T) string {
-	names := make([]string, len(values))
-	for i, v := range values {
-		names[i] = string(v)
-	}
+	names := slice.Cast[string](values)
 	return strings.Join(names, ", ")
 }
 
