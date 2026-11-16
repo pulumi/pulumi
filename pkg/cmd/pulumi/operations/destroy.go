@@ -384,8 +384,11 @@ func NewDestroyCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider: cmdStack.VerifyingSecretsProvider(
-					cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), sm),
+				// Destroy is permitted to run without the stack's full config
+				// (FallbackToState is true for this reason) and the engine will re-encrypt
+				// state values through sm, so we deliberately do not wrap with
+				// VerifyingSecretsProvider here even though config may diverge from state.
+				SecretsProvider: cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:          backend.CancellationScopes,
 				CoherenceWindow: coherenceWindow,
 			})

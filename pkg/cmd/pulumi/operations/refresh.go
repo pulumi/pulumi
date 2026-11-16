@@ -368,8 +368,11 @@ func NewRefreshCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider: cmdStack.VerifyingSecretsProvider(
-					cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), sm),
+				// Refresh commonly runs without the stack's full config (e.g. in ephemeral PR
+				// environments or after the config file has been deleted) and the engine will
+				// re-encrypt state values through sm, so we deliberately do not wrap with
+				// VerifyingSecretsProvider here even though config may diverge from state.
+				SecretsProvider: cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
 				Scopes:          backend.CancellationScopes,
 				CoherenceWindow: coherenceWindow,
 			})
