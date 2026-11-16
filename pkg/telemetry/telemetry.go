@@ -32,16 +32,26 @@ import (
 
 const defaultPulse = 2 * time.Second
 
+// InitArgs configures Init.
 type InitArgs struct {
-	HomeDir   string
-	Diags     diag.Sink
-	Pulse     time.Duration
-	Env       env.Env
-	CI        bool
-	URL       string
+	// HomeDir is $PULUMI_HOME, which holds the telemetry config, pending events and the local log.
+	HomeDir string
+	// Diags receives the first-run notice and warnings about unusable telemetry state.
+	Diags diag.Sink
+	// Pulse is how often pending events are sent; zero uses the default.
+	Pulse time.Duration
+	// Env is the environment telemetry settings are read from.
+	Env env.Env
+	// CI makes Shutdown send pending events before returning, since a CI machine is unlikely to run the CLI again.
+	CI bool
+	// URL is the Pulumi Cloud API endpoint events are sent to.
+	URL string
+	// UserAgent is sent with every request, so the service can record the CLI version.
 	UserAgent string
 }
 
+// KV is a single named telemetry fact. Facts can only be built in this package, so that every value sent is one
+// the package knows about.
 type KV interface {
 	fact() (string, any)
 }
@@ -85,6 +95,9 @@ type logEntry struct {
 
 type contextKey struct{}
 
+// Init sets up telemetry for this invocation and returns a context carrying it. If telemetry is disabled, ctx is
+// returned unchanged and the other functions in this package do nothing. Events are held until UseBackend says
+// whether they may be sent.
 func Init(ctx context.Context, args InitArgs) context.Context {
 	t := newTelemetry(args)
 	if t == nil {
@@ -103,6 +116,7 @@ func fromContext(ctx context.Context) *telemetry {
 	return t
 }
 
+// Emit records an event made of the given facts.
 func Emit(ctx context.Context, info ...KV) {
 	t := fromContext(ctx)
 	if t == nil || t.disabled.Load() || len(info) == 0 {
@@ -151,6 +165,8 @@ func (t *telemetry) log(entry logEntry) {
 	}
 }
 
+// Headers returns the installation and invocation IDs to attach to requests to Pulumi Cloud, or no headers if
+// telemetry is not being sent.
 func Headers(ctx context.Context) http.Header {
 	header := http.Header{}
 	if t := fromContext(ctx); t != nil && t.send && !t.disabled.Load() {
@@ -160,6 +176,8 @@ func Headers(ctx context.Context) http.Header {
 	return header
 }
 
+// Shutdown stops telemetry for this invocation. In CI it first tries to send pending events; otherwise they stay on
+// disk for a later invocation to send.
 func Shutdown(ctx context.Context) {
 	if t := fromContext(ctx); t != nil && t.queue != nil {
 		t.queue.shutdown(ctx)
@@ -171,6 +189,8 @@ var (
 	diySchemes    = []string{"file", "s3", "azblob", "gs"}
 )
 
+// Eligible reports whether telemetry may be sent for an invocation using backendURL: DIY backends, Pulumi Cloud,
+// and no backend at all are eligible, while self-hosted and other regional Pulumi Cloud backends are not.
 func Eligible(backendURL string) bool {
 	if backendURL == "" {
 		return true
@@ -189,6 +209,8 @@ func Eligible(backendURL string) bool {
 	}
 }
 
+// UseBackend records which backend the invocation uses. Held events are released for sending if the backend is
+// eligible and discarded otherwise.
 func UseBackend(ctx context.Context, backendURL string) {
 	t := fromContext(ctx)
 	if t == nil || t.disabled.Load() {

@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 )
 
@@ -42,45 +41,49 @@ var notice = colors.SpecImportant + "notice:" + colors.Reset +
 	"No telemetry has been sent yet. To opt out, run `pulumi telemetry disable`, " +
 	"or set PULUMI_TELEMETRY=0 or DO_NOT_TRACK=1."
 
-type Mode string
-
-const (
-	ModeEnabled  Mode = "enabled"
-	ModeDisabled Mode = "disabled"
-)
-
+// Source is where a telemetry setting came from.
 type Source string
 
 const (
-	SourceEnv        Source = "env"
-	SourceConfig     Source = "config"
+	// SourceEnv means the setting was set by an environment variable: PULUMI_TELEMETRY for Enabled,
+	// PULUMI_TELEMETRY_LOG for Log.
+	SourceEnv Source = "env"
+	// SourceConfig means the setting was set in $PULUMI_HOME/telemetry.json, which `pulumi telemetry` writes.
+	SourceConfig Source = "config"
+	// SourceDoNotTrack means telemetry is disabled because DO_NOT_TRACK is set.
 	SourceDoNotTrack Source = "DO_NOT_TRACK"
-	SourceDefault    Source = "default"
+	// SourceDefault means nothing set the setting, so its default applies.
+	SourceDefault Source = "default"
 )
 
+// Settings are the effective telemetry settings and where each of them came from.
 type Settings struct {
-	Mode       Mode
-	ModeSource Source
-	Log        bool
-	LogSource  Source
-	LogPath    string
+	// Enabled is whether telemetry is sent.
+	Enabled       bool
+	EnabledSource Source
+	// Log is whether events are written to LogPath, whether or not they are sent.
+	Log       bool
+	LogSource Source
+	LogPath   string
 }
 
 type config struct {
 	Version      int    `json:"version"`
 	Installation string `json:"installation"`
-	Telemetry    string `json:"telemetry,omitempty"`
+	Telemetry    *bool  `json:"telemetry,omitempty"`
 	Log          bool   `json:"log,omitempty"`
 	Notified     bool   `json:"notified,omitempty"`
 }
 
 func newTelemetry(args InitArgs) *telemetry {
-	telemetryEnv := args.Env.GetString(env.Telemetry)
-	logging := cmdutil.IsTruthy(args.Env.GetString(env.TelemetryLog))
-	if telemetryEnv != "" && !cmdutil.IsTruthy(telemetryEnv) && !logging {
+	enabled, enabledSet := lookupBool(args.Env, env.Telemetry)
+	logging := args.Env.GetBool(env.TelemetryLog)
+	if enabledSet && !enabled && !logging {
 		return nil
 	}
-	optedOut := telemetryEnv == "" && args.Env.GetBool(env.DoNotTrack) && !logging
+	// DO_NOT_TRACK can still be overridden by `pulumi telemetry enable`, so the config has to be read, but users
+	// who opted out shouldn't be warned when that fails.
+	optedOut := !enabledSet && args.Env.GetBool(env.DoNotTrack) && !logging
 	warn := func(err error) {
 		if !optedOut {
 			args.Diags.Warningf(diag.Message("", "Telemetry is disabled: %v"), err)
@@ -93,13 +96,9 @@ func newTelemetry(args InitArgs) *telemetry {
 		warn(err)
 		return nil
 	}
-	s, err := cfg.settings(path, args.HomeDir, args.Env)
-	if err != nil {
-		warn(err)
-		return nil
-	}
+	s := cfg.settings(args.HomeDir, args.Env)
 	notify := s.notify(cfg)
-	if s.Mode == ModeDisabled && !s.Log {
+	if !s.Enabled && !s.Log {
 		return nil
 	}
 
@@ -111,9 +110,7 @@ func newTelemetry(args InitArgs) *telemetry {
 				if cfg, err = parseConfig(path, old); err != nil {
 					return nil, err
 				}
-				if s, err = cfg.settings(path, args.HomeDir, args.Env); err != nil {
-					return nil, err
-				}
+				s = cfg.settings(args.HomeDir, args.Env)
 				notify = s.notify(cfg)
 				if len(old) != 0 && !notify {
 					return old, nil
@@ -131,7 +128,7 @@ func newTelemetry(args InitArgs) *telemetry {
 	if notify {
 		args.Diags.Infoerrf(diag.RawMessage("", notice))
 	}
-	send := s.Mode == ModeEnabled && !notify
+	send := s.Enabled && !notify
 	if !send && !s.Log {
 		return nil
 	}
@@ -206,36 +203,34 @@ func marshalConfig(cfg config) ([]byte, error) {
 	return append(data, '\n'), err
 }
 
-func (cfg config) settings(path, homeDir string, e declared.Env) (Settings, error) {
+func (cfg config) settings(homeDir string, e declared.Env) Settings {
 	s := Settings{LogPath: filepath.Join(homeDir, "telemetry", "log", "events.jsonl")}
 
-	switch raw := e.GetString(env.Telemetry); {
-	case raw != "":
-		s.Mode, s.ModeSource = ModeDisabled, SourceEnv
-		if cmdutil.IsTruthy(raw) {
-			s.Mode = ModeEnabled
-		}
-	case cfg.Telemetry != "":
-		s.Mode, s.ModeSource = Mode(cfg.Telemetry), SourceConfig
-		if s.Mode != ModeEnabled && s.Mode != ModeDisabled {
-			return s, fmt.Errorf("%s has unrecognized telemetry setting %q", path, cfg.Telemetry)
-		}
-	case e.GetBool(env.DoNotTrack):
-		s.Mode, s.ModeSource = ModeDisabled, SourceDoNotTrack
-	default:
-		s.Mode, s.ModeSource = ModeEnabled, SourceDefault
+	if enabled, set := lookupBool(e, env.Telemetry); set {
+		s.Enabled, s.EnabledSource = enabled, SourceEnv
+	} else if cfg.Telemetry != nil {
+		s.Enabled, s.EnabledSource = *cfg.Telemetry, SourceConfig
+	} else if e.GetBool(env.DoNotTrack) {
+		s.EnabledSource = SourceDoNotTrack
+	} else {
+		s.Enabled, s.EnabledSource = true, SourceDefault
 	}
 
-	if raw := e.GetString(env.TelemetryLog); raw != "" {
-		s.Log, s.LogSource = cmdutil.IsTruthy(raw), SourceEnv
+	if log, set := lookupBool(e, env.TelemetryLog); set {
+		s.Log, s.LogSource = log, SourceEnv
 	} else if cfg.Log {
 		s.Log, s.LogSource = true, SourceConfig
 	} else {
 		s.LogSource = SourceDefault
 	}
-	return s, nil
+	return s
 }
 
 func (s Settings) notify(cfg config) bool {
-	return s.Mode == ModeEnabled && s.ModeSource == SourceDefault && !cfg.Notified
+	return s.Enabled && s.EnabledSource == SourceDefault && !cfg.Notified
+}
+
+func lookupBool(e declared.Env, v declared.BoolValue) (value, set bool) {
+	raw, _ := e.GetStore().Raw(v.Var().Name())
+	return e.GetBool(v), raw != ""
 }

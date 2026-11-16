@@ -154,17 +154,22 @@ func TestPrecedence(t *testing.T) {
 			vars: map[string]string{"DO_NOT_TRACK": "1", "PULUMI_TELEMETRY": "1"},
 			send: true,
 		},
+		"empty PULUMI_TELEMETRY is unset": {
+			vars:   map[string]string{"PULUMI_TELEMETRY": ""},
+			config: setting(`, "telemetry": true`),
+			send:   true,
+		},
 		"PULUMI_TELEMETRY beats config": {
 			vars:   map[string]string{"PULUMI_TELEMETRY": "0"},
-			config: setting(`, "telemetry": "enabled"`),
+			config: setting(`, "telemetry": true`),
 		},
 		"config enabled beats DO_NOT_TRACK": {
 			vars:   map[string]string{"DO_NOT_TRACK": "1"},
-			config: setting(`, "telemetry": "enabled"`),
+			config: setting(`, "telemetry": true`),
 			send:   true,
 		},
 		"config disabled": {
-			config: setting(`, "telemetry": "disabled"`),
+			config: setting(`, "telemetry": false`),
 		},
 		"DO_NOT_TRACK without explicit setting": {
 			vars:   map[string]string{"DO_NOT_TRACK": "1"},
@@ -249,14 +254,14 @@ func TestConfigSetting(t *testing.T) {
 		warning string
 	}{
 		"disabled": {
-			config: `{"version": 1, "installation": "` + installation + `", "telemetry": "disabled", "notified": true}`,
+			config: `{"version": 1, "installation": "` + installation + `", "telemetry": false, "notified": true}`,
 		},
 		"disabled with log": {
-			config: `{"version": 1, "installation": "` + installation + `", "telemetry": "disabled", "log": true}`,
+			config: `{"version": 1, "installation": "` + installation + `", "telemetry": false, "log": true}`,
 			log:    true,
 		},
 		"enabled": {
-			config: `{"version": 1, "installation": "` + installation + `", "telemetry": "enabled"}`,
+			config: `{"version": 1, "installation": "` + installation + `", "telemetry": true}`,
 			send:   true,
 		},
 		"missing version": {
@@ -272,8 +277,8 @@ func TestConfigSetting(t *testing.T) {
 			warning: "invalid installation ID",
 		},
 		"bad setting": {
-			config:  `{"version": 1, "installation": "` + installation + `", "telemetry": "log"}`,
-			warning: `unrecognized telemetry setting "log"`,
+			config:  `{"version": 1, "installation": "` + installation + `", "telemetry": "enabled"}`,
+			warning: "could not parse",
 		},
 		"not json": {
 			config:  `version: 1`,

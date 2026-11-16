@@ -45,10 +45,10 @@ var Experimental = env.Bool("EXPERIMENTAL", "Enable experimental options and com
 
 var SkipUpdateCheck = env.Bool("SKIP_UPDATE_CHECK", "Disable checking for a new version of pulumi.")
 
-var Telemetry = env.String("TELEMETRY",
+var Telemetry = env.Bool("TELEMETRY",
 	"Enable (true) or disable (false) CLI telemetry, overriding `pulumi telemetry` and DO_NOT_TRACK.")
 
-var TelemetryLog = env.String("TELEMETRY_LOG",
+var TelemetryLog = env.Bool("TELEMETRY_LOG",
 	"Write (true) or don't write (false) CLI telemetry events to $PULUMI_HOME/telemetry/log, "+
 		"whether or not they are sent, overriding `pulumi telemetry log`.")
 

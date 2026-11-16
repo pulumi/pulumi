@@ -57,7 +57,6 @@ type queue struct {
 	held    bool
 	closed  bool
 
-	stop            chan struct{}
 	cancel          context.CancelFunc
 	shutdownTimeout time.Duration
 }
@@ -71,7 +70,6 @@ func newQueue(dir, invocation, url, userAgent string, ci bool, pulse time.Durati
 		ci:         ci,
 		pulse:      pulse,
 		client:     &http.Client{Timeout: requestTimeout},
-		stop:       make(chan struct{}),
 		cancel:     func() {},
 
 		shutdownTimeout: shutdownTimeout,
@@ -92,6 +90,8 @@ func (q *queue) add(line json.RawMessage) {
 	}
 }
 
+// openWAL creates and locks this invocation's write-ahead log, the file events are written to before they are
+// sent. If the CLI exits before sending them, a later invocation finds the unlocked file and sends them instead.
 func openWAL(dir, invocation string) *os.File {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		slog.Debug("could not create telemetry directory", "err", err)
@@ -133,7 +133,7 @@ func (q *queue) run(ctx context.Context) {
 	defer orphans.Stop()
 	for {
 		select {
-		case <-q.stop:
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			if err := q.flush(ctx); err != nil {
@@ -185,7 +185,6 @@ func (q *queue) shutdown(ctx context.Context) {
 	}
 	q.releaseLocked()
 	q.closed = true
-	close(q.stop)
 	q.mu.Unlock()
 	q.cancel()
 
@@ -245,7 +244,7 @@ func (q *queue) discard() {
 		return
 	}
 	q.closed = true
-	close(q.stop)
+	q.cancel()
 	q.pending = nil
 	if q.wal != nil {
 		logCleanupErr(fsutil.UnlockFile(q.wal))
