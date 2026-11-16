@@ -59,20 +59,28 @@ const (
 // Settings are the effective telemetry settings and where each of them came from.
 type Settings struct {
 	// Enabled is whether telemetry is sent.
-	Enabled       bool
+	Enabled bool
+	// Where we got the Enabled setting from: PULUMI_TELEMETRY, DO_NOT_TRACK, telemetry.json, or default.
 	EnabledSource Source
 	// Log is whether events are written to LogPath, whether or not they are sent.
-	Log       bool
+	Log bool
+	// Where we got the Log setting from: PULUMI_TELEMETRY_LOG, telemetry.json, or default.
 	LogSource Source
-	LogPath   string
+	// LogPath is the path to the telemetry log file, if Log is true.
+	LogPath string
 }
 
 type config struct {
-	Version      int    `json:"version"`
+	// The version of the config file format.
+	Version int `json:"version"`
+	// The installation ID, a UUID that identifies this Pulumi installation.
 	Installation string `json:"installation"`
-	Telemetry    *bool  `json:"telemetry,omitempty"`
-	Log          bool   `json:"log,omitempty"`
-	Notified     bool   `json:"notified,omitempty"`
+	// Whether telemetry is enabled. If nil, the default applies.
+	Telemetry *bool `json:"telemetry,omitempty"`
+	// Whether telemetry events are logged to a file.
+	Log bool `json:"log,omitempty"`
+	// Whether the user has been notified that telemetry is enabled by default and can be disabled.
+	Notified bool `json:"notified,omitempty"`
 }
 
 func newTelemetry(args InitArgs) *telemetry {
