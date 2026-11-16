@@ -23,6 +23,7 @@ import (
 	"maps"
 	"math"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -723,11 +724,7 @@ func propertyValueToPCLLiteral(name string, v property.Value) (string, error) {
 		if obj.Len() == 0 {
 			return "{}", nil
 		}
-		keys := make([]string, 0, obj.Len())
-		for k := range obj.All {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
+		keys := slices.Sorted(obj.Keys())
 		lines := make([]string, 0, len(keys)+2)
 		lines = append(lines, "{")
 		for _, key := range keys {
