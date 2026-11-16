@@ -141,25 +141,11 @@ jobs:
         run: |
           set -euo pipefail
           DEV_VERSION="${VERSION#v}-alpha.x${SHORT_SHA}"
-          START=$(date -u -d '-1 minute' +%Y-%m-%dT%H:%M:%SZ)
-          gh api repos/pulumi/templates/dispatches \
-            -f event_type=run-templates-command \
-            -f "client_payload[ref]=${DEV_VERSION}"
+          URL=$(gh workflow run test-templates.yml --repo pulumi/templates \
+            -f pulumi-version="${DEV_VERSION}" | grep -oE 'https://\S+/actions/runs/[0-9]+')
+          RUN="${URL##*/}"
 
-          RUN=""
-          for _ in $(seq 30); do
-            RUN=$(gh run list --repo pulumi/templates --workflow test-templates.yml \
-              --event repository_dispatch --created ">=${START}" \
-              --json databaseId --jq '.[0].databaseId // empty')
-            [ -n "$RUN" ] && break
-            sleep 10
-          done
-          if [ -z "$RUN" ]; then
-            echo "::error::Could not find the templates run testing ${DEV_VERSION}."
-            exit 1
-          fi
-
-          echo "Testing ${DEV_VERSION}: https://github.com/pulumi/templates/actions/runs/${RUN}"
+          echo "Testing ${DEV_VERSION}: ${URL}"
           gh run watch "$RUN" --repo pulumi/templates --exit-status --interval 60
       - name: Publish the release
         if: steps.freeze.outputs.version != ''
