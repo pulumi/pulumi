@@ -44,16 +44,21 @@ const (
 
 // Notification is a single message, along with the conditions under which it should be shown.
 type Notification struct {
-	Title         string        `json:"title"`
-	ID            string        `json:"identifier"`
-	Overview      string        `json:"overview"`
-	Severity      diag.Severity `json:"severity"`
-	Where         Where         `json:"where"`
-	SchemaVersion uint          `json:"schemaVersion"`
+	Title string `json:"title"`
+	// ID is a UUID, so that IDs from the static file and from Pulumi Cloud never collide.
+	ID       string        `json:"identifier"`
+	Overview string        `json:"overview"`
+	Severity diag.Severity `json:"severity"`
+	Where    Where         `json:"where"`
+	// SchemaVersion is the version of this Notification format. Entries with any version other
+	// than 1 are skipped, so that the format can change without older CLIs misreading it.
+	SchemaVersion uint `json:"schemaVersion"`
 }
 
-// Where holds the version ranges a user's environment must match for a notification to apply.
+// Where holds the version ranges a user's environment must match for a notification to apply. Each
+// range uses github.com/blang/semver range syntax, such as ">=3.100.0 <3.200.0".
 type Where struct {
+	// Providers maps provider names to the range of versions the notification applies to.
 	Providers map[string]string `json:"providers,omitempty"`
 	CLI       string            `json:"cli,omitempty"`
 }
@@ -90,7 +95,8 @@ func Start(ctx context.Context, url string) func() []Notification {
 	}
 }
 
-// refresh fetches the notifications and, if that succeeds, caches them.
+// refresh fetches the notifications and, if that succeeds, caches them. Concurrent CLI processes
+// may overwrite each other's cache; the losing process's entries are simply fetched again later.
 func refresh(ctx context.Context, url string, cache map[string]cacheEntry) ([]Notification, error) {
 	ns, err := fetch(ctx, url)
 	if err != nil {
@@ -179,6 +185,7 @@ func writeCache(cache map[string]cacheEntry) error {
 
 // Print writes the notifications that apply to the given CLI version to the sink's stderr.
 func Print(sink diag.Sink, ns []Notification, cliVersion string) {
+	// Builds without a version stamped in at link time have an empty version, which won't parse.
 	cli, err := semver.ParseTolerant(cliVersion)
 	for _, n := range ns {
 		if applies(n, cli, err == nil) {
