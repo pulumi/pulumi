@@ -170,18 +170,18 @@ func TestReplacementParameterizedProvider(t *testing.T) {
 						}),
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					if param == "" {
 						assert.Equal(t, tokens.Type("pkgA:m:typA"), req.URN.Type())
 					} else {
 						assert.Equal(t, tokens.Type("pkgExt:m:typA"), req.URN.Type())
 					}
 
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -539,7 +539,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 						Version: value.Version,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					if param == "" {
 						assert.Equal(t, tokens.Type("pkgA:m:typA"), req.URN.Type())
 						assert.Equal(t, resource.ID("idA"), req.ID)
@@ -548,7 +548,7 @@ func TestReplacementParameterizedProviderImport(t *testing.T) {
 						assert.Equal(t, resource.ID("idB"), req.ID)
 					}
 
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
 							Inputs: new(property.NewMap(map[string]property.Value{

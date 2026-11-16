@@ -422,7 +422,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		)
 		sg.replaces[urn] = true
 		return []Step{
-			NewReadReplacementStep(sg.deployment, event, old, newState, skipProvider),
+			NewReadReplacementStep(sg.deployment, event, old, newState, sg.deployment.GetOldViews(urn), skipProvider),
 			NewReplaceStep(sg.deployment, old, newState, nil, nil, nil, true),
 		}, nil
 	}
@@ -438,7 +438,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 
 	sg.reads[urn] = true
 	return []Step{
-		NewReadStep(sg.deployment, event, old, newState, skipProvider),
+		NewReadStep(sg.deployment, event, old, newState, sg.deployment.GetOldViews(urn), skipProvider),
 	}, nil
 }
 
@@ -1288,13 +1288,14 @@ func (sg *stepGenerator) continueStepsFromRefresh(
 		})
 
 		sg.imports[urn] = true
+		oldViews := sg.deployment.GetOldViews(urn)
 		if isReplace := old != nil && !recreating; isReplace {
 			return []Step{
-				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges, randomSeed, cts),
+				NewImportReplacementStep(sg.deployment, event, old, new, goal.IgnoreChanges, randomSeed, oldViews, cts),
 				NewReplaceStep(sg.deployment, old, new, nil, nil, nil, true),
 			}, true, nil
 		}
-		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed, cts)}, true, nil
+		return []Step{NewImportStep(sg.deployment, event, new, goal.IgnoreChanges, randomSeed, oldViews, cts)}, true, nil
 	}
 
 	// Anything else just flow on to the normal step generation.

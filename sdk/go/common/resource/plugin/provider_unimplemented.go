@@ -80,8 +80,12 @@ func (p *UnimplementedProvider) Create(context.Context, CreateRequest) (CreateRe
 	return CreateResponse{}, status.Error(codes.Unimplemented, "Create is not yet implemented")
 }
 
-func (p *UnimplementedProvider) Read(context.Context, ReadRequest) (ReadResponse, error) {
-	return ReadResponse{}, status.Error(codes.Unimplemented, "Read is not yet implemented")
+func (p *UnimplementedProvider) Import(context.Context, ImportRequest) (ImportResponse, error) {
+	return ImportResponse{}, status.Error(codes.Unimplemented, "Import is not yet implemented")
+}
+
+func (p *UnimplementedProvider) Refresh(context.Context, RefreshRequest) (RefreshResponse, error) {
+	return RefreshResponse{}, status.Error(codes.Unimplemented, "Refresh is not yet implemented")
 }
 
 func (p *UnimplementedProvider) Update(context.Context, UpdateRequest) (UpdateResponse, error) {

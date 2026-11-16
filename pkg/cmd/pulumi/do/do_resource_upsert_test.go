@@ -748,10 +748,10 @@ func TestDoCmdResourceUpsertStateless(t *testing.T) {
 		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					calls = append(calls, "read")
 					assert.Equal(t, resource.ID("res-1"), req.ID)
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "res-1",
 							Inputs: new(property.NewMap(map[string]property.Value{
@@ -818,10 +818,10 @@ size = 2
 		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					calls = append(calls, "read")
 					assert.Equal(t, resource.ID("res-1"), req.ID)
-					return plugin.ReadResponse{}, nil
+					return plugin.ImportResponse{}, nil
 				},
 				CheckF: func(_ context.Context, req plugin.CheckRequest) (plugin.CheckResponse, error) {
 					calls = append(calls, "check")
@@ -863,9 +863,9 @@ size = 2
 		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					calls = append(calls, "read")
-					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+					return plugin.ImportResponse{ReadResult: plugin.ReadResult{
 						Inputs:  new(property.Map{}),
 						Outputs: new(property.Map{}),
 					}}, nil

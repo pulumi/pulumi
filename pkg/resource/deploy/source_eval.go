@@ -1643,8 +1643,8 @@ func (rm *resmon) ExistsResource(ctx context.Context,
 		tokens.PackageName(rm.constructInfo.Project),
 		parentType, t, fmt.Sprintf("%s%d", existsURNPrefix, existsURNCounter.Add(1)))
 
-	// Call the provider's Read method to check if the resource exists.
-	readResult, err := prov.Read(ctx, plugin.ReadRequest{
+	// Call the provider's Import method to check if the resource exists.
+	readResult, err := prov.Import(ctx, plugin.ImportRequest{
 		URN:    urn,
 		Name:   urn.Name(),
 		Type:   urn.Type(),

@@ -2194,8 +2194,8 @@ func TestMissingRead(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{}, nil
+				ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{}, nil
 				},
 			}, nil
 		}),
@@ -2999,12 +2999,12 @@ func TestImportDiff(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					props := property.NewMap(map[string]property.Value{
 						"foo": property.New("bar"),
 					})
 
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &props,
@@ -4350,11 +4350,12 @@ func TestSourcePositions(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil

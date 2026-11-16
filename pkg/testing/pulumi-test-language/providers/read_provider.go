@@ -123,9 +123,9 @@ func (p *ReadProvider) Delete(context.Context, plugin.DeleteRequest) (plugin.Del
 	return plugin.DeleteResponse{}, nil
 }
 
-func (p *ReadProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+func (p *ReadProvider) Import(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 	if req.URN.Type() != "read:index:Resource" {
-		return plugin.ReadResponse{
+		return plugin.ImportResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
@@ -133,12 +133,12 @@ func (p *ReadProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.R
 	inputs := resource.ToResourcePropertyMap(req.Inputs)
 	lookup, ok := inputs["lookup"]
 	if !ok || !lookup.IsString() {
-		return plugin.ReadResponse{
+		return plugin.ImportResponse{
 			Status: resource.StatusUnknown,
 		}, errors.New("lookup input is required and must be a string")
 	}
 	if lookup.StringValue() == "fail" {
-		return plugin.ReadResponse{
+		return plugin.ImportResponse{
 			Status: resource.StatusUnknown,
 		}, errors.New("failed read")
 	}
@@ -150,7 +150,44 @@ func (p *ReadProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.R
 		"lookup": resource.FromResourcePropertyValue(lookup),
 		"value":  property.New(true),
 	})
-	return plugin.ReadResponse{
+	return plugin.ImportResponse{
+		ReadResult: plugin.ReadResult{
+			ID:      req.ID,
+			Inputs:  &readInputs,
+			Outputs: &readOutputs,
+		},
+		Status: resource.StatusOK,
+	}, nil
+}
+
+func (p *ReadProvider) Refresh(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+	if req.URN.Type() != "read:index:Resource" {
+		return plugin.RefreshResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	inputs := resource.ToResourcePropertyMap(req.Inputs)
+	lookup, ok := inputs["lookup"]
+	if !ok || !lookup.IsString() {
+		return plugin.RefreshResponse{
+			Status: resource.StatusUnknown,
+		}, errors.New("lookup input is required and must be a string")
+	}
+	if lookup.StringValue() == "fail" {
+		return plugin.RefreshResponse{
+			Status: resource.StatusUnknown,
+		}, errors.New("failed read")
+	}
+
+	readInputs := property.NewMap(map[string]property.Value{
+		"lookup": resource.FromResourcePropertyValue(lookup),
+	})
+	readOutputs := property.NewMap(map[string]property.Value{
+		"lookup": resource.FromResourcePropertyValue(lookup),
+		"value":  property.New(true),
+	})
+	return plugin.RefreshResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
 			Inputs:  &readInputs,

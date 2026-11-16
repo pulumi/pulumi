@@ -261,9 +261,9 @@ func (p *KeywordsProvider) Delete(
 	return plugin.DeleteResponse{}, nil
 }
 
-func (p *KeywordsProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+func (p *KeywordsProvider) Import(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 	if !p.isValidResourceType(req.URN.Type()) {
-		return plugin.ReadResponse{
+		return plugin.ImportResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
@@ -274,7 +274,30 @@ func (p *KeywordsProvider) Read(ctx context.Context, req plugin.ReadRequest) (pl
 	}
 
 	m := resource.FromResourcePropertyMap(properties)
-	return plugin.ReadResponse{
+	return plugin.ImportResponse{
+		ReadResult: plugin.ReadResult{
+			ID:      req.ID,
+			Inputs:  &m,
+			Outputs: &m,
+		},
+		Status: resource.StatusOK,
+	}, nil
+}
+
+func (p *KeywordsProvider) Refresh(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+	if !p.isValidResourceType(req.URN.Type()) {
+		return plugin.RefreshResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	properties := make(resource.PropertyMap)
+	for _, prop := range p.properties() {
+		properties[resource.PropertyKey(prop)] = resource.NewProperty(prop)
+	}
+
+	m := resource.FromResourcePropertyMap(properties)
+	return plugin.RefreshResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
 			Inputs:  &m,

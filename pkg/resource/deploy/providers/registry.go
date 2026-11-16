@@ -1041,8 +1041,12 @@ func (r *Registry) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.D
 	return plugin.DeleteResponse{}, nil
 }
 
-func (r *Registry) Read(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-	return plugin.ReadResponse{}, errors.New("provider resources may not be read")
+func (r *Registry) Import(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+	return plugin.ImportResponse{}, errors.New("provider resources may not be imported")
+}
+
+func (r *Registry) Refresh(context.Context, plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+	return plugin.RefreshResponse{}, errors.New("provider resources may not be refreshed")
 }
 
 func (r *Registry) List(context.Context, plugin.ListRequest) (*plugin.ListStream, error) {

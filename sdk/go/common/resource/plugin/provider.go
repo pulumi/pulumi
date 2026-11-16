@@ -300,24 +300,41 @@ type CreateResponse struct {
 	RefreshBeforeUpdate bool
 }
 
-type ReadRequest struct {
-	URN           resource.URN
-	Name          string
-	Type          tokens.Type
-	ID            resource.ID
-	Inputs, State resource.PropertyMap
+// ImportRequest is the request type for a call to Import. Import brings an existing resource under Pulumi
+// management; it is not given any prior outputs or inputs for the resource.
+type ImportRequest struct {
+	URN  resource.URN
+	Name string
+	Type tokens.Type
+	ID   resource.ID
+	// Inputs are any identifying inputs for the resource being imported. Together with ID, these should be
+	// sufficient to uniquely identify the resource in the live environment.
+	Inputs resource.PropertyMap
 	// Timeout is the time, in seconds, that the caller is prepared to wait for the operation to complete.
 	Timeout float64
-	// The gRPC address of the ResourceStatus service which can be used to read view resources.
-	ResourceStatusAddress string
-	// The ResourceStatus service token to pass when calling methods on the service.
-	ResourceStatusToken string
-	// The old views for the resource being read. These will only be populated when the Read call is being made as part
-	// of a refresh operation.
-	OldViews []View
 }
 
-type ReadResponse struct {
+type ImportResponse struct {
+	ReadResult
+	Status resource.Status
+}
+
+// RefreshRequest is the request type for a call to Refresh. Refresh updates the engine's view of a resource that
+// is already under Pulumi management; the request carries the resource's prior outputs and inputs.
+type RefreshRequest struct {
+	URN  resource.URN
+	Name string
+	Type tokens.Type
+	ID   resource.ID
+	// Inputs are the resource's prior inputs as previously recorded by Pulumi.
+	Inputs resource.PropertyMap
+	// Outputs are the resource's prior outputs as previously recorded by Pulumi.
+	Outputs resource.PropertyMap
+	// Timeout is the time, in seconds, that the caller is prepared to wait for the operation to complete.
+	Timeout float64
+}
+
+type RefreshResponse struct {
 	ReadResult
 	Status resource.Status
 }
@@ -548,10 +565,16 @@ type Provider interface {
 	Diff(context.Context, DiffRequest) (DiffResponse, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
 	Create(context.Context, CreateRequest) (CreateResponse, error)
-	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
-	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
-	// resource is missing (for instance, because it has been deleted), the resulting property map will be nil.
-	Read(context.Context, ReadRequest) (ReadResponse, error)
+	// Import reads the current live state associated with a resource that is being brought under Pulumi management
+	// for the first time. Enough identifying information must be supplied (typically just the resource ID, but
+	// optionally additional inputs) to uniquely identify the resource in the live environment. If the resource is
+	// missing, the resulting property map will be nil.
+	Import(context.Context, ImportRequest) (ImportResponse, error)
+	// Refresh reads the current live state associated with a resource that is already known to Pulumi, updating the
+	// engine's view of the resource. The request carries the resource's prior outputs and inputs so the provider
+	// can correlate live state with what Pulumi previously recorded. If the resource is missing (for instance,
+	// because it has been deleted), the resulting property map will be nil.
+	Refresh(context.Context, RefreshRequest) (RefreshResponse, error)
 	// Update updates an existing resource with new values.
 	Update(context.Context, UpdateRequest) (UpdateResponse, error)
 	// Delete tears down an existing resource. The inputs and outputs are the last recorded ones from state.
@@ -870,17 +893,19 @@ func (e DiffUnavailableError) Error() string {
 }
 
 // ReadResult is the result of a call to Read.
+// ReadResult is the shared result payload returned by Import and Refresh. It carries the resource's live ID,
+// inputs, and outputs as read from the provider.
 type ReadResult struct {
-	// This is the ID for the resource. This ID will always be populated and will ensure we get the most up-to-date
-	// resource ID.
+	// ID is the resource's ID as observed in the live environment. This ID will always be populated and reflects
+	// the most up-to-date identifier for the resource.
 	ID resource.ID
-	// Inputs contains the new inputs for the resource, if any. If this field is nil, the provider does not support
-	// returning inputs from a call to Read and the old inputs (if any) should be preserved.
+	// Inputs contains the output-derived inputs for the resource, if any. If this field is nil, the provider does
+	// not support returning inputs from Import/Refresh and the old inputs (if any) should be preserved.
 	Inputs resource.PropertyMap
-	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
-	// exist.
+	// Outputs contains the outputs read from the live environment, if any. If this field is nil, the resource
+	// does not exist.
 	Outputs resource.PropertyMap
-	// Indicates that this resource should always be refreshed prior to updates.
+	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
 }
 

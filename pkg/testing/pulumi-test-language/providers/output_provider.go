@@ -351,18 +351,35 @@ func (p *OutputProvider) Delete(
 	return plugin.DeleteResponse{}, nil
 }
 
-func (p *OutputProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+func (p *OutputProvider) Import(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
-		return plugin.ReadResponse{
+		return plugin.ImportResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	return plugin.ReadResponse{
+	return plugin.ImportResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
 			Inputs:  &req.Inputs,
-			Outputs: &req.State,
+			Outputs: coalesceImportOutputs(req),
+		},
+		Status: resource.StatusOK,
+	}, nil
+}
+
+func (p *OutputProvider) Refresh(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+	if req.URN.Type() != "output:index:Resource" && req.URN.Type() != "output:index:ComplexResource" {
+		return plugin.RefreshResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	return plugin.RefreshResponse{
+		ReadResult: plugin.ReadResult{
+			ID:      req.ID,
+			Inputs:  &req.Inputs,
+			Outputs: coalesceRefreshOutputs(req),
 		},
 		Status: resource.StatusOK,
 	}, nil

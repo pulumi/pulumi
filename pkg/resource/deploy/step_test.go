@@ -532,8 +532,8 @@ func TestReadStep(t *testing.T) {
 					},
 				},
 				provider: &deploytest.Provider{
-					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-						return plugin.ReadResponse{}, expectedErr
+					ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+						return plugin.ImportResponse{}, expectedErr
 					},
 				},
 			}
@@ -558,8 +558,8 @@ func TestReadStep(t *testing.T) {
 					},
 				},
 				provider: &deploytest.Provider{
-					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-						return plugin.ReadResponse{
+					ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+						return plugin.ImportResponse{
 							ReadResult: plugin.ReadResult{
 								ID: "new-id",
 								Inputs: new(property.NewMap(map[string]property.Value{
@@ -602,7 +602,7 @@ func TestReadStep(t *testing.T) {
 					ID: plugin.UnknownStringValue,
 				},
 				provider: &deploytest.Provider{
-					ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
+					ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
 						panic("should not be called")
 					},
 				},
@@ -828,8 +828,8 @@ func TestRefreshStepPatterns(t *testing.T) {
 				},
 			},
 			provider: &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  new(resource.FromResourcePropertyMap(tc.readInputs)),
@@ -887,8 +887,8 @@ func TestRefreshStep(t *testing.T) {
 					},
 				}, nil, state, nil, nil).(*RefreshStep)
 			s.provider = &deploytest.Provider{
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{}, expectedErr
+				RefreshF: func(context.Context, plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+					return plugin.RefreshResponse{}, expectedErr
 				},
 			}
 
@@ -913,8 +913,8 @@ func TestRefreshStep(t *testing.T) {
 				},
 			}, nil, state, nil, nil).(*RefreshStep)
 			s.provider = &deploytest.Provider{
-				ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				RefreshF: func(context.Context, plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "new-id",
 							Inputs: new(property.NewMap(map[string]property.Value{
@@ -1008,8 +1008,8 @@ func TestImportStep(t *testing.T) {
 						Custom:   true,
 					},
 					provider: &deploytest.Provider{
-						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-							return plugin.ReadResponse{}, expectedErr
+						ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+							return plugin.ImportResponse{}, expectedErr
 						},
 					},
 				}
@@ -1033,8 +1033,8 @@ func TestImportStep(t *testing.T) {
 						Custom:   true,
 					},
 					provider: &deploytest.Provider{
-						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-							return plugin.ReadResponse{}, &plugin.InitError{
+						ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+							return plugin.ImportResponse{}, &plugin.InitError{
 								Reasons: []string{
 									"intentional error",
 								},
@@ -1063,8 +1063,8 @@ func TestImportStep(t *testing.T) {
 						Custom:   true,
 					},
 					provider: &deploytest.Provider{
-						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-							return plugin.ReadResponse{}, nil
+						ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+							return plugin.ImportResponse{}, nil
 						},
 					},
 				}
@@ -1088,9 +1088,10 @@ func TestImportStep(t *testing.T) {
 						Custom:   true,
 					},
 					provider: &deploytest.Provider{
-						ReadF: func(context.Context, plugin.ReadRequest) (plugin.ReadResponse, error) {
-							return plugin.ReadResponse{
+						ImportF: func(context.Context, plugin.ImportRequest) (plugin.ImportResponse, error) {
+							return plugin.ImportResponse{
 								ReadResult: plugin.ReadResult{
+									ID:      "some-id",
 									Outputs: new(property.Map{}),
 								},
 								Status: resource.StatusOK,

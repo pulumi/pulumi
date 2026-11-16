@@ -888,8 +888,14 @@ func TestRegistry(t *testing.T) {
 	t.Run("Read", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
-		_, err := r.Read(t.Context(), plugin.ReadRequest{})
-		assert.ErrorContains(t, err, "provider resources may not be read")
+		_, err := r.Import(t.Context(), plugin.ImportRequest{})
+		assert.ErrorContains(t, err, "provider resources may not be imported")
+	})
+	t.Run("Refresh", func(t *testing.T) {
+		t.Parallel()
+		r := &Registry{}
+		_, err := r.Refresh(t.Context(), plugin.RefreshRequest{})
+		assert.ErrorContains(t, err, "provider resources may not be refreshed")
 	})
 	t.Run("Construct", func(t *testing.T) {
 		t.Parallel()

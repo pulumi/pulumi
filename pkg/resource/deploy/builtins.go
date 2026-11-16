@@ -281,7 +281,7 @@ func (p *builtinProvider) List(context.Context, plugin.ListRequest) (*plugin.Lis
 	return nil, errors.New("the builtin provider does not support List")
 }
 
-func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+func (p *builtinProvider) Import(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 	contract.Requiref(req.URN != "", "urn", "must not be empty")
 	contract.Requiref(req.ID != "", "id", "must not be empty")
 
@@ -291,21 +291,21 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 		reqInputs := resource.ToResourcePropertyMap(req.Inputs)
 		for k := range reqInputs {
 			if k != "name" {
-				return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("unknown property \"%v\"", k)
+				return plugin.ImportResponse{Status: resource.StatusUnknown}, fmt.Errorf("unknown property \"%v\"", k)
 			}
 		}
 		// If the name is not provided, we should return an error. This is probably due to a user trying to import
 		// this stack reference.
 		if _, ok := reqInputs["name"]; !ok {
-			return plugin.ReadResponse{Status: resource.StatusUnknown}, errors.New("stack reference can not be imported")
+			return plugin.ImportResponse{Status: resource.StatusUnknown}, errors.New("stack reference can not be imported")
 		}
 
-		outputs, err := p.readStackReference(ctx, req.State)
+		outputs, err := p.readStackReference(ctx, req.Inputs)
 		if err != nil {
-			return plugin.ReadResponse{Status: resource.StatusUnknown}, err
+			return plugin.ImportResponse{Status: resource.StatusUnknown}, err
 		}
 
-		return plugin.ReadResponse{
+		return plugin.ImportResponse{
 			ReadResult: plugin.ReadResult{
 				ID:      req.ID,
 				Inputs:  &req.Inputs,
@@ -315,35 +315,58 @@ func (p *builtinProvider) Read(ctx context.Context, req plugin.ReadRequest) (plu
 		}, nil
 
 	case stashType:
-		// An import supplies no prior state. A stash has no backing system to read,
-		// so it adopts the id and holds a null value; the program's configured input
-		// then applies as an update.
-		if req.Inputs.Len() == 0 {
-			return plugin.ReadResponse{
-				ReadResult: plugin.ReadResult{
-					ID: req.ID,
-					Inputs: new(property.NewMap(map[string]property.Value{
-						"input": {},
-					})),
-					Outputs: new(property.NewMap(map[string]property.Value{
-						"input":  {},
-						"output": {},
-					})),
-				},
-				Status: resource.StatusOK,
-			}, nil
-		}
-
-		return plugin.ReadResponse{
+		// A stash has no backing system to read, so on import it adopts the id and holds a null value;
+		// the program's configured input then applies as an update.
+		return plugin.ImportResponse{
 			ReadResult: plugin.ReadResult{
-				ID:      req.ID,
-				Inputs:  &req.Inputs,
-				Outputs: &req.State,
+				ID: req.ID,
+				Inputs: new(property.NewMap(map[string]property.Value{
+					"input": {},
+				})),
+				Outputs: new(property.NewMap(map[string]property.Value{
+					"input":  {},
+					"output": {},
+				})),
 			},
 			Status: resource.StatusOK,
 		}, nil
 	default:
-		return plugin.ReadResponse{Status: resource.StatusUnknown}, fmt.Errorf("unrecognized resource type '%v'", typ)
+		return plugin.ImportResponse{Status: resource.StatusUnknown}, fmt.Errorf("unrecognized resource type '%v'", typ)
+	}
+}
+
+func (p *builtinProvider) Refresh(ctx context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+	contract.Requiref(req.URN != "", "urn", "must not be empty")
+	contract.Requiref(req.ID != "", "id", "must not be empty")
+
+	typ := req.URN.Type()
+	switch typ { //nolint:exhaustive
+	case stackReferenceType:
+		outputs, err := p.readStackReference(ctx, req.Inputs)
+		if err != nil {
+			return plugin.RefreshResponse{Status: resource.StatusUnknown}, err
+		}
+		return plugin.RefreshResponse{
+			ReadResult: plugin.ReadResult{
+				ID:      req.ID,
+				Inputs:  &req.Inputs,
+				Outputs: &outputs,
+			},
+			Status: resource.StatusOK,
+		}, nil
+
+	case stashType:
+		// A stash has no backing system, so a refresh echoes back the prior inputs/outputs.
+		return plugin.RefreshResponse{
+			ReadResult: plugin.ReadResult{
+				ID:      req.ID,
+				Inputs:  &req.Inputs,
+				Outputs: &req.Outputs,
+			},
+			Status: resource.StatusOK,
+		}, nil
+	default:
+		return plugin.RefreshResponse{Status: resource.StatusUnknown}, fmt.Errorf("unrecognized resource type '%v'", typ)
 	}
 }
 

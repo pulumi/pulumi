@@ -350,9 +350,9 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					assert.Equal(t, resource.ID("res-1"), req.ID)
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "res-1",
 							Outputs: new(property.NewMap(map[string]property.Value{
@@ -376,8 +376,8 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  new(property.NewMap(map[string]property.Value{"name": property.New("in")})),
@@ -407,9 +407,9 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					calls = append(calls, "read")
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "res-1",
 							Inputs: new(property.NewMap(map[string]property.Value{
@@ -477,8 +477,8 @@ enabled = true
 		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID: "res-1",
 							Inputs: new(property.NewMap(map[string]property.Value{
@@ -531,8 +531,8 @@ func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
 		cmd, _, _ := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+				ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{ReadResult: plugin.ReadResult{
 						ID:      req.ID,
 						Inputs:  new(property.Map{}),
 						Outputs: new(property.Map{}),
@@ -550,7 +550,7 @@ func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
 		assert.True(t, deleted)
 	})
 
-	notFoundResponses := map[string]plugin.ReadResponse{
+	notFoundResponses := map[string]plugin.ImportResponse{
 		"nil outputs": {},
 		"empty outputs": {ReadResult: plugin.ReadResult{
 			Inputs:  new(property.Map{}),
@@ -568,7 +568,7 @@ func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
 			cmd, _, _ := newDoResourceCommand(t, &testProvider{
 				spec: doResourceSpec(false),
 				MockProvider: plugin.MockProvider{
-					ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 						return response, nil
 					},
 					DeleteF: func(ctx context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
@@ -587,7 +587,7 @@ func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
 			cmd, _, _ := newDoResourceCommand(t, &testProvider{
 				spec: doResourceSpec(false),
 				MockProvider: plugin.MockProvider{
-					ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 						return response, nil
 					},
 				},
@@ -602,7 +602,7 @@ func TestDoCmdResourceMissingResourceNotFound(t *testing.T) {
 			cmd, _, _ := newDoResourceCommand(t, &testProvider{
 				spec: doResourceSpec(false),
 				MockProvider: plugin.MockProvider{
-					ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 						return response, nil
 					},
 					UpdateF: func(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
@@ -756,8 +756,8 @@ func TestDoCmdResourceDeleteDryRun(t *testing.T) {
 	cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
 		spec: doResourceSpec(false),
 		MockProvider: plugin.MockProvider{
-			ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-				return plugin.ReadResponse{
+			ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+				return plugin.ImportResponse{
 					ReadResult: plugin.ReadResult{
 						ID:      req.ID,
 						Inputs:  new(property.NewMap(map[string]property.Value{"name": property.New("read")})),
@@ -787,8 +787,8 @@ func TestDoCmdResourceDryRunIgnoredForReadOnlyOps(t *testing.T) {
 		cmd, stdout, _ := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("read")})),
@@ -886,8 +886,8 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 		cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+				ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{ReadResult: plugin.ReadResult{
 						ID:      "res-1",
 						Inputs:  new(property.NewMap(map[string]property.Value{"name": property.New("read")})),
 						Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("read")})),
@@ -911,8 +911,8 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 		cmd, _, stderr := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+				ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{ReadResult: plugin.ReadResult{
 						ID:      "res-1",
 						Inputs:  new(property.Map{}),
 						Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("hunter2").WithSecret(true)})),
@@ -931,8 +931,8 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 		cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+				ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{ReadResult: plugin.ReadResult{
 						ID:      "res-1",
 						Inputs:  new(property.NewMap(map[string]property.Value{"name": property.New("old")})),
 						Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("old")})),
@@ -981,8 +981,8 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 		cmd, stdout, stderr := newDoResourceCommand(t, &testProvider{
 			spec: doResourceSpec(false),
 			MockProvider: plugin.MockProvider{
-				ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  new(property.NewMap(map[string]property.Value{"name": property.New("in")})),
@@ -1218,8 +1218,8 @@ func TestDoCmdResourceProviderFlagMergesStackInputs(t *testing.T) {
 					gotInputs = req.Inputs
 					return plugin.ConfigureResponse{}, nil
 				},
-				ReadF: func(_ context.Context, _ plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+				ImportF: func(_ context.Context, _ plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{ReadResult: plugin.ReadResult{
 						ID:      "res-1",
 						Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("hello")})),
 					}}, nil
@@ -1260,8 +1260,8 @@ func TestDoCmdResourceProviderErrorTidied(t *testing.T) {
 	cmd, _, stderr := newDoResourceCommand(t, &testProvider{
 		spec: doResourceSpec(false),
 		MockProvider: plugin.MockProvider{
-			ReadF: func(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-				return plugin.ReadResponse{ReadResult: plugin.ReadResult{
+			ImportF: func(ctx context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+				return plugin.ImportResponse{ReadResult: plugin.ReadResult{
 					ID:      req.ID,
 					Inputs:  new(property.Map{}),
 					Outputs: new(property.NewMap(map[string]property.Value{"name": property.New("existing")})),

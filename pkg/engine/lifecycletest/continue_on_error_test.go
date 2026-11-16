@@ -398,8 +398,8 @@ func TestUpContinueOnErrorUpdateWithRefresh(t *testing.T) {
 				UpdateF: func(context.Context, plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 					return plugin.UpdateResponse{Status: resource.StatusOK}, errors.New("intentionally failed update")
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  new(property.Map{}),
@@ -735,8 +735,8 @@ func TestContinueOnErrorImport(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{}, errors.New("intentionally failed read")
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{}, errors.New("intentionally failed read")
 				},
 				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 					return plugin.CreateResponse{
@@ -1046,8 +1046,8 @@ func TestUpContinueOnErrorSkippedReadReturnsOldState(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  new(property.Map{}),
@@ -1132,8 +1132,8 @@ func TestUpContinueOnErrorSkippedReadReturnsUnknown(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  new(property.Map{}),
@@ -1199,8 +1199,8 @@ func TestUpContinueOnErrorSkippedImportReturnsUnknown(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  new(property.Map{}),

@@ -55,6 +55,7 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     ACCEPTS_OUTPUTS_IN_INVOKE_FIELD_NUMBER: builtins.int
     ACCEPTS_OUTPUTS_IN_CALL_FIELD_NUMBER: builtins.int
     ACCEPTS_OUTPUTS_IN_CHECK_FIELD_NUMBER: builtins.int
+    SUPPORTS_IMPORT_REFRESH_FIELD_NUMBER: builtins.int
     engine_address: builtins.str
     """The gRPC address of the engine handshaking with the provider. At a minimum, this address will expose an instance
     of the [](pulumirpc.Engine) service.
@@ -118,6 +119,12 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
     in should set `accepts_outputs_in_check` on `ProviderHandshakeResponse`. Older engines never set this
     field.
     """
+    supports_import_refresh: builtins.bool
+    """If true the engine will prefer calling [](pulumirpc.ResourceProvider.Import) and
+    [](pulumirpc.ResourceProvider.Refresh) over the legacy [](pulumirpc.ResourceProvider.Read) method when the
+    provider advertises support for them via `supports_import_refresh` on `ProviderHandshakeResponse`. Older engines
+    never set this field, so providers should treat an absent value as false.
+    """
     def __init__(
         self,
         *,
@@ -136,9 +143,10 @@ class ProviderHandshakeRequest(google.protobuf.message.Message):
         accepts_outputs_in_invoke: builtins.bool = ...,
         accepts_outputs_in_call: builtins.bool = ...,
         accepts_outputs_in_check: builtins.bool = ...,
+        supports_import_refresh: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "accepts_byte_string", b"accepts_byte_string", "accepts_outputs_in_call", b"accepts_outputs_in_call", "accepts_outputs_in_check", b"accepts_outputs_in_check", "accepts_outputs_in_invoke", b"accepts_outputs_in_invoke", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory", "sends_old_outputs_to_check", b"sends_old_outputs_to_check", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["_loader_target", b"_loader_target", "_mapper_target", b"_mapper_target", "_program_directory", b"_program_directory", "_resolver_target", b"_resolver_target", "_root_directory", b"_root_directory", "accepts_byte_string", b"accepts_byte_string", "accepts_outputs_in_call", b"accepts_outputs_in_call", "accepts_outputs_in_check", b"accepts_outputs_in_check", "accepts_outputs_in_invoke", b"accepts_outputs_in_invoke", "configure_with_urn", b"configure_with_urn", "engine_address", b"engine_address", "invoke_with_preview", b"invoke_with_preview", "loader_target", b"loader_target", "mapper_target", b"mapper_target", "program_directory", b"program_directory", "resolver_target", b"resolver_target", "root_directory", b"root_directory", "sends_old_outputs_to_check", b"sends_old_outputs_to_check", "supports_import_refresh", b"supports_import_refresh", "supports_refresh_before_update", b"supports_refresh_before_update", "supports_views", b"supports_views"]) -> None: ...
     @typing.overload
     def WhichOneof(self, oneof_group: typing.Literal["_loader_target", b"_loader_target"]) -> typing.Literal["loader_target"] | None: ...
     @typing.overload
@@ -1499,6 +1507,191 @@ class ReadResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties", "refresh_before_update", b"refresh_before_update"]) -> None: ...
 
 global___ReadResponse = ReadResponse
+
+@typing.final
+class ImportRequest(google.protobuf.message.Message):
+    """`ImportRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Import) call. `Import` is
+    used to bring an existing resource under Pulumi management; as such, the request contains only identifying
+    information for the resource and does not carry any prior outputs or inputs.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    IMPORT_ID_FIELD_NUMBER: builtins.int
+    URN_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
+    TIMEOUT_FIELD_NUMBER: builtins.int
+    import_id: builtins.str
+    """The import ID of the resource to import."""
+    urn: builtins.str
+    """The URN of the resource being imported."""
+    name: builtins.str
+    """The name of the resource being imported. This must match the name specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
+    type: builtins.str
+    """The type of the resource being imported. This must match the type specified by the `urn` field, and is passed so
+    that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
+    timeout: builtins.float
+    """A timeout in seconds that the caller is prepared to wait for the operation to complete."""
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """Any identifying inputs for the resource being imported. These should, together with the ID, be sufficient to
+        uniquely identify the resource in the live environment. Unlike [](pulumirpc.RefreshRequest.inputs), these are not
+        the resource's prior inputs -- the resource has not previously been managed by Pulumi.
+        """
+
+    def __init__(
+        self,
+        *,
+        import_id: builtins.str = ...,
+        urn: builtins.str = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        timeout: builtins.float = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["inputs", b"inputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["import_id", b"import_id", "inputs", b"inputs", "name", b"name", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
+
+global___ImportRequest = ImportRequest
+
+@typing.final
+class ImportResponse(google.protobuf.message.Message):
+    """`ImportResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Import) call. An `ImportResponse`
+    contains the ID of the resource being imported, as well as the outputs and inputs that were successfully read from
+    the live environment.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ID_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
+    OUTPUTS_FIELD_NUMBER: builtins.int
+    REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
+    id: builtins.str
+    """The ID of the imported resource."""
+    refresh_before_update: builtins.bool
+    """Indicates that this resource should always be refreshed prior to updates."""
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """Output-derived inputs for the resource. These are returned as they would be returned from a
+        [](pulumirpc.ResourceProvider.Check) call with the same values.
+        """
+
+    @property
+    def outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The outputs of the resource read from the live environment."""
+
+    def __init__(
+        self,
+        *,
+        id: builtins.str = ...,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        refresh_before_update: builtins.bool = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["inputs", b"inputs", "outputs", b"outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "outputs", b"outputs", "refresh_before_update", b"refresh_before_update"]) -> None: ...
+
+global___ImportResponse = ImportResponse
+
+@typing.final
+class RefreshRequest(google.protobuf.message.Message):
+    """`RefreshRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Refresh) call. `Refresh` is
+    used to update the engine's view of a resource that is already under Pulumi management; as such, the request carries
+    the resource's prior outputs and inputs.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ID_FIELD_NUMBER: builtins.int
+    URN_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    TYPE_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
+    OUTPUTS_FIELD_NUMBER: builtins.int
+    TIMEOUT_FIELD_NUMBER: builtins.int
+    id: builtins.str
+    """The ID of the resource to refresh."""
+    urn: builtins.str
+    """The URN of the resource being refreshed."""
+    name: builtins.str
+    """The name of the resource being refreshed. This must match the name specified by the `urn` field, and is passed
+    so that providers do not have to implement URN parsing in order to extract the name of the resource.
+    """
+    type: builtins.str
+    """The type of the resource being refreshed. This must match the type specified by the `urn` field, and is passed
+    so that providers do not have to implement URN parsing in order to extract the type of the resource.
+    """
+    timeout: builtins.float
+    """A timeout in seconds that the caller is prepared to wait for the operation to complete."""
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The current inputs for the resource being refreshed, as previously recorded by Pulumi."""
+
+    @property
+    def outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The current outputs for the resource being refreshed, as previously recorded by Pulumi."""
+
+    def __init__(
+        self,
+        *,
+        id: builtins.str = ...,
+        urn: builtins.str = ...,
+        name: builtins.str = ...,
+        type: builtins.str = ...,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        timeout: builtins.float = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["inputs", b"inputs", "outputs", b"outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "name", b"name", "outputs", b"outputs", "timeout", b"timeout", "type", b"type", "urn", b"urn"]) -> None: ...
+
+global___RefreshRequest = RefreshRequest
+
+@typing.final
+class RefreshResponse(google.protobuf.message.Message):
+    """`RefreshResponse` is the type of responses sent by a [](pulumirpc.ResourceProvider.Refresh) call. A `RefreshResponse`
+    contains the ID of the resource being refreshed, as well as any outputs and inputs that were successfully read from
+    the live environment.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ID_FIELD_NUMBER: builtins.int
+    INPUTS_FIELD_NUMBER: builtins.int
+    OUTPUTS_FIELD_NUMBER: builtins.int
+    REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
+    id: builtins.str
+    """The ID of the refreshed resource."""
+    refresh_before_update: builtins.bool
+    """Indicates that this resource should always be refreshed prior to updates."""
+    @property
+    def inputs(self) -> google.protobuf.struct_pb2.Struct:
+        """Output-derived inputs for the resource. These are returned as they would be returned from a
+        [](pulumirpc.ResourceProvider.Check) call with the same values.
+        """
+
+    @property
+    def outputs(self) -> google.protobuf.struct_pb2.Struct:
+        """The outputs of the resource read from the live environment."""
+
+    def __init__(
+        self,
+        *,
+        id: builtins.str = ...,
+        inputs: google.protobuf.struct_pb2.Struct | None = ...,
+        outputs: google.protobuf.struct_pb2.Struct | None = ...,
+        refresh_before_update: builtins.bool = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["inputs", b"inputs", "outputs", b"outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "outputs", b"outputs", "refresh_before_update", b"refresh_before_update"]) -> None: ...
+
+global___RefreshResponse = RefreshResponse
 
 @typing.final
 class ListRequest(google.protobuf.message.Message):

@@ -73,12 +73,12 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -143,11 +143,12 @@ func TestIgnoreChangesGolangLifecycle(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -345,12 +346,13 @@ func TestReadResourceGolangLifecycle(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					assert.Equal(t, resource.ID("someId"), req.ID)
-					return plugin.ReadResponse{
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -432,11 +434,12 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -457,11 +460,12 @@ func TestProviderInheritanceGolangLifecycle(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
+							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil

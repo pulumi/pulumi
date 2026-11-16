@@ -694,9 +694,9 @@ func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					// Child provider read fails during refresh.
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						Status: resource.StatusUnknown,
 					}, fmt.Errorf("read failure for %s", req.URN)
 				},

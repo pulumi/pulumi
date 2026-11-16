@@ -56,6 +56,8 @@ export class ProviderHandshakeRequest extends jspb.Message {
     setAcceptsOutputsInCall(value: boolean): ProviderHandshakeRequest;
     getAcceptsOutputsInCheck(): boolean;
     setAcceptsOutputsInCheck(value: boolean): ProviderHandshakeRequest;
+    getSupportsImportRefresh(): boolean;
+    setSupportsImportRefresh(value: boolean): ProviderHandshakeRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ProviderHandshakeRequest.AsObject;
@@ -84,6 +86,7 @@ export namespace ProviderHandshakeRequest {
         acceptsOutputsInInvoke: boolean,
         acceptsOutputsInCall: boolean,
         acceptsOutputsInCheck: boolean,
+        supportsImportRefresh: boolean,
     }
 }
 
@@ -1068,6 +1071,158 @@ export namespace ReadResponse {
         id: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        refreshBeforeUpdate: boolean,
+    }
+}
+
+export class ImportRequest extends jspb.Message { 
+    getImportId(): string;
+    setImportId(value: string): ImportRequest;
+    getUrn(): string;
+    setUrn(value: string): ImportRequest;
+    getName(): string;
+    setName(value: string): ImportRequest;
+    getType(): string;
+    setType(value: string): ImportRequest;
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): ImportRequest;
+    getTimeout(): number;
+    setTimeout(value: number): ImportRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ImportRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ImportRequest): ImportRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ImportRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ImportRequest;
+    static deserializeBinaryFromReader(message: ImportRequest, reader: jspb.BinaryReader): ImportRequest;
+}
+
+export namespace ImportRequest {
+    export type AsObject = {
+        importId: string,
+        urn: string,
+        name: string,
+        type: string,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        timeout: number,
+    }
+}
+
+export class ImportResponse extends jspb.Message { 
+    getId(): string;
+    setId(value: string): ImportResponse;
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): ImportResponse;
+
+    hasOutputs(): boolean;
+    clearOutputs(): void;
+    getOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOutputs(value?: google_protobuf_struct_pb.Struct): ImportResponse;
+    getRefreshBeforeUpdate(): boolean;
+    setRefreshBeforeUpdate(value: boolean): ImportResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ImportResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ImportResponse): ImportResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ImportResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ImportResponse;
+    static deserializeBinaryFromReader(message: ImportResponse, reader: jspb.BinaryReader): ImportResponse;
+}
+
+export namespace ImportResponse {
+    export type AsObject = {
+        id: string,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        outputs?: google_protobuf_struct_pb.Struct.AsObject,
+        refreshBeforeUpdate: boolean,
+    }
+}
+
+export class RefreshRequest extends jspb.Message { 
+    getId(): string;
+    setId(value: string): RefreshRequest;
+    getUrn(): string;
+    setUrn(value: string): RefreshRequest;
+    getName(): string;
+    setName(value: string): RefreshRequest;
+    getType(): string;
+    setType(value: string): RefreshRequest;
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): RefreshRequest;
+
+    hasOutputs(): boolean;
+    clearOutputs(): void;
+    getOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOutputs(value?: google_protobuf_struct_pb.Struct): RefreshRequest;
+    getTimeout(): number;
+    setTimeout(value: number): RefreshRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RefreshRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: RefreshRequest): RefreshRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RefreshRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RefreshRequest;
+    static deserializeBinaryFromReader(message: RefreshRequest, reader: jspb.BinaryReader): RefreshRequest;
+}
+
+export namespace RefreshRequest {
+    export type AsObject = {
+        id: string,
+        urn: string,
+        name: string,
+        type: string,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        outputs?: google_protobuf_struct_pb.Struct.AsObject,
+        timeout: number,
+    }
+}
+
+export class RefreshResponse extends jspb.Message { 
+    getId(): string;
+    setId(value: string): RefreshResponse;
+
+    hasInputs(): boolean;
+    clearInputs(): void;
+    getInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setInputs(value?: google_protobuf_struct_pb.Struct): RefreshResponse;
+
+    hasOutputs(): boolean;
+    clearOutputs(): void;
+    getOutputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOutputs(value?: google_protobuf_struct_pb.Struct): RefreshResponse;
+    getRefreshBeforeUpdate(): boolean;
+    setRefreshBeforeUpdate(value: boolean): RefreshResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): RefreshResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: RefreshResponse): RefreshResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: RefreshResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): RefreshResponse;
+    static deserializeBinaryFromReader(message: RefreshResponse, reader: jspb.BinaryReader): RefreshResponse;
+}
+
+export namespace RefreshResponse {
+    export type AsObject = {
+        id: string,
+        inputs?: google_protobuf_struct_pb.Struct.AsObject,
+        outputs?: google_protobuf_struct_pb.Struct.AsObject,
         refreshBeforeUpdate: boolean,
     }
 }

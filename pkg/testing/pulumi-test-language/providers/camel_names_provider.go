@@ -252,9 +252,9 @@ func (p *CamelNamesProvider) Delete(
 	return plugin.DeleteResponse{}, nil
 }
 
-func (p *CamelNamesProvider) Read(ctx context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+func (p *CamelNamesProvider) Import(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 	if req.URN.Type() != "camelNames:CoolModule:SomeResource" {
-		return plugin.ReadResponse{
+		return plugin.ImportResponse{
 			Status: resource.StatusUnknown,
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
@@ -265,7 +265,30 @@ func (p *CamelNamesProvider) Read(ctx context.Context, req plugin.ReadRequest) (
 	readOutputs := property.NewMap(map[string]property.Value{
 		"theOutput": property.New(true),
 	})
-	return plugin.ReadResponse{
+	return plugin.ImportResponse{
+		ReadResult: plugin.ReadResult{
+			ID:      req.ID,
+			Inputs:  &readInputs,
+			Outputs: &readOutputs,
+		},
+		Status: resource.StatusOK,
+	}, nil
+}
+
+func (p *CamelNamesProvider) Refresh(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
+	if req.URN.Type() != "camelNames:CoolModule:SomeResource" {
+		return plugin.RefreshResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
+	}
+
+	readInputs := property.NewMap(map[string]property.Value{
+		"theInput": property.New(true),
+	})
+	readOutputs := property.NewMap(map[string]property.Value{
+		"theOutput": property.New(true),
+	})
+	return plugin.RefreshResponse{
 		ReadResult: plugin.ReadResult{
 			ID:      req.ID,
 			Inputs:  &readInputs,

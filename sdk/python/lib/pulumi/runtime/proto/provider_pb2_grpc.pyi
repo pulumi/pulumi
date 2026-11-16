@@ -227,6 +227,31 @@ class ResourceProviderStub:
     """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
     must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
     include other properties.
+
+    Deprecated: prefer [](pulumirpc.ResourceProvider.Import) and [](pulumirpc.ResourceProvider.Refresh), which split
+    `Read` into the two distinct operations it was previously overloaded to serve. New providers should implement
+    `Import` and `Refresh`; engines should prefer those methods when the provider advertises support for them.
+    """
+
+    Import: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.ImportRequest,
+        pulumi.provider_pb2.ImportResponse,
+    ]
+    """`Import` reads the current live state associated with a resource identified by the supplied ID (and any
+    additional identifying properties required by the provider), as part of importing an existing resource into
+    Pulumi management. Unlike [](pulumirpc.ResourceProvider.Refresh), `Import` is not given any prior state or inputs
+    for the resource -- the resource is not yet known to Pulumi, so the provider must derive the resource's inputs
+    and outputs purely from the live environment.
+    """
+
+    Refresh: grpc.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.RefreshRequest,
+        pulumi.provider_pb2.RefreshResponse,
+    ]
+    """`Refresh` reads the current live state associated with a resource that is already known to Pulumi, updating the
+    engine's view of the resource. Unlike [](pulumirpc.ResourceProvider.Import), `Refresh` is given the resource's
+    prior state, inputs, and (optionally) views so that the provider can correlate the live state with what Pulumi
+    previously recorded.
     """
 
     List: grpc.UnaryStreamMultiCallable[
@@ -528,6 +553,31 @@ class ResourceProviderAsyncStub:
     """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
     must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
     include other properties.
+
+    Deprecated: prefer [](pulumirpc.ResourceProvider.Import) and [](pulumirpc.ResourceProvider.Refresh), which split
+    `Read` into the two distinct operations it was previously overloaded to serve. New providers should implement
+    `Import` and `Refresh`; engines should prefer those methods when the provider advertises support for them.
+    """
+
+    Import: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.ImportRequest,
+        pulumi.provider_pb2.ImportResponse,
+    ]
+    """`Import` reads the current live state associated with a resource identified by the supplied ID (and any
+    additional identifying properties required by the provider), as part of importing an existing resource into
+    Pulumi management. Unlike [](pulumirpc.ResourceProvider.Refresh), `Import` is not given any prior state or inputs
+    for the resource -- the resource is not yet known to Pulumi, so the provider must derive the resource's inputs
+    and outputs purely from the live environment.
+    """
+
+    Refresh: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.provider_pb2.RefreshRequest,
+        pulumi.provider_pb2.RefreshResponse,
+    ]
+    """`Refresh` reads the current live state associated with a resource that is already known to Pulumi, updating the
+    engine's view of the resource. Unlike [](pulumirpc.ResourceProvider.Import), `Refresh` is given the resource's
+    prior state, inputs, and (optionally) views so that the provider can correlate the live state with what Pulumi
+    previously recorded.
     """
 
     List: grpc.aio.UnaryStreamMultiCallable[
@@ -853,6 +903,35 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
         must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
         include other properties.
+
+        Deprecated: prefer [](pulumirpc.ResourceProvider.Import) and [](pulumirpc.ResourceProvider.Refresh), which split
+        `Read` into the two distinct operations it was previously overloaded to serve. New providers should implement
+        `Import` and `Refresh`; engines should prefer those methods when the provider advertises support for them.
+        """
+
+    
+    def Import(
+        self,
+        request: pulumi.provider_pb2.ImportRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.provider_pb2.ImportResponse, collections.abc.Awaitable[pulumi.provider_pb2.ImportResponse]]:
+        """`Import` reads the current live state associated with a resource identified by the supplied ID (and any
+        additional identifying properties required by the provider), as part of importing an existing resource into
+        Pulumi management. Unlike [](pulumirpc.ResourceProvider.Refresh), `Import` is not given any prior state or inputs
+        for the resource -- the resource is not yet known to Pulumi, so the provider must derive the resource's inputs
+        and outputs purely from the live environment.
+        """
+
+    
+    def Refresh(
+        self,
+        request: pulumi.provider_pb2.RefreshRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.provider_pb2.RefreshResponse, collections.abc.Awaitable[pulumi.provider_pb2.RefreshResponse]]:
+        """`Refresh` reads the current live state associated with a resource that is already known to Pulumi, updating the
+        engine's view of the resource. Unlike [](pulumirpc.ResourceProvider.Import), `Refresh` is given the resource's
+        prior state, inputs, and (optionally) views so that the provider can correlate the live state with what Pulumi
+        previously recorded.
         """
 
     

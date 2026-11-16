@@ -260,18 +260,17 @@ func (pc *packageCommand) newResourceReadCommand(res *schema.Resource) *cobra.Co
 				Op:  deploy.OpRead,
 				New: operationState(urn, id, property.Map{}, property.Map{}),
 			}, func() (*pkgresource.State, error) {
-				response, err := pc.provider.Read(ctx, plugin.ReadRequest{
+				response, err := pc.provider.Import(ctx, plugin.ImportRequest{
 					URN:    urn,
 					Name:   urn.Name(),
 					Type:   urn.Type(),
 					ID:     id,
 					Inputs: property.Map{},
-					State:  property.Map{},
 				})
 				if err != nil {
 					return nil, err
 				}
-				if readNotFound(response) {
+				if readNotFound(response.ReadResult) {
 					return nil, fmt.Errorf("resource %q was not found", args[0])
 				}
 				if response.ID != "" {
@@ -335,18 +334,17 @@ func (pc *packageCommand) newStatelessResourcePatchCommand(res *schema.Resource)
 			}
 			urn := resourceURN(res)
 			id := resource.ID(args[0])
-			read, err := pc.provider.Read(ctx, plugin.ReadRequest{
+			read, err := pc.provider.Import(ctx, plugin.ImportRequest{
 				URN:    urn,
 				Name:   urn.Name(),
 				Type:   urn.Type(),
 				ID:     id,
 				Inputs: property.Map{},
-				State:  property.Map{},
 			})
 			if err != nil {
 				return err
 			}
-			if readNotFound(read) {
+			if readNotFound(read.ReadResult) {
 				return fmt.Errorf("resource %q was not found", args[0])
 			}
 			// AllowMissingProperties because a patch typically only specifies the fields being changed; the binder
@@ -378,7 +376,7 @@ func (pc *packageCommand) newStatelessResourcePatchCommand(res *schema.Resource)
 
 func (pc *packageCommand) runStatelessUpdate(
 	cmd *cobra.Command, res *schema.Resource, id resource.ID,
-	read plugin.ReadResponse, newInputs property.Map, operation string, yes bool,
+	read plugin.ImportResponse, newInputs property.Map, operation string, yes bool,
 ) error {
 	ctx := cmd.Context()
 	urn := resourceURN(res)
@@ -463,18 +461,17 @@ func (pc *packageCommand) newResourceDeleteCommand(res *schema.Resource) *cobra.
 			// First we need to read the resource. The ID given here is an "import id", while the actual
 			// Delete call needs the real ID + any inputs/outputs. terraform-pf bridge for example will fail to
 			// delete if just passed the ID and no state.
-			response, err := pc.provider.Read(ctx, plugin.ReadRequest{
+			response, err := pc.provider.Import(ctx, plugin.ImportRequest{
 				URN:    urn,
 				Name:   urn.Name(),
 				Type:   urn.Type(),
 				ID:     resource.ID(args[0]),
 				Inputs: property.Map{},
-				State:  property.Map{},
 			})
 			if err != nil {
 				return err
 			}
-			if readNotFound(response) {
+			if readNotFound(response.ReadResult) {
 				return fmt.Errorf("resource %q was not found", args[0])
 			}
 			id := response.ID
@@ -643,7 +640,7 @@ func (pc *packageCommand) checkResourceInputs(
 	return checked.Properties, nil
 }
 
-func readNotFound(read plugin.ReadResponse) bool {
+func readNotFound(read plugin.ReadResult) bool {
 	return read.Outputs == nil || read.ID == ""
 }
 

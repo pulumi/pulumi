@@ -67,12 +67,12 @@ func TestResourceReferences(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -159,12 +159,12 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -239,12 +239,12 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil
@@ -319,12 +319,12 @@ func TestResourceReferences_GetResource(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{
 							ID:      req.ID,
 							Inputs:  &req.Inputs,
-							Outputs: &req.State,
+							Outputs: &req.Inputs,
 						},
 						Status: resource.StatusOK,
 					}, nil

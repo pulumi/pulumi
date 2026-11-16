@@ -62,10 +62,10 @@ func TestRefreshTargetChildren(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					count := atomic.AddInt32(&callCount, 1)
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
 							Outputs: new(property.NewMap(map[string]property.Value{
@@ -501,10 +501,10 @@ func TestRefreshExcludeTarget(t *testing.T) {
 			var callCount int32
 
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					count := atomic.AddInt32(&callCount, 1)
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
 							Outputs: new(property.NewMap(map[string]property.Value{
@@ -581,10 +581,10 @@ func TestRefreshExcludeChildren(t *testing.T) {
 			callCount := 0.0
 
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				RefreshF: func(_ context.Context, req plugin.RefreshRequest) (plugin.RefreshResponse, error) {
 					callCount++
 
-					return plugin.ReadResponse{
+					return plugin.RefreshResponse{
 						ReadResult: plugin.ReadResult{
 							ID: req.ID,
 							Outputs: new(property.NewMap(map[string]property.Value{
@@ -5649,8 +5649,8 @@ func TestTargetDependentsThroughReadResource(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
+					return plugin.ImportResponse{
 						ReadResult: plugin.ReadResult{ID: req.ID, Outputs: new(property.Map{})},
 						Status:     resource.StatusOK,
 					}, nil

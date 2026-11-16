@@ -98,14 +98,14 @@ func TestExtensionParameterizedProvider(t *testing.T) {
 						Status:     resource.StatusOK,
 					}, nil
 				},
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+				ImportF: func(_ context.Context, req plugin.ImportRequest) (plugin.ImportResponse, error) {
 					paramLock.Lock()
 					witnessed := len(paramCalls)
 					paramLock.Unlock()
 					assert.NotZero(t, witnessed,
 						"Parameterize must be witnessed before Read on the extension plugin")
-					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{ID: req.ID, Outputs: &req.State, Inputs: &req.Inputs},
+					return plugin.ImportResponse{
+						ReadResult: plugin.ReadResult{ID: req.ID, Outputs: &req.Inputs, Inputs: &req.Inputs},
 						Status:     resource.StatusOK,
 					}, nil
 				},
