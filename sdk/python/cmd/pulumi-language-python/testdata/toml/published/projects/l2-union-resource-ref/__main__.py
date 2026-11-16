@@ -1,14 +1,14 @@
 import pulumi
 import pulumi_unionref as unionref
 
-github = unionref.Github("github")
-gitlab = unionref.Gitlab("gitlab")
-pipeline = unionref.Pipeline("pipeline",
-    source=github,
-    program={
-        "source": gitlab,
+x = unionref.XType("x")
+y = unionref.YType("y")
+z = unionref.ZType("z",
+    value=x,
+    wrapper={
+        "value": y,
     },
-    sources=[
-        github,
-        gitlab,
+    values=[
+        x,
+        y,
     ])

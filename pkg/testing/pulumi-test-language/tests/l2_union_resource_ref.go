@@ -36,14 +36,14 @@ func init() {
 					r := RequireSingleNamedResource(l, res.Snap.Resources, name)
 					return resource.FromResourcePropertyValue(resource.MakeCustomResourceReference(r.URN, r.ID, ""))
 				}
-				github, gitlab := ref("github"), ref("gitlab")
+				x, y := ref("x"), ref("y")
 
-				pipeline := RequireSingleNamedResource(l, res.Snap.Resources, "pipeline")
+				z := RequireSingleNamedResource(l, res.Snap.Resources, "z")
 				assert.Equal(l, property.NewMap(map[string]property.Value{
-					"source":  github,
-					"program": property.New(map[string]property.Value{"source": gitlab}),
-					"sources": property.New([]property.Value{github, gitlab}),
-				}), resource.FromResourcePropertyMap(pipeline.Inputs))
+					"value":   x,
+					"wrapper": property.New(map[string]property.Value{"value": y}),
+					"values":  property.New([]property.Value{x, y}),
+				}), resource.FromResourcePropertyMap(z.Inputs))
 			},
 		}},
 	}

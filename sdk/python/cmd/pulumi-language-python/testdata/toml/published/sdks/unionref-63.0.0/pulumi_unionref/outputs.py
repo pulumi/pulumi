@@ -15,21 +15,21 @@ else:
 from . import _utilities
 
 __all__ = [
-    'Program',
+    'Wrapper',
 ]
 
 @pulumi.output_type
-class Program(dict):
+class Wrapper(dict):
     def __init__(__self__, *,
-                 source: Optional[Union['_github.Github', '_gitlab.Gitlab']] = None):
-        if source is not None:
-            pulumi.set(__self__, "source", source)
+                 value: Optional[Union['_x_type.XType', '_y_type.YType']] = None):
+        if value is not None:
+            pulumi.set(__self__, "value", value)
 
     @_builtins.property
     @pulumi.getter
-    def source(self) -> Optional[Union['_github.Github', '_gitlab.Gitlab']]:
-        return pulumi.get(self, "source")
+    def value(self) -> Optional[Union['_x_type.XType', '_y_type.YType']]:
+        return pulumi.get(self, "value")
 
 
-from . import github as _github
-from . import gitlab as _gitlab
+from . import x_type as _x_type
+from . import y_type as _y_type

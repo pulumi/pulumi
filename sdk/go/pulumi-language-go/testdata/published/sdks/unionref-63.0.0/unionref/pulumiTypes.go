@@ -13,142 +13,142 @@ import (
 
 var _ = internal.GetEnvOrDefault
 
-type Program struct {
-	Source interface{} `pulumi:"source"`
+type Wrapper struct {
+	Value interface{} `pulumi:"value"`
 }
 
-// ProgramInput is an input type that accepts ProgramArgs and ProgramOutput values.
-// You can construct a concrete instance of `ProgramInput` via:
+// WrapperInput is an input type that accepts WrapperArgs and WrapperOutput values.
+// You can construct a concrete instance of `WrapperInput` via:
 //
-//	ProgramArgs{...}
-type ProgramInput interface {
+//	WrapperArgs{...}
+type WrapperInput interface {
 	pulumi.Input
 
-	ToProgramOutput() ProgramOutput
-	ToProgramOutputWithContext(context.Context) ProgramOutput
+	ToWrapperOutput() WrapperOutput
+	ToWrapperOutputWithContext(context.Context) WrapperOutput
 }
 
-type ProgramArgs struct {
-	Source pulumi.Input `pulumi:"source"`
+type WrapperArgs struct {
+	Value pulumi.Input `pulumi:"value"`
 }
 
-func (ProgramArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*Program)(nil)).Elem()
+func (WrapperArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*Wrapper)(nil)).Elem()
 }
 
-func (i ProgramArgs) ToProgramOutput() ProgramOutput {
-	return i.ToProgramOutputWithContext(context.Background())
+func (i WrapperArgs) ToWrapperOutput() WrapperOutput {
+	return i.ToWrapperOutputWithContext(context.Background())
 }
 
-func (i ProgramArgs) ToProgramOutputWithContext(ctx context.Context) ProgramOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ProgramOutput)
+func (i WrapperArgs) ToWrapperOutputWithContext(ctx context.Context) WrapperOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(WrapperOutput)
 }
 
-func (i ProgramArgs) ToProgramPtrOutput() ProgramPtrOutput {
-	return i.ToProgramPtrOutputWithContext(context.Background())
+func (i WrapperArgs) ToWrapperPtrOutput() WrapperPtrOutput {
+	return i.ToWrapperPtrOutputWithContext(context.Background())
 }
 
-func (i ProgramArgs) ToProgramPtrOutputWithContext(ctx context.Context) ProgramPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ProgramOutput).ToProgramPtrOutputWithContext(ctx)
+func (i WrapperArgs) ToWrapperPtrOutputWithContext(ctx context.Context) WrapperPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(WrapperOutput).ToWrapperPtrOutputWithContext(ctx)
 }
 
-// ProgramPtrInput is an input type that accepts ProgramArgs, ProgramPtr and ProgramPtrOutput values.
-// You can construct a concrete instance of `ProgramPtrInput` via:
+// WrapperPtrInput is an input type that accepts WrapperArgs, WrapperPtr and WrapperPtrOutput values.
+// You can construct a concrete instance of `WrapperPtrInput` via:
 //
-//	        ProgramArgs{...}
+//	        WrapperArgs{...}
 //
 //	or:
 //
 //	        nil
-type ProgramPtrInput interface {
+type WrapperPtrInput interface {
 	pulumi.Input
 
-	ToProgramPtrOutput() ProgramPtrOutput
-	ToProgramPtrOutputWithContext(context.Context) ProgramPtrOutput
+	ToWrapperPtrOutput() WrapperPtrOutput
+	ToWrapperPtrOutputWithContext(context.Context) WrapperPtrOutput
 }
 
-type programPtrType ProgramArgs
+type wrapperPtrType WrapperArgs
 
-func ProgramPtr(v *ProgramArgs) ProgramPtrInput {
-	return (*programPtrType)(v)
+func WrapperPtr(v *WrapperArgs) WrapperPtrInput {
+	return (*wrapperPtrType)(v)
 }
 
-func (*programPtrType) ElementType() reflect.Type {
-	return reflect.TypeOf((**Program)(nil)).Elem()
+func (*wrapperPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**Wrapper)(nil)).Elem()
 }
 
-func (i *programPtrType) ToProgramPtrOutput() ProgramPtrOutput {
-	return i.ToProgramPtrOutputWithContext(context.Background())
+func (i *wrapperPtrType) ToWrapperPtrOutput() WrapperPtrOutput {
+	return i.ToWrapperPtrOutputWithContext(context.Background())
 }
 
-func (i *programPtrType) ToProgramPtrOutputWithContext(ctx context.Context) ProgramPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ProgramPtrOutput)
+func (i *wrapperPtrType) ToWrapperPtrOutputWithContext(ctx context.Context) WrapperPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(WrapperPtrOutput)
 }
 
-type ProgramOutput struct{ *pulumi.OutputState }
+type WrapperOutput struct{ *pulumi.OutputState }
 
-func (ProgramOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Program)(nil)).Elem()
+func (WrapperOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Wrapper)(nil)).Elem()
 }
 
-func (o ProgramOutput) ToProgramOutput() ProgramOutput {
+func (o WrapperOutput) ToWrapperOutput() WrapperOutput {
 	return o
 }
 
-func (o ProgramOutput) ToProgramOutputWithContext(ctx context.Context) ProgramOutput {
+func (o WrapperOutput) ToWrapperOutputWithContext(ctx context.Context) WrapperOutput {
 	return o
 }
 
-func (o ProgramOutput) ToProgramPtrOutput() ProgramPtrOutput {
-	return o.ToProgramPtrOutputWithContext(context.Background())
+func (o WrapperOutput) ToWrapperPtrOutput() WrapperPtrOutput {
+	return o.ToWrapperPtrOutputWithContext(context.Background())
 }
 
-func (o ProgramOutput) ToProgramPtrOutputWithContext(ctx context.Context) ProgramPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Program) *Program {
+func (o WrapperOutput) ToWrapperPtrOutputWithContext(ctx context.Context) WrapperPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Wrapper) *Wrapper {
 		return &v
-	}).(ProgramPtrOutput)
+	}).(WrapperPtrOutput)
 }
 
-func (o ProgramOutput) Source() pulumi.AnyOutput {
-	return o.ApplyT(func(v Program) interface{} { return v.Source }).(pulumi.AnyOutput)
+func (o WrapperOutput) Value() pulumi.AnyOutput {
+	return o.ApplyT(func(v Wrapper) interface{} { return v.Value }).(pulumi.AnyOutput)
 }
 
-type ProgramPtrOutput struct{ *pulumi.OutputState }
+type WrapperPtrOutput struct{ *pulumi.OutputState }
 
-func (ProgramPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Program)(nil)).Elem()
+func (WrapperPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**Wrapper)(nil)).Elem()
 }
 
-func (o ProgramPtrOutput) ToProgramPtrOutput() ProgramPtrOutput {
+func (o WrapperPtrOutput) ToWrapperPtrOutput() WrapperPtrOutput {
 	return o
 }
 
-func (o ProgramPtrOutput) ToProgramPtrOutputWithContext(ctx context.Context) ProgramPtrOutput {
+func (o WrapperPtrOutput) ToWrapperPtrOutputWithContext(ctx context.Context) WrapperPtrOutput {
 	return o
 }
 
-func (o ProgramPtrOutput) Elem() ProgramOutput {
-	return o.ApplyT(func(v *Program) Program {
+func (o WrapperPtrOutput) Elem() WrapperOutput {
+	return o.ApplyT(func(v *Wrapper) Wrapper {
 		if v != nil {
 			return *v
 		}
-		var ret Program
+		var ret Wrapper
 		return ret
-	}).(ProgramOutput)
+	}).(WrapperOutput)
 }
 
-func (o ProgramPtrOutput) Source() pulumi.AnyOutput {
-	return o.ApplyT(func(v *Program) interface{} {
+func (o WrapperPtrOutput) Value() pulumi.AnyOutput {
+	return o.ApplyT(func(v *Wrapper) interface{} {
 		if v == nil {
 			return nil
 		}
-		return v.Source
+		return v.Value
 	}).(pulumi.AnyOutput)
 }
 
 func init() {
-	pulumi.RegisterInputType(reflect.TypeOf((*ProgramInput)(nil)).Elem(), ProgramArgs{})
-	pulumi.RegisterInputType(reflect.TypeOf((*ProgramPtrInput)(nil)).Elem(), ProgramArgs{})
-	pulumi.RegisterOutputType(ProgramOutput{})
-	pulumi.RegisterOutputType(ProgramPtrOutput{})
+	pulumi.RegisterInputType(reflect.TypeOf((*WrapperInput)(nil)).Elem(), WrapperArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*WrapperPtrInput)(nil)).Elem(), WrapperArgs{})
+	pulumi.RegisterOutputType(WrapperOutput{})
+	pulumi.RegisterOutputType(WrapperPtrOutput{})
 }

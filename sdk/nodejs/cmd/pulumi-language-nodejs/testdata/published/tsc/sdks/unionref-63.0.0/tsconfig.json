@@ -19,14 +19,14 @@
         "skipLibCheck": true
     },
     "files": [
-        "github.ts",
-        "gitlab.ts",
         "index.ts",
-        "pipeline.ts",
         "provider.ts",
         "types/index.ts",
         "types/input.ts",
         "types/output.ts",
-        "utilities.ts"
+        "utilities.ts",
+        "xtype.ts",
+        "ytype.ts",
+        "ztype.ts"
     ]
 }

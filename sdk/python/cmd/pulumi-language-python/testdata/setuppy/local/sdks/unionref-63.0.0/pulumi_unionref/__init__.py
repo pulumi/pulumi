@@ -6,10 +6,10 @@ import builtins as _builtins
 from . import _utilities
 import typing
 # Export this package's modules as members:
-from .github import *
-from .gitlab import *
-from .pipeline import *
 from .provider import *
+from .x_type import *
+from .y_type import *
+from .z_type import *
 from ._inputs import *
 from . import outputs
 _utilities.register(
@@ -20,9 +20,9 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_unionref",
   "classes": {
-   "unionref:index:Github": "Github",
-   "unionref:index:Gitlab": "Gitlab",
-   "unionref:index:Pipeline": "Pipeline"
+   "unionref:index:XType": "XType",
+   "unionref:index:YType": "YType",
+   "unionref:index:ZType": "ZType"
   }
  }
 ]

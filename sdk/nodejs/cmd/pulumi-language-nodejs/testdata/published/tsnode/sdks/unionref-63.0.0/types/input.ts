@@ -5,8 +5,8 @@ import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
-import {Github, Gitlab} from "..";
+import {XType, YType} from "..";
 
-export interface ProgramArgs {
-    source?: pulumi.Input<Github | Gitlab | undefined>;
+export interface WrapperArgs {
+    value?: pulumi.Input<XType | YType | undefined>;
 }

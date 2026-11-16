@@ -5,25 +5,25 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
-export { GithubArgs } from "./github";
-export type Github = import("./github").Github;
-export const Github: typeof import("./github").Github = null as any;
-utilities.lazyLoad(exports, ["Github"], () => require("./github"));
-
-export { GitlabArgs } from "./gitlab";
-export type Gitlab = import("./gitlab").Gitlab;
-export const Gitlab: typeof import("./gitlab").Gitlab = null as any;
-utilities.lazyLoad(exports, ["Gitlab"], () => require("./gitlab"));
-
-export { PipelineArgs } from "./pipeline";
-export type Pipeline = import("./pipeline").Pipeline;
-export const Pipeline: typeof import("./pipeline").Pipeline = null as any;
-utilities.lazyLoad(exports, ["Pipeline"], () => require("./pipeline"));
-
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
+export { XTypeArgs } from "./xtype";
+export type XType = import("./xtype").XType;
+export const XType: typeof import("./xtype").XType = null as any;
+utilities.lazyLoad(exports, ["XType"], () => require("./xtype"));
+
+export { YTypeArgs } from "./ytype";
+export type YType = import("./ytype").YType;
+export const YType: typeof import("./ytype").YType = null as any;
+utilities.lazyLoad(exports, ["YType"], () => require("./ytype"));
+
+export { ZTypeArgs } from "./ztype";
+export type ZType = import("./ztype").ZType;
+export const ZType: typeof import("./ztype").ZType = null as any;
+utilities.lazyLoad(exports, ["ZType"], () => require("./ztype"));
 
 
 // Export sub-modules:
@@ -37,12 +37,12 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
-            case "unionref:index:Github":
-                return new Github(name, <any>undefined, { urn })
-            case "unionref:index:Gitlab":
-                return new Gitlab(name, <any>undefined, { urn })
-            case "unionref:index:Pipeline":
-                return new Pipeline(name, <any>undefined, { urn })
+            case "unionref:index:XType":
+                return new XType(name, <any>undefined, { urn })
+            case "unionref:index:YType":
+                return new YType(name, <any>undefined, { urn })
+            case "unionref:index:ZType":
+                return new ZType(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }

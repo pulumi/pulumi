@@ -7,22 +7,22 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		github, err := unionref.NewGithub(ctx, "github", nil)
+		x, err := unionref.NewXType(ctx, "x", nil)
 		if err != nil {
 			return err
 		}
-		gitlab, err := unionref.NewGitlab(ctx, "gitlab", nil)
+		y, err := unionref.NewYType(ctx, "y", nil)
 		if err != nil {
 			return err
 		}
-		_, err = unionref.NewPipeline(ctx, "pipeline", &unionref.PipelineArgs{
-			Source: github,
-			Program: &unionref.ProgramArgs{
-				Source: gitlab,
+		_, err = unionref.NewZType(ctx, "z", &unionref.ZTypeArgs{
+			Value: x,
+			Wrapper: &unionref.WrapperArgs{
+				Value: y,
 			},
-			Sources: pulumi.Array{
-				github,
-				gitlab,
+			Values: pulumi.Array{
+				x,
+				y,
 			},
 		})
 		if err != nil {

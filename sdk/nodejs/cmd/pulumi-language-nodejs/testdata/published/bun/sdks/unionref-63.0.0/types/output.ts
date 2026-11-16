@@ -5,9 +5,9 @@ import * as pulumi from "@pulumi/pulumi";
 import * as inputs from "../types/input";
 import * as outputs from "../types/output";
 
-import {Github, Gitlab} from "..";
+import {XType, YType} from "..";
 
-export interface Program {
-    source?: Github | Gitlab;
+export interface Wrapper {
+    value?: XType | YType;
 }
 

@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-// UnionRefProvider has a Pipeline resource whose inputs are typed as a union of two resource types: at the
+// UnionRefProvider has a ZType resource whose inputs are typed as a union of two resource types: at the
 // top level, inside an object type, and as the elements of a list.
 type UnionRefProvider struct {
 	plugin.UnimplementedProvider
@@ -35,9 +35,9 @@ type UnionRefProvider struct {
 var _ plugin.Provider = (*UnionRefProvider)(nil)
 
 var unionRefResources = map[string]bool{
-	"unionref:index:Github":   true,
-	"unionref:index:Gitlab":   true,
-	"unionref:index:Pipeline": true,
+	"unionref:index:XType": true,
+	"unionref:index:YType": true,
+	"unionref:index:ZType": true,
 }
 
 func (p *UnionRefProvider) Close() error { return nil }
@@ -56,14 +56,14 @@ func (p *UnionRefProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, er
 func (p *UnionRefProvider) GetSchema(
 	context.Context, plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
-	source := schema.TypeSpec{OneOf: []schema.TypeSpec{
-		{Ref: "#/resources/unionref:index:Github"},
-		{Ref: "#/resources/unionref:index:Gitlab"},
+	value := schema.TypeSpec{OneOf: []schema.TypeSpec{
+		{Ref: "#/resources/unionref:index:XType"},
+		{Ref: "#/resources/unionref:index:YType"},
 	}}
 	properties := map[string]schema.PropertySpec{
-		"source":  {TypeSpec: source},
-		"program": {TypeSpec: schema.TypeSpec{Ref: "#/types/unionref:index:Program"}},
-		"sources": {TypeSpec: schema.TypeSpec{Type: "array", Items: &source}},
+		"value":   {TypeSpec: value},
+		"wrapper": {TypeSpec: schema.TypeSpec{Ref: "#/types/unionref:index:Wrapper"}},
+		"values":  {TypeSpec: schema.TypeSpec{Type: "array", Items: &value}},
 	}
 	empty := schema.ResourceSpec{ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"}}
 
@@ -71,17 +71,17 @@ func (p *UnionRefProvider) GetSchema(
 		Name:    "unionref",
 		Version: "63.0.0",
 		Resources: map[string]schema.ResourceSpec{
-			"unionref:index:Github": empty,
-			"unionref:index:Gitlab": empty,
-			"unionref:index:Pipeline": {
+			"unionref:index:XType": empty,
+			"unionref:index:YType": empty,
+			"unionref:index:ZType": {
 				ObjectTypeSpec:  schema.ObjectTypeSpec{Type: "object", Properties: properties},
 				InputProperties: properties,
 			},
 		},
 		Types: map[string]schema.ComplexTypeSpec{
-			"unionref:index:Program": {ObjectTypeSpec: schema.ObjectTypeSpec{
+			"unionref:index:Wrapper": {ObjectTypeSpec: schema.ObjectTypeSpec{
 				Type:       "object",
-				Properties: map[string]schema.PropertySpec{"source": {TypeSpec: source}},
+				Properties: map[string]schema.PropertySpec{"value": {TypeSpec: value}},
 			}},
 		},
 	}

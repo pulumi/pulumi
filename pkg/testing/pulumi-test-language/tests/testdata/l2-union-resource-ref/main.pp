@@ -1,9 +1,9 @@
-resource "github" "unionref:index:Github" {}
+resource "x" "unionref:index:XType" {}
 
-resource "gitlab" "unionref:index:Gitlab" {}
+resource "y" "unionref:index:YType" {}
 
-resource "pipeline" "unionref:index:Pipeline" {
-    source = github
-    program = { source = gitlab }
-    sources = [github, gitlab]
+resource "z" "unionref:index:ZType" {
+    value = x
+    wrapper = { value = y }
+    values = [x, y]
 }

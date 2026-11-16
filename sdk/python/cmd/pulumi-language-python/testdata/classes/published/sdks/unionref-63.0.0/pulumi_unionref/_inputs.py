@@ -10,25 +10,25 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
-    'ProgramArgs',
+    'WrapperArgs',
 ]
 
 @pulumi.input_type
-class ProgramArgs:
+class WrapperArgs:
     def __init__(__self__, *,
-                 source: pulumi.Input[Optional[Union['_github.Github', '_gitlab.Gitlab']]] = None):
-        if source is not None:
-            pulumi.set(__self__, "source", source)
+                 value: pulumi.Input[Optional[Union['_x_type.XType', '_y_type.YType']]] = None):
+        if value is not None:
+            pulumi.set(__self__, "value", value)
 
     @_builtins.property
     @pulumi.getter
-    def source(self) -> pulumi.Input[Optional[Union['_github.Github', '_gitlab.Gitlab']]]:
-        return pulumi.get(self, "source")
+    def value(self) -> pulumi.Input[Optional[Union['_x_type.XType', '_y_type.YType']]]:
+        return pulumi.get(self, "value")
 
-    @source.setter
-    def source(self, value: pulumi.Input[Optional[Union['_github.Github', '_gitlab.Gitlab']]]):
-        pulumi.set(self, "source", value)
+    @value.setter
+    def value(self, value: pulumi.Input[Optional[Union['_x_type.XType', '_y_type.YType']]]):
+        pulumi.set(self, "value", value)
 
 
-from . import github as _github
-from . import gitlab as _gitlab
+from . import x_type as _x_type
+from . import y_type as _y_type
