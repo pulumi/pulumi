@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type GetSchemaRequest struct {
@@ -1103,4 +1104,20 @@ func checkFailures(failures []CheckConfigFailure) []CheckFailure {
 		result[i] = CheckFailure(f)
 	}
 	return result
+}
+
+// checkConfigFailureFromRPC converts a CheckConfig2 failure received from a provider.
+func checkConfigFailureFromRPC(failure *pulumirpc.CheckConfigFailure) CheckConfigFailure {
+	return CheckConfigFailure{
+		Property: resource.PropertyKey(failure.GetProperty()),
+		Reason:   failure.GetReason(),
+	}
+}
+
+// checkConfigFailureToRPC converts a failure to send in a CheckConfig2 response.
+func checkConfigFailureToRPC(failure CheckConfigFailure) *pulumirpc.CheckConfigFailure {
+	return &pulumirpc.CheckConfigFailure{
+		Property: string(failure.Property),
+		Reason:   failure.Reason,
+	}
 }
