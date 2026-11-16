@@ -56,6 +56,9 @@ func EnvVars(store env.Store) KV {
 
 func CI(ci bool) KV { return boolFact("ci", ci) }
 
+// ciutil detects the CI system; this maps it to the values we send, which the service's telemetry schema has to
+// accept. Keeping the list here means adding a CI system to ciutil doesn't change what is sent until the service
+// knows about it as well.
 var ciSystems = map[ciutil.SystemName]string{
 	ciutil.AppVeyor:                    "appveyor",
 	ciutil.AWSCodeBuild:                "aws-codebuild",
@@ -95,6 +98,8 @@ func Interactive(interactive bool) KV { return boolFact("interactive", interacti
 
 func AutomationAPI(automation bool) KV { return boolFact("automation-api", automation) }
 
+// agentdetect detects the agent; these are the values we send, which the service's telemetry schema has to accept.
+// AI_AGENT is free-form, so anything not listed is sent as "other".
 var agents = []string{
 	"antigravity", "augment-cli", "claude", "codex", "cowork", "cursor", "cursor-cli", "gemini",
 	"github-copilot", "goose", "opencode", "pi", "replit",
