@@ -610,7 +610,7 @@ func (ctx *Context) registerTransform(t ResourceTransform) (*pulumirpc.Callback,
 	return cb, nil
 }
 
-// registerTransform starts up a callback server if not already running and registers the given transform.
+// registerInvokeTransform starts up a callback server if not already running and registers the given invoke transform.
 func (ctx *Context) registerInvokeTransform(t InvokeTransform) (*pulumirpc.Callback, error) {
 	if !ctx.state.supportsInvokeTransforms {
 		return nil, errors.New("the Pulumi CLI does not support invoke transforms. Please update the Pulumi CLI")
