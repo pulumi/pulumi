@@ -384,9 +384,10 @@ func NewDestroyCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    cmdStack.VerifyingSecretsProvider(cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), sm),
-				Scopes:             backend.CancellationScopes,
-				CoherenceWindow:    coherenceWindow,
+				SecretsProvider: cmdStack.VerifyingSecretsProvider(
+					cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), sm),
+				Scopes:          backend.CancellationScopes,
+				CoherenceWindow: coherenceWindow,
 			})
 
 			out := cmd.OutOrStdout()
