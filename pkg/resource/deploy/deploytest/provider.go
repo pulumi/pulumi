@@ -115,6 +115,12 @@ func (prov *Provider) CheckConfig(
 	return prov.CheckConfigF(ctx, req)
 }
 
+func (prov *Provider) CheckConfig2(
+	ctx context.Context, req plugin.CheckConfigRequest,
+) (plugin.CheckConfigResponse, error) {
+	return prov.CheckConfig(ctx, req)
+}
+
 func (prov *Provider) DiffConfig(ctx context.Context, req plugin.DiffConfigRequest) (plugin.DiffConfigResponse, error) {
 	if prov.DiffConfigF == nil {
 		return plugin.DiffResult{}, nil

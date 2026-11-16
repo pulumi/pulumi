@@ -1673,21 +1673,21 @@ type CheckConfigRequest struct {
 	// The URN of the provider resource whose configuration is being checked, which may or may not be a [default
 	// provider](default-providers).
 	Urn string `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`
-	// The old configuration for the provider, if any.
-	Olds *structpb.Struct `protobuf:"bytes,2,opt,name=olds,proto3" json:"olds,omitempty"`
-	// The new configuration for the provider.
-	News *structpb.Struct `protobuf:"bytes,3,opt,name=news,proto3" json:"news,omitempty"`
-	// A random but deterministically computed hash, intended to be used for generating globally unique names.
-	RandomSeed []byte `protobuf:"bytes,5,opt,name=randomSeed,proto3" json:"randomSeed,omitempty"`
 	// The name of the provider resource being checked. This must match the name specified by the `urn` field, and is
 	// passed so that providers do not have to implement URN parsing in order to extract the name of the resource.
-	Name string `protobuf:"bytes,6,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// The type of the provider resource being checked. This must match the type specified by the `urn` field, and is
 	// passed so that providers do not have to implement URN parsing in order to extract the type of the resource.
-	Type string `protobuf:"bytes,7,opt,name=type,proto3" json:"type,omitempty"`
+	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
+	// The old input configuration for the provider, if any.
+	OldInputs *structpb.Struct `protobuf:"bytes,4,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`
+	// The new input configuration for the provider.
+	NewInputs *structpb.Struct `protobuf:"bytes,5,opt,name=new_inputs,json=newInputs,proto3" json:"new_inputs,omitempty"`
+	// A random but deterministically computed hash, intended to be used for generating globally unique names.
+	RandomSeed []byte `protobuf:"bytes,6,opt,name=random_seed,json=randomSeed,proto3" json:"random_seed,omitempty"`
 	// The previously persisted output properties of the provider resource, if any. Providers must not assume this is
 	// populated.
-	OldOutputs    *structpb.Struct `protobuf:"bytes,9,opt,name=old_outputs,json=oldOutputs,proto3" json:"old_outputs,omitempty"`
+	OldOutputs    *structpb.Struct `protobuf:"bytes,7,opt,name=old_outputs,json=oldOutputs,proto3" json:"old_outputs,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1729,27 +1729,6 @@ func (x *CheckConfigRequest) GetUrn() string {
 	return ""
 }
 
-func (x *CheckConfigRequest) GetOlds() *structpb.Struct {
-	if x != nil {
-		return x.Olds
-	}
-	return nil
-}
-
-func (x *CheckConfigRequest) GetNews() *structpb.Struct {
-	if x != nil {
-		return x.News
-	}
-	return nil
-}
-
-func (x *CheckConfigRequest) GetRandomSeed() []byte {
-	if x != nil {
-		return x.RandomSeed
-	}
-	return nil
-}
-
 func (x *CheckConfigRequest) GetName() string {
 	if x != nil {
 		return x.Name
@@ -1762,6 +1741,27 @@ func (x *CheckConfigRequest) GetType() string {
 		return x.Type
 	}
 	return ""
+}
+
+func (x *CheckConfigRequest) GetOldInputs() *structpb.Struct {
+	if x != nil {
+		return x.OldInputs
+	}
+	return nil
+}
+
+func (x *CheckConfigRequest) GetNewInputs() *structpb.Struct {
+	if x != nil {
+		return x.NewInputs
+	}
+	return nil
+}
+
+func (x *CheckConfigRequest) GetRandomSeed() []byte {
+	if x != nil {
+		return x.RandomSeed
+	}
+	return nil
 }
 
 func (x *CheckConfigRequest) GetOldOutputs() *structpb.Struct {
@@ -4793,18 +4793,19 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\bfailures\x18\x02 \x03(\v2\x17.pulumirpc.CheckFailureR\bfailures\"B\n" +
 	"\fCheckFailure\x12\x1a\n" +
 	"\bproperty\x18\x01 \x01(\tR\bproperty\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x8e\x02\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x99\x02\n" +
 	"\x12CheckConfigRequest\x12\x10\n" +
-	"\x03urn\x18\x01 \x01(\tR\x03urn\x12+\n" +
-	"\x04olds\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x04olds\x12+\n" +
-	"\x04news\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x04news\x12\x1e\n" +
+	"\x03urn\x18\x01 \x01(\tR\x03urn\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04type\x18\x03 \x01(\tR\x04type\x126\n" +
 	"\n" +
-	"randomSeed\x18\x05 \x01(\fR\n" +
-	"randomSeed\x12\x12\n" +
-	"\x04name\x18\x06 \x01(\tR\x04name\x12\x12\n" +
-	"\x04type\x18\a \x01(\tR\x04type\x128\n" +
-	"\vold_outputs\x18\t \x01(\v2\x17.google.protobuf.StructR\n" +
-	"oldOutputsJ\x04\b\x04\x10\x05J\x04\b\b\x10\t\"\x81\x01\n" +
+	"old_inputs\x18\x04 \x01(\v2\x17.google.protobuf.StructR\toldInputs\x126\n" +
+	"\n" +
+	"new_inputs\x18\x05 \x01(\v2\x17.google.protobuf.StructR\tnewInputs\x12\x1f\n" +
+	"\vrandom_seed\x18\x06 \x01(\fR\n" +
+	"randomSeed\x128\n" +
+	"\vold_outputs\x18\a \x01(\v2\x17.google.protobuf.StructR\n" +
+	"oldOutputs\"\x81\x01\n" +
 	"\x13CheckConfigResponse\x12/\n" +
 	"\x06inputs\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06inputs\x129\n" +
 	"\bfailures\x18\x02 \x03(\v2\x1d.pulumirpc.CheckConfigFailureR\bfailures\"H\n" +
@@ -5172,8 +5173,8 @@ var file_pulumi_provider_proto_depIdxs = []int32{
 	65, // 17: pulumirpc.CheckRequest.old_outputs:type_name -> google.protobuf.Struct
 	65, // 18: pulumirpc.CheckResponse.inputs:type_name -> google.protobuf.Struct
 	18, // 19: pulumirpc.CheckResponse.failures:type_name -> pulumirpc.CheckFailure
-	65, // 20: pulumirpc.CheckConfigRequest.olds:type_name -> google.protobuf.Struct
-	65, // 21: pulumirpc.CheckConfigRequest.news:type_name -> google.protobuf.Struct
+	65, // 20: pulumirpc.CheckConfigRequest.old_inputs:type_name -> google.protobuf.Struct
+	65, // 21: pulumirpc.CheckConfigRequest.new_inputs:type_name -> google.protobuf.Struct
 	65, // 22: pulumirpc.CheckConfigRequest.old_outputs:type_name -> google.protobuf.Struct
 	65, // 23: pulumirpc.CheckConfigResponse.inputs:type_name -> google.protobuf.Struct
 	21, // 24: pulumirpc.CheckConfigResponse.failures:type_name -> pulumirpc.CheckConfigFailure

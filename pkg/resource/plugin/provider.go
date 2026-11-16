@@ -219,7 +219,14 @@ type CheckConfigRequest struct {
 
 type CheckConfigResponse struct {
 	Properties property.Map
-	Failures   []CheckFailure
+	Failures   []CheckConfigFailure
+}
+
+// CheckConfigFailure indicates that a call to CheckConfig or CheckConfig2 failed; it contains the property and reason
+// for the failure.
+type CheckConfigFailure struct {
+	Property resource.PropertyKey // the provider configuration property that failed checking.
+	Reason   string               // the reason the property failed to check.
 }
 
 type DiffConfigRequest struct {
@@ -573,6 +580,9 @@ type Provider interface {
 
 	// CheckConfig validates the configuration for this resource provider.
 	CheckConfig(context.Context, CheckConfigRequest) (CheckConfigResponse, error)
+	// CheckConfig2 is the successor to CheckConfig. It has the same semantics, but is sent to the provider as a
+	// CheckConfig2 call, falling back to CheckConfig for providers that predate it.
+	CheckConfig2(context.Context, CheckConfigRequest) (CheckConfigResponse, error)
 	// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 	DiffConfig(context.Context, DiffConfigRequest) (DiffConfigResponse, error)
 	// Configure configures the resource provider with "globals" that control its behavior.

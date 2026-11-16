@@ -315,7 +315,8 @@ func (p *providerServer) Cancel(ctx context.Context, req *emptypb.Empty) (*empty
 func (p *providerServer) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	rpcInputs, failures, err := p.checkConfig(ctx, req, false /* checkConfig2 */)
+	rpcInputs, failures, err := p.checkConfig(ctx, "CheckConfig", p.provider.CheckConfig,
+		req.GetUrn(), req.GetName(), req.GetType(), req.GetOlds(), req.GetNews())
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +332,8 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 func (p *providerServer) CheckConfig2(ctx context.Context,
 	req *pulumirpc.CheckConfigRequest,
 ) (*pulumirpc.CheckConfigResponse, error) {
-	rpcInputs, failures, err := p.checkConfig(ctx, req, true /* checkConfig2 */)
+	rpcInputs, failures, err := p.checkConfig(ctx, "CheckConfig2", p.provider.CheckConfig2,
+		req.GetUrn(), req.GetName(), req.GetType(), req.GetOldInputs(), req.GetNewInputs())
 	if err != nil {
 		return nil, err
 	}
@@ -344,31 +346,24 @@ func (p *providerServer) CheckConfig2(ctx context.Context,
 	return &pulumirpc.CheckConfigResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
 }
 
-// checkConfigRequest is the part of a request that CheckConfig and CheckConfig2 have in common.
-type checkConfigRequest interface {
-	GetUrn() string
-	GetName() string
-	GetType() string
-	GetOlds() *structpb.Struct
-	GetNews() *structpb.Struct
-}
-
-// checkConfig answers CheckConfig, or CheckConfig2 if checkConfig2 is set, in which case it prefers the provider's
-// CheckConfig2 method.
+// checkConfig is the part of CheckConfig and CheckConfig2 that does not depend on their wire types. check is the
+// provider method to call.
 func (p *providerServer) checkConfig(
-	ctx context.Context, req checkConfigRequest, checkConfig2 bool,
+	ctx context.Context,
+	method string,
+	check func(context.Context, CheckConfigRequest) (CheckConfigResponse, error),
+	rawURN, name, typ string,
+	olds, news *structpb.Struct,
 ) (*structpb.Struct, []CheckConfigFailure, error) {
-	urn := resource.URN(req.GetUrn())
+	urn := resource.URN(rawURN)
 
 	// To support old engines fill in Name/Type if the engine didn't send them
-	name := req.GetName()
 	if name == "" {
 		name = urn.Name()
 	}
 	if name != urn.Name() {
 		return nil, nil, status.Error(codes.InvalidArgument, "name in request does not match URN")
 	}
-	typ := req.GetType()
 	if typ == "" {
 		typ = string(urn.Type())
 	}
@@ -376,7 +371,7 @@ func (p *providerServer) checkConfig(
 		return nil, nil, status.Error(codes.InvalidArgument, "type in request does not match URN")
 	}
 
-	rawState, err := propertyrpc.Unmarshal(req.GetOlds())
+	rawState, err := propertyrpc.Unmarshal(olds)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -385,7 +380,7 @@ func (p *providerServer) checkConfig(
 		return nil, nil, err
 	}
 
-	rawInputs, err := propertyrpc.Unmarshal(req.GetNews())
+	rawInputs, err := propertyrpc.Unmarshal(news)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -394,33 +389,24 @@ func (p *providerServer) checkConfig(
 		return nil, nil, err
 	}
 
-	checkReq := CheckConfigRequest{
+	resp, err := check(ctx, CheckConfigRequest{
 		URN:           urn,
 		Name:          name,
 		Type:          tokens.Type(typ),
 		Olds:          state,
 		News:          inputs,
 		AllowUnknowns: true,
-	}
-	var resp CheckConfig2Response
-	if checkConfig2 {
-		resp, err = CheckConfig2(ctx, p.provider, checkReq)
-	} else {
-		var r CheckConfigResponse
-		r, err = p.provider.CheckConfig(ctx, checkReq)
-		resp = CheckConfig2Response{Properties: r.Properties, Failures: checkConfigFailures(r.Failures)}
-	}
+	})
 	if err != nil {
-		return nil, nil, p.checkNYI("CheckConfig", err)
+		return nil, nil, p.checkNYI(method, err)
 	}
 
 	filteredInputs, err := FilterProperties(resp.Properties, p.marshalFilterOptions())
 	if err != nil {
 		return nil, nil, err
 	}
-	rpcInputs := propertyrpc.Marshal(filteredInputs)
 
-	return rpcInputs, resp.Failures, nil
+	return propertyrpc.Marshal(filteredInputs), resp.Failures, nil
 }
 
 func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {

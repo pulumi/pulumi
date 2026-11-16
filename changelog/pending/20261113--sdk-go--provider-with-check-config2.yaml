@@ -1,3 +1,0 @@
-component: sdk/go
-kind: feat
-body: Add the optional `plugin.ProviderWithCheckConfig2` interface for providers that implement `CheckConfig2`

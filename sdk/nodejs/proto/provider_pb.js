@@ -6864,11 +6864,11 @@ proto.pulumirpc.CheckConfigRequest.prototype.toObject = function(opt_includeInst
 proto.pulumirpc.CheckConfigRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
 urn: jspb.Message.getFieldWithDefault(msg, 1, ""),
-olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-randomseed: msg.getRandomseed_asB64(),
-name: jspb.Message.getFieldWithDefault(msg, 6, ""),
-type: jspb.Message.getFieldWithDefault(msg, 7, ""),
+name: jspb.Message.getFieldWithDefault(msg, 2, ""),
+type: jspb.Message.getFieldWithDefault(msg, 3, ""),
+oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+newInputs: (f = msg.getNewInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
+randomSeed: msg.getRandomSeed_asB64(),
 oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
@@ -6911,28 +6911,28 @@ proto.pulumirpc.CheckConfigRequest.deserializeBinaryFromReader = function(msg, r
       msg.setUrn(value);
       break;
     case 2:
-      var value = new google_protobuf_struct_pb.Struct;
-      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
-      msg.setOlds(value);
-      break;
-    case 3:
-      var value = new google_protobuf_struct_pb.Struct;
-      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
-      msg.setNews(value);
-      break;
-    case 5:
-      var value = /** @type {!Uint8Array} */ (reader.readBytes());
-      msg.setRandomseed(value);
-      break;
-    case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setName(value);
       break;
-    case 7:
+    case 3:
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
       break;
-    case 9:
+    case 4:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setOldInputs(value);
+      break;
+    case 5:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setNewInputs(value);
+      break;
+    case 6:
+      var value = /** @type {!Uint8Array} */ (reader.readBytes());
+      msg.setRandomSeed(value);
+      break;
+    case 7:
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setOldOutputs(value);
@@ -6973,47 +6973,47 @@ proto.pulumirpc.CheckConfigRequest.serializeBinaryToWriter = function(message, w
       f
     );
   }
-  f = message.getOlds();
-  if (f != null) {
-    writer.writeMessage(
-      2,
-      f,
-      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
-  f = message.getNews();
-  if (f != null) {
-    writer.writeMessage(
-      3,
-      f,
-      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
-  f = message.getRandomseed_asU8();
-  if (f.length > 0) {
-    writer.writeBytes(
-      5,
-      f
-    );
-  }
   f = message.getName();
   if (f.length > 0) {
     writer.writeString(
-      6,
+      2,
       f
     );
   }
   f = message.getType();
   if (f.length > 0) {
     writer.writeString(
-      7,
+      3,
+      f
+    );
+  }
+  f = message.getOldInputs();
+  if (f != null) {
+    writer.writeMessage(
+      4,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getNewInputs();
+  if (f != null) {
+    writer.writeMessage(
+      5,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
+  f = message.getRandomSeed_asU8();
+  if (f.length > 0) {
+    writer.writeBytes(
+      6,
       f
     );
   }
   f = message.getOldOutputs();
   if (f != null) {
     writer.writeMessage(
-      9,
+      7,
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
@@ -7040,127 +7040,11 @@ proto.pulumirpc.CheckConfigRequest.prototype.setUrn = function(value) {
 
 
 /**
- * optional google.protobuf.Struct olds = 2;
- * @return {?proto.google.protobuf.Struct}
- */
-proto.pulumirpc.CheckConfigRequest.prototype.getOlds = function() {
-  return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 2));
-};
-
-
-/**
- * @param {?proto.google.protobuf.Struct|undefined} value
- * @return {!proto.pulumirpc.CheckConfigRequest} returns this
-*/
-proto.pulumirpc.CheckConfigRequest.prototype.setOlds = function(value) {
-  return jspb.Message.setWrapperField(this, 2, value);
-};
-
-
-/**
- * Clears the message field making it undefined.
- * @return {!proto.pulumirpc.CheckConfigRequest} returns this
- */
-proto.pulumirpc.CheckConfigRequest.prototype.clearOlds = function() {
-  return this.setOlds(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.pulumirpc.CheckConfigRequest.prototype.hasOlds = function() {
-  return jspb.Message.getField(this, 2) != null;
-};
-
-
-/**
- * optional google.protobuf.Struct news = 3;
- * @return {?proto.google.protobuf.Struct}
- */
-proto.pulumirpc.CheckConfigRequest.prototype.getNews = function() {
-  return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 3));
-};
-
-
-/**
- * @param {?proto.google.protobuf.Struct|undefined} value
- * @return {!proto.pulumirpc.CheckConfigRequest} returns this
-*/
-proto.pulumirpc.CheckConfigRequest.prototype.setNews = function(value) {
-  return jspb.Message.setWrapperField(this, 3, value);
-};
-
-
-/**
- * Clears the message field making it undefined.
- * @return {!proto.pulumirpc.CheckConfigRequest} returns this
- */
-proto.pulumirpc.CheckConfigRequest.prototype.clearNews = function() {
-  return this.setNews(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.pulumirpc.CheckConfigRequest.prototype.hasNews = function() {
-  return jspb.Message.getField(this, 3) != null;
-};
-
-
-/**
- * optional bytes randomSeed = 5;
- * @return {!(string|Uint8Array)}
- */
-proto.pulumirpc.CheckConfigRequest.prototype.getRandomseed = function() {
-  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
-};
-
-
-/**
- * optional bytes randomSeed = 5;
- * This is a type-conversion wrapper around `getRandomseed()`
- * @return {string}
- */
-proto.pulumirpc.CheckConfigRequest.prototype.getRandomseed_asB64 = function() {
-  return /** @type {string} */ (jspb.Message.bytesAsB64(
-      this.getRandomseed()));
-};
-
-
-/**
- * optional bytes randomSeed = 5;
- * Note that Uint8Array is not supported on all browsers.
- * @see http://caniuse.com/Uint8Array
- * This is a type-conversion wrapper around `getRandomseed()`
- * @return {!Uint8Array}
- */
-proto.pulumirpc.CheckConfigRequest.prototype.getRandomseed_asU8 = function() {
-  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
-      this.getRandomseed()));
-};
-
-
-/**
- * @param {!(string|Uint8Array)} value
- * @return {!proto.pulumirpc.CheckConfigRequest} returns this
- */
-proto.pulumirpc.CheckConfigRequest.prototype.setRandomseed = function(value) {
-  return jspb.Message.setProto3BytesField(this, 5, value);
-};
-
-
-/**
- * optional string name = 6;
+ * optional string name = 2;
  * @return {string}
  */
 proto.pulumirpc.CheckConfigRequest.prototype.getName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
@@ -7169,16 +7053,16 @@ proto.pulumirpc.CheckConfigRequest.prototype.getName = function() {
  * @return {!proto.pulumirpc.CheckConfigRequest} returns this
  */
 proto.pulumirpc.CheckConfigRequest.prototype.setName = function(value) {
-  return jspb.Message.setProto3StringField(this, 6, value);
+  return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional string type = 7;
+ * optional string type = 3;
  * @return {string}
  */
 proto.pulumirpc.CheckConfigRequest.prototype.getType = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
@@ -7187,17 +7071,133 @@ proto.pulumirpc.CheckConfigRequest.prototype.getType = function() {
  * @return {!proto.pulumirpc.CheckConfigRequest} returns this
  */
 proto.pulumirpc.CheckConfigRequest.prototype.setType = function(value) {
-  return jspb.Message.setProto3StringField(this, 7, value);
+  return jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
 /**
- * optional google.protobuf.Struct old_outputs = 9;
+ * optional google.protobuf.Struct old_inputs = 4;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.getOldInputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 4));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.CheckConfigRequest} returns this
+*/
+proto.pulumirpc.CheckConfigRequest.prototype.setOldInputs = function(value) {
+  return jspb.Message.setWrapperField(this, 4, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.CheckConfigRequest} returns this
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.clearOldInputs = function() {
+  return this.setOldInputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.hasOldInputs = function() {
+  return jspb.Message.getField(this, 4) != null;
+};
+
+
+/**
+ * optional google.protobuf.Struct new_inputs = 5;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.getNewInputs = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 5));
+};
+
+
+/**
+ * @param {?proto.google.protobuf.Struct|undefined} value
+ * @return {!proto.pulumirpc.CheckConfigRequest} returns this
+*/
+proto.pulumirpc.CheckConfigRequest.prototype.setNewInputs = function(value) {
+  return jspb.Message.setWrapperField(this, 5, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.CheckConfigRequest} returns this
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.clearNewInputs = function() {
+  return this.setNewInputs(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.hasNewInputs = function() {
+  return jspb.Message.getField(this, 5) != null;
+};
+
+
+/**
+ * optional bytes random_seed = 6;
+ * @return {!(string|Uint8Array)}
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.getRandomSeed = function() {
+  return /** @type {!(string|Uint8Array)} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/**
+ * optional bytes random_seed = 6;
+ * This is a type-conversion wrapper around `getRandomSeed()`
+ * @return {string}
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.getRandomSeed_asB64 = function() {
+  return /** @type {string} */ (jspb.Message.bytesAsB64(
+      this.getRandomSeed()));
+};
+
+
+/**
+ * optional bytes random_seed = 6;
+ * Note that Uint8Array is not supported on all browsers.
+ * @see http://caniuse.com/Uint8Array
+ * This is a type-conversion wrapper around `getRandomSeed()`
+ * @return {!Uint8Array}
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.getRandomSeed_asU8 = function() {
+  return /** @type {!Uint8Array} */ (jspb.Message.bytesAsU8(
+      this.getRandomSeed()));
+};
+
+
+/**
+ * @param {!(string|Uint8Array)} value
+ * @return {!proto.pulumirpc.CheckConfigRequest} returns this
+ */
+proto.pulumirpc.CheckConfigRequest.prototype.setRandomSeed = function(value) {
+  return jspb.Message.setProto3BytesField(this, 6, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct old_outputs = 7;
  * @return {?proto.google.protobuf.Struct}
  */
 proto.pulumirpc.CheckConfigRequest.prototype.getOldOutputs = function() {
   return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 9));
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 7));
 };
 
 
@@ -7206,7 +7206,7 @@ proto.pulumirpc.CheckConfigRequest.prototype.getOldOutputs = function() {
  * @return {!proto.pulumirpc.CheckConfigRequest} returns this
 */
 proto.pulumirpc.CheckConfigRequest.prototype.setOldOutputs = function(value) {
-  return jspb.Message.setWrapperField(this, 9, value);
+  return jspb.Message.setWrapperField(this, 7, value);
 };
 
 
@@ -7224,7 +7224,7 @@ proto.pulumirpc.CheckConfigRequest.prototype.clearOldOutputs = function() {
  * @return {boolean}
  */
 proto.pulumirpc.CheckConfigRequest.prototype.hasOldOutputs = function() {
-  return jspb.Message.getField(this, 9) != null;
+  return jspb.Message.getField(this, 7) != null;
 };
 
 

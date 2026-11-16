@@ -774,24 +774,24 @@ export namespace CheckFailure {
 export class CheckConfigRequest extends jspb.Message { 
     getUrn(): string;
     setUrn(value: string): CheckConfigRequest;
-
-    hasOlds(): boolean;
-    clearOlds(): void;
-    getOlds(): google_protobuf_struct_pb.Struct | undefined;
-    setOlds(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
-
-    hasNews(): boolean;
-    clearNews(): void;
-    getNews(): google_protobuf_struct_pb.Struct | undefined;
-    setNews(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
-    getRandomseed(): Uint8Array | string;
-    getRandomseed_asU8(): Uint8Array;
-    getRandomseed_asB64(): string;
-    setRandomseed(value: Uint8Array | string): CheckConfigRequest;
     getName(): string;
     setName(value: string): CheckConfigRequest;
     getType(): string;
     setType(value: string): CheckConfigRequest;
+
+    hasOldInputs(): boolean;
+    clearOldInputs(): void;
+    getOldInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setOldInputs(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+
+    hasNewInputs(): boolean;
+    clearNewInputs(): void;
+    getNewInputs(): google_protobuf_struct_pb.Struct | undefined;
+    setNewInputs(value?: google_protobuf_struct_pb.Struct): CheckConfigRequest;
+    getRandomSeed(): Uint8Array | string;
+    getRandomSeed_asU8(): Uint8Array;
+    getRandomSeed_asB64(): string;
+    setRandomSeed(value: Uint8Array | string): CheckConfigRequest;
 
     hasOldOutputs(): boolean;
     clearOldOutputs(): void;
@@ -811,11 +811,11 @@ export class CheckConfigRequest extends jspb.Message {
 export namespace CheckConfigRequest {
     export type AsObject = {
         urn: string,
-        olds?: google_protobuf_struct_pb.Struct.AsObject,
-        news?: google_protobuf_struct_pb.Struct.AsObject,
-        randomseed: Uint8Array | string,
         name: string,
         type: string,
+        oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        newInputs?: google_protobuf_struct_pb.Struct.AsObject,
+        randomSeed: Uint8Array | string,
         oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
     }
 }

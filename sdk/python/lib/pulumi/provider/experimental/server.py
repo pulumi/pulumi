@@ -494,9 +494,9 @@ class ProviderServicer(ResourceProviderServicer):
         resp = await self._provider.check_config(
             provider.CheckRequest(
                 request.urn,
-                PropertyValue.unmarshal_map(request.olds),
-                PropertyValue.unmarshal_map(request.news),
-                request.randomSeed,
+                PropertyValue.unmarshal_map(request.old_inputs),
+                PropertyValue.unmarshal_map(request.new_inputs),
+                request.random_seed,
             )
         )
         return proto.CheckConfigResponse(

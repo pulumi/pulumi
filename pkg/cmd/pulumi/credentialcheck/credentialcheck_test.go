@@ -198,7 +198,7 @@ func TestProbeFailures(t *testing.T) {
 
 	mock := &plugin.MockProvider{
 		CheckConfigF: func(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
-			return plugin.CheckConfigResponse{Failures: []plugin.CheckFailure{
+			return plugin.CheckConfigResponse{Failures: []plugin.CheckConfigFailure{
 				{Property: "region", Reason: "expected a valid region"},
 				{Reason: "unable to validate AWS credentials.\nDetails: no valid credential sources found"},
 			}}, nil
@@ -288,7 +288,7 @@ func TestProbeErrorIncludesDocURL(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		checkFailures []plugin.CheckFailure
+		checkFailures []plugin.CheckConfigFailure
 		configureErr  error
 	}{
 		{
@@ -297,7 +297,7 @@ func TestProbeErrorIncludesDocURL(t *testing.T) {
 		},
 		{
 			name: "check failure",
-			checkFailures: []plugin.CheckFailure{
+			checkFailures: []plugin.CheckConfigFailure{
 				{Reason: "unable to validate AWS credentials.\nSee " + awsDocURL},
 			},
 		},

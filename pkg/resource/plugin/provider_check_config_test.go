@@ -68,7 +68,7 @@ func TestProvider_CheckConfig_prefersCheckConfig2(t *testing.T) {
 		checkConfig2: func(req *pulumirpc.CheckConfigRequest) (*pulumirpc.CheckConfigResponse, error) {
 			got = req
 			return &pulumirpc.CheckConfigResponse{
-				Inputs:   req.GetNews(),
+				Inputs:   req.GetNewInputs(),
 				Failures: []*pulumirpc.CheckConfigFailure{{Property: "region", Reason: "bad region"}},
 			}, nil
 		},
@@ -82,10 +82,10 @@ func TestProvider_CheckConfig_prefersCheckConfig2(t *testing.T) {
 	assert.Equal(t, "urn:pulumi:org/proj/dev::foo::pulumi:providers:pkg::default", got.GetUrn())
 	assert.Equal(t, "default", got.GetName())
 	assert.Equal(t, "pulumi:providers:pkg", got.GetType())
-	assert.Equal(t, "us-west-2", got.GetNews().GetFields()["region"].GetStringValue())
+	assert.Equal(t, "us-west-2", got.GetNewInputs().GetFields()["region"].GetStringValue())
 
 	assert.Equal(t, property.New("us-west-2"), resp.Properties.Get("region"))
-	assert.Equal(t, []CheckFailure{{Property: "region", Reason: "bad region"}}, resp.Failures)
+	assert.Equal(t, []CheckConfigFailure{{Property: "region", Reason: "bad region"}}, resp.Failures)
 }
 
 func TestProvider_CheckConfig_fallsBackToCheckConfig(t *testing.T) {
@@ -116,7 +116,7 @@ func TestProvider_CheckConfig_fallsBackToCheckConfig(t *testing.T) {
 	assert.Equal(t, "us-west-2", got.GetNews().GetFields()["region"].GetStringValue())
 
 	assert.Equal(t, property.New("us-west-2"), resp.Properties.Get("region"))
-	assert.Equal(t, []CheckFailure{{Property: "region", Reason: "bad region"}}, resp.Failures)
+	assert.Equal(t, []CheckConfigFailure{{Property: "region", Reason: "bad region"}}, resp.Failures)
 }
 
 func TestProvider_CheckConfig_neitherImplemented(t *testing.T) {
@@ -164,8 +164,12 @@ type checkConfigProvider struct {
 func (p *checkConfigProvider) CheckConfig(_ context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {
 	return CheckConfigResponse{
 		Properties: req.News,
-		Failures:   []CheckFailure{{Property: "region", Reason: string(req.Type) + "/" + req.Name}},
+		Failures:   []CheckConfigFailure{{Property: "region", Reason: string(req.Type) + "/" + req.Name}},
 	}, nil
+}
+
+func (p *checkConfigProvider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {
+	return p.CheckConfig(ctx, req)
 }
 
 func TestProviderServer_CheckConfig2_matchesCheckConfig(t *testing.T) {
@@ -179,7 +183,7 @@ func TestProviderServer_CheckConfig2_matchesCheckConfig(t *testing.T) {
 
 	resp, err := srv.CheckConfig(t.Context(), &pulumirpc.CheckRequest{Urn: urn, News: news})
 	require.NoError(t, err)
-	resp2, err := srv.CheckConfig2(t.Context(), &pulumirpc.CheckConfigRequest{Urn: urn, News: news})
+	resp2, err := srv.CheckConfig2(t.Context(), &pulumirpc.CheckConfigRequest{Urn: urn, NewInputs: news})
 	require.NoError(t, err)
 
 	assert.Equal(t, "us-west-2", resp2.GetInputs().GetFields()["region"].GetStringValue())
@@ -190,7 +194,7 @@ func TestProviderServer_CheckConfig2_matchesCheckConfig(t *testing.T) {
 	assert.Equal(t, "pulumi:providers:pkg/default", resp2.GetFailures()[0].GetReason())
 	assert.Equal(t, resp.GetFailures()[0].GetReason(), resp2.GetFailures()[0].GetReason())
 
-	_, err = srv.CheckConfig2(t.Context(), &pulumirpc.CheckConfigRequest{Urn: urn, Name: "other", News: news})
+	_, err = srv.CheckConfig2(t.Context(), &pulumirpc.CheckConfigRequest{Urn: urn, Name: "other", NewInputs: news})
 	assert.Equal(t, codes.InvalidArgument, status.Code(err))
 }
 
@@ -200,10 +204,10 @@ func TestProviderServer_CheckConfig2_prefersProviderCheckConfig2(t *testing.T) {
 	urn := "urn:pulumi:org/proj/dev::foo::pulumi:providers:pkg::default"
 	srv := NewProviderServer(&MockProvider{
 		CheckConfigF: func(context.Context, CheckConfigRequest) (CheckConfigResponse, error) {
-			return CheckConfigResponse{Failures: []CheckFailure{{Property: "region", Reason: "from CheckConfig"}}}, nil
+			return CheckConfigResponse{Failures: []CheckConfigFailure{{Property: "region", Reason: "from CheckConfig"}}}, nil
 		},
-		CheckConfig2F: func(context.Context, CheckConfigRequest) (CheckConfig2Response, error) {
-			return CheckConfig2Response{
+		CheckConfig2F: func(context.Context, CheckConfigRequest) (CheckConfigResponse, error) {
+			return CheckConfigResponse{
 				Failures: []CheckConfigFailure{{Property: "region", Reason: "from CheckConfig2"}},
 			}, nil
 		},
@@ -220,13 +224,25 @@ func TestProviderServer_CheckConfig2_prefersProviderCheckConfig2(t *testing.T) {
 	assert.Equal(t, "from CheckConfig2", resp2.GetFailures()[0].GetReason())
 }
 
-func TestCheckConfig2_fallsBackToCheckConfig(t *testing.T) {
+func TestProviderServer_CheckConfig2_unimplementedByProvider(t *testing.T) {
 	t.Parallel()
 
-	// checkConfigProvider does not implement ProviderWithCheckConfig2.
-	req := checkConfigTestRequest()
-	resp, err := CheckConfig2(t.Context(), &checkConfigProvider{}, req)
+	// A provider that only implements CheckConfig answers CheckConfig2 with Unimplemented, which tells the caller to
+	// fall back to CheckConfig.
+	srv := NewProviderServer(&onlyCheckConfigProvider{})
+	urn := "urn:pulumi:org/proj/dev::foo::pulumi:providers:pkg::default"
+
+	_, err := srv.CheckConfig2(t.Context(), &pulumirpc.CheckConfigRequest{Urn: urn})
+	assert.Equal(t, codes.Unimplemented, status.Code(err))
+
+	_, err = srv.CheckConfig(t.Context(), &pulumirpc.CheckRequest{Urn: urn})
 	require.NoError(t, err)
-	assert.Equal(t, req.News, resp.Properties)
-	assert.Equal(t, []CheckConfigFailure{{Property: "region", Reason: "/"}}, resp.Failures)
+}
+
+type onlyCheckConfigProvider struct {
+	UnimplementedProvider
+}
+
+func (p *onlyCheckConfigProvider) CheckConfig(_ context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {
+	return CheckConfigResponse{Properties: req.News}, nil
 }

@@ -91,12 +91,12 @@ func (p *ExistsProvider) CheckConfig(
 	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "missing version"),
+			Failures: makeCheckConfigFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() || version.AsString() != p.version().String() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", fmt.Sprintf("version is not %s", p.version())),
+			Failures: makeCheckConfigFailure("version", fmt.Sprintf("version is not %s", p.version())),
 		}, nil
 	}
 

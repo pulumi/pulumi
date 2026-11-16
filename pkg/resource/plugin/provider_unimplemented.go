@@ -60,6 +60,10 @@ func (p *UnimplementedProvider) CheckConfig(context.Context, CheckConfigRequest)
 	return CheckConfigResponse{}, status.Error(codes.Unimplemented, "CheckConfig is not yet implemented")
 }
 
+func (p *UnimplementedProvider) CheckConfig2(context.Context, CheckConfigRequest) (CheckConfigResponse, error) {
+	return CheckConfigResponse{}, status.Error(codes.Unimplemented, "CheckConfig2 is not yet implemented")
+}
+
 func (p *UnimplementedProvider) DiffConfig(context.Context, DiffConfigRequest) (DiffConfigResponse, error) {
 	return DiffResult{}, status.Error(codes.Unimplemented, "DiffConfig is not yet implemented")
 }
