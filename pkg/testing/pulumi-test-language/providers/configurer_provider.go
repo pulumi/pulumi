@@ -211,17 +211,17 @@ func (p *ConfigurerProvider) CheckConfig(
 ) (plugin.CheckConfigResponse, error) {
 	version, ok := req.News.GetOk("version")
 	if !ok {
-		return plugin.CheckConfigResponse{Failures: makeCheckConfigFailure("version", "missing version")}, nil
+		return plugin.CheckConfigResponse{Failures: makeCheckFailure("version", "missing version")}, nil
 	}
 	if !version.IsString() || version.AsString() != configurerVersion {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("version", "unexpected version"),
+			Failures: makeCheckFailure("version", "unexpected version"),
 		}, nil
 	}
 	// Expect version and optionally config.
 	if req.News.Len() > 2 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 	return plugin.CheckConfigResponse{Properties: req.News}, nil

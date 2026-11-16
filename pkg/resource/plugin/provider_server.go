@@ -315,7 +315,11 @@ func (p *providerServer) Cancel(ctx context.Context, req *emptypb.Empty) (*empty
 func (p *providerServer) CheckConfig(ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	rpcInputs, failures, err := p.checkConfig(ctx, "CheckConfig", p.provider.CheckConfig,
+	check := func(ctx context.Context, req CheckConfigRequest) (CheckConfig2Response, error) {
+		resp, err := p.provider.CheckConfig(ctx, req)
+		return CheckConfig2Response{Properties: resp.Properties, Failures: checkConfigFailures(resp.Failures)}, err
+	}
+	rpcInputs, failures, err := p.checkConfig(ctx, "CheckConfig", check,
 		req.GetUrn(), req.GetName(), req.GetType(), req.GetOlds(), req.GetNews())
 	if err != nil {
 		return nil, err
@@ -351,7 +355,7 @@ func (p *providerServer) CheckConfig2(ctx context.Context,
 func (p *providerServer) checkConfig(
 	ctx context.Context,
 	method string,
-	check func(context.Context, CheckConfigRequest) (CheckConfigResponse, error),
+	check func(context.Context, CheckConfigRequest) (CheckConfig2Response, error),
 	rawURN, name, typ string,
 	olds, news *structpb.Struct,
 ) (*structpb.Struct, []CheckConfigFailure, error) {

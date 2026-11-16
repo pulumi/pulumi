@@ -601,9 +601,9 @@ func (r *Registry) CheckConfig(context.Context, plugin.CheckConfigRequest) (plug
 }
 
 // CheckConfig2 validates the configuration for this resource provider.
-func (r *Registry) CheckConfig2(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfigResponse, error) {
+func (r *Registry) CheckConfig2(context.Context, plugin.CheckConfigRequest) (plugin.CheckConfig2Response, error) {
 	contract.Failf("CheckConfig2 must not be called on the provider registry")
-	return plugin.CheckConfigResponse{}, errors.New("the provider registry is not configurable")
+	return plugin.CheckConfig2Response{}, errors.New("the provider registry is not configurable")
 }
 
 // DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
@@ -688,11 +688,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	})
 	if len(resp.Failures) != 0 || err != nil {
 		contract.IgnoreClose(provider)
-		var failures []plugin.CheckFailure
-		for _, f := range resp.Failures {
-			failures = append(failures, plugin.CheckFailure(f))
-		}
-		return plugin.CheckResponse{Failures: failures}, err
+		return plugin.CheckResponse{Failures: resp.Failures}, err
 	}
 
 	// Create a provider reference using the URN and the unconfigured ID and register the provider.

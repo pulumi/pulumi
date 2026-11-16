@@ -97,13 +97,6 @@ func makeCheckFailure(property resource.PropertyKey, reason string) []plugin.Che
 	}}
 }
 
-func makeCheckConfigFailure(property resource.PropertyKey, reason string) []plugin.CheckConfigFailure {
-	return []plugin.CheckConfigFailure{{
-		Property: property,
-		Reason:   reason,
-	}}
-}
-
 func (p *SimpleProvider) CheckConfig(
 	_ context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
@@ -111,23 +104,23 @@ func (p *SimpleProvider) CheckConfig(
 	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("version", "missing version"),
+			Failures: makeCheckFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("version", "version is not a string"),
+			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
 	if version.AsString() != p.version().String() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("version", fmt.Sprintf("version is not %s", p.version())),
+			Failures: makeCheckFailure("version", fmt.Sprintf("version is not %s", p.version())),
 		}, nil
 	}
 
 	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 

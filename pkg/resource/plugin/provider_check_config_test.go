@@ -85,7 +85,7 @@ func TestProvider_CheckConfig_prefersCheckConfig2(t *testing.T) {
 	assert.Equal(t, "us-west-2", got.GetNewInputs().GetFields()["region"].GetStringValue())
 
 	assert.Equal(t, property.New("us-west-2"), resp.Properties.Get("region"))
-	assert.Equal(t, []CheckConfigFailure{{Property: "region", Reason: "bad region"}}, resp.Failures)
+	assert.Equal(t, []CheckFailure{{Property: "region", Reason: "bad region"}}, resp.Failures)
 }
 
 func TestProvider_CheckConfig_fallsBackToCheckConfig(t *testing.T) {
@@ -116,7 +116,7 @@ func TestProvider_CheckConfig_fallsBackToCheckConfig(t *testing.T) {
 	assert.Equal(t, "us-west-2", got.GetNews().GetFields()["region"].GetStringValue())
 
 	assert.Equal(t, property.New("us-west-2"), resp.Properties.Get("region"))
-	assert.Equal(t, []CheckConfigFailure{{Property: "region", Reason: "bad region"}}, resp.Failures)
+	assert.Equal(t, []CheckFailure{{Property: "region", Reason: "bad region"}}, resp.Failures)
 }
 
 func TestProvider_CheckConfig_neitherImplemented(t *testing.T) {
@@ -164,12 +164,13 @@ type checkConfigProvider struct {
 func (p *checkConfigProvider) CheckConfig(_ context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {
 	return CheckConfigResponse{
 		Properties: req.News,
-		Failures:   []CheckConfigFailure{{Property: "region", Reason: string(req.Type) + "/" + req.Name}},
+		Failures:   []CheckFailure{{Property: "region", Reason: string(req.Type) + "/" + req.Name}},
 	}, nil
 }
 
-func (p *checkConfigProvider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (CheckConfigResponse, error) {
-	return p.CheckConfig(ctx, req)
+func (p *checkConfigProvider) CheckConfig2(ctx context.Context, req CheckConfigRequest) (CheckConfig2Response, error) {
+	resp, err := p.CheckConfig(ctx, req)
+	return CheckConfig2Response{Properties: resp.Properties, Failures: checkConfigFailures(resp.Failures)}, err
 }
 
 func TestProviderServer_CheckConfig2_matchesCheckConfig(t *testing.T) {
@@ -204,10 +205,10 @@ func TestProviderServer_CheckConfig2_prefersProviderCheckConfig2(t *testing.T) {
 	urn := "urn:pulumi:org/proj/dev::foo::pulumi:providers:pkg::default"
 	srv := NewProviderServer(&MockProvider{
 		CheckConfigF: func(context.Context, CheckConfigRequest) (CheckConfigResponse, error) {
-			return CheckConfigResponse{Failures: []CheckConfigFailure{{Property: "region", Reason: "from CheckConfig"}}}, nil
+			return CheckConfigResponse{Failures: []CheckFailure{{Property: "region", Reason: "from CheckConfig"}}}, nil
 		},
-		CheckConfig2F: func(context.Context, CheckConfigRequest) (CheckConfigResponse, error) {
-			return CheckConfigResponse{
+		CheckConfig2F: func(context.Context, CheckConfigRequest) (CheckConfig2Response, error) {
+			return CheckConfig2Response{
 				Failures: []CheckConfigFailure{{Property: "region", Reason: "from CheckConfig2"}},
 			}, nil
 		},

@@ -219,11 +219,17 @@ type CheckConfigRequest struct {
 
 type CheckConfigResponse struct {
 	Properties property.Map
+	Failures   []CheckFailure
+}
+
+// CheckConfig2Response is the response to [Provider.CheckConfig2].
+type CheckConfig2Response struct {
+	Properties property.Map
 	Failures   []CheckConfigFailure
 }
 
-// CheckConfigFailure indicates that a call to CheckConfig or CheckConfig2 failed; it contains the property and reason
-// for the failure.
+// CheckConfigFailure indicates that a call to CheckConfig2 failed; it contains the property and reason for the
+// failure.
 type CheckConfigFailure struct {
 	Property resource.PropertyKey // the provider configuration property that failed checking.
 	Reason   string               // the reason the property failed to check.
@@ -582,7 +588,7 @@ type Provider interface {
 	CheckConfig(context.Context, CheckConfigRequest) (CheckConfigResponse, error)
 	// CheckConfig2 is the successor to CheckConfig. It has the same semantics, but is sent to the provider as a
 	// CheckConfig2 call, falling back to CheckConfig for providers that predate it.
-	CheckConfig2(context.Context, CheckConfigRequest) (CheckConfigResponse, error)
+	CheckConfig2(context.Context, CheckConfigRequest) (CheckConfig2Response, error)
 	// DiffConfig checks what impacts a hypothetical change to this provider's configuration will have on the provider.
 	DiffConfig(context.Context, DiffConfigRequest) (DiffConfigResponse, error)
 	// Configure configures the resource provider with "globals" that control its behavior.
@@ -1072,4 +1078,29 @@ type View struct {
 
 	// The view resource's outputs.
 	Outputs property.Map
+}
+
+// checkConfigFailures converts the failures of a CheckConfig response to those of a CheckConfig2 response.
+func checkConfigFailures(failures []CheckFailure) []CheckConfigFailure {
+	if failures == nil {
+		return nil
+	}
+	result := make([]CheckConfigFailure, len(failures))
+	for i, f := range failures {
+		result[i] = CheckConfigFailure(f)
+	}
+	return result
+}
+
+// checkFailures converts the failures of a CheckConfig2 response to those of a CheckConfig response, dropping
+// anything that only CheckConfig2 can carry.
+func checkFailures(failures []CheckConfigFailure) []CheckFailure {
+	if failures == nil {
+		return nil
+	}
+	result := make([]CheckFailure, len(failures))
+	for i, f := range failures {
+		result[i] = CheckFailure(f)
+	}
+	return result
 }

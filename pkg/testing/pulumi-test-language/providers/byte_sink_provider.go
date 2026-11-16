@@ -96,23 +96,23 @@ func (p *ByteSinkProvider) CheckConfig(
 	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("version", "missing version"),
+			Failures: makeCheckFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("version", "version is not a string"),
+			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
 	if version.AsString() != byteSinkVersion {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("version", "version is not "+byteSinkVersion),
+			Failures: makeCheckFailure("version", "version is not "+byteSinkVersion),
 		}, nil
 	}
 
 	if req.News.Len() != 1 {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 

@@ -190,17 +190,17 @@ func (p *OutputProvider) CheckConfig(
 	version, ok := req.News.GetOk("version")
 	if !ok {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("version", "missing version"),
+			Failures: makeCheckFailure("version", "missing version"),
 		}, nil
 	}
 	if !version.IsString() {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("version", "version is not a string"),
+			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
 	if version.AsString() != "23.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("version", "version is not 23.0.0"),
+			Failures: makeCheckFailure("version", "version is not 23.0.0"),
 		}, nil
 	}
 
@@ -210,13 +210,13 @@ func (p *OutputProvider) CheckConfig(
 			_, err := strconv.ParseBool(elide.AsString())
 			if err != nil {
 				return plugin.CheckConfigResponse{
-					Failures: makeCheckConfigFailure("elideUnknowns",
+					Failures: makeCheckFailure("elideUnknowns",
 						fmt.Sprintf("elideUnknowns is not a boolean: '%v'", elide.AsString())),
 				}, nil
 			}
 		} else if !elide.IsBool() {
 			return plugin.CheckConfigResponse{
-				Failures: makeCheckConfigFailure("elideUnknowns",
+				Failures: makeCheckFailure("elideUnknowns",
 					"elideUnknowns is not a boolean"),
 			}, nil
 		}
@@ -224,7 +224,7 @@ func (p *OutputProvider) CheckConfig(
 
 	if (!hasElide && req.News.Len() != 1) || (hasElide && req.News.Len() != 2) {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckConfigFailure("", fmt.Sprintf("too many properties: %v", req.News)),
+			Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.News)),
 		}, nil
 	}
 
