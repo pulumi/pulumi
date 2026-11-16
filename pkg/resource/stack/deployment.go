@@ -585,7 +585,20 @@ func DeserializeDeploymentV3(
 		return nil, err
 	}
 
-	secretsManager, err := initializeSecretsManager(ctx, deployment.SecretsProviders, secretsProv)
+	// If the deployment has no resources or pending operations there are no ciphertexts that
+	// could fail to decrypt, so a wrapping provider that would otherwise reject a config/state
+	// secrets-manager mismatch has nothing to protect. Unwrap so `stack init`-era empty
+	// snapshots (which carry SecretsProviders but no content) don't spuriously fail subsequent
+	// operations that legitimately use a different-but-same-passphrase salt — e.g. the auto
+	// SDK's `optup.ConfigFile` sidecar flow.
+	activeSecretsProv := secretsProv
+	if len(deployment.Resources) == 0 && len(deployment.PendingOperations) == 0 {
+		if u, ok := secretsProv.(secrets.UnwrappingProvider); ok {
+			activeSecretsProv = u.Unwrap()
+		}
+	}
+
+	secretsManager, err := initializeSecretsManager(ctx, deployment.SecretsProviders, activeSecretsProv)
 	if err != nil {
 		return nil, err
 	}
@@ -1319,6 +1332,10 @@ func FormatDeploymentDeserializationError(err error, stackName string) error {
 	case errors.Is(err, ErrDeploymentSchemaVersionTooNew):
 		return fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
 			"Please update your version of the Pulumi CLI", stackName)
+	case errors.Is(err, secrets.ErrManagerMismatch):
+		// Keep the detailed message from the provider wrapper (which names the specific
+		// divergence) rather than wrapping in the generic "could not deserialize" prefix.
+		return err
 	}
 	return fmt.Errorf("could not deserialize deployment: %w", err)
 }

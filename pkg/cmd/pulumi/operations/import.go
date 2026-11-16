@@ -1227,7 +1227,7 @@ func NewImportCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
+				SecretsProvider:    cmdStack.VerifyingSecretsProvider(cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), sm),
 				Scopes:             backend.CancellationScopes,
 			}, imports)
 			// err is checked below after handling context.Canceled and writing the import file.

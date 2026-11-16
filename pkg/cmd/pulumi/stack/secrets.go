@@ -16,7 +16,7 @@ package stack
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -31,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -40,66 +39,50 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// ErrSecretsManagerMismatch is returned by VerifyAgainstSnapshot when the secrets manager derived
-// from the stack's config does not match the one recorded in the stack's latest snapshot. This
-// signals that `Pulumi.<stack>.yaml` and the deployment have drifted apart — e.g. the config was
-// copied from another stack, the encryption salt was regenerated, or a `change-secrets-provider`
-// operation was interrupted — and continuing would produce ciphertexts that cannot be decrypted
-// on the next load.
-var ErrSecretsManagerMismatch = errors.New(
-	"the stack's configured secrets provider does not match the one recorded in its state")
-
-// VerifyAgainstSnapshot checks that the given secrets manager (built from stack config) matches
-// the SecretsProviders block recorded in a snapshot. Type equality is checked at this layer;
-// semantic equality of provider state is delegated to the provider's Equivalent method. Returns
-// ErrSecretsManagerMismatch (wrapped with the specific divergence) when they disagree, or nil
-// when either side is empty or the two match. Callers are expected to fetch the snapshot once
-// (see PeekSnapshotSecretsProviders) and pass it in, so this never performs I/O.
+// VerifyingSecretsProvider wraps an underlying secrets.Provider. On `OfType` it builds the
+// state-side manager as usual and additionally compares it against `expected` — the manager
+// built from stack config. If the two diverge, `OfType` returns an error wrapping
+// secrets.ErrManagerMismatch, which `FormatDeploymentDeserializationError` surfaces as a clear,
+// actionable message. The check runs during the deployment load the engine already performs,
+// so it does not add any extra backend fetches.
 //
-// Callers that intentionally change the secrets manager (e.g. `stack change-secrets-provider`)
-// should not call this.
-func (l *SecretsManagerLoader) VerifyAgainstSnapshot(
-	sm secrets.Manager,
-	snapshotProviders *apitype.SecretsProvidersV1,
-) error {
-	if sm == nil || snapshotProviders == nil || snapshotProviders.Type == "" {
-		return nil
+// If `expected` is nil, verification is skipped and the wrapper is a pass-through. Callers that
+// intentionally change the secrets manager (e.g. `stack change-secrets-provider`) should not
+// wrap their provider.
+func VerifyingSecretsProvider(delegate secrets.Provider, expected secrets.Manager) secrets.Provider {
+	if expected == nil {
+		return delegate
 	}
-	if sm.Type() != snapshotProviders.Type {
-		return fmt.Errorf("%w: config specifies %q but state was encrypted with %q",
-			ErrSecretsManagerMismatch, sm.Type(), snapshotProviders.Type)
-	}
-	if !sm.Equivalent(snapshotProviders.State) {
-		return fmt.Errorf("%w: config and state carry different %s provider configuration "+
-			"(e.g. encryption salt or key id). Restore the matching stack configuration",
-			ErrSecretsManagerMismatch, sm.Type())
-	}
-	return nil
+	return &verifyingSecretsProvider{delegate: delegate, expected: expected}
 }
 
-// PeekSnapshotSecretsProviders returns the SecretsProviders block recorded in the given stack's
-// latest snapshot, without decrypting any resource secrets. Returns nil (and no error) when the
-// stack has no snapshot, the backend does not support export, or the deployment could not be
-// parsed — all cases where we want VerifyAgainstSnapshot to silently skip.
-func PeekSnapshotSecretsProviders(ctx context.Context, s backend.Stack) *apitype.SecretsProvidersV1 {
-	defer func() {
-		// Some test backends panic on ExportDeployment when the stub is not wired up. Treat that
-		// as "not supported" and skip the peek — the check is strictly diagnostic.
-		_ = recover()
-	}()
-	b := s.Backend()
-	if b == nil {
-		return nil
-	}
-	untyped, err := b.ExportDeployment(ctx, s)
-	if err != nil || untyped == nil || len(untyped.Deployment) == 0 {
-		return nil
-	}
-	v3, err := stack.UnmarshalUntypedDeployment(ctx, untyped)
+type verifyingSecretsProvider struct {
+	delegate secrets.Provider
+	expected secrets.Manager
+}
+
+// Unwrap returns the underlying delegate provider, bypassing the mismatch check. Callers that
+// know they do not need the check (e.g. the deployment carries no resources whose ciphertexts
+// could fail to decrypt) can use this to avoid false positives.
+func (v *verifyingSecretsProvider) Unwrap() secrets.Provider { return v.delegate }
+
+func (v *verifyingSecretsProvider) OfType(
+	ctx context.Context, ty string, state json.RawMessage,
+) (secrets.Manager, error) {
+	stateMgr, err := v.delegate.OfType(ctx, ty, state)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return v3.SecretsProviders
+	if v.expected.Type() != ty {
+		return nil, fmt.Errorf("%w: config specifies %q but state was encrypted with %q",
+			secrets.ErrManagerMismatch, v.expected.Type(), ty)
+	}
+	if !v.expected.Equivalent(state) {
+		return nil, fmt.Errorf("%w: config and state carry different %s provider configuration "+
+			"(e.g. encryption salt or key id). Restore the matching stack configuration",
+			secrets.ErrManagerMismatch, ty)
+	}
+	return stateMgr, nil
 }
 
 // Creates a secrets manager for an existing stack, using the stack to pick defaults if necessary and writing any

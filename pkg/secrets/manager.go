@@ -18,9 +18,18 @@ package secrets
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
+
+// ErrManagerMismatch signals that a stack's configured secrets manager does not match the one
+// recorded in its latest snapshot. This indicates that stack configuration and deployment state
+// have drifted apart — e.g. the config was copied from another stack, the encryption salt was
+// regenerated, or a `change-secrets-provider` operation was interrupted — and continuing would
+// produce ciphertexts that cannot be decrypted on the next load.
+var ErrManagerMismatch = errors.New(
+	"the stack's configured secrets provider does not match the one recorded in its state")
 
 // Manager provides the interface for providing stack encryption.
 type Manager interface {

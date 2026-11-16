@@ -368,7 +368,7 @@ func NewRefreshCmd() *cobra.Command {
 				Opts:               opts,
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
-				SecretsProvider:    cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager),
+				SecretsProvider:    cmdStack.VerifyingSecretsProvider(cmdBackend.SecretsProvider(cmdBackend.DefaultLoginManager), sm),
 				Scopes:             backend.CancellationScopes,
 				CoherenceWindow:    coherenceWindow,
 			})
