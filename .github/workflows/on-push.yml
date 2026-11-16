@@ -82,3 +82,99 @@ jobs:
           else
             echo "Not updating latest version as there has been a new push to the main branch"
           fi
+
+  publish-frozen-release:
+    name: publish frozen release
+    needs: [info, dev-release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+      - name: Detect a freeze
+        id: freeze
+        run: |
+          set -euo pipefail
+          VERSION=$(git show HEAD^:sdk/.version | tr -d '[:space:]')
+          if [ "$VERSION" != "$(tr -d '[:space:]' < sdk/.version)" ]; then
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Authenticate with Pulumi Cloud
+        if: steps.freeze.outputs.version != ''
+        id: pulumi-auth
+        uses: pulumi/auth-actions@40602447438aac90bca2b87b4528a81120a388b1 # main
+        with:
+          organization: pulumi
+          requested-token-type: urn:pulumi:token-type:access_token:organization
+          export-environment-variables: false
+      - name: Fetch secrets from ESC
+        if: steps.freeze.outputs.version != ''
+        id: esc-secrets
+        uses: pulumi/esc-action@eec71a90d9989af7ff14bd700b83fc72fae36119 # v4
+        with:
+          pulumi-access-token: ${{ steps.pulumi-auth.outputs.pulumi-access-token }}
+      - name: Git describe
+        if: steps.freeze.outputs.version != ''
+        id: ghd
+        uses: proudust/gh-describe@v1
+      - name: Check the draft release
+        if: steps.freeze.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
+          VERSION: ${{ steps.freeze.outputs.version }}
+        run: |
+          set -euo pipefail
+          EXPECTED=$(git rev-parse HEAD^)
+          TARGET=$(gh release view "v${VERSION}" --json targetCommitish --jq .targetCommitish)
+          if [ "$TARGET" != "$EXPECTED" ]; then
+            echo "::error::Draft v${VERSION} targets ${TARGET}, expected ${EXPECTED}."
+            exit 1
+          fi
+      - name: Test templates
+        if: steps.freeze.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
+          VERSION: ${{ needs.info.outputs.version }}
+          SHORT_SHA: ${{ steps.ghd.outputs.short-sha }}
+        run: |
+          set -euo pipefail
+          DEV_VERSION="${VERSION#v}-alpha.x${SHORT_SHA}"
+          START=$(date -u -d '-1 minute' +%Y-%m-%dT%H:%M:%SZ)
+          gh api repos/pulumi/templates/dispatches \
+            -f event_type=run-templates-command \
+            -f "client_payload[ref]=${DEV_VERSION}"
+
+          RUN=""
+          for _ in $(seq 30); do
+            RUN=$(gh run list --repo pulumi/templates --workflow test-templates.yml \
+              --event repository_dispatch --created ">=${START}" \
+              --json databaseId --jq '.[0].databaseId // empty')
+            [ -n "$RUN" ] && break
+            sleep 10
+          done
+          if [ -z "$RUN" ]; then
+            echo "::error::Could not find the templates run testing ${DEV_VERSION}."
+            exit 1
+          fi
+
+          echo "Testing ${DEV_VERSION}: https://github.com/pulumi/templates/actions/runs/${RUN}"
+          gh run watch "$RUN" --repo pulumi/templates --exit-status --interval 60
+      - name: Publish the release
+        if: steps.freeze.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
+          VERSION: ${{ steps.freeze.outputs.version }}
+        run: |
+          gh release edit "v${VERSION}" --draft=false --prerelease=false --latest \
+            --discussion-category Releases
+      - name: Notify Slack
+        if: always() && steps.freeze.outputs.version != '' && steps.esc-secrets.outcome == 'success'
+        uses: slackapi/slack-github-action@v2
+        with:
+          method: chat.postMessage
+          token: ${{ steps.esc-secrets.outputs.RELEASE_BOT_TOKEN }}
+          payload: |
+            channel: "#team-iac-core"
+            text: "${{ job.status == 'success' && format('Published <https://github.com/pulumi/pulumi/releases/tag/v{0}|v{0}>.', steps.freeze.outputs.version) || format('v{0} was not published automatically (<{1}/{2}/actions/runs/{3}|run>). Publish it by hand once the problem is fixed.', steps.freeze.outputs.version, github.server_url, github.repository, github.run_id) }}"
