@@ -38,6 +38,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	var rawString bool
 	var draft string
 	var reason string
+	var output string
 	var file string
 
 	cmd := &cobra.Command{
@@ -51,6 +52,11 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 			"is interpreted as YAML.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -204,7 +210,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 				return fmt.Errorf("marshaling definition: %w", err)
 			}
 
-			diags, err := env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "")
+			diags, err := env.esc.updateEnvironment(ctx, ref, draft, reason, newYAML, tag, "", format)
 			if err != nil {
 				return err
 			}
@@ -234,6 +240,7 @@ func newEnvSetCmd(env *envCommand) *cobra.Command {
 	// Allow no value to be specified with the flag and create a new change request in that case
 	cmd.Flag("draft").NoOptDefVal = "new"
 	cmd.Flags().StringVar(&reason, "reason", "", "the description for the change request created by --draft")
+	addOutputFlag(cmd, &output)
 
 	return cmd
 }
