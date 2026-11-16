@@ -562,9 +562,9 @@ type resmonClientWithFeatures struct {
 	notFeatures map[string]struct{}
 }
 
-// resourceMonitorClientWithOutFeatures builds a ResourceMonitorClient
+// resourceMonitorClientWithoutFeatures builds a ResourceMonitorClient
 // that reports the provided feature names as not supported
-// even if it is supported in the client
+// even if they are supported by the client.
 func resourceMonitorClientWithoutFeatures(
 	cl pulumirpc.ResourceMonitorClient,
 	features ...string,
