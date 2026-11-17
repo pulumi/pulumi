@@ -16,6 +16,7 @@
 package notifications
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -70,6 +71,15 @@ type Where struct {
 	// Providers maps provider names to the range of versions the notification applies to.
 	Providers map[string]string `json:"providers,omitempty"`
 	CLI       string            `json:"cli,omitempty"`
+}
+
+// UnmarshalJSON rejects conditions this CLI doesn't know, so that it skips a notification rather than
+// showing it to users the condition would have excluded.
+func (w *Where) UnmarshalJSON(b []byte) error {
+	type where Where
+	d := json.NewDecoder(bytes.NewReader(b))
+	d.DisallowUnknownFields()
+	return d.Decode((*where)(w))
 }
 
 type cacheEntry struct {
