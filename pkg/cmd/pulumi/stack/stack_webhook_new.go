@@ -100,7 +100,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 			"  # Create a Slack webhook with specific event filters\n" +
 			"  pulumi stack webhook new --name slack-alerts \\\n" +
 			"    --url https://hooks.slack.com/services/T00/B00/xxx \\\n" +
-			"    --format slack \\\n" +
+			"    --hook-format slack \\\n" +
 			"    --event update_succeeded --event update_failed --yes\n\n" +
 			"  # Create a webhook and get the result as JSON\n" +
 			"  pulumi stack webhook new --name \"My Hook\" --url https://example.com --yes --output json",
