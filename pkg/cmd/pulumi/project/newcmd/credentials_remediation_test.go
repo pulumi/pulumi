@@ -84,7 +84,7 @@ func TestOfferRemediation(t *testing.T) {
 		{
 			name:         "accepted",
 			remediations: []plugin.CommandRemediation{awsSignIn, {Command: []string{"aws", "sso", "login"}}},
-			prompt:       "Sign in to AWS now? This runs `aws login --profile 'my proj'`.",
+			prompt:       "Sign in to AWS: run `aws login --profile 'my proj'` now?",
 			ran:          true,
 			ok:           true,
 		},
@@ -99,14 +99,14 @@ func TestOfferRemediation(t *testing.T) {
 			name:         "declined",
 			remediations: []plugin.CommandRemediation{awsSignIn},
 			decline:      true,
-			prompt:       "Sign in to AWS now? This runs `aws login --profile 'my proj'`.",
+			prompt:       "Sign in to AWS: run `aws login --profile 'my proj'` now?",
 			output:       "\n",
 		},
 		{
 			name:         "command fails",
 			remediations: []plugin.CommandRemediation{awsSignIn},
 			runErr:       errors.New("exit status 255"),
-			prompt:       "Sign in to AWS now? This runs `aws login --profile 'my proj'`.",
+			prompt:       "Sign in to AWS: run `aws login --profile 'my proj'` now?",
 			ran:          true,
 			output:       "`aws login --profile 'my proj'` did not complete; run it yourself, then `pulumi up`.\n\n",
 		},
@@ -165,7 +165,7 @@ func TestCheckPackageRemediation(t *testing.T) {
 		{name: "command fails", loads: 1, warnings: 1, asked: true},
 		{name: "fixed", succeeds: true, fixes: true, loads: 2, warnings: 1, verified: true, asked: true},
 		{name: "still failing", succeeds: true, loads: 2, warnings: 2, asked: true},
-		{name: "interrupted", succeeds: true, fixes: true, cancels: true, loads: 2, warnings: 1, asked: true},
+		{name: "interrupted", succeeds: true, fixes: true, cancels: true, loads: 1, warnings: 1, asked: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

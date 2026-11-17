@@ -35,7 +35,7 @@ func (pf credentialsPreflight) offerRemediation(ctx context.Context, problem *cr
 	command := shellquote.Join(r.Command...)
 	prompt := fmt.Sprintf("Run `%s` now?", command)
 	if r.Description != "" {
-		prompt = fmt.Sprintf("%s now? This runs `%s`.", r.Description, command)
+		prompt = fmt.Sprintf("%s: run `%s` now?", r.Description, command)
 	}
 	if !pf.confirm(prompt) {
 		fmt.Fprintln(pf.stdout)
