@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -190,9 +191,8 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 			"      --reason \"LOG-31\" --expires-in 30d --yes --output json\n\n" +
 			"  # Request the exception in a change request, even if no approval is required\n" +
 			"  pulumi policy exception new aws-security --policy required-tags --reason \"LOG-31\" --draft\n\n" +
-			"  # See where violations are recorded, or the findings of a stack\n" +
-			"  pulumi stack history events latest --event-type 9 --output json\n" +
-			"  pulumi policy issue list",
+			"  # See where a run's violations are recorded\n" +
+			"  pulumi stack history events latest --event-type 9 --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			if len(posArgs) > 0 {
 				args.policyPack = posArgs[0]
@@ -211,6 +211,19 @@ func newPolicyExceptionNewCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManage
 			{Name: "policy-pack"},
 		},
 	})
+	// --update and --preview can be passed without a value, so the value of `--update 2` is read as an argument.
+	validateArgs := cmd.Args
+	cmd.Args = func(cmd *cobra.Command, posArgs []string) error {
+		for _, a := range posArgs {
+			if _, err := strconv.Atoi(a); err == nil && args.update == latestRun {
+				return cmdCmd.ConfigurationError{Message: fmt.Sprintf("unexpected argument %q: use --update=%s", a, a)}
+			}
+			if _, err := uuid.Parse(a); err == nil && args.preview == latestRun {
+				return cmdCmd.ConfigurationError{Message: fmt.Sprintf("unexpected argument %q: use --preview=%s", a, a)}
+			}
+		}
+		return validateArgs(cmd, posArgs)
+	}
 
 	flags := cmd.Flags()
 	flags.StringArrayVarP(&args.stacks, "stack", "s", nil,
@@ -329,8 +342,15 @@ func runPolicyExceptionNew(
 		if _, err := c.ListPolicyExceptions(ctx, org, client.ListPolicyExceptionsOptions{}); err != nil {
 			return policyExceptionsError(err, org)
 		}
-		if err := readPolicyExceptionViolations(ctx, c, stacks, pack, args, &result); err != nil {
+		unmatched, err := readPolicyExceptionViolations(ctx, c, stacks, pack, args, &result)
+		if err != nil {
 			return err
+		}
+		if len(result.Violations) == 0 && len(unmatched) > 0 {
+			return cmdCmd.ConfigurationError{
+				Message: "no violations match the Policy Pack, --policy or --target; the run has violations of " +
+					strings.Join(unmatched, ", "),
+			}
 		}
 		if len(result.Violations) == 0 {
 			result.OrganizationName, result.pack = org, pack
@@ -595,16 +615,18 @@ func policyExceptionRunOf(
 }
 
 // readPolicyExceptionViolations reads the violations of each stack's run that pass the Policy Pack, --policy, --target
-// and --level filters. Mandatory violations come first.
+// and --level filters. Mandatory violations come first. It also returns the `<pack>/<policy>` of the violations that
+// only the Policy Pack, --policy or --target filtered out, to tell a typo from a run without violations.
 func readPolicyExceptionViolations(
 	ctx context.Context, c policyExceptionClient, stacks []client.StackIdentifier,
 	pack string, args policyExceptionNewArgs, result *policyExceptionNewResult,
-) error {
+) ([]string, error) {
+	var unmatched []string
 	seen := map[[4]string]bool{}
 	for _, stack := range stacks {
 		run, err := policyExceptionRunOf(ctx, c, stack, args)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result.Runs = append(result.Runs, policyExceptionRun{
 			Stack: stack.String(), Kind: string(run.UpdateKind), ID: run.UpdateID,
@@ -614,15 +636,20 @@ func readPolicyExceptionViolations(
 		for {
 			resp, err := c.GetUpdateEngineEvents(ctx, run, eventOpts)
 			if err != nil {
-				return fmt.Errorf("reading the policy events of %s %s %s: %w", stack, run.UpdateKind, run.UpdateID, err)
+				return nil, fmt.Errorf("reading the policy events of %s %s %s: %w", stack, run.UpdateKind, run.UpdateID, err)
 			}
 			for _, ev := range resp.Events {
 				p := ev.PolicyEvent
 				if p == nil || p.ResourceURN == "" ||
-					(pack != "" && p.PolicyPackName != pack) ||
-					(len(args.policies) > 0 && !slices.Contains(args.policies, p.PolicyName)) ||
-					(len(args.targets) > 0 && !slices.Contains(args.targets, p.ResourceURN)) ||
 					(len(args.levels) > 0 && !slices.Contains(args.levels, p.EnforcementLevel)) {
+					continue
+				}
+				if (pack != "" && p.PolicyPackName != pack) ||
+					(len(args.policies) > 0 && !slices.Contains(args.policies, p.PolicyName)) ||
+					(len(args.targets) > 0 && !slices.Contains(args.targets, p.ResourceURN)) {
+					if name := p.PolicyPackName + "/" + p.PolicyName; !slices.Contains(unmatched, name) {
+						unmatched = append(unmatched, name)
+					}
 					continue
 				}
 				v := policyExceptionViolation{
@@ -657,7 +684,7 @@ func readPolicyExceptionViolations(
 	slices.SortStableFunc(result.Violations, func(a, b policyExceptionViolation) int {
 		return cmp.Compare(rank(a), rank(b))
 	})
-	return nil
+	return unmatched, nil
 }
 
 // groupPolicyExceptionMatch makes one match entry per resource, listing its policies in the order they were seen.
@@ -884,6 +911,9 @@ func fprintPolicyExceptionExpiry(w io.Writer, r policyExceptionNewResult) {
 	fmt.Fprintf(w, "Expires: %d %s after it's created\n", n, unit)
 }
 
+// policyExceptionMaxExpiry is the longest expiry that Pulumi Cloud accepts.
+const policyExceptionMaxExpiry = 3650 * 24 * time.Hour
+
 // parsePolicyExceptionExpiresIn reads days, like 7d, or hours, like 12h. Pulumi Cloud takes whole hours only.
 func parsePolicyExceptionExpiresIn(s string) (time.Duration, error) {
 	if s == "" {
@@ -891,10 +921,15 @@ func parsePolicyExceptionExpiresIn(s string) (time.Duration, error) {
 	}
 	unit := map[string]time.Duration{"d": 24 * time.Hour, "h": time.Hour}[strings.ToLower(s[len(s)-1:])]
 	n, err := strconv.Atoi(s[:len(s)-1])
-	if unit == 0 || err != nil || n <= 0 {
+	switch {
+	case unit == 0 || err != nil:
 		return 0, cmdCmd.ConfigurationError{
 			Message: fmt.Sprintf("invalid --expires-in %q: use days, like 7d, or hours, like 12h", s),
 		}
+	case n <= 0:
+		return 0, cmdCmd.ConfigurationError{Message: "--expires-in must be at least 1h"}
+	case time.Duration(n)*unit > policyExceptionMaxExpiry:
+		return 0, cmdCmd.ConfigurationError{Message: fmt.Sprintf("--expires-in %s is too long; the maximum is 3650d", s)}
 	}
 	return time.Duration(n) * unit, nil
 }
