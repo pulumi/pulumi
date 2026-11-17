@@ -61,6 +61,12 @@ builds:
   main: ./cmd/pulumi-language-pcl
   tool: ../../scripts/go-wrapper.sh
 - <<: *pulumibin
+  id: pulumi-language-purejs
+  binary: pulumi-language-purejs
+  dir: sdk/purejs/cmd/pulumi-language-purejs
+  main: ./
+  tool: ../../../../scripts/go-wrapper.sh
+- <<: *pulumibin
   id: pulumi-display-wasm
   binary: pulumi-display
   dir: pkg

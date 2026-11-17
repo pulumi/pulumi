@@ -1,0 +1,4 @@
+component: cli/policy
+kind: feat
+body: Add the purejs policy runtime, which runs self-contained JavaScript policy packs without Node.js
+time: 2026-11-17T00:00:00Z
