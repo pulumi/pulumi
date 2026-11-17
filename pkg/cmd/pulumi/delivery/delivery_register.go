@@ -80,7 +80,7 @@ func newRegisterCmd(up *cobra.Command, prepare registerPrepare) *cobra.Command {
 		"\n" +
 		"This command registers the pipeline by running the Pulumi program and observing the pipeline\n" +
 		"resources that it allocates. It stores them in Pulumi Cloud as the pipeline definition and\n" +
-		"starts no run. It accepts the flags of `pulumi up`.\n" +
+		"starts no run.\n" +
 		"\n" +
 		"The pipeline needs to know where its program lives. When the stack configuration has no\n" +
 		"`delivery:source` value, this command detects the repository URL and the project directory\n" +
