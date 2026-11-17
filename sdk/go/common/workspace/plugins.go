@@ -2098,6 +2098,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 		(kind == apitype.LanguagePlugin && name == "dotnet") ||
 		(kind == apitype.LanguagePlugin && name == "yaml") ||
 		(kind == apitype.LanguagePlugin && name == "pcl") ||
+		(kind == apitype.LanguagePlugin && name == "purejs") ||
 		(kind == apitype.ResourcePlugin && name == "pulumi-nodejs") ||
 		(kind == apitype.ResourcePlugin && name == "pulumi-python")
 }
