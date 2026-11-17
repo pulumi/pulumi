@@ -50,8 +50,8 @@ func (pf credentialsPreflight) offerRemediation(ctx context.Context, problem *cr
 	return true
 }
 
-// runRemediation runs r on the process's own streams rather than the cobra writers, which may be
-// buffered or piped, so that the command can prompt.
+// runRemediation runs r attached to the terminal, since sign-in commands prompt and wait for the
+// user. The preflight only offers a remediation when stdin and stdout are terminals.
 func runRemediation(ctx context.Context, r plugin.CommandRemediation) error {
 	cmd := exec.CommandContext(ctx, r.Command[0], r.Command[1:]...)
 	cmd.Env = os.Environ()
