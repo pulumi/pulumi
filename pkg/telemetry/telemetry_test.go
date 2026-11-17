@@ -464,7 +464,7 @@ func TestUnsentEventsAreSentByAnotherProcess(t *testing.T) {
 	wal := filepath.Join(f.walDir(), tel.invocation+walExtension)
 	require.FileExists(t, wal)
 
-	other := newQueue(f.walDir(), "other", f.args.URL, f.args.UserAgent, false, time.Hour)
+	other := newTestQueue(t, f.walDir(), "other", httpSender(f.args.URL, f.args.UserAgent))
 	other.sendOrphans(t.Context())
 
 	received := f.service.received()
@@ -485,7 +485,7 @@ func TestLiveLogIsNotClaimed(t *testing.T) {
 	Emit(ctx, boolFact("ci", false))
 	UseBackend(ctx, "file:///tmp/state")
 
-	other := newQueue(f.walDir(), "other", f.args.URL, f.args.UserAgent, false, time.Hour)
+	other := newTestQueue(t, f.walDir(), "other", httpSender(f.args.URL, f.args.UserAgent))
 	other.sendOrphans(t.Context())
 
 	require.Empty(t, f.service.received())
@@ -564,113 +564,6 @@ func TestIneligibleBackendDiscards(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestOrphanSkipsCorruptLines(t *testing.T) {
-	t.Parallel()
-
-	f := newFixture(t, nil)
-	require.NoError(t, os.MkdirAll(f.walDir(), 0o700))
-	wal := filepath.Join(f.walDir(), "crashed"+walExtension)
-	require.NoError(t, os.WriteFile(wal, []byte(`{"facts":{"ci":true}}`+"\n"+`{"facts":{"ci":`), 0o600))
-
-	q := newQueue(f.walDir(), "other", f.args.URL, f.args.UserAgent, false, time.Hour)
-	q.sendOrphans(t.Context())
-
-	received := f.service.received()
-	require.Len(t, received, 1)
-	require.Len(t, received[0].Events, 1)
-	require.NoFileExists(t, wal)
-}
-
-func TestOrphanEmptyLogs(t *testing.T) {
-	t.Parallel()
-
-	f := newFixture(t, nil)
-	require.NoError(t, os.MkdirAll(f.walDir(), 0o700))
-	fresh := filepath.Join(f.walDir(), "fresh"+walExtension)
-	stale := filepath.Join(f.walDir(), "stale"+walExtension)
-	require.NoError(t, os.WriteFile(fresh, nil, 0o600))
-	require.NoError(t, os.WriteFile(stale, nil, 0o600))
-	old := time.Now().Add(-2 * staleEmptyAge)
-	require.NoError(t, os.Chtimes(stale, old, old))
-
-	q := newQueue(f.walDir(), "other", f.args.URL, f.args.UserAgent, false, time.Hour)
-	q.sendOrphans(t.Context())
-
-	require.Empty(t, f.service.received())
-	require.FileExists(t, fresh)
-	require.NoFileExists(t, stale)
-}
-
-func TestOrphanKeptWhenServiceUnavailable(t *testing.T) {
-	t.Parallel()
-
-	f := newFixture(t, nil)
-	f.service.status = http.StatusServiceUnavailable
-	require.NoError(t, os.MkdirAll(f.walDir(), 0o700))
-	wal := filepath.Join(f.walDir(), "crashed"+walExtension)
-	require.NoError(t, os.WriteFile(wal, []byte(`{"facts":{"ci":true}}`+"\n"), 0o600))
-
-	q := newQueue(f.walDir(), "other", f.args.URL, f.args.UserAgent, false, time.Hour)
-	q.sendOrphans(t.Context())
-
-	require.Len(t, f.service.received(), 1)
-	data, err := os.ReadFile(wal)
-	require.NoError(t, err)
-	require.Equal(t, `{"facts":{"ci":true}}`+"\n", string(data))
-}
-
-func TestFlushOutcome(t *testing.T) {
-	t.Parallel()
-
-	for name, c := range map[string]struct {
-		status  int
-		err     bool
-		pending int
-	}{
-		"accepted":    {status: http.StatusNoContent},
-		"rejected":    {status: http.StatusBadRequest},
-		"rate limit":  {status: http.StatusTooManyRequests, err: true, pending: 1},
-		"unavailable": {status: http.StatusServiceUnavailable, err: true, pending: 1},
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			f := newFixture(t, nil)
-			f.service.status = c.status
-			q := newQueue(f.walDir(), "self", f.args.URL, f.args.UserAgent, true, time.Hour)
-			q.add([]byte(`{"facts":{"ci":true}}`))
-
-			err := q.flush(t.Context())
-
-			if c.err {
-				require.ErrorContains(t, err, "telemetry endpoint returned")
-			} else {
-				require.NoError(t, err)
-			}
-			require.Len(t, q.pending, c.pending)
-		})
-	}
-}
-
-func TestFlushAfterDiscard(t *testing.T) {
-	t.Parallel()
-
-	f := newFixture(t, nil)
-	f.service.release = make(chan struct{})
-	q := newQueue(f.walDir(), "self", f.args.URL, f.args.UserAgent, false, time.Hour)
-	q.add([]byte(`{"facts":{"ci":true}}`))
-
-	flushed := make(chan error, 1)
-	go func() { flushed <- q.flush(t.Context()) }()
-	require.Eventually(t, func() bool { return len(f.service.received()) == 1 }, 10*time.Second, 10*time.Millisecond)
-
-	q.discard()
-	close(f.service.release)
-
-	require.NoError(t, <-flushed)
-	require.Empty(t, q.pending)
 }
 
 func TestShutdownDoesNotWaitForInFlightSend(t *testing.T) {

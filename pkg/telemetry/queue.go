@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,48 +31,65 @@ import (
 )
 
 const (
-	walExtension    = ".jsonl"
-	maxBatch        = 100
-	orphanDelay     = 2 * time.Second
-	staleEmptyAge   = time.Minute
+	// walExtension is the extension of the write-ahead logs in the queue's directory.
+	walExtension = ".jsonl"
+	// maxBatch is the most events sent at once.
+	maxBatch = 100
+	// orphanDelay is how long an invocation runs before it sends events other invocations left behind, so that
+	// short-lived invocations don't spend time on them.
+	orphanDelay = 2 * time.Second
+	// staleEmptyAge is how old an empty write-ahead log must be before it is removed, so that a log another
+	// invocation has just created isn't removed before that invocation locks it.
+	staleEmptyAge = time.Minute
+	// shutdownTimeout is how long shutdown waits to send pending events in CI.
 	shutdownTimeout = 5 * time.Second
-	requestTimeout  = 10 * time.Second
 )
 
+// queue collects an invocation's events and sends them in batches. Outside CI it also keeps them in the
+// invocation's write-ahead log, so that a later invocation can send whatever this one didn't.
 type queue struct {
+	// dir holds the write-ahead logs of all invocations.
 	dir        string
 	invocation string
-	url        string
-	userAgent  string
-	ci         bool
-	pulse      time.Duration
-	client     *http.Client
+	// ci means there is no write-ahead log; shutdown sends pending events instead, since a CI machine is unlikely
+	// to run the CLI again.
+	ci bool
+	// pulse is how often pending events are sent.
+	pulse time.Duration
+	send  sendFunc
 
+	// sendMu makes sure only one flush sends at a time.
 	sendMu sync.Mutex
 
-	mu      sync.Mutex
+	mu sync.Mutex
+	// pending are the events that haven't been sent yet.
 	pending []json.RawMessage
 	wal     *os.File
-	held    bool
-	closed  bool
+	// held keeps events from being sent or written to the write-ahead log until the invocation's backend is known
+	// to be eligible.
+	held   bool
+	closed bool
 
 	cancel          context.CancelFunc
 	shutdownTimeout time.Duration
 }
 
-func newQueue(dir, invocation, url, userAgent string, ci bool, pulse time.Duration) *queue {
-	return &queue{
+func newQueue(dir, invocation string, ci bool, pulse time.Duration, send sendFunc) *queue {
+	q := &queue{
 		dir:        dir,
 		invocation: invocation,
-		url:        strings.TrimSuffix(url, "/") + "/api/telemetry/v1",
-		userAgent:  userAgent,
 		ci:         ci,
 		pulse:      pulse,
-		client:     &http.Client{Timeout: requestTimeout},
+		send:       send,
+		held:       true,
 		cancel:     func() {},
 
 		shutdownTimeout: shutdownTimeout,
 	}
+	if !ci {
+		q.wal = openWAL(dir, invocation)
+	}
+	return q
 }
 
 func (q *queue) add(line json.RawMessage) {
@@ -110,6 +126,9 @@ func openWAL(dir, invocation string) *os.File {
 	return f
 }
 
+// rewrite replaces the contents of a write-ahead log in place. Writing a new file and renaming it over the log
+// would drop the lock that keeps other invocations from sending its events, and Windows can't rename over a locked
+// file. If the write fails, the events are still pending in memory and this invocation keeps trying to send them.
 func rewrite(f *os.File, lines []json.RawMessage) error {
 	var buf bytes.Buffer
 	for _, line := range lines {
@@ -163,7 +182,7 @@ func (q *queue) flush(ctx context.Context) error {
 		if len(batch) == 0 {
 			return nil
 		}
-		if err := q.post(ctx, batch); err != nil {
+		if err := q.send(ctx, batch); err != nil {
 			return err
 		}
 		q.mu.Lock()
@@ -254,40 +273,6 @@ func (q *queue) discard() {
 	}
 }
 
-func (q *queue) post(ctx context.Context, events []json.RawMessage) error {
-	body, err := json.Marshal(struct {
-		Events []json.RawMessage `json:"events"`
-	}{events})
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, q.url, bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", q.userAgent)
-
-	resp, err := q.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, resp.Body)
-
-	switch {
-	case resp.StatusCode < 300:
-		return nil
-	case resp.StatusCode < 500 && resp.StatusCode != http.StatusRequestTimeout &&
-		resp.StatusCode != http.StatusTooManyRequests:
-		slog.DebugContext(ctx, "telemetry rejected", "status", resp.StatusCode)
-		return nil
-	default:
-		return fmt.Errorf("telemetry endpoint returned %s", resp.Status)
-	}
-}
-
 func (q *queue) sendOrphans(ctx context.Context) {
 	entries, err := os.ReadDir(q.dir)
 	if err != nil {
@@ -334,7 +319,7 @@ func (q *queue) sendOrphan(ctx context.Context, path string) {
 	}
 	for len(lines) > 0 {
 		batch := lines[:min(len(lines), maxBatch)]
-		if err := q.post(ctx, batch); err != nil {
+		if err := q.send(ctx, batch); err != nil {
 			slog.DebugContext(ctx, "could not send telemetry", "err", err)
 			break
 		}

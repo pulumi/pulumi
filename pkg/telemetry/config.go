@@ -58,26 +58,27 @@ const (
 
 // Settings are the effective telemetry settings and where each of them came from.
 type Settings struct {
-	// Enabled is whether telemetry is sent.
+	// Enabled is whether telemetry is sent to the service.
 	Enabled bool
 	// Where we got the Enabled setting from: PULUMI_TELEMETRY, DO_NOT_TRACK, telemetry.json, or default.
 	EnabledSource Source
-	// Log is whether events are written to LogPath, whether or not they are sent.
-	Log bool
-	// Where we got the Log setting from: PULUMI_TELEMETRY_LOG, telemetry.json, or default.
-	LogSource Source
-	// LogPath is the path to the telemetry log file, if Log is true.
+	// LogPath is the file events are written to, regardless of if they are sent to the service or not. It is empty
+	// if events aren't logged.
 	LogPath string
+	// Where we got the LogPath setting from: PULUMI_TELEMETRY_LOG, telemetry.json, or default.
+	LogSource Source
 }
 
+// config is the contents of $PULUMI_HOME/telemetry.json.
 type config struct {
 	// The version of the config file format.
 	Version int `json:"version"`
-	// The installation ID, a UUID that identifies this Pulumi installation.
+	// The installation ID, a random UUID that identifies this Pulumi installation. It is generated when this file is
+	// first written, and stays the same until the file is deleted.
 	Installation string `json:"installation"`
 	// Whether telemetry is enabled. If nil, the default applies.
 	Telemetry *bool `json:"telemetry,omitempty"`
-	// Whether telemetry events are logged to a file.
+	// Whether telemetry events are logged to $PULUMI_HOME/telemetry/log/events.jsonl.
 	Log bool `json:"log,omitempty"`
 	// Whether the user has been notified that telemetry is enabled by default and can be disabled.
 	Notified bool `json:"notified,omitempty"`
@@ -106,7 +107,7 @@ func newTelemetry(args InitArgs) *telemetry {
 	}
 	s := cfg.settings(args.HomeDir, args.Env)
 	notify := s.notify(cfg)
-	if !s.Enabled && !s.Log {
+	if !s.Enabled && s.LogPath == "" {
 		return nil
 	}
 
@@ -137,7 +138,7 @@ func newTelemetry(args InitArgs) *telemetry {
 		args.Diags.Infoerrf(diag.RawMessage("", notice))
 	}
 	send := s.Enabled && !notify
-	if !send && !s.Log {
+	if !send && s.LogPath == "" {
 		return nil
 	}
 
@@ -152,7 +153,7 @@ func newTelemetry(args InitArgs) *telemetry {
 		invocation:   invocation.String(),
 		send:         send,
 	}
-	if s.Log {
+	if s.LogPath != "" {
 		t.logPath = s.LogPath
 		if err := os.MkdirAll(filepath.Dir(t.logPath), 0o700); err != nil {
 			args.Diags.Warningf(diag.Message("", "Could not create the telemetry log: %v"), err)
@@ -164,12 +165,8 @@ func newTelemetry(args InitArgs) *telemetry {
 		if pulse <= 0 {
 			pulse = defaultPulse
 		}
-		t.queue = newQueue(filepath.Join(args.HomeDir, "telemetry"), t.invocation, args.URL, args.UserAgent,
-			args.CI, pulse)
-		t.queue.held = true
-		if !args.CI {
-			t.queue.wal = openWAL(t.queue.dir, t.invocation)
-		}
+		t.queue = newQueue(filepath.Join(args.HomeDir, "telemetry"), t.invocation, args.CI, pulse,
+			httpSender(args.URL, args.UserAgent))
 	}
 	if t.logPath == "" && !send {
 		return nil
@@ -212,7 +209,7 @@ func marshalConfig(cfg config) ([]byte, error) {
 }
 
 func (cfg config) settings(homeDir string, e declared.Env) Settings {
-	s := Settings{LogPath: filepath.Join(homeDir, "telemetry", "log", "events.jsonl")}
+	var s Settings
 
 	if enabled, set := lookupBool(e, env.Telemetry); set {
 		s.Enabled, s.EnabledSource = enabled, SourceEnv
@@ -224,12 +221,16 @@ func (cfg config) settings(homeDir string, e declared.Env) Settings {
 		s.Enabled, s.EnabledSource = true, SourceDefault
 	}
 
-	if log, set := lookupBool(e, env.TelemetryLog); set {
-		s.Log, s.LogSource = log, SourceEnv
+	log := false
+	if l, set := lookupBool(e, env.TelemetryLog); set {
+		log, s.LogSource = l, SourceEnv
 	} else if cfg.Log {
-		s.Log, s.LogSource = true, SourceConfig
+		log, s.LogSource = true, SourceConfig
 	} else {
 		s.LogSource = SourceDefault
+	}
+	if log {
+		s.LogPath = filepath.Join(homeDir, "telemetry", "log", "events.jsonl")
 	}
 	return s
 }
