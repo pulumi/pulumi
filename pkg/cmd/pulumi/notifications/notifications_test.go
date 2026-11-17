@@ -44,6 +44,7 @@ func TestDecode(t *testing.T) {
 		json.RawMessage(`{"title": "ok", "identifier": "a", "schemaVersion": 1}`),
 		json.RawMessage(`{"title": "newer", "identifier": "b", "schemaVersion": 2}`),
 		json.RawMessage(`{"title": "malformed", "identifier": "c", "schemaVersion": "1"}`),
+		json.RawMessage(`{"title": "unknown condition", "identifier": "d", "where": {"command": "new"}, "schemaVersion": 1}`),
 	}
 
 	ns := decode(raw)
